@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"net"
 	"os"
+
+	"github.com/Hucaru/Valhalla/common"
 )
 
 const (
@@ -30,26 +32,46 @@ func main() {
 		if err != nil {
 			fmt.Println("Error in accepting client", err)
 		}
+
 		fmt.Println("New Connection")
+
 		go handleClientConnection(conn)
 	}
 }
 
 func handleClientConnection(conn net.Conn) {
-	// Send init packet
-	conn.Write([]byte{13, 0, 28, 0, 0, 0, 28, 62, 13, 176, 236, 76, 141, 116, 8})
-	fmt.Println("Handshake sent")
-	// Send recv bullshit
-	for {
-		buffer := make([]byte, 2)
+	defer conn.Close()
 
-		_, err := conn.Read(buffer)
+	clientConn := common.NewClientConnection(conn)
+
+	sendHandshake(clientConn)
+
+	fmt.Println("Handshake sent")
+
+	sizeToRead := 2
+
+	for {
+		buffer := common.NewPacket(sizeToRead)
+
+		err := clientConn.Read(buffer)
 
 		if err != nil {
-			fmt.Println("Error in reading from connection")
+			fmt.Println("Error in reading from connection", err)
 			return
 		}
-
-		fmt.Println("Following bytes received", buffer)
 	}
+}
+
+func sendHandshake(client common.Connection) error {
+	packet := common.NewPacket(0)
+
+	packet.WriteShort(28)
+	packet.WriteString("")
+	packet.WriteInt(1)
+	packet.WriteInt(2)
+	packet.WriteByte(8)
+
+	err := client.Write(packet)
+
+	return err
 }
