@@ -31,11 +31,11 @@ func main() {
 			fmt.Println("Error in accepting client", err)
 		}
 		fmt.Println("New Connection")
-		go handle_client_connection(conn)
+		go handleClientConnection(conn)
 	}
 }
 
-func handle_client_connection(conn net.Conn) {
+func handleClientConnection(conn net.Conn) {
 	// Send init packet
 	conn.Write([]byte{13, 0, 28, 0, 0, 0, 28, 62, 13, 176, 236, 76, 141, 116, 8})
 	fmt.Println("Handshake sent")
@@ -52,8 +52,4 @@ func handle_client_connection(conn net.Conn) {
 
 		fmt.Println("Following bytes received", buffer)
 	}
-}
-
-func run_db_query() {
-
 }
