@@ -19,7 +19,7 @@ func NewClientConnection(conn net.Conn) *ClientConnection {
 }
 
 func (handle *ClientConnection) Write(p Packet) error {
-	// Do crypto
+	// Do crypto - Chinese Shanda
 
 	// Add length to front of packet - int16
 	p.AddSize()
@@ -31,7 +31,7 @@ func (handle *ClientConnection) Write(p Packet) error {
 }
 
 func (handle *ClientConnection) Read(p Packet) error {
-	// Do crypto
+	// Do crypto - Chinese Shanda
 
 	_, err := handle.conn.Read(p)
 
