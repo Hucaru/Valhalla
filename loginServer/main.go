@@ -15,7 +15,7 @@ const (
 )
 
 func main() {
-	fmt.Println("Test")
+	fmt.Println("LoginServer")
 
 	listener, err := net.Listen(protocol, address+":"+port)
 
@@ -39,12 +39,13 @@ func main() {
 	}
 }
 
+// Move this out into a seperate file and generalise to accept a master handler (contains a switch, can then take and place in common)
 func handleClientConnection(conn net.Conn) {
 	defer conn.Close()
 
 	clientConn := common.NewClientConnection(conn)
 
-	sendHandshake(clientConn)
+	SendHandshake(clientConn)
 
 	fmt.Println("Handshake sent")
 
@@ -57,21 +58,6 @@ func handleClientConnection(conn net.Conn) {
 
 		if err != nil {
 			fmt.Println("Error in reading from connection", err)
-			return
 		}
 	}
-}
-
-func sendHandshake(client common.Connection) error {
-	packet := common.NewPacket(0)
-
-	packet.WriteShort(28)
-	packet.WriteString("")
-	packet.WriteInt(1)
-	packet.WriteInt(2)
-	packet.WriteByte(8)
-
-	err := client.Write(packet)
-
-	return err
 }
