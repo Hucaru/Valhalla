@@ -17,7 +17,7 @@ type PacketHandler func(p packet.Packet)
 
 func HandleNewConnection(conn Connection, handler PacketHandler, headerSize int) {
 	sizeToRead := 2
-
+	var pos int
 	for {
 		buffer := packet.NewPacket(sizeToRead)
 		err := conn.Read(buffer)
@@ -28,7 +28,8 @@ func HandleNewConnection(conn Connection, handler PacketHandler, headerSize int)
 		}
 
 		if buffer.Size() == headerSize {
-			sizeToRead = int(buffer.ReadShort(0))
+			pos = 0
+			sizeToRead = int(buffer.ReadShort(&pos))
 		} else {
 			sizeToRead = headerSize
 		}

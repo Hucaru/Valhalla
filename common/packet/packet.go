@@ -76,23 +76,20 @@ func (p *Packet) ReadByte(pos *int) byte {
 }
 
 func (p *Packet) ReadShort(pos *int) uint16 {
-	*pos += 2
-	return 0
+	r := p.ReadByte(pos) | (p.ReadByte(pos) << 8)
+	return uint16(r)
 }
 
 func (p *Packet) ReadInt(pos *int) uint32 {
-	*pos += 4
-	return 0
+	r := p.ReadByte(pos) | (p.ReadByte(pos) << 8) | (p.ReadByte(pos) << 16) | (p.ReadByte(pos) << 24)
+	return uint32(r)
 }
 
 func (p *Packet) ReadLong(pos *int) uint64 {
-	*pos += 5
 	return 0
 }
 
 func (p *Packet) ReadString(pos *int) string {
-	*pos += 0
+
 	return ""
 }
-
-// Should packet iterator take a ptr to a packet and do reading? Rather than current way?
