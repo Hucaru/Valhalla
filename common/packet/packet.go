@@ -69,24 +69,28 @@ func (p *Packet) WriteShortS(data int16) { p.WriteShort(uint16(data)) }
 func (p *Packet) WriteIntS(data int32)   { p.WriteInt(uint32(data)) }
 func (p *Packet) WriteLongS(data int64)  { p.WriteLong(uint64(data)) }
 
-func (p *Packet) ReadByte(it PacketIterator) {
-
-}
-
-func (p *Packet) ReadShort(it PacketIterator) uint16 {
+func (p *Packet) ReadByte(it PacketIterator) byte {
+	it.read(1)
 	return 0
 }
 
-func (p *Packet) ReadInt(it PacketIterator) {
-
+func (p *Packet) ReadShort(it PacketIterator) uint16 {
+	it.read(2)
+	return 0
 }
 
-func (p *Packet) ReadLong(it PacketIterator) {
-
+func (p *Packet) ReadInt(it PacketIterator) uint32 {
+	it.read(4)
+	return 0
 }
 
-func (p *Packet) ReadString(it PacketIterator) {
+func (p *Packet) ReadLong(it PacketIterator) uint64 {
+	it.read(8)
+	return 0
+}
 
+func (p *Packet) ReadString(it PacketIterator) string {
+	return ""
 }
 
 type PacketIterator int
