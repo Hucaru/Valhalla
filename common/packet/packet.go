@@ -69,40 +69,30 @@ func (p *Packet) WriteShortS(data int16) { p.WriteShort(uint16(data)) }
 func (p *Packet) WriteIntS(data int32)   { p.WriteInt(uint32(data)) }
 func (p *Packet) WriteLongS(data int64)  { p.WriteLong(uint64(data)) }
 
-func (p *Packet) ReadByte(it PacketIterator) byte {
-	it.read(1)
+func (p *Packet) ReadByte(pos *int) byte {
+	r := byte((*p)[*pos])
+	*pos += 1
+	return r
+}
+
+func (p *Packet) ReadShort(pos *int) uint16 {
+	*pos += 2
 	return 0
 }
 
-func (p *Packet) ReadShort(it PacketIterator) uint16 {
-	it.read(2)
+func (p *Packet) ReadInt(pos *int) uint32 {
+	*pos += 4
 	return 0
 }
 
-func (p *Packet) ReadInt(it PacketIterator) uint32 {
-	it.read(4)
+func (p *Packet) ReadLong(pos *int) uint64 {
+	*pos += 5
 	return 0
 }
 
-func (p *Packet) ReadLong(it PacketIterator) uint64 {
-	it.read(8)
-	return 0
-}
-
-func (p *Packet) ReadString(it PacketIterator) string {
+func (p *Packet) ReadString(pos *int) string {
+	*pos += 0
 	return ""
 }
 
-type PacketIterator int
-
-func NewPacketIterator() PacketIterator {
-	return 0
-}
-
-func (it *PacketIterator) read(amountRead int) {
-	*it += PacketIterator(amountRead)
-}
-
-func (it *PacketIterator) Clear() {
-	*it = 0
-}
+// Should packet iterator take a ptr to a packet and do reading? Rather than current way?
