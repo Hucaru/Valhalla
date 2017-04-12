@@ -1,3 +1,3 @@
 # Valhalla
 
-A golang implementation of the old Maplestory MMORPG
+A golang server implementation of the old Maplestory MMORPG client

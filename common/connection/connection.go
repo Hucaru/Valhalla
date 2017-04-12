@@ -19,21 +19,23 @@ func HandleNewConnection(conn Connection, handler PacketHandler, headerSize int)
 	sizeToRead := 2
 
 	buffer := packet.NewPacket(sizeToRead)
+	packetIt := packet.NewPacketIterator()
 
 	for {
 		err := conn.Read(buffer)
 
 		if buffer.Size() == headerSize {
-			sizeToRead = int(buffer.ReadShort())
+			sizeToRead = int(buffer.ReadShort(packetIt))
 		} else {
 			sizeToRead = headerSize
 		}
 
 		if err != nil {
-			fmt.Println("Error in reading from connection", err)
+			fmt.Println("Error in reading from connection")
 			return
 		}
 
 		handler(buffer)
+		packetIt.Clear()
 	}
 }

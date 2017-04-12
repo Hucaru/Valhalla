@@ -69,25 +69,36 @@ func (p *Packet) WriteShortS(data int16) { p.WriteShort(uint16(data)) }
 func (p *Packet) WriteIntS(data int32)   { p.WriteInt(uint32(data)) }
 func (p *Packet) WriteLongS(data int64)  { p.WriteLong(uint64(data)) }
 
-func (p *Packet) ReadByte() {
+func (p *Packet) ReadByte(it PacketIterator) {
 
 }
 
-func (p *Packet) ReadShort() uint16 {
+func (p *Packet) ReadShort(it PacketIterator) uint16 {
 	return 0
 }
 
-func (p *Packet) ReadInt() {
+func (p *Packet) ReadInt(it PacketIterator) {
 
 }
 
-func (p *Packet) ReadLong() {
+func (p *Packet) ReadLong(it PacketIterator) {
 
 }
 
-func (p *Packet) ReadString() {
+func (p *Packet) ReadString(it PacketIterator) {
 
 }
 
-type PacketIterator struct {
+type PacketIterator int
+
+func NewPacketIterator() PacketIterator {
+	return 0
+}
+
+func (it *PacketIterator) read(amountRead int) {
+	*it += PacketIterator(amountRead)
+}
+
+func (it *PacketIterator) Clear() {
+	*it = 0
 }

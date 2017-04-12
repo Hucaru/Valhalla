@@ -51,6 +51,10 @@ func (handle *ClientConnection) Read(p packet.Packet) error {
 
 	_, err := handle.conn.Read(p)
 
+	if err != nil {
+		return err
+	}
+
 	fmt.Println("Client::Recv::" + p.String())
 
 	return err

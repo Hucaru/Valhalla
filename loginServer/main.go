@@ -35,12 +35,8 @@ func main() {
 			fmt.Println("Error in accepting client", err)
 		}
 
-		fmt.Println("New Connection")
-
 		defer conn.Close()
-
 		clientConn := connection.NewClientConnection(conn)
-
 		go connection.HandleNewConnection(clientConn, handlers.HandlePacket, constants.CLIENT_HEADER_SIZE)
 	}
 }
