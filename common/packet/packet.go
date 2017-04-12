@@ -1,4 +1,4 @@
-package common
+package packet
 
 import "fmt"
 
@@ -19,8 +19,12 @@ func (p *Packet) AddSize() {
 	*p = size
 }
 
-func (p *Packet) String() string {
-	return fmt.Sprintf("[Packet] (%d) : %X", len(*p), []byte(*p))
+func (p *Packet) Size() int {
+	return int(len(*p))
+}
+
+func (p Packet) String() string {
+	return fmt.Sprintf("[Packet] (%d) : % X", len(p), string(p))
 }
 
 //////////////////////////////////////////////////////////
@@ -69,8 +73,8 @@ func (p *Packet) ReadByte() {
 
 }
 
-func (p *Packet) ReadShort() {
-
+func (p *Packet) ReadShort() uint16 {
+	return 0
 }
 
 func (p *Packet) ReadInt() {
@@ -83,4 +87,7 @@ func (p *Packet) ReadLong() {
 
 func (p *Packet) ReadString() {
 
+}
+
+type PacketIterator struct {
 }

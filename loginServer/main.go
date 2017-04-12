@@ -5,7 +5,9 @@ import (
 	"net"
 	"os"
 
-	"github.com/Hucaru/Valhalla/common"
+	"github.com/Hucaru/Valhalla/common/connection"
+	"github.com/Hucaru/Valhalla/common/constants"
+	"github.com/Hucaru/Valhalla/loginServer/handlers"
 )
 
 const (
@@ -35,29 +37,10 @@ func main() {
 
 		fmt.Println("New Connection")
 
-		go handleClientConnection(conn)
-	}
-}
+		defer conn.Close()
 
-// Move this out into a seperate file and generalise to accept a master handler (contains a switch, can then take and place in common)
-func handleClientConnection(conn net.Conn) {
-	defer conn.Close()
+		clientConn := connection.NewClientConnection(conn)
 
-	clientConn := common.NewClientConnection(conn)
-
-	SendHandshake(clientConn)
-
-	fmt.Println("Handshake sent")
-
-	sizeToRead := 2
-
-	for {
-		buffer := common.NewPacket(sizeToRead)
-
-		err := clientConn.Read(buffer)
-
-		if err != nil {
-			fmt.Println("Error in reading from connection", err)
-		}
+		go connection.HandleNewConnection(clientConn, handlers.HandlePacket, constants.CLIENT_HEADER_SIZE)
 	}
 }
