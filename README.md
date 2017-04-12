@@ -1,3 +1,2 @@
 # Valhalla
-
-A golang server implementation of the old Maplestory MMORPG client
+Practice at writting golang tcp server using the old Maplestory MMORPG client as it is well documented and online games are complex
