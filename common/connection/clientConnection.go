@@ -7,13 +7,18 @@ import (
 	"github.com/Hucaru/Valhalla/common/packet"
 )
 
+// ClientConnection -
 type ClientConnection struct {
 	conn           net.Conn
 	connectionOpen bool
+	readingHeader  bool
+	ivRecv         []byte
+	ivSend         []byte
 }
 
+// NewClientConnection -
 func NewClientConnection(conn net.Conn) *ClientConnection {
-	client := &ClientConnection{conn: conn}
+	client := &ClientConnection{conn: conn, readingHeader: true}
 
 	err := sendHandshake(client)
 
@@ -26,36 +31,45 @@ func NewClientConnection(conn net.Conn) *ClientConnection {
 	return &ClientConnection{conn: conn}
 }
 
+// IsOpen -
 func (handle *ClientConnection) IsOpen() bool {
 	return handle.connectionOpen
 }
 
+// Close -
 func (handle *ClientConnection) Close() {
 	handle.conn.Close()
 }
 
+func (handle *ClientConnection) sendPacket(p packet.Packet) error {
+	_, err := handle.conn.Write(p)
+	return err
+}
+
 func (handle *ClientConnection) Write(p packet.Packet) error {
-	// Do crypto - Chinese Shanda
+	// Do crypto
 
-	// Add length to front of packet.Packet - int16
-	p.AddSize()
-
-	fmt.Println("Client::Sent::" + p.String())
+	fmt.Println("Server -> Client::", p)
 	_, err := handle.conn.Write(p)
 
 	return err
 }
 
 func (handle *ClientConnection) Read(p packet.Packet) error {
-	// Do crypto - Chinese Shanda
 
 	_, err := handle.conn.Read(p)
 
 	if err != nil {
 		return err
 	}
+	if handle.readingHeader == true {
+		handle.readingHeader = false
+		mapleDecrypt(p)
+	} else {
+		handle.readingHeader = true
+	}
 
-	fmt.Println("Client::Recv::" + p.String())
+	fmt.Println("Client -> Server::", p)
 
 	return err
 }
@@ -63,13 +77,17 @@ func (handle *ClientConnection) Read(p packet.Packet) error {
 func sendHandshake(client *ClientConnection) error {
 	packet := packet.NewPacket(0)
 
+	client.ivRecv = []byte{0, 0, 0, 1} // Change to random init
+	client.ivSend = []byte{0, 0, 0, 2} // Change to random init
+
+	packet.WriteShort(13)
 	packet.WriteShort(28)
 	packet.WriteString("")
-	packet.WriteInt(1)
-	packet.WriteInt(2)
+	packet.Append(client.ivRecv)
+	packet.Append(client.ivSend)
 	packet.WriteByte(8)
 
-	err := client.Write(packet)
+	err := client.sendPacket(packet)
 
 	return err
 }

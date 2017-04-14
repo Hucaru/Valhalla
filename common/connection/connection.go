@@ -3,9 +3,11 @@ package connection
 import (
 	"fmt"
 
+	"github.com/Hucaru/Valhalla/common/crypt"
 	"github.com/Hucaru/Valhalla/common/packet"
 )
 
+// Connection -
 type Connection interface {
 	Write(p packet.Packet) error
 	Read(p packet.Packet) error
@@ -13,11 +15,14 @@ type Connection interface {
 	Close()
 }
 
+// PacketHandler -
 type PacketHandler func(p packet.Packet)
 
+// HandleNewConnection -
 func HandleNewConnection(conn Connection, handler PacketHandler, headerSize int) {
-	sizeToRead := 2
-	var pos int
+	sizeToRead := headerSize
+	//var pos int
+
 	for {
 		buffer := packet.NewPacket(sizeToRead)
 		err := conn.Read(buffer)
@@ -28,12 +33,10 @@ func HandleNewConnection(conn Connection, handler PacketHandler, headerSize int)
 		}
 
 		if buffer.Size() == headerSize {
-			pos = 0
-			sizeToRead = int(buffer.ReadShort(&pos))
+			sizeToRead = crypt.GetPacketLength(buffer)
 		} else {
 			sizeToRead = headerSize
+			handler(buffer)
 		}
-
-		handler(buffer)
 	}
 }
