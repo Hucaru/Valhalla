@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net"
 
+	"github.com/Hucaru/Valhalla/common/crypt"
 	"github.com/Hucaru/Valhalla/common/packet"
 )
 
@@ -64,7 +65,7 @@ func (handle *ClientConnection) Read(p packet.Packet) error {
 	}
 	if handle.readingHeader == true {
 		handle.readingHeader = false
-		mapleDecrypt(p)
+		crypt.Decrypt(p)
 	} else {
 		handle.readingHeader = true
 	}
