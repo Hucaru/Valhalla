@@ -10,9 +10,10 @@ import (
 )
 
 // HandlePacket -
-func HandlePacket(conn connection.Connection, buffer packet.Packet) int {
+func HandlePacket(conn connection.Connection, buffer packet.Packet, isHeader bool) int {
 	var size int
-	if buffer.Size() == constants.CLIENT_HEADER_SIZE {
+	
+	if isHeader {
 		// Reading encrypted header
 		size = crypt.GetPacketLength(buffer)
 	} else {

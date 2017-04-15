@@ -32,6 +32,11 @@ func NewClientConnection(conn net.Conn) *ClientConnection {
 	return &ClientConnection{conn: conn}
 }
 
+// String -
+func (handle ClientConnection) String() string {
+	return fmt.Sprintf("[Address]::%s", handle.conn.RemoteAddr())
+}
+
 // IsOpen -
 func (handle *ClientConnection) IsOpen() bool {
 	return handle.connectionOpen
