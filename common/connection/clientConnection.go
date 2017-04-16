@@ -20,7 +20,7 @@ type ClientConnection struct {
 
 // NewClientConnection -
 func NewClientConnection(conn net.Conn) *ClientConnection {
-	client := &ClientConnection{conn: conn, readingHeader: true}
+	client := &ClientConnection{conn: conn, readingHeader: true, ivSend: make([]byte, 4), ivRecv: make([]byte, 4)}
 
 	err := sendHandshake(client)
 
@@ -30,7 +30,7 @@ func NewClientConnection(conn net.Conn) *ClientConnection {
 
 	client.connectionOpen = true
 
-	return &ClientConnection{conn: conn}
+	return client
 }
 
 // String -
@@ -75,10 +75,10 @@ func (handle *ClientConnection) Read(p packet.Packet) error {
 	}
 	if handle.readingHeader == true {
 		handle.readingHeader = false
-		handle.ivRecv = crypt.GenerateNewIV(handle.ivRecv)
-		crypt.Decrypt(p)
 	} else {
 		handle.readingHeader = true
+		handle.ivRecv = crypt.GenerateNewIV(handle.ivRecv)
+		crypt.Decrypt(p)
 	}
 
 	fmt.Println("Client -> Server::", p)
@@ -89,11 +89,14 @@ func (handle *ClientConnection) Read(p packet.Packet) error {
 func sendHandshake(client *ClientConnection) error {
 	packet := packet.NewPacket(0)
 
-	client.ivRecv = []byte{0, 0, 0, 1} // Change to random init
-	client.ivSend = []byte{0, 0, 0, 2} // Change to random init
+	client.ivRecv = []byte{1, 2, 3, 4}
+	client.ivSend = []byte{1, 2, 3, 4}
+
+	// rand.Read(client.ivRecv) - Causes bad header to be returned
+	// rand.Read(client.ivSend) - Causes bad header to be returned
 
 	packet.WriteShort(13)
-	packet.WriteShort(28)
+	packet.WriteShort(constants.MAPLE_VERSION)
 	packet.WriteString("")
 	packet.Append(client.ivRecv)
 	packet.Append(client.ivSend)
