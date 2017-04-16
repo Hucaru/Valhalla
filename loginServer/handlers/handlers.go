@@ -12,7 +12,7 @@ import (
 // HandlePacket -
 func HandlePacket(conn connection.Connection, buffer packet.Packet, isHeader bool) int {
 	var size int
-	
+
 	if isHeader {
 		// Reading encrypted header
 		size = crypt.GetPacketLength(buffer)
@@ -25,10 +25,14 @@ func HandlePacket(conn connection.Connection, buffer packet.Packet, isHeader boo
 
 		switch opcode {
 		case 0x1:
-			fmt.Println("Login packet received")
+			handleLoginRequest(buffer, conn)
 		}
 
 	}
 
 	return size
+}
+
+func handleLoginRequest(p packet.Packet, conn connection.Connection) {
+	fmt.Println("Login packet received")
 }

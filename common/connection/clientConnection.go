@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net"
 
+	"github.com/Hucaru/Valhalla/common/constants"
 	"github.com/Hucaru/Valhalla/common/crypt"
 	"github.com/Hucaru/Valhalla/common/packet"
 )
@@ -53,7 +54,11 @@ func (handle *ClientConnection) sendPacket(p packet.Packet) error {
 }
 
 func (handle *ClientConnection) Write(p packet.Packet) error {
-	// Do crypto
+	crypt.Encrypt(p)
+	header := packet.NewPacket(constants.CLIENT_HEADER_SIZE)
+	header = crypt.GenerateHeader(len(p), handle.ivSend, constants.MAPLE_VERSION)
+	handle.ivSend = crypt.GenerateNewIV(handle.ivSend)
+	header.Append(p)
 
 	fmt.Println("Server -> Client::", p)
 	_, err := handle.conn.Write(p)
@@ -70,6 +75,7 @@ func (handle *ClientConnection) Read(p packet.Packet) error {
 	}
 	if handle.readingHeader == true {
 		handle.readingHeader = false
+		handle.ivRecv = crypt.GenerateNewIV(handle.ivRecv)
 		crypt.Decrypt(p)
 	} else {
 		handle.readingHeader = true
