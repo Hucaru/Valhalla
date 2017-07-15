@@ -1,9 +1,9 @@
 package crypt
 
 // GetPacketLength -
-func GetPacketLength(header []byte) int {
-	var num = ((int32(header[0])) | (int32(header[1]) << 8)) | (int32(header[2]) << 16) | (int32(header[3]) << 24)
-	return int((num >> 16) ^ (num & 0xFFFF))
+func GetPacketLength(encryptedHeader []byte) int {
+	return int((uint16(encryptedHeader[0]) + uint16(encryptedHeader[1])*0x100) ^
+		(uint16(encryptedHeader[2]) + uint16(encryptedHeader[3])*0x100))
 }
 
 var ivShiftKey = [...]byte{

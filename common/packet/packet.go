@@ -84,25 +84,31 @@ func (p *Packet) ReadByte(pos *int) byte {
 	return r
 }
 
+// ReadBytes -
+func (p *Packet) ReadBytes(pos *int, length int) []byte {
+	r := []byte((*p)[*pos : *pos+length])
+	*pos += length
+	return r
+}
+
 // ReadShort -
-func (p *Packet) ReadShort(pos *int) uint16 {
+func (p *Packet) ReadShort(pos *int) int {
 	r := p.ReadByte(pos) | (p.ReadByte(pos) << 8)
-	return uint16(r)
+	return int(r)
 }
 
 // ReadInt -
-func (p *Packet) ReadInt(pos *int) uint32 {
+func (p *Packet) ReadInt(pos *int) int {
 	r := p.ReadByte(pos) | (p.ReadByte(pos) << 8) | (p.ReadByte(pos) << 16) | (p.ReadByte(pos) << 24)
-	return uint32(r)
+	return int(r)
 }
 
 // ReadLong -
-func (p *Packet) ReadLong(pos *int) uint64 {
+func (p *Packet) ReadLong(pos *int) int64 {
 	return 0
 }
 
 // ReadString -
-func (p *Packet) ReadString(pos *int) string {
-
-	return ""
+func (p *Packet) ReadString(pos *int, length int) string {
+	return string(p.ReadBytes(pos, length))
 }

@@ -1,6 +1,8 @@
 package handlers
 
 import (
+	"crypto/sha512"
+	"encoding/hex"
 	"fmt"
 
 	"github.com/Hucaru/Valhalla/common/connection"
@@ -23,8 +25,8 @@ func HandlePacket(conn connection.Connection, buffer packet.Packet, isHeader boo
 		opcode := buffer.ReadByte(&pos)
 
 		switch opcode {
-		case 0x1:
-			handleLoginRequest(buffer, pos, conn)
+		case constants.LOGIN_OP:
+			handleLoginRequest(buffer, &pos, conn)
 		}
 
 	}
@@ -32,6 +34,28 @@ func HandlePacket(conn connection.Connection, buffer packet.Packet, isHeader boo
 	return size
 }
 
-func handleLoginRequest(p packet.Packet, pos int, conn connection.Connection) {
+func handleLoginRequest(p packet.Packet, pos *int, conn connection.Connection) {
 	fmt.Println("Login packet received")
+	usernameLength := p.ReadShort(pos)
+	username := p.ReadString(pos, usernameLength)
+
+	passwordLength := p.ReadShort(pos)
+	password := p.ReadString(pos, passwordLength)
+
+	// hash and salt the password#
+	hasher := sha512.New()
+	hasher.Write([]byte(password))
+	hashedPassword := hex.EncodeToString(hasher.Sum(nil))
+
+	fmt.Println("Attempted login from user:", username, "- password (hashed):", hashedPassword)
+
+	// Check username and passwd against db
+	validLogin := false
+
+	if validLogin {
+
+	} else {
+
+	}
+
 }

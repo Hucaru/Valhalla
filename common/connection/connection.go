@@ -10,7 +10,6 @@ import (
 type Connection interface {
 	Write(p packet.Packet) error
 	Read(p packet.Packet) error
-	IsOpen() bool
 	Close()
 	String() string
 }
@@ -28,7 +27,8 @@ func HandleNewConnection(conn Connection, handler PacketHandler, sizeOfRead int)
 		err := conn.Read(buffer)
 
 		if err != nil {
-			fmt.Println("Error in reading from", conn)
+			fmt.Println("Error in reading from", conn, ", closing the connection")
+			conn.Close()
 			return
 		}
 

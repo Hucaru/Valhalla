@@ -1,6 +1,7 @@
 package connection
 
 import (
+	"crypto/rand"
 	"fmt"
 	"net"
 
@@ -11,24 +12,24 @@ import (
 
 // ClientConnection -
 type ClientConnection struct {
-	conn           net.Conn
-	connectionOpen bool
-	readingHeader  bool
-	ivRecv         []byte
-	ivSend         []byte
+	conn          net.Conn
+	readingHeader bool
+	ivRecv        []byte
+	ivSend        []byte
 }
 
 // NewClientConnection -
 func NewClientConnection(conn net.Conn) *ClientConnection {
 	client := &ClientConnection{conn: conn, readingHeader: true, ivSend: make([]byte, 4), ivRecv: make([]byte, 4)}
 
+	rand.Read(client.ivSend[:])
+	rand.Read(client.ivRecv[:])
+
 	err := sendHandshake(client)
 
 	if err != nil {
-		client.connectionOpen = false
+		client.Close()
 	}
-
-	client.connectionOpen = true
 
 	return client
 }
@@ -36,11 +37,6 @@ func NewClientConnection(conn net.Conn) *ClientConnection {
 // String -
 func (handle ClientConnection) String() string {
 	return fmt.Sprintf("[Address]::%s", handle.conn.RemoteAddr())
-}
-
-// IsOpen -
-func (handle *ClientConnection) IsOpen() bool {
-	return handle.connectionOpen
 }
 
 // Close -
@@ -77,7 +73,7 @@ func (handle *ClientConnection) Read(p packet.Packet) error {
 		handle.readingHeader = false
 	} else {
 		handle.readingHeader = true
-		handle.ivRecv = crypt.GenerateNewIV(handle.ivRecv)
+		// handle.ivRecv = crypt.GenerateNewIV(handle.ivRecv) // Required if AES is in client
 		crypt.Decrypt(p)
 	}
 
@@ -88,12 +84,6 @@ func (handle *ClientConnection) Read(p packet.Packet) error {
 
 func sendHandshake(client *ClientConnection) error {
 	packet := packet.NewPacket(0)
-
-	client.ivRecv = []byte{1, 2, 3, 4}
-	client.ivSend = []byte{1, 2, 3, 4}
-
-	// rand.Read(client.ivRecv) - Causes bad header to be returned
-	// rand.Read(client.ivSend) - Causes bad header to be returned
 
 	packet.WriteShort(13)
 	packet.WriteShort(constants.MAPLE_VERSION)
