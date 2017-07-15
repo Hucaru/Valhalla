@@ -28,7 +28,6 @@ func HandlePacket(conn connection.Connection, buffer packet.Packet, isHeader boo
 		case constants.LOGIN_OP:
 			handleLoginRequest(buffer, &pos, conn)
 		}
-
 	}
 
 	return size
@@ -47,15 +46,38 @@ func handleLoginRequest(p packet.Packet, pos *int, conn connection.Connection) {
 	hasher.Write([]byte(password))
 	hashedPassword := hex.EncodeToString(hasher.Sum(nil))
 
-	fmt.Println("Attempted login from user:", username, "- password (hashed):", hashedPassword)
+	var databaseUser string
+	var databasePassword string
+	var databaseIsLogedIn bool
+	var databaseBanned int
+	var databaseIsAdmin bool
 
-	// Check username and passwd against db
-	validLogin := false
+	err := connection.Db.QueryRow("SELECT username, password, isLogedIn, isBanned, isAdmin FROM users WHERE username=?", username).
+		Scan(&databaseUser, &databasePassword, &databaseIsLogedIn, &databaseBanned, &databaseIsAdmin)
 
-	if validLogin {
+	result := byte(0x00)
 
-	} else {
-
+	if err != nil {
+		result = 0x05
+	} else if hashedPassword != databasePassword {
+		result = 0x04
+	} else if databaseIsLogedIn {
+		result = 0x07
+	} else if databaseBanned > 0 {
+		result = 0x03
 	}
 
+	fmt.Println(username, "has logged in", result)
+
+	packet := packet.NewPacket()
+	packet.WriteByte(0x01)
+	packet.WriteByte(0x05)
+	packet.WriteByte(0x00)
+	packet.WriteInt(0)
+
+	packet.WriteLong(0)
+	packet.WriteLong(0)
+	packet.WriteLong(0)
+
+	conn.Write(packet)
 }

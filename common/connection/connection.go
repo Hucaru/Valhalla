@@ -23,7 +23,8 @@ func HandleNewConnection(conn Connection, handler PacketHandler, sizeOfRead int)
 	isHeader := true
 	fmt.Println("New connection from", conn)
 	for {
-		buffer := packet.NewPacket(sizeToRead)
+		buffer := make([]byte, sizeToRead)
+
 		err := conn.Read(buffer)
 
 		if err != nil {
@@ -32,7 +33,9 @@ func HandleNewConnection(conn Connection, handler PacketHandler, sizeOfRead int)
 			return
 		}
 
-		sizeToRead = handler(conn, buffer, isHeader)
+		p := packet.NewPacket()
+		p.Append(buffer)
+		sizeToRead = handler(conn, p, isHeader)
 		isHeader = !isHeader
 	}
 }

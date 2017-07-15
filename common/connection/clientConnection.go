@@ -51,9 +51,9 @@ func (handle *ClientConnection) sendPacket(p packet.Packet) error {
 
 func (handle *ClientConnection) Write(p packet.Packet) error {
 	crypt.Encrypt(p)
-	header := packet.NewPacket(constants.CLIENT_HEADER_SIZE)
+	header := packet.NewPacket()
 	header = crypt.GenerateHeader(len(p), handle.ivSend, constants.MAPLE_VERSION)
-	handle.ivSend = crypt.GenerateNewIV(handle.ivSend)
+	//handle.ivSend = crypt.GenerateNewIV(handle.ivSend)
 	header.Append(p)
 
 	fmt.Println("Server -> Client::", p)
@@ -83,7 +83,7 @@ func (handle *ClientConnection) Read(p packet.Packet) error {
 }
 
 func sendHandshake(client *ClientConnection) error {
-	packet := packet.NewPacket(0)
+	packet := packet.NewPacket()
 
 	packet.WriteShort(13)
 	packet.WriteShort(constants.MAPLE_VERSION)

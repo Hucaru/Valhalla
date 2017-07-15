@@ -6,8 +6,8 @@ import "fmt"
 type Packet []byte
 
 // NewPacket -
-func NewPacket(size int) Packet {
-	return make(Packet, size)
+func NewPacket() Packet {
+	return make(Packet, 0)
 }
 
 // Append -

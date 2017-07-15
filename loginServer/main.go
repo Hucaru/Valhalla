@@ -26,6 +26,8 @@ func main() {
 		os.Exit(1)
 	}
 
+	defer connection.Db.Close()
+	connection.ConnectToDb()
 	fmt.Println("Listener ready")
 
 	for {
