@@ -19,6 +19,8 @@ const (
 func main() {
 	fmt.Println("LoginServer")
 
+	// TODO: Write config reader
+
 	listener, err := net.Listen(protocol, address+":"+port)
 
 	if err != nil {

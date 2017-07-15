@@ -59,7 +59,7 @@ func (handle *ClientConnection) Write(p packet.Packet) error {
 	// handle.ivSend = crypt.GenerateNewIV(handle.ivSend) // Required if AES is in client
 	header.Append(p)
 
-	_, err := handle.conn.Write(p)
+	_, err := handle.conn.Write(header)
 
 	return err
 }
