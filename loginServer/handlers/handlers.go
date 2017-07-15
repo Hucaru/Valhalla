@@ -46,14 +46,15 @@ func handleLoginRequest(p packet.Packet, pos *int, conn connection.Connection) {
 	hasher.Write([]byte(password))
 	hashedPassword := hex.EncodeToString(hasher.Sum(nil))
 
-	var databaseUser string
+	var userID int32
+	var user string
 	var databasePassword string
-	var databaseIsLogedIn bool
-	var databaseBanned int
-	var databaseIsAdmin bool
+	var isLogedIn bool
+	var isBanned int
+	var isAdmin bool
 
-	err := connection.Db.QueryRow("SELECT username, password, isLogedIn, isBanned, isAdmin FROM users WHERE username=?", username).
-		Scan(&databaseUser, &databasePassword, &databaseIsLogedIn, &databaseBanned, &databaseIsAdmin)
+	err := connection.Db.QueryRow("SELECT userID, username, password, isLogedIn, isBanned, isAdmin FROM users WHERE username=?", username).
+		Scan(&userID, &user, &databasePassword, &isLogedIn, &isBanned, &isAdmin)
 
 	result := byte(0x00)
 
@@ -61,23 +62,55 @@ func handleLoginRequest(p packet.Packet, pos *int, conn connection.Connection) {
 		result = 0x05
 	} else if hashedPassword != databasePassword {
 		result = 0x04
-	} else if databaseIsLogedIn {
+	} else if isLogedIn {
 		result = 0x07
-	} else if databaseBanned > 0 {
-		result = 0x03
+	} else if isBanned > 0 {
+		result = 0x02
 	}
 
-	fmt.Println(username, "has logged in", result)
+	// -Banned- = 2
+	// Deleted or Blocked = 3
+	// Invalid Password = 4
+	// Not Registered = 5
+	// Sys Error = 6
+	// Already online = 7
+	// System error = 9
+	// Too many requests = 10
+	// Older than 20 = 11
+	// Master cannot login on this IP = 13
 
-	packet := packet.NewPacket()
-	packet.WriteByte(0x01)
-	packet.WriteByte(0x05)
-	packet.WriteByte(0x00)
-	packet.WriteInt(0)
+	pac := packet.NewPacket()
+	pac.WriteByte(0x01)
+	pac.WriteByte(result)
+	pac.WriteByte(0x00)
+	pac.WriteInt(0)
 
-	packet.WriteLong(0)
-	packet.WriteLong(0)
-	packet.WriteLong(0)
+	if result <= 0x01 {
+		pac.WriteIntS(userID)
+		pac.WriteByte(0x00)
+		pac.WriteByte(0x01)
+		pac.WriteString(username)
+	} else if result == 0x02 {
+		// Being banned is not yet implemented
+	}
 
-	conn.Write(packet)
+	pac.WriteLong(0)
+	pac.WriteLong(0)
+	pac.WriteLong(0)
+	conn.Write(pac)
+
+	if result > 0x01 {
+		return
+	}
+
+	pac = packet.NewPacket()
+	pac.WriteByte(0x03)
+	pac.WriteByte(0x04)
+	pac.WriteByte(0x00)
+	conn.Write(pac)
+
+	pac = packet.NewPacket()
+	pac.WriteByte(constants.PLAYER_REQUEST_WORLD_LIST)
+	pac.WriteString("hash")
+	//conn.Write(pac)
 }

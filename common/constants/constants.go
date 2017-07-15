@@ -7,5 +7,6 @@ const (
 	OPCODE_LENGTH           = 1
 
 	// Opcodes
-	LOGIN_OP = 0x01
+	LOGIN_OP                  = 0x01
+	PLAYER_REQUEST_WORLD_LIST = 0x06
 )
