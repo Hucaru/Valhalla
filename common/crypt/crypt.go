@@ -64,7 +64,7 @@ func GenerateHeader(dataLength int, iv []byte, mapleVersion int) []byte {
 	return header
 }
 
-// ror - Taken from Kogami
+// ror - Taken from Kagami
 func ror(val byte, num int) byte {
 	for i := 0; i < num; i++ {
 		var lowbit int
@@ -82,7 +82,7 @@ func ror(val byte, num int) byte {
 	return val
 }
 
-// rol - Taken from Kogami
+// rol - Taken from Kagami
 func rol(val byte, num int) byte {
 	var highbit int
 
@@ -100,7 +100,7 @@ func rol(val byte, num int) byte {
 	return val
 }
 
-// Decrypt - Taken from Kogami
+// Decrypt - Taken from Kagami
 func Decrypt(buf []byte) {
 	var j int32
 	var a, b, c byte
@@ -139,4 +139,37 @@ func Decrypt(buf []byte) {
 	}
 }
 
-func Encrypt(buf []byte) {}
+// Encrypt - Taken from Kagami
+func Encrypt(buf []byte) {
+	var j int32
+	var a, c byte
+
+	for i := byte(0); i < 3; i++ {
+		a = 0
+
+		for j = int32(len(buf)); j > 0; j-- {
+			c = buf[int32(len(buf))-j]
+			c = rol(c, 3)
+			c = byte(int32(c) + j)
+			c ^= a
+			a = c
+			c = ror(a, int(j))
+			c ^= 0xFF
+			c += 0x48
+			buf[int32(len(buf))-j] = c
+		}
+
+		a = 0
+
+		for j = int32(len(buf)); j > 0; j-- {
+			c = buf[j-1]
+			c = rol(c, 4)
+			c = byte(int32(c) + j)
+			c ^= a
+			a = c
+			c ^= 0x13
+			c = ror(c, 3)
+			buf[j-1] = c
+		}
+	}
+}

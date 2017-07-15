@@ -50,13 +50,15 @@ func (handle *ClientConnection) sendPacket(p packet.Packet) error {
 }
 
 func (handle *ClientConnection) Write(p packet.Packet) error {
+	fmt.Println("Server -> Client::", p)
+
 	crypt.Encrypt(p)
+
 	header := packet.NewPacket()
 	header = crypt.GenerateHeader(len(p), handle.ivSend, constants.MAPLE_VERSION)
-	//handle.ivSend = crypt.GenerateNewIV(handle.ivSend)
+	// handle.ivSend = crypt.GenerateNewIV(handle.ivSend) // Required if AES is in client
 	header.Append(p)
 
-	fmt.Println("Server -> Client::", p)
 	_, err := handle.conn.Write(p)
 
 	return err
