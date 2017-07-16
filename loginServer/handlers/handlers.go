@@ -46,7 +46,7 @@ func handleLoginRequest(p packet.Packet, pos *int, conn connection.Connection) {
 	hasher.Write([]byte(password))
 	hashedPassword := hex.EncodeToString(hasher.Sum(nil))
 
-	var userID int32
+	var userID uint32
 	var user string
 	var databasePassword string
 	var isLogedIn bool
@@ -86,7 +86,7 @@ func handleLoginRequest(p packet.Packet, pos *int, conn connection.Connection) {
 	pac.WriteInt(0)
 
 	if result <= 0x01 {
-		pac.WriteIntS(userID)
+		pac.WriteInt(userID)
 		pac.WriteByte(0x00)
 		pac.WriteByte(0x01)
 		pac.WriteString(username)
@@ -107,10 +107,10 @@ func handleLoginRequest(p packet.Packet, pos *int, conn connection.Connection) {
 	pac.WriteByte(0x03)
 	pac.WriteByte(0x04)
 	pac.WriteByte(0x00)
-	conn.Write(pac)
+	//conn.Write(pac)
 
 	pac = packet.NewPacket()
 	pac.WriteByte(constants.PLAYER_REQUEST_WORLD_LIST)
 	pac.WriteString("hash")
-	conn.Write(pac)
+	//conn.Write(pac)
 }
