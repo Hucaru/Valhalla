@@ -1,1 +1,16 @@
-docker-compose.yaml
+version: '3.1'
+
+services:
+    db:
+        image: mysql
+        ports:
+            - 3306:3306
+        volumes:
+            - ./database_data:/var/lib/mysql
+        environment:
+            - MYSQL_ROOT_PASSWORD="password"
+            - MYSQL_DATABASE="maplestory"
+    adminer:
+        image: adminer
+        ports:
+            - 8080:8080
