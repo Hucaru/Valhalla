@@ -56,8 +56,9 @@ func (handle *ClientConnection) Write(p packet.Packet) error {
 
 	header := packet.NewPacket()
 	header = crypt.GenerateHeader(len(p), handle.ivSend, constants.MAPLE_VERSION)
-	//handle.ivSend = crypt.GenerateNewIV(handle.ivSend) // Required if AES is in client
 	header.Append(p)
+
+	handle.ivSend = crypt.GenerateNewIV(handle.ivSend)
 
 	_, err := handle.conn.Write(header)
 
@@ -75,7 +76,7 @@ func (handle *ClientConnection) Read(p packet.Packet) error {
 		handle.readingHeader = false
 	} else {
 		handle.readingHeader = true
-		// handle.ivRecv = crypt.GenerateNewIV(handle.ivRecv) // Required if AES is in client
+		handle.ivRecv = crypt.GenerateNewIV(handle.ivRecv)
 		crypt.Decrypt(p)
 	}
 

@@ -112,5 +112,5 @@ func handleLoginRequest(p packet.Packet, pos *int, conn connection.Connection) {
 	pac = packet.NewPacket()
 	pac.WriteByte(constants.PLAYER_REQUEST_WORLD_LIST)
 	pac.WriteString("hash")
-	//conn.Write(pac)
+	conn.Write(pac)
 }
