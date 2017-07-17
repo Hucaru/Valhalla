@@ -112,7 +112,7 @@ func handleLoginRequest(p packet.Packet, pos *int, conn connection.Connection) {
 	player := conn.GetPlayer()
 
 	player.SetUserID(userID)
-	player.SetIsLogedIn(isLogedIn)
+	player.SetIsLogedIn(true)
 
 	_, err = connection.Db.Query("UPDATE users set isLogedIn=1 WHERE userID=?", userID)
 

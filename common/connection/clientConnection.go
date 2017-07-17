@@ -42,6 +42,7 @@ func (handle ClientConnection) String() string {
 
 // Close -
 func (handle *ClientConnection) Close() {
+	fmt.Println("is loged in?", handle.GetPlayer().GetIsLogedIn())
 	if handle.GetPlayer().GetIsLogedIn() {
 		_, err := Db.Query("UPDATE users set isLogedIn=0 WHERE userID=?", handle.GetPlayer().GetUserID())
 
@@ -59,8 +60,6 @@ func (handle *ClientConnection) sendPacket(p packet.Packet) error {
 }
 
 func (handle *ClientConnection) Write(p packet.Packet) error {
-	//fmt.Println("Server -> Client::", p)
-
 	crypt.Encrypt(p)
 
 	header := packet.NewPacket()
@@ -88,8 +87,6 @@ func (handle *ClientConnection) Read(p packet.Packet) error {
 		handle.ivRecv = crypt.GenerateNewIV(handle.ivRecv)
 		crypt.Decrypt(p)
 	}
-
-	// fmt.Println("Client -> Server::", p)
 
 	return err
 }
