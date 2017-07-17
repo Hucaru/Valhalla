@@ -42,7 +42,6 @@ func (handle ClientConnection) String() string {
 
 // Close -
 func (handle *ClientConnection) Close() {
-	fmt.Println("is loged in?", handle.GetPlayer().GetIsLogedIn())
 	if handle.GetPlayer().GetIsLogedIn() {
 		_, err := Db.Query("UPDATE users set isLogedIn=0 WHERE userID=?", handle.GetPlayer().GetUserID())
 

@@ -101,7 +101,8 @@ func handleLoginRequest(p packet.Packet, pos *int, conn connection.Connection) {
 		pac.WriteByte(0x01)
 		pac.WriteString(username)
 	} else if result == 0x02 {
-		// Being banned is not yet implemented
+		pac.WriteByte(byte(isBanned))
+		pac.WriteInt64(0) // Expire time, for now let set this to epoch
 	}
 
 	pac.WriteInt64(0)
