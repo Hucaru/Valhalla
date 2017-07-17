@@ -26,8 +26,10 @@ func HandlePacket(conn connection.Connection, buffer packet.Packet, isHeader boo
 
 		switch opcode {
 		case constants.LOGIN_REQUEST:
+			fmt.Println("Login packet received")
 			handleLoginRequest(buffer, &pos, conn)
 		case constants.LOGIN_CHECK_LOGIN:
+			fmt.Println("Check login packet received")
 			handleCheckLogin(conn)
 		default:
 			fmt.Println("UNKNOWN LOGIN PACKET:", buffer)
@@ -38,14 +40,13 @@ func HandlePacket(conn connection.Connection, buffer packet.Packet, isHeader boo
 }
 
 func handleLoginRequest(p packet.Packet, pos *int, conn connection.Connection) {
-	fmt.Println("Login packet received")
-	usernameLength := p.ReadShort(pos)
-	username := p.ReadString(pos, usernameLength)
+	usernameLength := p.ReadInt16(pos)
+	username := p.ReadString(pos, int(usernameLength))
 
-	passwordLength := p.ReadShort(pos)
-	password := p.ReadString(pos, passwordLength)
+	passwordLength := p.ReadInt16(pos)
+	password := p.ReadString(pos, int(passwordLength))
 
-	// hash and salt the password#
+	// hash the password
 	hasher := sha512.New()
 	hasher.Write([]byte(password))
 	hashedPassword := hex.EncodeToString(hasher.Sum(nil))
@@ -87,10 +88,10 @@ func handleLoginRequest(p packet.Packet, pos *int, conn connection.Connection) {
 	pac.WriteByte(constants.LOGIN_RESPONCE)
 	pac.WriteByte(result)
 	pac.WriteByte(0x00)
-	pac.WriteInt(0)
+	pac.WriteInt32(0)
 
 	if result <= 0x01 {
-		pac.WriteInt(userID)
+		pac.WriteUint32(userID)
 		pac.WriteByte(0x00)
 		if isAdmin {
 			pac.WriteByte(0x01)
@@ -103,19 +104,27 @@ func handleLoginRequest(p packet.Packet, pos *int, conn connection.Connection) {
 		// Being banned is not yet implemented
 	}
 
-	pac.WriteLong(0)
-	pac.WriteLong(0)
-	pac.WriteLong(0)
+	pac.WriteInt64(0)
+	pac.WriteInt64(0)
+	pac.WriteInt64(0)
 	conn.Write(pac)
 
 	player := conn.GetPlayer()
-	player.SetUserID(userID)
 
+	player.SetUserID(userID)
+	player.SetIsLogedIn(isLogedIn)
+
+	_, err = connection.Db.Query("UPDATE users set isLogedIn=1 WHERE userID=?", userID)
+
+	if err != nil {
+		fmt.Println(err)
+	}
 }
 
 func handleCheckLogin(conn connection.Connection) {
+	// No idea what this packet is for
 	pac := packet.NewPacket()
-	pac.WriteByte(0x03) // Not sure what this opcode is?
+	pac.WriteByte(0x03)
 	pac.WriteByte(0x04)
 	pac.WriteByte(0x00)
 	conn.Write(pac)
@@ -132,13 +141,13 @@ func handleCheckLogin(conn connection.Connection) {
 	}
 
 	hasher := sha512.New()
-	hasher.Write([]byte(username))
-	hashedUsername := hex.EncodeToString(hasher.Sum(nil))
+	hasher.Write([]byte(username)) // Username should be unique so might as well use this
+	hashedUsername := fmt.Sprintf("%x02", hasher.Sum(nil))
 
 	conn.GetPlayer().SetSessionHash(hashedUsername)
 
 	pac = packet.NewPacket()
-	pac.WriteByte(constants.LOGIN_REQUEST_WORLD_LIST)
+	pac.WriteByte(constants.LOGIN_SEND_SESSION_HASH)
 	pac.WriteString(hashedUsername)
 	conn.Write(pac)
 }

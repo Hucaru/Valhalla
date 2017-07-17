@@ -37,11 +37,19 @@ func NewClientConnection(conn net.Conn) *ClientConnection {
 
 // String -
 func (handle ClientConnection) String() string {
-	return fmt.Sprintf("[Address]::%s", handle.conn.RemoteAddr())
+	return fmt.Sprintf("[Address] %s", handle.conn.RemoteAddr())
 }
 
 // Close -
 func (handle *ClientConnection) Close() {
+	if handle.GetPlayer().GetIsLogedIn() {
+		_, err := Db.Query("UPDATE users set isLogedIn=0 WHERE userID=?", handle.GetPlayer().GetUserID())
+
+		if err != nil {
+			fmt.Println("Error in auto log out of user on disconnect, userID:", handle.GetPlayer().GetUserID())
+		}
+	}
+
 	handle.conn.Close()
 }
 
@@ -89,8 +97,8 @@ func (handle *ClientConnection) Read(p packet.Packet) error {
 func sendHandshake(client *ClientConnection) error {
 	packet := packet.NewPacket()
 
-	packet.WriteShort(13)
-	packet.WriteShort(constants.MAPLE_VERSION)
+	packet.WriteInt16(13)
+	packet.WriteInt16(constants.MAPLE_VERSION)
 	packet.WriteString("")
 	packet.Append(client.ivRecv)
 	packet.Append(client.ivSend)
