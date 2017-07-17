@@ -16,6 +16,7 @@ type ClientConnection struct {
 	readingHeader bool
 	ivRecv        []byte
 	ivSend        []byte
+	p             Player
 }
 
 // NewClientConnection -
@@ -50,7 +51,7 @@ func (handle *ClientConnection) sendPacket(p packet.Packet) error {
 }
 
 func (handle *ClientConnection) Write(p packet.Packet) error {
-	fmt.Println("Server -> Client::", p)
+	//fmt.Println("Server -> Client::", p)
 
 	crypt.Encrypt(p)
 
@@ -80,7 +81,7 @@ func (handle *ClientConnection) Read(p packet.Packet) error {
 		crypt.Decrypt(p)
 	}
 
-	fmt.Println("Client -> Server::", p)
+	// fmt.Println("Client -> Server::", p)
 
 	return err
 }
@@ -98,4 +99,9 @@ func sendHandshake(client *ClientConnection) error {
 	err := client.sendPacket(packet)
 
 	return err
+}
+
+// GetPlayer -
+func (handle *ClientConnection) GetPlayer() *Player {
+	return &handle.p
 }

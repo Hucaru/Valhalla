@@ -28,13 +28,6 @@ func (p Packet) String() string {
 //////////////////////////////////////////////////////////
 // Maplestory only uses the following types in its packets
 //////////////////////////////////////////////////////////
-/*
-Byte - 1 byte.
-Short - 2 bytes.
-Int (Integer) - 4 bytes.
-Long - 8 bytes.
-String - 2 bytes (denoting the length of the string) + length of the string in bytes
-*/
 
 // WriteByte -
 func (p *Packet) WriteByte(data byte) {
@@ -58,14 +51,14 @@ func (p *Packet) WriteLong(data uint64) {
 }
 
 // WriteBuffer -
-func (p *Packet) WriteBuffer(data []byte) {
-	p.WriteShort(uint16(len(data)))
+func (p *Packet) WriteBytes(data []byte) {
 	p.Append(data)
 }
 
 // WriteString -
 func (p *Packet) WriteString(str string) {
-	p.WriteBuffer([]byte(str))
+	p.WriteShort(uint16(len(str)))
+	p.WriteBytes([]byte(str))
 }
 
 // WriteShortS -

@@ -12,6 +12,7 @@ type Connection interface {
 	Read(p packet.Packet) error
 	Close()
 	String() string
+	GetPlayer() *Player
 }
 
 // PacketHandler -

@@ -25,8 +25,12 @@ func HandlePacket(conn connection.Connection, buffer packet.Packet, isHeader boo
 		opcode := buffer.ReadByte(&pos)
 
 		switch opcode {
-		case constants.LOGIN_OP:
+		case constants.LOGIN_REQUEST:
 			handleLoginRequest(buffer, &pos, conn)
+		case constants.LOGIN_CHECK_LOGIN:
+			handleCheckLogin(conn)
+		default:
+			fmt.Println("UNKNOWN LOGIN PACKET:", buffer)
 		}
 	}
 
@@ -80,7 +84,7 @@ func handleLoginRequest(p packet.Packet, pos *int, conn connection.Connection) {
 	// Master cannot login on this IP = 13
 
 	pac := packet.NewPacket()
-	pac.WriteByte(0x01)
+	pac.WriteByte(constants.LOGIN_RESPONCE)
 	pac.WriteByte(result)
 	pac.WriteByte(0x00)
 	pac.WriteInt(0)
@@ -88,6 +92,11 @@ func handleLoginRequest(p packet.Packet, pos *int, conn connection.Connection) {
 	if result <= 0x01 {
 		pac.WriteInt(userID)
 		pac.WriteByte(0x00)
+		if isAdmin {
+			pac.WriteByte(0x01)
+		} else {
+			pac.WriteByte(0x00)
+		}
 		pac.WriteByte(0x01)
 		pac.WriteString(username)
 	} else if result == 0x02 {
@@ -99,18 +108,37 @@ func handleLoginRequest(p packet.Packet, pos *int, conn connection.Connection) {
 	pac.WriteLong(0)
 	conn.Write(pac)
 
-	if result > 0x01 {
-		return
-	}
+	player := conn.GetPlayer()
+	player.SetUserID(userID)
 
-	pac = packet.NewPacket()
-	pac.WriteByte(0x03)
+}
+
+func handleCheckLogin(conn connection.Connection) {
+	pac := packet.NewPacket()
+	pac.WriteByte(0x03) // Not sure what this opcode is?
 	pac.WriteByte(0x04)
 	pac.WriteByte(0x00)
-	//conn.Write(pac)
+	conn.Write(pac)
+
+	var username string
+
+	userID := conn.GetPlayer().GetUserID()
+
+	err := connection.Db.QueryRow("SELECT username FROM users WHERE userID=?", userID).
+		Scan(&username)
+
+	if err != nil {
+		fmt.Println("handleCheckLogin database retrieval issue for userID:", userID, err)
+	}
+
+	hasher := sha512.New()
+	hasher.Write([]byte(username))
+	hashedUsername := hex.EncodeToString(hasher.Sum(nil))
+
+	conn.GetPlayer().SetSessionHash(hashedUsername)
 
 	pac = packet.NewPacket()
-	pac.WriteByte(constants.PLAYER_REQUEST_WORLD_LIST)
-	pac.WriteString("hash")
-	//conn.Write(pac)
+	pac.WriteByte(constants.LOGIN_REQUEST_WORLD_LIST)
+	pac.WriteString(hashedUsername)
+	conn.Write(pac)
 }
