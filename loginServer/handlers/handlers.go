@@ -115,7 +115,7 @@ func handleCheckLogin(conn *loginConn.Connection) {
 	// No idea what this packet is for
 	pac := packet.NewPacket()
 	pac.WriteByte(0x03)
-	pac.WriteByte(0x04)
+	pac.WriteByte(0x04) // This value seems to denote server fullness?
 	pac.WriteByte(0x00)
 	conn.Write(pac)
 
