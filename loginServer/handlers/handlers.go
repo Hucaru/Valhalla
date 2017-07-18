@@ -7,39 +7,30 @@ import (
 
 	"github.com/Hucaru/Valhalla/common/connection"
 	"github.com/Hucaru/Valhalla/common/constants"
-	"github.com/Hucaru/Valhalla/common/crypt"
 	"github.com/Hucaru/Valhalla/common/packet"
+	"github.com/Hucaru/Valhalla/loginServer/loginConn"
 )
 
 // HandlePacket -
-func HandlePacket(conn connection.Connection, buffer packet.Packet, isHeader bool) int {
-	size := constants.CLIENT_HEADER_SIZE
+func HandlePacket(conn *loginConn.Connection, buffer packet.Packet) {
 
-	if isHeader {
-		// Reading encrypted header
-		size = crypt.GetPacketLength(buffer)
-	} else {
-		// Handle data packet
-		pos := 0
+	// Handle data packet
+	pos := 0
 
-		opcode := buffer.ReadByte(&pos)
+	opcode := buffer.ReadByte(&pos)
 
-		switch opcode {
-		case constants.LOGIN_REQUEST:
-			fmt.Println("Login packet received")
-			handleLoginRequest(buffer, &pos, conn)
-		case constants.LOGIN_CHECK_LOGIN:
-			fmt.Println("Check login packet received")
-			handleCheckLogin(conn)
-		default:
-			fmt.Println("UNKNOWN LOGIN PACKET:", buffer)
-		}
+	switch opcode {
+	case constants.LOGIN_REQUEST:
+		handleLoginRequest(buffer, &pos, conn)
+	case constants.LOGIN_CHECK_LOGIN:
+		handleCheckLogin(conn)
+	default:
+		fmt.Println("UNKNOWN LOGIN PACKET:", buffer)
 	}
 
-	return size
 }
 
-func handleLoginRequest(p packet.Packet, pos *int, conn connection.Connection) {
+func handleLoginRequest(p packet.Packet, pos *int, conn *loginConn.Connection) {
 	usernameLength := p.ReadInt16(pos)
 	username := p.ReadString(pos, int(usernameLength))
 
@@ -91,6 +82,7 @@ func handleLoginRequest(p packet.Packet, pos *int, conn connection.Connection) {
 	pac.WriteInt32(0)
 
 	if result <= 0x01 {
+
 		pac.WriteUint32(userID)
 		pac.WriteByte(0x00)
 		if isAdmin {
@@ -100,6 +92,10 @@ func handleLoginRequest(p packet.Packet, pos *int, conn connection.Connection) {
 		}
 		pac.WriteByte(0x01)
 		pac.WriteString(username)
+
+		conn.SetUserID(userID)
+		conn.SetIsLogedIn(true)
+		_, err = connection.Db.Query("UPDATE users set isLogedIn=1 WHERE userID=?", userID)
 	} else if result == 0x02 {
 		pac.WriteByte(byte(isBanned))
 		pac.WriteInt64(0) // Expire time, for now let set this to epoch
@@ -110,19 +106,12 @@ func handleLoginRequest(p packet.Packet, pos *int, conn connection.Connection) {
 	pac.WriteInt64(0)
 	conn.Write(pac)
 
-	player := conn.GetPlayer()
-
-	player.SetUserID(userID)
-	player.SetIsLogedIn(true)
-
-	_, err = connection.Db.Query("UPDATE users set isLogedIn=1 WHERE userID=?", userID)
-
 	if err != nil {
 		fmt.Println(err)
 	}
 }
 
-func handleCheckLogin(conn connection.Connection) {
+func handleCheckLogin(conn *loginConn.Connection) {
 	// No idea what this packet is for
 	pac := packet.NewPacket()
 	pac.WriteByte(0x03)
@@ -132,7 +121,7 @@ func handleCheckLogin(conn connection.Connection) {
 
 	var username string
 
-	userID := conn.GetPlayer().GetUserID()
+	userID := conn.GetUserID()
 
 	err := connection.Db.QueryRow("SELECT username FROM users WHERE userID=?", userID).
 		Scan(&username)
@@ -145,7 +134,7 @@ func handleCheckLogin(conn connection.Connection) {
 	hasher.Write([]byte(username)) // Username should be unique so might as well use this
 	hashedUsername := fmt.Sprintf("%x02", hasher.Sum(nil))
 
-	conn.GetPlayer().SetSessionHash(hashedUsername)
+	conn.SetSessionHash(hashedUsername)
 
 	pac = packet.NewPacket()
 	pac.WriteByte(constants.LOGIN_SEND_SESSION_HASH)

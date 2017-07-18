@@ -7,7 +7,9 @@ import (
 
 	"github.com/Hucaru/Valhalla/common/connection"
 	"github.com/Hucaru/Valhalla/common/constants"
+	"github.com/Hucaru/Valhalla/common/packet"
 	"github.com/Hucaru/Valhalla/loginServer/handlers"
+	"github.com/Hucaru/Valhalla/loginServer/loginConn"
 )
 
 const (
@@ -40,7 +42,10 @@ func main() {
 		}
 
 		defer conn.Close()
-		clientConn := connection.NewClientConnection(conn)
-		go connection.HandleNewConnection(clientConn, handlers.HandlePacket, constants.CLIENT_HEADER_SIZE)
+		loginConnection := loginConn.NewConnection(conn)
+
+		go connection.HandleNewConnection(loginConnection, func(p packet.Packet) {
+			handlers.HandlePacket(loginConnection, p)
+		}, constants.CLIENT_HEADER_SIZE)
 	}
 }

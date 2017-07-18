@@ -3,23 +3,19 @@ package connection
 import (
 	"fmt"
 
+	"github.com/Hucaru/Valhalla/common/crypt"
 	"github.com/Hucaru/Valhalla/common/packet"
 )
 
 // Connection -
-type Connection interface {
-	Write(p packet.Packet) error
+type connection interface {
 	Read(p packet.Packet) error
 	Close()
 	String() string
-	GetPlayer() *Player
 }
 
-// PacketHandler -
-type PacketHandler func(conn Connection, p packet.Packet, isHeader bool) int
-
 // HandleNewConnection -
-func HandleNewConnection(conn Connection, handler PacketHandler, sizeOfRead int) {
+func HandleNewConnection(conn connection, handler func(p packet.Packet), sizeOfRead int) {
 	sizeToRead := sizeOfRead
 	isHeader := true
 	fmt.Println("New connection from", conn)
@@ -29,14 +25,20 @@ func HandleNewConnection(conn Connection, handler PacketHandler, sizeOfRead int)
 		err := conn.Read(buffer)
 
 		if err != nil {
-			fmt.Println("Error in reading from", conn, ", closing the connection")
+			fmt.Println("Error in reading from", conn, ", closing the connection", err)
 			conn.Close()
 			return
 		}
 
-		p := packet.NewPacket()
-		p.Append(buffer)
-		sizeToRead = handler(conn, p, isHeader)
+		if isHeader {
+			sizeToRead = crypt.GetPacketLength(buffer)
+		} else {
+			p := packet.NewPacket()
+			p.Append(buffer)
+			handler(p)
+			sizeToRead = sizeOfRead
+		}
+
 		isHeader = !isHeader
 	}
 }

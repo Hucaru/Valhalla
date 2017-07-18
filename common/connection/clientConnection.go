@@ -16,7 +16,6 @@ type ClientConnection struct {
 	readingHeader bool
 	ivRecv        []byte
 	ivSend        []byte
-	p             Player
 }
 
 // NewClientConnection -
@@ -42,14 +41,6 @@ func (handle ClientConnection) String() string {
 
 // Close -
 func (handle *ClientConnection) Close() {
-	if handle.GetPlayer().GetIsLogedIn() {
-		_, err := Db.Query("UPDATE users set isLogedIn=0 WHERE userID=?", handle.GetPlayer().GetUserID())
-
-		if err != nil {
-			fmt.Println("Error in auto log out of user on disconnect, userID:", handle.GetPlayer().GetUserID())
-		}
-	}
-
 	handle.conn.Close()
 }
 
@@ -73,7 +64,6 @@ func (handle *ClientConnection) Write(p packet.Packet) error {
 }
 
 func (handle *ClientConnection) Read(p packet.Packet) error {
-
 	_, err := handle.conn.Read(p)
 
 	if err != nil {
@@ -103,9 +93,4 @@ func sendHandshake(client *ClientConnection) error {
 	err := client.sendPacket(packet)
 
 	return err
-}
-
-// GetPlayer -
-func (handle *ClientConnection) GetPlayer() *Player {
-	return &handle.p
 }
