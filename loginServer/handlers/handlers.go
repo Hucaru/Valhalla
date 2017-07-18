@@ -13,10 +13,7 @@ import (
 
 // HandlePacket -
 func HandlePacket(conn *loginConn.Connection, buffer packet.Packet) {
-
-	// Handle data packet
 	pos := 0
-
 	opcode := buffer.ReadByte(&pos)
 
 	switch opcode {
@@ -37,7 +34,7 @@ func handleLoginRequest(p packet.Packet, pos *int, conn *loginConn.Connection) {
 	passwordLength := p.ReadInt16(pos)
 	password := p.ReadString(pos, int(passwordLength))
 
-	// hash the password
+	// hash the password, cba to salt atm
 	hasher := sha512.New()
 	hasher.Write([]byte(password))
 	hashedPassword := hex.EncodeToString(hasher.Sum(nil))
