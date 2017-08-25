@@ -9,6 +9,7 @@ import (
 	"github.com/Hucaru/Valhalla/common/constants"
 	"github.com/Hucaru/Valhalla/common/packet"
 	"github.com/Hucaru/Valhalla/loginServer/loginConn"
+	"github.com/Hucaru/Valhalla/loginServer/worlds"
 )
 
 // HandlePacket -
@@ -20,7 +21,7 @@ func HandlePacket(conn *loginConn.Connection, buffer packet.Packet) {
 	case constants.LOGIN_REQUEST:
 		handleLoginRequest(buffer, &pos, conn)
 	case constants.LOGIN_CHECK_LOGIN:
-		handleCheckLogin(conn)
+		handleGoodLogin(buffer, &pos, conn)
 	default:
 		fmt.Println("UNKNOWN LOGIN PACKET:", buffer)
 	}
@@ -79,20 +80,27 @@ func handleLoginRequest(p packet.Packet, pos *int, conn *loginConn.Connection) {
 	pac.WriteInt32(0)
 
 	if result <= 0x01 {
-
 		pac.WriteUint32(userID)
 		pac.WriteByte(0x00)
+
 		if isAdmin {
 			pac.WriteByte(0x01)
 		} else {
 			pac.WriteByte(0x00)
 		}
+
 		pac.WriteByte(0x01)
 		pac.WriteString(username)
 
 		conn.SetUserID(userID)
 		conn.SetIsLogedIn(true)
 		_, err = connection.Db.Query("UPDATE users set isLogedIn=1 WHERE userID=?", userID)
+
+		if err != nil {
+			fmt.Println("Database error with approving login of userID", userID, err)
+		} else {
+			fmt.Println("User", userID, "has logged in from", conn)
+		}
 	} else if result == 0x02 {
 		pac.WriteByte(byte(isBanned))
 		pac.WriteInt64(0) // Expire time, for now let set this to epoch
@@ -108,33 +116,42 @@ func handleLoginRequest(p packet.Packet, pos *int, conn *loginConn.Connection) {
 	}
 }
 
-func handleCheckLogin(conn *loginConn.Connection) {
-	// No idea what this packet is for
+func handleGoodLogin(p packet.Packet, pos *int, conn *loginConn.Connection) {
+	// What the fuck is going on here?
 	pac := packet.NewPacket()
 	pac.WriteByte(0x03)
-	pac.WriteByte(0x04) // This value seems to denote server fullness?
+	pac.WriteByte(0x04)
 	pac.WriteByte(0x00)
 	conn.Write(pac)
 
-	var username string
+	var username, password string
 
 	userID := conn.GetUserID()
 
-	err := connection.Db.QueryRow("SELECT username FROM users WHERE userID=?", userID).
-		Scan(&username)
+	err := connection.Db.QueryRow("SELECT username, password FROM users WHERE userID=?", userID).
+		Scan(&username, &password)
 
 	if err != nil {
 		fmt.Println("handleCheckLogin database retrieval issue for userID:", userID, err)
 	}
 
 	hasher := sha512.New()
-	hasher.Write([]byte(username)) // Username should be unique so might as well use this
-	hashedUsername := fmt.Sprintf("%x02", hasher.Sum(nil))
+	hasher.Write([]byte(username + password)) // should be unique
+	hash := hex.EncodeToString(hasher.Sum(nil))
+	conn.SetSessionHash(hash)
 
-	conn.SetSessionHash(hashedUsername)
+	conn.WorldMngr = make(chan worlds.Message, 1)
+	worlds.NewClient(conn.WorldMngr, conn.GetSessionHash())
+
+	result := make(chan [][]byte)
+	conn.WorldMngr <- worlds.Message{Opcode: worlds.WORLD_LIST, Message: result}
+	worlds := <-result
+	for world := range worlds {
+		conn.Write(worlds[world])
+	}
 
 	pac = packet.NewPacket()
-	pac.WriteByte(constants.LOGIN_SEND_SESSION_HASH)
-	pac.WriteString(hashedUsername)
+	pac.WriteByte(constants.LOGIN_SEND_WORLD_LIST)
+	pac.WriteByte(0xFF) // Probs indicates end of list
 	conn.Write(pac)
 }

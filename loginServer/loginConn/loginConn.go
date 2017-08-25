@@ -6,6 +6,7 @@ import (
 
 	"github.com/Hucaru/Valhalla/common/connection"
 	"github.com/Hucaru/Valhalla/common/packet"
+	"github.com/Hucaru/Valhalla/loginServer/worlds"
 )
 
 type Connection struct {
@@ -13,6 +14,7 @@ type Connection struct {
 	userID    uint32
 	isLogedIn bool
 	hash      string
+	WorldMngr chan worlds.Message
 }
 
 func NewConnection(conn net.Conn) *Connection {
@@ -36,7 +38,7 @@ func (c *Connection) Close() {
 			fmt.Println("Error in auto log out of user on disconnect, userID:", c.userID)
 		}
 	}
-
+	c.WorldMngr <- worlds.Message{worlds.CLIENT_NOT_ACTIVE, nil}
 	c.conn.Close()
 }
 

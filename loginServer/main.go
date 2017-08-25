@@ -10,6 +10,7 @@ import (
 	"github.com/Hucaru/Valhalla/common/packet"
 	"github.com/Hucaru/Valhalla/loginServer/handlers"
 	"github.com/Hucaru/Valhalla/loginServer/loginConn"
+	"github.com/Hucaru/Valhalla/loginServer/worlds"
 )
 
 const (
@@ -32,6 +33,9 @@ func main() {
 
 	defer connection.Db.Close()
 	connection.ConnectToDb()
+
+	go worlds.MainLoop()
+
 	fmt.Println("Listener ready")
 
 	for {

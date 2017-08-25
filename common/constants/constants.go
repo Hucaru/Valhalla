@@ -7,8 +7,8 @@ const (
 	OPCODE_LENGTH           = 1
 
 	// Opcodes Server -> Client
-	LOGIN_RESPONCE          = 0x01
-	LOGIN_SEND_SESSION_HASH = 0x06
+	LOGIN_RESPONCE        = 0x01
+	LOGIN_SEND_WORLD_LIST = 0x09
 
 	// Opcodes Client -> Server
 	LOGIN_REQUEST          = 0x01
