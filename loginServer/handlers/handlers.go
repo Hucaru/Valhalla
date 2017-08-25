@@ -117,7 +117,7 @@ func handleLoginRequest(p packet.Packet, pos *int, conn *loginConn.Connection) {
 }
 
 func handleGoodLogin(p packet.Packet, pos *int, conn *loginConn.Connection) {
-	// What the fuck is going on here?
+	// What the fuck is going on here? Is it the pin system?
 	pac := packet.NewPacket()
 	pac.WriteByte(0x03)
 	pac.WriteByte(0x04)
