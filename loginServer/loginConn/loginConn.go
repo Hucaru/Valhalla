@@ -16,6 +16,7 @@ type Connection struct {
 	hash      string
 	WorldMngr chan worlds.Message
 	worldID   uint32
+	gender    byte
 }
 
 func NewConnection(conn net.Conn) *Connection {
@@ -77,4 +78,12 @@ func (c *Connection) SetWorldID(val uint32) {
 
 func (c *Connection) GetWorldID() uint32 {
 	return c.worldID
+}
+
+func (c *Connection) SetGender(val byte) {
+	c.gender = val
+}
+
+func (c *Connection) GetGender() byte {
+	return c.gender
 }

@@ -72,6 +72,8 @@ func handleLoginRequest(p packet.Packet, pos *int, conn *loginConn.Connection) {
 		result = 0x02
 	}
 
+	conn.SetGender(gender)
+
 	// -Banned- = 2
 	// Deleted or Blocked = 3
 	// Invalid Password = 4
@@ -192,7 +194,18 @@ func handleChannelSelect(p packet.Packet, pos *int, conn *loginConn.Connection) 
 		pac := packet.NewPacket()
 		pac.WriteByte(constants.LOGIN_CHARACTER_DATA)
 		pac.WriteByte(0) // ?
-		pac.WriteByte(0) // Character count
+
+		var charCount byte
+
+		err := connection.Db.QueryRow("SELECT count(*) name FROM characters WHERE userID=? and worldID=?", conn.GetUserID(), selectedWorld).
+			Scan(&charCount)
+
+		if err != nil {
+			panic(err.Error())
+		}
+
+		pac.WriteByte(charCount) // Character count
+		// Add characters
 		conn.Write(pac)
 	}
 }
@@ -206,10 +219,8 @@ func handleNameCheck(p packet.Packet, pos *int, conn *loginConn.Connection) {
 		Scan(&nameFound)
 
 	if err != nil {
-		panic(err)
+		panic(err.Error())
 	}
-
-	// Add new character with name
 
 	pac := packet.NewPacket()
 	pac.WriteByte(constants.LOGIN_NAME_CHECK_RESULT)
@@ -242,13 +253,55 @@ func handleNewCharacter(p packet.Packet, pos *int, conn *loginConn.Connection) {
 	intelligence := p.ReadByte(pos)
 	luk := p.ReadByte(pos)
 
-	fmt.Println(name, face, hair, hairColour, skin, top, bottom, shoes, weapon, str, dex, intelligence, luk)
+	// Validate values - starting equip and stats
+	var counter int
+
+	err := connection.Db.QueryRow("SELECT count(*) FROM characters where name=? and worldID=?", name, conn.GetWorldID()).Scan(&counter)
+
+	if err != nil {
+		panic(err.Error())
+	}
+
+	allowedEyes := []int32{20000, 20001, 20002, 21000, 21001, 21002, 20100, 20401, 20402, 21700, 21201, 21002}
+	allowedHair := []int32{30000, 30020, 30030, 31000, 31040, 31050}
+	allowedHairColour := []int32{0, 7, 3, 2}
+	allowedBottom := []int32{1060002, 1060006, 1061002, 1061008, 1062115}
+	allowedTop := []int32{1040002, 1040006, 1040010, 1041002, 1041006, 1041010, 1041011, 1042167}
+	allowedShoes := []int32{1072001, 1072005, 1072037, 1072038, 1072383}
+	allowedWeapons := []int32{1302000, 1322005, 1312004, 1442079}
+	allowedSkinColour := []int32{0, 1, 2, 3}
+
+	valid := inSlice(face, allowedEyes) && inSlice(hair, allowedHair) && inSlice(hairColour, allowedHairColour) &&
+		inSlice(bottom, allowedBottom) && inSlice(top, allowedTop) && inSlice(shoes, allowedShoes) &&
+		inSlice(weapon, allowedWeapons) && inSlice(skin, allowedSkinColour) && (counter > 0)
 
 	pac := packet.NewPacket()
 	pac.WriteByte(0x0D)
-	pac.WriteByte(0x1) // if creation was sucessfull - 0 = good, 1 = bad
-	// writePlayerCharacters()
+
+	if valid {
+		_, err = connection.Db.Exec("INSERT INTO characters (name, userID, worldID, face, hair, skin, gender, str, dex, `int`, luk) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+			name, conn.GetUserID(), conn.GetWorldID(), face, hair+hairColour, skin, conn.GetGender(), str, dex, intelligence, luk)
+
+		if err != nil {
+			panic(err.Error())
+		}
+
+		pac.WriteByte(0x0) // if creation was sucessfull - 0 = good, 1 = bad
+		// writePlayerCharacters()
+	} else {
+		pac.WriteByte(0x1)
+	}
+
 	conn.Write(pac)
+}
+
+func inSlice(val int32, s []int32) bool {
+	for _, b := range s {
+		if b == val {
+			return true
+		}
+	}
+	return false
 }
 
 func writePlayerCharacters(userID int, worldID int, pac *packet.Packet) {
