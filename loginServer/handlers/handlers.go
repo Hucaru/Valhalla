@@ -247,7 +247,7 @@ func handleNewCharacter(p packet.Packet, pos *int, conn *loginConn.Connection) {
 	pac := packet.NewPacket()
 	pac.WriteByte(0x0D)
 	pac.WriteByte(0x1) // if creation was sucessfull - 0 = good, 1 = bad
-
+	// writePlayerCharacters()
 	conn.Write(pac)
 }
 
