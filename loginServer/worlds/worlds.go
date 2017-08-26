@@ -40,7 +40,7 @@ func generateWorldList(result chan [][]byte) {
 	worlds := make([][]byte, 0)
 
 	// This needs to be read from a stored set of worlds
-	for j := 0; j < 10; j++ {
+	for j := 14; j >= 0; j-- {
 		pac := packet.NewPacket()
 		pac.WriteByte(constants.LOGIN_SEND_WORLD_LIST)
 		pac.WriteByte(byte(j))
