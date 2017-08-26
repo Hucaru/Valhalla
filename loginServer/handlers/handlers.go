@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"container/list"
 	"crypto/sha512"
 	"encoding/hex"
 	"fmt"
@@ -154,38 +155,71 @@ func handleGoodLogin(p packet.Packet, pos *int, conn *loginConn.Connection) {
 
 	pac := packet.NewPacket()
 	pac.WriteByte(constants.LOGIN_SEND_WORLD_LIST)
-	pac.WriteByte(0xFF) // Probs indicates end of list
+	pac.WriteByte(0xFF)
 	conn.Write(pac)
 }
 
 func handleWorldSelect(p packet.Packet, pos *int, conn *loginConn.Connection) {
-	p.ReadInt16(pos) // World ID
+	worldID := p.ReadInt16(pos) // World ID
+	conn.SetWorldID(uint32(worldID))
+	result := make(chan []byte)
+	var data list.List
+	data.PushBack(result)
+	data.PushBack(worldID)
+	conn.WorldMngr <- worlds.Message{Opcode: worlds.WORLD_STATUS, Message: data}
+	info := <-result
+
 	pac := packet.NewPacket()
 	pac.WriteByte(constants.LOGIN_WORLD_META)
-	pac.WriteByte(0x00) // Warning - 0 = no warning, 1 - high amount of concurent users, 2 = max uesrs in world
-	pac.WriteByte(0x00) // Population marker - 0 = No maker, 1 = Highly populated, 2 = over populated
+	pac.WriteByte(info[0]) // Warning - 0 = no warning, 1 - high amount of concurent users, 2 = max uesrs in world
+	pac.WriteByte(info[1]) // Population marker - 0 = No maker, 1 = Highly populated, 2 = over populated
 	conn.Write(pac)
 }
 
 func handleChannelSelect(p packet.Packet, pos *int, conn *loginConn.Connection) {
-	p.ReadByte(pos) // world
-	p.ReadByte(pos) // Channel
+	selectedWorld := p.ReadByte(pos) // world
+	p.ReadByte(pos)                  // Channel
 
-	pac := packet.NewPacket()
-	pac.WriteByte(constants.LOGIN_CHARACTER_DATA)
-	pac.WriteByte(0) // ?
-	pac.WriteByte(0) // Character count
-	conn.Write(pac)
+	if uint32(selectedWorld) != conn.GetWorldID() {
+		fmt.Println(conn, "is channel selecting from a world they did not select, sending zero characters")
+		pac := packet.NewPacket()
+		pac.WriteByte(constants.LOGIN_CHARACTER_DATA)
+		pac.WriteByte(0) // ?
+		pac.WriteByte(0) // Character count
+		conn.Write(pac)
+	} else {
+		pac := packet.NewPacket()
+		pac.WriteByte(constants.LOGIN_CHARACTER_DATA)
+		pac.WriteByte(0) // ?
+		pac.WriteByte(0) // Character count
+		conn.Write(pac)
+	}
 }
 
 func handleNameCheck(p packet.Packet, pos *int, conn *loginConn.Connection) {
 	nameLength := p.ReadInt16(pos)
 	newCharName := p.ReadString(pos, int(nameLength))
 
+	var nameFound int
+	err := connection.Db.QueryRow("SELECT count(*) name FROM characters WHERE name=?", newCharName).
+		Scan(&nameFound)
+
+	if err != nil {
+		panic(err)
+	}
+
+	// Add new character with name
+
 	pac := packet.NewPacket()
 	pac.WriteByte(constants.LOGIN_NAME_CHECK_RESULT)
 	pac.WriteString(newCharName)
-	pac.WriteByte(0x0) // 0 = good name, 1 = bad name
+
+	if nameFound > 0 {
+		pac.WriteByte(0x1) // 0 = good name, 1 = bad name
+	} else {
+		pac.WriteByte(0x0)
+	}
+
 	conn.Write(pac)
 }
 
@@ -207,54 +241,55 @@ func handleNewCharacter(p packet.Packet, pos *int, conn *loginConn.Connection) {
 	intelligence := p.ReadByte(pos)
 	luk := p.ReadByte(pos)
 
-	// Validate, name, equipment, stats
-	// Insert into database if valid
+	fmt.Println(name, face, hair, hairColour, skin, top, bottom, shoes, weapon, str, dex, intelligence, luk)
 
 	pac := packet.NewPacket()
 	pac.WriteByte(0x0D)
-	pac.WriteByte(0x0) // if creation was sucessfull - 0 = good, 1 = bad
-
-	pac.WriteString(name)
-	pac.WriteByte(0x0) //gender
-	pac.WriteByte(byte(skin))
-	pac.WriteByte(byte(face))
-	pac.WriteByte(byte(hair))
-
-	pac.WriteInt64(0x0) // Pet cash ID
-
-	pac.WriteByte(200) // level
-	pac.WriteInt16(0)  // Job
-	pac.WriteInt16(int16(str))
-	pac.WriteInt16(int16(dex))
-	pac.WriteInt16(int16(intelligence))
-	pac.WriteInt16(int16(luk))
-	pac.WriteInt16(100) // hp
-	pac.WriteInt16(100) // max hp
-	pac.WriteInt16(100) // max mp
-	pac.WriteInt16(100) // mp
-	pac.WriteInt16(100) // ap
-	pac.WriteInt16(100) // sp
-	pac.WriteInt32(100) // exp
-	pac.WriteInt16(100) // fame
-
-	pac.WriteInt32(0) // map id
-	pac.WriteByte(0)  // map pos
-
-	pac.WriteByte(0x0) //gender
-	pac.WriteByte(byte(skin))
-	pac.WriteInt32(face)
-	pac.WriteByte(0x0) // ?
-	pac.WriteInt32(hair)
-
-	// hidden equip - byte for type id , int for value
-	// shown equip - byte for type id , int for value
-
-	pac.WriteByte(0xFF)
-	pac.WriteByte(0xFF)
-
-	pac.WriteByte(0)  // Rankings
-	pac.WriteInt32(0) // ?
-	pac.WriteInt32(0) // world old pos
+	pac.WriteByte(0x1) // if creation was sucessfull - 0 = good, 1 = bad
 
 	conn.Write(pac)
+}
+
+func writePlayerCharacters(userID int, worldID int, pac *packet.Packet) {
+	// pac.WriteString(name)
+	// pac.WriteByte(0x0) //gender
+	// pac.WriteByte(byte(skin))
+	// pac.WriteByte(byte(face))
+	// pac.WriteByte(byte(hair))
+	//
+	// pac.WriteInt64(0x0) // Pet cash ID
+	//
+	// pac.WriteByte(200) // level
+	// pac.WriteInt16(0)  // Job
+	// pac.WriteInt16(int16(str))
+	// pac.WriteInt16(int16(dex))
+	// pac.WriteInt16(int16(intelligence))
+	// pac.WriteInt16(int16(luk))
+	// pac.WriteInt16(100) // hp
+	// pac.WriteInt16(100) // max hp
+	// pac.WriteInt16(100) // max mp
+	// pac.WriteInt16(100) // mp
+	// pac.WriteInt16(100) // ap
+	// pac.WriteInt16(100) // sp
+	// pac.WriteInt32(100) // exp
+	// pac.WriteInt16(100) // fame
+	//
+	// pac.WriteInt32(0) // map id
+	// pac.WriteByte(0)  // map pos
+	//
+	// pac.WriteByte(0x0) //gender
+	// pac.WriteByte(byte(skin))
+	// pac.WriteInt32(face)
+	// pac.WriteByte(0x0) // ?
+	// pac.WriteInt32(hair)
+	//
+	// // hidden equip - byte for type id , int for value
+	// // shown equip - byte for type id , int for value
+	//
+	// pac.WriteByte(0xFF)
+	// pac.WriteByte(0xFF)
+	//
+	// pac.WriteByte(0)  // Rankings
+	// pac.WriteInt32(0) // ?
+	// pac.WriteInt32(0) // world old pos
 }

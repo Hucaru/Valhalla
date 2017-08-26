@@ -15,6 +15,7 @@ type Connection struct {
 	isLogedIn bool
 	hash      string
 	WorldMngr chan worlds.Message
+	worldID   uint32
 }
 
 func NewConnection(conn net.Conn) *Connection {
@@ -38,7 +39,7 @@ func (c *Connection) Close() {
 			fmt.Println("Error in auto log out of user on disconnect, userID:", c.userID)
 		}
 	}
-	c.WorldMngr <- worlds.Message{worlds.CLIENT_NOT_ACTIVE, nil}
+	c.WorldMngr <- worlds.Message{Opcode: worlds.CLIENT_NOT_ACTIVE, Message: nil}
 	c.conn.Close()
 }
 
@@ -68,4 +69,12 @@ func (c *Connection) SetIsLogedIn(val bool) {
 
 func (c *Connection) GetIsLogedIn() bool {
 	return c.isLogedIn
+}
+
+func (c *Connection) SetWorldID(val uint32) {
+	c.worldID = val
+}
+
+func (c *Connection) GetWorldID() uint32 {
+	return c.worldID
 }

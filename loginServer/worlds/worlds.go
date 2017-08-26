@@ -1,6 +1,7 @@
 package worlds
 
 import (
+	"container/list"
 	"strconv"
 
 	"github.com/Hucaru/Valhalla/common/constants"
@@ -28,6 +29,8 @@ func MainLoop() {
 				delete(activeSessions, sessionID)
 			case WORLD_LIST:
 				generateWorldList(message.Message.(chan [][]byte))
+			case WORLD_STATUS:
+				getWorldStatus(message.Message.(list.List))
 			}
 		}
 	}
@@ -62,4 +65,10 @@ func generateWorldList(result chan [][]byte) {
 		worlds = append(worlds, pac)
 	}
 	result <- worlds
+}
+
+func getWorldStatus(message list.List) {
+	//worldID := message.Back().Value
+	// communicate to world and ask for stats
+	message.Front().Value.(chan []byte) <- []byte{0, 2}
 }
