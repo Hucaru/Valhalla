@@ -7,7 +7,7 @@ Practice at writting golang tcp server using the old Maplestory MMORPG client (v
   * World display [50%, need world server]
   * Channel display [50%, need world server]
   * Character display [0%]
-  * Character creation [25%, name check is done]
+  * Character creation [80%, name check is done]
   * Character deletion [0%]
 * World server
 * Channel server
