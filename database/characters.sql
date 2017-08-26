@@ -15,29 +15,29 @@ CREATE TABLE `characters` (
   `skin` int(11) unsigned NOT NULL,
   `hair` int(11) unsigned NOT NULL,
   `face` int(11) unsigned NOT NULL,
-  `level` int(11) unsigned NOT NULL,
-  `job` int(11) unsigned NOT NULL,
+  `level` int(11) unsigned NOT NULL DEFAULT '1',
+  `job` int(11) unsigned NOT NULL DEFAULT '0',
   `str` int(11) unsigned NOT NULL,
   `dex` int(11) unsigned NOT NULL,
   `int` int(11) unsigned NOT NULL,
   `luk` int(11) unsigned NOT NULL,
-  `hp` int(11) unsigned NOT NULL,
-  `maxHP` int(11) unsigned NOT NULL,
-  `mp` int(11) unsigned NOT NULL,
-  `maxMP` int(11) unsigned NOT NULL,
-  `ap` int(11) unsigned NOT NULL,
-  `sp` int(11) unsigned NOT NULL,
-  `exp` int(11) unsigned NOT NULL,
-  `fame` int(11) unsigned NOT NULL,
-  `mapID` int(11) unsigned NOT NULL,
-  `mapPos` int(11) unsigned NOT NULL,
-  `previousMapID` int(11) unsigned NOT NULL,
+  `hp` int(11) unsigned NOT NULL DEFAULT '100',
+  `maxHP` int(11) unsigned NOT NULL DEFAULT '100',
+  `mp` int(11) unsigned NOT NULL DEFAULT '50',
+  `maxMP` int(11) unsigned NOT NULL DEFAULT '50',
+  `ap` int(11) unsigned NOT NULL DEFAULT '0',
+  `sp` int(11) unsigned NOT NULL DEFAULT '0',
+  `exp` int(11) unsigned NOT NULL DEFAULT '0',
+  `fame` int(11) unsigned NOT NULL DEFAULT '0',
+  `mapID` int(11) unsigned NOT NULL DEFAULT '0',
+  `mapPos` int(11) unsigned NOT NULL DEFAULT '0',
+  `previousMapID` int(11) unsigned NOT NULL DEFAULT '0',
   PRIMARY KEY (`id`),
   KEY `userID` (`userID`),
   CONSTRAINT `characters_ibfk_1` FOREIGN KEY (`userID`) REFERENCES `users` (`userID`)
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 
 INSERT INTO `characters` (`id`, `userID`, `worldID`, `name`, `gender`, `skin`, `hair`, `face`, `level`, `job`, `str`, `dex`, `int`, `luk`, `hp`, `maxHP`, `mp`, `maxMP`, `ap`, `sp`, `exp`, `fame`, `mapID`, `mapPos`, `previousMapID`) VALUES
-(1,	1,	1,	'test',	0,	0,	0,	0,	0,	0,	0,	0,	0,	0,	0,	0,	0,	0,	0,	0,	0,	0,	0,	0,	0);
+(2,	1,	0,	'test',	0,	0,	78,	32,	1,	0,	5,	8,	7,	5,	100,	100,	50,	50,	0,	0,	0,	0,	0,	0,	0);
 
--- 2017-08-26 18:21:35
+-- 2017-08-26 22:01:30
