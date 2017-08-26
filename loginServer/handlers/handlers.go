@@ -26,6 +26,10 @@ func HandlePacket(conn *loginConn.Connection, buffer packet.Packet) {
 		handleWorldSelect(buffer, &pos, conn)
 	case constants.LOGIN_CHANNEL_SELECT:
 		handleChannelSelect(buffer, &pos, conn)
+	case constants.LOGIN_NAME_CHECK:
+		handleNameCheck(buffer, &pos, conn)
+	case constants.LOGIN_NEW_CHARACTER:
+		handleNewCharacter(buffer, &pos, conn)
 	default:
 		fmt.Println("UNKNOWN LOGIN PACKET:", buffer)
 	}
@@ -169,7 +173,88 @@ func handleChannelSelect(p packet.Packet, pos *int, conn *loginConn.Connection) 
 
 	pac := packet.NewPacket()
 	pac.WriteByte(constants.LOGIN_CHARACTER_DATA)
-	pac.WriteByte(0)
+	pac.WriteByte(0) // ?
 	pac.WriteByte(0) // Character count
+	conn.Write(pac)
+}
+
+func handleNameCheck(p packet.Packet, pos *int, conn *loginConn.Connection) {
+	nameLength := p.ReadInt16(pos)
+	newCharName := p.ReadString(pos, int(nameLength))
+
+	pac := packet.NewPacket()
+	pac.WriteByte(constants.LOGIN_NAME_CHECK_RESULT)
+	pac.WriteString(newCharName)
+	pac.WriteByte(0x0) // 0 = good name, 1 = bad name
+	conn.Write(pac)
+}
+
+func handleNewCharacter(p packet.Packet, pos *int, conn *loginConn.Connection) {
+	nameLength := p.ReadInt16(pos)
+	name := p.ReadString(pos, int(nameLength))
+
+	face := p.ReadInt32(pos)
+	hair := p.ReadInt32(pos)
+	hairColour := p.ReadInt32(pos)
+	skin := p.ReadInt32(pos)
+	top := p.ReadInt32(pos)
+	bottom := p.ReadInt32(pos)
+	shoes := p.ReadInt32(pos)
+	weapon := p.ReadInt32(pos)
+
+	str := p.ReadByte(pos)
+	dex := p.ReadByte(pos)
+	intelligence := p.ReadByte(pos)
+	luk := p.ReadByte(pos)
+
+	// Validate, name, equipment, stats
+	// Insert into database if valid
+
+	pac := packet.NewPacket()
+	pac.WriteByte(0x0D)
+	pac.WriteByte(0x0) // if creation was sucessfull - 0 = good, 1 = bad
+
+	pac.WriteString(name)
+	pac.WriteByte(0x0) //gender
+	pac.WriteByte(byte(skin))
+	pac.WriteByte(byte(face))
+	pac.WriteByte(byte(hair))
+
+	pac.WriteInt64(0x0) // Pet cash ID
+
+	pac.WriteByte(200) // level
+	pac.WriteInt16(0)  // Job
+	pac.WriteInt16(int16(str))
+	pac.WriteInt16(int16(dex))
+	pac.WriteInt16(int16(intelligence))
+	pac.WriteInt16(int16(luk))
+	pac.WriteInt16(100) // hp
+	pac.WriteInt16(100) // max hp
+	pac.WriteInt16(100) // max mp
+	pac.WriteInt16(100) // mp
+	pac.WriteInt16(100) // ap
+	pac.WriteInt16(100) // sp
+	pac.WriteInt32(100) // exp
+	pac.WriteInt16(100) // fame
+
+	pac.WriteInt32(0) // map id
+	pac.WriteByte(0)  // map pos
+
+	pac.WriteByte(0x0) //gender
+	pac.WriteByte(byte(skin))
+	pac.WriteInt32(face)
+	pac.WriteByte(0x0) // ?
+	pac.WriteInt32(hair)
+
+	// hidden equip - byte for type id , int for value
+	// shown equip - byte for type id , int for value
+
+	pac.WriteByte(0xFF)
+	pac.WriteByte(0xFF)
+
+	pac.WriteByte(0)  // Rankings
+	pac.WriteInt32(0) // ?
+	pac.WriteInt32(0) // world old pos
+
 	conn.Write(pac)
 }
