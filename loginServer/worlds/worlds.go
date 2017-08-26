@@ -1,6 +1,8 @@
 package worlds
 
 import (
+	"strconv"
+
 	"github.com/Hucaru/Valhalla/common/constants"
 	"github.com/Hucaru/Valhalla/common/packet"
 )
@@ -51,11 +53,11 @@ func generateWorldList(result chan [][]byte) {
 		pac.WriteByte(byte(20)) // number of channels
 
 		for i := 0; i < 20; i++ {
-			pac.WriteString("scania-" + string(i+1)) // channel name
-			pac.WriteInt32(9001)                     // Population
-			pac.WriteByte(byte(j))                   // world id
-			pac.WriteByte(byte(i))                   // channel id
-			pac.WriteByte(0)                         //?
+			pac.WriteString("scania-" + strconv.Itoa(i+1)) // channel name
+			pac.WriteInt32(9001)                           // Population
+			pac.WriteByte(byte(j))                         // world id
+			pac.WriteByte(byte(i))                         // channel id
+			pac.WriteByte(0)                               //?
 		}
 		worlds = append(worlds, pac)
 	}
