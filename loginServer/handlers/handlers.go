@@ -22,6 +22,10 @@ func HandlePacket(conn *loginConn.Connection, buffer packet.Packet) {
 		handleLoginRequest(buffer, &pos, conn)
 	case constants.LOGIN_CHECK_LOGIN:
 		handleGoodLogin(buffer, &pos, conn)
+	case constants.LOGIN_WORLD_SELECT:
+		handleWorldSelect(buffer, &pos, conn)
+	case constants.LOGIN_CHANNEL_SELECT:
+		handleChannelSelect(buffer, &pos, conn)
 	default:
 		fmt.Println("UNKNOWN LOGIN PACKET:", buffer)
 	}
@@ -117,13 +121,6 @@ func handleLoginRequest(p packet.Packet, pos *int, conn *loginConn.Connection) {
 }
 
 func handleGoodLogin(p packet.Packet, pos *int, conn *loginConn.Connection) {
-	// What the fuck is going on here? Is it the pin system?
-	pac := packet.NewPacket()
-	pac.WriteByte(0x03)
-	pac.WriteByte(0x04)
-	pac.WriteByte(0x00)
-	conn.Write(pac)
-
 	var username, password string
 
 	userID := conn.GetUserID()
@@ -146,12 +143,33 @@ func handleGoodLogin(p packet.Packet, pos *int, conn *loginConn.Connection) {
 	result := make(chan [][]byte)
 	conn.WorldMngr <- worlds.Message{Opcode: worlds.WORLD_LIST, Message: result}
 	worlds := <-result
+
 	for world := range worlds {
 		conn.Write(worlds[world])
 	}
 
-	pac = packet.NewPacket()
+	pac := packet.NewPacket()
 	pac.WriteByte(constants.LOGIN_SEND_WORLD_LIST)
 	pac.WriteByte(0xFF) // Probs indicates end of list
+	conn.Write(pac)
+}
+
+func handleWorldSelect(p packet.Packet, pos *int, conn *loginConn.Connection) {
+	p.ReadInt16(pos) // World ID
+	pac := packet.NewPacket()
+	pac.WriteByte(constants.LOGIN_WORLD_META)
+	pac.WriteByte(0x00) // Warning - 0 = no warning, 1 - high amount of concurent users, 2 = max uesrs in world
+	pac.WriteByte(0x00) // Population marker - 0 = No maker, 1 = Highly populated, 2 = over populated
+	conn.Write(pac)
+}
+
+func handleChannelSelect(p packet.Packet, pos *int, conn *loginConn.Connection) {
+	p.ReadByte(pos) // world
+	p.ReadByte(pos) // Channel
+
+	pac := packet.NewPacket()
+	pac.WriteByte(constants.LOGIN_CHARACTER_DATA)
+	pac.WriteByte(0)
+	pac.WriteByte(0) // Character count
 	conn.Write(pac)
 }
