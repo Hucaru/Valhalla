@@ -52,12 +52,13 @@ func handleLoginRequest(p packet.Packet, pos *int, conn *loginConn.Connection) {
 	var userID uint32
 	var user string
 	var databasePassword string
+	var gender byte
 	var isLogedIn bool
 	var isBanned int
 	var isAdmin bool
 
-	err := connection.Db.QueryRow("SELECT userID, username, password, isLogedIn, isBanned, isAdmin FROM users WHERE username=?", username).
-		Scan(&userID, &user, &databasePassword, &isLogedIn, &isBanned, &isAdmin)
+	err := connection.Db.QueryRow("SELECT userID, username, password, gender, isLogedIn, isBanned, isAdmin FROM users WHERE username=?", username).
+		Scan(&userID, &user, &databasePassword, &gender, &isLogedIn, &isBanned, &isAdmin)
 
 	result := byte(0x00)
 
@@ -90,7 +91,7 @@ func handleLoginRequest(p packet.Packet, pos *int, conn *loginConn.Connection) {
 
 	if result <= 0x01 {
 		pac.WriteUint32(userID)
-		pac.WriteByte(0x00)
+		pac.WriteByte(gender) // Gender
 
 		if isAdmin {
 			pac.WriteByte(0x01)
