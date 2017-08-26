@@ -14,3 +14,4 @@ Practice at writting golang tcp server using the old Maplestory MMORPG client (v
 * Cash shop server
 * Database
   * Account table [100%]
+  * Character table [0%]
