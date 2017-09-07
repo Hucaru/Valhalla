@@ -38,6 +38,6 @@ CREATE TABLE `characters` (
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 
 INSERT INTO `characters` (`id`, `userID`, `worldID`, `name`, `gender`, `skin`, `hair`, `face`, `level`, `job`, `str`, `dex`, `int`, `luk`, `hp`, `maxHP`, `mp`, `maxMP`, `ap`, `sp`, `exp`, `fame`, `mapID`, `mapPos`, `previousMapID`) VALUES
-(2,	1,	0,	'test',	0,	0,	78,	32,	1,	0,	5,	8,	7,	5,	100,	100,	50,	50,	0,	0,	0,	0,	0,	0,	0);
+(8,	1,	0,	'[GM]Hucaru',	0,	0,	30020,	20000,	1,	0,	7,	5,	6,	7,	100,	100,	50,	50,	0,	0,	0,	0,	0,	0,	0);
 
--- 2017-08-26 22:01:30
+-- 2018-01-13 21:50:01

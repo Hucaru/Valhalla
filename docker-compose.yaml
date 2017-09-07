@@ -8,8 +8,8 @@ services:
         volumes:
             - ./database_data:/var/lib/mysql
         environment:
-            - MYSQL_ROOT_PASSWORD="password"
-            - MYSQL_DATABASE="maplestory"
+            - MYSQL_ROOT_PASSWORD=password
+            - MYSQL_DATABASE=maplestory
     adminer:
         image: adminer
         ports:

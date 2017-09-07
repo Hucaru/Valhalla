@@ -7,7 +7,7 @@ import (
 
 	"github.com/Hucaru/Valhalla/common/constants"
 	"github.com/Hucaru/Valhalla/common/crypt"
-	"github.com/Hucaru/Valhalla/common/packet"
+	"github.com/Hucaru/gopacket"
 )
 
 // ClientConnection -
@@ -44,15 +44,15 @@ func (handle *ClientConnection) Close() {
 	handle.conn.Close()
 }
 
-func (handle *ClientConnection) sendPacket(p packet.Packet) error {
+func (handle *ClientConnection) sendPacket(p gopacket.Packet) error {
 	_, err := handle.conn.Write(p)
 	return err
 }
 
-func (handle *ClientConnection) Write(p packet.Packet) error {
+func (handle *ClientConnection) Write(p gopacket.Packet) error {
 	crypt.Encrypt(p)
 
-	header := packet.NewPacket()
+	header := gopacket.NewPacket()
 	header = crypt.GenerateHeader(len(p), handle.ivSend, constants.MAPLE_VERSION)
 	header.Append(p)
 
@@ -63,7 +63,7 @@ func (handle *ClientConnection) Write(p packet.Packet) error {
 	return err
 }
 
-func (handle *ClientConnection) Read(p packet.Packet) error {
+func (handle *ClientConnection) Read(p gopacket.Packet) error {
 	_, err := handle.conn.Read(p)
 
 	if err != nil {
@@ -81,7 +81,7 @@ func (handle *ClientConnection) Read(p packet.Packet) error {
 }
 
 func sendHandshake(client *ClientConnection) error {
-	packet := packet.NewPacket()
+	packet := gopacket.NewPacket()
 
 	packet.WriteInt16(13)
 	packet.WriteInt16(constants.MAPLE_VERSION)

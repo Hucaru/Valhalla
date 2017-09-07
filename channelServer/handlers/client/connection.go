@@ -1,34 +1,35 @@
-package loginConn
+package client
 
 import (
-	"fmt"
+	"log"
 	"net"
 
+	"github.com/Hucaru/Valhalla/common/character"
 	"github.com/Hucaru/Valhalla/common/connection"
-	"github.com/Hucaru/Valhalla/common/packet"
-	"github.com/Hucaru/Valhalla/loginServer/handlers/worlds"
+	"github.com/Hucaru/gopacket"
 )
 
 type Connection struct {
 	conn      *connection.ClientConnection
 	userID    uint32
 	isLogedIn bool
+	isAdmin   bool
 	hash      string
-	WorldMngr chan worlds.Message
 	worldID   uint32
-	gender    byte
+	channelID byte
+	character character.Character
 }
 
 func NewConnection(conn net.Conn) *Connection {
-	loginConn := &Connection{conn: connection.NewClientConnection(conn)}
-	return loginConn
+	channelConn := &Connection{conn: connection.NewClientConnection(conn), isAdmin: false}
+	return channelConn
 }
 
-func (c *Connection) Write(p packet.Packet) error {
+func (c *Connection) Write(p gopacket.Packet) error {
 	return c.conn.Write(p)
 }
 
-func (c *Connection) Read(p packet.Packet) error {
+func (c *Connection) Read(p gopacket.Packet) error {
 	return c.conn.Read(p)
 }
 
@@ -37,10 +38,10 @@ func (c *Connection) Close() {
 		_, err := connection.Db.Query("UPDATE users set isLogedIn=0 WHERE userID=?", c.userID)
 
 		if err != nil {
-			fmt.Println("Error in auto log out of user on disconnect, userID:", c.userID)
+			log.Println("Error in auto log out of user on disconnect, userID:", c.userID)
 		}
 	}
-	c.WorldMngr <- worlds.Message{Opcode: worlds.CLIENT_NOT_ACTIVE, Message: nil}
+
 	c.conn.Close()
 }
 
@@ -54,6 +55,14 @@ func (c *Connection) SetUserID(val uint32) {
 
 func (c *Connection) GetUserID() uint32 {
 	return c.userID
+}
+
+func (c *Connection) SetAdmin(val bool) {
+	c.isAdmin = val
+}
+
+func (c *Connection) IsAdmin() bool {
+	return c.isAdmin
 }
 
 func (c *Connection) SetSessionHash(val string) {
@@ -78,12 +87,4 @@ func (c *Connection) SetWorldID(val uint32) {
 
 func (c *Connection) GetWorldID() uint32 {
 	return c.worldID
-}
-
-func (c *Connection) SetGender(val byte) {
-	c.gender = val
-}
-
-func (c *Connection) GetGender() byte {
-	return c.gender
 }

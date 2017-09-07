@@ -2,6 +2,8 @@
 *.o
 *.a
 *.so
+certs/**
+database_data/**
 
 # Folders
 _obj
