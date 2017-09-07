@@ -6,7 +6,7 @@ import (
 
 	"github.com/Hucaru/Valhalla/common/connection"
 	"github.com/Hucaru/Valhalla/common/packet"
-	"github.com/Hucaru/Valhalla/loginServer/worlds"
+	"github.com/Hucaru/Valhalla/loginServer/handlers/worlds"
 )
 
 type Connection struct {

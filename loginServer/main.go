@@ -8,9 +8,9 @@ import (
 	"github.com/Hucaru/Valhalla/common/connection"
 	"github.com/Hucaru/Valhalla/common/constants"
 	"github.com/Hucaru/Valhalla/common/packet"
-	"github.com/Hucaru/Valhalla/loginServer/handlers"
+	"github.com/Hucaru/Valhalla/loginServer/handlers/client"
+	"github.com/Hucaru/Valhalla/loginServer/handlers/worlds"
 	"github.com/Hucaru/Valhalla/loginServer/loginConn"
-	"github.com/Hucaru/Valhalla/loginServer/worlds"
 )
 
 const (
