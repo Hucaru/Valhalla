@@ -16,3 +16,7 @@ Practice at writting golang tcp server using the old Maplestory MMORPG client (v
 - Read in Data.wz
 - Set up handlers for various systems e.g maps
 - Get packet structures
+
+![Alt text](images/server_select.png?raw=true "Server Select")
+![Alt text](images/character_select.png?raw=true "Character Select")
+![Alt text](images/ingame_select.png?raw=true "In Game")
