@@ -1,5 +1,10 @@
 package crypt
 
+import (
+	"crypto/aes"
+	"crypto/cipher"
+)
+
 // GetPacketLength -
 func GetPacketLength(encryptedHeader []byte) int {
 	return int((uint16(encryptedHeader[0]) + uint16(encryptedHeader[1])*0x100) ^
@@ -169,6 +174,54 @@ func Encrypt(buf []byte) {
 			c ^= 0x13
 			c = ror(c, 3)
 			buf[j-1] = c
+		}
+	}
+}
+
+const blocksize = 1460
+
+var aeskey = [32]byte{
+	0x13, 0x00, 0x00, 0x00,
+	0x08, 0x00, 0x00, 0x00,
+	0x06, 0x00, 0x00, 0x00,
+	0xB4, 0x00, 0x00, 0x00,
+	0x1B, 0x00, 0x00, 0x00,
+	0x0F, 0x00, 0x00, 0x00,
+	0x33, 0x00, 0x00, 0x00,
+	0x52, 0x00, 0x00, 0x00}
+
+// Encrypt and Decrypt - Taken from kagami
+func AesCrypt(buf []byte, key [16]byte) {
+	var pos, tpos, cbwrite, cb int32 = 0, 0, 0, int32(len(buf))
+	var first byte = 1
+
+	cb = int32(len(buf))
+
+	// I'm not 100% sure what this exactly does but apparently maple
+	// decrypts packets in blocks of 1460 bytes to work around
+	// packet limitations or something
+
+	for cb > pos {
+		tpos = blocksize - int32(first*4)
+
+		if cb > pos+tpos {
+			cbwrite = tpos
+		} else {
+			cbwrite = cb - pos
+		}
+
+		block, err := aes.NewCipher(aeskey[:])
+		if err != nil {
+			panic(err) // cbf to handle this unlikely error
+		}
+
+		stream := cipher.NewOFB(block, key[:])
+		stream.XORKeyStream(buf[pos:pos+cbwrite], buf[pos:pos+cbwrite])
+
+		pos += tpos
+
+		if first == 1 {
+			first = 0
 		}
 	}
 }
