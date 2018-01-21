@@ -19,4 +19,4 @@ Practice at writting golang tcp server using the old Maplestory MMORPG client (v
 
 ![Alt text](images/server_select.png?raw=true "Server Select")
 ![Alt text](images/character_select.png?raw=true "Character Select")
-![Alt text](images/ingame_select.png?raw=true "In Game")
+![Alt text](images/ingame.png?raw=true "In Game")
