@@ -4,8 +4,10 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"log"
+	"math"
 	"strings"
 
+	"github.com/Hucaru/Valhalla/common/character"
 	"github.com/Hucaru/Valhalla/common/constants"
 	"github.com/Hucaru/gopacket"
 )
@@ -63,6 +65,9 @@ func handleServerJoin(reader gopacket.Reader, conn *Connection) {
 }
 
 func handlePlayerLoad(reader gopacket.Reader, conn *Connection) {
+	charID := reader.ReadUint32()
+
+	char := character.GetCharacter(charID)
 
 	conn.SetAdmin(true)
 
@@ -83,33 +88,81 @@ func handlePlayerLoad(reader gopacket.Reader, conn *Connection) {
 	pac.WriteBytes(randomBytes)
 	pac.WriteBytes(randomBytes)
 	pac.WriteBytes([]byte{0xFF, 0xFF})   // ??
-	pac.WriteInt32(8)                    // charid
-	pac.WriteBytes([]byte("[GM]Hucaru")) // name
-	pac.WriteBytes([]byte{0, 0, 0})      //name padding
-	pac.WriteByte(0)                     // Gender
-	pac.WriteByte(0)                     // Skin
-	pac.WriteInt32(20000)                // Face
-	pac.WriteInt32(30020)                // Hair
+	pac.WriteUint32(charID)              // charid
+	pac.WritePaddedString(char.Name, 13) // name
+	pac.WriteByte(char.Gender)           // Gender
+	pac.WriteByte(char.Skin)             // Skin
+	pac.WriteUint32(char.Face)           // Face
+	pac.WriteUint32(char.Hair)           // Hair
 
 	pac.WriteInt64(0) // Pet Cash ID
 
-	pac.WriteByte(1)    // Level
-	pac.WriteInt16(0)   // Jobid
-	pac.WriteInt16(7)   //charc.str
-	pac.WriteInt16(5)   //charc.dex
-	pac.WriteInt16(6)   //charc.intt
-	pac.WriteInt16(7)   //charc.luk
-	pac.WriteInt16(100) //charc.hp);
-	pac.WriteInt16(100) //charc.mhp //Needs to be set to Original MAX HP before using hyperbody.
-	pac.WriteInt16(50)  //charc.mp
-	pac.WriteInt16(50)  //charc.mmp
-	pac.WriteInt16(0)   //charc.ap
-	pac.WriteInt16(0)   //charc.sp
-	pac.WriteInt32(0)   //charc.exp
-	pac.WriteInt16(0)   //charc.fame
+	pac.WriteByte(char.Level)   // Level
+	pac.WriteUint16(char.Job)   // Jobid
+	pac.WriteUint16(char.Str)   //charc.str
+	pac.WriteUint16(char.Dex)   //charc.dex
+	pac.WriteUint16(char.Int)   //charc.intt
+	pac.WriteUint16(char.Luk)   //charc.luk
+	pac.WriteUint16(char.HP)    //charc.hp);
+	pac.WriteUint16(char.MaxHP) //charc.mhp //Needs to be set to Original MAX HP before using hyperbody.
+	pac.WriteUint16(char.MP)    //charc.mp
+	pac.WriteUint16(char.MaxMP) //charc.mmp
+	pac.WriteUint16(char.AP)    //charc.ap
+	pac.WriteUint16(char.SP)    //charc.sp
+	pac.WriteUint32(char.EXP)   //charc.exp
+	pac.WriteUint16(char.Fame)  //charc.fame
 
-	pac.WriteInt32(100000000) //definitly map ID
-	pac.WriteByte(0)          // map pos
+	pac.WriteUint32(char.CurrentMap)  //definitly map ID
+	pac.WriteByte(char.CurrentMapPos) // map pos
+
+	pac.WriteByte(5) // budy list size?
+	pac.WriteUint32(char.Mesos)
+
+	pac.WriteByte(255) // Equip inv size
+	pac.WriteByte(255) // User inv size
+	pac.WriteByte(255) // Setup inv size
+	pac.WriteByte(255) // Etc inv size
+	pac.WriteByte(255) // Cash inv size
+
+	char.Items = character.GetCharacterItems(charID)
+
+	// Equips -50 -> -1 normal equips
+	// Cash items / equip covers -150 to -101 maybe?
+
+	for _, v := range char.Items {
+		log.Println(v.SlotID)
+		if v.SlotID < 0 {
+			// Equips
+			pac.WriteByte(byte(math.Abs(float64(v.SlotID))))
+			log.Println(byte(math.Abs(float64(v.SlotID))))
+			pac.WriteByte(byte(v.ItemID / 1000000))
+			pac.WriteUint32(v.ItemID)
+			pac.WriteByte(0) // not a cash item, switch to 1 if it is
+			pac.WriteUint64(v.ExpireTime)
+			pac.WriteByte(v.UpgradeSlots)
+			pac.WriteByte(v.Level)
+			pac.WriteUint16(v.Str)
+			pac.WriteUint16(v.Dex)
+			pac.WriteUint16(v.Intt)
+			pac.WriteUint16(v.Luk)
+			pac.WriteUint16(v.HP)
+			pac.WriteUint16(v.MP)
+			pac.WriteUint16(v.Watk)
+			pac.WriteUint16(v.Matk)
+			pac.WriteUint16(v.Wdef)
+			pac.WriteUint16(v.Mdef)
+			pac.WriteUint16(v.Accuracy)
+			pac.WriteUint16(v.Avoid)
+			pac.WriteUint16(v.Hands)
+			pac.WriteUint16(v.Speed)
+			pac.WriteUint16(v.Jump)
+			pac.WriteInt32(0)
+		} else {
+			// Inventory items
+		}
+	}
+
+	// Cash items / equip covers -150 to -101
 
 	pac.WriteInt64(0)
 	pac.WriteInt64(0)

@@ -157,43 +157,44 @@ func writePlayerCharacter(pac *gopacket.Packet, pos int, character character.Cha
 
 	pac.WriteByte(character.Gender) //gender
 	pac.WriteByte(character.Skin)   // skin
-	pac.WriteInt32(character.Face)  // face
-	pac.WriteInt32(character.Hair)  // Hair
+	pac.WriteUint32(character.Face) // face
+	pac.WriteUint32(character.Hair) // Hair
 
 	pac.WriteInt64(0x0) // Pet cash ID
 
-	pac.WriteByte(character.Level)  // level
-	pac.WriteInt16(character.Job)   // Job
-	pac.WriteInt16(character.Str)   // str
-	pac.WriteInt16(character.Dex)   // dex
-	pac.WriteInt16(character.Intt)  // int
-	pac.WriteInt16(character.Luk)   // luk
-	pac.WriteInt16(character.HP)    // hp
-	pac.WriteInt16(character.MaxHP) // max hp
-	pac.WriteInt16(character.MP)    // mp
-	pac.WriteInt16(character.MaxMP) // max mp
-	pac.WriteInt16(character.AP)    // ap
-	pac.WriteInt16(character.SP)    // sp
-	pac.WriteInt32(character.EXP)   // exp
-	pac.WriteInt16(character.Fame)  // fame
+	pac.WriteByte(character.Level)   // level
+	pac.WriteUint16(character.Job)   // Job
+	pac.WriteUint16(character.Str)   // str
+	pac.WriteUint16(character.Dex)   // dex
+	pac.WriteUint16(character.Int)   // int
+	pac.WriteUint16(character.Luk)   // luk
+	pac.WriteUint16(character.HP)    // hp
+	pac.WriteUint16(character.MaxHP) // max hp
+	pac.WriteUint16(character.MP)    // mp
+	pac.WriteUint16(character.MaxMP) // max mp
+	pac.WriteUint16(character.AP)    // ap
+	pac.WriteUint16(character.SP)    // sp
+	pac.WriteUint32(character.EXP)   // exp
+	pac.WriteUint16(character.Fame)  // fame
 
-	pac.WriteInt32(character.CurrentMap)   // map id
+	pac.WriteUint32(character.CurrentMap)  // map id
 	pac.WriteByte(character.CurrentMapPos) // map
 
 	// Why is this shit repeated?
 	pac.WriteByte(character.Gender) // gender
 	pac.WriteByte(character.Skin)   // skin
-	pac.WriteInt32(character.Face)  // face
+	pac.WriteUint32(character.Face) // face
 	pac.WriteByte(0x0)              // ?
-	pac.WriteInt32(character.Hair)  // hair
+	pac.WriteUint32(character.Hair) // hair
 
 	// hidden equip - byte for type id , int for value
 
 	// shown equip - byte for type id , int for value
+
 	for _, b := range character.Items {
 		if b.SlotID < 0 {
 			pac.WriteByte(byte(math.Abs(float64(b.SlotID))))
-			pac.WriteInt32(b.ItemID)
+			pac.WriteUint32(b.ItemID)
 		}
 	}
 

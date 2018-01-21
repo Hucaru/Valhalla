@@ -2,6 +2,7 @@
 *.o
 *.a
 *.so
+*.nx
 certs/**
 database_data/**
 

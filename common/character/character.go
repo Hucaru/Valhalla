@@ -6,41 +6,145 @@ import (
 
 // Character struct
 type Character struct {
-	CharID          int32
-	UserID          int32
-	WorldID         int32
+	CharID          uint32
+	UserID          uint32
+	WorldID         uint32
 	Name            string
 	Gender          byte
 	Skin            byte
-	Face            int32
-	Hair            int32
+	Face            uint32
+	Hair            uint32
 	Level           byte
-	Job             int16
-	Str             int16
-	Dex             int16
-	Intt            int16
-	Luk             int16
-	HP              int16
-	MaxHP           int16
-	MP              int16
-	MaxMP           int16
-	AP              int16
-	SP              int16
-	EXP             int32
-	Fame            int16
-	CurrentMap      int32
+	Job             uint16
+	Str             uint16
+	Dex             uint16
+	Int             uint16
+	Luk             uint16
+	HP              uint16
+	MaxHP           uint16
+	MP              uint16
+	MaxMP           uint16
+	AP              uint16
+	SP              uint16
+	EXP             uint32
+	Fame            uint16
+	CurrentMap      uint32
 	CurrentMapPos   byte
-	PreviousMap     int32
-	FeeMarketReturn int32
-	Mesos           int32
+	PreviousMap     uint32
+	FeeMarketReturn uint32
+	Mesos           uint32
+	EquipSlotSize   byte
+	UsetSlotSize    byte
+	SetupSlotSize   byte
+	EtcSlotSize     byte
+	CashSlotSize    byte
 
-	Items []Items
+	Items []Item
 }
 
 // Items struct
-type Items struct {
-	ItemID int32
-	SlotID int32
+type Item struct {
+	ItemID       uint32
+	SlotID       int32
+	UpgradeSlots byte
+	Level        byte
+	Str          uint16
+	Dex          uint16
+	Intt         uint16
+	Luk          uint16
+	HP           uint16
+	MP           uint16
+	Watk         uint16
+	Matk         uint16
+	Wdef         uint16
+	Mdef         uint16
+	Accuracy     uint16
+	Avoid        uint16
+	Hands        uint16
+	Speed        uint16
+	Jump         uint16
+	ExpireTime   uint64
+}
+
+func GetCharacter(charID uint32) Character {
+	var newChar Character
+	err := connection.Db.QueryRow("SELECT * FROM characters where id=?", charID).Scan(&newChar.CharID,
+		&newChar.UserID,
+		&newChar.WorldID,
+		&newChar.Name,
+		&newChar.Gender,
+		&newChar.Skin,
+		&newChar.Hair,
+		&newChar.Face,
+		&newChar.Level,
+		&newChar.Job,
+		&newChar.Str,
+		&newChar.Dex,
+		&newChar.Int,
+		&newChar.Luk,
+		&newChar.HP,
+		&newChar.MaxHP,
+		&newChar.MP,
+		&newChar.MaxMP,
+		&newChar.AP,
+		&newChar.SP,
+		&newChar.EXP,
+		&newChar.Fame,
+		&newChar.CurrentMap,
+		&newChar.CurrentMapPos,
+		&newChar.PreviousMap,
+		&newChar.Mesos,
+		&newChar.EquipSlotSize,
+		&newChar.UsetSlotSize,
+		&newChar.SetupSlotSize,
+		&newChar.EtcSlotSize,
+		&newChar.CashSlotSize)
+
+	if err != nil {
+		panic(err)
+	}
+
+	return newChar
+}
+
+func GetCharacterItems(charID uint32) []Item {
+	filter := "itemID,slotNumber,upgradeSlots,level,str,dex,intt,luk,hp,mp,watk,matk,wdef,mdef,accuracy,avoid,hands,speed,jump,expireTime"
+	row, err := connection.Db.Query("SELECT "+filter+" FROM items WHERE characterID=?", charID)
+
+	if err != nil {
+		panic(err)
+	}
+
+	var items []Item
+
+	for row.Next() {
+		var item Item
+
+		row.Scan(&item.ItemID,
+			&item.SlotID,
+			&item.UpgradeSlots,
+			&item.Level,
+			&item.Str,
+			&item.Dex,
+			&item.Intt,
+			&item.Luk,
+			&item.HP,
+			&item.MP,
+			&item.Watk,
+			&item.Matk,
+			&item.Wdef,
+			&item.Mdef,
+			&item.Accuracy,
+			&item.Avoid,
+			&item.Hands,
+			&item.Speed,
+			&item.Jump,
+			&item.ExpireTime)
+
+		items = append(items, item)
+	}
+
+	return items
 }
 
 func GetCharacters(userID uint32, worldID uint32) []Character {
@@ -69,7 +173,7 @@ func GetCharacters(userID uint32, worldID uint32) []Character {
 			&newChar.Job,
 			&newChar.Str,
 			&newChar.Dex,
-			&newChar.Intt,
+			&newChar.Int,
 			&newChar.Luk,
 			&newChar.HP,
 			&newChar.MaxHP,
@@ -83,7 +187,11 @@ func GetCharacters(userID uint32, worldID uint32) []Character {
 			&newChar.CurrentMapPos,
 			&newChar.PreviousMap,
 			&newChar.Mesos,
-		)
+			&newChar.EquipSlotSize,
+			&newChar.UsetSlotSize,
+			&newChar.SetupSlotSize,
+			&newChar.EtcSlotSize,
+			&newChar.CashSlotSize)
 
 		if err != nil {
 			panic(err)
@@ -98,7 +206,7 @@ func GetCharacters(userID uint32, worldID uint32) []Character {
 		defer items.Close()
 
 		for items.Next() {
-			var item Items
+			var item Item
 
 			items.Scan(&item.ItemID, &item.SlotID)
 			newChar.Items = append(newChar.Items, item)
