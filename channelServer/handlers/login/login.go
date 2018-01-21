@@ -1,7 +1,6 @@
 package login
 
 import (
-	"bytes"
 	"log"
 	"net"
 	"time"
@@ -72,30 +71,21 @@ func manager(conn *Connection, port uint16, worldID byte, channelID byte, useSav
 		conn.Write(sendID(conn.GetWorldID(), conn.GetchannelID(), 1, []byte{192, 168, 1, 117}, port))
 	}
 
-	type pendingConns struct {
-		IP     []byte
-		Port   uint16
-		CharID uint32
-	}
-
-	var pendingMigrations []pendingConns
+	var pendingMigrations []uint32
 
 	for {
 		select {
 		case m := <-LoginServerMsg:
 			reader := gopacket.NewReader(&m)
-			pendingMigrations = append(pendingMigrations, pendingConns{IP: reader.ReadBytes(4),
-				Port:   reader.ReadUint16(),
-				CharID: reader.ReadUint32()})
+			charID := reader.ReadUint32()
+			pendingMigrations = append(pendingMigrations, charID)
 
-			log.Println("Migration information received for character id:", pendingMigrations[len(pendingMigrations)-1].CharID)
+			log.Println("Migration information received for character id:", charID)
 		case m := <-InternalMsg:
 			charID := m.Reader.ReadUint32()
-			ip := m.Reader.ReadBytes(4)
-			port := m.Reader.ReadUint16()
 
 			for _, v := range pendingMigrations {
-				if v.CharID == charID && bytes.Equal(v.IP, ip) && v.Port == port {
+				if v == charID {
 					m.ReturnChan <- []byte{0x1}
 					continue
 				}
@@ -113,7 +103,10 @@ func handleLoginPacket(conn *Connection, reader gopacket.Reader) {
 	LoginServerMsg <- reader.GetBuffer()
 }
 
-func ValidateMigration(check gopacket.Packet) bool {
+func ValidateMigration(charID uint32) bool {
+	check := gopacket.NewPacket()
+	check.WriteUint32(charID)
+
 	result := make(chan gopacket.Packet)
 	InternalMsg <- connection.NewMessage(check, result)
 	validMigration := <-result

@@ -94,8 +94,6 @@ func SendMigrationInfo(ip []byte, port uint16) gopacket.Packet {
 
 func sendMigrationToChan(ip []byte, port uint16, charID int32) gopacket.Packet {
 	p := gopacket.NewPacket()
-	p.WriteBytes(ip)
-	p.WriteUint16(port)
 	p.WriteInt32(charID)
 
 	return p

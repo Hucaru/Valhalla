@@ -5,7 +5,6 @@ import (
 	"encoding/hex"
 	"log"
 	"math"
-	"net"
 	"strings"
 
 	"github.com/Hucaru/Valhalla/channelServer/handlers/login"
@@ -56,15 +55,9 @@ func handlePlayerSendAllChat(reader gopacket.Reader, conn *Connection) {
 func handlePlayerLoad(reader gopacket.Reader, conn *Connection) {
 	charID := reader.ReadUint32() // validate this and net address from the migration packet
 
-	network := conn.GetClientIPPort()
-
-	check := gopacket.NewPacket()
-	check.WriteUint32(charID)
-	check.WriteBytes(network.(*net.TCPAddr).IP)
-	check.WriteUint16(uint16(network.(*net.TCPAddr).Port))
-
-	if !login.ValidateMigration(check) {
-		log.Println("Invalid migration from:", network, "with char id:", charID)
+	if !login.ValidateMigration(charID) {
+		log.Println("Invalid migration char id:", charID)
+		conn.Close()
 	}
 
 	char := character.GetCharacter(charID)
