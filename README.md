@@ -10,12 +10,8 @@ Practice at writting golang tcp server using the old Maplestory MMORPG client (v
 - Accept pre-registered worlds
 
 ### Channel server
-- Can get in game with static packet
+- Can get in game with static packet entry packet
 - GM command for sending client packets
 - Read in Data.wz
 - Set up handlers for various systems e.g maps
 - Get packet structures
-
-![Alt text](/images/server_select.png?raw=true "Server select")
-
-![Alt text](/images/character_select.png?raw=true "Character select")
