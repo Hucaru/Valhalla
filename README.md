@@ -3,6 +3,7 @@ Practice at writting golang tcp server using the old Maplestory MMORPG client (v
 
 ## TODO:
 - Go through and change all packet write, reads to uint variants
+- Figure out why login server is not sending migration information
 ### World Server
 - Server sometimes fails to re-connect to dropped login.
 - Need to send dropped login previous world id

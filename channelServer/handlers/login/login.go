@@ -1,6 +1,7 @@
 package login
 
 import (
+	"bytes"
 	"log"
 	"net"
 	"time"
@@ -13,9 +14,13 @@ import (
 var connected chan bool
 
 var LoginServer chan connection.Message
+var LoginServerMsg chan gopacket.Packet
+var InternalMsg chan connection.Message
 
 func Handle(port uint16, validWorld chan bool) {
 	LoginServer = make(chan connection.Message)
+	LoginServerMsg = make(chan gopacket.Packet)
+	InternalMsg = make(chan connection.Message)
 	connected = make(chan bool)
 	<-validWorld
 
@@ -41,7 +46,7 @@ func Handle(port uint16, validWorld chan bool) {
 		go manager(loginConnection, port, savedWorldID, savedChannelID, useSavedIDs)
 
 		go connection.HandleNewConnection(loginConnection, func(p gopacket.Reader) {
-			handleWorldPacket(loginConnection, p)
+			handleLoginPacket(loginConnection, p)
 		}, constants.INTERSERVER_HEADER_SIZE, false)
 
 		<-connected
@@ -59,22 +64,64 @@ func manager(conn *Connection, port uint16, worldID byte, channelID byte, useSav
 		conn.SetWorldID(worldID)
 		conn.SetChannelID(channelID)
 		log.Println("Re-registered with login server using old IDs:", worldID, "-", channelID)
+	} else {
+		m := <-LoginServer
+		reader := m.Reader
+		conn.SetWorldID(reader.ReadByte())
+		conn.SetChannelID(reader.ReadByte())
+		conn.Write(sendID(conn.GetWorldID(), conn.GetchannelID(), 1, []byte{192, 168, 1, 117}, port))
 	}
 
-	m := <-LoginServer
-	reader := m.Reader
-	conn.SetWorldID(reader.ReadByte())
-	conn.SetChannelID(reader.ReadByte())
-	conn.Write(sendID(conn.GetWorldID(), conn.GetchannelID(), 1, []byte{192, 168, 1, 117}, port))
-	for {
+	type pendingConns struct {
+		IP     []byte
+		Port   uint16
+		CharID uint32
+	}
 
+	var pendingMigrations []pendingConns
+
+	for {
+		select {
+		case m := <-LoginServerMsg:
+			reader := gopacket.NewReader(&m)
+			pendingMigrations = append(pendingMigrations, pendingConns{IP: reader.ReadBytes(4),
+				Port:   reader.ReadUint16(),
+				CharID: reader.ReadUint32()})
+
+			log.Println("Migration information received for character id:", pendingMigrations[len(pendingMigrations)-1].CharID)
+		case m := <-InternalMsg:
+			charID := m.Reader.ReadUint32()
+			ip := m.Reader.ReadBytes(4)
+			port := m.Reader.ReadUint16()
+
+			for _, v := range pendingMigrations {
+				if v.CharID == charID && bytes.Equal(v.IP, ip) && v.Port == port {
+					m.ReturnChan <- []byte{0x1}
+					continue
+				}
+			}
+
+			m.ReturnChan <- []byte{0x0}
+
+		default:
+		}
 	}
 }
 
-func handleWorldPacket(conn *Connection, reader gopacket.Reader) {
-	switch reader.ReadByte() {
+func handleLoginPacket(conn *Connection, reader gopacket.Reader) {
+	log.Println("Received message from login server")
+	LoginServerMsg <- reader.GetBuffer()
+}
 
-	default:
-		log.Println("UNKOWN PACKET FROM LOGIN SERVER:", reader)
+func ValidateMigration(check gopacket.Packet) bool {
+	result := make(chan gopacket.Packet)
+	InternalMsg <- connection.NewMessage(check, result)
+	validMigration := <-result
+	r := gopacket.NewReader(&validMigration)
+
+	if r.ReadByte() == 0x01 {
+		return true
 	}
+
+	return false
 }

@@ -88,3 +88,7 @@ func (c *Connection) SetWorldID(val uint32) {
 func (c *Connection) GetWorldID() uint32 {
 	return c.worldID
 }
+
+func (c *Connection) GetClientIPPort() net.Addr {
+	return c.conn.GetClientIPPort()
+}

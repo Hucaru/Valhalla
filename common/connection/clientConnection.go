@@ -80,6 +80,10 @@ func (handle *ClientConnection) Read(p gopacket.Packet) error {
 	return err
 }
 
+func (handle *ClientConnection) GetClientIPPort() net.Addr {
+	return handle.conn.RemoteAddr()
+}
+
 func sendHandshake(client *ClientConnection) error {
 	packet := gopacket.NewPacket()
 

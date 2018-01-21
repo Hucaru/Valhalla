@@ -5,8 +5,10 @@ import (
 	"encoding/hex"
 	"log"
 	"math"
+	"net"
 	"strings"
 
+	"github.com/Hucaru/Valhalla/channelServer/handlers/login"
 	"github.com/Hucaru/Valhalla/common/character"
 	"github.com/Hucaru/Valhalla/common/constants"
 	"github.com/Hucaru/gopacket"
@@ -16,8 +18,6 @@ func HandlePacket(conn *Connection, reader gopacket.Reader) {
 	opcode := reader.ReadByte()
 
 	switch opcode {
-	case constants.RECV_CHANNEL_CLIENT_MIGRATION:
-		handleServerJoin(reader, conn)
 	case constants.RECV_CHANNEL_PLAYER_LOAD:
 		handlePlayerLoad(reader, conn)
 	case constants.RECV_CHANNEL_MOVEMENT:
@@ -53,19 +53,19 @@ func handlePlayerSendAllChat(reader gopacket.Reader, conn *Connection) {
 	}
 }
 
-func handleServerJoin(reader gopacket.Reader, conn *Connection) {
-	log.Println(reader.GetBuffer())
-
-	pac := gopacket.NewPacket()
-	pac.WriteByte(0x0B)
-	pac.WriteByte(1)
-	pac.WriteBytes([]byte{192, 168, 1, 117})
-	pac.WriteInt16(8684)
-	conn.Write(pac)
-}
-
 func handlePlayerLoad(reader gopacket.Reader, conn *Connection) {
-	charID := reader.ReadUint32()
+	charID := reader.ReadUint32() // validate this and net address from the migration packet
+
+	network := conn.GetClientIPPort()
+
+	check := gopacket.NewPacket()
+	check.WriteUint32(charID)
+	check.WriteBytes(network.(*net.TCPAddr).IP)
+	check.WriteUint16(uint16(network.(*net.TCPAddr).Port))
+
+	if !login.ValidateMigration(check) {
+		log.Println("Invalid migration from:", network, "with char id:", charID)
+	}
 
 	char := character.GetCharacter(charID)
 
@@ -130,11 +130,9 @@ func handlePlayerLoad(reader gopacket.Reader, conn *Connection) {
 	// Cash items / equip covers -150 to -101 maybe?
 
 	for _, v := range char.Items {
-		log.Println(v.SlotID)
 		if v.SlotID < 0 {
 			// Equips
 			pac.WriteByte(byte(math.Abs(float64(v.SlotID))))
-			log.Println(byte(math.Abs(float64(v.SlotID))))
 			pac.WriteByte(byte(v.ItemID / 1000000))
 			pac.WriteUint32(v.ItemID)
 			pac.WriteByte(0) // not a cash item, switch to 1 if it is
