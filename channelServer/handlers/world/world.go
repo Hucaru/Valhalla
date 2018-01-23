@@ -100,10 +100,17 @@ func manager(conn *Connection, validWorld chan bool, worldID byte, channelID byt
 }
 
 func handleWorldPacket(conn *Connection, reader gopacket.Reader) {
-	switch reader.ReadByte() {
-	case constants.CHANNEL_REQUEST_ID:
-		worldServer <- connection.NewMessage(reader.GetBuffer(), nil)
-	default:
-		log.Println("UNKOWN PACKET FROM WORLD SERVER:", reader)
-	}
+	worldServer <- connection.NewMessage(reader.GetBuffer(), nil)
+}
+
+func GetAssignedIDs() (byte, byte) {
+	msg := make(chan gopacket.Packet)
+	InterServer <- connection.NewMessage([]byte{constants.CHANNEL_GET_INTERNAL_IDS}, msg)
+	result := <-msg
+
+	r := gopacket.NewReader(&result)
+	world := r.ReadByte()
+	channel := r.ReadByte() - 1
+
+	return world, channel
 }

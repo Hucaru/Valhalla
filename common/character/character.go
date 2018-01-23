@@ -39,11 +39,11 @@ type Character struct {
 	EtcSlotSize     byte
 	CashSlotSize    byte
 
-	Items []Item
+	Equips []Equip
 }
 
 // Items struct
-type Item struct {
+type Equip struct {
 	ItemID       uint32
 	SlotID       int32
 	UpgradeSlots byte
@@ -111,18 +111,20 @@ func GetCharacter(charID uint32) Character {
 	return newChar
 }
 
-func GetCharacterItems(charID uint32) []Item {
+func GetCharacterItems(charID uint32) []Equip {
 	filter := "itemID,slotNumber,upgradeSlots,level,str,dex,intt,luk,hp,mp,watk,matk,wdef,mdef,accuracy,avoid,hands,speed,jump,expireTime"
-	row, err := connection.Db.Query("SELECT "+filter+" FROM items WHERE characterID=?", charID)
+	row, err := connection.Db.Query("SELECT "+filter+" FROM equips WHERE characterID=?", charID)
 
 	if err != nil {
 		panic(err)
 	}
 
-	var items []Item
+	var items []Equip
+
+	defer row.Close()
 
 	for row.Next() {
-		var item Item
+		var item Equip
 
 		row.Scan(&item.ItemID,
 			&item.SlotID,
@@ -205,19 +207,19 @@ func GetCharacters(userID uint32, worldID uint32) []Character {
 			panic(err)
 		}
 
-		items, err := connection.Db.Query("SELECT itemID, slotNumber FROM items WHERE characterID=?", newChar.CharID)
+		equips, err := connection.Db.Query("SELECT itemID, slotNumber FROM equips WHERE characterID=?", newChar.CharID)
 
 		if err != nil {
 			panic(err)
 		}
 
-		defer items.Close()
+		defer equips.Close()
 
-		for items.Next() {
-			var item Item
+		for equips.Next() {
+			var equip Equip
 
-			items.Scan(&item.ItemID, &item.SlotID)
-			newChar.Items = append(newChar.Items, item)
+			equips.Scan(&equip.ItemID, &equip.SlotID)
+			newChar.Equips = append(newChar.Equips, equip)
 		}
 
 		characters = append(characters, newChar)

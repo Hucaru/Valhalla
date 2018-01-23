@@ -121,7 +121,9 @@ func handleLoginRequest(reader gopacket.Reader, conn *Connection) {
 		conn.SetAdmin(byte(0x01) == isAdmin)
 		conn.SetUserID(userID)
 		conn.SetIsLogedIn(true)
-		_, err = connection.Db.Query("UPDATE users set isLogedIn=1 WHERE userID=?", userID)
+		records, err := connection.Db.Query("UPDATE users set isLogedIn=1 WHERE userID=?", userID)
+
+		defer records.Close()
 
 		if err != nil {
 			log.Println("Database error with approving login of userID", userID, err)
@@ -319,12 +321,21 @@ func handleDeleteCharacter(reader gopacket.Reader, conn *Connection) {
 	}
 
 	if dob == storedDob {
-		_, err = connection.Db.Query("DELETE FROM items where characterID=?", charID)
-		_, err = connection.Db.Query("DELETE FROM characters where id=?", charID)
+		records, err := connection.Db.Query("DELETE FROM items where characterID=?", charID)
 
 		if err != nil {
 			panic(err.Error())
 		}
+
+		records.Close()
+
+		records, err = connection.Db.Query("DELETE FROM characters where id=?", charID)
+
+		if err != nil {
+			panic(err.Error())
+		}
+
+		records.Close()
 
 		deleted = true
 	}

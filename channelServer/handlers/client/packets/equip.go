@@ -7,7 +7,7 @@ import (
 	"github.com/Hucaru/gopacket"
 )
 
-func AddEquip(item character.Item) gopacket.Packet {
+func AddEquip(item character.Equip) gopacket.Packet {
 	p := gopacket.NewPacket()
 
 	if item.SlotID < -100 {
@@ -20,7 +20,7 @@ func AddEquip(item character.Item) gopacket.Packet {
 
 	if item.SlotID < -100 {
 		p.WriteByte(1)                     // is cash item
-		p.WriteUint64(uint64(item.ItemID)) // ? some form of id
+		p.WriteUint64(uint64(item.ItemID)) // ? some form of id this seems to work
 	} else {
 		p.WriteByte(0) // not cash item
 	}

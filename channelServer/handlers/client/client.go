@@ -60,15 +60,17 @@ func handlePlayerLoad(reader gopacket.Reader, conn *Connection) {
 		conn.Close()
 	}
 
+	_, channelID := world.GetAssignedIDs()
+
 	char := character.GetCharacter(charID)
 
 	conn.SetAdmin(true)
 
 	pac := gopacket.NewPacket()
 	pac.WriteByte(constants.SEND_CHANNEL_WARP_TO_MAP)
-	pac.WriteInt32(0) // Channel ID
-	pac.WriteByte(1)  // 0 portals
-	pac.WriteByte(1)  // Is connecting
+	pac.WriteUint32(uint32(channelID)) // Channel ID
+	pac.WriteByte(1)                   // 0 portals
+	pac.WriteByte(1)                   // Is connecting
 
 	randomBytes := make([]byte, 4)
 	_, err := rand.Read(randomBytes)
@@ -80,7 +82,7 @@ func handlePlayerLoad(reader gopacket.Reader, conn *Connection) {
 	pac.WriteBytes(randomBytes)
 	pac.WriteBytes(randomBytes)
 	pac.WriteBytes(randomBytes)
-	pac.WriteBytes([]byte{0xFF, 0xFF})   // ??
+	pac.WriteBytes([]byte{0xFF, 0xFF})   // seperators? For what?
 	pac.WriteUint32(charID)              // charid
 	pac.WritePaddedString(char.Name, 13) // name
 	pac.WriteByte(char.Gender)           // Gender
@@ -108,19 +110,19 @@ func handlePlayerLoad(reader gopacket.Reader, conn *Connection) {
 	pac.WriteUint32(char.CurrentMap)  //definitly map ID
 	pac.WriteByte(char.CurrentMapPos) // map pos
 
-	pac.WriteByte(5) // budy list size?
+	pac.WriteByte(20) // budy list size?
 	pac.WriteUint32(char.Mesos)
 
-	pac.WriteByte(255) // Equip inv size
-	pac.WriteByte(255) // User inv size
-	pac.WriteByte(255) // Setup inv size
-	pac.WriteByte(255) // Etc inv size
-	pac.WriteByte(255) // Cash inv size
+	pac.WriteByte(char.EquipSlotSize) // Equip inv size
+	pac.WriteByte(char.UsetSlotSize)  // User inv size
+	pac.WriteByte(char.SetupSlotSize) // Setup inv size
+	pac.WriteByte(char.EtcSlotSize)   // Etc inv size
+	pac.WriteByte(char.CashSlotSize)  // Cash inv size
 
-	char.Items = character.GetCharacterItems(charID)
+	char.Equips = character.GetCharacterItems(charID)
 
 	// Equips -50 -> -1 normal equips
-	for _, v := range char.Items {
+	for _, v := range char.Equips {
 		if v.SlotID < 0 && v.SlotID > -20 {
 			pac.WriteBytes(packets.AddEquip(v))
 		}
@@ -129,13 +131,60 @@ func handlePlayerLoad(reader gopacket.Reader, conn *Connection) {
 	pac.WriteByte(0)
 
 	// Cash item equip covers -150 to -101 maybe?
-	for _, v := range char.Items {
+	for _, v := range char.Equips {
 		if v.SlotID < -100 {
 			pac.WriteBytes(packets.AddEquip(v))
 		}
 	}
 
 	pac.WriteByte(0)
+	for _, v := range char.Equips {
+		if v.SlotID > -1 {
+			pac.WriteBytes(packets.AddEquip(v))
+		}
+	}
+	pac.WriteByte(0)
+
+	// use
+	pac.WriteByte(1)         // slot id (i.e. use, set-up, etc, cash)
+	pac.WriteByte(2)         // itemID / 1000000 (2 for use, 3 for setup, 4 for etc, 5 for cash)
+	pac.WriteUint32(2070006) //  itemID
+	pac.WriteUint16(0)
+	pac.WriteUint32(0)
+	pac.WriteByte(0)
+	pac.WriteByte(0)
+	pac.WriteByte(0)
+	pac.WriteUint16(200) // amount
+	pac.WriteByte(0)
+	pac.WriteInt16(0)
+	pac.WriteByte(0) // seperator
+
+	// use
+	pac.WriteByte(2)         // slot id (i.e. use, set-up, etc, cash)
+	pac.WriteByte(2)         // itemID / 1000000 (2 for use, 3 for setup, 4 for etc, 5 for cash)
+	pac.WriteUint32(2000003) //  itemID
+	pac.WriteUint16(0)
+	pac.WriteUint32(0)
+	pac.WriteByte(0)
+	pac.WriteByte(0)
+	pac.WriteByte(0)
+	pac.WriteUint16(200) // amount
+	pac.WriteByte(0)
+	pac.WriteInt16(0)
+	pac.WriteByte(0) // seperator
+
+	// etc
+	// pac.WriteByte(1) // slot id (i.e. use, set-up, etc, cash)
+	// pac.WriteByte(4) // itemID / 1000000 (2 for use, 3 for setup, 4 for etc, 5 for cash)
+	// pac.WriteUint32(4000000) //  itemID
+	// pac.WriteUint16(0)
+	// pac.WriteUint32(0)
+	// pac.WriteByte(0)
+	// pac.WriteByte(0)
+	// pac.WriteUint16(0) // amount
+	// pac.WriteByte(0)
+	// pac.WriteInt16(0)
+	// pac.WriteByte(0) // seperator
 
 	pac.WriteInt64(0)
 	pac.WriteInt64(0)
@@ -176,17 +225,28 @@ func handlePlayerLoad(reader gopacket.Reader, conn *Connection) {
 }
 
 func validateNewConnection(charID uint32) bool {
-	var migratingWorldID, migratingChannelID byte
+	var migratingWorldID, migratingChannelID int8
 	err := connection.Db.QueryRow("SELECT isMigratingWorld,isMigratingChannel FROM characters where id=?", charID).Scan(&migratingWorldID, &migratingChannelID)
+
+	if err != nil {
+		panic(err.Error())
+	}
+
+	if migratingWorldID < 0 || migratingChannelID < 0 {
+
+		return false
+	}
 
 	msg := make(chan gopacket.Packet)
 	world.InterServer <- connection.NewMessage([]byte{constants.CHANNEL_GET_INTERNAL_IDS}, msg)
 	result := <-msg
 	r := gopacket.NewReader(&result)
 
-	if r.ReadByte() != migratingWorldID && r.ReadByte() != migratingChannelID {
+	if r.ReadByte() != byte(migratingWorldID) && r.ReadByte() != byte(migratingChannelID) {
 		log.Println("Received invalid migration info for character", charID, "remote hacking")
-		_, err = connection.Db.Query("UPDATE characters set migratingWorldID=?, migratingChannelID=? WHERE id=?", -1, -1, charID)
+		records, err := connection.Db.Query("UPDATE characters set migratingWorldID=?, migratingChannelID=? WHERE id=?", -1, -1, charID)
+
+		defer records.Close()
 
 		if err != nil {
 			panic(err.Error())

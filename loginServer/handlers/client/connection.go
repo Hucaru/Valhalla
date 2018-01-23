@@ -34,7 +34,9 @@ func (c *Connection) Read(p gopacket.Packet) error {
 
 func (c *Connection) Close() {
 	if c.isLogedIn {
-		_, err := connection.Db.Query("UPDATE users set isLogedIn=0 WHERE userID=?", c.userID)
+		records, err := connection.Db.Query("UPDATE users set isLogedIn=0 WHERE userID=?", c.userID)
+
+		defer records.Close()
 
 		if err != nil {
 			log.Println("Error in auto log out of user on disconnect, userID:", c.userID)

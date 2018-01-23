@@ -184,27 +184,39 @@ func writePlayerCharacter(pac *gopacket.Packet, pos int, character character.Cha
 	pac.WriteByte(character.Gender) // gender
 	pac.WriteByte(character.Skin)   // skin
 	pac.WriteUint32(character.Face) // face
-	pac.WriteByte(0x0)              // ?
+	pac.WriteByte(0x00)             // ?
 	pac.WriteUint32(character.Hair) // hair
 
-	for _, b := range character.Items {
+	cashWeapon := uint32(0)
+
+	for _, b := range character.Equips {
 		if b.SlotID < 0 && b.SlotID > -20 {
 			pac.WriteByte(byte(math.Abs(float64(b.SlotID))))
 			pac.WriteUint32(b.ItemID)
 		}
 	}
 
-	for _, b := range character.Items {
+	for _, b := range character.Equips {
 		if b.SlotID < -100 {
-			pac.WriteByte(byte(math.Abs(float64(b.SlotID + 100))))
-			pac.WriteUint32(b.ItemID)
+			if b.SlotID == -111 {
+				cashWeapon = b.ItemID
+			} else {
+				pac.WriteByte(byte(math.Abs(float64(b.SlotID + 100))))
+				pac.WriteUint32(b.ItemID)
+			}
 		}
 	}
 
 	pac.WriteByte(0xFF)
+	// Another set of items go here? if anything. double 0xFF seems weird. I would imagine it is some sort of seperator each
 	pac.WriteByte(0xFF)
+	pac.WriteUint32(cashWeapon)
 
-	pac.WriteByte(0)  // Rankings
+	pac.WriteByte(1)  // Rankings
+	pac.WriteInt32(1) // ?
+	pac.WriteInt32(2) // ?
+	pac.WriteInt32(3) // ?
+	pac.WriteInt32(4) // ?
 	pac.WriteInt32(5) // ?
-	pac.WriteInt32(1) // world old
+	pac.WriteInt32(6) // ?
 }
