@@ -166,7 +166,7 @@ func writePlayerCharacter(pac *gopacket.Packet, pos int, character character.Cha
 	pac.WriteUint16(character.Job)   // Job
 	pac.WriteUint16(character.Str)   // str
 	pac.WriteUint16(character.Dex)   // dex
-	pac.WriteUint16(character.Int)   // int
+	pac.WriteUint16(character.Intt)  // int
 	pac.WriteUint16(character.Luk)   // luk
 	pac.WriteUint16(character.HP)    // hp
 	pac.WriteUint16(character.MaxHP) // max hp
@@ -187,15 +187,14 @@ func writePlayerCharacter(pac *gopacket.Packet, pos int, character character.Cha
 	pac.WriteByte(0x0)              // ?
 	pac.WriteUint32(character.Hair) // hair
 
-	// hidden equip - byte for type id , int for value
-
-	// shown equip - byte for type id , int for value
-
 	for _, b := range character.Items {
-		if b.SlotID < 0 {
+		if b.SlotID < 0 && b.SlotID > -20 {
 			pac.WriteByte(byte(math.Abs(float64(b.SlotID))))
 			pac.WriteUint32(b.ItemID)
 		}
+	}
+
+	for _, b := range character.Items {
 		if b.SlotID < -100 {
 			pac.WriteByte(byte(math.Abs(float64(b.SlotID + 100))))
 			pac.WriteUint32(b.ItemID)
@@ -205,7 +204,7 @@ func writePlayerCharacter(pac *gopacket.Packet, pos int, character character.Cha
 	pac.WriteByte(0xFF)
 	pac.WriteByte(0xFF)
 
-	pac.WriteByte(1)  // Rankings
-	pac.WriteInt32(0) // ?
-	pac.WriteInt32(0) // world old
+	pac.WriteByte(0)  // Rankings
+	pac.WriteInt32(5) // ?
+	pac.WriteInt32(1) // world old
 }

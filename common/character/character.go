@@ -18,7 +18,7 @@ type Character struct {
 	Job             uint16
 	Str             uint16
 	Dex             uint16
-	Int             uint16
+	Intt            uint16
 	Luk             uint16
 	HP              uint16
 	MaxHP           uint16
@@ -68,7 +68,11 @@ type Item struct {
 
 func GetCharacter(charID uint32) Character {
 	var newChar Character
-	err := connection.Db.QueryRow("SELECT * FROM characters where id=?", charID).Scan(&newChar.CharID,
+	filter := "id,userID,worldID,name,gender,skin,hair,face,level,job,str,dex,intt," +
+		"luk,hp,maxHP,mp,maxMP,ap,sp, exp,fame,mapID,mapPos,previousMapID,mesos," +
+		"equipSlotSize,useSlotSize,setupSlotSize,etcSlotSize,cashSlotSize"
+
+	err := connection.Db.QueryRow("SELECT "+filter+" FROM characters where id=?", charID).Scan(&newChar.CharID,
 		&newChar.UserID,
 		&newChar.WorldID,
 		&newChar.Name,
@@ -80,7 +84,7 @@ func GetCharacter(charID uint32) Character {
 		&newChar.Job,
 		&newChar.Str,
 		&newChar.Dex,
-		&newChar.Int,
+		&newChar.Intt,
 		&newChar.Luk,
 		&newChar.HP,
 		&newChar.MaxHP,
@@ -148,7 +152,11 @@ func GetCharacterItems(charID uint32) []Item {
 }
 
 func GetCharacters(userID uint32, worldID uint32) []Character {
-	chars, err := connection.Db.Query("SELECT * FROM characters WHERE userID=? AND worldID=?", userID, worldID)
+	filter := "id,userID,worldID,name,gender,skin,hair,face,level,job,str,dex,intt," +
+		"luk,hp,maxHP,mp,maxMP,ap,sp, exp,fame,mapID,mapPos,previousMapID,mesos," +
+		"equipSlotSize,useSlotSize,setupSlotSize,etcSlotSize,cashSlotSize"
+
+	chars, err := connection.Db.Query("SELECT "+filter+" FROM characters WHERE userID=? AND worldID=?", userID, worldID)
 
 	if err != nil {
 		panic(err)
@@ -173,7 +181,7 @@ func GetCharacters(userID uint32, worldID uint32) []Character {
 			&newChar.Job,
 			&newChar.Str,
 			&newChar.Dex,
-			&newChar.Int,
+			&newChar.Intt,
 			&newChar.Luk,
 			&newChar.HP,
 			&newChar.MaxHP,

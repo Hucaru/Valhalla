@@ -11,11 +11,9 @@ import (
 )
 
 var ChannelServer chan connection.Message
-var ChannelSender chan connection.Message
 
 func StartListening() {
 	ChannelServer = make(chan connection.Message)
-	ChannelSender = make(chan connection.Message)
 
 	listener, err := net.Listen("tcp", "0.0.0.0"+":"+"8486")
 
@@ -36,19 +34,11 @@ func StartListening() {
 		defer conn.Close()
 
 		channelConnection := newConnection(conn)
-		go sendToChannel(channelConnection)
 
 		log.Println("New channel connection from", channelConnection)
 		go connection.HandleNewConnection(channelConnection, func(p gopacket.Reader) {
 			handlechannelPacket(channelConnection, p)
 		}, constants.INTERSERVER_HEADER_SIZE, false)
-	}
-}
-
-func sendToChannel(conn *Connection) { // Receive channel registration id, filter migration info to relevant id
-	for {
-		m := <-ChannelSender
-		conn.Write(m.Reader.GetBuffer())
 	}
 }
 

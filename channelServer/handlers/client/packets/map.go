@@ -1,4 +1,4 @@
-package packet
+package packets
 
 import (
 	"github.com/Hucaru/Valhalla/common/constants"

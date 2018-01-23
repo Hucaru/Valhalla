@@ -207,6 +207,18 @@ func handleLoginRequestMigration(reader gopacket.Reader, worlds []worldData, ret
 	charID := reader.ReadInt32()
 	ch := worlds[int(worldID)].Channels[int(channelID)]
 
-	channel.ChannelSender <- connection.NewMessage(sendMigrationToChan(ch.IP, constants.CHANNEL_MIGRATION_PORT, charID), nil)
+	var migratingWorldID, migratingChannelID int8
+	err := connection.Db.QueryRow("SELECT isMigratingWorld,isMigratingChannel FROM characters where id=?", charID).Scan(&migratingWorldID, &migratingChannelID)
+
+	if err != nil {
+		panic(err.Error())
+	}
+
+	if migratingWorldID > -1 && migratingChannelID > -1 {
+		log.Println(charID, "Is trying to enter the game when already logged in", worldID, ":", channelID)
+	}
+
+	_, err = connection.Db.Query("UPDATE characters set migratingWorldID=?, migratingChannelID=? WHERE id=?", migratingWorldID, migratingChannelID, charID)
+
 	returnChan <- SendMigrationInfo(ch.IP, ch.Port)
 }

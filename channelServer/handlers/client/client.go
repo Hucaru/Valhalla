@@ -4,10 +4,12 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"log"
-	"math"
 	"strings"
 
+	"github.com/Hucaru/Valhalla/channelServer/handlers/client/packets"
+	"github.com/Hucaru/Valhalla/channelServer/handlers/world"
 	"github.com/Hucaru/Valhalla/common/character"
+	"github.com/Hucaru/Valhalla/common/connection"
 	"github.com/Hucaru/Valhalla/common/constants"
 	"github.com/Hucaru/gopacket"
 )
@@ -54,10 +56,9 @@ func handlePlayerSendAllChat(reader gopacket.Reader, conn *Connection) {
 func handlePlayerLoad(reader gopacket.Reader, conn *Connection) {
 	charID := reader.ReadUint32() // validate this and net address from the migration packet
 
-	// if !login.ValidateMigration(charID) {
-	// 	log.Println("Invalid migration char id:", charID)
-	// 	conn.Close()
-	// }
+	if !validateNewConnection(charID) {
+		conn.Close()
+	}
 
 	char := character.GetCharacter(charID)
 
@@ -93,7 +94,7 @@ func handlePlayerLoad(reader gopacket.Reader, conn *Connection) {
 	pac.WriteUint16(char.Job)   // Jobid
 	pac.WriteUint16(char.Str)   //charc.str
 	pac.WriteUint16(char.Dex)   //charc.dex
-	pac.WriteUint16(char.Int)   //charc.intt
+	pac.WriteUint16(char.Intt)  //charc.intt
 	pac.WriteUint16(char.Luk)   //charc.luk
 	pac.WriteUint16(char.HP)    //charc.hp);
 	pac.WriteUint16(char.MaxHP) //charc.mhp //Needs to be set to Original MAX HP before using hyperbody.
@@ -119,50 +120,22 @@ func handlePlayerLoad(reader gopacket.Reader, conn *Connection) {
 	char.Items = character.GetCharacterItems(charID)
 
 	// Equips -50 -> -1 normal equips
-	// Cash items / equip covers -150 to -101 maybe?
-
-	for i, v := range char.Items {
-		if v.SlotID < 0 {
-			// Equips
-			if v.SlotID < -100 {
-				pac.WriteByte(byte(math.Abs(float64(v.SlotID + 100))))
-			} else {
-				pac.WriteByte(byte(math.Abs(float64(v.SlotID))))
-			}
-			pac.WriteByte(byte(v.ItemID / 1000000))
-			pac.WriteUint32(v.ItemID)
-
-			if v.SlotID < -100 {
-				pac.WriteByte(1)           // is cash item
-				pac.WriteUint64(uint64(i)) // ? some form of id
-			} else {
-				pac.WriteByte(0) // not cash item
-			}
-			pac.WriteUint64(v.ExpireTime)
-			pac.WriteByte(v.UpgradeSlots)
-			pac.WriteByte(v.Level)
-			pac.WriteUint16(v.Str)
-			pac.WriteUint16(v.Dex)
-			pac.WriteUint16(v.Intt)
-			pac.WriteUint16(v.Luk)
-			pac.WriteUint16(v.HP)
-			pac.WriteUint16(v.MP)
-			pac.WriteUint16(v.Watk)
-			pac.WriteUint16(v.Matk)
-			pac.WriteUint16(v.Wdef)
-			pac.WriteUint16(v.Mdef)
-			pac.WriteUint16(v.Accuracy)
-			pac.WriteUint16(v.Avoid)
-			pac.WriteUint16(v.Hands)
-			pac.WriteUint16(v.Speed)
-			pac.WriteUint16(v.Jump)
-			pac.WriteInt32(0)
-		} else {
-			// Inventory items
+	for _, v := range char.Items {
+		if v.SlotID < 0 && v.SlotID > -20 {
+			pac.WriteBytes(packets.AddEquip(v))
 		}
 	}
 
-	// Cash items / equip covers -150 to -101
+	pac.WriteByte(0)
+
+	// Cash item equip covers -150 to -101 maybe?
+	for _, v := range char.Items {
+		if v.SlotID < -100 {
+			pac.WriteBytes(packets.AddEquip(v))
+		}
+	}
+
+	pac.WriteByte(0)
 
 	pac.WriteInt64(0)
 	pac.WriteInt64(0)
@@ -200,4 +173,27 @@ func handlePlayerLoad(reader gopacket.Reader, conn *Connection) {
 	pac.WriteInt64(0)
 
 	conn.Write(pac)
+}
+
+func validateNewConnection(charID uint32) bool {
+	var migratingWorldID, migratingChannelID byte
+	err := connection.Db.QueryRow("SELECT isMigratingWorld,isMigratingChannel FROM characters where id=?", charID).Scan(&migratingWorldID, &migratingChannelID)
+
+	msg := make(chan gopacket.Packet)
+	world.InterServer <- connection.NewMessage([]byte{constants.CHANNEL_GET_INTERNAL_IDS}, msg)
+	result := <-msg
+	r := gopacket.NewReader(&result)
+
+	if r.ReadByte() != migratingWorldID && r.ReadByte() != migratingChannelID {
+		log.Println("Received invalid migration info for character", charID, "remote hacking")
+		_, err = connection.Db.Query("UPDATE characters set migratingWorldID=?, migratingChannelID=? WHERE id=?", -1, -1, charID)
+
+		if err != nil {
+			panic(err.Error())
+		}
+
+		return false
+	}
+
+	return true
 }

@@ -13,6 +13,7 @@ import (
 
 var connected chan bool
 var worldServer chan connection.Message
+var InterServer chan connection.Message
 
 func Handle(validWorld chan bool) {
 	connected = make(chan bool)
@@ -50,36 +51,50 @@ func Handle(validWorld chan bool) {
 
 func manager(conn *Connection, validWorld chan bool, worldID byte, channelID byte, useSaved bool) {
 	worldServer = make(chan connection.Message)
+	InterServer = make(chan connection.Message)
 
 	if useSaved {
 		conn.Write(sendSavedRegistration(channelID))
+		conn.SetWorldID(worldID)
+		conn.SetchannelID(channelID)
 		log.Println("Re-registered with world server using old id:", channelID)
 	} else {
 		conn.Write(sendRequestID())
 	}
 	for {
-		m := <-worldServer
-		reader := m.Reader
+		select {
+		case m := <-worldServer:
+			reader := m.Reader
 
-		switch reader.ReadByte() {
-		case constants.CHANNEL_REQUEST_ID:
-			worldID := reader.ReadByte()
-			channelID := reader.ReadByte()
+			switch reader.ReadByte() {
+			case constants.CHANNEL_REQUEST_ID:
+				worldID := reader.ReadByte()
+				channelID := reader.ReadByte()
 
-			conn.SetWorldID(worldID)
-			conn.SetchannelID(channelID)
+				conn.SetWorldID(worldID)
+				conn.SetchannelID(channelID)
 
-			log.Println("Assigned id:", worldID, "-", channelID)
+				log.Println("Assigned id:", worldID, "-", channelID)
 
-			validWorld <- true
+				validWorld <- true
 
-			p := gopacket.NewPacket()
-			p.WriteByte(worldID)
-			p.WriteByte(channelID)
+				p := gopacket.NewPacket()
+				p.WriteByte(worldID)
+				p.WriteByte(channelID)
 
-			login.LoginServer <- connection.NewMessage(p, nil)
-		default:
-			log.Println("UNKOWN MANAGER PACKET:", reader)
+				login.LoginServer <- connection.NewMessage(p, nil)
+			default:
+				log.Println("UNKOWN MANAGER PACKET:", reader)
+			}
+		case m := <-InterServer:
+			reader := m.Reader
+			switch reader.ReadByte() {
+			case constants.CHANNEL_GET_INTERNAL_IDS:
+				p := gopacket.NewPacket()
+				p.WriteByte(conn.GetWorldID())
+				p.WriteByte(conn.GetchannelID())
+				m.ReturnChan <- p
+			}
 		}
 	}
 }
