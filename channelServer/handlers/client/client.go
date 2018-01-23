@@ -7,7 +7,6 @@ import (
 	"math"
 	"strings"
 
-	"github.com/Hucaru/Valhalla/channelServer/handlers/login"
 	"github.com/Hucaru/Valhalla/common/character"
 	"github.com/Hucaru/Valhalla/common/constants"
 	"github.com/Hucaru/gopacket"
@@ -55,10 +54,10 @@ func handlePlayerSendAllChat(reader gopacket.Reader, conn *Connection) {
 func handlePlayerLoad(reader gopacket.Reader, conn *Connection) {
 	charID := reader.ReadUint32() // validate this and net address from the migration packet
 
-	if !login.ValidateMigration(charID) {
-		log.Println("Invalid migration char id:", charID)
-		conn.Close()
-	}
+	// if !login.ValidateMigration(charID) {
+	// 	log.Println("Invalid migration char id:", charID)
+	// 	conn.Close()
+	// }
 
 	char := character.GetCharacter(charID)
 
@@ -122,13 +121,23 @@ func handlePlayerLoad(reader gopacket.Reader, conn *Connection) {
 	// Equips -50 -> -1 normal equips
 	// Cash items / equip covers -150 to -101 maybe?
 
-	for _, v := range char.Items {
+	for i, v := range char.Items {
 		if v.SlotID < 0 {
 			// Equips
-			pac.WriteByte(byte(math.Abs(float64(v.SlotID))))
+			if v.SlotID < -100 {
+				pac.WriteByte(byte(math.Abs(float64(v.SlotID + 100))))
+			} else {
+				pac.WriteByte(byte(math.Abs(float64(v.SlotID))))
+			}
 			pac.WriteByte(byte(v.ItemID / 1000000))
 			pac.WriteUint32(v.ItemID)
-			pac.WriteByte(0) // not a cash item, switch to 1 if it is
+
+			if v.SlotID < -100 {
+				pac.WriteByte(1)           // is cash item
+				pac.WriteUint64(uint64(i)) // ? some form of id
+			} else {
+				pac.WriteByte(0) // not cash item
+			}
 			pac.WriteUint64(v.ExpireTime)
 			pac.WriteByte(v.UpgradeSlots)
 			pac.WriteByte(v.Level)

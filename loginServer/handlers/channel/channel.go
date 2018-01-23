@@ -45,7 +45,7 @@ func StartListening() {
 	}
 }
 
-func sendToChannel(conn *Connection) {
+func sendToChannel(conn *Connection) { // Receive channel registration id, filter migration info to relevant id
 	for {
 		m := <-ChannelSender
 		conn.Write(m.Reader.GetBuffer())

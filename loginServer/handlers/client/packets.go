@@ -196,6 +196,10 @@ func writePlayerCharacter(pac *gopacket.Packet, pos int, character character.Cha
 			pac.WriteByte(byte(math.Abs(float64(b.SlotID))))
 			pac.WriteUint32(b.ItemID)
 		}
+		if b.SlotID < -100 {
+			pac.WriteByte(byte(math.Abs(float64(b.SlotID + 100))))
+			pac.WriteUint32(b.ItemID)
+		}
 	}
 
 	pac.WriteByte(0xFF)
