@@ -18,6 +18,7 @@ func Handle(port uint16, validWorld chan bool) {
 	LoginServer = make(chan connection.Message)
 	LoginServerMsg = make(chan gopacket.Packet)
 	connected = make(chan bool)
+
 	<-validWorld
 
 	savedWorldID := byte(0xFF)
@@ -50,8 +51,10 @@ func Handle(port uint16, validWorld chan bool) {
 }
 
 func manager(conn *Connection, port uint16, worldID byte, channelID byte, useSaved bool) {
+	ip := getInterfaceIP()
+
 	if useSaved {
-		conn.Write(sendID(worldID, channelID, 1, []byte{192, 168, 1, 117}, port))
+		conn.Write(sendID(worldID, channelID, 1, ip, port))
 		conn.SetWorldID(worldID)
 		conn.SetChannelID(channelID)
 		log.Println("Re-registered with login server using old IDs:", worldID, "-", channelID)
@@ -60,6 +63,18 @@ func manager(conn *Connection, port uint16, worldID byte, channelID byte, useSav
 		reader := m.Reader
 		conn.SetWorldID(reader.ReadByte())
 		conn.SetChannelID(reader.ReadByte())
-		conn.Write(sendID(conn.GetWorldID(), conn.GetchannelID(), 1, []byte{192, 168, 1, 117}, port))
+		conn.Write(sendID(conn.GetWorldID(), conn.GetchannelID(), 1, ip, port))
 	}
+}
+
+func getInterfaceIP() net.IP {
+	conn, err := net.Dial("udp", "8.8.8.8:80")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer conn.Close()
+
+	localAddr := conn.LocalAddr().(*net.UDPAddr)
+
+	return localAddr.IP
 }
