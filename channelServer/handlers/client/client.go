@@ -138,53 +138,76 @@ func handlePlayerLoad(reader gopacket.Reader, conn *Connection) {
 	}
 
 	pac.WriteByte(0)
+
 	for _, v := range char.Equips {
 		if v.SlotID > -1 {
-			pac.WriteBytes(packets.AddEquip(v))
+			pac.WriteBytes(packets.AddEquip(v)) // there is a caveat for adding a cash item
 		}
 	}
+
 	pac.WriteByte(0)
 
 	// use
-	pac.WriteByte(1)         // slot id (i.e. use, set-up, etc, cash)
-	pac.WriteByte(2)         // itemID / 1000000 (2 for use, 3 for setup, 4 for etc, 5 for cash)
+	pac.WriteByte(1)         // slot id
+	pac.WriteByte(2)         // type of item e.g. equip, has amount, cash
 	pac.WriteUint32(2070006) //  itemID
+	pac.WriteByte(0)
+	pac.WriteUint64(150842304000000000) // expiration
+	pac.WriteUint16(200)                // amount
 	pac.WriteUint16(0)
-	pac.WriteUint32(0)
-	pac.WriteByte(0)
-	pac.WriteByte(0)
-	pac.WriteByte(0)
-	pac.WriteUint16(200) // amount
-	pac.WriteByte(0)
-	pac.WriteInt16(0)
-	pac.WriteByte(0) // seperator
+	pac.WriteUint16(0) // is it sealed
 
 	// use
-	pac.WriteByte(2)         // slot id (i.e. use, set-up, etc, cash)
-	pac.WriteByte(2)         // itemID / 1000000 (2 for use, 3 for setup, 4 for etc, 5 for cash)
+	pac.WriteByte(2)         // slot id
+	pac.WriteByte(2)         // type of item
 	pac.WriteUint32(2000003) //  itemID
-	pac.WriteUint16(0)
-	pac.WriteUint32(0)
 	pac.WriteByte(0)
-	pac.WriteByte(0)
-	pac.WriteByte(0)
+	pac.WriteUint64(15084230400000000)
 	pac.WriteUint16(200) // amount
+	pac.WriteUint16(0)
+	pac.WriteUint16(0) // is it sealed
+
+	pac.WriteByte(0) // Inventory tab move forward swap
+
+	pac.WriteByte(1)         // slot id
+	pac.WriteByte(2)         // type of item
+	pac.WriteUint32(3010000) //  itemID
 	pac.WriteByte(0)
-	pac.WriteInt16(0)
-	pac.WriteByte(0) // seperator
+	pac.WriteUint64(15084230400000000)
+	pac.WriteUint16(1) // amount
+	pac.WriteUint16(0)
+	pac.WriteUint16(0) // is it sealed
+
+	pac.WriteByte(0) // Inventory tab move forward swap
 
 	// etc
-	// pac.WriteByte(1) // slot id (i.e. use, set-up, etc, cash)
-	// pac.WriteByte(4) // itemID / 1000000 (2 for use, 3 for setup, 4 for etc, 5 for cash)
-	// pac.WriteUint32(4000000) //  itemID
-	// pac.WriteUint16(0)
-	// pac.WriteUint32(0)
-	// pac.WriteByte(0)
-	// pac.WriteByte(0)
-	// pac.WriteUint16(0) // amount
-	// pac.WriteByte(0)
-	// pac.WriteInt16(0)
-	// pac.WriteByte(0) // seperator
+	pac.WriteByte(1)         // slot id
+	pac.WriteByte(2)         // type of item
+	pac.WriteUint32(4000000) //  itemID
+	pac.WriteByte(0)
+	pac.WriteUint64(15084230400000000)
+	pac.WriteUint16(200) // amount
+	pac.WriteUint16(0)
+	pac.WriteUint16(0) // is it sealed
+
+	pac.WriteByte(0) // Inventory tab move forward swap
+
+	// cash pet item
+	pac.WriteByte(1)         // slot id
+	pac.WriteByte(3)         // Type of item (1 means it is an equip, 2 means has amount e.g. potion, 3 not sure)
+	pac.WriteUint32(5000004) //  itemID
+	pac.WriteByte(1)
+	pac.WriteUint64(5000004)
+	pac.WriteUint64(15252192000000000)
+	pac.WriteUint16(1) // amount
+	pac.WriteUint16(0)
+	pac.WriteUint16(0) // is it sealed?
+
+	pac.WriteByte(0)
+
+	pac.WriteUint16(1)       // number of skills
+	pac.WriteUint32(0001000) // three snails beginner skill
+	pac.WriteUint32(100)
 
 	pac.WriteInt64(0)
 	pac.WriteInt64(0)

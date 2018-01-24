@@ -18,7 +18,7 @@ func AddEquip(item character.Equip) gopacket.Packet {
 	p.WriteByte(byte(item.ItemID / 1000000))
 	p.WriteUint32(item.ItemID)
 
-	if item.SlotID < -100 {
+	if item.SlotID < -100 { // TODO:need to replce this with a isCashCheck once nx can be read
 		p.WriteByte(1)                     // is cash item
 		p.WriteUint64(uint64(item.ItemID)) // ? some form of id this seems to work
 	} else {
