@@ -64,6 +64,7 @@ type Equip struct {
 	Speed        uint16
 	Jump         uint16
 	ExpireTime   uint64
+	OwnerName    string
 }
 
 func GetCharacter(charID uint32) Character {
@@ -112,7 +113,7 @@ func GetCharacter(charID uint32) Character {
 }
 
 func GetCharacterItems(charID uint32) []Equip {
-	filter := "itemID,slotNumber,upgradeSlots,level,str,dex,intt,luk,hp,mp,watk,matk,wdef,mdef,accuracy,avoid,hands,speed,jump,expireTime"
+	filter := "itemID,slotNumber,upgradeSlots,level,str,dex,intt,luk,hp,mp,watk,matk,wdef,mdef,accuracy,avoid,hands,speed,jump,expireTime,ownerName"
 	row, err := connection.Db.Query("SELECT "+filter+" FROM equips WHERE characterID=?", charID)
 
 	if err != nil {
@@ -145,7 +146,8 @@ func GetCharacterItems(charID uint32) []Equip {
 			&item.Hands,
 			&item.Speed,
 			&item.Jump,
-			&item.ExpireTime)
+			&item.ExpireTime,
+			&item.OwnerName)
 
 		items = append(items, item)
 	}

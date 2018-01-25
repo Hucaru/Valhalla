@@ -42,6 +42,7 @@ func AddEquip(item character.Equip) gopacket.Packet {
 	p.WriteUint16(item.Hands)
 	p.WriteUint16(item.Speed)
 	p.WriteUint16(item.Jump)
-	p.WriteInt32(0)
+	p.WriteString(item.OwnerName) // Name of creator
+	p.WriteInt16(2)               // lock, show, spikes, cape, cold protection etc ?
 	return p
 }
