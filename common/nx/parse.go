@@ -56,6 +56,7 @@ func Parse(fname string) {
 // Item - all inventory items except equips
 // Map - return map is map id to return to upon death, life is mob spawn pos?, town = 1 true, create basic struct for map info
 // Mob - simple, find largest obj and create struct for it
+// NPC
 func constructHierachy(nodes []node, strLookup []string) {
 	// for i, v := range nodes {
 	// 	fmt.Println("[", i, "]", strLookup[v.NameID], "with", v.ChildCount, "child nodes ->", v.ChildID)
@@ -98,9 +99,9 @@ func readStrings(f *os.File, head header) []string {
 		panic(err)
 	}
 
-	var stringLookUp []string
+	stringLookUp := make([]string, head.StringCount)
 
-	for _, v := range stringOffsets {
+	for i, v := range stringOffsets {
 		_, err = f.Seek(v, 0)
 
 		if err != nil {
@@ -121,7 +122,7 @@ func readStrings(f *os.File, head header) []string {
 			panic(err)
 		}
 
-		stringLookUp = append(stringLookUp, string(str))
+		stringLookUp[i] = string(str)
 	}
 
 	return stringLookUp
