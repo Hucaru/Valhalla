@@ -55,8 +55,9 @@ func Parse(fname string) {
 // Character - equips
 // Item - all inventory items except equips
 // Map - return map is map id to return to upon death, life is mob spawn pos?, town = 1 true, create basic struct for map info
-// Mob - simple, find largest obj and create struct for it
-// NPC
+// Mob - simple, find largest obj and create struct for it, get town
+// Quest -
+// NPC - stand - origin - x,y, take 0 if multiple
 func constructHierachy(nodes []node, strLookup []string) {
 	// for i, v := range nodes {
 	// 	fmt.Println("[", i, "]", strLookup[v.NameID], "with", v.ChildCount, "child nodes ->", v.ChildID)
