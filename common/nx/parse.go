@@ -2,7 +2,9 @@ package nx
 
 import (
 	"encoding/binary"
+	"fmt"
 	"os"
+	"strings"
 )
 
 type header struct {
@@ -25,6 +27,9 @@ type node struct {
 	Data       [8]byte
 }
 
+var strLookup []string
+var nodes []node
+
 func Parse(fname string) {
 	f, err := os.Open(fname)
 
@@ -45,10 +50,17 @@ func Parse(fname string) {
 		panic("Not valid nx magic number")
 	}
 
-	strLookup := readStrings(f, head)
-	nodes := readNodes(f, head)
+	readStrings(f, head)
+	readNodes(f, head)
 
-	constructHierachy(nodes, strLookup)
+	// Test
+	fmt.Println(SearchNode("Map/Map/Map1", func(cursor *node) {
+		// print out node information for now
+		for i := uint32(0); i < uint32(cursor.ChildCount); i++ {
+			n := nodes[cursor.ChildID+i]
+			fmt.Println(strings.Split(strLookup[n.NameID], ".")[0])
+		}
+	}))
 }
 
 // Currently only interested in the following:
@@ -58,35 +70,54 @@ func Parse(fname string) {
 // Mob - simple, find largest obj and create struct for it, get town
 // Quest -
 // NPC - stand - origin - x,y, take 0 if multiple
-func constructHierachy(nodes []node, strLookup []string) {
-	// for i, v := range nodes {
-	// 	fmt.Println("[", i, "]", strLookup[v.NameID], "with", v.ChildCount, "child nodes ->", v.ChildID)
-	//
-	// 	if i == 19 {
-	// 		break
-	// 	}
-	//
-	// }
+func SearchNode(search string, fnc func(*node)) bool {
+	cursor := &nodes[0]
+
+	path := strings.Split(search, "/")
+
+	if strings.Compare(path[0], "/") == 0 {
+		path = path[1:]
+	}
+
+	for j, p := range path {
+		for i := uint32(0); i < uint32(cursor.ChildCount); i++ {
+
+			if cursor.ChildID+i > uint32(len(nodes))-1 {
+				return false
+			}
+
+			if strings.Compare(strLookup[nodes[cursor.ChildID+i].NameID], p) == 0 {
+				cursor = &nodes[cursor.ChildID+i]
+
+				if j == len(path)-1 {
+					fnc(cursor)
+					return true
+				}
+
+				break
+			}
+		}
+	}
+
+	return false
 }
 
-func readNodes(f *os.File, head header) []node {
+func readNodes(f *os.File, head header) {
 	_, err := f.Seek(head.NodeBlockOffset, 0)
 
 	if err != nil {
 		panic(err)
 	}
 
-	nodes := make([]node, head.NodeCount)
+	nodes = make([]node, head.NodeCount)
 	err = binary.Read(f, binary.LittleEndian, &nodes)
 
 	if err != nil {
 		panic(err)
 	}
-
-	return nodes
 }
 
-func readStrings(f *os.File, head header) []string {
+func readStrings(f *os.File, head header) {
 	_, err := f.Seek(head.StringOffsetTableOffset, 0)
 
 	if err != nil {
@@ -100,7 +131,7 @@ func readStrings(f *os.File, head header) []string {
 		panic(err)
 	}
 
-	stringLookUp := make([]string, head.StringCount)
+	strLookup = make([]string, head.StringCount)
 
 	for i, v := range stringOffsets {
 		_, err = f.Seek(v, 0)
@@ -123,8 +154,6 @@ func readStrings(f *os.File, head header) []string {
 			panic(err)
 		}
 
-		stringLookUp[i] = string(str)
+		strLookup[i] = string(str)
 	}
-
-	return stringLookUp
 }
