@@ -13,6 +13,7 @@ import (
 	"github.com/Hucaru/Valhalla/common/character"
 	"github.com/Hucaru/Valhalla/common/connection"
 	"github.com/Hucaru/Valhalla/common/constants"
+	"github.com/Hucaru/Valhalla/common/nx"
 	"github.com/Hucaru/gopacket"
 )
 
@@ -232,41 +233,18 @@ func handlePlayerLoad(reader gopacket.Reader, conn *Connection) {
 	pac.WriteUint64(0)
 	pac.WriteUint64(0)
 	pac.WriteUint64(0)
-	// pac.WriteUint64(0)
-	// pac.WriteUint64(0)
-	// pac.WriteUint64(0)
-	// pac.WriteUint64(0)
-	// pac.WriteUint64(0)
 
 	pac.WriteInt64(time.Now().Unix())
 
 	conn.Write(pac)
 
-	// npc spawn - wtf why is this repeated?
-	p := gopacket.NewPacket()
-	p.WriteByte(0x97)
-	p.WriteUint32(0)
-	p.WriteUint32(9200000)
-	p.WriteUint16(406)
-	p.WriteUint16(274)
-	p.WriteByte(1)
-	p.WriteUint16(151)
-	p.WriteUint16(356)
-	p.WriteUint16(456)
-
-	p.WriteByte(0x9B)
-	p.WriteByte(0x1)
-	p.WriteUint32(0)
-	p.WriteUint32(9200000)
-	p.WriteUint16(406)
-	p.WriteUint16(274)
-	p.WriteByte(1)
-	p.WriteUint16(151)
-	p.WriteUint16(356)
-	p.WriteUint16(456)
-
-	conn.Write(p)
-
+	// npc spawn
+	life := nx.Maps[char.CurrentMap].Life
+	for i, v := range life {
+		if v.Npc {
+			conn.Write(packets.SpawnNPC(uint32(i), v))
+		}
+	}
 }
 
 func validateNewConnection(charID uint32) bool {

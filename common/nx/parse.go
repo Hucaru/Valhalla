@@ -2,7 +2,6 @@ package nx
 
 import (
 	"encoding/binary"
-	"fmt"
 	"os"
 	"strings"
 )
@@ -53,37 +52,10 @@ func Parse(fname string) {
 	readStrings(f, head)
 	readNodes(f, head)
 
-	// Test: Get all map ids
-	var maps []string
-
-	for _, mapSet := range []string{"0", "1", "2", "9"} {
-
-		result := SearchNode("Map/Map/Map"+mapSet, func(cursor *node) {
-			list := make([]string, int(cursor.ChildCount))
-
-			for i := uint32(0); i < uint32(cursor.ChildCount); i++ {
-				n := nodes[cursor.ChildID+i]
-				list[i] = strings.Split(strLookup[n.NameID], ".")[0]
-			}
-
-			maps = append(maps, list...)
-		})
-
-		if !result {
-			fmt.Println("Bad search:", "Map/Map/Map"+mapSet)
-		}
-	}
-	//fmt.Println(len(maps))
+	getMapInfo()
 }
 
-// Currently only interested in the following:
-// Character - equips
-// Item - all inventory items except equips
-// Map - return map is map id to return to upon death, life is mob spawn pos?, town = 1 true, create basic struct for map info
-// Mob - simple, find largest obj and create struct for it, get town
-// Quest -
-// NPC - stand - origin - x,y, take 0 if multiple
-func SearchNode(search string, fnc func(*node)) bool {
+func searchNode(search string, fnc func(*node)) bool {
 	cursor := &nodes[0]
 
 	path := strings.Split(search, "/")
