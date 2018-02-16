@@ -53,14 +53,27 @@ func Parse(fname string) {
 	readStrings(f, head)
 	readNodes(f, head)
 
-	// Test
-	fmt.Println(SearchNode("Map/Map/Map1", func(cursor *node) {
-		// print out node information for now
-		for i := uint32(0); i < uint32(cursor.ChildCount); i++ {
-			n := nodes[cursor.ChildID+i]
-			fmt.Println(strings.Split(strLookup[n.NameID], ".")[0])
+	// Test: Get all map ids
+	var maps []string
+
+	for _, mapSet := range []string{"0", "1", "2", "9"} {
+
+		result := SearchNode("Map/Map/Map"+mapSet, func(cursor *node) {
+			list := make([]string, int(cursor.ChildCount))
+
+			for i := uint32(0); i < uint32(cursor.ChildCount); i++ {
+				n := nodes[cursor.ChildID+i]
+				list[i] = strings.Split(strLookup[n.NameID], ".")[0]
+			}
+
+			maps = append(maps, list...)
+		})
+
+		if !result {
+			fmt.Println("Bad search:", "Map/Map/Map"+mapSet)
 		}
-	}))
+	}
+	//fmt.Println(len(maps))
 }
 
 // Currently only interested in the following:

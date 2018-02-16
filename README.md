@@ -11,6 +11,10 @@ Golang v28 maplestory server
 - Implement audit thread (v. low priority)
 - REFACTOR EVERYTHING!!!!! (Look out for appends() and see if pre-allocation can be done)
 
+## Usage
+### Set-up
+### Running
+
 ## Some Screenshots
 
 ![Alt text](images/server_select.png?raw=true "Server Select")
