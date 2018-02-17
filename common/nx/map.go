@@ -5,6 +5,9 @@ import (
 	"math"
 	"strconv"
 	"strings"
+	"time"
+
+	"golang.org/x/exp/rand"
 )
 
 type Life struct {
@@ -21,15 +24,38 @@ type Life struct {
 	Y       int16
 }
 
+type Portal struct {
+	ID      byte
+	Tm      uint32
+	Pt      byte
+	IsSpawn bool
+	X       int16
+	Y       int16
+}
+
 type Stage struct {
 	Life         []Life
 	ForcedReturn uint32
 	ReturnMap    uint32
 	MobRate      float64
 	Town         bool
+	Portals      []Portal
 }
 
 var Maps map[uint32]Stage
+
+func GetRandomSpawnPortal(mapID uint32) byte {
+	var portals []byte
+	for _, v := range Maps[mapID].Portals {
+		if v.IsSpawn {
+			portals = append(portals, v.ID)
+		}
+	}
+
+	rand.Seed(uint64(time.Now().Unix()))
+
+	return portals[rand.Int()%len(portals)]
+}
 
 func getMapInfo() {
 	Maps = make(map[uint32]Stage)
@@ -66,6 +92,7 @@ func getMapInfo() {
 			mapID := uint32(val)
 			var lifes node
 			var info node
+			var portals node
 
 			for i := uint32(0); i < uint32(cursor.ChildCount); i++ {
 				mapChild := nodes[cursor.ChildID+i]
@@ -74,10 +101,14 @@ func getMapInfo() {
 					lifes = mapChild
 				case "info":
 					info = mapChild
+				case "portal":
+					portals = mapChild
 				}
 			}
 			mapItem := Stage{Life: make([]Life, lifes.ChildCount)}
+
 			// Portal handling
+			mapItem.Portals = getPortalItem(portals)
 
 			// Info handling
 			for i := uint32(0); i < uint32(info.ChildCount); i++ {
@@ -99,55 +130,96 @@ func getMapInfo() {
 			}
 
 			// Life handling
-			lifeItem := Life{}
-
 			for i := uint32(0); i < uint32(lifes.ChildCount); i++ {
-				n := nodes[lifes.ChildID+i]
-
-				for j := uint32(0); j < uint32(n.ChildCount); j++ {
-					lifeNode := nodes[n.ChildID+j]
-
-					switch strLookup[lifeNode.NameID] {
-					case "id":
-						val, err := strconv.Atoi(strLookup[dataToUint32(lifeNode.Data)])
-
-						if err != nil {
-							panic(err)
-						}
-
-						lifeItem.ID = uint32(val)
-					case "cy":
-						lifeItem.Cy = dataToInt64(lifeNode.Data)
-					case "f":
-						lifeItem.F = dataToInt64(lifeNode.Data)
-					case "fh":
-						lifeItem.Fh = dataToInt16(lifeNode.Data)
-					case "hide":
-						lifeItem.Hide = bool(dataToInt64(lifeNode.Data) == 1)
-					case "mobTime":
-						lifeItem.MobTime = dataToInt64(lifeNode.Data)
-					case "rx0":
-						lifeItem.Rx0 = dataToInt16(lifeNode.Data)
-					case "rx1":
-						lifeItem.Rx1 = dataToInt16(lifeNode.Data)
-					case "type":
-						lifeItem.Npc = bool(strLookup[dataToUint32(lifeNode.Data)] == "n")
-					case "x":
-						lifeItem.X = dataToInt16(lifeNode.Data)
-					case "y":
-						lifeItem.Y = dataToInt16(lifeNode.Data)
-					case "info":
-						// Don't think this is needed for anythng?
-					default:
-						fmt.Println("Unkown life type from nx file:", strLookup[lifeNode.NameID], "->", lifeNode.Data)
-					}
-				}
-				mapItem.Life[i] = lifeItem
+				mapItem.Life[i] = getLifeItem(nodes[lifes.ChildID+i])
 			}
+
 			Maps[mapID] = mapItem
 		})
 		if !result {
 			panic("Bad search:" + mapPath)
 		}
 	}
+}
+
+func getPortalItem(n node) []Portal {
+	portals := make([]Portal, n.ChildCount)
+
+	for i := uint32(0); i < uint32(n.ChildCount); i++ {
+		p := nodes[n.ChildID+i]
+		portal := Portal{}
+
+		portalNumber, err := strconv.Atoi(strLookup[p.NameID])
+
+		if err != nil {
+			panic(err)
+		}
+
+		portal.ID = byte(portalNumber)
+
+		for j := uint32(0); j < uint32(p.ChildCount); j++ {
+			options := nodes[p.ChildID+j]
+
+			switch strLookup[options.NameID] {
+			case "pt":
+				portal.Pt = options.Data[0]
+			case "pn":
+				portal.IsSpawn = bool(strLookup[dataToUint32(options.Data)] == "sp")
+			case "tm":
+				portal.Tm = dataToUint32(options.Data)
+			case "x":
+				portal.X = dataToInt16(options.Data)
+			case "y":
+				portal.Y = dataToInt16(options.Data)
+			default:
+			}
+		}
+
+		portals[i] = portal
+	}
+
+	return portals
+}
+
+func getLifeItem(n node) Life {
+	lifeItem := Life{}
+	for i := uint32(0); i < uint32(n.ChildCount); i++ {
+		lifeNode := nodes[n.ChildID+i]
+
+		switch strLookup[lifeNode.NameID] {
+		case "id":
+			val, err := strconv.Atoi(strLookup[dataToUint32(lifeNode.Data)])
+
+			if err != nil {
+				panic(err)
+			}
+
+			lifeItem.ID = uint32(val)
+		case "cy":
+			lifeItem.Cy = dataToInt64(lifeNode.Data)
+		case "f":
+			lifeItem.F = dataToInt64(lifeNode.Data)
+		case "fh":
+			lifeItem.Fh = dataToInt16(lifeNode.Data)
+		case "hide":
+			lifeItem.Hide = bool(dataToInt64(lifeNode.Data) == 1)
+		case "mobTime":
+			lifeItem.MobTime = dataToInt64(lifeNode.Data)
+		case "rx0":
+			lifeItem.Rx0 = dataToInt16(lifeNode.Data)
+		case "rx1":
+			lifeItem.Rx1 = dataToInt16(lifeNode.Data)
+		case "type":
+			lifeItem.Npc = bool(strLookup[dataToUint32(lifeNode.Data)] == "n")
+		case "x":
+			lifeItem.X = dataToInt16(lifeNode.Data)
+		case "y":
+			lifeItem.Y = dataToInt16(lifeNode.Data)
+		case "info":
+			// Don't think this is needed for anythng?
+		default:
+			fmt.Println("Unkown life type from nx file:", strLookup[lifeNode.NameID], "->", lifeNode.Data)
+		}
+	}
+	return lifeItem
 }

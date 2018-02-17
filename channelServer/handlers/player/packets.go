@@ -20,7 +20,7 @@ func changeMap(mapID uint32, channelID uint32, mapPos byte, hp uint16) gopacket.
 	p.WriteUint32(mapID)
 	p.WriteByte(mapPos)
 	p.WriteUint16(hp)
-	p.WriteByte(0) // ?
+	p.WriteByte(0)
 
 	return p
 }
@@ -67,7 +67,8 @@ func spawnGame(char character.Character, channelID uint32) gopacket.Packet {
 	p.WriteUint16(char.Fame)
 
 	p.WriteUint32(char.CurrentMap)
-	p.WriteByte(char.CurrentMapPos)
+	//p.WriteByte(char.CurrentMapPos)
+	p.WriteByte(nx.GetRandomSpawnPortal(char.CurrentMap))
 
 	p.WriteByte(20) // budy list size
 	p.WriteUint32(char.Mesos)
