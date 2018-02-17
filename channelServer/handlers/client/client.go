@@ -6,8 +6,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/Hucaru/Valhalla/channelServer/handlers/client/packets"
-
+	"github.com/Hucaru/Valhalla/channelServer/handlers/player"
+	"github.com/Hucaru/Valhalla/channelServer/handlers/playerConn"
 	"github.com/Hucaru/Valhalla/channelServer/handlers/world"
 	"github.com/Hucaru/Valhalla/common/character"
 	"github.com/Hucaru/Valhalla/common/connection"
@@ -16,7 +16,7 @@ import (
 	"github.com/Hucaru/gopacket"
 )
 
-func HandlePacket(conn *Connection, reader gopacket.Reader) {
+func HandlePacket(conn *playerConn.Conn, reader gopacket.Reader) {
 	opcode := reader.ReadByte()
 
 	switch opcode {
@@ -31,11 +31,11 @@ func HandlePacket(conn *Connection, reader gopacket.Reader) {
 	}
 }
 
-func handlePlayerSendAllChat(reader gopacket.Reader, conn *Connection) {
+func handlePlayerSendAllChat(reader gopacket.Reader, conn *playerConn.Conn) {
 	msg := reader.ReadString(int(reader.ReadInt16()))
 	ind := strings.Index(msg, "!")
 
-	if ind == 0 && conn.isAdmin {
+	if ind == 0 && conn.IsAdmin() {
 		command := strings.SplitN(msg[ind+1:], " ", -1)
 		switch command[0] {
 		case "packet":
@@ -58,7 +58,7 @@ func handlePlayerSendAllChat(reader gopacket.Reader, conn *Connection) {
 			id := uint32(val)
 
 			if _, ok := nx.Maps[id]; ok {
-				SendChangeMap(conn, uint32(id), 0, 0, conn.GetCharacter().HP)
+				player.ChangeMap(conn, uint32(id), 0, 0, conn.GetCharacter().HP)
 			} else {
 				// check if player id in else if
 			}
@@ -69,7 +69,7 @@ func handlePlayerSendAllChat(reader gopacket.Reader, conn *Connection) {
 	}
 }
 
-func handlePlayerLoad(reader gopacket.Reader, conn *Connection) {
+func handlePlayerLoad(reader gopacket.Reader, conn *playerConn.Conn) {
 	charID := reader.ReadUint32() // validate this and net address from the migration packet
 
 	if !validateNewConnection(charID) {
@@ -86,27 +86,8 @@ func handlePlayerLoad(reader gopacket.Reader, conn *Connection) {
 	conn.SetChanneldID(uint32(channelID))
 	conn.SetAdmin(true)
 
-	conn.Write(packets.SpawnGame(char, uint32(channelID)))
+	player.PlayerSpawnIn(conn, char, uint32(channelID))
 
-	// npc spawn
-	life := nx.Maps[char.CurrentMap].Life
-	for i, v := range life {
-		if v.Npc {
-			conn.Write(packets.SpawnNPC(uint32(i), v))
-		}
-	}
-}
-
-func SendChangeMap(conn *Connection, mapID uint32, channelID uint32, mapPos byte, hp uint16) {
-	conn.Write(packets.ChangeMap(mapID, channelID, mapPos, hp))
-
-	// npc spawn
-	life := nx.Maps[mapID].Life
-	for i, v := range life {
-		if v.Npc {
-			conn.Write(packets.SpawnNPC(uint32(i), v))
-		}
-	}
 }
 
 func validateNewConnection(charID uint32) bool {

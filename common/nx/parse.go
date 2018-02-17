@@ -54,6 +54,7 @@ func Parse(fname string) {
 
 	getMapInfo()
 	getEquipInfo()
+	getItemInfo()
 }
 
 func searchNode(search string, fnc func(*node)) bool {
@@ -176,4 +177,9 @@ func dataToUint32(data [8]byte) uint32 {
 func dataToInt16(data [8]byte) int16 {
 	return int16(data[0]) |
 		int16(data[1])<<8
+}
+
+func dataToUint16(data [8]byte) uint16 {
+	return uint16(data[0]) |
+		uint16(data[1])<<8
 }
