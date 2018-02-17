@@ -7,7 +7,7 @@ import (
 	"github.com/Hucaru/gopacket"
 )
 
-func AddEquip(item character.Equip) gopacket.Packet {
+func addEquip(item character.Equip) gopacket.Packet {
 	p := gopacket.NewPacket()
 
 	if item.SlotID < -100 {

@@ -40,6 +40,7 @@ type Character struct {
 	CashSlotSize    byte
 
 	Equips []Equip
+	Skills []Skill
 }
 
 // Items struct
@@ -228,4 +229,32 @@ func GetCharacters(userID uint32, worldID uint32) []Character {
 	}
 
 	return characters
+}
+
+type Skill struct {
+	SkillID uint32
+	Level   byte
+}
+
+func GetCharacterSkills(charID uint32) []Skill {
+	filter := "skillID,level"
+	row, err := connection.Db.Query("SELECT "+filter+" FROM skills WHERE characterID=?", charID)
+
+	if err != nil {
+		panic(err.Error())
+	}
+
+	defer row.Close()
+
+	var skills []Skill
+
+	for row.Next() {
+		var newSkill Skill
+
+		row.Scan(&newSkill.SkillID, &newSkill.Level)
+
+		skills = append(skills, newSkill)
+	}
+
+	return skills
 }

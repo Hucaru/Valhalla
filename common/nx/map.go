@@ -33,8 +33,8 @@ var Maps map[uint32]Stage
 
 func getMapInfo() {
 	Maps = make(map[uint32]Stage)
-	// Test: Get all map ids
 	var maps []string
+
 	// Get the list of maps
 	for _, mapSet := range []string{"0", "1", "2", "9"} {
 		path := "Map/Map/Map"
@@ -50,47 +50,12 @@ func getMapInfo() {
 		})
 
 		if !result {
-			fmt.Println("Bad search:", "Map/Map/Map"+mapSet)
+			panic("Bad search: Map/Map/Map" + mapSet)
 		}
 	}
-	// Populate the Maps object - Refactor to have more sensible names!
+	// Populate the Maps object - Refactor
 	for _, mapPath := range maps {
 		result := searchNode(mapPath, func(cursor *node) {
-
-			dataToInt64 := func(data [8]byte) int64 {
-				return int64(data[0]) |
-					int64(data[1])<<8 |
-					int64(data[2])<<16 |
-					int64(data[3])<<24 |
-					int64(data[4])<<32 |
-					int64(data[5])<<40 |
-					int64(data[6])<<48 |
-					int64(data[7])<<56
-			}
-
-			dataToUint64 := func(data [8]byte) uint64 {
-				return uint64(data[0]) |
-					uint64(data[1])<<8 |
-					uint64(data[2])<<16 |
-					uint64(data[3])<<24 |
-					uint64(data[4])<<32 |
-					uint64(data[5])<<40 |
-					uint64(data[6])<<48 |
-					uint64(data[7])<<56
-			}
-
-			dataToUint32 := func(data [8]byte) uint32 {
-				return uint32(data[0]) |
-					uint32(data[1])<<8 |
-					uint32(data[2])<<16 |
-					uint32(data[3])<<24
-			}
-
-			dataToInt16 := func(data [8]byte) int16 {
-				return int16(data[0]) |
-					int16(data[1])<<8
-			}
-
 			mapStr := strings.Split(mapPath, "/")
 			val, err := strconv.Atoi(strings.Split(mapStr[len(mapStr)-1], ".")[0])
 
@@ -112,6 +77,7 @@ func getMapInfo() {
 				}
 			}
 			mapItem := Stage{Life: make([]Life, lifes.ChildCount)}
+			// Portal handling
 
 			// Info handling
 			for i := uint32(0); i < uint32(info.ChildCount); i++ {
@@ -171,7 +137,7 @@ func getMapInfo() {
 					case "y":
 						lifeItem.Y = dataToInt16(lifeNode.Data)
 					case "info":
-						//
+						// Don't think this is needed for anythng?
 					default:
 						fmt.Println("Unkown life type from nx file:", strLookup[lifeNode.NameID], "->", lifeNode.Data)
 					}
@@ -181,7 +147,7 @@ func getMapInfo() {
 			Maps[mapID] = mapItem
 		})
 		if !result {
-			fmt.Println("Bad search:", mapPath)
+			panic("Bad search:" + mapPath)
 		}
 	}
 }

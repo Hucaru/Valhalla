@@ -16,7 +16,7 @@ type Connection struct {
 	isAdmin   bool
 	hash      string
 	worldID   uint32
-	channelID byte
+	channelID uint32
 	character character.Character
 }
 
@@ -91,6 +91,22 @@ func (c *Connection) GetWorldID() uint32 {
 	return c.worldID
 }
 
+func (c *Connection) SetChanneldID(val uint32) {
+	c.channelID = val
+}
+
+func (c *Connection) GetChannelID() uint32 {
+	return c.channelID
+}
+
 func (c *Connection) GetClientIPPort() net.Addr {
 	return c.conn.GetClientIPPort()
+}
+
+func (c *Connection) SetCharacter(char character.Character) {
+	c.character = char
+}
+
+func (c *Connection) GetCharacter() character.Character {
+	return c.character
 }
