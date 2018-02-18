@@ -363,6 +363,7 @@ func GetCharacters(userID uint32, worldID uint32) []Character {
 			panic(err)
 		}
 
+		newChar.SetCharID(charID)
 		newChar.SetUserID(userID)
 		newChar.SetWorldID(worldID)
 		newChar.SetName(name)

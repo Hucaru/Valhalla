@@ -58,7 +58,7 @@ func displayCharacters(characters []character.Character) gopacket.Packet {
 		pac.WriteByte(byte(len(characters)))
 
 		for _, c := range characters {
-			writePlayerCharacter(&pac, int(c.CharID), c)
+			writePlayerCharacter(&pac, c.GetCharID(), c)
 		}
 	} else {
 		pac.WriteByte(0)
@@ -87,7 +87,7 @@ func createdCharacter(success bool, character character.Character) gopacket.Pack
 
 	if success {
 		pac.WriteByte(0x0) // if creation was sucessfull - 0 = good, 1 = bad
-		writePlayerCharacter(&pac, int(character.CharID), character)
+		writePlayerCharacter(&pac, character.GetCharID(), character)
 	} else {
 		pac.WriteByte(0x1)
 	}
@@ -139,10 +139,10 @@ func sendBadMigrate() gopacket.Packet {
 	return pac
 }
 
-func writePlayerCharacter(pac *gopacket.Packet, pos int, character character.Character) {
-	pac.WriteInt32(int32(pos))
+func writePlayerCharacter(pac *gopacket.Packet, pos uint32, character character.Character) {
+	pac.WriteUint32(pos)
 
-	name := character.Name
+	name := character.GetName()
 
 	if len(name) > 13 {
 		name = name[:13]
@@ -155,54 +155,54 @@ func writePlayerCharacter(pac *gopacket.Packet, pos int, character character.Cha
 		pac.WriteByte(0x0)
 	}
 
-	pac.WriteByte(character.Gender) //gender
-	pac.WriteByte(character.Skin)   // skin
-	pac.WriteUint32(character.Face) // face
-	pac.WriteUint32(character.Hair) // Hair
+	pac.WriteByte(character.GetGender()) //gender
+	pac.WriteByte(character.GetSkin())   // skin
+	pac.WriteUint32(character.GetFace()) // face
+	pac.WriteUint32(character.GetHair()) // Hair
 
 	pac.WriteInt64(0x0) // Pet cash ID
 
-	pac.WriteByte(character.Level)   // level
-	pac.WriteUint16(character.Job)   // Job
-	pac.WriteUint16(character.Str)   // str
-	pac.WriteUint16(character.Dex)   // dex
-	pac.WriteUint16(character.Intt)  // int
-	pac.WriteUint16(character.Luk)   // luk
-	pac.WriteUint16(character.HP)    // hp
-	pac.WriteUint16(character.MaxHP) // max hp
-	pac.WriteUint16(character.MP)    // mp
-	pac.WriteUint16(character.MaxMP) // max mp
-	pac.WriteUint16(character.AP)    // ap
-	pac.WriteUint16(character.SP)    // sp
-	pac.WriteUint32(character.EXP)   // exp
-	pac.WriteUint16(character.Fame)  // fame
+	pac.WriteByte(character.GetLevel())   // level
+	pac.WriteUint16(character.GetJob())   // Job
+	pac.WriteUint16(character.GetStr())   // str
+	pac.WriteUint16(character.GetDex())   // dex
+	pac.WriteUint16(character.GetInt())   // int
+	pac.WriteUint16(character.GetLuk())   // luk
+	pac.WriteUint16(character.GetHP())    // hp
+	pac.WriteUint16(character.GetMaxHP()) // max hp
+	pac.WriteUint16(character.GetMP())    // mp
+	pac.WriteUint16(character.GetMaxMP()) // max mp
+	pac.WriteUint16(character.GetAP())    // ap
+	pac.WriteUint16(character.GetSP())    // sp
+	pac.WriteUint32(character.GetEXP())   // exp
+	pac.WriteUint16(character.GetFame())  // fame
 
-	pac.WriteUint32(character.CurrentMap)  // map id
-	pac.WriteByte(character.CurrentMapPos) // map
+	pac.WriteUint32(character.GetCurrentMap())  // map id
+	pac.WriteByte(character.GetCurrentMapPos()) // map
 
 	// Why is this shit repeated?
-	pac.WriteByte(character.Gender) // gender
-	pac.WriteByte(character.Skin)   // skin
-	pac.WriteUint32(character.Face) // face
-	pac.WriteByte(0x00)             // ?
-	pac.WriteUint32(character.Hair) // hair
+	pac.WriteByte(character.GetGender()) // gender
+	pac.WriteByte(character.GetSkin())   // skin
+	pac.WriteUint32(character.GetFace()) // face
+	pac.WriteByte(0x00)                  // ?
+	pac.WriteUint32(character.GetHair()) // hair
 
 	cashWeapon := uint32(0)
 
-	for _, b := range character.Equips {
-		if b.SlotID < 0 && b.SlotID > -20 {
-			pac.WriteByte(byte(math.Abs(float64(b.SlotID))))
-			pac.WriteUint32(b.ItemID)
+	for _, b := range character.GetEquips() {
+		if b.GetSlotID() < 0 && b.GetSlotID() > -20 {
+			pac.WriteByte(byte(math.Abs(float64(b.GetSlotID()))))
+			pac.WriteUint32(b.GetItemID())
 		}
 	}
 
-	for _, b := range character.Equips {
-		if b.SlotID < -100 {
-			if b.SlotID == -111 {
-				cashWeapon = b.ItemID
+	for _, b := range character.GetEquips() {
+		if b.GetSlotID() < -100 {
+			if b.GetSlotID() == -111 {
+				cashWeapon = b.GetItemID()
 			} else {
-				pac.WriteByte(byte(math.Abs(float64(b.SlotID + 100))))
-				pac.WriteUint32(b.ItemID)
+				pac.WriteByte(byte(math.Abs(float64(b.GetSlotID() + 100))))
+				pac.WriteUint32(b.GetItemID())
 			}
 		}
 	}
