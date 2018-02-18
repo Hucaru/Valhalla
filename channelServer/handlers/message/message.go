@@ -40,7 +40,7 @@ func HandlePlayerSendAllChat(reader gopacket.Reader, conn *playerConn.Conn) {
 			id := uint32(val)
 
 			if _, ok := nx.Maps[id]; ok {
-				player.ChangeMap(conn, uint32(id), 0, maps.GetRandomSpawnPortal(id), conn.GetCharacter().HP)
+				player.ChangeMap(conn, uint32(id), 0, maps.GetRandomSpawnPortal(id).ID, conn.GetCharacter().GetHP())
 			} else {
 				// check if player id in else if
 			}
@@ -49,6 +49,6 @@ func HandlePlayerSendAllChat(reader gopacket.Reader, conn *playerConn.Conn) {
 		}
 
 	} else {
-		conn.Write(sendAllChat(conn.GetCharacter().CharID, true, msg))
+		maps.SendPacketToMap(conn.GetCharacter().GetCurrentMap(), sendAllChat(conn.GetCharacter().GetCharID(), true, msg))
 	}
 }

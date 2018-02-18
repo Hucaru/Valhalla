@@ -107,6 +107,6 @@ func (c *Conn) SetCharacter(char character.Character) {
 	c.character = char
 }
 
-func (c *Conn) GetCharacter() character.Character {
-	return c.character
+func (c *Conn) GetCharacter() *character.Character {
+	return &c.character
 }

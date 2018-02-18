@@ -3,13 +3,12 @@ package player
 import (
 	"log"
 
-	"github.com/Hucaru/Valhalla/channelServer/handlers/npc"
+	"github.com/Hucaru/Valhalla/channelServer/handlers/maps"
 	"github.com/Hucaru/Valhalla/channelServer/handlers/playerConn"
 	"github.com/Hucaru/Valhalla/channelServer/handlers/world"
 	"github.com/Hucaru/Valhalla/common/character"
 	"github.com/Hucaru/Valhalla/common/connection"
 	"github.com/Hucaru/Valhalla/common/constants"
-	"github.com/Hucaru/Valhalla/common/nx"
 	"github.com/Hucaru/gopacket"
 )
 
@@ -23,35 +22,36 @@ func HandlePlayerEnterGame(reader gopacket.Reader, conn *playerConn.Conn) {
 	_, channelID := world.GetAssignedIDs()
 
 	char := character.GetCharacter(charID)
-	char.Equips = character.GetCharacterEquips(char.CharID)
-	char.Skills = character.GetCharacterSkills(char.CharID)
-	char.Items = character.GetCharacterItems(char.CharID)
+
+	char.SetEquips(character.GetCharacterEquips(char.GetCharID()))
+	char.SetSkills(character.GetCharacterSkills(char.GetCharID()))
+	char.SetItems(character.GetCharacterItems(char.GetCharID()))
+
+	portal := maps.GetRandomSpawnPortal(char.GetCurrentMap())
+	char.SetX(portal.X)
+	char.SetY(portal.Y)
 
 	conn.SetCharacter(char)
 	conn.SetChanneldID(uint32(channelID))
-	conn.SetAdmin(true)
+
+	var isAdmin bool
+
+	err := connection.Db.QueryRow("SELECT isAdmin from users where userID=?", char.GetUserID()).Scan(&isAdmin)
+
+	if err != nil {
+		panic(err)
+	}
+
+	conn.SetAdmin(isAdmin)
 
 	conn.Write(spawnGame(char, uint32(channelID)))
 
-	// npc spawn
-	life := nx.Maps[char.CurrentMap].Life
-	for i, v := range life {
-		if v.Npc {
-			conn.Write(npc.SpawnNPC(uint32(i), v))
-		}
-	}
+	maps.RegisterNewPlayer(conn, char.GetCurrentMap())
 }
 
-func ChangeMap(conn *playerConn.Conn, mapID uint32, channelID uint32, mapPos byte, hp uint16) {
-	conn.Write(changeMap(mapID, channelID, mapPos, hp))
-
-	// npc spawn
-	life := nx.Maps[mapID].Life
-	for i, v := range life {
-		if v.Npc {
-			conn.Write(npc.SpawnNPC(uint32(i), v))
-		}
-	}
+func ChangeMap(conn *playerConn.Conn, newMapID uint32, channelID uint32, mapPos byte, hp uint16) {
+	conn.Write(changeMap(newMapID, channelID, mapPos, hp))
+	maps.PlayerChangeMap(conn, newMapID)
 }
 
 func validateNewConnection(charID uint32) bool {

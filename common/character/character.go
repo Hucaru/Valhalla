@@ -1,291 +1,610 @@
 package character
 
 import (
-	"github.com/Hucaru/Valhalla/common/connection"
+	"sync"
 )
 
 type Character struct {
-	CharID          uint32
-	UserID          uint32
-	WorldID         uint32
-	Name            string
-	Gender          byte
-	Skin            byte
-	Face            uint32
-	Hair            uint32
-	Level           byte
-	Job             uint16
-	Str             uint16
-	Dex             uint16
-	Intt            uint16
-	Luk             uint16
-	HP              uint16
-	MaxHP           uint16
-	MP              uint16
-	MaxMP           uint16
-	AP              uint16
-	SP              uint16
-	EXP             uint32
-	Fame            uint16
-	CurrentMap      uint32
-	CurrentMapPos   byte
-	PreviousMap     uint32
-	FeeMarketReturn uint32
-	Mesos           uint32
-	EquipSlotSize   byte
-	UsetSlotSize    byte
-	SetupSlotSize   byte
-	EtcSlotSize     byte
-	CashSlotSize    byte
+	charID          uint32
+	userID          uint32
+	worldID         uint32
+	name            string
+	gender          byte
+	skin            byte
+	face            uint32
+	hair            uint32
+	level           byte
+	job             uint16
+	str             uint16
+	dex             uint16
+	intt            uint16
+	luk             uint16
+	hp              uint16
+	maxHP           uint16
+	mp              uint16
+	maxMP           uint16
+	ap              uint16
+	sp              uint16
+	exp             uint32
+	fame            uint16
+	currentMap      uint32
+	currentMapPos   byte
+	previousMap     uint32
+	feeMarketReturn uint32
+	mesos           uint32
+	equipSlotSize   byte
+	useSlotSize     byte
+	setupSlotSize   byte
+	etcSlotSize     byte
+	cashSlotSize    byte
 
-	Equips []Equip
-	Skills []Skill
-	Items  []Item
+	equips []Equip
+	skills []Skill
+	items  []Item
+
+	x      int16
+	y      int16
+	fh     int16
+	stance bool
+
+	mutex *sync.Mutex
 }
 
-type Equip struct {
-	ItemID       uint32
-	SlotID       int32
-	UpgradeSlots byte
-	Level        byte
-	Str          uint16
-	Dex          uint16
-	Intt         uint16
-	Luk          uint16
-	HP           uint16
-	MP           uint16
-	Watk         uint16
-	Matk         uint16
-	Wdef         uint16
-	Mdef         uint16
-	Accuracy     uint16
-	Avoid        uint16
-	Hands        uint16
-	Speed        uint16
-	Jump         uint16
-	ExpireTime   uint64
-	OwnerName    string
+func (c *Character) GetEquips() []Equip {
+	c.mutex.Lock()
+	val := c.equips
+	c.mutex.Unlock()
+
+	return val
 }
 
-type Item struct {
-	InvID      byte
-	SlotNumber byte
-	ItemID     uint32
-	Expiration uint64
-	Amount     uint16
-	OwnerName  string
-	Flag       uint16
+func (c *Character) SetEquips(val []Equip) {
+	c.mutex.Lock()
+	c.equips = val
+	c.mutex.Unlock()
 }
 
-type Skill struct {
-	SkillID uint32
-	Level   byte
+func (c *Character) AddEquip(val Equip) {
+	c.mutex.Lock()
+	c.equips = append(c.equips, val)
+	c.mutex.Unlock()
 }
 
-func GetCharacterSkills(charID uint32) []Skill {
-	filter := "skillID,level"
-	row, err := connection.Db.Query("SELECT "+filter+" FROM skills WHERE characterID=?", charID)
+func (c *Character) GetSkills() []Skill {
+	c.mutex.Lock()
+	val := c.skills
+	c.mutex.Unlock()
 
-	if err != nil {
-		panic(err.Error())
-	}
-
-	defer row.Close()
-
-	var skills []Skill
-
-	for row.Next() {
-		var newSkill Skill
-
-		row.Scan(&newSkill.SkillID, &newSkill.Level)
-
-		skills = append(skills, newSkill)
-	}
-
-	return skills
+	return val
 }
 
-func GetCharacterItems(charID uint32) []Item {
-	filter := "inventoryID,itemID,slotNumber,amount,flag,ownerName,expiration"
-	row, err := connection.Db.Query("SELECT "+filter+" FROM items WHERE characterID=?", charID)
-
-	if err != nil {
-		panic(err)
-	}
-
-	var items []Item
-
-	defer row.Close()
-
-	for row.Next() {
-		var item Item
-		row.Scan(&item.InvID, &item.ItemID, &item.SlotNumber, &item.Amount, &item.Flag, &item.OwnerName, &item.Expiration)
-
-		items = append(items, item)
-	}
-
-	return items
+func (c *Character) SetSkills(val []Skill) {
+	c.mutex.Lock()
+	c.skills = val
+	c.mutex.Unlock()
 }
 
-func GetCharacterEquips(charID uint32) []Equip {
-	filter := "itemID,slotNumber,upgradeSlots,level,str,dex,intt,luk,hp,mp,watk,matk,wdef,mdef,accuracy,avoid,hands,speed,jump,expireTime,ownerName"
-	row, err := connection.Db.Query("SELECT "+filter+" FROM equips WHERE characterID=?", charID)
-
-	if err != nil {
-		panic(err)
-	}
-
-	var items []Equip
-
-	defer row.Close()
-
-	for row.Next() {
-		var item Equip
-
-		row.Scan(&item.ItemID,
-			&item.SlotID,
-			&item.UpgradeSlots,
-			&item.Level,
-			&item.Str,
-			&item.Dex,
-			&item.Intt,
-			&item.Luk,
-			&item.HP,
-			&item.MP,
-			&item.Watk,
-			&item.Matk,
-			&item.Wdef,
-			&item.Mdef,
-			&item.Accuracy,
-			&item.Avoid,
-			&item.Hands,
-			&item.Speed,
-			&item.Jump,
-			&item.ExpireTime,
-			&item.OwnerName)
-
-		items = append(items, item)
-	}
-
-	return items
+func (c *Character) AddSkill(val Skill) {
+	c.mutex.Lock()
+	c.skills = append(c.skills, val)
+	c.mutex.Unlock()
 }
 
-func GetCharacter(charID uint32) Character {
-	var newChar Character
-	filter := "id,userID,worldID,name,gender,skin,hair,face,level,job,str,dex,intt," +
-		"luk,hp,maxHP,mp,maxMP,ap,sp, exp,fame,mapID,mapPos,previousMapID,mesos," +
-		"equipSlotSize,useSlotSize,setupSlotSize,etcSlotSize,cashSlotSize"
+func (c *Character) GetItems() []Item {
+	c.mutex.Lock()
+	val := c.items
+	c.mutex.Unlock()
 
-	err := connection.Db.QueryRow("SELECT "+filter+" FROM characters where id=?", charID).Scan(&newChar.CharID,
-		&newChar.UserID,
-		&newChar.WorldID,
-		&newChar.Name,
-		&newChar.Gender,
-		&newChar.Skin,
-		&newChar.Hair,
-		&newChar.Face,
-		&newChar.Level,
-		&newChar.Job,
-		&newChar.Str,
-		&newChar.Dex,
-		&newChar.Intt,
-		&newChar.Luk,
-		&newChar.HP,
-		&newChar.MaxHP,
-		&newChar.MP,
-		&newChar.MaxMP,
-		&newChar.AP,
-		&newChar.SP,
-		&newChar.EXP,
-		&newChar.Fame,
-		&newChar.CurrentMap,
-		&newChar.CurrentMapPos,
-		&newChar.PreviousMap,
-		&newChar.Mesos,
-		&newChar.EquipSlotSize,
-		&newChar.UsetSlotSize,
-		&newChar.SetupSlotSize,
-		&newChar.EtcSlotSize,
-		&newChar.CashSlotSize)
-
-	if err != nil {
-		panic(err)
-	}
-
-	return newChar
+	return val
 }
 
-func GetCharacters(userID uint32, worldID uint32) []Character {
-	filter := "id,userID,worldID,name,gender,skin,hair,face,level,job,str,dex,intt," +
-		"luk,hp,maxHP,mp,maxMP,ap,sp, exp,fame,mapID,mapPos,previousMapID,mesos," +
-		"equipSlotSize,useSlotSize,setupSlotSize,etcSlotSize,cashSlotSize"
+func (c *Character) SetItems(val []Item) {
+	c.mutex.Lock()
+	c.items = val
+	c.mutex.Unlock()
+}
 
-	chars, err := connection.Db.Query("SELECT "+filter+" FROM characters WHERE userID=? AND worldID=?", userID, worldID)
+func (c *Character) AddItem(val Item) {
+	c.mutex.Lock()
+	c.items = append(c.items, val)
+	c.mutex.Unlock()
+}
 
-	if err != nil {
-		panic(err)
-	}
+func (c *Character) GetCharID() uint32 {
+	c.mutex.Lock()
+	val := c.charID
+	c.mutex.Unlock()
 
-	defer chars.Close()
+	return val
+}
 
-	var characters []Character
+func (c *Character) SetCharID(val uint32) {
+	c.mutex.Lock()
+	c.charID = val
+	c.mutex.Unlock()
+}
 
-	for chars.Next() {
-		var newChar Character
+func (c *Character) GetUserID() uint32 {
+	c.mutex.Lock()
+	val := c.userID
+	c.mutex.Unlock()
 
-		err = chars.Scan(&newChar.CharID,
-			&newChar.UserID,
-			&newChar.WorldID,
-			&newChar.Name,
-			&newChar.Gender,
-			&newChar.Skin,
-			&newChar.Hair,
-			&newChar.Face,
-			&newChar.Level,
-			&newChar.Job,
-			&newChar.Str,
-			&newChar.Dex,
-			&newChar.Intt,
-			&newChar.Luk,
-			&newChar.HP,
-			&newChar.MaxHP,
-			&newChar.MP,
-			&newChar.MaxMP,
-			&newChar.AP,
-			&newChar.SP,
-			&newChar.EXP,
-			&newChar.Fame,
-			&newChar.CurrentMap,
-			&newChar.CurrentMapPos,
-			&newChar.PreviousMap,
-			&newChar.Mesos,
-			&newChar.EquipSlotSize,
-			&newChar.UsetSlotSize,
-			&newChar.SetupSlotSize,
-			&newChar.EtcSlotSize,
-			&newChar.CashSlotSize)
+	return val
+}
 
-		if err != nil {
-			panic(err)
-		}
+func (c *Character) SetUserID(val uint32) {
+	c.mutex.Lock()
+	c.userID = val
+	c.mutex.Unlock()
+}
 
-		equips, err := connection.Db.Query("SELECT itemID, slotNumber FROM equips WHERE characterID=?", newChar.CharID)
+func (c *Character) GetWorldID() uint32 {
+	c.mutex.Lock()
+	val := c.worldID
+	c.mutex.Unlock()
 
-		if err != nil {
-			panic(err)
-		}
+	return val
+}
 
-		defer equips.Close()
+func (c *Character) SetWorldID(val uint32) {
+	c.mutex.Lock()
+	c.worldID = val
+	c.mutex.Unlock()
+}
 
-		for equips.Next() {
-			var equip Equip
+func (c *Character) GetName() string {
+	c.mutex.Lock()
+	val := c.name
+	c.mutex.Unlock()
 
-			equips.Scan(&equip.ItemID, &equip.SlotID)
-			newChar.Equips = append(newChar.Equips, equip)
-		}
+	return val
+}
 
-		characters = append(characters, newChar)
-	}
+func (c *Character) SetName(val string) {
+	c.mutex.Lock()
+	c.name = val
+	c.mutex.Unlock()
+}
 
-	return characters
+func (c *Character) GetGender() byte {
+	c.mutex.Lock()
+	val := c.gender
+	c.mutex.Unlock()
+
+	return val
+}
+
+func (c *Character) SetGender(val byte) {
+	c.mutex.Lock()
+	c.gender = val
+	c.mutex.Unlock()
+}
+
+func (c *Character) GetSkin() byte {
+	c.mutex.Lock()
+	val := c.skin
+	c.mutex.Unlock()
+
+	return val
+}
+
+func (c *Character) SetSkin(val byte) {
+	c.mutex.Lock()
+	c.skin = val
+	c.mutex.Unlock()
+}
+
+func (c *Character) GetFace() uint32 {
+	c.mutex.Lock()
+	val := c.face
+	c.mutex.Unlock()
+
+	return val
+}
+
+func (c *Character) SetFace(val uint32) {
+	c.mutex.Lock()
+	c.face = val
+	c.mutex.Unlock()
+}
+
+func (c *Character) GetHair() uint32 {
+	c.mutex.Lock()
+	val := c.hair
+	c.mutex.Unlock()
+
+	return val
+}
+
+func (c *Character) SetHair(val uint32) {
+	c.mutex.Lock()
+	c.hair = val
+	c.mutex.Unlock()
+}
+
+func (c *Character) GetLevel() byte {
+	c.mutex.Lock()
+	val := c.level
+	c.mutex.Unlock()
+
+	return val
+}
+
+func (c *Character) SetLevel(val byte) {
+	c.mutex.Lock()
+	c.level = val
+	c.mutex.Unlock()
+}
+
+func (c *Character) GetJob() uint16 {
+	c.mutex.Lock()
+	val := c.job
+	c.mutex.Unlock()
+
+	return val
+}
+
+func (c *Character) SetJob(val uint16) {
+	c.mutex.Lock()
+	c.job = val
+	c.mutex.Unlock()
+}
+
+func (c *Character) GetStr() uint16 {
+	c.mutex.Lock()
+	val := c.str
+	c.mutex.Unlock()
+
+	return val
+}
+
+func (c *Character) SetStr(val uint16) {
+	c.mutex.Lock()
+	c.str = val
+	c.mutex.Unlock()
+}
+
+func (c *Character) GetDex() uint16 {
+	c.mutex.Lock()
+	val := c.dex
+	c.mutex.Unlock()
+
+	return val
+}
+
+func (c *Character) SetDex(val uint16) {
+	c.mutex.Lock()
+	c.dex = val
+	c.mutex.Unlock()
+}
+
+func (c *Character) GetInt() uint16 {
+	c.mutex.Lock()
+	val := c.intt
+	c.mutex.Unlock()
+
+	return val
+}
+
+func (c *Character) SetInt(val uint16) {
+	c.mutex.Lock()
+	c.intt = val
+	c.mutex.Unlock()
+}
+
+func (c *Character) GetLuk() uint16 {
+	c.mutex.Lock()
+	val := c.luk
+	c.mutex.Unlock()
+
+	return val
+}
+
+func (c *Character) SetLuk(val uint16) {
+	c.mutex.Lock()
+	c.luk = val
+	c.mutex.Unlock()
+}
+
+func (c *Character) GetHP() uint16 {
+	c.mutex.Lock()
+	val := c.hp
+	c.mutex.Unlock()
+
+	return val
+}
+
+func (c *Character) SetHP(val uint16) {
+	c.mutex.Lock()
+	c.hp = val
+	c.mutex.Unlock()
+}
+
+func (c *Character) GetMaxHP() uint16 {
+	c.mutex.Lock()
+	val := c.maxHP
+	c.mutex.Unlock()
+
+	return val
+}
+
+func (c *Character) SetMaxHP(val uint16) {
+	c.mutex.Lock()
+	c.maxHP = val
+	c.mutex.Unlock()
+}
+
+func (c *Character) GetMP() uint16 {
+	c.mutex.Lock()
+	val := c.mp
+	c.mutex.Unlock()
+
+	return val
+}
+
+func (c *Character) SetMP(val uint16) {
+	c.mutex.Lock()
+	c.mp = val
+	c.mutex.Unlock()
+}
+
+func (c *Character) GetMaxMP() uint16 {
+	c.mutex.Lock()
+	val := c.maxMP
+	c.mutex.Unlock()
+
+	return val
+}
+
+func (c *Character) SetMaxMp(val uint16) {
+	c.mutex.Lock()
+	c.maxMP = val
+	c.mutex.Unlock()
+}
+
+func (c *Character) GetAP() uint16 {
+	c.mutex.Lock()
+	val := c.ap
+	c.mutex.Unlock()
+
+	return val
+}
+
+func (c *Character) SetAP(val uint16) {
+	c.mutex.Lock()
+	c.ap = val
+	c.mutex.Unlock()
+}
+func (c *Character) GetSP() uint16 {
+	c.mutex.Lock()
+	val := c.sp
+	c.mutex.Unlock()
+
+	return val
+}
+
+func (c *Character) SetSP(val uint16) {
+	c.mutex.Lock()
+	c.sp = val
+	c.mutex.Unlock()
+}
+
+func (c *Character) GetEXP() uint32 {
+	c.mutex.Lock()
+	val := c.exp
+	c.mutex.Unlock()
+
+	return val
+}
+
+func (c *Character) SetEXP(val uint32) {
+	c.mutex.Lock()
+	c.exp = val
+	c.mutex.Unlock()
+}
+
+func (c *Character) GetFame() uint16 {
+	c.mutex.Lock()
+	val := c.fame
+	c.mutex.Unlock()
+
+	return val
+}
+
+func (c *Character) SetFame(val uint16) {
+	c.mutex.Lock()
+	c.fame = val
+	c.mutex.Unlock()
+}
+
+func (c *Character) GetCurrentMap() uint32 {
+	c.mutex.Lock()
+	val := c.currentMap
+	c.mutex.Unlock()
+
+	return val
+}
+
+func (c *Character) SetCurrentMap(val uint32) {
+	c.mutex.Lock()
+	c.currentMap = val
+	c.mutex.Unlock()
+}
+
+func (c *Character) GetCurrentMapPos() byte {
+	c.mutex.Lock()
+	val := c.currentMapPos
+	c.mutex.Unlock()
+
+	return val
+}
+
+func (c *Character) SetCurrentMapPos(val byte) {
+	c.mutex.Lock()
+	c.currentMapPos = val
+	c.mutex.Unlock()
+}
+
+func (c *Character) GetPreviousMap() uint32 {
+	c.mutex.Lock()
+	val := c.previousMap
+	c.mutex.Unlock()
+
+	return val
+}
+
+func (c *Character) SetPreviousMap(val uint32) {
+	c.mutex.Lock()
+	c.previousMap = val
+	c.mutex.Unlock()
+}
+
+func (c *Character) GetFeeMarketReturn() uint32 {
+	c.mutex.Lock()
+	val := c.feeMarketReturn
+	c.mutex.Unlock()
+
+	return val
+}
+
+func (c *Character) SetFreeMarketReturn(val uint32) {
+	c.mutex.Lock()
+	c.feeMarketReturn = val
+	c.mutex.Unlock()
+}
+
+func (c *Character) GetMesos() uint32 {
+	c.mutex.Lock()
+	val := c.mesos
+	c.mutex.Unlock()
+
+	return val
+}
+
+func (c *Character) SetMesos(val uint32) {
+	c.mutex.Lock()
+	c.mesos = val
+	c.mutex.Unlock()
+}
+
+func (c *Character) GetEquipSlotSize() byte {
+	c.mutex.Lock()
+	val := c.equipSlotSize
+	c.mutex.Unlock()
+
+	return val
+}
+func (c *Character) SetEquipSlotSize(val byte) {
+	c.mutex.Lock()
+	c.equipSlotSize = val
+	c.mutex.Unlock()
+}
+
+func (c *Character) GetUsetSlotSize() byte {
+	c.mutex.Lock()
+	val := c.useSlotSize
+	c.mutex.Unlock()
+
+	return val
+}
+
+func (c *Character) SetUseSlotSize(val byte) {
+	c.mutex.Lock()
+	c.useSlotSize = val
+	c.mutex.Unlock()
+}
+
+func (c *Character) GetSetupSlotSize() byte {
+	c.mutex.Lock()
+	val := c.setupSlotSize
+	c.mutex.Unlock()
+
+	return val
+}
+func (c *Character) SetSetupSlotSize(val byte) {
+	c.mutex.Lock()
+	c.setupSlotSize = val
+	c.mutex.Unlock()
+}
+
+func (c *Character) GetEtcSlotSize() byte {
+	c.mutex.Lock()
+	val := c.etcSlotSize
+	c.mutex.Unlock()
+
+	return val
+}
+func (c *Character) SetEtcSlotSize(val byte) {
+	c.mutex.Lock()
+	c.etcSlotSize = val
+	c.mutex.Unlock()
+}
+
+func (c *Character) GetCashSlotSize() byte {
+	c.mutex.Lock()
+	val := c.cashSlotSize
+	c.mutex.Unlock()
+
+	return val
+}
+func (c *Character) SetCashSlotSize(val byte) {
+	c.mutex.Lock()
+	c.cashSlotSize = val
+	c.mutex.Unlock()
+}
+
+func (c *Character) GetX() int16 {
+	c.mutex.Lock()
+	val := c.x
+	c.mutex.Unlock()
+
+	return val
+}
+
+func (c *Character) SetX(val int16) {
+	c.mutex.Lock()
+	c.x = val
+	c.mutex.Unlock()
+}
+
+func (c *Character) GetY() int16 {
+	c.mutex.Lock()
+	val := c.y
+	c.mutex.Unlock()
+
+	return val
+}
+
+func (c *Character) SetY(val int16) {
+	c.mutex.Lock()
+	c.y = val
+	c.mutex.Unlock()
+}
+
+func (c *Character) GetFh() int16 {
+	c.mutex.Lock()
+	val := c.fh
+	c.mutex.Unlock()
+
+	return val
+}
+
+func (c *Character) SetFh(val int16) {
+	c.mutex.Lock()
+	c.fh = val
+	c.mutex.Unlock()
+}
+
+func (c *Character) GetStance() bool {
+	c.mutex.Lock()
+	val := c.stance
+	c.mutex.Unlock()
+
+	return val
+}
+
+func (c *Character) SetStance(val bool) {
+	c.mutex.Lock()
+	c.stance = val
+	c.mutex.Unlock()
 }

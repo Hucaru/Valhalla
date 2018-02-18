@@ -5,7 +5,6 @@ import (
 	"math"
 	"time"
 
-	"github.com/Hucaru/Valhalla/channelServer/handlers/maps"
 	"github.com/Hucaru/Valhalla/common/character"
 	"github.com/Hucaru/Valhalla/common/constants"
 	"github.com/Hucaru/Valhalla/common/nx"
@@ -43,53 +42,52 @@ func spawnGame(char character.Character, channelID uint32) gopacket.Packet {
 	p.WriteBytes(randomBytes)
 	p.WriteBytes(randomBytes)
 	p.WriteBytes([]byte{0xFF, 0xFF}) // seperators? For what?
-	p.WriteUint32(char.CharID)
-	p.WritePaddedString(char.Name, 13)
-	p.WriteByte(char.Gender)
-	p.WriteByte(char.Skin)
-	p.WriteUint32(char.Face)
-	p.WriteUint32(char.Hair)
+	p.WriteUint32(char.GetCharID())
+	p.WritePaddedString(char.GetName(), 13)
+	p.WriteByte(char.GetGender())
+	p.WriteByte(char.GetSkin())
+	p.WriteUint32(char.GetFace())
+	p.WriteUint32(char.GetHair())
 
 	p.WriteInt64(0) // Pet Cash ID
 
-	p.WriteByte(char.Level)
-	p.WriteUint16(char.Job)
-	p.WriteUint16(char.Str)
-	p.WriteUint16(char.Dex)
-	p.WriteUint16(char.Intt)
-	p.WriteUint16(char.Luk)
-	p.WriteUint16(char.HP)
-	p.WriteUint16(char.MaxHP)
-	p.WriteUint16(char.MP)
-	p.WriteUint16(char.MaxMP)
-	p.WriteUint16(char.AP)
-	p.WriteUint16(char.SP)
-	p.WriteUint32(char.EXP)
-	p.WriteUint16(char.Fame)
+	p.WriteByte(char.GetLevel())
+	p.WriteUint16(char.GetJob())
+	p.WriteUint16(char.GetStr())
+	p.WriteUint16(char.GetDex())
+	p.WriteUint16(char.GetInt())
+	p.WriteUint16(char.GetLuk())
+	p.WriteUint16(char.GetHP())
+	p.WriteUint16(char.GetMaxHP())
+	p.WriteUint16(char.GetMP())
+	p.WriteUint16(char.GetMaxMP())
+	p.WriteUint16(char.GetAP())
+	p.WriteUint16(char.GetSP())
+	p.WriteUint32(char.GetEXP())
+	p.WriteUint16(char.GetFame())
 
-	p.WriteUint32(char.CurrentMap)
-	//p.WriteByte(char.CurrentMapPos)
-	p.WriteByte(maps.GetRandomSpawnPortal(char.CurrentMap))
+	p.WriteUint32(char.GetCurrentMap())
+	p.WriteByte(char.GetCurrentMapPos())
 
 	p.WriteByte(20) // budy list size
-	p.WriteUint32(char.Mesos)
+	p.WriteUint32(char.GetMesos())
 
-	p.WriteByte(char.EquipSlotSize)
-	p.WriteByte(char.UsetSlotSize) // User inv size
-	p.WriteByte(char.SetupSlotSize)
-	p.WriteByte(char.EtcSlotSize)
-	p.WriteByte(char.CashSlotSize)
+	p.WriteByte(char.GetEquipSlotSize())
+	p.WriteByte(char.GetUsetSlotSize())
+	p.WriteByte(char.GetSetupSlotSize())
+	p.WriteByte(char.GetEtcSlotSize())
+	p.WriteByte(char.GetCashSlotSize())
 
-	for _, v := range char.Equips {
-		if !nx.IsCashItem(v.ItemID) {
+	for _, v := range char.GetEquips() {
+		if !nx.IsCashItem(v.GetItemID()) {
 			p.WriteBytes(addEquip(v))
 		}
 	}
 
 	p.WriteByte(0)
 
-	for _, v := range char.Equips {
-		if nx.IsCashItem(v.ItemID) {
+	for _, v := range char.GetEquips() {
+		if nx.IsCashItem(v.GetItemID()) {
 			p.WriteBytes(addEquip(v))
 		}
 	}
@@ -97,40 +95,40 @@ func spawnGame(char character.Character, channelID uint32) gopacket.Packet {
 	p.WriteByte(0)
 
 	// Inventory windows starts
-	for _, v := range char.Equips {
-		if v.SlotID > -1 {
+	for _, v := range char.GetEquips() {
+		if v.GetSlotID() > -1 {
 			p.WriteBytes(addEquip(v))
 		}
 	}
 
 	p.WriteByte(0)
 
-	for _, v := range char.Items {
-		if v.InvID == 1 { // Use
+	for _, v := range char.GetItems() {
+		if v.GetInvID() == 1 { // Use
 			p.WriteBytes(addItem(v))
 		}
 	}
 
 	p.WriteByte(0)
 
-	for _, v := range char.Items {
-		if v.InvID == 2 { // Set-up
+	for _, v := range char.GetItems() {
+		if v.GetInvID() == 2 { // Set-up
 			p.WriteBytes(addItem(v))
 		}
 	}
 
 	p.WriteByte(0)
 
-	for _, v := range char.Items {
-		if v.InvID == 3 { // Etc
+	for _, v := range char.GetItems() {
+		if v.GetInvID() == 3 { // Etc
 			p.WriteBytes(addItem(v))
 		}
 	}
 
 	p.WriteByte(0)
 
-	for _, v := range char.Items {
-		if v.InvID == 4 { // Cash  - not working propery :(
+	for _, v := range char.GetItems() {
+		if v.GetInvID() == 4 { // Cash  - not working propery :(
 			p.WriteBytes(addItem(v))
 		}
 	}
@@ -138,11 +136,11 @@ func spawnGame(char character.Character, channelID uint32) gopacket.Packet {
 	p.WriteByte(0)
 
 	// Skills
-	p.WriteUint16(uint16(len(char.Skills))) // number of skills
+	p.WriteUint16(uint16(len(char.GetSkills()))) // number of skills
 
-	for _, v := range char.Skills {
-		p.WriteUint32(v.SkillID)
-		p.WriteUint32(uint32(v.Level))
+	for _, v := range char.GetSkills() {
+		p.WriteUint32(v.GetID())
+		p.WriteUint32(uint32(v.GetLevel()))
 	}
 
 	// Quests
@@ -170,56 +168,55 @@ func spawnGame(char character.Character, channelID uint32) gopacket.Packet {
 func addEquip(item character.Equip) gopacket.Packet {
 	p := gopacket.NewPacket()
 
-	if nx.IsCashItem(item.ItemID) {
-		p.WriteByte(byte(math.Abs(float64(item.SlotID + 100))))
+	if nx.IsCashItem(item.GetItemID()) {
+		p.WriteByte(byte(math.Abs(float64(item.GetSlotID() + 100))))
 	} else {
-		p.WriteByte(byte(math.Abs(float64(item.SlotID))))
+		p.WriteByte(byte(math.Abs(float64(item.GetSlotID()))))
 	}
-	p.WriteByte(byte(item.ItemID / 1000000))
-	p.WriteUint32(item.ItemID)
+	p.WriteByte(byte(item.GetItemID() / 1000000))
+	p.WriteUint32(item.GetItemID())
 
-	if nx.IsCashItem(item.ItemID) {
+	if nx.IsCashItem(item.GetItemID()) {
 		p.WriteByte(1)
-		p.WriteUint64(uint64(item.ItemID))
+		p.WriteUint64(uint64(item.GetItemID()))
 	} else {
 		p.WriteByte(0)
 	}
 
-	p.WriteUint64(item.ExpireTime)
-	p.WriteByte(item.UpgradeSlots)
-	p.WriteByte(item.Level)
-	p.WriteUint16(item.Str)
-	p.WriteUint16(item.Dex)
-	p.WriteUint16(item.Intt)
-	p.WriteUint16(item.Luk)
-	p.WriteUint16(item.HP)
-	p.WriteUint16(item.MP)
-	p.WriteUint16(item.Watk)
-	p.WriteUint16(item.Matk)
-	p.WriteUint16(item.Wdef)
-	p.WriteUint16(item.Mdef)
-	p.WriteUint16(item.Accuracy)
-	p.WriteUint16(item.Avoid)
-	p.WriteUint16(item.Hands)
-	p.WriteUint16(item.Speed)
-	p.WriteUint16(item.Jump)
-	p.WriteString(item.OwnerName) // Name of creator
-	p.WriteInt16(2)               // lock, show, spikes, cape, cold protection etc ?
+	p.WriteUint64(item.GetExpireTime())
+	p.WriteByte(item.GetUpgradeSlots())
+	p.WriteByte(item.GetLevel())
+	p.WriteUint16(item.GetStr())
+	p.WriteUint16(item.GetDex())
+	p.WriteUint16(item.GetInt())
+	p.WriteUint16(item.GetLuk())
+	p.WriteUint16(item.GetHP())
+	p.WriteUint16(item.GetMP())
+	p.WriteUint16(item.GetWatk())
+	p.WriteUint16(item.GetMatk())
+	p.WriteUint16(item.GetWdef())
+	p.WriteUint16(item.GetMdef())
+	p.WriteUint16(item.GetAccuracy())
+	p.WriteUint16(item.GetAvoid())
+	p.WriteUint16(item.GetHands())
+	p.WriteUint16(item.GetSpeed())
+	p.WriteUint16(item.GetJump())
+	p.WriteString(item.GetCreatorName()) // Name of creator
+	p.WriteInt16(2)                      // lock, show, spikes, cape, cold protection etc ?
 	return p
 }
 
 func addItem(item character.Item) gopacket.Packet {
 	p := gopacket.NewPacket()
 
-	p.WriteByte(item.SlotNumber) // slot id
-	p.WriteByte(2)               // type of item e.g. equip, has amount, cash
-	p.WriteUint32(item.ItemID)   //  itemID
+	p.WriteByte(item.GetSlotNumber()) // slot id
+	p.WriteByte(2)                    // type of item e.g. equip, has amount, cash
+	p.WriteUint32(item.GetItemID())   //  itemID
 	p.WriteByte(0)
-	p.WriteUint64(item.Expiration) // expiration
-	p.WriteUint16(item.Amount)     // amount
-	// p.WriteUint16(0)               // string with name of creator
-	p.WriteString(item.OwnerName)
-	p.WriteUint16(item.Flag) // is it sealed
+	p.WriteUint64(item.GetExpiration()) // expiration
+	p.WriteUint16(item.GetAmount())     // amount
+	p.WriteString(item.GetCreatorName())
+	p.WriteUint16(item.GetFlag()) // is it sealed
 
 	return p
 }
