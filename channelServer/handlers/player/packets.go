@@ -104,61 +104,35 @@ func spawnGame(char character.Character, channelID uint32) gopacket.Packet {
 
 	p.WriteByte(0)
 
-	// use
-	p.WriteByte(1)         // slot id
-	p.WriteByte(2)         // type of item e.g. equip, has amount, cash
-	p.WriteUint32(2070006) //  itemID
+	for _, v := range char.Items {
+		if v.InvID == 1 { // Use
+			p.WriteBytes(addItem(v))
+		}
+	}
+
 	p.WriteByte(0)
-	p.WriteUint64(0)   // expiration
-	p.WriteUint16(200) // amount
-	p.WriteUint16(0)   // string with name of creator
-	p.WriteUint16(0)   // is it sealed
 
-	// use
-	p.WriteByte(2)         // slot id
-	p.WriteByte(2)         // type of item
-	p.WriteUint32(2000003) //  itemID
+	for _, v := range char.Items {
+		if v.InvID == 2 { // Set-up
+			p.WriteBytes(addItem(v))
+		}
+	}
+
 	p.WriteByte(0)
-	p.WriteUint64(0)
-	p.WriteUint16(200) // amount
-	p.WriteUint16(0)
-	p.WriteUint16(0) // is it sealed
 
-	p.WriteByte(0) // Inventory tab move forward swap
+	for _, v := range char.Items {
+		if v.InvID == 3 { // Etc
+			p.WriteBytes(addItem(v))
+		}
+	}
 
-	p.WriteByte(1)         // slot id
-	p.WriteByte(2)         // type of item
-	p.WriteUint32(3010000) //  itemID
 	p.WriteByte(0)
-	p.WriteUint64(0)
-	p.WriteUint16(1) // amount
-	p.WriteUint16(0)
-	p.WriteUint16(0) // is it sealed
 
-	p.WriteByte(0) // Inventory tab move forward swap
-
-	// etc
-	p.WriteByte(1)         // slot id
-	p.WriteByte(2)         // type of item
-	p.WriteUint32(4000000) //  itemID
-	p.WriteByte(0)
-	p.WriteUint64(0)
-	p.WriteUint16(200) // amount
-	p.WriteUint16(0)
-	p.WriteUint16(0) // is it sealed
-
-	p.WriteByte(0) // Inventory tab move forward swap
-
-	// cash pet item :( not working atm
-	p.WriteByte(1)         // slot id
-	p.WriteByte(2)         // Type of item (1 means it is an equip, 2 means inv?, 3 means ?)
-	p.WriteUint32(5000004) //  itemID
-	p.WriteByte(0)
-	// p.WriteUint32(5000004)
-	p.WriteUint64(0)
-	p.WriteUint16(1) // amount
-	p.WriteUint16(0)
-	p.WriteUint16(0) // is it sealed
+	for _, v := range char.Items {
+		if v.InvID == 4 { // Cash (not working propery :())
+			p.WriteBytes(addItem(v))
+		}
+	}
 
 	p.WriteByte(0)
 
@@ -233,12 +207,12 @@ func addEquip(item character.Equip) gopacket.Packet {
 	return p
 }
 
-func addUseItem(item character.Item) gopacket.Packet {
+func addItem(item character.Item) gopacket.Packet {
 	p := gopacket.NewPacket()
 
-	p.WriteByte(item.SlotID)   // slot id
-	p.WriteByte(2)             // type of item e.g. equip, has amount, cash
-	p.WriteUint32(item.ItemID) //  itemID
+	p.WriteByte(item.SlotNumber) // slot id
+	p.WriteByte(2)               // type of item e.g. equip, has amount, cash
+	p.WriteUint32(item.ItemID)   //  itemID
 	p.WriteByte(0)
 	p.WriteUint64(item.Expiration) // expiration
 	p.WriteUint16(item.Amount)     // amount

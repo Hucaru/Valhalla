@@ -68,7 +68,8 @@ type Equip struct {
 }
 
 type Item struct {
-	SlotID     byte
+	InvID      byte
+	SlotNumber byte
 	ItemID     uint32
 	Expiration uint64
 	Amount     uint16
@@ -105,7 +106,23 @@ func GetCharacterSkills(charID uint32) []Skill {
 }
 
 func GetCharacterItems(charID uint32) []Item {
+	filter := "inventoryID,itemID,slotNumber,amount,flag,ownerName,expiration"
+	row, err := connection.Db.Query("SELECT "+filter+" FROM items WHERE characterID=?", charID)
+
+	if err != nil {
+		panic(err)
+	}
+
 	var items []Item
+
+	defer row.Close()
+
+	for row.Next() {
+		var item Item
+		row.Scan(&item.InvID, &item.ItemID, &item.SlotNumber, &item.Amount, &item.Flag, &item.OwnerName, &item.Expiration)
+
+		items = append(items, item)
+	}
 
 	return items
 }
