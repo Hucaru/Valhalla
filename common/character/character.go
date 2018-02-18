@@ -4,7 +4,6 @@ import (
 	"github.com/Hucaru/Valhalla/common/connection"
 )
 
-// Character struct
 type Character struct {
 	CharID          uint32
 	UserID          uint32
@@ -41,9 +40,9 @@ type Character struct {
 
 	Equips []Equip
 	Skills []Skill
+	Items  []Item
 }
 
-// Items struct
 type Equip struct {
 	ItemID       uint32
 	SlotID       int32
@@ -66,6 +65,92 @@ type Equip struct {
 	Jump         uint16
 	ExpireTime   uint64
 	OwnerName    string
+}
+
+type Item struct {
+	SlotID     byte
+	ItemID     uint32
+	Expiration uint64
+	Amount     uint16
+	OwnerName  string
+	Flag       uint16
+}
+
+type Skill struct {
+	SkillID uint32
+	Level   byte
+}
+
+func GetCharacterSkills(charID uint32) []Skill {
+	filter := "skillID,level"
+	row, err := connection.Db.Query("SELECT "+filter+" FROM skills WHERE characterID=?", charID)
+
+	if err != nil {
+		panic(err.Error())
+	}
+
+	defer row.Close()
+
+	var skills []Skill
+
+	for row.Next() {
+		var newSkill Skill
+
+		row.Scan(&newSkill.SkillID, &newSkill.Level)
+
+		skills = append(skills, newSkill)
+	}
+
+	return skills
+}
+
+func GetCharacterItems(charID uint32) []Item {
+	var items []Item
+
+	return items
+}
+
+func GetCharacterEquips(charID uint32) []Equip {
+	filter := "itemID,slotNumber,upgradeSlots,level,str,dex,intt,luk,hp,mp,watk,matk,wdef,mdef,accuracy,avoid,hands,speed,jump,expireTime,ownerName"
+	row, err := connection.Db.Query("SELECT "+filter+" FROM equips WHERE characterID=?", charID)
+
+	if err != nil {
+		panic(err)
+	}
+
+	var items []Equip
+
+	defer row.Close()
+
+	for row.Next() {
+		var item Equip
+
+		row.Scan(&item.ItemID,
+			&item.SlotID,
+			&item.UpgradeSlots,
+			&item.Level,
+			&item.Str,
+			&item.Dex,
+			&item.Intt,
+			&item.Luk,
+			&item.HP,
+			&item.MP,
+			&item.Watk,
+			&item.Matk,
+			&item.Wdef,
+			&item.Mdef,
+			&item.Accuracy,
+			&item.Avoid,
+			&item.Hands,
+			&item.Speed,
+			&item.Jump,
+			&item.ExpireTime,
+			&item.OwnerName)
+
+		items = append(items, item)
+	}
+
+	return items
 }
 
 func GetCharacter(charID uint32) Character {
@@ -111,49 +196,6 @@ func GetCharacter(charID uint32) Character {
 	}
 
 	return newChar
-}
-
-func GetCharacterItems(charID uint32) []Equip {
-	filter := "itemID,slotNumber,upgradeSlots,level,str,dex,intt,luk,hp,mp,watk,matk,wdef,mdef,accuracy,avoid,hands,speed,jump,expireTime,ownerName"
-	row, err := connection.Db.Query("SELECT "+filter+" FROM equips WHERE characterID=?", charID)
-
-	if err != nil {
-		panic(err)
-	}
-
-	var items []Equip
-
-	defer row.Close()
-
-	for row.Next() {
-		var item Equip
-
-		row.Scan(&item.ItemID,
-			&item.SlotID,
-			&item.UpgradeSlots,
-			&item.Level,
-			&item.Str,
-			&item.Dex,
-			&item.Intt,
-			&item.Luk,
-			&item.HP,
-			&item.MP,
-			&item.Watk,
-			&item.Matk,
-			&item.Wdef,
-			&item.Mdef,
-			&item.Accuracy,
-			&item.Avoid,
-			&item.Hands,
-			&item.Speed,
-			&item.Jump,
-			&item.ExpireTime,
-			&item.OwnerName)
-
-		items = append(items, item)
-	}
-
-	return items
 }
 
 func GetCharacters(userID uint32, worldID uint32) []Character {
@@ -229,32 +271,4 @@ func GetCharacters(userID uint32, worldID uint32) []Character {
 	}
 
 	return characters
-}
-
-type Skill struct {
-	SkillID uint32
-	Level   byte
-}
-
-func GetCharacterSkills(charID uint32) []Skill {
-	filter := "skillID,level"
-	row, err := connection.Db.Query("SELECT "+filter+" FROM skills WHERE characterID=?", charID)
-
-	if err != nil {
-		panic(err.Error())
-	}
-
-	defer row.Close()
-
-	var skills []Skill
-
-	for row.Next() {
-		var newSkill Skill
-
-		row.Scan(&newSkill.SkillID, &newSkill.Level)
-
-		skills = append(skills, newSkill)
-	}
-
-	return skills
 }

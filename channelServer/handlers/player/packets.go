@@ -233,17 +233,18 @@ func addEquip(item character.Equip) gopacket.Packet {
 	return p
 }
 
-func addUseItem() gopacket.Packet {
+func addUseItem(item character.Item) gopacket.Packet {
 	p := gopacket.NewPacket()
 
-	p.WriteByte(1)         // slot id
-	p.WriteByte(2)         // type of item e.g. equip, has amount, cash
-	p.WriteUint32(2070006) //  itemID
+	p.WriteByte(item.SlotID)   // slot id
+	p.WriteByte(2)             // type of item e.g. equip, has amount, cash
+	p.WriteUint32(item.ItemID) //  itemID
 	p.WriteByte(0)
-	p.WriteUint64(0)   // expiration
-	p.WriteUint16(200) // amount
-	p.WriteUint16(0)   // string with name of creator
-	p.WriteUint16(0)   // is it sealed
+	p.WriteUint64(item.Expiration) // expiration
+	p.WriteUint16(item.Amount)     // amount
+	// p.WriteUint16(0)               // string with name of creator
+	p.WriteString(item.OwnerName)
+	p.WriteUint16(item.Flag) // is it sealed
 
 	return p
 }
