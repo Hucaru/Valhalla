@@ -55,6 +55,7 @@ func Parse(fname string) {
 	getMapInfo()
 	getEquipInfo()
 	getItemInfo()
+	getMobInfo()
 }
 
 func searchNode(search string, fnc func(*node)) bool {
