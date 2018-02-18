@@ -5,9 +5,6 @@ import (
 	"math"
 	"strconv"
 	"strings"
-	"time"
-
-	"golang.org/x/exp/rand"
 )
 
 type Life struct {
@@ -43,19 +40,6 @@ type Stage struct {
 }
 
 var Maps map[uint32]Stage
-
-func GetRandomSpawnPortal(mapID uint32) byte {
-	var portals []byte
-	for _, v := range Maps[mapID].Portals {
-		if v.IsSpawn {
-			portals = append(portals, v.ID)
-		}
-	}
-
-	rand.Seed(uint64(time.Now().Unix()))
-
-	return portals[rand.Int()%len(portals)]
-}
 
 func getMapInfo() {
 	Maps = make(map[uint32]Stage)

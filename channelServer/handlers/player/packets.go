@@ -5,6 +5,7 @@ import (
 	"math"
 	"time"
 
+	"github.com/Hucaru/Valhalla/channelServer/handlers/maps"
 	"github.com/Hucaru/Valhalla/common/character"
 	"github.com/Hucaru/Valhalla/common/constants"
 	"github.com/Hucaru/Valhalla/common/nx"
@@ -68,7 +69,7 @@ func spawnGame(char character.Character, channelID uint32) gopacket.Packet {
 
 	p.WriteUint32(char.CurrentMap)
 	//p.WriteByte(char.CurrentMapPos)
-	p.WriteByte(nx.GetRandomSpawnPortal(char.CurrentMap))
+	p.WriteByte(maps.GetRandomSpawnPortal(char.CurrentMap))
 
 	p.WriteByte(20) // budy list size
 	p.WriteUint32(char.Mesos)
@@ -129,7 +130,7 @@ func spawnGame(char character.Character, channelID uint32) gopacket.Packet {
 	p.WriteByte(0)
 
 	for _, v := range char.Items {
-		if v.InvID == 4 { // Cash (not working propery :())
+		if v.InvID == 4 { // Cash  - not working propery :(
 			p.WriteBytes(addItem(v))
 		}
 	}
@@ -147,7 +148,7 @@ func spawnGame(char character.Character, channelID uint32) gopacket.Packet {
 	// Quests
 	p.WriteUint16(0) // # of quests
 
-	// Minigame
+	// What are these for? Minigame and some other things?
 	p.WriteUint16(0)
 	p.WriteUint32(0)
 	p.WriteUint32(0)

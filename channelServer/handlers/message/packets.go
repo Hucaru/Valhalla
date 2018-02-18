@@ -1,4 +1,4 @@
-package packets
+package message
 
 import (
 	"github.com/Hucaru/Valhalla/common/constants"
@@ -44,6 +44,26 @@ func sendBubblessChat(msgType byte, sender string, msg string) gopacket.Packet {
 	p.WriteByte(constants.SEND_CHANNEL_BUBBLESS_CHAT)
 	p.WriteByte(msgType) // 0x00 buddy chat, 0x01 - party, 0x02 - guild
 	p.WriteString(sender)
+	p.WriteString(msg)
+
+	return p
+}
+
+func sendWhisper(sender string, message string) gopacket.Packet {
+	p := gopacket.NewPacket()
+	p.WriteByte(constants.SEND_CHANNEL_WHISPER)
+	p.WriteString(sender)
+	p.WriteByte(0x00) // Some kind of channel flag, zero is same channel, not sure what non zero means for packet
+	p.WriteString(message)
+
+	return p
+}
+
+func sendAllChat(senderID uint32, isAdmin bool, msg string) gopacket.Packet {
+	p := gopacket.NewPacket()
+	p.WriteByte(constants.SEND_CHANNEL_ALL_CHAT_MSG)
+	p.WriteUint32(senderID)
+	p.WriteBool(isAdmin)
 	p.WriteString(msg)
 
 	return p
