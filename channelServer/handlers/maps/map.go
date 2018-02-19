@@ -116,8 +116,12 @@ func DisplayMapObjects(conn *playerConn.Conn, mapID uint32) {
 
 func SendPacketToMap(mapID uint32, p gopacket.Packet) {
 	playerMapListMutex.Lock()
+
 	for _, v := range playerMapList[mapID] {
-		v.Write(p)
+		pCopy := gopacket.NewPacket() // WTF why is conn.Write mutating the byte array?!
+		pCopy.Append(p)
+
+		v.Write(pCopy)
 	}
 	playerMapListMutex.Unlock()
 }

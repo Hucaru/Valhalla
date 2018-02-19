@@ -59,10 +59,6 @@ func HandlePlayerEnterGame(reader gopacket.Reader, conn *playerConn.Conn) {
 	maps.RegisterNewPlayer(conn, char.GetCurrentMap())
 }
 
-func HandlePlayerDisconnect() {
-
-}
-
 func SendPlayerPacket(name string, p gopacket.Packet) {
 	playerListMutex.Lock()
 

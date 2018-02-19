@@ -49,6 +49,6 @@ func HandlePlayerSendAllChat(reader gopacket.Reader, conn *playerConn.Conn) {
 		}
 
 	} else {
-		maps.SendPacketToMap(conn.GetCharacter().GetCurrentMap(), sendAllChat(conn.GetCharacter().GetCharID(), true, msg))
+		maps.SendPacketToMap(conn.GetCharacter().GetCurrentMap(), sendAllChat(conn.GetCharacter().GetCharID(), conn.IsAdmin(), msg))
 	}
 }

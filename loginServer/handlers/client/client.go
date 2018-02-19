@@ -261,7 +261,7 @@ func handleNewCharacter(reader gopacket.Reader, conn *Connection) {
 	}
 
 	if valid {
-		res, err := connection.Db.Exec("INSERT INTO characters (name, userID, worldID, face, hair, skin, gender, str, dex, `int`, luk) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+		res, err := connection.Db.Exec("INSERT INTO characters (name, userID, worldID, face, hair, skin, gender, str, dex, intt, luk) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
 			name, conn.GetUserID(), conn.GetWorldID(), face, hair+hairColour, skin, conn.GetGender(), str, dex, intelligence, luk)
 
 		characterID, err := res.LastInsertId()
@@ -375,7 +375,7 @@ func handleSelectCharacter(reader gopacket.Reader, conn *Connection) {
 }
 
 func addCharacterItem(characterID int64, itemID int32, slot int32) {
-	_, err := connection.Db.Exec("INSERT INTO items (characterID, itemID, slotNumber) VALUES (?, ?, ?)", characterID, itemID, slot)
+	_, err := connection.Db.Exec("INSERT INTO equips (characterID, itemID, slotNumber, creatorName) VALUES (?, ?, ?, ?)", characterID, itemID, slot, "")
 
 	if err != nil {
 		panic(err.Error())
