@@ -42,10 +42,11 @@ type Character struct {
 	skills []Skill
 	items  []Item
 
-	x      int16
-	y      int16
-	fh     int16
-	stance bool
+	x       int16
+	y       int16
+	fh      int16
+	stance  byte
+	chairID uint32
 
 	mutex *sync.Mutex
 }
@@ -595,7 +596,7 @@ func (c *Character) SetFh(val int16) {
 	c.mutex.Unlock()
 }
 
-func (c *Character) GetStance() bool {
+func (c *Character) GetStance() byte {
 	c.mutex.Lock()
 	val := c.stance
 	c.mutex.Unlock()
@@ -603,8 +604,22 @@ func (c *Character) GetStance() bool {
 	return val
 }
 
-func (c *Character) SetStance(val bool) {
+func (c *Character) SetStance(val byte) {
 	c.mutex.Lock()
 	c.stance = val
+	c.mutex.Unlock()
+}
+
+func (c *Character) GetChairID() uint32 {
+	c.mutex.Lock()
+	val := c.chairID
+	c.mutex.Unlock()
+
+	return val
+}
+
+func (c *Character) SetChairID(val uint32) {
+	c.mutex.Lock()
+	c.chairID = val
 	c.mutex.Unlock()
 }

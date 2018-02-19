@@ -1,8 +1,6 @@
 package client
 
 import (
-	"math"
-
 	"github.com/Hucaru/Valhalla/common/character"
 	"github.com/Hucaru/Valhalla/common/constants"
 	"github.com/Hucaru/gopacket"
@@ -139,10 +137,10 @@ func sendBadMigrate() gopacket.Packet {
 	return pac
 }
 
-func writePlayerCharacter(pac *gopacket.Packet, pos uint32, character character.Character) {
+func writePlayerCharacter(pac *gopacket.Packet, pos uint32, char character.Character) {
 	pac.WriteUint32(pos)
 
-	name := character.GetName()
+	name := char.GetName()
 
 	if len(name) > 13 {
 		name = name[:13]
@@ -155,62 +153,32 @@ func writePlayerCharacter(pac *gopacket.Packet, pos uint32, character character.
 		pac.WriteByte(0x0)
 	}
 
-	pac.WriteByte(character.GetGender()) //gender
-	pac.WriteByte(character.GetSkin())   // skin
-	pac.WriteUint32(character.GetFace()) // face
-	pac.WriteUint32(character.GetHair()) // Hair
+	pac.WriteByte(char.GetGender()) //gender
+	pac.WriteByte(char.GetSkin())   // skin
+	pac.WriteUint32(char.GetFace()) // face
+	pac.WriteUint32(char.GetHair()) // Hair
 
 	pac.WriteInt64(0x0) // Pet cash ID
 
-	pac.WriteByte(character.GetLevel())   // level
-	pac.WriteUint16(character.GetJob())   // Job
-	pac.WriteUint16(character.GetStr())   // str
-	pac.WriteUint16(character.GetDex())   // dex
-	pac.WriteUint16(character.GetInt())   // int
-	pac.WriteUint16(character.GetLuk())   // luk
-	pac.WriteUint16(character.GetHP())    // hp
-	pac.WriteUint16(character.GetMaxHP()) // max hp
-	pac.WriteUint16(character.GetMP())    // mp
-	pac.WriteUint16(character.GetMaxMP()) // max mp
-	pac.WriteUint16(character.GetAP())    // ap
-	pac.WriteUint16(character.GetSP())    // sp
-	pac.WriteUint32(character.GetEXP())   // exp
-	pac.WriteUint16(character.GetFame())  // fame
+	pac.WriteByte(char.GetLevel())   // level
+	pac.WriteUint16(char.GetJob())   // Job
+	pac.WriteUint16(char.GetStr())   // str
+	pac.WriteUint16(char.GetDex())   // dex
+	pac.WriteUint16(char.GetInt())   // int
+	pac.WriteUint16(char.GetLuk())   // luk
+	pac.WriteUint16(char.GetHP())    // hp
+	pac.WriteUint16(char.GetMaxHP()) // max hp
+	pac.WriteUint16(char.GetMP())    // mp
+	pac.WriteUint16(char.GetMaxMP()) // max mp
+	pac.WriteUint16(char.GetAP())    // ap
+	pac.WriteUint16(char.GetSP())    // sp
+	pac.WriteUint32(char.GetEXP())   // exp
+	pac.WriteUint16(char.GetFame())  // fame
 
-	pac.WriteUint32(character.GetCurrentMap())  // map id
-	pac.WriteByte(character.GetCurrentMapPos()) // map
+	pac.WriteUint32(char.GetCurrentMap())  // map id
+	pac.WriteByte(char.GetCurrentMapPos()) // map
 
-	// Why is this shit repeated?
-	pac.WriteByte(character.GetGender()) // gender
-	pac.WriteByte(character.GetSkin())   // skin
-	pac.WriteUint32(character.GetFace()) // face
-	pac.WriteByte(0x00)                  // ?
-	pac.WriteUint32(character.GetHair()) // hair
-
-	cashWeapon := uint32(0)
-
-	for _, b := range character.GetEquips() {
-		if b.GetSlotID() < 0 && b.GetSlotID() > -20 {
-			pac.WriteByte(byte(math.Abs(float64(b.GetSlotID()))))
-			pac.WriteUint32(b.GetItemID())
-		}
-	}
-
-	for _, b := range character.GetEquips() {
-		if b.GetSlotID() < -100 {
-			if b.GetSlotID() == -111 {
-				cashWeapon = b.GetItemID()
-			} else {
-				pac.WriteByte(byte(math.Abs(float64(b.GetSlotID() + 100))))
-				pac.WriteUint32(b.GetItemID())
-			}
-		}
-	}
-
-	pac.WriteByte(0xFF)
-	// Another set of items go here? if anything. double 0xFF seems weird. I would imagine it is some sort of seperator each
-	pac.WriteByte(0xFF)
-	pac.WriteUint32(cashWeapon)
+	character.WriteDisplayCharacter(&char, pac)
 
 	pac.WriteByte(1)  // Rankings
 	pac.WriteInt32(1) // ?

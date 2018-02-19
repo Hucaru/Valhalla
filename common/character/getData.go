@@ -271,6 +271,8 @@ func GetCharacter(charID uint32) Character {
 	newChar.SetEtcSlotSize(etcSlotSize)
 	newChar.SetCashSlotSize(cashSlotSize)
 
+	newChar.SetChairID(0)
+
 	return newChar
 }
 

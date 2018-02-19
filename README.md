@@ -13,7 +13,13 @@ Exists and is essentially placeholder (super buggy).
 - Parses nx file. 
 - Gets ingame and loads npcs. 
 - !warp command takes you to different maps. All chat is there but pointless as other players are not yet handled.
-- Like login server need to reduce the number of channels and simplyfy with mutexes
+- Like login server, need to reduce the number of channels and simplyfy with mutexes
+
+## Cash shop
+This is at the bottom of the priority list
+
+## Tests
+There are none yet
 
 ## Usage
 ### Set-up

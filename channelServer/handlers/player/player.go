@@ -2,6 +2,7 @@ package player
 
 import (
 	"log"
+	"sync"
 
 	"github.com/Hucaru/Valhalla/channelServer/handlers/maps"
 	"github.com/Hucaru/Valhalla/channelServer/handlers/playerConn"
@@ -11,6 +12,9 @@ import (
 	"github.com/Hucaru/Valhalla/common/constants"
 	"github.com/Hucaru/gopacket"
 )
+
+var playerList = make(map[string]*playerConn.Conn)
+var playerListMutex = &sync.Mutex{}
 
 func HandlePlayerEnterGame(reader gopacket.Reader, conn *playerConn.Conn) {
 	charID := reader.ReadUint32() // validate this and net address from the migration packet
@@ -27,9 +31,10 @@ func HandlePlayerEnterGame(reader gopacket.Reader, conn *playerConn.Conn) {
 	char.SetSkills(character.GetCharacterSkills(char.GetCharID()))
 	char.SetItems(character.GetCharacterItems(char.GetCharID()))
 
-	portal := maps.GetRandomSpawnPortal(char.GetCurrentMap())
+	portal := maps.GetSpawnPortal(char.GetCurrentMap(), char.GetCurrentMapPos())
 	char.SetX(portal.X)
 	char.SetY(portal.Y)
+	char.SetStance(0) // Not sure how to populate this
 
 	conn.SetCharacter(char)
 	conn.SetChanneldID(uint32(channelID))
@@ -49,7 +54,25 @@ func HandlePlayerEnterGame(reader gopacket.Reader, conn *playerConn.Conn) {
 	maps.RegisterNewPlayer(conn, char.GetCurrentMap())
 }
 
+func HandlePlayerDisconnect() {
+
+}
+
+func SendPlayerPacket(name string, p gopacket.Packet) {
+	playerListMutex.Lock()
+
+	if val, ok := playerList[name]; ok {
+		val.Write(p)
+	}
+
+	playerListMutex.Unlock()
+}
+
 func ChangeMap(conn *playerConn.Conn, newMapID uint32, channelID uint32, mapPos byte, hp uint16) {
+	portal := maps.GetSpawnPortal(newMapID, mapPos)
+	conn.GetCharacter().SetX(portal.X)
+	conn.GetCharacter().SetY(portal.Y)
+
 	conn.Write(changeMap(newMapID, channelID, mapPos, hp))
 	maps.PlayerChangeMap(conn, newMapID)
 }
