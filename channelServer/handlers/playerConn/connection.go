@@ -1,7 +1,6 @@
 package playerConn
 
 import (
-	"log"
 	"net"
 
 	"github.com/Hucaru/Valhalla/common/character"
@@ -18,6 +17,7 @@ type Conn struct {
 	worldID   uint32
 	channelID uint32
 	character character.Character
+	work      func()
 }
 
 func NewConnection(conn net.Conn) *Conn {
@@ -35,16 +35,21 @@ func (c *Conn) Read(p gopacket.Packet) error {
 
 func (c *Conn) Close() {
 	if c.isLogedIn {
-		records, err := connection.Db.Query("UPDATE users set isLogedIn=0 WHERE userID=?", c.userID)
+		c.work()
+		// records, err := connection.Db.Query("UPDATE users set isLogedIn=0 WHERE userID=?", c.userID)
 
-		defer records.Close()
+		// defer records.Close()
 
-		if err != nil {
-			log.Println("Error in auto log out of user on disconnect, userID:", c.userID)
-		}
+		// if err != nil {
+		// 	log.Println("Error in auto log out of user on disconnect, userID:", c.userID)
+		// }
 	}
 
 	c.conn.Close()
+}
+
+func (c *Conn) SetCloseCallback(work func()) {
+	c.work = work
 }
 
 func (c *Conn) String() string {

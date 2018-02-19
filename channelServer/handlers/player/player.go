@@ -47,7 +47,12 @@ func HandlePlayerEnterGame(reader gopacket.Reader, conn *playerConn.Conn) {
 		panic(err)
 	}
 
+	conn.SetIsLogedIn(true)
 	conn.SetAdmin(isAdmin)
+
+	conn.SetCloseCallback(func() {
+		maps.PlayerLeftGame(conn)
+	})
 
 	conn.Write(spawnGame(char, uint32(channelID)))
 

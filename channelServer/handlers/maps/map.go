@@ -23,7 +23,7 @@ func RegisterNewPlayer(conn *playerConn.Conn, mapID uint32) {
 	playerMapListMutex.Unlock()
 }
 
-func PlayerLeftGame(conn *playerConn.Conn, mapID uint32) {
+func PlayerLeftGame(conn *playerConn.Conn) {
 	playerMapListMutex.Lock()
 	// Remove from current map
 	currentMap := conn.GetCharacter().GetCurrentMap()
@@ -34,7 +34,7 @@ func PlayerLeftGame(conn *playerConn.Conn, mapID uint32) {
 		}
 	}
 
-	alertMapPlayerLeft(conn, mapID)
+	alertMapPlayerLeft(conn, currentMap)
 
 	playerMapListMutex.Unlock()
 }
