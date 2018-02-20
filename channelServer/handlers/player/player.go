@@ -1,7 +1,6 @@
 package player
 
 import (
-	"fmt"
 	"log"
 	"sync"
 
@@ -60,6 +59,7 @@ func HandlePlayerEnterGame(reader gopacket.Reader, conn *playerConn.Conn) {
 	maps.RegisterNewPlayer(conn, char.GetCurrentMap())
 }
 
+// TODO: Add cheat detection - use an audit thread maybe? to not block current socket
 func HandlePlayerMovement(reader gopacket.Reader, conn *playerConn.Conn) {
 	// http://mapleref.wikia.com/wiki/Movement
 	/*
@@ -76,14 +76,15 @@ func HandlePlayerMovement(reader gopacket.Reader, conn *playerConn.Conn) {
 	reader.ReadBytes(5) // used in movement validation
 	char := conn.GetCharacter()
 
-	// Used to validate movement:
-	for len(reader.GetRestAsBytes()) > 18 {
+	nFragaments := reader.ReadByte()
+
+	for i := byte(0); i < nFragaments; i++ {
 		movementType := reader.ReadByte()
 		switch movementType { // Movement type
 		// Absolute movement
-		case 0x00:
+		case 0x00: // normal move
 			fallthrough
-		case 0x05:
+		case 0x05: // normal move
 			fallthrough
 		case 0x17:
 			posX := reader.ReadInt16()
@@ -101,7 +102,7 @@ func HandlePlayerMovement(reader gopacket.Reader, conn *playerConn.Conn) {
 			char.SetState(state)
 
 		// Relative movement
-		case 0x01:
+		case 0x01: // jump
 			fallthrough
 		case 0x02:
 			fallthrough
@@ -162,14 +163,13 @@ func HandlePlayerMovement(reader gopacket.Reader, conn *playerConn.Conn) {
 			char.SetX(posX + velX*int16(duration))
 			char.SetY(posY + velY*int16(duration))
 			char.SetFh(foothold)
-			fmt.Println("foothold found:", foothold)
 		default:
 			log.Println("Unkown movement type received", movementType, reader.GetRestAsBytes())
 
 		}
 	}
 
-	reader.ReadBytes(18) // used in movement validation
+	reader.GetRestAsBytes() // used in movement validation
 
 	maps.PlayerMove(conn, reader.GetBuffer()[2:])
 }
