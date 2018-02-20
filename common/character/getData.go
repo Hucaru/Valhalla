@@ -236,7 +236,7 @@ func GetCharacter(charID uint32) Character {
 		panic(err)
 	}
 
-	newChar.mutex = &sync.Mutex{}
+	newChar.mutex = &sync.RWMutex{}
 
 	newChar.SetCharID(charID)
 	newChar.SetUserID(userID)
@@ -294,7 +294,7 @@ func GetCharacters(userID uint32, worldID uint32) []Character {
 	for chars.Next() {
 		var newChar Character
 
-		newChar.mutex = &sync.Mutex{}
+		newChar.mutex = &sync.RWMutex{}
 
 		var charID uint32
 		var userID uint32

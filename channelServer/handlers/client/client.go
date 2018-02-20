@@ -14,6 +14,8 @@ func HandlePacket(conn *playerConn.Conn, reader gopacket.Reader) {
 	opcode := reader.ReadByte()
 
 	switch opcode {
+	case constants.RECV_PING:
+		// handle ping, does client expect pong?
 	case constants.RECV_CHANNEL_PLAYER_LOAD:
 		player.HandlePlayerEnterGame(reader, conn)
 	case constants.RECV_CHANNEL_MOVEMENT:

@@ -50,11 +50,13 @@ func (handle *ClientConnection) sendPacket(p gopacket.Packet) error {
 }
 
 func (handle *ClientConnection) Write(p gopacket.Packet) error {
-	crypt.Encrypt(p)
+	encryptedPacket := append([]byte{}, p...)
+
+	crypt.Encrypt(encryptedPacket)
 
 	header := gopacket.NewPacket()
-	header = crypt.GenerateHeader(len(p), handle.ivSend, constants.MAPLE_VERSION)
-	header.Append(p)
+	header = crypt.GenerateHeader(len(encryptedPacket), handle.ivSend, constants.MAPLE_VERSION)
+	header.Append(encryptedPacket)
 
 	handle.ivSend = crypt.GenerateNewIV(handle.ivSend)
 

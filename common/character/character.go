@@ -48,13 +48,13 @@ type Character struct {
 	state   byte
 	chairID uint32
 
-	mutex *sync.Mutex
+	mutex *sync.RWMutex
 }
 
 func (c *Character) GetEquips() []Equip {
-	c.mutex.Lock()
+	c.mutex.RLock()
 	val := c.equips
-	c.mutex.Unlock()
+	c.mutex.RUnlock()
 
 	return val
 }
@@ -72,9 +72,9 @@ func (c *Character) AddEquip(val Equip) {
 }
 
 func (c *Character) GetSkills() []Skill {
-	c.mutex.Lock()
+	c.mutex.RLock()
 	val := c.skills
-	c.mutex.Unlock()
+	c.mutex.RUnlock()
 
 	return val
 }
@@ -92,9 +92,9 @@ func (c *Character) AddSkill(val Skill) {
 }
 
 func (c *Character) GetItems() []Item {
-	c.mutex.Lock()
+	c.mutex.RLock()
 	val := c.items
-	c.mutex.Unlock()
+	c.mutex.RUnlock()
 
 	return val
 }
@@ -112,9 +112,9 @@ func (c *Character) AddItem(val Item) {
 }
 
 func (c *Character) GetCharID() uint32 {
-	c.mutex.Lock()
+	c.mutex.RLock()
 	val := c.charID
-	c.mutex.Unlock()
+	c.mutex.RUnlock()
 
 	return val
 }
@@ -126,9 +126,9 @@ func (c *Character) SetCharID(val uint32) {
 }
 
 func (c *Character) GetUserID() uint32 {
-	c.mutex.Lock()
+	c.mutex.RLock()
 	val := c.userID
-	c.mutex.Unlock()
+	c.mutex.RUnlock()
 
 	return val
 }
@@ -140,9 +140,9 @@ func (c *Character) SetUserID(val uint32) {
 }
 
 func (c *Character) GetWorldID() uint32 {
-	c.mutex.Lock()
+	c.mutex.RLock()
 	val := c.worldID
-	c.mutex.Unlock()
+	c.mutex.RUnlock()
 
 	return val
 }
@@ -154,9 +154,9 @@ func (c *Character) SetWorldID(val uint32) {
 }
 
 func (c *Character) GetName() string {
-	c.mutex.Lock()
+	c.mutex.RLock()
 	val := c.name
-	c.mutex.Unlock()
+	c.mutex.RUnlock()
 
 	return val
 }
@@ -168,9 +168,9 @@ func (c *Character) SetName(val string) {
 }
 
 func (c *Character) GetGender() byte {
-	c.mutex.Lock()
+	c.mutex.RLock()
 	val := c.gender
-	c.mutex.Unlock()
+	c.mutex.RUnlock()
 
 	return val
 }
@@ -182,9 +182,9 @@ func (c *Character) SetGender(val byte) {
 }
 
 func (c *Character) GetSkin() byte {
-	c.mutex.Lock()
+	c.mutex.RLock()
 	val := c.skin
-	c.mutex.Unlock()
+	c.mutex.RUnlock()
 
 	return val
 }
@@ -196,9 +196,9 @@ func (c *Character) SetSkin(val byte) {
 }
 
 func (c *Character) GetFace() uint32 {
-	c.mutex.Lock()
+	c.mutex.RLock()
 	val := c.face
-	c.mutex.Unlock()
+	c.mutex.RUnlock()
 
 	return val
 }
@@ -210,9 +210,9 @@ func (c *Character) SetFace(val uint32) {
 }
 
 func (c *Character) GetHair() uint32 {
-	c.mutex.Lock()
+	c.mutex.RLock()
 	val := c.hair
-	c.mutex.Unlock()
+	c.mutex.RUnlock()
 
 	return val
 }
@@ -224,9 +224,9 @@ func (c *Character) SetHair(val uint32) {
 }
 
 func (c *Character) GetLevel() byte {
-	c.mutex.Lock()
+	c.mutex.RLock()
 	val := c.level
-	c.mutex.Unlock()
+	c.mutex.RUnlock()
 
 	return val
 }
@@ -238,9 +238,9 @@ func (c *Character) SetLevel(val byte) {
 }
 
 func (c *Character) GetJob() uint16 {
-	c.mutex.Lock()
+	c.mutex.RLock()
 	val := c.job
-	c.mutex.Unlock()
+	c.mutex.RUnlock()
 
 	return val
 }
@@ -252,9 +252,9 @@ func (c *Character) SetJob(val uint16) {
 }
 
 func (c *Character) GetStr() uint16 {
-	c.mutex.Lock()
+	c.mutex.RLock()
 	val := c.str
-	c.mutex.Unlock()
+	c.mutex.RUnlock()
 
 	return val
 }
@@ -266,9 +266,9 @@ func (c *Character) SetStr(val uint16) {
 }
 
 func (c *Character) GetDex() uint16 {
-	c.mutex.Lock()
+	c.mutex.RLock()
 	val := c.dex
-	c.mutex.Unlock()
+	c.mutex.RUnlock()
 
 	return val
 }
@@ -280,9 +280,9 @@ func (c *Character) SetDex(val uint16) {
 }
 
 func (c *Character) GetInt() uint16 {
-	c.mutex.Lock()
+	c.mutex.RLock()
 	val := c.intt
-	c.mutex.Unlock()
+	c.mutex.RUnlock()
 
 	return val
 }
@@ -294,9 +294,9 @@ func (c *Character) SetInt(val uint16) {
 }
 
 func (c *Character) GetLuk() uint16 {
-	c.mutex.Lock()
+	c.mutex.RLock()
 	val := c.luk
-	c.mutex.Unlock()
+	c.mutex.RUnlock()
 
 	return val
 }
@@ -308,9 +308,9 @@ func (c *Character) SetLuk(val uint16) {
 }
 
 func (c *Character) GetHP() uint16 {
-	c.mutex.Lock()
+	c.mutex.RLock()
 	val := c.hp
-	c.mutex.Unlock()
+	c.mutex.RUnlock()
 
 	return val
 }
@@ -322,9 +322,9 @@ func (c *Character) SetHP(val uint16) {
 }
 
 func (c *Character) GetMaxHP() uint16 {
-	c.mutex.Lock()
+	c.mutex.RLock()
 	val := c.maxHP
-	c.mutex.Unlock()
+	c.mutex.RUnlock()
 
 	return val
 }
@@ -336,9 +336,9 @@ func (c *Character) SetMaxHP(val uint16) {
 }
 
 func (c *Character) GetMP() uint16 {
-	c.mutex.Lock()
+	c.mutex.RLock()
 	val := c.mp
-	c.mutex.Unlock()
+	c.mutex.RUnlock()
 
 	return val
 }
@@ -350,9 +350,9 @@ func (c *Character) SetMP(val uint16) {
 }
 
 func (c *Character) GetMaxMP() uint16 {
-	c.mutex.Lock()
+	c.mutex.RLock()
 	val := c.maxMP
-	c.mutex.Unlock()
+	c.mutex.RUnlock()
 
 	return val
 }
@@ -364,9 +364,9 @@ func (c *Character) SetMaxMp(val uint16) {
 }
 
 func (c *Character) GetAP() uint16 {
-	c.mutex.Lock()
+	c.mutex.RLock()
 	val := c.ap
-	c.mutex.Unlock()
+	c.mutex.RUnlock()
 
 	return val
 }
@@ -377,9 +377,9 @@ func (c *Character) SetAP(val uint16) {
 	c.mutex.Unlock()
 }
 func (c *Character) GetSP() uint16 {
-	c.mutex.Lock()
+	c.mutex.RLock()
 	val := c.sp
-	c.mutex.Unlock()
+	c.mutex.RUnlock()
 
 	return val
 }
@@ -391,9 +391,9 @@ func (c *Character) SetSP(val uint16) {
 }
 
 func (c *Character) GetEXP() uint32 {
-	c.mutex.Lock()
+	c.mutex.RLock()
 	val := c.exp
-	c.mutex.Unlock()
+	c.mutex.RUnlock()
 
 	return val
 }
@@ -405,9 +405,9 @@ func (c *Character) SetEXP(val uint32) {
 }
 
 func (c *Character) GetFame() uint16 {
-	c.mutex.Lock()
+	c.mutex.RLock()
 	val := c.fame
-	c.mutex.Unlock()
+	c.mutex.RUnlock()
 
 	return val
 }
@@ -419,9 +419,9 @@ func (c *Character) SetFame(val uint16) {
 }
 
 func (c *Character) GetCurrentMap() uint32 {
-	c.mutex.Lock()
+	c.mutex.RLock()
 	val := c.currentMap
-	c.mutex.Unlock()
+	c.mutex.RUnlock()
 
 	return val
 }
@@ -433,9 +433,9 @@ func (c *Character) SetCurrentMap(val uint32) {
 }
 
 func (c *Character) GetCurrentMapPos() byte {
-	c.mutex.Lock()
+	c.mutex.RLock()
 	val := c.currentMapPos
-	c.mutex.Unlock()
+	c.mutex.RUnlock()
 
 	return val
 }
@@ -447,9 +447,9 @@ func (c *Character) SetCurrentMapPos(val byte) {
 }
 
 func (c *Character) GetPreviousMap() uint32 {
-	c.mutex.Lock()
+	c.mutex.RLock()
 	val := c.previousMap
-	c.mutex.Unlock()
+	c.mutex.RUnlock()
 
 	return val
 }
@@ -461,9 +461,9 @@ func (c *Character) SetPreviousMap(val uint32) {
 }
 
 func (c *Character) GetFeeMarketReturn() uint32 {
-	c.mutex.Lock()
+	c.mutex.RLock()
 	val := c.feeMarketReturn
-	c.mutex.Unlock()
+	c.mutex.RUnlock()
 
 	return val
 }
@@ -475,9 +475,9 @@ func (c *Character) SetFreeMarketReturn(val uint32) {
 }
 
 func (c *Character) GetMesos() uint32 {
-	c.mutex.Lock()
+	c.mutex.RLock()
 	val := c.mesos
-	c.mutex.Unlock()
+	c.mutex.RUnlock()
 
 	return val
 }
@@ -489,9 +489,9 @@ func (c *Character) SetMesos(val uint32) {
 }
 
 func (c *Character) GetEquipSlotSize() byte {
-	c.mutex.Lock()
+	c.mutex.RLock()
 	val := c.equipSlotSize
-	c.mutex.Unlock()
+	c.mutex.RUnlock()
 
 	return val
 }
@@ -502,9 +502,9 @@ func (c *Character) SetEquipSlotSize(val byte) {
 }
 
 func (c *Character) GetUsetSlotSize() byte {
-	c.mutex.Lock()
+	c.mutex.RLock()
 	val := c.useSlotSize
-	c.mutex.Unlock()
+	c.mutex.RUnlock()
 
 	return val
 }
@@ -516,9 +516,9 @@ func (c *Character) SetUseSlotSize(val byte) {
 }
 
 func (c *Character) GetSetupSlotSize() byte {
-	c.mutex.Lock()
+	c.mutex.RLock()
 	val := c.setupSlotSize
-	c.mutex.Unlock()
+	c.mutex.RUnlock()
 
 	return val
 }
@@ -529,9 +529,9 @@ func (c *Character) SetSetupSlotSize(val byte) {
 }
 
 func (c *Character) GetEtcSlotSize() byte {
-	c.mutex.Lock()
+	c.mutex.RLock()
 	val := c.etcSlotSize
-	c.mutex.Unlock()
+	c.mutex.RUnlock()
 
 	return val
 }
@@ -542,9 +542,9 @@ func (c *Character) SetEtcSlotSize(val byte) {
 }
 
 func (c *Character) GetCashSlotSize() byte {
-	c.mutex.Lock()
+	c.mutex.RLock()
 	val := c.cashSlotSize
-	c.mutex.Unlock()
+	c.mutex.RUnlock()
 
 	return val
 }
@@ -555,9 +555,9 @@ func (c *Character) SetCashSlotSize(val byte) {
 }
 
 func (c *Character) GetX() int16 {
-	c.mutex.Lock()
+	c.mutex.RLock()
 	val := c.x
-	c.mutex.Unlock()
+	c.mutex.RUnlock()
 
 	return val
 }
@@ -569,9 +569,9 @@ func (c *Character) SetX(val int16) {
 }
 
 func (c *Character) GetY() int16 {
-	c.mutex.Lock()
+	c.mutex.RLock()
 	val := c.y
-	c.mutex.Unlock()
+	c.mutex.RUnlock()
 
 	return val
 }
@@ -583,9 +583,9 @@ func (c *Character) SetY(val int16) {
 }
 
 func (c *Character) GetFh() uint16 {
-	c.mutex.Lock()
+	c.mutex.RLock()
 	val := c.fh
-	c.mutex.Unlock()
+	c.mutex.RUnlock()
 
 	return val
 }
@@ -597,9 +597,9 @@ func (c *Character) SetFh(val uint16) {
 }
 
 func (c *Character) GetState() byte {
-	c.mutex.Lock()
+	c.mutex.RLock()
 	val := c.state
-	c.mutex.Unlock()
+	c.mutex.RUnlock()
 
 	return val
 }
@@ -611,9 +611,9 @@ func (c *Character) SetState(val byte) {
 }
 
 func (c *Character) GetChairID() uint32 {
-	c.mutex.Lock()
+	c.mutex.RLock()
 	val := c.chairID
-	c.mutex.Unlock()
+	c.mutex.RUnlock()
 
 	return val
 }
