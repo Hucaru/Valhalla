@@ -18,7 +18,7 @@ func RegisterNewPlayer(conn *playerConn.Conn, mapID uint32) {
 	playerMapListMutex.Lock()
 
 	playerMapList[mapID] = append(playerMapList[mapID], conn)
-	DisplayMapObjects(conn, mapID)
+	displayMapObjects(conn, mapID)
 
 	playerMapListMutex.Unlock()
 }
@@ -34,7 +34,7 @@ func PlayerLeftGame(conn *playerConn.Conn) {
 		}
 	}
 
-	alertMapPlayerLeft(conn, currentMap)
+	alertMapPlayerLeft(conn)
 
 	playerMapListMutex.Unlock()
 }
@@ -50,7 +50,7 @@ func PlayerChangeMap(conn *playerConn.Conn, newMapID uint32) {
 		}
 	}
 
-	alertMapPlayerLeft(conn, previousMapID)
+	alertMapPlayerLeft(conn)
 
 	playerMapList[newMapID] = append(playerMapList[newMapID], conn)
 
@@ -58,30 +58,24 @@ func PlayerChangeMap(conn *playerConn.Conn, newMapID uint32) {
 	char.SetCurrentMap(newMapID)
 	char.SetPreviousMap(previousMapID)
 
-	DisplayMapObjects(conn, newMapID)
+	displayMapObjects(conn, newMapID)
 
 	playerMapListMutex.Unlock()
 }
 
-func PlayerMovement() {
-	playerMapListMutex.Lock()
-	playerMapListMutex.Unlock()
-}
-
-func PlayerUseSkill() {
-	playerMapListMutex.Lock()
-	playerMapListMutex.Unlock()
-}
-
-func alertMapPlayerLeft(conn *playerConn.Conn, mapID uint32) {
-	for _, v := range playerMapList[mapID] {
+func alertMapPlayerLeft(conn *playerConn.Conn) {
+	for _, v := range playerMapList[conn.GetCharacter().GetCurrentMap()] {
 		if v != conn {
-			v.Write(playerLeftField(conn.GetCharacter().GetCharID())) // send player left map to the rest of the characters
+			v.Write(playerLeftField(conn.GetCharacter().GetCharID()))
 		}
 	}
 }
 
-func DisplayMapObjects(conn *playerConn.Conn, mapID uint32) {
+func PlayerMove(conn *playerConn.Conn, p gopacket.Packet) {
+	SendPacketToMap(conn.GetCharacter().GetCurrentMap(), playerMove(conn.GetCharacter().GetCharID(), p))
+}
+
+func displayMapObjects(conn *playerConn.Conn, mapID uint32) {
 	// Spawn pet
 
 	// For all connections except player

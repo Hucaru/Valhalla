@@ -44,8 +44,8 @@ type Character struct {
 
 	x       int16
 	y       int16
-	fh      int16
-	stance  byte
+	fh      uint16
+	state   byte
 	chairID uint32
 
 	mutex *sync.Mutex
@@ -582,7 +582,7 @@ func (c *Character) SetY(val int16) {
 	c.mutex.Unlock()
 }
 
-func (c *Character) GetFh() int16 {
+func (c *Character) GetFh() uint16 {
 	c.mutex.Lock()
 	val := c.fh
 	c.mutex.Unlock()
@@ -590,23 +590,23 @@ func (c *Character) GetFh() int16 {
 	return val
 }
 
-func (c *Character) SetFh(val int16) {
+func (c *Character) SetFh(val uint16) {
 	c.mutex.Lock()
 	c.fh = val
 	c.mutex.Unlock()
 }
 
-func (c *Character) GetStance() byte {
+func (c *Character) GetState() byte {
 	c.mutex.Lock()
-	val := c.stance
+	val := c.state
 	c.mutex.Unlock()
 
 	return val
 }
 
-func (c *Character) SetStance(val byte) {
+func (c *Character) SetState(val byte) {
 	c.mutex.Lock()
-	c.stance = val
+	c.state = val
 	c.mutex.Unlock()
 }
 

@@ -17,7 +17,7 @@ func HandlePacket(conn *playerConn.Conn, reader gopacket.Reader) {
 	case constants.RECV_CHANNEL_PLAYER_LOAD:
 		player.HandlePlayerEnterGame(reader, conn)
 	case constants.RECV_CHANNEL_MOVEMENT:
-		//log.Println("Movement packet:", reader)
+		player.HandlePlayerMovement(reader, conn)
 	case constants.RECV_CHANNEL_PLAYER_SEND_ALL_CHAT:
 		message.HandlePlayerSendAllChat(reader, conn)
 	case constants.RECV_CHANNEL_ADD_BUDDY:

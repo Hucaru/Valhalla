@@ -27,5 +27,4 @@ There are none yet
 
 ## Some Screenshots
 
-![Alt text](images/bubble.png?raw=true "In Game")
-![Alt text](images/server_select.png?raw=true "In Game")
+![Alt text](images/movement.png?raw=true "In Game")
