@@ -1,15 +1,21 @@
 package player
 
 import (
+	"encoding/hex"
+	"fmt"
 	"log"
+	"strconv"
+	"strings"
 	"sync"
 
 	"github.com/Hucaru/Valhalla/channelServer/handlers/maps"
+	"github.com/Hucaru/Valhalla/channelServer/handlers/message"
 	"github.com/Hucaru/Valhalla/channelServer/handlers/playerConn"
 	"github.com/Hucaru/Valhalla/channelServer/handlers/world"
 	"github.com/Hucaru/Valhalla/common/character"
 	"github.com/Hucaru/Valhalla/common/connection"
 	"github.com/Hucaru/Valhalla/common/constants"
+	"github.com/Hucaru/Valhalla/common/nx"
 	"github.com/Hucaru/gopacket"
 )
 
@@ -174,6 +180,83 @@ func HandlePlayerMovement(reader gopacket.Reader, conn *playerConn.Conn) {
 	maps.PlayerMove(conn, reader.GetBuffer()[2:])
 }
 
+func HandlePlayerUsePortal(reader gopacket.Reader, conn *playerConn.Conn) {
+	reader.ReadByte() //?
+
+	entryType := reader.ReadInt32()
+
+	switch entryType {
+	case 0:
+		if conn.GetCharacter().GetHP() == 0 {
+			fmt.Println("Implement death handling through portal")
+		}
+	case -1:
+		nameSize := reader.ReadUint16()
+		portalName := reader.ReadString(int(nameSize))
+
+		mapID := conn.GetCharacter().GetCurrentMap()
+
+		if maps.IsValidPortal(mapID, portalName) {
+			if !maps.IsPortalOpen(mapID, portalName) {
+				conn.Write(message.SendPortalClosed())
+				return
+			}
+
+			for _, v := range nx.Maps[mapID].Portals {
+				if v.Name == portalName {
+					ChangeMap(conn, v.Tm, conn.GetChannelID(), maps.GetPortalByName(v.Tm, portalName), conn.GetCharacter().GetHP())
+				}
+			}
+
+		} else {
+			// teleport/warp hacking?
+		}
+
+	default:
+		log.Println("Unkown portal entry type:", entryType)
+	}
+}
+
+func HandlePlayerSendAllChat(reader gopacket.Reader, conn *playerConn.Conn) {
+	msg := reader.ReadString(int(reader.ReadInt16()))
+	ind := strings.Index(msg, "!")
+
+	if ind == 0 && conn.IsAdmin() {
+		command := strings.SplitN(msg[ind+1:], " ", -1)
+		switch command[0] {
+		case "packet":
+			packet := string(command[1])
+			data, err := hex.DecodeString(packet)
+
+			if err != nil {
+				log.Println("Eror in decoding string for gm command packet:", packet)
+				break
+			}
+			log.Println("Sent packet:", hex.EncodeToString(data))
+			conn.Write(data)
+		case "warp":
+			val, err := strconv.Atoi(command[1])
+
+			if err != nil {
+				panic(err)
+			}
+
+			id := uint32(val)
+
+			if _, ok := nx.Maps[id]; ok {
+				ChangeMap(conn, uint32(id), 0, maps.GetRandomSpawnPortal(id), conn.GetCharacter().GetHP())
+			} else {
+				// check if player id in else if
+			}
+		default:
+			log.Println("Unkown GM command", command)
+		}
+
+	} else {
+		maps.SendPacketToMap(conn.GetCharacter().GetCurrentMap(), message.SendAllChat(conn.GetCharacter().GetCharID(), conn.IsAdmin(), msg))
+	}
+}
+
 func SendPlayerPacket(name string, p gopacket.Packet) {
 	playerListMutex.Lock()
 
@@ -184,12 +267,11 @@ func SendPlayerPacket(name string, p gopacket.Packet) {
 	playerListMutex.Unlock()
 }
 
-func ChangeMap(conn *playerConn.Conn, newMapID uint32, channelID uint32, mapPos byte, hp uint16) {
-	portal := maps.GetSpawnPortal(newMapID, mapPos)
+func ChangeMap(conn *playerConn.Conn, newMapID uint32, channelID uint32, portal nx.Portal, hp uint16) {
 	conn.GetCharacter().SetX(portal.X)
 	conn.GetCharacter().SetY(portal.Y)
 
-	conn.Write(changeMap(newMapID, channelID, mapPos, hp))
+	conn.Write(changeMap(newMapID, channelID, portal.ID, hp))
 	maps.PlayerChangeMap(conn, newMapID)
 }
 

@@ -2,13 +2,12 @@ package maps
 
 import (
 	"sync"
-	"time"
 
+	"github.com/Hucaru/Valhalla/channelServer/handlers/mobs"
 	"github.com/Hucaru/Valhalla/channelServer/handlers/npc"
 	"github.com/Hucaru/Valhalla/channelServer/handlers/playerConn"
 	"github.com/Hucaru/Valhalla/common/nx"
 	"github.com/Hucaru/gopacket"
-	"golang.org/x/exp/rand"
 )
 
 var playerMapList = make(map[uint32][]*playerConn.Conn)
@@ -101,6 +100,8 @@ func displayMapObjects(conn *playerConn.Conn, mapID uint32) {
 	}
 
 	// send mob data
+	conn.Write(mobs.SpawnMob())   // test
+	conn.Write(mobs.ControlMob()) // test
 
 	// show droped items
 
@@ -120,27 +121,4 @@ func SendPacketToMap(mapID uint32, p gopacket.Packet) {
 		playerMapList[mapID][i].Write(p)
 	}
 	playerMapListMutex.RUnlock()
-}
-
-func GetRandomSpawnPortal(mapID uint32) nx.Portal {
-	var portals []nx.Portal
-	for i := range nx.Maps[mapID].Portals {
-		if nx.Maps[mapID].Portals[i].IsSpawn {
-			portals = append(portals, nx.Maps[mapID].Portals[i])
-		}
-	}
-
-	rand.Seed(uint64(time.Now().Unix()))
-
-	return portals[rand.Int()%len(portals)]
-}
-
-func GetSpawnPortal(mapID uint32, portalID byte) nx.Portal {
-	for i := range nx.Maps[mapID].Portals {
-		if nx.Maps[mapID].Portals[i].IsSpawn && nx.Maps[mapID].Portals[i].ID == portalID {
-			return nx.Maps[mapID].Portals[i]
-		}
-	}
-
-	return GetRandomSpawnPortal(mapID)
 }

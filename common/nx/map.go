@@ -17,6 +17,7 @@ type Life struct {
 	Rx0     int16
 	Rx1     int16
 	Npc     bool
+	Mob     bool
 	X       int16
 	Y       int16
 }
@@ -24,10 +25,12 @@ type Life struct {
 type Portal struct {
 	ID      byte
 	Tm      uint32
+	Tn      string
 	Pt      byte
 	IsSpawn bool
 	X       int16
 	Y       int16
+	Name    string
 }
 
 type Stage struct {
@@ -149,8 +152,11 @@ func getPortalItem(n node) []Portal {
 				portal.Pt = options.Data[0]
 			case "pn":
 				portal.IsSpawn = bool(strLookup[dataToUint32(options.Data)] == "sp")
+				portal.Name = strLookup[dataToUint32(options.Data)]
 			case "tm":
 				portal.Tm = dataToUint32(options.Data)
+			case "tn":
+				portal.Tn = strLookup[dataToUint32(options.Data)]
 			case "x":
 				portal.X = dataToInt16(options.Data)
 			case "y":
@@ -195,6 +201,7 @@ func getLifeItem(n node) Life {
 			lifeItem.Rx1 = dataToInt16(lifeNode.Data)
 		case "type":
 			lifeItem.Npc = bool(strLookup[dataToUint32(lifeNode.Data)] == "n")
+			lifeItem.Mob = bool(strLookup[dataToUint32(lifeNode.Data)] == "m")
 		case "x":
 			lifeItem.X = dataToInt16(lifeNode.Data)
 		case "y":

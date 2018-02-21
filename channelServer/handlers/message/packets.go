@@ -59,12 +59,20 @@ func sendWhisper(sender string, message string) gopacket.Packet {
 	return p
 }
 
-func sendAllChat(senderID uint32, isAdmin bool, msg string) gopacket.Packet {
+func SendAllChat(senderID uint32, isAdmin bool, msg string) gopacket.Packet {
 	p := gopacket.NewPacket()
 	p.WriteByte(constants.SEND_CHANNEL_ALL_CHAT_MSG)
 	p.WriteUint32(senderID)
 	p.WriteBool(isAdmin)
 	p.WriteString(msg)
+
+	return p
+}
+
+func SendPortalClosed() gopacket.Packet {
+	p := gopacket.NewPacket()
+	p.WriteByte(constants.SEND_CHANNEL_PORTAL_CLOSED)
+	p.WriteByte(0x01)
 
 	return p
 }

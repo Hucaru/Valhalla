@@ -20,7 +20,7 @@ func changeMap(mapID uint32, channelID uint32, mapPos byte, hp uint16) gopacket.
 	p.WriteUint32(mapID)
 	p.WriteByte(mapPos)
 	p.WriteUint16(hp)
-	p.WriteByte(0)
+	p.WriteByte(0) // flag for more reading
 
 	return p
 }

@@ -3,16 +3,24 @@ Golang v28 maplestory server
 
 ## Don't use this as most things don't work yet
 
-## Login Server
+## Ingame Features Implemented
+- All chat
+- Other players visible (things like pets not implemented)
+- Movement
+- Map traversal
+- NPC Spawn
+
+## TODO
+### Login Server
 - Need to change how interserver comms is handled and reduce the number of go routines and channels used with mutexes.
 - Need to add on startup to clear loginserver logins, incase of crash and auto-restart.
 - Need to do rankings
 - Need to figure out what the extra set of equips are in character display. It looks fine but packet structure is odd as it has extra 0xFF seperator
 
-## World Server
+### World Server
 Exists and is essentially placeholder.
 
-## Channel Server (not much gameplay added)
+### Channel Server (not much gameplay added)
 - Parses nx file. 
 - Gets ingame and loads npcs. 
 - !warp command takes you to different maps if you are an admin.
