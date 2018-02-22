@@ -5,7 +5,7 @@ import (
 	"net"
 	"time"
 
-	"github.com/Hucaru/Valhalla/channelServer/handlers/login"
+	"github.com/Hucaru/Valhalla/channelServer/login"
 	"github.com/Hucaru/Valhalla/common/connection"
 	"github.com/Hucaru/Valhalla/common/constants"
 	"github.com/Hucaru/gopacket"

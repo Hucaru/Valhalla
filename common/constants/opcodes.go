@@ -62,4 +62,5 @@ const (
 	RECV_CHANNEL_PARTY_INFO                 = 0x4F
 	RECV_CHANNEL_GUILD_MANAGEMENT           = 0x51
 	RECV_CHANNEL_GUILD_REJECT               = 0x52
+	RECV_CHANNEL_MOB_MOVEMENT               = 0x6A
 )
