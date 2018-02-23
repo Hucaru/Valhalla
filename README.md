@@ -9,6 +9,12 @@ Golang v28 maplestory server
 - Movement
 - Map traversal
 - NPC Spawn
+- Leveling (inclusing hp, mp increase based on job and stats)
+- Stats in character stats can be changed after leveling
+- Skill points can be assigned when leveling
+- Exp gained shown
+- Exp gained causes level up
+- Skills used shown to map
 
 ## TODO
 ### Login Server
