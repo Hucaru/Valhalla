@@ -11,6 +11,36 @@ import (
 	"github.com/Hucaru/gopacket"
 )
 
+func statChange(byPlayer bool, stat uint32, value uint16) gopacket.Packet {
+	p := gopacket.NewPacket()
+	p.WriteByte(constants.SEND_CHANNEL_STAT_CHANGE)
+	p.WriteBool(byPlayer)
+	p.WriteUint32(stat)
+	p.WriteUint16(value)
+
+	return p
+}
+
+func statNoChange() gopacket.Packet {
+	p := gopacket.NewPacket()
+	// Continue game opcode is part of inventory?
+	p.WriteByte(constants.SEND_CHANNEL_INVENTORY_OPERATION)
+	p.WriteByte(0x01)
+	p.WriteByte(0x00)
+	p.WriteByte(0x00)
+
+	return p
+}
+
+func playerEmotion(playerID uint32, emotion uint32) gopacket.Packet {
+	p := gopacket.NewPacket()
+	p.WriteByte(constants.SEND_CHANNEL_PLAYER_EMOTION)
+	p.WriteUint32(playerID)
+	p.WriteUint32(emotion)
+
+	return p
+}
+
 func changeMap(mapID uint32, channelID uint32, mapPos byte, hp uint16) gopacket.Packet {
 	p := gopacket.NewPacket()
 	p.WriteByte(constants.SEND_CHANNEL_WARP_TO_MAP)

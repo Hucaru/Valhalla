@@ -133,6 +133,22 @@ func HandlePlayerSendAllChat(reader gopacket.Reader, conn *playerConn.Conn) {
 			} else {
 				// check if player id in else if
 			}
+		case "job":
+			val, err := strconv.Atoi(command[1])
+
+			if err != nil {
+				panic(err)
+			}
+
+			PlayerChangeJob(conn, uint16(val))
+		case "level":
+			val, err := strconv.Atoi(command[1])
+
+			if err != nil {
+				panic(err)
+			}
+
+			PlayerSetLevel(conn, uint16(val))
 		default:
 			log.Println("Unkown GM command", command)
 		}
@@ -140,6 +156,14 @@ func HandlePlayerSendAllChat(reader gopacket.Reader, conn *playerConn.Conn) {
 	} else {
 		server.SendPacketToMap(conn.GetCharacter().GetCurrentMap(), message.SendAllChat(conn.GetCharacter().GetCharID(), conn.IsAdmin(), msg))
 	}
+}
+
+func HandlePlayerEmotion(reader gopacket.Reader, conn *playerConn.Conn) {
+	emotion := reader.ReadUint32()
+	server.SendPacketToMap(conn.GetCharacter().GetCurrentMap(), playerEmotion(conn.GetCharacter().GetCharID(), emotion))
+}
+
+func HandlePlayerUpdateSkill(reader gopacket.Reader, conn *playerConn.Conn) {
 }
 
 func ChangeMap(conn *playerConn.Conn, newMapID uint32, channelID uint32, portal nx.Portal, hp uint16) {
