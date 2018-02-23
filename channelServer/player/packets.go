@@ -11,7 +11,38 @@ import (
 	"github.com/Hucaru/gopacket"
 )
 
-func statChange(byPlayer bool, stat uint32, value uint16) gopacket.Packet {
+func playerLevelUpAnimation(charID uint32) gopacket.Packet {
+	p := gopacket.NewPacket()
+	p.WriteByte(constants.SEND_CHANNEL_PLAYER_ANIMATION)
+	p.WriteUint32(charID)
+	p.WriteByte(0)
+
+	return p
+}
+
+func playerSkillUpdate(skillID uint32, level uint32) gopacket.Packet {
+	p := gopacket.NewPacket()
+	p.WriteByte(constants.SEND_CHANNEL_SKILL_RECORD_UPDATE)
+	p.WriteByte(0x01)   // time check?
+	p.WriteUint16(0x01) // number of skills to update
+	p.WriteUint32(skillID)
+	p.WriteUint32(level)
+	p.WriteByte(0x01)
+
+	return p
+}
+
+func statChangeByte(byPlayer bool, stat uint32, value byte) gopacket.Packet {
+	p := gopacket.NewPacket()
+	p.WriteByte(constants.SEND_CHANNEL_STAT_CHANGE)
+	p.WriteBool(byPlayer)
+	p.WriteUint32(stat)
+	p.WriteByte(value)
+
+	return p
+}
+
+func statChangeUint16(byPlayer bool, stat uint32, value uint16) gopacket.Packet {
 	p := gopacket.NewPacket()
 	p.WriteByte(constants.SEND_CHANNEL_STAT_CHANGE)
 	p.WriteBool(byPlayer)
@@ -21,9 +52,19 @@ func statChange(byPlayer bool, stat uint32, value uint16) gopacket.Packet {
 	return p
 }
 
+func statChangeUint32(byPlayer bool, stat uint32, value uint32) gopacket.Packet {
+	p := gopacket.NewPacket()
+	p.WriteByte(constants.SEND_CHANNEL_STAT_CHANGE)
+	p.WriteBool(byPlayer)
+	p.WriteUint32(stat)
+	p.WriteUint32(value)
+
+	return p
+}
+
 func statNoChange() gopacket.Packet {
 	p := gopacket.NewPacket()
-	// Continue game opcode is part of inventory?
+	// Continue game opcode is part of inventory opcode list?
 	p.WriteByte(constants.SEND_CHANNEL_INVENTORY_OPERATION)
 	p.WriteByte(0x01)
 	p.WriteByte(0x00)

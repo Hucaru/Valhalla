@@ -357,7 +357,7 @@ func (c *Character) GetMaxMP() uint16 {
 	return val
 }
 
-func (c *Character) SetMaxMp(val uint16) {
+func (c *Character) SetMaxMP(val uint16) {
 	c.mutex.Lock()
 	c.maxMP = val
 	c.mutex.Unlock()

@@ -123,7 +123,7 @@ func HandlePlayerSendAllChat(reader gopacket.Reader, conn *playerConn.Conn) {
 			val, err := strconv.Atoi(command[1])
 
 			if err != nil {
-				panic(err)
+				return
 			}
 
 			id := uint32(val)
@@ -137,7 +137,7 @@ func HandlePlayerSendAllChat(reader gopacket.Reader, conn *playerConn.Conn) {
 			val, err := strconv.Atoi(command[1])
 
 			if err != nil {
-				panic(err)
+				return
 			}
 
 			PlayerChangeJob(conn, uint16(val))
@@ -145,10 +145,18 @@ func HandlePlayerSendAllChat(reader gopacket.Reader, conn *playerConn.Conn) {
 			val, err := strconv.Atoi(command[1])
 
 			if err != nil {
-				panic(err)
+				return
 			}
 
-			PlayerSetLevel(conn, uint16(val))
+			PlayerSetLevel(conn, byte(val))
+		case "exp":
+			val, err := strconv.Atoi(command[1])
+
+			if err != nil {
+				return
+			}
+
+			PlayerAddExp(conn, uint32(val))
 		default:
 			log.Println("Unkown GM command", command)
 		}
@@ -163,7 +171,19 @@ func HandlePlayerEmotion(reader gopacket.Reader, conn *playerConn.Conn) {
 	server.SendPacketToMap(conn.GetCharacter().GetCurrentMap(), playerEmotion(conn.GetCharacter().GetCharID(), emotion))
 }
 
-func HandlePlayerUpdateSkill(reader gopacket.Reader, conn *playerConn.Conn) {
+func HandlePlayerSkillUpdate(reader gopacket.Reader, conn *playerConn.Conn) {
+	char := conn.GetCharacter()
+
+	skillID := reader.ReadUint32()
+
+	newSP := char.GetSP() - 1
+	char.SetSP(newSP)
+
+	conn.Write(statChangeUint16(true, spID, newSP))
+
+	// Client will warp player away and await duplicate packet for confirmation?
+	conn.Write(playerSkillUpdate(skillID, 1))
+	conn.Write(playerSkillUpdate(skillID, 1))
 }
 
 func ChangeMap(conn *playerConn.Conn, newMapID uint32, channelID uint32, portal nx.Portal, hp uint16) {

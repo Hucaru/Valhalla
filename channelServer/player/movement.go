@@ -29,6 +29,7 @@ func HandlePlayerMovement(reader gopacket.Reader, conn *playerConn.Conn) {
 
 	for i := byte(0); i < nFragaments; i++ {
 		movementType := reader.ReadByte()
+
 		switch movementType { // Movement type
 		// Absolute movement
 		case 0x00: // normal move
@@ -38,17 +39,18 @@ func HandlePlayerMovement(reader gopacket.Reader, conn *playerConn.Conn) {
 		case 0x17:
 			posX := reader.ReadInt16()
 			posY := reader.ReadInt16()
+
 			velX := reader.ReadInt16()
 			velY := reader.ReadInt16()
 
-			reader.ReadUint16()
+			foothold := reader.ReadUint16()
 
 			state := reader.ReadByte()
 			duration := reader.ReadUint16()
 
-			// Do I need to apply kinematics equations here?
 			char.SetX(posX + velX*int16(duration))
 			char.SetY(posY + velY*int16(duration))
+			char.SetFh(foothold)
 			char.SetState(state)
 
 		// Relative movement
@@ -67,19 +69,19 @@ func HandlePlayerMovement(reader gopacket.Reader, conn *playerConn.Conn) {
 			reader.ReadInt16() // velY
 
 			state := reader.ReadByte()
-			reader.ReadUint16() // duration
+			foothold := reader.ReadUint16()
 
 			char.SetState(state)
+			char.SetFh(foothold)
 
 		// Instant movement
 		case 0x03:
 			fallthrough
-		case 0x04:
+		case 0x04: // teleport
 			fallthrough
-		case 0x07:
+		case 0x07: // assaulter
 			fallthrough
-		case 0x08:
-			fallthrough
+
 		case 0x09:
 			fallthrough
 		case 0x014:
@@ -113,9 +115,10 @@ func HandlePlayerMovement(reader gopacket.Reader, conn *playerConn.Conn) {
 			char.SetX(posX + velX*int16(duration))
 			char.SetY(posY + velY*int16(duration))
 			char.SetFh(foothold)
+		case 0x08:
+			reader.ReadByte()
 		default:
 			log.Println("Unkown movement type received", movementType, reader.GetRestAsBytes())
-
 		}
 	}
 

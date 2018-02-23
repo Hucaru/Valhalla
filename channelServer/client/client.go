@@ -6,6 +6,7 @@ import (
 	"github.com/Hucaru/Valhalla/channelServer/mobs"
 	"github.com/Hucaru/Valhalla/channelServer/player"
 	"github.com/Hucaru/Valhalla/channelServer/playerConn"
+	"github.com/Hucaru/Valhalla/channelServer/skills"
 	"github.com/Hucaru/Valhalla/common/constants"
 	"github.com/Hucaru/gopacket"
 )
@@ -22,6 +23,8 @@ func HandlePacket(conn *playerConn.Conn, reader gopacket.Reader) {
 		player.HandlePlayerUsePortal(reader, conn)
 	case constants.RECV_CHANNEL_MOVEMENT:
 		player.HandlePlayerMovement(reader, conn)
+	case constants.RECV_CHANNEL_SKILL_USAGE:
+		skills.HandlePlayerSkillUsage(reader, conn)
 	case constants.RECV_CHANNEL_PLAYER_SEND_ALL_CHAT:
 		player.HandlePlayerSendAllChat(reader, conn)
 	case constants.RECV_CHANNEL_EMOTION:
@@ -31,9 +34,9 @@ func HandlePacket(conn *playerConn.Conn, reader gopacket.Reader) {
 	case constants.RECV_CHANNEL_PASSIVE_REGEN:
 		player.HandlePlayerPassiveRegen(reader, conn)
 	case constants.RECV_CHANNEL_SKILL_UPDATE:
-		player.HandlePlayerUpdateSkill(reader, conn)
-	case constants.RECV_CHANNEL_ADD_BUDDY:
-		//
+		player.HandlePlayerSkillUpdate(reader, conn)
+	case constants.RECV_CHANNEL_SPECIAL_SKILL_USAGE:
+		skills.HandlePlayerSpecialSkillUsage(reader, conn)
 	case constants.RECV_CHANNEL_MOB_MOVEMENT:
 		mobs.HandleMovement(reader, conn)
 	default:
