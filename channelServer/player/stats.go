@@ -160,6 +160,20 @@ func PlayerChangeJob(conn *playerConn.Conn, jobValue uint16) {
 	// Send map change job
 }
 
+func PlayerSetHP(conn *playerConn.Conn, newHp uint16) {
+	char := conn.GetCharacter()
+	char.SetHP(newHp)
+
+	conn.Write(statChangeUint16(true, hpID, newHp))
+}
+
+func PlayerSetMP(conn *playerConn.Conn, newMp uint16) {
+	char := conn.GetCharacter()
+	char.SetHP(newMp)
+
+	conn.Write(statChangeUint16(true, mpID, newMp))
+}
+
 func PlayerSetLevel(conn *playerConn.Conn, level byte) {
 	delta := int16(level) - int16(conn.GetCharacter().GetLevel())
 	char := conn.GetCharacter()

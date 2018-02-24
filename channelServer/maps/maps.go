@@ -20,7 +20,7 @@ func PlayerLeftGame(conn *playerConn.Conn) {
 	alertMapPlayerLeft(conn, mapID)
 }
 
-func PlayerChangeMap(conn *playerConn.Conn, newMapID uint32) {
+func PlayerChangeMap(conn *playerConn.Conn, newMapID uint32, pos byte, hp uint16) {
 	previousMapID := conn.GetCharacter().GetCurrentMap()
 
 	char := conn.GetCharacter()
@@ -32,6 +32,9 @@ func PlayerChangeMap(conn *playerConn.Conn, newMapID uint32) {
 	server.RemovePlayerFromMap(conn, previousMapID)
 	server.AddPlayerToMap(conn, newMapID)
 
+	pos = checkKnownBadMapInfo(newMapID, pos)
+
+	conn.Write(changeMap(newMapID, conn.GetChannelID(), pos, hp))
 	displayMapObjects(conn, newMapID)
 }
 
@@ -67,6 +70,7 @@ func displayMapObjects(conn *playerConn.Conn, mapID uint32) {
 	for i, v := range life {
 		if v.Npc {
 			conn.Write(npc.SpawnNPC(uint32(i), v))
+			conn.Write(npc.ChangeController(uint32(i), v))
 		}
 	}
 
@@ -82,4 +86,20 @@ func displayMapObjects(conn *playerConn.Conn, mapID uint32) {
 	// show kites
 
 	// if map undergoing weather effect send it
+}
+
+func checkKnownBadMapInfo(mapID uint32, pos byte) byte {
+	switch mapID {
+	case 100000100: // Heneseys market
+		switch pos {
+		case 14:
+			fallthrough
+		case 15:
+			fallthrough
+		case 16:
+			return pos - 1
+		}
+	}
+
+	return pos
 }

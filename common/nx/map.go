@@ -10,7 +10,7 @@ import (
 type Life struct {
 	ID      uint32
 	Cy      int64
-	F       byte
+	F       bool
 	Fh      int16
 	Hide    bool
 	MobTime int64
@@ -38,7 +38,7 @@ type Stage struct {
 	ForcedReturn uint32
 	ReturnMap    uint32
 	MobRate      float64
-	Town         bool
+	IsTown       bool
 	Portals      []Portal
 }
 
@@ -99,20 +99,17 @@ func getMapInfo() {
 
 			// Info handling
 			for i := uint32(0); i < uint32(info.ChildCount); i++ {
-				n := nodes[info.ChildID+i]
+				infoNode := nodes[info.ChildID+i]
 
-				for j := uint32(0); j < uint32(n.ChildCount); j++ {
-					infoNode := nodes[n.ChildID+j]
-					switch strLookup[infoNode.NameID] {
-					case "forcedReturn":
-						mapItem.ForcedReturn = uint32(dataToInt64(infoNode.Data))
-					case "mobRate":
-						mapItem.MobRate = math.Float64frombits(dataToUint64(infoNode.Data))
-					case "returnMap":
-						mapItem.ReturnMap = uint32(dataToInt64(infoNode.Data))
-					case "town":
-						mapItem.Town = bool(dataToInt64(infoNode.Data) == 1)
-					}
+				switch strLookup[infoNode.NameID] {
+				case "forcedReturn":
+					mapItem.ForcedReturn = dataToUint32(infoNode.Data)
+				case "mobRate":
+					mapItem.MobRate = math.Float64frombits(dataToUint64(infoNode.Data))
+				case "returnMap":
+					mapItem.ReturnMap = dataToUint32(infoNode.Data)
+				case "town":
+					mapItem.IsTown = bool(infoNode.Data[0] == 1)
 				}
 			}
 
@@ -188,7 +185,7 @@ func getLifeItem(n node) Life {
 		case "cy":
 			lifeItem.Cy = dataToInt64(lifeNode.Data)
 		case "f":
-			lifeItem.F = lifeNode.Data[0]
+			lifeItem.F = bool(lifeNode.Data[0] == 0)
 		case "fh":
 			lifeItem.Fh = dataToInt16(lifeNode.Data)
 		case "hide":

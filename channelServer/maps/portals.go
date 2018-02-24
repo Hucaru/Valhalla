@@ -73,7 +73,7 @@ func GetPortalByID(mapID uint32, portalID byte) nx.Portal {
 
 func GetPortalByName(mapID uint32, name string) nx.Portal {
 	for i := range nx.Maps[mapID].Portals {
-		if nx.Maps[mapID].Portals[i].Tn == name {
+		if nx.Maps[mapID].Portals[i].Name == name {
 			return nx.Maps[mapID].Portals[i]
 		}
 	}

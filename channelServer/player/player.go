@@ -73,7 +73,16 @@ func HandlePlayerUsePortal(reader gopacket.Reader, conn *playerConn.Conn) {
 	switch entryType {
 	case 0:
 		if conn.GetCharacter().GetHP() == 0 {
-			fmt.Println("Implement death handling through portal")
+			currentMap := conn.GetCharacter().GetCurrentMap()
+			returnMap := nx.Maps[currentMap].ReturnMap
+			portal := maps.GetRandomSpawnPortal(returnMap)
+
+			conn.GetCharacter().SetX(portal.X)
+			conn.GetCharacter().SetY(portal.Y)
+
+			PlayerSetHP(conn, 50)
+
+			maps.PlayerChangeMap(conn, currentMap, portal.ID, conn.GetCharacter().GetHP())
 		}
 	case -1:
 		nameSize := reader.ReadUint16()
@@ -89,7 +98,14 @@ func HandlePlayerUsePortal(reader gopacket.Reader, conn *playerConn.Conn) {
 
 			for _, v := range nx.Maps[mapID].Portals {
 				if v.Name == portalName {
-					ChangeMap(conn, v.Tm, conn.GetChannelID(), maps.GetPortalByName(v.Tm, portalName), conn.GetCharacter().GetHP())
+					portal := maps.GetPortalByName(v.Tm, v.Tn)
+
+					fmt.Println("using pn:", portalName, "on map:", mapID, "going to map:", v.Tm, "portal name:", portal.Name, "id:", portal.ID)
+
+					conn.GetCharacter().SetX(portal.X)
+					conn.GetCharacter().SetY(portal.Y)
+
+					maps.PlayerChangeMap(conn, v.Tm, portal.ID, conn.GetCharacter().GetHP())
 				}
 			}
 
@@ -129,7 +145,17 @@ func HandlePlayerSendAllChat(reader gopacket.Reader, conn *playerConn.Conn) {
 			id := uint32(val)
 
 			if _, exist := nx.Maps[id]; exist {
-				ChangeMap(conn, uint32(id), 0, maps.GetRandomSpawnPortal(id), conn.GetCharacter().GetHP())
+				portal := maps.GetRandomSpawnPortal(id)
+
+				if len(command) > 2 {
+					pos, err := strconv.Atoi(command[2])
+
+					if err == nil {
+						portal = maps.GetPortalByID(uint32(id), byte(pos))
+					}
+				}
+
+				maps.PlayerChangeMap(conn, uint32(id), portal.ID, conn.GetCharacter().GetHP())
 			} else {
 				// check if player id in else if
 			}
@@ -157,6 +183,22 @@ func HandlePlayerSendAllChat(reader gopacket.Reader, conn *playerConn.Conn) {
 			}
 
 			PlayerAddExp(conn, uint32(val))
+		case "hp":
+			val, err := strconv.Atoi(command[1])
+
+			if err != nil {
+				return
+			}
+
+			PlayerSetHP(conn, uint16(val))
+		case "mp":
+			val, err := strconv.Atoi(command[1])
+
+			if err != nil {
+				return
+			}
+
+			PlayerSetMP(conn, uint16(val))
 		default:
 			log.Println("Unkown GM command", command)
 		}
@@ -184,14 +226,6 @@ func HandlePlayerSkillUpdate(reader gopacket.Reader, conn *playerConn.Conn) {
 	// Client will warp player away and await duplicate packet for confirmation?
 	conn.Write(playerSkillUpdate(skillID, 1))
 	conn.Write(playerSkillUpdate(skillID, 1))
-}
-
-func ChangeMap(conn *playerConn.Conn, newMapID uint32, channelID uint32, portal nx.Portal, hp uint16) {
-	conn.GetCharacter().SetX(portal.X)
-	conn.GetCharacter().SetY(portal.Y)
-
-	conn.Write(changeMap(newMapID, channelID, portal.ID, hp))
-	maps.PlayerChangeMap(conn, newMapID)
 }
 
 func validateNewConnection(charID uint32) bool {

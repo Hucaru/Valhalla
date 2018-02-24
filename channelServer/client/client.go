@@ -4,6 +4,7 @@ import (
 	"log"
 
 	"github.com/Hucaru/Valhalla/channelServer/mobs"
+	"github.com/Hucaru/Valhalla/channelServer/npc"
 	"github.com/Hucaru/Valhalla/channelServer/player"
 	"github.com/Hucaru/Valhalla/channelServer/playerConn"
 	"github.com/Hucaru/Valhalla/channelServer/skills"
@@ -29,6 +30,8 @@ func HandlePacket(conn *playerConn.Conn, reader gopacket.Reader) {
 		player.HandlePlayerSendAllChat(reader, conn)
 	case constants.RECV_CHANNEL_EMOTION:
 		player.HandlePlayerEmotion(reader, conn)
+	case constants.RECV_CHANNEL_NPC_DIALOGUE:
+		npc.HandleNPCDialogue(reader, conn)
 	case constants.RECV_CHANNEL_CHANGE_STAT:
 		player.HandlePlayerChangeStat(reader, conn)
 	case constants.RECV_CHANNEL_PASSIVE_REGEN:

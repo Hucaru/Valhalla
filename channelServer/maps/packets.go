@@ -33,6 +33,20 @@ func playerEnterField(char *character.Character) gopacket.Packet {
 	return p
 }
 
+func changeMap(mapID uint32, channelID uint32, mapPos byte, hp uint16) gopacket.Packet {
+	p := gopacket.NewPacket()
+	p.WriteByte(constants.SEND_CHANNEL_WARP_TO_MAP)
+	p.WriteUint32(channelID)
+	p.WriteByte(0) // character portal counter
+	p.WriteByte(0) // Is connecting
+	p.WriteUint32(mapID)
+	p.WriteByte(mapPos)
+	p.WriteUint16(hp)
+	p.WriteByte(0) // flag for more reading
+
+	return p
+}
+
 func playerLeftField(charID uint32) gopacket.Packet {
 	p := gopacket.NewPacket()
 	p.WriteByte(constants.SEND_CHANNEL_CHARCTER_LEAVE_FIELD)

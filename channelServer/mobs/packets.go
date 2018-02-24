@@ -5,7 +5,7 @@ import (
 	"github.com/Hucaru/gopacket"
 )
 
-func ShowMob(spawnID uint32, mob nx.Life, isNewSpawn bool) gopacket.Packet {
+func showMob(spawnID uint32, mob nx.Life, isNewSpawn bool) gopacket.Packet {
 	p := gopacket.NewPacket()
 	p.WriteByte(0x86)
 	p.WriteUint32(spawnID)
@@ -31,7 +31,7 @@ func ShowMob(spawnID uint32, mob nx.Life, isNewSpawn bool) gopacket.Packet {
 	return p
 }
 
-func ControlMob(spawnID uint32, mob nx.Life, isNewSpawn bool) gopacket.Packet {
+func controlMob(spawnID uint32, mob nx.Life, isNewSpawn bool) gopacket.Packet {
 	p := gopacket.NewPacket()
 	p.WriteByte(0x88)
 	p.WriteByte(0x01)
@@ -57,9 +57,9 @@ func ControlMob(spawnID uint32, mob nx.Life, isNewSpawn bool) gopacket.Packet {
 	return p
 }
 
-func ControlMoveMob(mobID uint32, moveID uint16, useSkill byte, mp uint16) gopacket.Packet {
+func controlMoveMob(mobID uint32, moveID uint16, useSkill byte, mp uint16) gopacket.Packet {
 	p := gopacket.NewPacket()
-	p.WriteByte(0x8F)
+	p.WriteByte(0x89)
 	p.WriteUint32(mobID)
 	p.WriteUint16(moveID)
 	p.WriteByte(useSkill)
@@ -68,7 +68,7 @@ func ControlMoveMob(mobID uint32, moveID uint16, useSkill byte, mp uint16) gopac
 	return p
 }
 
-func MoveMob(mobID uint32, useSkill byte, skill byte, buf []byte) gopacket.Packet {
+func moveMob(mobID uint32, useSkill byte, skill byte, buf []byte) gopacket.Packet {
 	p := gopacket.NewPacket()
 	p.WriteByte(0x8A)
 	p.WriteUint32(mobID)
