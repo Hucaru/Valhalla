@@ -20,7 +20,7 @@ Golang v28 maplestory server
 ### Login Server
 - Need to change how interserver comms is handled and reduce the number of go routines and channels used with mutexes.
 - Need to add on startup to clear loginserver logins, incase of crash and auto-restart.
-- Need to do rankings
+- Need to do rankings calculation, packet figured out
 - Need to figure out what the extra set of equips are in character display. It looks fine but packet structure is odd as it has extra 0xFF seperator
 
 ### World Server

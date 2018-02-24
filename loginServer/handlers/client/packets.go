@@ -180,6 +180,10 @@ func writePlayerCharacter(pac *gopacket.Packet, pos uint32, char character.Chara
 
 	character.WriteDisplayCharacter(&char, pac)
 
-	pac.WriteByte(1)     // Rankings
-	pac.WriteInt32(0xFF) // ?
+	pac.WriteInt32(0) // is character is selected and which one
+	pac.WriteByte(1)  // Rankings
+	pac.WriteInt32(1) // world ranking position
+	pac.WriteInt32(2) // increase / decrease amount
+	pac.WriteInt32(3) // class ranking position
+	pac.WriteInt32(4) // increase / decrease amount
 }
