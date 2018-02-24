@@ -180,11 +180,6 @@ func writePlayerCharacter(pac *gopacket.Packet, pos uint32, char character.Chara
 
 	character.WriteDisplayCharacter(&char, pac)
 
-	pac.WriteByte(1)  // Rankings
-	pac.WriteInt32(1) // ?
-	pac.WriteInt32(2) // ?
-	pac.WriteInt32(3) // ?
-	pac.WriteInt32(4) // ?
-	pac.WriteInt32(5) // ?
-	pac.WriteInt32(6) // ?
+	pac.WriteByte(0)  // Rankings
+	pac.WriteInt32(0) // ?
 }
