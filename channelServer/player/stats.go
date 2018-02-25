@@ -242,7 +242,7 @@ func PlayerSetLevel(conn *playerConn.Conn, level byte) {
 
 	char.SetLevel(byte(level))
 	conn.Write(statChangeByte(false, levelID, level))
-	server.SendPacketToMap(char.GetCurrentMap(), playerLevelUpAnimation(char.GetCharID()))
+	server.SendPacketToMap(char.GetCurrentMap(), playerLevelUpAnimation(char.GetCharID()), nil)
 }
 
 func PlayerAddExp(conn *playerConn.Conn, exp uint32) {

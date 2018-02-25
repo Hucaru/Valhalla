@@ -52,8 +52,6 @@ func PlayerEnterMap(conn *playerConn.Conn, mapID uint32) {
 		if v.mobData.Hp > 0 {
 			conn.Write(showMob(uint32(i), v.lifeData, false))
 
-			// show any summoned monsters
-
 			// Mob has no controller
 			if v.controller == nil {
 				conn.Write(controlMob(uint32(i), v.lifeData, false))
@@ -67,16 +65,20 @@ func PlayerEnterMap(conn *playerConn.Conn, mapID uint32) {
 }
 
 func HandleMovement(reader gopacket.Reader, conn *playerConn.Conn) {
-	mobID := reader.ReadUint32()
-
 	mapID := conn.GetCharacter().GetCurrentMap()
 
+	mobID := reader.ReadUint32() // add validation to this
 	moveID := reader.ReadUint16()
-	useSkill := reader.ReadByte()
-	skill := reader.ReadByte()
+	skillUsed := bool(reader.ReadByte() != 0)
+	skill := reader.ReadByte() // skill
 
-	reader.ReadInt16()
-	reader.ReadInt16()
+	x := reader.ReadInt16() // ? x pos for something?
+	y := reader.ReadInt16() // ? y pos for something?
+
+	level := byte(0)
+	if skillUsed {
+		// Implement mob skills
+	}
 
 	var mp uint16
 
@@ -86,27 +88,36 @@ func HandleMovement(reader gopacket.Reader, conn *playerConn.Conn) {
 			mobsMap[mapID][i].lifeData.X = reader.ReadInt16()
 			mobsMap[mapID][i].lifeData.Y = reader.ReadInt16()
 			mp = mobsMap[mapID][i].mobData.Mp
-			break
 		}
 	}
 	mobsMapMutex.Unlock()
 
-	server.SendPacketToMap(mapID, moveMob(mobID, useSkill, skill, reader.GetBuffer()[13:]))
-	conn.Write(controlMoveMob(mobID, moveID, useSkill, mp))
-
-	mobsMapMutex.RLock()
-	mob := mobsMap[mapID][mobID]
-	mobsMapMutex.RUnlock()
-
-	conn.Write(controlMob(mobID, mob.lifeData, false))
+	conn.Write(controlAck(mobID, moveID, skillUsed, skill, level, mp))
+	server.SendPacketToMap(mapID, moveMob(mobID, skillUsed, skill, x, y, reader.GetBuffer()[13:]), conn)
 }
 
-func validDistance(charX int16, charY int16, mobX int16, mobY int16) bool {
-	maxPos := 40000000000
-	deltaX := mobX - charX
-	deltaY := mobY - charY
+func EndMobControl(conn *playerConn.Conn) {
+	mapID := conn.GetCharacter().GetCurrentMap()
 
-	scalarDelta := deltaX*deltaX + deltaY*deltaY
+	server.MapGetAllPlayers(mapID)
 
-	return int(scalarDelta) < maxPos
+	mobsMapMutex.Lock()
+	// Remove them as controller
+	for i := range mobsMap[mapID] {
+		if mobsMap[mapID][i].controller == conn {
+			mobsMap[mapID][i].controller = nil
+			conn.Write(endControl(mobsMap[mapID][i].lifeData.ID))
+			// find a new controller for mob
+		}
+	}
+
+	mobsMapMutex.Unlock()
+}
+
+func respawnMonster() {
+	// if monster valid for map respawn, otherwise remove from slice
+}
+
+func SpawnMonster(mapID uint32, mobID uint32) {
+
 }

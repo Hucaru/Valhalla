@@ -10,10 +10,13 @@ import (
 var playerMapList = make(map[uint32][]*playerConn.Conn)
 var playerMapListMutex = &sync.RWMutex{}
 
-func SendPacketToMap(mapID uint32, p gopacket.Packet) {
+func SendPacketToMap(mapID uint32, p gopacket.Packet, except *playerConn.Conn) {
 	playerMapListMutex.RLock()
 
 	for i := range playerMapList[mapID] {
+		if playerMapList[mapID][i] == except {
+			continue
+		}
 		playerMapList[mapID][i].Write(p)
 	}
 

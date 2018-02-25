@@ -9,12 +9,17 @@ Golang v28 maplestory server
 - Movement
 - Map traversal
 - NPC Spawn
+- Mob movement (broken movement e.g. mobs jump down ledges in HHG)
 - Leveling (inclusing hp, mp increase based on job and stats)
 - Stats in character stats can be changed after leveling
 - Skill points can be assigned when leveling
 - Exp gained shown
 - Exp gained causes level up
-- Skills used shown to map
+- Skills used shown to map (some skills dc e.g. gm dragon roar dc's other players if mobs on map?)
+- !warp command takes you to different maps if you are an admin extra argument for map pos id can be used
+- !packet sends a packet to the client
+- !job, !level, !exp, !hp, !mp
+
 
 ## TODO
 ### Login Server
@@ -27,12 +32,8 @@ Golang v28 maplestory server
 Exists and is essentially placeholder.
 
 ### Channel Server (not much gameplay added)
-- Parses nx file. 
-- Gets ingame and loads npcs. 
-- !warp command takes you to different maps if you are an admin.
-- All map chat works.
-- Movement works
 - Like login server, need to reduce the number of channels and simplyfy with mutexes
+- Refactor and rething internal logic to make it less spagheti like.
 
 ## Cash shop
 This is at the bottom of the priority list

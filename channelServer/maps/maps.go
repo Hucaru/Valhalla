@@ -17,6 +17,7 @@ func RegisterNewPlayer(conn *playerConn.Conn, mapID uint32) {
 func PlayerLeftGame(conn *playerConn.Conn) {
 	mapID := conn.GetCharacter().GetCurrentMap()
 	server.RemovePlayerFromMap(conn, mapID)
+	mobs.EndMobControl(conn)
 	alertMapPlayerLeft(conn, mapID)
 }
 
@@ -28,12 +29,10 @@ func PlayerChangeMap(conn *playerConn.Conn, newMapID uint32, pos byte, hp uint16
 	char.SetPreviousMap(previousMapID)
 
 	alertMapPlayerLeft(conn, previousMapID)
-
+	mobs.EndMobControl(conn)
 	server.RemovePlayerFromMap(conn, previousMapID)
+
 	server.AddPlayerToMap(conn, newMapID)
-
-	pos = checkKnownBadMapInfo(newMapID, pos)
-
 	conn.Write(changeMap(newMapID, conn.GetChannelID(), pos, hp))
 	displayMapObjects(conn, newMapID)
 }
@@ -49,7 +48,7 @@ func alertMapPlayerLeft(conn *playerConn.Conn, mapID uint32) {
 }
 
 func PlayerMove(conn *playerConn.Conn, p gopacket.Packet) {
-	server.SendPacketToMap(conn.GetCharacter().GetCurrentMap(), playerMove(conn.GetCharacter().GetCharID(), p))
+	server.SendPacketToMap(conn.GetCharacter().GetCurrentMap(), playerMove(conn.GetCharacter().GetCharID(), p), nil)
 }
 
 func displayMapObjects(conn *playerConn.Conn, mapID uint32) {
@@ -86,20 +85,4 @@ func displayMapObjects(conn *playerConn.Conn, mapID uint32) {
 	// show kites
 
 	// if map undergoing weather effect send it
-}
-
-func checkKnownBadMapInfo(mapID uint32, pos byte) byte {
-	switch mapID {
-	case 100000100: // Heneseys market
-		switch pos {
-		case 14:
-			fallthrough
-		case 15:
-			fallthrough
-		case 16:
-			return pos - 1
-		}
-	}
-
-	return pos
 }

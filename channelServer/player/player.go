@@ -1,10 +1,7 @@
 package player
 
 import (
-	"encoding/hex"
-	"fmt"
 	"log"
-	"strconv"
 	"strings"
 
 	"github.com/Hucaru/Valhalla/channelServer/maps"
@@ -100,8 +97,6 @@ func HandlePlayerUsePortal(reader gopacket.Reader, conn *playerConn.Conn) {
 				if v.Name == portalName {
 					portal := maps.GetPortalByName(v.Tm, v.Tn)
 
-					fmt.Println("using pn:", portalName, "on map:", mapID, "going to map:", v.Tm, "portal name:", portal.Name, "id:", portal.ID)
-
 					conn.GetCharacter().SetX(portal.X)
 					conn.GetCharacter().SetY(portal.Y)
 
@@ -124,93 +119,20 @@ func HandlePlayerSendAllChat(reader gopacket.Reader, conn *playerConn.Conn) {
 
 	if ind == 0 && conn.IsAdmin() {
 		command := strings.SplitN(msg[ind+1:], " ", -1)
-		switch command[0] {
-		case "packet":
-			packet := string(command[1])
-			data, err := hex.DecodeString(packet)
-
-			if err != nil {
-				log.Println("Eror in decoding string for gm command packet:", packet)
-				break
-			}
-			log.Println("Sent packet:", hex.EncodeToString(data))
-			conn.Write(data)
-		case "warp":
-			val, err := strconv.Atoi(command[1])
-
-			if err != nil {
-				return
-			}
-
-			id := uint32(val)
-
-			if _, exist := nx.Maps[id]; exist {
-				portal := maps.GetRandomSpawnPortal(id)
-
-				if len(command) > 2 {
-					pos, err := strconv.Atoi(command[2])
-
-					if err == nil {
-						portal = maps.GetPortalByID(uint32(id), byte(pos))
-					}
-				}
-
-				maps.PlayerChangeMap(conn, uint32(id), portal.ID, conn.GetCharacter().GetHP())
-			} else {
-				// check if player id in else if
-			}
-		case "job":
-			val, err := strconv.Atoi(command[1])
-
-			if err != nil {
-				return
-			}
-
-			PlayerChangeJob(conn, uint16(val))
-		case "level":
-			val, err := strconv.Atoi(command[1])
-
-			if err != nil {
-				return
-			}
-
-			PlayerSetLevel(conn, byte(val))
-		case "exp":
-			val, err := strconv.Atoi(command[1])
-
-			if err != nil {
-				return
-			}
-
-			PlayerAddExp(conn, uint32(val))
-		case "hp":
-			val, err := strconv.Atoi(command[1])
-
-			if err != nil {
-				return
-			}
-
-			PlayerSetHP(conn, uint16(val))
-		case "mp":
-			val, err := strconv.Atoi(command[1])
-
-			if err != nil {
-				return
-			}
-
-			PlayerSetMP(conn, uint16(val))
-		default:
-			log.Println("Unkown GM command", command)
-		}
+		dealWithCommand(conn, command)
 
 	} else {
-		server.SendPacketToMap(conn.GetCharacter().GetCurrentMap(), message.SendAllChat(conn.GetCharacter().GetCharID(), conn.IsAdmin(), msg))
+		server.SendPacketToMap(conn.GetCharacter().GetCurrentMap(), message.SendAllChat(conn.GetCharacter().GetCharID(), conn.IsAdmin(), msg), nil)
 	}
+}
+
+func HandlePlayerTakeDmg(reader gopacket.Reader, conn *playerConn.Conn) {
+
 }
 
 func HandlePlayerEmotion(reader gopacket.Reader, conn *playerConn.Conn) {
 	emotion := reader.ReadUint32()
-	server.SendPacketToMap(conn.GetCharacter().GetCurrentMap(), playerEmotion(conn.GetCharacter().GetCharID(), emotion))
+	server.SendPacketToMap(conn.GetCharacter().GetCurrentMap(), playerEmotion(conn.GetCharacter().GetCharID(), emotion), nil)
 }
 
 func HandlePlayerSkillUpdate(reader gopacket.Reader, conn *playerConn.Conn) {

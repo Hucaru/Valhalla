@@ -5,14 +5,6 @@ import (
 	"github.com/Hucaru/gopacket"
 )
 
-func sendLevelUpAnimation(charID byte) gopacket.Packet {
-	p := gopacket.NewPacket()
-	p.WriteByte(constants.SEND_CHANNEL_LEVEL_UP_ANIMATION)
-	p.WriteByte(charID) // charid
-
-	return p
-}
-
 func spawnDoor(x int16, y int16) gopacket.Packet {
 	p := gopacket.NewPacket()
 	p.WriteByte(constants.SEND_CHANNEL_SPAWN_DOOR)

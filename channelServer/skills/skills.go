@@ -14,7 +14,7 @@ func HandlePlayerSkillUsage(reader gopacket.Reader, conn *playerConn.Conn) {
 
 	// For now just make the map aware that the skill was used
 
-	server.SendPacketToMap(char.GetCurrentMap(), playerSkillAnimation(char.GetCharID(), skillID, level))
+	server.SendPacketToMap(char.GetCurrentMap(), playerSkillAnimation(char.GetCharID(), skillID, level), nil)
 }
 
 func HandlePlayerSpecialSkillUsage(reader gopacket.Reader, conn *playerConn.Conn) {
@@ -25,6 +25,6 @@ func HandlePlayerSpecialSkillUsage(reader gopacket.Reader, conn *playerConn.Conn
 
 	// For now just make the map aware that the skill was used
 
-	server.SendPacketToMap(char.GetCurrentMap(), playerSkillAnimation(char.GetCharID(), skillID, level))
+	server.SendPacketToMap(char.GetCurrentMap(), playerSkillAnimation(char.GetCharID(), skillID, level), nil)
 
 }
