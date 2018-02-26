@@ -1,6 +1,7 @@
 package mobs
 
 import (
+	"fmt"
 	"sync"
 
 	"github.com/Hucaru/Valhalla/channelServer/playerConn"
@@ -25,6 +26,7 @@ func PlayerEnterMap(conn *playerConn.Conn, mapID uint32) {
 
 	if !exists {
 		// First time someone has entered the map, load in all the monsters map should have
+		fmt.Println("here")
 		newMonster := []*monster{}
 
 		for _, v := range nx.Maps[mapID].Life {

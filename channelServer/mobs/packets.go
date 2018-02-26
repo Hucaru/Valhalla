@@ -17,14 +17,14 @@ func showMob(spawnID uint32, mob nx.Life, isNewSpawn bool) gopacket.Packet {
 
 	p.WriteInt16(mob.X)
 	p.WriteInt16(mob.Y)
-	p.WriteByte(0x08) // 0x08 and 0x02 denote something about ownership
+	p.WriteByte(0x02) // direction / state
 	p.WriteInt16(mob.Fh)
-	p.WriteUint16(0)
+	p.WriteInt16(mob.Fh)
 
 	if isNewSpawn {
-		p.WriteByte(0xFF)
-	} else {
 		p.WriteByte(0xFE)
+	} else {
+		p.WriteByte(0xFF)
 	}
 
 	p.WriteUint32(0)
@@ -44,14 +44,14 @@ func controlMob(spawnID uint32, mob nx.Life, isNewSpawn bool) gopacket.Packet {
 
 	p.WriteInt16(mob.X)
 	p.WriteInt16(mob.Y)
-	p.WriteByte(0x00)
-	p.WriteInt16(mob.Fh)
-	p.WriteUint16(0)
+	p.WriteByte(0x02)    // which direction it faces?
+	p.WriteInt16(mob.Fh) // foothold to oscillate around
+	p.WriteInt16(mob.Fh) // spawn foothold
 
 	if isNewSpawn {
-		p.WriteByte(0xFF)
-	} else {
 		p.WriteByte(0xFE)
+	} else {
+		p.WriteByte(0xFF)
 	}
 	p.WriteUint32(0)
 
