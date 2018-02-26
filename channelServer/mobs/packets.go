@@ -17,7 +17,7 @@ func showMob(spawnID uint32, mob nx.Life, isNewSpawn bool) gopacket.Packet {
 
 	p.WriteInt16(mob.X)
 	p.WriteInt16(mob.Y)
-	p.WriteByte(0x02) // direction / state
+	p.WriteByte(0x02) // direction 0x02 faces right, 0x03 faces left
 	p.WriteInt16(mob.Fh)
 	p.WriteInt16(mob.Fh)
 
@@ -35,7 +35,7 @@ func showMob(spawnID uint32, mob nx.Life, isNewSpawn bool) gopacket.Packet {
 func controlMob(spawnID uint32, mob nx.Life, isNewSpawn bool) gopacket.Packet {
 	p := gopacket.NewPacket()
 	p.WriteByte(constants.SEND_CHANNEL_CONTROL_MOB)
-	p.WriteByte(0x01)
+	p.WriteByte(0x01) // if mob is agroed or not. 0x01 is not agroed, other values means agroed
 	p.WriteUint32(spawnID)
 	p.WriteByte(0x01)
 	p.WriteUint32(mob.ID)
@@ -64,10 +64,10 @@ func controlAck(mobID uint32, moveID uint16, useSkill bool, skill byte, level by
 	p.WriteUint32(mobID)
 	p.WriteUint16(moveID)
 	p.WriteBool(useSkill)
+	p.WriteByte(0)
 	p.WriteUint16(mp)
 	p.WriteByte(skill)
 	p.WriteByte(level)
-	p.WriteUint16(0)
 
 	return p
 }

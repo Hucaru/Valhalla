@@ -1,6 +1,7 @@
 package player
 
 import (
+	"fmt"
 	"log"
 	"strings"
 
@@ -127,7 +128,27 @@ func HandlePlayerSendAllChat(reader gopacket.Reader, conn *playerConn.Conn) {
 }
 
 func HandlePlayerTakeDmg(reader gopacket.Reader, conn *playerConn.Conn) {
+	fmt.Println(reader)
 
+	dmgType := reader.ReadByte() // multiple types, need a switch statement
+	ammount := reader.ReadUint32()
+
+	mobID := uint32(0)
+
+	reader.ReadUint32()
+
+	hit := reader.ReadByte()
+	stance := reader.ReadByte()
+
+	if dmgType != 0xFE {
+		mobID = reader.ReadUint32()
+	}
+
+	// Handle character buffs e.g. magic guard
+
+	// Modify character hp after buffs taken into account
+	charID := conn.GetCharacter().GetCharID()
+	server.SendPacketToMap(conn.GetCharacter().GetCurrentMap(), playerReceivedDmg(charID, ammount, dmgType, mobID, hit, stance), nil)
 }
 
 func HandlePlayerEmotion(reader gopacket.Reader, conn *playerConn.Conn) {
