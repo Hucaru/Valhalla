@@ -128,27 +128,42 @@ func HandlePlayerSendAllChat(reader gopacket.Reader, conn *playerConn.Conn) {
 }
 
 func HandlePlayerTakeDmg(reader gopacket.Reader, conn *playerConn.Conn) {
-	fmt.Println(reader)
-
-	dmgType := reader.ReadByte() // multiple types, need a switch statement
+	// This needs further investifation
+	dmgType := reader.ReadByte()
 	ammount := reader.ReadUint32()
 
 	mobID := uint32(0)
-
-	reader.ReadUint32()
-
-	hit := reader.ReadByte()
-	stance := reader.ReadByte()
+	objID := uint32(0)
+	level := byte(0)
+	disease := uint32(0)
+	stance := byte(0)
 
 	if dmgType != 0xFE {
 		mobID = reader.ReadUint32()
+		objID = reader.ReadUint32()
+
+	}
+
+	hit := reader.ReadByte()
+	reduction := reader.ReadByte()
+
+	if dmgType == 0xFE {
+		level = reader.ReadByte()
+		disease = reader.ReadUint32()
+		fmt.Println(objID, level, disease)
+	} else if dmgType == 0x00 {
+	} else if dmgType == 0x01 {
+	} else if dmgType == 0x02 {
+	} else {
+		stance = reader.ReadByte()
 	}
 
 	// Handle character buffs e.g. magic guard
 
 	// Modify character hp after buffs taken into account
+
 	charID := conn.GetCharacter().GetCharID()
-	server.SendPacketToMap(conn.GetCharacter().GetCurrentMap(), playerReceivedDmg(charID, ammount, dmgType, mobID, hit, stance), nil)
+	server.SendPacketToMap(conn.GetCharacter().GetCurrentMap(), playerReceivedDmg(charID, ammount, dmgType, mobID, hit, reduction, stance), conn)
 }
 
 func HandlePlayerEmotion(reader gopacket.Reader, conn *playerConn.Conn) {

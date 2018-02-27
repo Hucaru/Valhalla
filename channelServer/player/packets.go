@@ -11,33 +11,31 @@ import (
 	"github.com/Hucaru/gopacket"
 )
 
-func playerReceivedDmg(charID uint32, ammount uint32, dmgType byte, mobID uint32, hit byte, stance byte) gopacket.Packet {
+func playerReceivedDmg(charID uint32, ammount uint32, dmgType byte, mobID uint32, hit byte, reduction byte, stance byte) gopacket.Packet {
 	p := gopacket.NewPacket()
 	p.WriteByte(0x6B)
 	p.WriteUint32(charID)
-	p.WriteByte(0xFE) // putting 00 here writes a miss, so does keeping this here and having 0 ammount
-	p.WriteUint32(ammount)
-	p.WriteUint32(ammount)
+	p.WriteByte(dmgType) // putting 00 here writes a miss, so does keeping this here and having 0 ammount
 
 	if dmgType == 0xFE {
+		p.WriteUint32(ammount)
 		p.WriteUint32(ammount)
 	} else {
 		p.WriteUint32(ammount)
 		p.WriteUint32(mobID)
 		p.WriteByte(hit)
-		p.WriteByte(0) // flag for something?
+		p.WriteByte(reduction) // reduction amount
 		p.WriteByte(stance)
+		p.WriteUint32(ammount)
+		p.WriteUint32(0) // skill id of attack?
 	}
-
-	p.WriteUint32(ammount)
-	p.WriteUint16(0) //?
 
 	return p
 }
 
 func playerLevelUpAnimation(charID uint32) gopacket.Packet {
 	p := gopacket.NewPacket()
-	p.WriteByte(constants.SEND_CHANNEL_PLAYER_ANIMATION)
+	p.WriteByte(constants.SEND_CHANNEL_LEVEL_UP_ANIMATION)
 	p.WriteUint32(charID)
 	p.WriteByte(0)
 
