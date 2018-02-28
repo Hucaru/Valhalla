@@ -5,7 +5,7 @@ import (
 	"net"
 	"strconv"
 
-	"github.com/Hucaru/Valhalla/common/crypt"
+	"github.com/Hucaru/Valhalla/crypt"
 	"github.com/Hucaru/gopacket"
 )
 

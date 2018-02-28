@@ -1,12 +1,14 @@
-package client
+package loginPackets
 
 import (
-	"github.com/Hucaru/Valhalla/common/character"
-	"github.com/Hucaru/Valhalla/common/constants"
+	"strconv"
+
+	"github.com/Hucaru/Valhalla/character"
+	"github.com/Hucaru/Valhalla/constants"
 	"github.com/Hucaru/gopacket"
 )
 
-func channelToLogin() gopacket.Packet {
+func ChannelToLogin() gopacket.Packet {
 	pac := gopacket.NewPacket()
 	pac.WriteByte(constants.SEND_LOGIN_RESTARTER)
 	pac.WriteByte(0x01)
@@ -14,7 +16,7 @@ func channelToLogin() gopacket.Packet {
 	return pac
 }
 
-func loginResponce(result byte, userID uint32, gender byte, isAdmin byte, username string, isBanned int) gopacket.Packet {
+func LoginResponce(result byte, userID uint32, gender byte, isAdmin byte, username string, isBanned int) gopacket.Packet {
 	pac := gopacket.NewPacket()
 	pac.WriteByte(constants.SEND_LOGIN_RESPONCE)
 	pac.WriteByte(result)
@@ -39,7 +41,7 @@ func loginResponce(result byte, userID uint32, gender byte, isAdmin byte, userna
 	return pac
 }
 
-func endWorldList() gopacket.Packet {
+func EndWorldList() gopacket.Packet {
 	pac := gopacket.NewPacket()
 	pac.WriteByte(constants.SEND_LOGIN_SEND_WORLD_LIST)
 	pac.WriteByte(0xFF)
@@ -47,7 +49,7 @@ func endWorldList() gopacket.Packet {
 	return pac
 }
 
-func displayCharacters(characters []character.Character) gopacket.Packet {
+func DisplayCharacters(characters []character.Character) gopacket.Packet {
 	pac := gopacket.NewPacket()
 	pac.WriteByte(constants.SEND_LOGIN_CHARACTER_DATA)
 	pac.WriteByte(0) // ?
@@ -65,7 +67,7 @@ func displayCharacters(characters []character.Character) gopacket.Packet {
 	return pac
 }
 
-func nameCheck(name string, nameFound int) gopacket.Packet {
+func NameCheck(name string, nameFound int) gopacket.Packet {
 	pac := gopacket.NewPacket()
 	pac.WriteByte(constants.SEND_LOGIN_NAME_CHECK_RESULT)
 	pac.WriteString(name)
@@ -79,7 +81,7 @@ func nameCheck(name string, nameFound int) gopacket.Packet {
 	return pac
 }
 
-func createdCharacter(success bool, character character.Character) gopacket.Packet {
+func CreatedCharacter(success bool, character character.Character) gopacket.Packet {
 	pac := gopacket.NewPacket()
 	pac.WriteByte(constants.SEND_LOGIN_NEW_CHARACTER_GOOD)
 
@@ -93,7 +95,7 @@ func createdCharacter(success bool, character character.Character) gopacket.Pack
 	return pac
 }
 
-func deleteCharacter(charID int32, deleted bool, hacking bool) gopacket.Packet {
+func DeleteCharacter(charID int32, deleted bool, hacking bool) gopacket.Packet {
 	pac := gopacket.NewPacket()
 	pac.WriteByte(constants.SEND_LOGIN_DELETE_CHARACTER)
 	pac.WriteInt32(charID)
@@ -109,7 +111,7 @@ func deleteCharacter(charID int32, deleted bool, hacking bool) gopacket.Packet {
 	return pac
 }
 
-func migrateClient(ip []byte, port uint16, charID int32) gopacket.Packet {
+func MigrateClient(ip []byte, port uint16, charID int32) gopacket.Packet {
 	pac := gopacket.NewPacket()
 	pac.WriteByte(constants.SEND_LOGIN_CHARACTER_MIGRATE)
 	pac.WriteByte(0x00)
@@ -123,7 +125,7 @@ func migrateClient(ip []byte, port uint16, charID int32) gopacket.Packet {
 	return pac
 }
 
-func sendBadMigrate() gopacket.Packet {
+func SendBadMigrate() gopacket.Packet {
 	pac := gopacket.NewPacket()
 	pac.WriteByte(constants.SEND_LOGIN_CHARACTER_MIGRATE)
 	pac.WriteByte(0x00) // flipping these 2 bytes makes the character select screen do nothing it appears
@@ -186,4 +188,39 @@ func writePlayerCharacter(pac *gopacket.Packet, pos uint32, char character.Chara
 	pac.WriteInt32(2) // increase / decrease amount
 	pac.WriteInt32(3) // class ranking position
 	pac.WriteInt32(4) // increase / decrease amount
+}
+
+var worldNames = [...]string{"Scania", "Bera", "Broa", "Windia", "Khaini", "Bellocan", "Mardia", "Kradia", "Yellonde", "Demethos", "Galicia", "El Nido", "Zenith", "Arcania", "Chaos", "Nova", "Renegates"}
+
+func WorldListing(worldIndex byte) gopacket.Packet {
+	pac := gopacket.NewPacket()
+	pac.WriteByte(constants.SEND_LOGIN_SEND_WORLD_LIST)
+	pac.WriteByte(worldIndex)               // world id
+	pac.WriteString(worldNames[worldIndex]) // World name -
+	pac.WriteByte(3)                        // Ribbon on world - 0 = normal, 1 = event, 2 = new, 3 = hot
+	pac.WriteString("test")
+	pac.WriteByte(0)  // ? exp event notification?
+	pac.WriteByte(20) // number of channels
+
+	maxPopulation := 150
+	population := 50
+
+	for j := 1; j < 21; j++ {
+		pac.WriteString(worldNames[worldIndex] + "-" + strconv.Itoa(j))                // channel name
+		pac.WriteInt32(int32(1200.0 * (float64(population) / float64(maxPopulation)))) // Population
+		pac.WriteByte(worldIndex)                                                      // world id
+		pac.WriteByte(byte(j))                                                         // channel id
+		pac.WriteByte(byte(j - 1))                                                     //?
+	}
+
+	return pac
+}
+
+func WorldInfo(warning byte, population byte) gopacket.Packet {
+	p := gopacket.NewPacket()
+	p.WriteByte(constants.SEND_LOGIN_WORLD_META)
+	p.WriteByte(warning)    // Warning - 0 = no warning, 1 - high amount of concurent users, 2 = max uesrs in world
+	p.WriteByte(population) // Population marker - 0 = No maker, 1 = Highly populated, 2 = over populated
+
+	return p
 }

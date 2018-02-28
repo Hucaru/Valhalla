@@ -1,4 +1,4 @@
-package client
+package handlers
 
 import (
 	"crypto/sha512"
@@ -8,14 +8,15 @@ import (
 	"os"
 	"strings"
 
-	"github.com/Hucaru/Valhalla/common/character"
-	"github.com/Hucaru/Valhalla/common/connection"
-	"github.com/Hucaru/Valhalla/common/constants"
-	"github.com/Hucaru/Valhalla/loginServer/handlers"
+	"github.com/Hucaru/Valhalla/character"
+	"github.com/Hucaru/Valhalla/connection"
+	"github.com/Hucaru/Valhalla/loginPackets"
+
+	"github.com/Hucaru/Valhalla/constants"
 	"github.com/Hucaru/gopacket"
 )
 
-func Handle() {
+func Login() {
 	log.Println("LoginServer")
 
 	listener, err := net.Listen("tcp", "0.0.0.0:8484")
@@ -38,7 +39,7 @@ func Handle() {
 		}
 
 		defer conn.Close()
-		clientConnection := NewConnection(conn)
+		clientConnection := NewConnection(connection.NewClientConnection(conn))
 
 		log.Println("New client connection from", clientConnection)
 
@@ -48,7 +49,7 @@ func Handle() {
 	}
 }
 
-func handlePacket(conn *Connection, reader gopacket.Reader) {
+func handlePacket(conn *clientConn, reader gopacket.Reader) {
 	switch reader.ReadByte() {
 	case constants.RECV_RETURN_TO_LOGIN_SCREEN:
 		handleReturnToLoginScreen(reader, conn)
@@ -74,11 +75,11 @@ func handlePacket(conn *Connection, reader gopacket.Reader) {
 
 }
 
-func handleReturnToLoginScreen(reader gopacket.Reader, conn *Connection) {
-	conn.Write(channelToLogin())
+func handleReturnToLoginScreen(reader gopacket.Reader, conn *clientConn) {
+	conn.Write(loginPackets.ChannelToLogin())
 }
 
-func handleLoginRequest(reader gopacket.Reader, conn *Connection) {
+func handleLoginRequest(reader gopacket.Reader, conn *clientConn) {
 	usernameLength := reader.ReadInt16()
 	username := reader.ReadString(int(usernameLength))
 
@@ -132,10 +133,10 @@ func handleLoginRequest(reader gopacket.Reader, conn *Connection) {
 		}
 	}
 
-	conn.Write(loginResponce(result, userID, gender, isAdmin, username, isBanned))
+	conn.Write(loginPackets.LoginResponce(result, userID, gender, isAdmin, username, isBanned))
 }
 
-func handleGoodLogin(reader gopacket.Reader, conn *Connection) {
+func handleGoodLogin(reader gopacket.Reader, conn *clientConn) {
 	var username, password string
 
 	userID := conn.GetUserID()
@@ -152,30 +153,22 @@ func handleGoodLogin(reader gopacket.Reader, conn *Connection) {
 	hash := hex.EncodeToString(hasher.Sum(nil))
 	conn.SetSessionHash(hash)
 
-	returnChan := make(chan gopacket.Packet)
-	handlers.LoginServer <- connection.NewMessage(handlers.RequestWorlds(conn.IsAdmin()), returnChan)
-	worldsPacket := <-returnChan
-	worlds := gopacket.NewReader(&worldsPacket)
-	nWorlds := int(worlds.ReadByte())
+	const maxNumberOfWorlds = 14
 
-	for i := 0; i < nWorlds; i++ {
-		conn.Write(worlds.ReadBytes(int(worlds.ReadInt16())))
+	for i := maxNumberOfWorlds; i > -1; i-- {
+		conn.Write(loginPackets.WorldListing(byte(i))) // hard coded for now
 	}
-
-	conn.Write(endWorldList())
+	conn.Write(loginPackets.EndWorldList())
 }
 
-func handleWorldSelect(reader gopacket.Reader, conn *Connection) {
+func handleWorldSelect(reader gopacket.Reader, conn *clientConn) {
 	worldID := reader.ReadInt16()
 	conn.SetWorldID(uint32(worldID))
 
-	returnChan := make(chan gopacket.Packet)
-	handlers.LoginServer <- connection.NewMessage(handlers.RequestWorldInfo(worldID), returnChan)
-	worldsInfo := <-returnChan
-	conn.Write(worldsInfo)
+	conn.Write(loginPackets.WorldInfo(0, 0)) // hard coded for now
 }
 
-func handleChannelSelect(reader gopacket.Reader, conn *Connection) {
+func handleChannelSelect(reader gopacket.Reader, conn *clientConn) {
 	selectedWorld := reader.ReadByte() // world
 	conn.SetChanID(reader.ReadByte())  // Channel
 
@@ -185,10 +178,10 @@ func handleChannelSelect(reader gopacket.Reader, conn *Connection) {
 		characters = character.GetCharacters(conn.GetUserID(), conn.GetWorldID())
 	}
 
-	conn.Write(displayCharacters(characters))
+	conn.Write(loginPackets.DisplayCharacters(characters))
 }
 
-func handleNameCheck(reader gopacket.Reader, conn *Connection) {
+func handleNameCheck(reader gopacket.Reader, conn *clientConn) {
 	nameLength := reader.ReadInt16()
 	newCharName := reader.ReadString(int(nameLength))
 
@@ -200,10 +193,10 @@ func handleNameCheck(reader gopacket.Reader, conn *Connection) {
 		panic(err.Error())
 	}
 
-	conn.Write(nameCheck(newCharName, nameFound))
+	conn.Write(loginPackets.NameCheck(newCharName, nameFound))
 }
 
-func handleNewCharacter(reader gopacket.Reader, conn *Connection) {
+func handleNewCharacter(reader gopacket.Reader, conn *clientConn) {
 	nameLength := reader.ReadInt16()
 	name := reader.ReadString(int(nameLength))
 	face := reader.ReadInt32()
@@ -295,10 +288,10 @@ func handleNewCharacter(reader gopacket.Reader, conn *Connection) {
 		newCharacter = characters[len(characters)-1]
 	}
 
-	conn.Write(createdCharacter(valid, newCharacter))
+	conn.Write(loginPackets.CreatedCharacter(valid, newCharacter))
 }
 
-func handleDeleteCharacter(reader gopacket.Reader, conn *Connection) {
+func handleDeleteCharacter(reader gopacket.Reader, conn *clientConn) {
 	dob := reader.ReadInt32()
 	charID := reader.ReadInt32()
 
@@ -340,10 +333,10 @@ func handleDeleteCharacter(reader gopacket.Reader, conn *Connection) {
 		deleted = true
 	}
 
-	conn.Write(deleteCharacter(charID, deleted, hacking))
+	conn.Write(loginPackets.DeleteCharacter(charID, deleted, hacking))
 }
 
-func handleSelectCharacter(reader gopacket.Reader, conn *Connection) {
+func handleSelectCharacter(reader gopacket.Reader, conn *clientConn) {
 	charID := reader.ReadInt32()
 
 	var charCount int
@@ -355,22 +348,9 @@ func handleSelectCharacter(reader gopacket.Reader, conn *Connection) {
 	}
 
 	if charCount == 1 {
-		returnChan := make(chan gopacket.Packet)
-		handlers.LoginServer <- connection.NewMessage(handlers.RequestMigrationInfo(conn.GetWorldID(), conn.GetChanID(), charID), returnChan)
-		p := <-returnChan
-
-		info := gopacket.NewReader(&p)
-		ip := info.ReadBytes(4)
-		port := info.ReadUint16()
-
-		if port != 0xFFFF {
-			log.Println("Migrating", charID, "to:", ip, ":", port)
-			conn.Write(migrateClient(ip, port, charID))
-		} else {
-			log.Println("Bad migrate for char", charID)
-			conn.Write(sendBadMigrate())
-		}
-
+		ip := []byte{192, 0, 0, 1}
+		port := uint16(8686)
+		conn.Write(loginPackets.MigrateClient(ip, port, charID))
 	}
 }
 

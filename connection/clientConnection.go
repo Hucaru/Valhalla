@@ -5,22 +5,22 @@ import (
 	"fmt"
 	"net"
 
-	"github.com/Hucaru/Valhalla/common/constants"
-	"github.com/Hucaru/Valhalla/common/crypt"
+	"github.com/Hucaru/Valhalla/constants"
+	"github.com/Hucaru/Valhalla/crypt"
 	"github.com/Hucaru/gopacket"
 )
 
 // ClientConnection -
 type ClientConnection struct {
-	conn          net.Conn
+	net.Conn
 	readingHeader bool
 	ivRecv        []byte
 	ivSend        []byte
 }
 
 // NewClientConnection -
-func NewClientConnection(conn net.Conn) *ClientConnection {
-	client := &ClientConnection{conn: conn, readingHeader: true, ivSend: make([]byte, 4), ivRecv: make([]byte, 4)}
+func NewClientConnection(conn net.Conn) ClientConnection {
+	client := ClientConnection{Conn: conn, readingHeader: true, ivSend: make([]byte, 4), ivRecv: make([]byte, 4)}
 
 	rand.Read(client.ivSend[:])
 	rand.Read(client.ivRecv[:])
@@ -36,16 +36,16 @@ func NewClientConnection(conn net.Conn) *ClientConnection {
 
 // String -
 func (handle ClientConnection) String() string {
-	return fmt.Sprintf("[Address] %s", handle.conn.RemoteAddr())
+	return fmt.Sprintf("[Address] %s", handle.Conn.RemoteAddr())
 }
 
 // Close -
-func (handle *ClientConnection) Close() {
-	handle.conn.Close()
+func (handle *ClientConnection) Close() error {
+	return handle.Conn.Close()
 }
 
 func (handle *ClientConnection) sendPacket(p gopacket.Packet) error {
-	_, err := handle.conn.Write(p)
+	_, err := handle.Conn.Write(p)
 	return err
 }
 
@@ -60,13 +60,13 @@ func (handle *ClientConnection) Write(p gopacket.Packet) error {
 
 	handle.ivSend = crypt.GenerateNewIV(handle.ivSend)
 
-	_, err := handle.conn.Write(header)
+	_, err := handle.Conn.Write(header)
 
 	return err
 }
 
 func (handle *ClientConnection) Read(p gopacket.Packet) error {
-	_, err := handle.conn.Read(p)
+	_, err := handle.Conn.Read(p)
 
 	if err != nil {
 		return err
@@ -83,10 +83,10 @@ func (handle *ClientConnection) Read(p gopacket.Packet) error {
 }
 
 func (handle *ClientConnection) GetClientIPPort() net.Addr {
-	return handle.conn.RemoteAddr()
+	return handle.Conn.RemoteAddr()
 }
 
-func sendHandshake(client *ClientConnection) error {
+func sendHandshake(client ClientConnection) error {
 	packet := gopacket.NewPacket()
 
 	packet.WriteInt16(13)

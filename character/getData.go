@@ -3,7 +3,7 @@ package character
 import (
 	"sync"
 
-	"github.com/Hucaru/Valhalla/common/connection"
+	"github.com/Hucaru/Valhalla/connection"
 )
 
 func GetCharacterSkills(charID uint32) []Skill {
