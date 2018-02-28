@@ -3,6 +3,8 @@ package handlers
 import (
 	"log"
 
+	"github.com/Hucaru/Valhalla/player"
+
 	"github.com/Hucaru/Valhalla/constants"
 	"github.com/Hucaru/gopacket"
 )
@@ -10,11 +12,13 @@ import (
 func HandleChannelPacket(conn *clientChanConn, reader gopacket.Reader) {
 	switch reader.ReadByte() {
 	case constants.RECV_CHANNEL_PLAYER_LOAD:
+		player.HandleConnect(conn, reader)
+		// maps.HandleNewPlayer(conn) // use data package to get character data for avatar
 
 	case constants.RECV_CHANNEL_MOVEMENT:
 		//
 
-	case constants.RECV_CHANNEL_SKILL_USAGE:
+	case constants.RECV_CHANNEL_MELEE_SKILL:
 		//
 
 	case constants.RECV_CHANNEL_USE_PORTAL:

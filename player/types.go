@@ -3,15 +3,16 @@ package player
 type clientConn interface {
 	Close()
 	String() string
-	SetUserID(val uint32)
+	SetUserID(uint32)
 	GetUserID() uint32
 	SetAdmin(val bool)
 	IsAdmin() bool
-	SetIsLogedIn(val bool)
+	SetIsLogedIn(bool)
 	GetIsLogedIn() bool
+	SetChanID(uint32)
+	GetChanID() uint32
+	SetCloseCallback(func())
 	// Below here might not be needed
-	SetWorldID(val uint32)
+	SetWorldID(uint32)
 	GetWorldID() uint32
-	SetChanID(val byte)
-	GetChanID() byte
 }

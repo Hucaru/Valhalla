@@ -6,11 +6,12 @@ import (
 
 type clientChanConn struct {
 	connection.ClientConnection
-	userID    uint32
-	isLogedIn bool
-	isAdmin   bool
-	worldID   uint32
-	chanID    byte
+	userID        uint32
+	isLogedIn     bool
+	isAdmin       bool
+	worldID       uint32
+	chanID        uint32
+	closeCallback func()
 }
 
 func NewChanConnection(conn connection.ClientConnection) *clientChanConn {
@@ -20,7 +21,7 @@ func NewChanConnection(conn connection.ClientConnection) *clientChanConn {
 
 func (c *clientChanConn) Close() {
 	if c.isLogedIn {
-
+		c.closeCallback()
 	}
 
 	c.Conn.Close()
@@ -62,10 +63,14 @@ func (c *clientChanConn) GetWorldID() uint32 {
 	return c.worldID
 }
 
-func (c *clientChanConn) SetChanID(val byte) {
+func (c *clientChanConn) SetChanID(val uint32) {
 	c.chanID = val
 }
 
-func (c *clientChanConn) GetChanID() byte {
+func (c *clientChanConn) GetChanID() uint32 {
 	return c.chanID
+}
+
+func (c *clientChanConn) SetCloseCallback(callbacK func()) {
+	c.closeCallback = callbacK
 }
