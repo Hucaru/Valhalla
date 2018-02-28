@@ -4,8 +4,6 @@ import (
 	"crypto/sha512"
 	"encoding/hex"
 	"log"
-	"net"
-	"os"
 	"strings"
 
 	"github.com/Hucaru/Valhalla/character"
@@ -16,40 +14,8 @@ import (
 	"github.com/Hucaru/gopacket"
 )
 
-func Login() {
-	log.Println("LoginServer")
-
-	listener, err := net.Listen("tcp", "0.0.0.0:8484")
-
-	if err != nil {
-		log.Println(err)
-		os.Exit(1)
-	}
-
-	defer connection.Db.Close()
-	connection.ConnectToDb()
-
-	log.Println("Client listener ready")
-
-	for {
-		conn, err := listener.Accept()
-
-		if err != nil {
-			log.Println("Error in accepting client", err)
-		}
-
-		defer conn.Close()
-		clientConnection := NewConnection(connection.NewClientConnection(conn))
-
-		log.Println("New client connection from", clientConnection)
-
-		go connection.HandleNewConnection(clientConnection, func(p gopacket.Reader) {
-			handlePacket(clientConnection, p)
-		}, constants.CLIENT_HEADER_SIZE, true)
-	}
-}
-
-func handlePacket(conn *clientConn, reader gopacket.Reader) {
+// HandleLoginPacket -
+func HandleLoginPacket(conn *clientConn, reader gopacket.Reader) {
 	switch reader.ReadByte() {
 	case constants.RECV_RETURN_TO_LOGIN_SCREEN:
 		handleReturnToLoginScreen(reader, conn)
@@ -76,7 +42,7 @@ func handlePacket(conn *clientConn, reader gopacket.Reader) {
 }
 
 func handleReturnToLoginScreen(reader gopacket.Reader, conn *clientConn) {
-	conn.Write(loginPackets.ChannelToLogin())
+	conn.Write(loginPackets.ReturnFromChannel())
 }
 
 func handleLoginRequest(reader gopacket.Reader, conn *clientConn) {

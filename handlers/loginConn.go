@@ -17,7 +17,7 @@ type clientConn struct {
 	gender    byte
 }
 
-func NewConnection(conn connection.ClientConnection) *clientConn {
+func NewLoginConnection(conn connection.ClientConnection) *clientConn {
 	loginConn := &clientConn{ClientConnection: conn, isAdmin: false}
 	return loginConn
 }

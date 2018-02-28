@@ -2,8 +2,6 @@ package connection
 
 import (
 	"log"
-	"net"
-	"strconv"
 
 	"github.com/Hucaru/Valhalla/crypt"
 	"github.com/Hucaru/gopacket"
@@ -14,25 +12,6 @@ type connection interface {
 	Read(p gopacket.Packet) error
 	Close()
 	String() string
-}
-
-// CreateServerListener -
-func CreateServerListener(protocol string, address string, startingPort int) (net.Listener, error, uint16) {
-	listener, err := net.Listen(protocol, address+":"+strconv.Itoa(startingPort))
-	port := startingPort
-
-	if err != nil {
-		for port = startingPort + 1; port < startingPort+100; port++ {
-			listener, err = net.Listen(protocol, address+":"+strconv.Itoa(port))
-
-			if err == nil {
-				break
-			}
-
-		}
-	}
-
-	return listener, err, uint16(port)
 }
 
 // HandleNewConnection -
