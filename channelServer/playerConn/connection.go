@@ -13,7 +13,6 @@ type Conn struct {
 	userID    uint32
 	isLogedIn bool
 	isAdmin   bool
-	hash      string
 	worldID   uint32
 	channelID uint32
 	character character.Character
@@ -70,14 +69,6 @@ func (c *Conn) SetAdmin(val bool) {
 
 func (c *Conn) IsAdmin() bool {
 	return c.isAdmin
-}
-
-func (c *Conn) SetSessionHash(val string) {
-	c.hash = val
-}
-
-func (c *Conn) GetSessionHash() string {
-	return c.hash
 }
 
 func (c *Conn) SetIsLogedIn(val bool) {

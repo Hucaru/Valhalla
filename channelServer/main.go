@@ -8,6 +8,7 @@ import (
 	"github.com/Hucaru/Valhalla/channelServer/client"
 	"github.com/Hucaru/Valhalla/channelServer/login"
 	"github.com/Hucaru/Valhalla/channelServer/playerConn"
+	"github.com/Hucaru/Valhalla/channelServer/server"
 	"github.com/Hucaru/Valhalla/channelServer/world"
 	"github.com/Hucaru/Valhalla/common/connection"
 	"github.com/Hucaru/Valhalla/common/constants"
@@ -29,6 +30,8 @@ func main() {
 	elapsed := time.Since(start)
 
 	log.Println("Loaded and parsed nx in", elapsed)
+
+	server.Init()
 
 	listener, err, port := connection.CreateServerListener(protocol, address, port)
 
