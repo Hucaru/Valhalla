@@ -6,7 +6,7 @@ import (
 	"github.com/Hucaru/Valhalla/connection"
 )
 
-type clientConn struct {
+type clientLoginConn struct {
 	connection.ClientConnection
 	userID    uint32
 	isLogedIn bool
@@ -17,12 +17,12 @@ type clientConn struct {
 	gender    byte
 }
 
-func NewLoginConnection(conn connection.ClientConnection) *clientConn {
-	loginConn := &clientConn{ClientConnection: conn, isAdmin: false}
+func NewLoginConnection(conn connection.ClientConnection) *clientLoginConn {
+	loginConn := &clientLoginConn{ClientConnection: conn, isAdmin: false}
 	return loginConn
 }
 
-func (c *clientConn) Close() {
+func (c *clientLoginConn) Close() {
 	if c.isLogedIn {
 		records, err := connection.Db.Query("UPDATE users set isLogedIn=0 WHERE userID=?", c.userID)
 
@@ -36,62 +36,62 @@ func (c *clientConn) Close() {
 	c.Conn.Close()
 }
 
-func (c *clientConn) String() string {
+func (c *clientLoginConn) String() string {
 	return c.ClientConnection.String()
 }
 
-func (c *clientConn) SetUserID(val uint32) {
+func (c *clientLoginConn) SetUserID(val uint32) {
 	c.userID = val
 }
 
-func (c *clientConn) GetUserID() uint32 {
+func (c *clientLoginConn) GetUserID() uint32 {
 	return c.userID
 }
 
-func (c *clientConn) SetAdmin(val bool) {
+func (c *clientLoginConn) SetAdmin(val bool) {
 	c.isAdmin = val
 }
 
-func (c *clientConn) IsAdmin() bool {
+func (c *clientLoginConn) IsAdmin() bool {
 	return c.isAdmin
 }
 
-func (c *clientConn) SetSessionHash(val string) {
+func (c *clientLoginConn) SetSessionHash(val string) {
 	c.hash = val
 }
 
-func (c *clientConn) GetSessionHash() string {
+func (c *clientLoginConn) GetSessionHash() string {
 	return c.hash
 }
 
-func (c *clientConn) SetIsLogedIn(val bool) {
+func (c *clientLoginConn) SetIsLogedIn(val bool) {
 	c.isLogedIn = val
 }
 
-func (c *clientConn) GetIsLogedIn() bool {
+func (c *clientLoginConn) GetIsLogedIn() bool {
 	return c.isLogedIn
 }
 
-func (c *clientConn) SetWorldID(val uint32) {
+func (c *clientLoginConn) SetWorldID(val uint32) {
 	c.worldID = val
 }
 
-func (c *clientConn) GetChanID() byte {
-	return c.chanID
-}
-
-func (c *clientConn) SetChanID(val byte) {
-	c.chanID = val
-}
-
-func (c *clientConn) GetWorldID() uint32 {
+func (c *clientLoginConn) GetWorldID() uint32 {
 	return c.worldID
 }
 
-func (c *clientConn) SetGender(val byte) {
+func (c *clientLoginConn) SetChanID(val byte) {
+	c.chanID = val
+}
+
+func (c *clientLoginConn) GetChanID() byte {
+	return c.chanID
+}
+
+func (c *clientLoginConn) SetGender(val byte) {
 	c.gender = val
 }
 
-func (c *clientConn) GetGender() byte {
+func (c *clientLoginConn) GetGender() byte {
 	return c.gender
 }

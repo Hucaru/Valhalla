@@ -15,37 +15,37 @@ import (
 )
 
 // HandleLoginPacket -
-func HandleLoginPacket(conn *clientConn, reader gopacket.Reader) {
+func HandleLoginPacket(conn *clientLoginConn, reader gopacket.Reader) {
 	switch reader.ReadByte() {
 	case constants.RECV_RETURN_TO_LOGIN_SCREEN:
-		handleReturnToLoginScreen(reader, conn)
+		handleReturnToLoginScreen(conn, reader)
 	case constants.RECV_LOGIN_REQUEST:
-		handleLoginRequest(reader, conn)
+		handleLoginRequest(conn, reader)
 	case constants.RECV_LOGIN_CHECK_LOGIN:
-		handleGoodLogin(reader, conn)
+		handleGoodLogin(conn, reader)
 	case constants.RECV_LOGIN_WORLD_SELECT:
-		handleWorldSelect(reader, conn)
+		handleWorldSelect(conn, reader)
 	case constants.RECV_LOGIN_CHANNEL_SELECT:
-		handleChannelSelect(reader, conn)
+		handleChannelSelect(conn, reader)
 	case constants.RECV_LOGIN_NAME_CHECK:
-		handleNameCheck(reader, conn)
+		handleNameCheck(conn, reader)
 	case constants.RECV_LOGIN_NEW_CHARACTER:
-		handleNewCharacter(reader, conn)
+		handleNewCharacter(conn, reader)
 	case constants.RECV_LOGIN_DELETE_CHAR:
-		handleDeleteCharacter(reader, conn)
+		handleDeleteCharacter(conn, reader)
 	case constants.RECV_LOGIN_SELECT_CHARACTER:
-		handleSelectCharacter(reader, conn)
+		handleSelectCharacter(conn, reader)
 	default:
 		log.Println("UNKNOWN LOGIN PACKET:", reader)
 	}
 
 }
 
-func handleReturnToLoginScreen(reader gopacket.Reader, conn *clientConn) {
+func handleReturnToLoginScreen(conn *clientLoginConn, reader gopacket.Reader) {
 	conn.Write(loginPackets.ReturnFromChannel())
 }
 
-func handleLoginRequest(reader gopacket.Reader, conn *clientConn) {
+func handleLoginRequest(conn *clientLoginConn, reader gopacket.Reader) {
 	usernameLength := reader.ReadInt16()
 	username := reader.ReadString(int(usernameLength))
 
@@ -102,7 +102,7 @@ func handleLoginRequest(reader gopacket.Reader, conn *clientConn) {
 	conn.Write(loginPackets.LoginResponce(result, userID, gender, isAdmin, username, isBanned))
 }
 
-func handleGoodLogin(reader gopacket.Reader, conn *clientConn) {
+func handleGoodLogin(conn *clientLoginConn, reader gopacket.Reader) {
 	var username, password string
 
 	userID := conn.GetUserID()
@@ -127,14 +127,14 @@ func handleGoodLogin(reader gopacket.Reader, conn *clientConn) {
 	conn.Write(loginPackets.EndWorldList())
 }
 
-func handleWorldSelect(reader gopacket.Reader, conn *clientConn) {
+func handleWorldSelect(conn *clientLoginConn, reader gopacket.Reader) {
 	worldID := reader.ReadInt16()
 	conn.SetWorldID(uint32(worldID))
 
 	conn.Write(loginPackets.WorldInfo(0, 0)) // hard coded for now
 }
 
-func handleChannelSelect(reader gopacket.Reader, conn *clientConn) {
+func handleChannelSelect(conn *clientLoginConn, reader gopacket.Reader) {
 	selectedWorld := reader.ReadByte() // world
 	conn.SetChanID(reader.ReadByte())  // Channel
 
@@ -147,7 +147,7 @@ func handleChannelSelect(reader gopacket.Reader, conn *clientConn) {
 	conn.Write(loginPackets.DisplayCharacters(characters))
 }
 
-func handleNameCheck(reader gopacket.Reader, conn *clientConn) {
+func handleNameCheck(conn *clientLoginConn, reader gopacket.Reader) {
 	nameLength := reader.ReadInt16()
 	newCharName := reader.ReadString(int(nameLength))
 
@@ -162,7 +162,7 @@ func handleNameCheck(reader gopacket.Reader, conn *clientConn) {
 	conn.Write(loginPackets.NameCheck(newCharName, nameFound))
 }
 
-func handleNewCharacter(reader gopacket.Reader, conn *clientConn) {
+func handleNewCharacter(conn *clientLoginConn, reader gopacket.Reader) {
 	nameLength := reader.ReadInt16()
 	name := reader.ReadString(int(nameLength))
 	face := reader.ReadInt32()
@@ -257,7 +257,7 @@ func handleNewCharacter(reader gopacket.Reader, conn *clientConn) {
 	conn.Write(loginPackets.CreatedCharacter(valid, newCharacter))
 }
 
-func handleDeleteCharacter(reader gopacket.Reader, conn *clientConn) {
+func handleDeleteCharacter(conn *clientLoginConn, reader gopacket.Reader) {
 	dob := reader.ReadInt32()
 	charID := reader.ReadInt32()
 
@@ -302,7 +302,7 @@ func handleDeleteCharacter(reader gopacket.Reader, conn *clientConn) {
 	conn.Write(loginPackets.DeleteCharacter(charID, deleted, hacking))
 }
 
-func handleSelectCharacter(reader gopacket.Reader, conn *clientConn) {
+func handleSelectCharacter(conn *clientLoginConn, reader gopacket.Reader) {
 	charID := reader.ReadInt32()
 
 	var charCount int
@@ -314,7 +314,7 @@ func handleSelectCharacter(reader gopacket.Reader, conn *clientConn) {
 	}
 
 	if charCount == 1 {
-		ip := []byte{192, 0, 0, 1}
+		ip := []byte{192, 168, 1, 117}
 		port := uint16(8686)
 		conn.Write(loginPackets.MigrateClient(ip, port, charID))
 	}
