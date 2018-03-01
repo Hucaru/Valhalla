@@ -1,4 +1,4 @@
-package loginPackets
+package login
 
 import (
 	"github.com/Hucaru/Valhalla/character"
@@ -6,7 +6,7 @@ import (
 	"github.com/Hucaru/gopacket"
 )
 
-func DisplayCharacters(characters []character.Character) gopacket.Packet {
+func displayCharacters(characters []character.Character) gopacket.Packet {
 	pac := gopacket.NewPacket()
 	pac.WriteByte(constants.SEND_LOGIN_CHARACTER_DATA)
 	pac.WriteByte(0) // ?
@@ -24,7 +24,7 @@ func DisplayCharacters(characters []character.Character) gopacket.Packet {
 	return pac
 }
 
-func NameCheck(name string, nameFound int) gopacket.Packet {
+func nameCheck(name string, nameFound int) gopacket.Packet {
 	pac := gopacket.NewPacket()
 	pac.WriteByte(constants.SEND_LOGIN_NAME_CHECK_RESULT)
 	pac.WriteString(name)
@@ -38,7 +38,7 @@ func NameCheck(name string, nameFound int) gopacket.Packet {
 	return pac
 }
 
-func CreatedCharacter(success bool, character character.Character) gopacket.Packet {
+func createdCharacter(success bool, character character.Character) gopacket.Packet {
 	pac := gopacket.NewPacket()
 	pac.WriteByte(constants.SEND_LOGIN_NEW_CHARACTER_GOOD)
 
@@ -52,7 +52,7 @@ func CreatedCharacter(success bool, character character.Character) gopacket.Pack
 	return pac
 }
 
-func DeleteCharacter(charID int32, deleted bool, hacking bool) gopacket.Packet {
+func deleteCharacter(charID int32, deleted bool, hacking bool) gopacket.Packet {
 	pac := gopacket.NewPacket()
 	pac.WriteByte(constants.SEND_LOGIN_DELETE_CHARACTER)
 	pac.WriteInt32(charID)

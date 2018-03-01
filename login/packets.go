@@ -1,11 +1,11 @@
-package loginPackets
+package login
 
 import (
 	"github.com/Hucaru/Valhalla/constants"
 	"github.com/Hucaru/gopacket"
 )
 
-func ReturnFromChannel() gopacket.Packet {
+func returnFromChannel() gopacket.Packet {
 	pac := gopacket.NewPacket()
 	pac.WriteByte(constants.SEND_LOGIN_RESTARTER)
 	pac.WriteByte(0x01)
@@ -13,7 +13,7 @@ func ReturnFromChannel() gopacket.Packet {
 	return pac
 }
 
-func LoginResponce(result byte, userID uint32, gender byte, isAdmin byte, username string, isBanned int) gopacket.Packet {
+func loginResponce(result byte, userID uint32, gender byte, isAdmin byte, username string, isBanned int) gopacket.Packet {
 	pac := gopacket.NewPacket()
 	pac.WriteByte(constants.SEND_LOGIN_RESPONCE)
 	pac.WriteByte(result)
@@ -38,7 +38,7 @@ func LoginResponce(result byte, userID uint32, gender byte, isAdmin byte, userna
 	return pac
 }
 
-func MigrateClient(ip []byte, port uint16, charID int32) gopacket.Packet {
+func migrateClient(ip []byte, port uint16, charID int32) gopacket.Packet {
 	pac := gopacket.NewPacket()
 	pac.WriteByte(constants.SEND_LOGIN_CHARACTER_MIGRATE)
 	pac.WriteByte(0x00)
@@ -52,7 +52,7 @@ func MigrateClient(ip []byte, port uint16, charID int32) gopacket.Packet {
 	return pac
 }
 
-func SendBadMigrate() gopacket.Packet {
+func sendBadMigrate() gopacket.Packet {
 	pac := gopacket.NewPacket()
 	pac.WriteByte(constants.SEND_LOGIN_CHARACTER_MIGRATE)
 	pac.WriteByte(0x00) // flipping these 2 bytes makes the character select screen do nothing it appears

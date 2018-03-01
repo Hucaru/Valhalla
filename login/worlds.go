@@ -1,4 +1,4 @@
-package loginPackets
+package login
 
 import (
 	"strconv"
@@ -9,7 +9,7 @@ import (
 
 var worldNames = [...]string{"Scania", "Bera", "Broa", "Windia", "Khaini", "Bellocan", "Mardia", "Kradia", "Yellonde", "Demethos", "Galicia", "El Nido", "Zenith", "Arcania", "Chaos", "Nova", "Renegates"}
 
-func WorldListing(worldIndex byte) gopacket.Packet {
+func worldListing(worldIndex byte) gopacket.Packet {
 	pac := gopacket.NewPacket()
 	pac.WriteByte(constants.SEND_LOGIN_SEND_WORLD_LIST)
 	pac.WriteByte(worldIndex)               // world id
@@ -33,7 +33,7 @@ func WorldListing(worldIndex byte) gopacket.Packet {
 	return pac
 }
 
-func EndWorldList() gopacket.Packet {
+func endWorldList() gopacket.Packet {
 	pac := gopacket.NewPacket()
 	pac.WriteByte(constants.SEND_LOGIN_SEND_WORLD_LIST)
 	pac.WriteByte(0xFF)
@@ -41,7 +41,7 @@ func EndWorldList() gopacket.Packet {
 	return pac
 }
 
-func WorldInfo(warning byte, population byte) gopacket.Packet {
+func worldInfo(warning byte, population byte) gopacket.Packet {
 	p := gopacket.NewPacket()
 	p.WriteByte(constants.SEND_LOGIN_WORLD_META)
 	p.WriteByte(warning)    // Warning - 0 = no warning, 1 - high amount of concurent users, 2 = max uesrs in world

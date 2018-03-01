@@ -1,28 +1,26 @@
-package main
+package server
 
 import (
 	"log"
 	"net"
 	"os"
-	"time"
 
 	"github.com/Hucaru/Valhalla/connection"
 	"github.com/Hucaru/Valhalla/constants"
 	"github.com/Hucaru/Valhalla/handlers"
-	"github.com/Hucaru/Valhalla/nx"
 	"github.com/Hucaru/gopacket"
 )
 
-func main() {
-	log.Println("ChannelServer")
+const (
+	protocol = "tcp"
+	address  = "0.0.0.0"
+	port     = "8484"
+)
 
-	start := time.Now()
-	nx.Parse("Data.nx")
-	elapsed := time.Since(start)
+func Login(configFile string) {
+	log.Println("LoginServer")
 
-	log.Println("Loaded and parsed nx in", elapsed)
-
-	listener, err := net.Listen("tcp", "0.0.0.0:8686")
+	listener, err := net.Listen("tcp", "0.0.0.0:8484")
 
 	if err != nil {
 		log.Println(err)
@@ -42,12 +40,12 @@ func main() {
 		}
 
 		defer conn.Close()
-		clientConnection := handlers.NewChanConnection(connection.NewClientConnection(conn))
+		clientConnection := handlers.NewLoginConnection(connection.NewClientConnection(conn))
 
 		log.Println("New client connection from", clientConnection)
 
 		go connection.HandleNewConnection(clientConnection, func(p gopacket.Reader) {
-			handlers.HandleChannelPacket(clientConnection, p)
+			handlers.HandleLoginPacket(clientConnection, p)
 		}, constants.CLIENT_HEADER_SIZE, true)
 	}
 }
