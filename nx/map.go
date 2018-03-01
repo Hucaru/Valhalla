@@ -16,8 +16,7 @@ type Life struct {
 	MobTime int64
 	Rx0     int16
 	Rx1     int16
-	Npc     bool
-	Mob     bool
+	IsMob   bool
 	X       int16
 	Y       int16
 }
@@ -42,10 +41,9 @@ type Stage struct {
 	Portals      []Portal
 }
 
-var Maps map[uint32]Stage
+var Maps = make(map[uint32]Stage)
 
 func getMapInfo() {
-	Maps = make(map[uint32]Stage)
 	var maps []string
 
 	// Get the list of maps
@@ -197,8 +195,7 @@ func getLifeItem(n node) Life {
 		case "rx1":
 			lifeItem.Rx1 = dataToInt16(lifeNode.Data)
 		case "type":
-			lifeItem.Npc = bool(strLookup[dataToUint32(lifeNode.Data)] == "n")
-			lifeItem.Mob = bool(strLookup[dataToUint32(lifeNode.Data)] == "m")
+			lifeItem.IsMob = bool(strLookup[dataToUint32(lifeNode.Data)] == "m")
 		case "x":
 			lifeItem.X = dataToInt16(lifeNode.Data)
 		case "y":
