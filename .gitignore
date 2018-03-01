@@ -3,12 +3,14 @@
 *.a
 *.so
 *.nx
+debug
 certs/**
 database_data/**
 
 # Folders
 _obj
 _test
+.vscode
 
 # Architecture specific extensions/prefixes
 *.[568vq]

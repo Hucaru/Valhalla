@@ -1,8 +1,6 @@
 package player
 
 import (
-	"fmt"
-
 	"github.com/Hucaru/Valhalla/character"
 	"github.com/Hucaru/Valhalla/connection"
 	"github.com/Hucaru/Valhalla/data"
@@ -10,7 +8,6 @@ import (
 )
 
 func HandleConnect(conn clientConn, reader gopacket.Reader) {
-	fmt.Println(reader)
 	charID := reader.ReadUint32()
 
 	char := character.GetCharacter(charID)
