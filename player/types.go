@@ -1,7 +1,12 @@
 package player
 
+import (
+	"github.com/Hucaru/gopacket"
+)
+
 type clientConn interface {
 	Close()
+	Write(gopacket.Packet) error
 	String() string
 	SetUserID(uint32)
 	GetUserID() uint32

@@ -1,6 +1,8 @@
 package player
 
 import (
+	"fmt"
+
 	"github.com/Hucaru/Valhalla/character"
 	"github.com/Hucaru/Valhalla/connection"
 	"github.com/Hucaru/Valhalla/data"
@@ -8,6 +10,7 @@ import (
 )
 
 func HandleConnect(conn clientConn, reader gopacket.Reader) {
+	fmt.Println(reader)
 	charID := reader.ReadUint32()
 
 	char := character.GetCharacter(charID)
@@ -23,17 +26,19 @@ func HandleConnect(conn clientConn, reader gopacket.Reader) {
 		panic(err)
 	}
 
-	channelID := 0 // Either get from world server or have it be part of config file
+	channelID := uint32(0) // Either get from world server or have it be part of config file
 
 	conn.SetAdmin(isAdmin)
 	conn.SetIsLogedIn(true)
-	conn.SetChanID(uint32(channelID))
+	conn.SetChanID(channelID)
 
 	data.AddOnlineCharacter(conn, &char)
 
 	conn.SetCloseCallback(func() {
 		data.RemoveOnlineCharacter(conn)
-		// maps remove connection
-		// party remove connection
+		// maps remove client connection
+		// party remove client connection
 	})
+
+	conn.Write(enterGame(char, channelID))
 }

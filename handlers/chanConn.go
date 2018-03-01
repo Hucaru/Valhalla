@@ -14,6 +14,7 @@ type clientChanConn struct {
 	closeCallback func()
 }
 
+// NewChanConnection -
 func NewChanConnection(conn connection.ClientConnection) *clientChanConn {
 	loginConn := &clientChanConn{ClientConnection: conn, isAdmin: false}
 	return loginConn

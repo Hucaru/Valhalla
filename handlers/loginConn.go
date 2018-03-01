@@ -17,6 +17,7 @@ type clientLoginConn struct {
 	gender    byte
 }
 
+// NewLoginConnection -
 func NewLoginConnection(conn connection.ClientConnection) *clientLoginConn {
 	loginConn := &clientLoginConn{ClientConnection: conn, isAdmin: false}
 	return loginConn
