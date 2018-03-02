@@ -1,13 +1,15 @@
 package player
 
 import (
+	"log"
+
 	"github.com/Hucaru/Valhalla/character"
 	"github.com/Hucaru/Valhalla/connection"
-	"github.com/Hucaru/Valhalla/data"
+	"github.com/Hucaru/Valhalla/interfaces"
 	"github.com/Hucaru/gopacket"
 )
 
-func HandleConnect(conn clientConn, reader gopacket.Reader) {
+func HandleConnect(conn interfaces.ClientConn, reader gopacket.Reader) {
 	charID := reader.ReadUint32()
 
 	char := character.GetCharacter(charID)
@@ -29,13 +31,15 @@ func HandleConnect(conn clientConn, reader gopacket.Reader) {
 	conn.SetIsLogedIn(true)
 	conn.SetChanID(channelID)
 
-	data.AddOnlineCharacter(conn, &char)
+	dataPtr.AddOnlineCharacter(conn, &char)
 
 	conn.SetCloseCallback(func() {
-		data.RemoveOnlineCharacter(conn)
+		dataPtr.RemoveOnlineCharacter(conn)
 		// maps remove client connection
 		// party remove client connection
 	})
 
 	conn.Write(enterGame(char, channelID))
+
+	log.Println(char.GetName(), "has loged in from", conn)
 }

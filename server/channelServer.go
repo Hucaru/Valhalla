@@ -8,8 +8,10 @@ import (
 
 	"github.com/Hucaru/Valhalla/connection"
 	"github.com/Hucaru/Valhalla/constants"
+	"github.com/Hucaru/Valhalla/data"
 	"github.com/Hucaru/Valhalla/handlers"
 	"github.com/Hucaru/Valhalla/nx"
+	"github.com/Hucaru/Valhalla/player"
 	"github.com/Hucaru/gopacket"
 )
 
@@ -21,6 +23,8 @@ func Channel(configFile string) {
 	elapsed := time.Since(start)
 
 	log.Println("Loaded and parsed nx in", elapsed)
+
+	player.RegisterCharacterObj(data.GetOnlineCharsPtr())
 
 	listener, err := net.Listen("tcp", "0.0.0.0:8686")
 

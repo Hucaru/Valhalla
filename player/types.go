@@ -1,23 +1,19 @@
 package player
 
 import (
-	"github.com/Hucaru/gopacket"
+	"github.com/Hucaru/Valhalla/character"
+	"github.com/Hucaru/Valhalla/interfaces"
 )
 
-type clientConn interface {
-	Close()
-	Write(gopacket.Packet) error
-	String() string
-	SetUserID(uint32)
-	GetUserID() uint32
-	SetAdmin(val bool)
-	IsAdmin() bool
-	SetIsLogedIn(bool)
-	GetIsLogedIn() bool
-	SetChanID(uint32)
-	GetChanID() uint32
-	SetCloseCallback(func())
-	// Below here might not be needed
-	SetWorldID(uint32)
-	GetWorldID() uint32
+type characters interface {
+	AddOnlineCharacter(interfaces.OcClientConn, *character.Character)
+	RemoveOnlineCharacter(interfaces.OcClientConn)
+	GetOnlineCharacterHandle(interfaces.OcClientConn) *character.Character
+	GetConnectionHandle(string) interfaces.OcClientConn
+}
+
+var dataPtr characters
+
+func RegisterCharacterObj(chars characters) {
+	dataPtr = chars
 }

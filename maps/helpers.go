@@ -2,8 +2,8 @@ package maps
 
 import "github.com/Hucaru/gopacket"
 
-// PopulateMaps -
-func PopulateMaps() {
+// RegisterMaps -
+func RegisterMaps() {
 
 }
 
