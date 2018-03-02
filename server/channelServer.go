@@ -24,7 +24,7 @@ func Channel(configFile string) {
 
 	log.Println("Loaded and parsed nx in", elapsed)
 
-	player.RegisterCharacterObj(data.GetOnlineCharsPtr())
+	player.RegisterCharactersObj(data.GetCharsPtr())
 
 	listener, err := net.Listen("tcp", "0.0.0.0:8686")
 

@@ -1,31 +1,24 @@
 package data
 
 type mapleMob struct {
-	hp, maxHp, mp, maxMp int16
-	x, y, fh             int16
-	face                 byte
+	mapleNpc
+	exp                  uint32
+	hp, maxHp, mp, maxMp uint16
+	boss                 bool
+	level                byte
 }
 
-func (m *mapleMob) SetX(x int16) {
-	m.x = x
-}
-
-func (m *mapleMob) GetX() int16 {
-	return m.x
-}
-
-func (m *mapleMob) SetY(y int16) {
-	m.y = y
-}
-
-func (m *mapleMob) GetY() int16 {
-	return m.y
-}
-
-func (m *mapleMob) SetFace(face byte) {
-	m.face = face
-}
-
-func (m *mapleMob) GetFace() byte {
-	return m.face
-}
+func (m *mapleMob) GetEXP() uint32        { return m.exp }
+func (m *mapleMob) SetEXP(exp uint32)     { m.exp = exp }
+func (m *mapleMob) GetHp() uint16         { return m.hp }
+func (m *mapleMob) SetHp(hp uint16)       { m.hp = hp }
+func (m *mapleMob) GetMaxHp() uint16      { return m.maxHp }
+func (m *mapleMob) SetMaxHp(maxHp uint16) { m.maxHp = maxHp }
+func (m *mapleMob) GetMp() uint16         { return m.mp }
+func (m *mapleMob) SetMp(mp uint16)       { m.mp = mp }
+func (m *mapleMob) GetMaxMp() uint16      { return m.maxMp }
+func (m *mapleMob) SetMaxMp(maxMp uint16) { m.maxMp = maxMp }
+func (m *mapleMob) GetBoss() bool         { return m.boss }
+func (m *mapleMob) SetBoss(boss bool)     { m.boss = boss }
+func (m *mapleMob) GetLevel() byte        { return m.level }
+func (m *mapleMob) SetLevel(level byte)   { m.level = level }

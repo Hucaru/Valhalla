@@ -14,6 +14,6 @@ type characters interface {
 
 var dataPtr characters
 
-func RegisterCharacterObj(chars characters) {
+func RegisterCharactersObj(chars characters) {
 	dataPtr = chars
 }
