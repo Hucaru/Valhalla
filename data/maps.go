@@ -1,14 +1,18 @@
 package data
 
-import "sync"
+import (
+	"sync"
+
+	"github.com/Hucaru/Valhalla/interfaces"
+)
 
 type mMap map[uint32]*mapleMap
 
 var mapleMaps = make(mMap)
 var mapleMapsMutex = &sync.RWMutex{}
 
-// GeMapsPtr -
-func GeMapsPtr() mMap {
+// GetMapsPtr -
+func GetMapsPtr() mMap {
 	return mapleMaps
 }
 
@@ -17,7 +21,7 @@ func GenerateMapsObject() {
 
 }
 
-func (mM mMap) GetMap(mapID uint32) *mapleMap {
+func (mM mMap) GetMap(mapID uint32) interfaces.Map {
 	mapleMapsMutex.RLock()
 	result := mapleMaps[mapID]
 	mapleMapsMutex.RUnlock()
@@ -26,17 +30,17 @@ func (mM mMap) GetMap(mapID uint32) *mapleMap {
 }
 
 type mapleMap struct {
-	npcs         []mapleNpc
-	mobs         []mapleMob
+	npcs         []interfaces.Npc
+	mobs         []interfaces.Mob
 	forcedReturn uint32
 	returnMap    uint32
 	mobRate      float64
 	isTown       bool
-	portals      []maplePortal
+	portals      []interfaces.Portal
 	mutex        sync.RWMutex
 }
 
-func (m mapleMap) GetNps() []mapleNpc {
+func (m mapleMap) GetNps() []interfaces.Npc {
 	m.mutex.RLock()
 	result := m.npcs
 	m.mutex.RUnlock()
@@ -44,13 +48,13 @@ func (m mapleMap) GetNps() []mapleNpc {
 	return result
 }
 
-func (m mapleMap) AddNpc(npc mapleNpc) {
+func (m mapleMap) AddNpc(npc interfaces.Npc) {
 	m.mutex.Lock()
 	m.npcs = append(m.npcs, npc)
 	m.mutex.Unlock()
 }
 
-func (m mapleMap) GetMobs() []mapleMob {
+func (m mapleMap) GetMobs() []interfaces.Mob {
 	m.mutex.RLock()
 	result := m.mobs
 	m.mutex.RUnlock()
@@ -58,13 +62,13 @@ func (m mapleMap) GetMobs() []mapleMob {
 	return result
 }
 
-func (m mapleMap) AddMob(mob mapleMob) {
+func (m mapleMap) AddMob(mob interfaces.Mob) {
 	m.mutex.Lock()
 	m.mobs = append(m.mobs, mob)
 	m.mutex.Unlock()
 }
 
-func (m mapleMap) GetPortals() []maplePortal {
+func (m mapleMap) GetPortals() []interfaces.Portal {
 	m.mutex.RLock()
 	result := m.portals
 	m.mutex.RUnlock()
@@ -72,7 +76,7 @@ func (m mapleMap) GetPortals() []maplePortal {
 	return result
 }
 
-func (m mapleMap) AddPortal(portal maplePortal) {
+func (m mapleMap) AddPortal(portal interfaces.Portal) {
 	m.mutex.Lock()
 	m.portals = append(m.portals, portal)
 	m.mutex.Unlock()

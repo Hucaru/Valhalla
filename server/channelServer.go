@@ -10,6 +10,7 @@ import (
 	"github.com/Hucaru/Valhalla/constants"
 	"github.com/Hucaru/Valhalla/data"
 	"github.com/Hucaru/Valhalla/handlers"
+	"github.com/Hucaru/Valhalla/maps"
 	"github.com/Hucaru/Valhalla/nx"
 	"github.com/Hucaru/Valhalla/player"
 	"github.com/Hucaru/gopacket"
@@ -25,6 +26,7 @@ func Channel(configFile string) {
 	log.Println("Loaded and parsed nx in", elapsed)
 
 	player.RegisterCharactersObj(data.GetCharsPtr())
+	maps.RegisterMapsObj(data.GetMapsPtr())
 
 	listener, err := net.Listen("tcp", "0.0.0.0:8686")
 

@@ -1,10 +1,15 @@
 package maps
 
-import "github.com/Hucaru/gopacket"
+import (
+	"github.com/Hucaru/Valhalla/interfaces"
+	"github.com/Hucaru/gopacket"
+)
+
+var maps interfaces.Maps
 
 // RegisterMaps -
-func RegisterMaps() {
-
+func RegisterMapsObj(maps interfaces.Maps) {
+	maps = maps
 }
 
 // SendPacketToMap -

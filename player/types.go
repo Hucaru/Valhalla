@@ -11,9 +11,3 @@ type characters interface {
 	GetOnlineCharacterHandle(interfaces.OcClientConn) *character.Character
 	GetConnectionHandle(string) interfaces.OcClientConn
 }
-
-var dataPtr characters
-
-func RegisterCharactersObj(chars characters) {
-	dataPtr = chars
-}

@@ -11,7 +11,7 @@ type ClientConn interface {
 	Write(gopacket.Packet) error
 	String() string
 	SetUserID(uint32)
-	GetUserID() uint32
+	OcClientConn
 	SetAdmin(val bool)
 	IsAdmin() bool
 	SetIsLogedIn(bool)
@@ -24,13 +24,17 @@ type ClientConn interface {
 	GetWorldID() uint32
 }
 
-type Npc interface {
-	SetID(uint32)
-	GetID() uint32
+type Pos interface {
 	SetX(int16)
 	GetX() int16
 	SetY(int16)
 	GetY() int16
+}
+
+type Npc interface {
+	SetID(uint32)
+	GetID() uint32
+	Pos
 	SetFoothold(int16)
 	GetFoothold() int16
 	SetFace(byte)
@@ -58,13 +62,24 @@ type Mob interface {
 }
 
 type Portal interface {
+	GetToMap() uint32
+	SetToMap(uint32)
+	GetName() string
+	SetName(string)
+	Pos
+	GetIsSpawn() bool
+	SetIsSpawn(bool)
 }
 
-type Maps interface {
+type Map interface {
 	GetNps() []Npc
 	AddNpc(Npc)
 	GetMobs() []Mob
 	AddMob(Mob)
 	GetPortals() []Portal
 	AddPortal(Portal)
+}
+
+type Maps interface {
+	GetMap(uint32) Map
 }
