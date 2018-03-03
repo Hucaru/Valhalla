@@ -21,8 +21,8 @@ func HandleChannelPacket(conn *clientChanConn, reader gopacket.Reader) {
 		maps.HandlePlayerEnterMap(conn, mapID)
 
 	case constants.RECV_CHANNEL_MOVEMENT:
-		// p := player.HandleMovementData(conn, reader)
-		// maps.SendPacketToMap(mapID, p)
+		mapID, p := player.HandleMovement(conn, reader)
+		maps.SendPacketToMap(mapID, p)
 
 	case constants.RECV_CHANNEL_MELEE_SKILL:
 		// p := skills.HandleMeleeSkill(conn, reader)
