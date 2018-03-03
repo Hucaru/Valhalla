@@ -3,6 +3,7 @@ package handlers
 import (
 	"log"
 
+	"github.com/Hucaru/Valhalla/maps"
 	"github.com/Hucaru/Valhalla/player"
 
 	"github.com/Hucaru/Valhalla/constants"
@@ -16,12 +17,12 @@ func HandleChannelPacket(conn *clientChanConn, reader gopacket.Reader) {
 		// Is client expecting a pong?
 
 	case constants.RECV_CHANNEL_PLAYER_LOAD:
-		player.HandleConnect(conn, reader)
-		// maps.HandleNewPlayer(conn) // use data package to get character data for avatar
+		mapID := player.HandleConnect(conn, reader)
+		maps.HandlePlayerEnterMap(conn, mapID)
 
 	case constants.RECV_CHANNEL_MOVEMENT:
 		// p := player.HandleMovementData(conn, reader)
-		// maps.SendPacketToMap(mapID, p) // if len(p) < 1 then don't bother sending as it's an empty packet
+		// maps.SendPacketToMap(mapID, p)
 
 	case constants.RECV_CHANNEL_MELEE_SKILL:
 		// p := skills.HandleMeleeSkill(conn, reader)

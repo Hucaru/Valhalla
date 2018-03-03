@@ -25,7 +25,10 @@ func Channel(configFile string) {
 
 	log.Println("Loaded and parsed nx in", elapsed)
 
+	data.GenerateMapsObject()
+
 	player.RegisterCharactersObj(data.GetCharsPtr())
+	maps.RegisterCharactersObj(data.GetCharsPtr())
 	maps.RegisterMapsObj(data.GetMapsPtr())
 
 	listener, err := net.Listen("tcp", "0.0.0.0:8686")

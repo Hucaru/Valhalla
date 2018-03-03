@@ -11,6 +11,15 @@ import (
 	"github.com/Hucaru/gopacket"
 )
 
+func playerMovePacket(charID uint32, leftOverBytes gopacket.Packet) gopacket.Packet {
+	p := gopacket.NewPacket()
+	p.WriteByte(constants.SEND_CHANNEL_PLAYER_MOVEMENT)
+	p.WriteUint32(charID)
+	p.WriteBytes(leftOverBytes)
+
+	return p
+}
+
 func enterGame(char character.Character, channelID uint32) gopacket.Packet {
 	p := gopacket.NewPacket()
 	p.WriteByte(constants.SEND_CHANNEL_WARP_TO_MAP)

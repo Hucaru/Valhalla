@@ -11,7 +11,7 @@ type clientChanConn struct {
 	isAdmin       bool
 	worldID       uint32
 	chanID        uint32
-	closeCallback func()
+	closeCallback []*func()
 }
 
 // NewChanConnection -
@@ -22,8 +22,12 @@ func NewChanConnection(conn connection.ClientConnection) *clientChanConn {
 
 func (c *clientChanConn) Close() {
 	if c.isLogedIn {
-		c.closeCallback()
+		for i := range c.closeCallback {
+			(*c.closeCallback[i])()
+		}
 	}
+
+	// Remove character from all the lists
 
 	c.Conn.Close()
 }
@@ -72,6 +76,6 @@ func (c *clientChanConn) GetChanID() uint32 {
 	return c.chanID
 }
 
-func (c *clientChanConn) SetCloseCallback(callbacK func()) {
-	c.closeCallback = callbacK
+func (c *clientChanConn) AddCloseCallback(callbacK *func()) {
+	c.closeCallback = append(c.closeCallback, callbacK)
 }

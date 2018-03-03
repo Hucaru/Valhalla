@@ -9,7 +9,7 @@ import (
 	"github.com/Hucaru/gopacket"
 )
 
-func HandleConnect(conn interfaces.ClientConn, reader gopacket.Reader) {
+func HandleConnect(conn interfaces.ClientConn, reader gopacket.Reader) uint32 {
 	charID := reader.ReadUint32()
 
 	char := character.GetCharacter(charID)
@@ -31,15 +31,11 @@ func HandleConnect(conn interfaces.ClientConn, reader gopacket.Reader) {
 	conn.SetIsLogedIn(true)
 	conn.SetChanID(channelID)
 
-	dataPtr.AddOnlineCharacter(conn, &char)
-
-	conn.SetCloseCallback(func() {
-		dataPtr.RemoveOnlineCharacter(conn)
-		// maps remove client connection
-		// party remove client connection
-	})
+	charsPtr.AddOnlineCharacter(conn, &char)
 
 	conn.Write(enterGame(char, channelID))
 
 	log.Println(char.GetName(), "has loged in from", conn)
+
+	return char.GetCurrentMap()
 }

@@ -1,6 +1,9 @@
 package interfaces
 
-import "github.com/Hucaru/gopacket"
+import (
+	"github.com/Hucaru/Valhalla/character"
+	"github.com/Hucaru/gopacket"
+)
 
 type OcClientConn interface {
 	GetUserID() uint32
@@ -18,7 +21,7 @@ type ClientConn interface {
 	GetIsLogedIn() bool
 	SetChanID(uint32)
 	GetChanID() uint32
-	SetCloseCallback(func())
+	AddCloseCallback(*func())
 	// Below here might not be needed
 	SetWorldID(uint32)
 	GetWorldID() uint32
@@ -31,20 +34,28 @@ type Pos interface {
 	GetY() int16
 }
 
-type Npc interface {
+type Life interface {
 	SetID(uint32)
 	GetID() uint32
 	Pos
 	SetFoothold(int16)
 	GetFoothold() int16
-	SetFace(byte)
-	GetFace() byte
+	SetFace(bool)
+	GetFace() bool
 	GetController() ClientConn
 	SetController(ClientConn)
 }
 
+type Npc interface {
+	Life
+	SetRx0(int16)
+	GetRx0() int16
+	SetRx1(int16)
+	GetRx1() int16
+}
+
 type Mob interface {
-	Npc
+	Life
 	GetEXP() uint32
 	SetEXP(uint32)
 	GetHp() uint16
@@ -78,8 +89,18 @@ type Map interface {
 	AddMob(Mob)
 	GetPortals() []Portal
 	AddPortal(Portal)
+	GetPlayers() []ClientConn
+	AddPlayer(ClientConn)
+	RemovePlayer(ClientConn)
 }
 
 type Maps interface {
 	GetMap(uint32) Map
+}
+
+type Characters interface {
+	AddOnlineCharacter(OcClientConn, *character.Character)
+	RemoveOnlineCharacter(OcClientConn)
+	GetOnlineCharacterHandle(OcClientConn) *character.Character
+	GetConnectionHandle(string) OcClientConn
 }
