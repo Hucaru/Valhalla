@@ -1,19 +1,65 @@
 package data
 
+import (
+	"log"
+	"sync"
+)
+
+const (
+	expRate  = 0x01
+	dropRate = 0x02
+	mesoRate = 0x03
+	mobRate  = 0x04
+)
+
 var serverExpRate = uint32(1)
 var serverDropRate = uint32(1)
-var serverMesopRate = uint32(1)
+var serverMesoRate = uint32(1)
 var serverMobSpawnRate = uint32(1)
 
-func GetExpRate() uint32 {
-	return serverExpRate
+var serverRateMutex = &sync.RWMutex{}
+
+func GetRate(rateType byte) uint32 {
+	val := uint32(1)
+
+	serverRateMutex.RLock()
+	switch rateType {
+	case expRate:
+		val = serverExpRate
+	case dropRate:
+		val = serverDropRate
+	case mesoRate:
+		val = serverMesoRate
+	case mobRate:
+		val = serverMobSpawnRate
+	default:
+		log.Println("Unkown server rate type:", rateType)
+	}
+	serverRateMutex.RUnlock()
+
+	return val
 }
 
-func SetExpRate(rate uint32) {
-	serverExpRate = rate
+func SetRate(rateType byte, rate uint32) {
+	serverRateMutex.Lock()
+
+	switch rateType {
+	case expRate:
+		serverExpRate = rate
+	case dropRate:
+		serverDropRate = rate
+	case mesoRate:
+		serverMesoRate = rate
+	case mobRate:
+		serverMobSpawnRate = rate
+	default:
+		log.Println("Unkown server rate type:", rateType)
+	}
+
+	serverRateMutex.Unlock()
 }
 
-var expTable = [200]uint32{15, 34, 57, 92, 135, 372, 560, 840, 1242, 1144, // Begginer
+var ExpTable = [200]uint32{15, 34, 57, 92, 135, 372, 560, 840, 1242, 1144, // Beginner
 
 	// 1st Job
 	1573, 2144, 2800, 3640, 4700, 5893, 7360, 9144, 11120, 13477, 16268,

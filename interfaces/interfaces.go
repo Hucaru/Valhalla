@@ -70,6 +70,8 @@ type Mob interface {
 	SetBoss(bool)
 	GetLevel() byte
 	SetLevel(byte)
+	GetMobTime() uint32
+	SetMobTime(uint32)
 }
 
 type Portal interface {
@@ -83,7 +85,7 @@ type Portal interface {
 }
 
 type Map interface {
-	GetNps() []Npc
+	GetNpcs() []Npc
 	AddNpc(Npc)
 	GetMobs() []Mob
 	AddMob(Mob)

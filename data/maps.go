@@ -32,13 +32,14 @@ func GenerateMapsObject() {
 				l.SetY(life.Y)
 				l.SetFoothold(life.Fh)
 				l.SetFace(life.F)
+				l.SetMobTime(life.MobTime)
 
 				mon := nx.Mob[life.ID]
 
 				l.SetBoss(mon.Boss)
 				l.SetEXP(mon.Exp)
 				l.SetMaxHp(mon.MaxHp)
-				l.SetHp(0)
+				l.SetHp(mon.MaxHp)
 				l.SetMaxMp(mon.MaxMp)
 				l.SetMp(mon.MaxMp)
 				l.SetLevel(mon.Level)
@@ -98,7 +99,7 @@ type mapleMap struct {
 	players      []interfaces.ClientConn
 }
 
-func (m *mapleMap) GetNps() []interfaces.Npc {
+func (m *mapleMap) GetNpcs() []interfaces.Npc {
 	m.mutex.RLock()
 	result := m.npcs
 	m.mutex.RUnlock()

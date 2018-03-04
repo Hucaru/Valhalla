@@ -30,7 +30,7 @@ func HandleChannelPacket(conn *clientChanConn, reader gopacket.Reader) {
 		// maps.SendPacketToMap(mapID, p)
 
 	case constants.RECV_CHANNEL_USE_PORTAL:
-		// maps.HandleUsePortal(conn, reader)
+		maps.HandlePlayerUserPortal(conn, reader)
 
 	case constants.RECV_CHANNEL_REQUEST_TO_ENTER_CASH_SHOP:
 		//
