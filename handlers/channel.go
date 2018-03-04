@@ -3,6 +3,7 @@ package handlers
 import (
 	"log"
 
+	"github.com/Hucaru/Valhalla/chat"
 	"github.com/Hucaru/Valhalla/maps"
 	"github.com/Hucaru/Valhalla/player"
 
@@ -39,13 +40,12 @@ func HandleChannelPacket(conn *clientChanConn, reader gopacket.Reader) {
 		// maps.SendPacketToMap(mapID, p)
 
 	case constants.RECV_CHANNEL_PLAYER_SEND_ALL_CHAT:
-		// mapID, text := chat.HandleAllChat(conn, reader)
-		// if text[0] == "!" && conn.IsAdmin()  {
-		// command.Handle(conn, text)
-		// return
-		// }
-		// p := chat.CreateAllChatPacket(text)
-		// maps.SendPacketToMap(mapID, p)
+		mapID, _, isCommand, p := chat.HandleAllChat(conn, reader)
+		if isCommand {
+			// command.Handle(conn, text)
+			return
+		}
+		maps.SendPacketToMap(mapID, p)
 
 	case constants.RECV_CHANNEL_EMOTION:
 		// maps.HandleCharacterEmotion(conn, reader)

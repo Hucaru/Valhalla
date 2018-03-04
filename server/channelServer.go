@@ -6,6 +6,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/Hucaru/Valhalla/chat"
 	"github.com/Hucaru/Valhalla/connection"
 	"github.com/Hucaru/Valhalla/constants"
 	"github.com/Hucaru/Valhalla/data"
@@ -28,6 +29,7 @@ func Channel(configFile string) {
 	data.GenerateMapsObject()
 
 	player.RegisterCharactersObj(data.GetCharsPtr())
+	chat.RegisterCharactersObj(data.GetCharsPtr())
 	maps.RegisterCharactersObj(data.GetCharsPtr())
 	maps.RegisterMapsObj(data.GetMapsPtr())
 
