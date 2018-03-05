@@ -8,8 +8,8 @@ import (
 	"github.com/Hucaru/gopacket"
 )
 
-// HandlePlayerChangeMap -
-func HandlePlayerChangeMap(conn interfaces.ClientConn, reader gopacket.Reader) {
+// HandlePlayerUsePortal -
+func HandlePlayerUsePortal(conn interfaces.ClientConn, reader gopacket.Reader) {
 	char := charsPtr.GetOnlineCharacterHandle(conn)
 
 	PlayerLeaveMap(conn, char.GetCurrentMap())
@@ -23,14 +23,14 @@ func HandlePlayerChangeMap(conn interfaces.ClientConn, reader gopacket.Reader) {
 	case 0:
 		if char.GetHP() == 0 {
 			mapID = mapsPtr.GetMap(char.GetCurrentMap()).GetReturnMap()
-			portal, pID := getRandomSpawnPortal(mapID)
+			portal, pID := GetRandomSpawnPortal(mapID)
 
 			char.SetX(portal.GetX())
 			char.SetY(portal.GetY())
 
 			char.SetHP(50)
 
-			conn.Write(changeMapPacket(mapID, 1, pID, char.GetHP())) // replace 1 with channel id
+			conn.Write(ChangeMapPacket(mapID, 1, pID, char.GetHP())) // replace 1 with channel id
 
 			char.SetCurrentMap(mapID)
 		}
@@ -48,7 +48,7 @@ func HandlePlayerChangeMap(conn interfaces.ClientConn, reader gopacket.Reader) {
 						char.SetX(portal.GetX())
 						char.SetY(portal.GetY())
 
-						conn.Write(changeMapPacket(mapID, 1, byte(i), char.GetHP())) // replace 1 with channel id
+						conn.Write(ChangeMapPacket(mapID, 1, byte(i), char.GetHP())) // replace 1 with channel id
 
 						char.SetCurrentMap(mapID)
 						break

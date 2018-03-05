@@ -34,7 +34,7 @@ func playerEnterMapPacket(char *character.Character) gopacket.Packet {
 	return p
 }
 
-func changeMapPacket(mapID uint32, channelID uint32, mapPos byte, hp uint16) gopacket.Packet {
+func ChangeMapPacket(mapID uint32, channelID uint32, mapPos byte, hp uint16) gopacket.Packet {
 	p := gopacket.NewPacket()
 	p.WriteByte(constants.SEND_CHANNEL_WARP_TO_MAP)
 	p.WriteUint32(channelID)

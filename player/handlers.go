@@ -82,7 +82,7 @@ func HandlePassiveRegen(conn interfaces.ClientConn, reader gopacket.Reader) {
 		conn.Write(statChangePacket(true, mpID, char.GetMP()))
 	}
 
-	// If in party return id and new hp, then update party
+	// If in party return id and new hp, then update hp bar for party members
 }
 
 func HandleChangeStat(conn interfaces.ClientConn, reader gopacket.Reader) {

@@ -86,7 +86,7 @@ func PlayerLeaveMap(conn interfaces.ClientConn, mapID uint32) {
 	SendPacketToMap(mapID, playerLeftMapPacket(charsPtr.GetOnlineCharacterHandle(conn).GetCharID()))
 }
 
-func getRandomSpawnPortal(mapID uint32) (interfaces.Portal, byte) {
+func GetRandomSpawnPortal(mapID uint32) (interfaces.Portal, byte) {
 	var portals []interfaces.Portal
 	for _, portal := range mapsPtr.GetMap(mapID).GetPortals() {
 		if portal.GetIsSpawn() {
@@ -96,9 +96,4 @@ func getRandomSpawnPortal(mapID uint32) (interfaces.Portal, byte) {
 	rand.Seed(time.Now().UnixNano())
 	pos := rand.Intn(len(portals))
 	return portals[pos], byte(pos)
-}
-
-// SpawnMob -
-func SpawnMob(mapID uint32, mobID uint32) {
-
 }

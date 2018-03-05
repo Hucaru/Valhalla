@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/Hucaru/Valhalla/chat"
+	"github.com/Hucaru/Valhalla/command"
 	"github.com/Hucaru/Valhalla/connection"
 	"github.com/Hucaru/Valhalla/constants"
 	"github.com/Hucaru/Valhalla/data"
@@ -32,6 +33,7 @@ func Channel(configFile string) {
 	chat.RegisterCharactersObj(data.GetCharsPtr())
 	maps.RegisterCharactersObj(data.GetCharsPtr())
 	maps.RegisterMapsObj(data.GetMapsPtr())
+	command.RegisterCharactersObj(data.GetCharsPtr())
 
 	listener, err := net.Listen("tcp", "0.0.0.0:8686")
 

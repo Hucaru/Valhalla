@@ -4,6 +4,7 @@ import (
 	"log"
 
 	"github.com/Hucaru/Valhalla/chat"
+	"github.com/Hucaru/Valhalla/command"
 	"github.com/Hucaru/Valhalla/maps"
 	"github.com/Hucaru/Valhalla/player"
 
@@ -30,7 +31,7 @@ func HandleChannelPacket(conn *clientChanConn, reader gopacket.Reader) {
 		// maps.SendPacketToMap(mapID, p)
 
 	case constants.RECV_CHANNEL_USE_PORTAL:
-		maps.HandlePlayerChangeMap(conn, reader)
+		maps.HandlePlayerUsePortal(conn, reader)
 
 	case constants.RECV_CHANNEL_REQUEST_TO_ENTER_CASH_SHOP:
 		//
@@ -40,9 +41,9 @@ func HandleChannelPacket(conn *clientChanConn, reader gopacket.Reader) {
 		// maps.SendPacketToMap(mapID, p)
 
 	case constants.RECV_CHANNEL_PLAYER_SEND_ALL_CHAT:
-		mapID, _, isCommand, p := chat.HandleAllChat(conn, reader)
+		mapID, text, isCommand, p := chat.HandleAllChat(conn, reader)
 		if isCommand {
-			// command.Handle(conn, text)
+			command.HandleCommand(conn, text)
 			return
 		}
 		maps.SendPacketToMap(mapID, p)
