@@ -77,6 +77,8 @@ type Mob interface {
 type Portal interface {
 	GetToMap() uint32
 	SetToMap(uint32)
+	GetToPortal() string
+	SetToPortal(string)
 	GetName() string
 	SetName(string)
 	Pos
@@ -89,6 +91,8 @@ type Map interface {
 	AddNpc(Npc)
 	GetMobs() []Mob
 	AddMob(Mob)
+	GetReturnMap() uint32
+	SetReturnMap(uint32)
 	GetPortals() []Portal
 	AddPortal(Portal)
 	GetPlayers() []ClientConn

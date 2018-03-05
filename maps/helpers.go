@@ -1,6 +1,9 @@
 package maps
 
 import (
+	"math/rand"
+	"time"
+
 	"github.com/Hucaru/Valhalla/interfaces"
 	"github.com/Hucaru/gopacket"
 )
@@ -29,6 +32,18 @@ func SendPacketToMap(mapID uint32, p gopacket.Packet) {
 			v.Write(p)
 		}
 	}
+}
+
+func getRandomSpawnPortal(mapID uint32) (interfaces.Portal, byte) {
+	var portals []interfaces.Portal
+	for _, portal := range mapsPtr.GetMap(mapID).GetPortals() {
+		if portal.GetIsSpawn() {
+			portals = append(portals, portal)
+		}
+	}
+	rand.Seed(time.Now().UnixNano())
+	pos := rand.Intn(len(portals))
+	return portals[pos], byte(pos)
 }
 
 // SpawnMob -

@@ -23,6 +23,8 @@ func GenerateMapsObject() {
 	for mapID, stage := range nx.Maps {
 		m := &mapleMap{}
 
+		m.SetReturnMap(stage.ReturnMap)
+
 		for _, life := range stage.Life {
 			if life.IsMob {
 				l := &mapleMob{}
@@ -69,6 +71,7 @@ func GenerateMapsObject() {
 			p.SetY(portal.Y)
 			p.SetIsSpawn(portal.IsSpawn)
 			p.SetToMap(portal.Tm)
+			p.SetToPortal(portal.Tn)
 
 			m.AddPortal(p)
 		}
@@ -124,6 +127,20 @@ func (m *mapleMap) GetMobs() []interfaces.Mob {
 func (m *mapleMap) AddMob(mob interfaces.Mob) {
 	m.mutex.Lock()
 	m.mobs = append(m.mobs, mob)
+	m.mutex.Unlock()
+}
+
+func (m *mapleMap) GetReturnMap() uint32 {
+	m.mutex.RLock()
+	result := m.returnMap
+	m.mutex.RUnlock()
+
+	return result
+}
+
+func (m *mapleMap) SetReturnMap(mapID uint32) {
+	m.mutex.Lock()
+	m.returnMap = mapID
 	m.mutex.Unlock()
 }
 
