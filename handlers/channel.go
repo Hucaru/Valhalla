@@ -54,10 +54,10 @@ func HandleChannelPacket(conn *clientChanConn, reader gopacket.Reader) {
 		// npc.HandleNpcDialogue(conn, reader) // Goes off to the script engine.
 
 	case constants.RECV_CHANNEL_CHANGE_STAT:
-		// player.HandleStatChange(conn, reader)
+		player.HandleChangeStat(conn, reader)
 
 	case constants.RECV_CHANNEL_PASSIVE_REGEN:
-		// player.HandlePassiveRegen(conn, reader)
+		player.HandlePassiveRegen(conn, reader)
 
 	case constants.RECV_CHANNEL_SKILL_UPDATE:
 		// player.HandleUpdateSkillRecord(conn, reader)
