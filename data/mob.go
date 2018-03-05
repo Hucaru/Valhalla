@@ -5,8 +5,9 @@ type mapleMob struct {
 	exp                  uint32
 	hp, maxHp, mp, maxMp uint16
 	boss                 bool
-	level                byte
+	level, state         byte
 	mobTime              uint32
+	x, y                 int16
 }
 
 func (m *mapleMob) GetEXP() uint32            { return m.exp }
@@ -23,5 +24,7 @@ func (m *mapleMob) GetBoss() bool             { return m.boss }
 func (m *mapleMob) SetBoss(boss bool)         { m.boss = boss }
 func (m *mapleMob) GetLevel() byte            { return m.level }
 func (m *mapleMob) SetLevel(level byte)       { m.level = level }
+func (m *mapleMob) GetState() byte            { return m.state }
+func (m *mapleMob) SetState(state byte)       { m.state = state }
 func (m *mapleMob) GetMobTime() uint32        { return m.mobTime }
 func (m *mapleMob) SetMobTime(mobTime uint32) { m.mobTime = mobTime }

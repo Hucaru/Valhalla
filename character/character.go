@@ -42,11 +42,11 @@ type Character struct {
 	skills []Skill
 	items  []Item
 
-	x       int16
-	y       int16
-	fh      uint16
-	state   byte
-	chairID uint32
+	x        int16
+	y        int16
+	foothold int16
+	state    byte
+	chairID  uint32
 
 	mutex *sync.RWMutex
 }
@@ -582,17 +582,17 @@ func (c *Character) SetY(val int16) {
 	c.mutex.Unlock()
 }
 
-func (c *Character) GetFh() uint16 {
+func (c *Character) GetFoothold() int16 {
 	c.mutex.RLock()
-	val := c.fh
+	val := c.foothold
 	c.mutex.RUnlock()
 
 	return val
 }
 
-func (c *Character) SetFh(val uint16) {
+func (c *Character) SetFoothold(val int16) {
 	c.mutex.Lock()
-	c.fh = val
+	c.foothold = val
 	c.mutex.Unlock()
 }
 

@@ -28,7 +28,7 @@ func playerEnterMapPacket(char *character.Character) gopacket.Packet {
 	p.WriteInt16(char.GetY())
 
 	p.WriteByte(char.GetState())
-	p.WriteUint16(char.GetFh())
+	p.WriteInt16(char.GetFoothold())
 	p.WriteUint32(0) // ?
 
 	return p
@@ -90,7 +90,7 @@ func showNpcPacket(index uint32, npc interfaces.Npc) gopacket.Packet {
 	p.WriteInt16(npc.GetX())
 	p.WriteInt16(npc.GetY())
 
-	p.WriteBool(npc.GetFace())
+	p.WriteByte(1 - npc.GetFace())
 
 	p.WriteInt16(npc.GetFoothold())
 	p.WriteInt16(npc.GetRx0())
@@ -103,8 +103,8 @@ func showNpcPacket(index uint32, npc interfaces.Npc) gopacket.Packet {
 	p.WriteInt16(npc.GetX())
 	p.WriteInt16(npc.GetY())
 
-	p.WriteBool(npc.GetFace())
-	p.WriteBool(npc.GetFace())
+	p.WriteByte(1 - npc.GetFace())
+	p.WriteByte(1 - npc.GetFace())
 
 	p.WriteInt16(npc.GetFoothold())
 	p.WriteInt16(npc.GetRx0())
@@ -146,6 +146,34 @@ func controlMobPacket(spawnID uint32, mob interfaces.Mob, isNewSpawn bool) gopac
 	p.WriteUint32(0)
 
 	return p
+}
+
+func controlAckPacket(mobID uint32, moveID uint16, useSkill bool, skill byte, level byte, mp uint16) gopacket.Packet {
+	p := gopacket.NewPacket()
+	p.WriteByte(constants.SEND_CHANNEL_CONTROL_MOB_ACK)
+	p.WriteUint32(mobID)
+	p.WriteUint16(moveID)
+	p.WriteBool(useSkill)
+	p.WriteByte(0)
+	p.WriteUint16(mp)
+	p.WriteByte(skill)
+	p.WriteByte(level)
+
+	return p
+}
+
+func moveMobPacket(mobID uint32, skillUsed bool, skill byte, buf []byte) gopacket.Packet {
+	p := gopacket.NewPacket()
+	p.WriteByte(constants.SEND_CHANNE_MOVE_MOB)
+	p.WriteUint32(mobID)
+	p.WriteBool(skillUsed)
+	p.WriteByte(skill)
+	p.WriteInt16(0) // a position thing?
+	p.WriteInt16(0) // a position thing?
+	p.WriteBytes(buf)
+
+	return p
+
 }
 
 func endMobControlPacket(mobID uint32) gopacket.Packet {

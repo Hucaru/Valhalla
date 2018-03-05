@@ -4,9 +4,11 @@ import (
 	"log"
 
 	"github.com/Hucaru/Valhalla/interfaces"
+	"github.com/Hucaru/Valhalla/movement"
 	"github.com/Hucaru/gopacket"
 )
 
+// HandlePlayerChangeMap -
 func HandlePlayerChangeMap(conn interfaces.ClientConn, reader gopacket.Reader) {
 	char := charsPtr.GetOnlineCharacterHandle(conn)
 
@@ -62,8 +64,46 @@ func HandlePlayerChangeMap(conn interfaces.ClientConn, reader gopacket.Reader) {
 	PlayerEnterMap(conn, mapID)
 }
 
+// HandlePlayerEmotion -
 func HandlePlayerEmotion(conn interfaces.ClientConn, reader gopacket.Reader) {
 	emotion := reader.ReadUint32()
 	char := charsPtr.GetOnlineCharacterHandle(conn)
 	SendPacketToMap(char.GetCurrentMap(), playerEmotionPacket(char.GetCharID(), emotion))
+}
+
+// HandleMobMovement -
+func HandleMobMovement(conn interfaces.ClientConn, reader gopacket.Reader) {
+	mobID := reader.ReadUint32()
+	moveID := reader.ReadUint16()
+	skillUsed := bool(reader.ReadByte() != 0)
+	skill := reader.ReadByte()
+
+	level := byte(0)
+	if skillUsed {
+		// Implement mob skills
+	}
+
+	reader.ReadInt16() // ? x pos for something?
+	reader.ReadInt16() // ? y pos for something?
+
+	reader.ReadInt32()          //
+	nFrags := reader.ReadByte() // n fragments?
+
+	var mp uint16
+
+	mapID := charsPtr.GetOnlineCharacterHandle(conn).GetCurrentMap()
+	m := mapsPtr.GetMap(mapID)
+
+	var mob interfaces.Mob
+
+	for i, v := range m.GetMobs() {
+		if uint32(i) == mobID {
+			mob = v
+		}
+	}
+
+	movement.ParseFragments(nFrags, mob, reader)
+
+	SendPacketToMap(mapID, moveMobPacket(mobID, skillUsed, skill, reader.GetBuffer()[13:]))
+	conn.Write(controlAckPacket(mobID, moveID, skillUsed, skill, level, mp))
 }

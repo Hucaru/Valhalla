@@ -84,7 +84,7 @@ func HandleChannelPacket(conn *clientChanConn, reader gopacket.Reader) {
 		//
 
 	case constants.RECV_CHANNEL_MOB_MOVEMENT:
-		// maps.HandleMobMovement(conn, reader) // Maps owns mobs and therefore deals with them
+		maps.HandleMobMovement(conn, reader)
 
 	default:
 		log.Println("Unkown packet:", reader)

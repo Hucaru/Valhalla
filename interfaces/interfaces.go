@@ -34,14 +34,24 @@ type Pos interface {
 	GetY() int16
 }
 
+type FragObj interface {
+	Pos
+	GetState() byte
+	SetState(byte)
+	SetFoothold(int16)
+	GetFoothold() int16
+}
+
 type Life interface {
 	SetID(uint32)
 	GetID() uint32
 	Pos
 	SetFoothold(int16)
 	GetFoothold() int16
-	SetFace(bool)
-	GetFace() bool
+	SetFace(byte)
+	GetFace() byte
+	GetState() byte
+	SetState(byte)
 	GetController() ClientConn
 	SetController(ClientConn)
 }

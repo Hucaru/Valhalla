@@ -10,7 +10,7 @@ import (
 type Life struct {
 	ID      uint32
 	Cy      int64
-	F       bool
+	F       byte
 	Fh      int16
 	Hide    bool
 	MobTime uint32
@@ -183,7 +183,7 @@ func getLifeItem(n node) Life {
 		case "cy":
 			lifeItem.Cy = dataToInt64(lifeNode.Data)
 		case "f":
-			lifeItem.F = bool(lifeNode.Data[0] == 0)
+			lifeItem.F = lifeNode.Data[0]
 		case "fh":
 			lifeItem.Fh = dataToInt16(lifeNode.Data)
 		case "hide":
