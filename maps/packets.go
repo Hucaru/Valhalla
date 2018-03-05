@@ -121,3 +121,38 @@ func playerEmotionPacket(playerID uint32, emotion uint32) gopacket.Packet {
 
 	return p
 }
+
+func controlMobPacket(spawnID uint32, mob interfaces.Mob, isNewSpawn bool) gopacket.Packet {
+	p := gopacket.NewPacket()
+	p.WriteByte(constants.SEND_CHANNEL_CONTROL_MOB)
+	p.WriteByte(0x01) // if mob is agroed or not. 0x01 is not agroed, other values means agroed
+	p.WriteUint32(spawnID)
+	p.WriteByte(0x01)
+	p.WriteUint32(mob.GetID())
+
+	p.WriteUint32(0) // ?
+
+	p.WriteInt16(mob.GetX())
+	p.WriteInt16(mob.GetY())
+	p.WriteByte(0x02)               // which direction it faces?
+	p.WriteInt16(mob.GetFoothold()) // foothold to oscillate around
+	p.WriteInt16(mob.GetFoothold()) // spawn foothold
+
+	if isNewSpawn {
+		p.WriteByte(0xFE)
+	} else {
+		p.WriteByte(0xFF)
+	}
+	p.WriteUint32(0)
+
+	return p
+}
+
+func endMobControlPacket(mobID uint32) gopacket.Packet {
+	p := gopacket.NewPacket()
+	p.WriteByte(constants.SEND_CHANNEL_CONTROL_MOB)
+	p.WriteByte(0)
+	p.WriteUint32(mobID)
+
+	return p
+}

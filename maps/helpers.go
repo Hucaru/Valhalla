@@ -34,6 +34,7 @@ func SendPacketToMap(mapID uint32, p gopacket.Packet) {
 	}
 }
 
+// PlayerEnterMap -
 func PlayerEnterMap(conn interfaces.ClientConn, mapID uint32) {
 	m := mapsPtr.GetMap(mapID)
 
@@ -53,17 +54,36 @@ func PlayerEnterMap(conn interfaces.ClientConn, mapID uint32) {
 	for i, v := range m.GetMobs() {
 		if v.GetController() == nil {
 			v.SetController(conn)
-			// Send control packet
+			conn.Write(controlMobPacket(uint32(i), v, false))
 		}
+
 		conn.Write(showMobPacket(uint32(i), v, false))
 	}
 }
 
+// PlayerLeaveMap -
 func PlayerLeaveMap(conn interfaces.ClientConn, mapID uint32) {
-	mapsPtr.GetMap(mapID).RemovePlayer(conn)
+	m := mapsPtr.GetMap(mapID)
+
+	m.RemovePlayer(conn)
+
+	// Remove player as mob controller
+	for i, v := range m.GetMobs() {
+		if v.GetController() == conn {
+			v.SetController(nil)
+		}
+
+		conn.Write(endMobControlPacket(uint32(i)))
+	}
+
+	if len(m.GetPlayers()) > 0 {
+		newController := m.GetPlayers()[0]
+		for i, v := range m.GetMobs() {
+			newController.Write(controlMobPacket(uint32(i), v, false))
+		}
+	}
+
 	SendPacketToMap(mapID, playerLeftMapPacket(charsPtr.GetOnlineCharacterHandle(conn).GetCharID()))
-	// Remove player as controller
-	// find new controller for mobs if players left in map
 }
 
 func getRandomSpawnPortal(mapID uint32) (interfaces.Portal, byte) {
