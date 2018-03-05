@@ -48,7 +48,7 @@ func HandleChannelPacket(conn *clientChanConn, reader gopacket.Reader) {
 		maps.SendPacketToMap(mapID, p)
 
 	case constants.RECV_CHANNEL_EMOTION:
-		// maps.HandleCharacterEmotion(conn, reader)
+		maps.HandlePlayerEmotion(conn, reader)
 
 	case constants.RECV_CHANNEL_NPC_DIALOGUE:
 		// npc.HandleNpcDialogue(conn, reader) // Goes off to the script engine.

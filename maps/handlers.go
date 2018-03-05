@@ -7,38 +7,6 @@ import (
 	"github.com/Hucaru/gopacket"
 )
 
-func PlayerEnterMap(conn interfaces.ClientConn, mapID uint32) {
-	m := mapsPtr.GetMap(mapID)
-
-	for _, v := range m.GetPlayers() {
-		v.Write(playerEnterMapPacket(charsPtr.GetOnlineCharacterHandle(conn)))
-		conn.Write(playerEnterMapPacket(charsPtr.GetOnlineCharacterHandle(v)))
-	}
-
-	m.AddPlayer(conn)
-
-	// Send npcs
-	for i, v := range m.GetNpcs() {
-		conn.Write(showNpcPacket(uint32(i), v))
-	}
-
-	// Send mobs
-	for i, v := range m.GetMobs() {
-		if v.GetController() == nil {
-			v.SetController(conn)
-			// Send control packet
-		}
-		conn.Write(showMobPacket(uint32(i), v, false))
-	}
-}
-
-func PlayerLeaveMap(conn interfaces.ClientConn, mapID uint32) {
-	mapsPtr.GetMap(mapID).RemovePlayer(conn)
-	SendPacketToMap(mapID, playerLeftMapPacket(charsPtr.GetOnlineCharacterHandle(conn).GetCharID()))
-	// Remove player as controller
-	// find new controller for mobs if players left in map
-}
-
 func HandlePlayerChangeMap(conn interfaces.ClientConn, reader gopacket.Reader) {
 	char := charsPtr.GetOnlineCharacterHandle(conn)
 
@@ -92,4 +60,10 @@ func HandlePlayerChangeMap(conn interfaces.ClientConn, reader gopacket.Reader) {
 	}
 
 	PlayerEnterMap(conn, mapID)
+}
+
+func HandlePlayerEmotion(conn interfaces.ClientConn, reader gopacket.Reader) {
+	emotion := reader.ReadUint32()
+	char := charsPtr.GetOnlineCharacterHandle(conn)
+	SendPacketToMap(char.GetCurrentMap(), playerEmotionPacket(char.GetCharID(), emotion))
 }

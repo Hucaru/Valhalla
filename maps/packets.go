@@ -112,3 +112,12 @@ func showNpcPacket(index uint32, npc interfaces.Npc) gopacket.Packet {
 
 	return p
 }
+
+func playerEmotionPacket(playerID uint32, emotion uint32) gopacket.Packet {
+	p := gopacket.NewPacket()
+	p.WriteByte(constants.SEND_CHANNEL_PLAYER_EMOTION)
+	p.WriteUint32(playerID)
+	p.WriteUint32(emotion)
+
+	return p
+}
