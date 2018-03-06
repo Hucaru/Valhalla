@@ -61,7 +61,7 @@ func HandleChannelPacket(conn *clientChanConn, reader gopacket.Reader) {
 		player.HandlePassiveRegen(conn, reader)
 
 	case constants.RECV_CHANNEL_SKILL_UPDATE:
-		// player.HandleUpdateSkillRecord(conn, reader)
+		player.HandleUpdateSkillRecord(conn, reader)
 
 	case constants.RECV_CHANNEL_SPECIAL_SKILL_USAGE: // is this ranged or magic attack?
 		//

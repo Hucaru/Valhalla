@@ -85,6 +85,31 @@ func HandlePassiveRegen(conn interfaces.ClientConn, reader gopacket.Reader) {
 	// If in party return id and new hp, then update hp bar for party members
 }
 
+func HandleUpdateSkillRecord(conn interfaces.ClientConn, reader gopacket.Reader) {
+	char := charsPtr.GetOnlineCharacterHandle(conn)
+
+	skillID := reader.ReadUint32()
+
+	newSP := char.GetSP() - 1
+	char.SetSP(newSP)
+
+	skills := char.GetSkills()
+
+	newLevel := uint32(0)
+
+	if _, exists := skills[skillID]; exists {
+		newLevel = skills[skillID] + 1
+	} else {
+		newLevel = 1
+	}
+
+	skills[skillID] = newLevel
+
+	conn.Write(statChangePacket(true, spID, newSP))
+	conn.Write(skillBookUpdatePacket(skillID, newLevel))
+	conn.Write(skillBookUpdatePacket(skillID, newLevel))
+}
+
 func HandleChangeStat(conn interfaces.ClientConn, reader gopacket.Reader) {
 	char := charsPtr.GetOnlineCharacterHandle(conn)
 

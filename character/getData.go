@@ -6,7 +6,7 @@ import (
 	"github.com/Hucaru/Valhalla/connection"
 )
 
-func GetCharacterSkills(charID uint32) []Skill {
+func GetCharacterSkills(charID uint32) map[uint32]uint32 {
 	filter := "skillID,level"
 	row, err := connection.Db.Query("SELECT "+filter+" FROM skills WHERE characterID=?", charID)
 
@@ -16,20 +16,15 @@ func GetCharacterSkills(charID uint32) []Skill {
 
 	defer row.Close()
 
-	var skills []Skill
+	skills := make(map[uint32]uint32)
 
 	for row.Next() {
-		var newSkill Skill
-
 		var ID uint32
-		var level byte
+		var level uint32
 
 		row.Scan(&ID, &level)
 
-		newSkill.SetID(ID)
-		newSkill.SetLevel(level)
-
-		skills = append(skills, newSkill)
+		skills[ID] = level
 	}
 
 	return skills

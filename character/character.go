@@ -39,8 +39,9 @@ type Character struct {
 	cashSlotSize    byte
 
 	equips []Equip
-	skills []Skill
 	items  []Item
+
+	skills map[uint32]uint32
 
 	x        int16
 	y        int16
@@ -71,7 +72,7 @@ func (c *Character) AddEquip(val Equip) {
 	c.mutex.Unlock()
 }
 
-func (c *Character) GetSkills() []Skill {
+func (c *Character) GetSkills() map[uint32]uint32 {
 	c.mutex.RLock()
 	val := c.skills
 	c.mutex.RUnlock()
@@ -79,15 +80,9 @@ func (c *Character) GetSkills() []Skill {
 	return val
 }
 
-func (c *Character) SetSkills(val []Skill) {
+func (c *Character) SetSkills(val map[uint32]uint32) {
 	c.mutex.Lock()
 	c.skills = val
-	c.mutex.Unlock()
-}
-
-func (c *Character) AddSkill(val Skill) {
-	c.mutex.Lock()
-	c.skills = append(c.skills, val)
 	c.mutex.Unlock()
 }
 
