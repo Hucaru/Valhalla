@@ -97,3 +97,10 @@ func GetRandomSpawnPortal(mapID uint32) (interfaces.Portal, byte) {
 	pos := rand.Intn(len(portals))
 	return portals[pos], byte(pos)
 }
+
+func RegisterNewPlayerCallback(conn interfaces.ClientConn) {
+	conn.AddCloseCallback(func() {
+		PlayerLeaveMap(conn, charsPtr.GetOnlineCharacterHandle(conn).GetCurrentMap())
+		charsPtr.RemoveOnlineCharacter(conn)
+	})
+}

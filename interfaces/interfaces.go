@@ -21,7 +21,7 @@ type ClientConn interface {
 	GetIsLogedIn() bool
 	SetChanID(uint32)
 	GetChanID() uint32
-	AddCloseCallback(*func())
+	AddCloseCallback(func())
 	// Below here might not be needed
 	SetWorldID(uint32)
 	GetWorldID() uint32

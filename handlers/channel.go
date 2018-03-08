@@ -21,6 +21,7 @@ func HandleChannelPacket(conn *clientChanConn, reader gopacket.Reader) {
 	case constants.RECV_CHANNEL_PLAYER_LOAD:
 		mapID := player.HandleConnect(conn, reader)
 		maps.PlayerEnterMap(conn, mapID)
+		maps.RegisterNewPlayerCallback(conn)
 
 	case constants.RECV_CHANNEL_MOVEMENT:
 		mapID, p := player.HandleMovement(conn, reader)

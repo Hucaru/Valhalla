@@ -107,7 +107,6 @@ func HandleUpdateSkillRecord(conn interfaces.ClientConn, reader gopacket.Reader)
 
 	conn.Write(statChangePacket(true, spID, newSP))
 	conn.Write(skillBookUpdatePacket(skillID, newLevel))
-	conn.Write(skillBookUpdatePacket(skillID, newLevel))
 }
 
 func HandleChangeStat(conn interfaces.ClientConn, reader gopacket.Reader) {
