@@ -54,26 +54,44 @@ func HandleMovement(conn interfaces.ClientConn, reader gopacket.Reader) (uint32,
 }
 
 func HandleTakeDamage(conn interfaces.ClientConn, reader gopacket.Reader) (uint32, gopacket.Packet) {
-	fmt.Println("Dmg taken:", reader)
+	char := charsPtr.GetOnlineCharacterHandle(conn)
 
 	dmgType := reader.ReadByte()
+	ammount := reader.ReadUint32()
 
 	mobID := uint32(0)
+	objID := uint32(0)
+	level := byte(0)
+	disease := uint32(0)
+	stance := byte(0)
 
 	if dmgType != 0xFE {
 		mobID = reader.ReadUint32()
+		objID = reader.ReadUint32()
+
 	}
 
-	ammount := reader.ReadUint32()
-	reader.ReadUint32()
 	hit := reader.ReadByte()
-	stance := reader.ReadByte()
+	reduction := reader.ReadByte()
 
-	char := charsPtr.GetOnlineCharacterHandle(conn)
+	if dmgType == 0xFE {
+		level = reader.ReadByte()
+		disease = reader.ReadUint32()
+		fmt.Println(objID, level, disease)
+	} else if dmgType == 0x00 {
+	} else if dmgType == 0x01 {
+	} else if dmgType == 0x02 {
+	} else {
+		stance = reader.ReadByte()
+	}
+
+	// Handle character buffs e.g. magic guard
+
+	// Modify character hp after buffs taken into account
 
 	// Update character hp
 
-	return char.GetCurrentMap(), receivedDmgPacket(char.GetCharID(), ammount, dmgType, mobID, hit, stance)
+	return char.GetCurrentMap(), receivedDmgPacket(char.GetCharID(), ammount, dmgType, mobID, hit, reduction, stance)
 }
 
 func HandlePassiveRegen(conn interfaces.ClientConn, reader gopacket.Reader) {
