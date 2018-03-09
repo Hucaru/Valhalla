@@ -1,6 +1,7 @@
 package player
 
 import (
+	"fmt"
 	"log"
 
 	"github.com/Hucaru/Valhalla/character"
@@ -52,6 +53,29 @@ func HandleMovement(conn interfaces.ClientConn, reader gopacket.Reader) (uint32,
 	return char.GetCurrentMap(), playerMovePacket(char.GetCharID(), reader.GetBuffer()[2:])
 }
 
+func HandleTakeDamage(conn interfaces.ClientConn, reader gopacket.Reader) (uint32, gopacket.Packet) {
+	fmt.Println("Dmg taken:", reader)
+
+	dmgType := reader.ReadByte()
+
+	mobID := uint32(0)
+
+	if dmgType != 0xFE {
+		mobID = reader.ReadUint32()
+	}
+
+	ammount := reader.ReadUint32()
+	reader.ReadUint32()
+	hit := reader.ReadByte()
+	stance := reader.ReadByte()
+
+	char := charsPtr.GetOnlineCharacterHandle(conn)
+
+	// Update character hp
+
+	return char.GetCurrentMap(), receivedDmgPacket(char.GetCharID(), ammount, dmgType, mobID, hit, stance)
+}
+
 func HandlePassiveRegen(conn interfaces.ClientConn, reader gopacket.Reader) {
 	reader.ReadBytes(4) //?
 
@@ -71,7 +95,7 @@ func HandlePassiveRegen(conn interfaces.ClientConn, reader gopacket.Reader) {
 			char.SetHP(char.GetMaxHP())
 		}
 
-		conn.Write(statChangePacket(true, hpID, char.GetHP()))
+		conn.Write(statChangePacket(true, hpID, uint32(char.GetHP())))
 	} else if mp > 0 {
 		char.SetMP(char.GetMP() + mp)
 
@@ -79,7 +103,7 @@ func HandlePassiveRegen(conn interfaces.ClientConn, reader gopacket.Reader) {
 			char.SetMP(char.GetMaxMP())
 		}
 
-		conn.Write(statChangePacket(true, mpID, char.GetMP()))
+		conn.Write(statChangePacket(true, mpID, uint32(char.GetMP())))
 	}
 
 	// If in party return id and new hp, then update hp bar for party members
@@ -105,7 +129,7 @@ func HandleUpdateSkillRecord(conn interfaces.ClientConn, reader gopacket.Reader)
 
 	skills[skillID] = newLevel
 
-	conn.Write(statChangePacket(true, spID, newSP))
+	conn.Write(statChangePacket(true, spID, uint32(newSP)))
 	conn.Write(skillBookUpdatePacket(skillID, newLevel))
 }
 
@@ -176,7 +200,7 @@ func HandleChangeStat(conn interfaces.ClientConn, reader gopacket.Reader) {
 	}
 
 	newAP := char.GetAP() - 1
-	conn.Write(statChangePacket(true, stat, value))
-	conn.Write(statChangePacket(true, apID, newAP))
+	conn.Write(statChangePacket(true, stat, uint32(value)))
+	conn.Write(statChangePacket(true, apID, uint32(newAP)))
 	char.SetAP(newAP)
 }

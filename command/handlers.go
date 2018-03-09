@@ -9,6 +9,7 @@ import (
 	"github.com/Hucaru/Valhalla/interfaces"
 	"github.com/Hucaru/Valhalla/maps"
 	"github.com/Hucaru/Valhalla/nx"
+	"github.com/Hucaru/Valhalla/player"
 	"github.com/Hucaru/gopacket"
 )
 
@@ -57,6 +58,22 @@ func HandleCommand(conn interfaces.ClientConn, text string) {
 		} else {
 			// check if player id in else if
 		}
+	case "job":
+		val, err := strconv.Atoi(command[1])
+
+		if err != nil {
+			return
+		}
+
+		player.SetJob(conn, uint16(val))
+	case "level":
+		val, err := strconv.Atoi(command[1])
+
+		if err != nil {
+			return
+		}
+
+		player.SetLevel(conn, byte(val))
 	default:
 		log.Println("Unkown GM command", command)
 	}

@@ -23,12 +23,37 @@ func skillBookUpdatePacket(skillID uint32, level uint32) gopacket.Packet {
 	return p
 }
 
-func statChangePacket(byPlayer bool, stat uint32, value uint16) gopacket.Packet {
+func receivedDmgPacket(charID uint32, ammount uint32, dmgType byte, mobID uint32, hit byte, stance byte) gopacket.Packet {
+	p := gopacket.NewPacket()
+	p.WriteByte(0x6B)
+	p.WriteUint32(charID)
+	p.WriteByte(0xFE) // putting 00 here writes a miss, so does keeping this here and having 0 ammount
+	p.WriteUint32(ammount)
+	p.WriteUint32(ammount)
+
+	if dmgType == 0xFE {
+		p.WriteUint32(ammount)
+	} else {
+		p.WriteUint32(ammount)
+		p.WriteUint32(mobID)
+		p.WriteByte(hit)
+		p.WriteByte(0) // flag for something?
+		p.WriteByte(stance)
+	}
+
+	p.WriteUint32(ammount)
+	p.WriteUint16(0) //?
+
+	return p
+}
+
+// Maybe split this into byte, uint16 & uint32 forms by taking interace{} and reflecting value type
+func statChangePacket(byPlayer bool, stat uint32, value uint32) gopacket.Packet {
 	p := gopacket.NewPacket()
 	p.WriteByte(constants.SEND_CHANNEL_STAT_CHANGE)
 	p.WriteBool(byPlayer)
 	p.WriteUint32(stat)
-	p.WriteUint16(value)
+	p.WriteUint32(value)
 
 	return p
 }

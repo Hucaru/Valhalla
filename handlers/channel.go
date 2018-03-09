@@ -3,10 +3,11 @@ package handlers
 import (
 	"log"
 
-	"github.com/Hucaru/Valhalla/chat"
 	"github.com/Hucaru/Valhalla/command"
 	"github.com/Hucaru/Valhalla/maps"
+	"github.com/Hucaru/Valhalla/message"
 	"github.com/Hucaru/Valhalla/player"
+	"github.com/Hucaru/Valhalla/skills"
 
 	"github.com/Hucaru/Valhalla/constants"
 	"github.com/Hucaru/gopacket"
@@ -23,26 +24,30 @@ func HandleChannelPacket(conn *clientChanConn, reader gopacket.Reader) {
 		maps.PlayerEnterMap(conn, mapID)
 		maps.RegisterNewPlayerCallback(conn)
 
-	case constants.RECV_CHANNEL_MOVEMENT:
-		mapID, p := player.HandleMovement(conn, reader)
-		maps.SendPacketToMap(mapID, p)
-
-	case constants.RECV_CHANNEL_MELEE_SKILL:
-		// p := skills.HandleMeleeSkill(conn, reader)
-		// maps.SendPacketToMap(mapID, p)
-
 	case constants.RECV_CHANNEL_USE_PORTAL:
 		maps.HandlePlayerUsePortal(conn, reader)
 
 	case constants.RECV_CHANNEL_REQUEST_TO_ENTER_CASH_SHOP:
-		//
+		message.HandleCashShopButton(conn, reader)
+
+	case constants.RECV_CHANNEL_MOVEMENT:
+		mapID, p := player.HandleMovement(conn, reader)
+		maps.SendPacketToMap(mapID, p)
+
+	case constants.RECV_CHANNEL_STANDARD_SKILL:
+		p, mapID := skills.HandleStandardSkill(conn, reader)
+		maps.SendPacketToMap(mapID, p)
+
+	case constants.RECV_CHANNEL_RANGED_SKILL:
+		p, mapID := skills.HandleRangedSkill(conn, reader)
+		maps.SendPacketToMap(mapID, p)
 
 	case constants.RECV_CHANNEL_DMG_RECV:
-		// mapID, p := player.HandleReceivesDmg(conn, reader)
-		// maps.SendPacketToMap(mapID, p)
+		mapID, p := player.HandleTakeDamage(conn, reader)
+		maps.SendPacketToMap(mapID, p)
 
 	case constants.RECV_CHANNEL_PLAYER_SEND_ALL_CHAT:
-		mapID, text, isCommand, p := chat.HandleAllChat(conn, reader)
+		mapID, text, isCommand, p := message.HandleAllChat(conn, reader)
 		if isCommand {
 			command.HandleCommand(conn, text)
 			return
@@ -64,8 +69,10 @@ func HandleChannelPacket(conn *clientChanConn, reader gopacket.Reader) {
 	case constants.RECV_CHANNEL_SKILL_UPDATE:
 		player.HandleUpdateSkillRecord(conn, reader)
 
-	case constants.RECV_CHANNEL_SPECIAL_SKILL_USAGE: // is this ranged or magic attack?
-		//
+	case constants.RECV_CHANNEL_SPECIAL_SKILL_USAGE:
+		p, mapID := skills.HandleSpecialSkill(conn, reader)
+		maps.SendPacketToMap(mapID, p)
+		// Send buff to party
 
 	case constants.RECV_CHANNEL_DOUBLE_CLICK_CHARACTER:
 		// player.HandleRequestAvatarInfoWindow(conn, reader)
