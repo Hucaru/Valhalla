@@ -162,14 +162,13 @@ func controlAckPacket(mobID uint32, moveID uint16, useSkill bool, skill byte, le
 	return p
 }
 
-func moveMobPacket(mobID uint32, skillUsed bool, skill byte, buf []byte) gopacket.Packet {
+func moveMobPacket(mobID uint32, skillUsed bool, skill byte, unknown uint32, buf []byte) gopacket.Packet {
 	p := gopacket.NewPacket()
 	p.WriteByte(constants.SEND_CHANNE_MOVE_MOB)
 	p.WriteUint32(mobID)
 	p.WriteBool(skillUsed)
 	p.WriteByte(skill)
-	p.WriteInt16(0) // a position thing?
-	p.WriteInt16(0) // a position thing?
+	p.WriteUint32(unknown)
 	p.WriteBytes(buf)
 
 	return p

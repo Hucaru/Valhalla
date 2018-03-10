@@ -1,7 +1,6 @@
 package player
 
 import (
-	"fmt"
 	"log"
 
 	"github.com/Hucaru/Valhalla/character"
@@ -60,36 +59,23 @@ func HandleTakeDamage(conn interfaces.ClientConn, reader gopacket.Reader) (uint3
 	ammount := reader.ReadUint32()
 
 	mobID := uint32(0)
-	objID := uint32(0)
-	level := byte(0)
-	disease := uint32(0)
+	reduction := byte(0)
 	stance := byte(0)
+	hit := byte(0)
 
-	if dmgType != 0xFE {
+	switch dmgType {
+	case 0xFE: // map or fall damage
+	default:
 		mobID = reader.ReadUint32()
-		objID = reader.ReadUint32()
-
-	}
-
-	hit := reader.ReadByte()
-	reduction := reader.ReadByte()
-
-	if dmgType == 0xFE {
-		level = reader.ReadByte()
-		disease = reader.ReadUint32()
-		fmt.Println(objID, level, disease)
-	} else if dmgType == 0x00 {
-	} else if dmgType == 0x01 {
-	} else if dmgType == 0x02 {
-	} else {
+		reader.ReadUint32() // some form of map object id?
+		hit = reader.ReadByte()
+		reduction = reader.ReadByte()
 		stance = reader.ReadByte()
 	}
 
-	// Handle character buffs e.g. magic guard
+	// Handle character buffs e.g. magic guard, power guard etc
 
-	// Modify character hp after buffs taken into account
-
-	// Update character hp
+	// Modify character hp
 
 	return char.GetCurrentMap(), receivedDmgPacket(char.GetCharID(), ammount, dmgType, mobID, hit, reduction, stance)
 }

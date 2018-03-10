@@ -38,17 +38,19 @@ func HandleStandardSkill(conn interfaces.ClientConn, reader gopacket.Reader) (go
 		reader.ReadInt32() // ?
 		reader.ReadInt16() // objy
 
+		var dmgs []uint32
+
 		for j := byte(0); j < hits; j++ {
-			dmg := reader.ReadUint32()
-			damages[objID] = append(damages[objID], dmg)
+			dmgs = append(dmgs, reader.ReadUint32())
 		}
+
+		damages[objID] = dmgs
 	}
 
-	playerX := reader.ReadInt16()
-	playerY := reader.ReadInt16()
+	// playerX := reader.ReadInt16()
+	// playerY := reader.ReadInt16()
 
-	char.SetX(playerX)
-	char.SetY(playerY)
+	// char.SetY(playerY)
 
 	return skillAnimationPacket(char.GetCharID(), skillID, tByte, targets, hits, display, animation, damages), char.GetCurrentMap()
 }

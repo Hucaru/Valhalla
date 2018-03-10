@@ -25,21 +25,20 @@ func skillBookUpdatePacket(skillID uint32, level uint32) gopacket.Packet {
 
 func receivedDmgPacket(charID uint32, ammount uint32, dmgType byte, mobID uint32, hit byte, reduction byte, stance byte) gopacket.Packet {
 	p := gopacket.NewPacket()
-	p.WriteByte(0x6B)
+	p.WriteByte(constants.SEND_CHANNEL_PLAYER_TAKE_DMG)
 	p.WriteUint32(charID)
-	p.WriteByte(dmgType) // putting 00 here writes a miss, so does keeping this here and having 0 ammount
+	p.WriteByte(dmgType)
 
 	if dmgType == 0xFE {
 		p.WriteUint32(ammount)
 		p.WriteUint32(ammount)
 	} else {
-		p.WriteUint32(ammount)
+		p.WriteUint32(0) // ?
 		p.WriteUint32(mobID)
 		p.WriteByte(hit)
-		p.WriteByte(reduction) // reduction amount
 		p.WriteByte(stance)
-		p.WriteUint32(ammount)
-		p.WriteUint32(0) // skill id of attack?
+		p.WriteUint32(0)       // ?
+		p.WriteUint32(ammount) // skill id of attack?
 	}
 
 	return p

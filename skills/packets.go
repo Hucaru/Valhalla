@@ -1,8 +1,6 @@
 package skills
 
 import (
-	"fmt"
-
 	"github.com/Hucaru/Valhalla/constants"
 	"github.com/Hucaru/gopacket"
 )
@@ -14,7 +12,7 @@ func skillAnimationPacket(charID uint32, skillID uint32, tByte, targets, hits, d
 	// p.WriteByte(targets*0x10 + hits)
 	p.WriteByte(tByte)
 	if skillID != 0 {
-		p.WriteByte(1) // skill level based on characters skill books, if standard auto attack then zero
+		p.WriteByte(1)
 		p.WriteUint32(skillID)
 	} else {
 		p.WriteByte(0)
@@ -28,9 +26,8 @@ func skillAnimationPacket(charID uint32, skillID uint32, tByte, targets, hits, d
 	for k, v := range damages {
 		p.WriteUint32(k)
 		p.WriteByte(0x6)
-		for i := range v {
-			fmt.Println(k, v)
-			p.WriteUint32(uint32(i))
+		for _, dmg := range v {
+			p.WriteUint32(dmg)
 		}
 	}
 
