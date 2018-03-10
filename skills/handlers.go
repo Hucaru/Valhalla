@@ -8,8 +8,6 @@ import (
 )
 
 func HandleStandardSkill(conn interfaces.ClientConn, reader gopacket.Reader) (gopacket.Packet, uint32) {
-	fmt.Println("Standard Skill", reader)
-
 	char := charsPtr.GetOnlineCharacterHandle(conn)
 
 	tByte := reader.ReadByte()
@@ -31,7 +29,6 @@ func HandleStandardSkill(conn interfaces.ClientConn, reader gopacket.Reader) (go
 	for i := byte(0); i < targets; i++ {
 		objID := reader.ReadUint32()
 
-		// validate object is where map thinks it is, within 500ms, keep previous position
 		reader.ReadInt32() // ?
 		reader.ReadInt16() // objx
 		reader.ReadInt16() // objy

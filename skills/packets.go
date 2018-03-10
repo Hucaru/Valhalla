@@ -23,8 +23,8 @@ func skillAnimationPacket(charID uint32, skillID uint32, tByte, targets, hits, d
 	p.WriteByte(0)   // mastery
 	p.WriteUint32(0) // starID?
 
-	for k, v := range damages {
-		p.WriteUint32(k)
+	for _, v := range damages {
+		p.WriteUint32(0)
 		p.WriteByte(0x6)
 		for _, dmg := range v {
 			p.WriteUint32(dmg)
