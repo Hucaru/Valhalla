@@ -128,9 +128,11 @@ func DamageMobs(mapID uint32, conn interfaces.ClientConn, damages map[uint32][]u
 		mob := m.GetMobFromID(k)
 
 		if mob.GetController() != conn {
-			mob.GetController().Write(endMobControlPacket(mob.GetSpawnID()))
+			if mob.GetController() != nil {
+				mob.GetController().Write(endMobControlPacket(mob.GetSpawnID()))
+			}
 			mob.SetController(conn)
-			conn.Write(controlMobPacket(mob.GetSpawnID(), mob, false)) // does mob need to be agroed
+			conn.Write(controlMobPacket(mob.GetSpawnID(), mob, false)) // does mob need to be agroed?
 		}
 
 		for _, dmg := range dmgs {
@@ -149,7 +151,6 @@ func DamageMobs(mapID uint32, conn interfaces.ClientConn, damages map[uint32][]u
 			} else {
 				mob.SetHp(uint16(newHP))
 				// show hp bar
-				// change controller to attacker if not already
 			}
 		}
 	}
