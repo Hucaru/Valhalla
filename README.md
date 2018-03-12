@@ -1,7 +1,6 @@
 # Valhalla
 Golang v28 maplestory server
 
-## CURRENTLY BEING RE-WRITTEN FROM MASTER
+## Most things are somewhat implemented
 
-Core principle is to keep packages decoupled as much as possible
-Data package owns data and loans data out to other packges for use
+## Stat logging needs to be added to elastic along with a seperate server (python?) to monitor and flag suspicious behaviour, e.g. leveling too fast
