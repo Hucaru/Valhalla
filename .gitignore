@@ -6,6 +6,7 @@
 debug
 certs/**
 database_data/**
+elastic_data/**
 
 # Folders
 _obj

@@ -183,3 +183,12 @@ func endMobControlPacket(mobID uint32) gopacket.Packet {
 
 	return p
 }
+
+func removeMobPacket(mobID uint32, deathType byte) gopacket.Packet {
+	p := gopacket.NewPacket()
+	p.WriteByte(constants.SEND_CHANNEL_REMOVE_MOB)
+	p.WriteUint32(mobID)
+	p.WriteByte(deathType)
+
+	return p
+}

@@ -5,17 +5,14 @@ import (
 	"github.com/Hucaru/gopacket"
 )
 
-func skillAnimationPacket(charID uint32, skillID uint32, tByte, targets, hits, display, animation byte, damages map[uint32][]uint32) gopacket.Packet {
+func standardSkillPacket(charID uint32, skillID uint32, tByte, targets, hits, display, animation byte, damages map[uint32][]uint32) gopacket.Packet {
 	p := gopacket.NewPacket()
-	p.WriteByte(constants.SEND_CHANNEL_PLAYER_USE_SKILL)
+	p.WriteByte(constants.SEND_CHANNEL_PLAYER_USE_STANDARD_SKILL)
 	p.WriteUint32(charID)
-	// p.WriteByte(targets*0x10 + hits)
-	p.WriteByte(tByte)
+	p.WriteByte(byte(targets*0x10) + hits)
+	p.WriteBool(bool(skillID != 0))
 	if skillID != 0 {
-		p.WriteByte(1)
 		p.WriteUint32(skillID)
-	} else {
-		p.WriteByte(0)
 	}
 	p.WriteByte(display)
 	p.WriteByte(animation)
@@ -23,8 +20,35 @@ func skillAnimationPacket(charID uint32, skillID uint32, tByte, targets, hits, d
 	p.WriteByte(0)   // mastery
 	p.WriteUint32(0) // starID?
 
-	for _, v := range damages {
-		p.WriteUint32(0)
+	for k, v := range damages {
+		p.WriteUint32(k)
+		p.WriteByte(0x6)
+		// if meos explosion add, another byte for something
+		for _, dmg := range v {
+			p.WriteUint32(dmg)
+		}
+	}
+
+	return p
+}
+
+func rangedSkillPacket(charID uint32, skillID uint32, tByte, targets, hits, display, animation byte, damages map[uint32][]uint32) gopacket.Packet {
+	p := gopacket.NewPacket()
+	p.WriteByte(constants.SEND_CHANNEL_PLAYER_USE_RANGED_SKILL)
+	p.WriteUint32(charID)
+	p.WriteByte(targets*0x10 + hits)
+	p.WriteBool(bool(skillID != 0))
+	if skillID != 0 {
+		p.WriteUint32(skillID)
+	}
+	p.WriteByte(display)
+	p.WriteByte(animation)
+
+	p.WriteByte(0)   // mastery
+	p.WriteUint32(0) // starID?
+
+	for k, v := range damages {
+		p.WriteUint32(k)
 		p.WriteByte(0x6)
 		for _, dmg := range v {
 			p.WriteUint32(dmg)

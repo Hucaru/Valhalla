@@ -35,11 +35,12 @@ func HandleChannelPacket(conn *clientChanConn, reader gopacket.Reader) {
 		maps.SendPacketToMap(mapID, p)
 
 	case constants.RECV_CHANNEL_STANDARD_SKILL:
-		p, mapID := skills.HandleStandardSkill(conn, reader)
+		mapID, p, damages := skills.HandleStandardSkill(conn, reader)
 		maps.SendPacketToMap(mapID, p)
+		maps.DamageMobs(mapID, conn, damages)
 
 	case constants.RECV_CHANNEL_RANGED_SKILL:
-		p, mapID := skills.HandleRangedSkill(conn, reader)
+		mapID, p := skills.HandleRangedSkill(conn, reader)
 		maps.SendPacketToMap(mapID, p)
 
 	case constants.RECV_CHANNEL_DMG_RECV:
@@ -70,7 +71,7 @@ func HandleChannelPacket(conn *clientChanConn, reader gopacket.Reader) {
 		player.HandleUpdateSkillRecord(conn, reader)
 
 	case constants.RECV_CHANNEL_SPECIAL_SKILL_USAGE:
-		p, mapID := skills.HandleSpecialSkill(conn, reader)
+		mapID, p := skills.HandleSpecialSkill(conn, reader)
 		maps.SendPacketToMap(mapID, p)
 		// Send buff to party
 

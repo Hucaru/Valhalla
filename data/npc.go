@@ -1,16 +1,23 @@
 package data
 
-import "github.com/Hucaru/Valhalla/interfaces"
+import (
+	"sync"
+
+	"github.com/Hucaru/Valhalla/interfaces"
+)
 
 type mapleNpc struct {
-	id                       uint32
+	id, spawnID              uint32
 	x, y, rx0, rx1, foothold int16
 	face, state              byte
 	controller               interfaces.ClientConn
+	mutex                    sync.RWMutex
 }
 
 func (n *mapleNpc) SetID(id uint32)                                { n.id = id }
 func (n *mapleNpc) GetID() uint32                                  { return n.id }
+func (n *mapleNpc) SetSpawnID(id uint32)                           { n.spawnID = id }
+func (n *mapleNpc) GetSpawnID() uint32                             { return n.spawnID }
 func (n *mapleNpc) SetX(x int16)                                   { n.x = x }
 func (n *mapleNpc) GetX() int16                                    { return n.x }
 func (n *mapleNpc) SetY(y int16)                                   { n.y = y }

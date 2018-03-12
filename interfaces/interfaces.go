@@ -45,6 +45,8 @@ type FragObj interface {
 type Life interface {
 	SetID(uint32)
 	GetID() uint32
+	SetSpawnID(uint32)
+	GetSpawnID() uint32
 	Pos
 	SetFoothold(int16)
 	GetFoothold() int16
@@ -101,6 +103,7 @@ type Map interface {
 	AddNpc(Npc)
 	GetMobs() []Mob
 	AddMob(Mob)
+	GetMobFromID(uint32) Mob
 	GetReturnMap() uint32
 	SetReturnMap(uint32)
 	GetPortals() []Portal

@@ -25,11 +25,12 @@ func GenerateMapsObject() {
 
 		m.SetReturnMap(stage.ReturnMap)
 
-		for _, life := range stage.Life {
+		for spawnID, life := range stage.Life {
 			if life.IsMob {
 				l := &mapleMob{}
 
 				l.SetID(life.ID)
+				l.SetSpawnID(uint32(spawnID + 1))
 				l.SetX(life.X)
 				l.SetY(life.Y)
 				l.SetFoothold(life.Fh)
@@ -52,6 +53,7 @@ func GenerateMapsObject() {
 				l := &mapleNpc{}
 
 				l.SetID(life.ID)
+				l.SetSpawnID(uint32(spawnID + 1))
 				l.SetX(life.X)
 				l.SetY(life.Y)
 				l.SetRx0(life.Rx0)
@@ -91,8 +93,12 @@ func (mM mMap) GetMap(mapID uint32) interfaces.Map {
 }
 
 type mapleMap struct {
-	npcs         []interfaces.Npc
-	mobs         []interfaces.Mob
+	npcs []interfaces.Npc
+
+	mobs          []interfaces.Mob
+	awaitingSpawn []interfaces.Mob
+	mobList       []interfaces.Mob
+
 	forcedReturn uint32
 	returnMap    uint32
 	mobRate      float64
@@ -128,6 +134,22 @@ func (m *mapleMap) AddMob(mob interfaces.Mob) {
 	m.mutex.Lock()
 	m.mobs = append(m.mobs, mob)
 	m.mutex.Unlock()
+}
+
+func (m *mapleMap) GetMobFromID(id uint32) interfaces.Mob {
+	m.mutex.RLock()
+	result := m.mobs
+	m.mutex.RUnlock()
+
+	var mob interfaces.Mob
+
+	for _, v := range result {
+		if v.GetSpawnID() == id {
+			mob = v
+		}
+	}
+
+	return mob
 }
 
 func (m *mapleMap) GetReturnMap() uint32 {

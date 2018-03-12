@@ -55,6 +55,7 @@ func HandleCommand(conn interfaces.ClientConn, text string) {
 			maps.PlayerLeaveMap(conn, char.GetCurrentMap())
 			conn.Write(maps.ChangeMapPacket(mapID, 1, pID, char.GetHP()))
 			maps.PlayerEnterMap(conn, mapID)
+			char.SetCurrentMap(mapID)
 		} else {
 			// check if player id in else if
 		}

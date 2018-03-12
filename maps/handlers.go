@@ -95,8 +95,8 @@ func HandleMobMovement(conn interfaces.ClientConn, reader gopacket.Reader) {
 
 	var mob interfaces.Mob
 
-	for i, v := range m.GetMobs() {
-		if uint32(i) == mobID {
+	for _, v := range m.GetMobs() {
+		if v.GetSpawnID() == mobID {
 			mob = v
 			mp = v.GetMp()
 		}
