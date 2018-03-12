@@ -112,6 +112,8 @@ func GetRandomSpawnPortal(mapID uint32) (interfaces.Portal, byte) {
 func DamageMobs(mapID uint32, conn interfaces.ClientConn, damages map[uint32][]uint32) []uint32 {
 	m := mapsPtr.GetMap(mapID)
 
+	var exp []uint32
+
 	// check spawn id to make sure all are valid
 	for k := range damages {
 		valid := false
@@ -123,11 +125,9 @@ func DamageMobs(mapID uint32, conn interfaces.ClientConn, damages map[uint32][]u
 
 		if !valid {
 			log.Println("Invalid mob damage ids from:", conn)
-			break
+			return exp
 		}
 	}
-
-	var exp []uint32
 
 	for k, dmgs := range damages {
 		mob := m.GetMobFromID(k)
@@ -135,7 +135,7 @@ func DamageMobs(mapID uint32, conn interfaces.ClientConn, damages map[uint32][]u
 		if mob.GetController() != conn {
 			mob.GetController().Write(endMobControlPacket(mob.GetSpawnID()))
 			mob.SetController(conn)
-			conn.Write(controlMobPacket(mob.GetSpawnID(), mob, false))
+			conn.Write(controlMobPacket(mob.GetSpawnID(), mob, false)) // does mob need to be agroed
 		}
 
 		for _, dmg := range dmgs {
