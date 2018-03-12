@@ -1,7 +1,6 @@
 package maps
 
 import (
-	"log"
 	"math/rand"
 	"time"
 
@@ -114,22 +113,18 @@ func DamageMobs(mapID uint32, conn interfaces.ClientConn, damages map[uint32][]u
 
 	var exp []uint32
 
+	validDamages := make(map[uint32][]uint32)
+
 	// check spawn id to make sure all are valid
-	for k := range damages {
-		valid := false
+	for k, dmgs := range damages {
 		for _, v := range m.GetMobs() {
 			if v.GetSpawnID() == k {
-				valid = true
+				validDamages[k] = dmgs
 			}
-		}
-
-		if !valid {
-			log.Println("Invalid mob damage ids from:", conn)
-			return exp
 		}
 	}
 
-	for k, dmgs := range damages {
+	for k, dmgs := range validDamages {
 		mob := m.GetMobFromID(k)
 
 		if mob.GetController() != conn {
