@@ -47,6 +47,8 @@ func GenerateMapsObject() {
 				l.SetMp(mon.MaxMp)
 				l.SetLevel(mon.Level)
 
+				l.SetIsAlive(true)
+
 				m.AddMob(l)
 
 			} else {
@@ -60,6 +62,8 @@ func GenerateMapsObject() {
 				l.SetRx1(life.Rx1)
 				l.SetFoothold(life.Fh)
 				l.SetFace(life.F)
+
+				l.SetIsAlive(true)
 
 				m.AddNpc(l)
 			}

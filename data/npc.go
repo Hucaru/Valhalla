@@ -1,8 +1,6 @@
 package data
 
 import (
-	"sync"
-
 	"github.com/Hucaru/Valhalla/interfaces"
 )
 
@@ -11,7 +9,7 @@ type mapleNpc struct {
 	x, y, rx0, rx1, foothold int16
 	face, state              byte
 	controller               interfaces.ClientConn
-	mutex                    sync.RWMutex
+	isAlive                  bool
 }
 
 func (n *mapleNpc) SetID(id uint32)                                { n.id = id }
@@ -34,3 +32,5 @@ func (n *mapleNpc) GetState() byte                                 { return n.st
 func (n *mapleNpc) SetState(state byte)                            { n.state = state }
 func (n *mapleNpc) GetController() interfaces.ClientConn           { return n.controller }
 func (n *mapleNpc) SetController(controller interfaces.ClientConn) { n.controller = controller }
+func (n *mapleNpc) SetIsAlive(alive bool)                          { n.isAlive = alive }
+func (n *mapleNpc) GetIsAlive() bool                               { return n.isAlive }

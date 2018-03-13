@@ -56,6 +56,9 @@ type Life interface {
 	SetState(byte)
 	GetController() ClientConn
 	SetController(ClientConn)
+
+	SetIsAlive(alive bool)
+	GetIsAlive() bool
 }
 
 type Npc interface {

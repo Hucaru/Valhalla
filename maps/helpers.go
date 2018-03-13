@@ -57,11 +57,18 @@ func PlayerEnterMap(conn interfaces.ClientConn, mapID uint32) {
 
 	// Send npcs
 	for i, v := range m.GetNpcs() {
+		if !v.GetIsAlive() {
+			continue
+		}
 		conn.Write(showNpcPacket(uint32(i), v))
 	}
 
 	// Send mobs
 	for _, v := range m.GetMobs() {
+		if !v.GetIsAlive() {
+			continue
+		}
+
 		if v.GetController() == nil {
 			v.SetController(conn)
 			conn.Write(controlMobPacket(v.GetSpawnID(), v, false))
@@ -89,7 +96,10 @@ func PlayerLeaveMap(conn interfaces.ClientConn, mapID uint32) {
 	if len(m.GetPlayers()) > 0 {
 		newController := m.GetPlayers()[0]
 		for _, v := range m.GetMobs() {
-			newController.Write(controlMobPacket(v.GetSpawnID(), v, false))
+			if v.GetIsAlive() {
+				newController.Write(controlMobPacket(v.GetSpawnID(), v, false))
+			}
+
 		}
 	}
 
@@ -143,7 +153,7 @@ func DamageMobs(mapID uint32, conn interfaces.ClientConn, damages map[uint32][]u
 				conn.Write(endMobControlPacket(mob.GetSpawnID()))
 				SendPacketToMap(mapID, removeMobPacket(mob.GetSpawnID(), 1))
 				exp = append(exp, mob.GetEXP())
-				// m.RemoveMob(v) // need to protect the mob
+				mob.SetIsAlive(false)
 				// add a new mob to spawn buffer
 
 				break // mob is dead no need to process further dmg packets
