@@ -40,8 +40,14 @@ func HandleChannelPacket(conn *clientChanConn, reader gopacket.Reader) {
 		maps.DamageMobs(mapID, conn, damages)
 
 	case constants.RECV_CHANNEL_RANGED_SKILL:
-		mapID, p := skills.HandleRangedSkill(conn, reader)
+		mapID, p, damages := skills.HandleRangedSkill(conn, reader)
 		maps.SendPacketToMap(mapID, p)
+		maps.DamageMobs(mapID, conn, damages)
+
+	case constants.RECV_CHANNEL_MAGIC_SKILL:
+		mapID, p, damages := skills.HandleMagicSkill(conn, reader)
+		maps.SendPacketToMap(mapID, p)
+		maps.DamageMobs(mapID, conn, damages)
 
 	case constants.RECV_CHANNEL_DMG_RECV:
 		mapID, p := player.HandleTakeDamage(conn, reader)

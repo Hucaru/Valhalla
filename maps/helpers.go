@@ -156,7 +156,7 @@ func DamageMobs(mapID uint32, conn interfaces.ClientConn, damages map[uint32][]u
 				mob.SetIsAlive(false)
 				// add a new mob to spawn buffer
 
-				break // mob is dead no need to process further dmg packets
+				break // mob is dead, no need to process further dmg packets
 
 			} else {
 				mob.SetHp(uint16(newHP))
