@@ -66,8 +66,8 @@ func HandleRangedSkill(conn interfaces.ClientConn, reader gopacket.Reader) (uint
 	animation := reader.ReadByte()
 
 	reader.ReadUint32() // ?
-	invPos := reader.ReadUint16()
-	reader.ReadBytes(3)
+	invPos := reader.ReadByte()
+	reader.ReadBytes(4)
 	fmt.Println("Ranged weapon inventory location:", invPos)
 
 	damages := make(map[uint32][]uint32)

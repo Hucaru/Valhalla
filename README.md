@@ -1,4 +1,5 @@
 # Valhalla
 Golang v28 maplestory server
 
-## Most things are somewhat implemented
+## Movement, Damange (to and from Mobs) and Mob Respawn
+![movement, damage and respawn](https://i.imgur.com/oIc35Zg.gifv)

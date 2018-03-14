@@ -27,13 +27,16 @@ func GenerateMapsObject() {
 
 		for spawnID, life := range stage.Life {
 			if life.IsMob {
-				l := &mapleMob{}
+				l := mapleMob{}
 
 				l.SetID(life.ID)
 				l.SetSpawnID(uint32(spawnID + 1))
 				l.SetX(life.X)
 				l.SetY(life.Y)
+				l.SetSX(life.X)
+				l.SetSY(life.Y)
 				l.SetFoothold(life.Fh)
+				l.SetSFoothold(life.Fh)
 				l.SetFace(life.F)
 				l.SetMobTime(life.MobTime)
 
@@ -49,7 +52,8 @@ func GenerateMapsObject() {
 
 				l.SetIsAlive(true)
 
-				m.AddMob(l)
+				m.AddMob(&l)
+				m.addValidSpawnMob(l)
 
 			} else {
 				l := &mapleNpc{}
@@ -58,6 +62,8 @@ func GenerateMapsObject() {
 				l.SetSpawnID(uint32(spawnID + 1))
 				l.SetX(life.X)
 				l.SetY(life.Y)
+				l.SetSX(life.X)
+				l.SetSY(life.Y)
 				l.SetRx0(life.Rx0)
 				l.SetRx1(life.Rx1)
 				l.SetFoothold(life.Fh)
@@ -100,8 +106,7 @@ type mapleMap struct {
 	npcs []interfaces.Npc
 
 	mobs          []interfaces.Mob
-	awaitingSpawn []interfaces.Mob
-	mobList       []interfaces.Mob
+	spawnableMobs []mapleMob
 
 	forcedReturn uint32
 	returnMap    uint32
@@ -134,9 +139,64 @@ func (m *mapleMap) GetMobs() []interfaces.Mob {
 	return result
 }
 
+func (m *mapleMap) GetNextMobSpawnID() uint32 {
+	var result uint32
+
+	m.mutex.RLock()
+	if len(m.mobs) > 0 {
+		result = m.mobs[len(m.mobs)-1].GetSpawnID() + 1
+	} else {
+		result = 1
+	}
+	m.mutex.RUnlock()
+
+	return result
+}
+
 func (m *mapleMap) AddMob(mob interfaces.Mob) {
 	m.mutex.Lock()
 	m.mobs = append(m.mobs, mob)
+	m.mutex.Unlock()
+}
+
+func (m *mapleMap) RemoveMob(mob interfaces.Mob) {
+	index := -1
+	m.mutex.RLock()
+	for i, v := range m.mobs {
+		if v == mob {
+			index = i
+			break
+		}
+	}
+	m.mutex.RUnlock()
+
+	m.mutex.Lock()
+	if index > 0 {
+		copy(m.mobs[index:], m.mobs[index+1:])
+		m.mobs[len(m.mobs)-1] = nil
+		m.mobs = m.mobs[:len(m.mobs)-1]
+	}
+	m.mutex.Unlock()
+}
+
+func (m *mapleMap) CheckMobIsRespawnable(mob interfaces.Mob) bool {
+	result := false
+	m.mutex.RLock()
+	for _, v := range m.spawnableMobs {
+		// Could probably simplyfy the whole system with a respawnable flag on the mob
+		if v.GetID() == mob.GetID() && v.GetBoss() == mob.GetBoss() && v.GetMobTime() == mob.GetMobTime() {
+			result = true
+			break
+		}
+	}
+	m.mutex.RUnlock()
+
+	return result
+}
+
+func (m *mapleMap) addValidSpawnMob(mob mapleMob) {
+	m.mutex.Lock()
+	m.spawnableMobs = append(m.spawnableMobs, mob)
 	m.mutex.Unlock()
 }
 

@@ -4,7 +4,9 @@ import (
 	"math/rand"
 	"time"
 
+	"github.com/Hucaru/Valhalla/data"
 	"github.com/Hucaru/Valhalla/interfaces"
+	"github.com/Hucaru/Valhalla/nx"
 	"github.com/Hucaru/gopacket"
 )
 
@@ -20,6 +22,8 @@ func RegisterCharactersObj(chars interfaces.Characters) {
 // RegisterMapsObj -
 func RegisterMapsObj(mapList interfaces.Maps) {
 	mapsPtr = mapList
+
+	startRespawnMonitors()
 }
 
 // RegisterNewPlayerCallback -
@@ -71,7 +75,7 @@ func PlayerEnterMap(conn interfaces.ClientConn, mapID uint32) {
 
 		if v.GetController() == nil {
 			v.SetController(conn)
-			conn.Write(controlMobPacket(v.GetSpawnID(), v, false))
+			conn.Write(controlMobPacket(v.GetSpawnID(), v, false, false))
 		}
 
 		conn.Write(showMobPacket(v.GetSpawnID(), v, false))
@@ -97,7 +101,7 @@ func PlayerLeaveMap(conn interfaces.ClientConn, mapID uint32) {
 		newController := m.GetPlayers()[0]
 		for _, v := range m.GetMobs() {
 			if v.GetIsAlive() {
-				newController.Write(controlMobPacket(v.GetSpawnID(), v, false))
+				newController.Write(controlMobPacket(v.GetSpawnID(), v, false, false))
 			}
 
 		}
@@ -142,7 +146,7 @@ func DamageMobs(mapID uint32, conn interfaces.ClientConn, damages map[uint32][]u
 				mob.GetController().Write(endMobControlPacket(mob.GetSpawnID()))
 			}
 			mob.SetController(conn)
-			conn.Write(controlMobPacket(mob.GetSpawnID(), mob, false)) // does mob need to be agroed?
+			conn.Write(controlMobPacket(mob.GetSpawnID(), mob, false, true)) // does mob need to be agroed?
 		}
 
 		for _, dmg := range dmgs {
@@ -156,6 +160,10 @@ func DamageMobs(mapID uint32, conn interfaces.ClientConn, damages map[uint32][]u
 				mob.SetIsAlive(false)
 				// add a new mob to spawn buffer
 
+				if mob.GetMobTime() > 0 {
+					mob.SetDeathTime(time.Now().Unix())
+				}
+
 				break // mob is dead, no need to process further dmg packets
 
 			} else {
@@ -166,4 +174,76 @@ func DamageMobs(mapID uint32, conn interfaces.ClientConn, damages map[uint32][]u
 	}
 
 	return exp
+}
+
+func startRespawnMonitors() {
+	for mapID := range nx.Maps {
+
+		go func(mapID uint32) {
+			ticker := time.NewTicker(10 * time.Second)
+			m := mapsPtr.GetMap(mapID)
+
+			for {
+				<-ticker.C
+				for _, mob := range m.GetMobs() {
+					if !m.CheckMobIsRespawnable(mob) {
+						m.RemoveMob(mob)
+						continue
+					}
+					respawn := false
+
+					// normal mobs
+					if !mob.GetIsAlive() && !mob.GetBoss() && mob.GetMobTime() == 0 {
+						respawn = true
+					}
+
+					// bosses and long respawn mbos e.g. iron hog at pig beach
+					if !mob.GetIsAlive() && (mob.GetBoss() || mob.GetMobTime() > 0) {
+						if (time.Now().Unix() - mob.GetDeathTime()) > mob.GetMobTime() {
+							respawn = true
+						}
+					}
+
+					if respawn {
+						// not sure on how official maple did respawns, here is my attempt
+						mob.SetX(mob.GetX())
+						mob.SetY(mob.GetY())
+						mob.SetFoothold(mob.GetSFoothold()) // I suspect this is the only setting that matters
+						mob.SetHp(mob.GetMaxHp())
+						mob.SetMp(mob.GetMaxMp())
+
+						if len(m.GetPlayers()) > 0 {
+							newController := m.GetPlayers()[0]
+							newController.Write(controlMobPacket(mob.GetSpawnID(), mob, true, false))
+						}
+						SendPacketToMap(uint32(mapID), showMobPacket(mob.GetSpawnID(), mob, true))
+						mob.SetIsAlive(true)
+					}
+				}
+			}
+		}(mapID)
+	}
+}
+
+func SpawnMob(mapID, mobID uint32, x, y, foothold int16, controller interfaces.ClientConn) {
+	m := mapsPtr.GetMap(mapID)
+
+	if _, exists := nx.Mob[mobID]; exists {
+		newMob := data.CreateMobFromID(mobID)
+		newMob.SetX(x)
+		newMob.SetY(y)
+		newMob.SetSX(x)
+		newMob.SetSY(y)
+		newMob.SetFoothold(foothold)
+		newMob.SetSFoothold(foothold)
+		newMob.SetSpawnID(m.GetNextMobSpawnID())
+		m.AddMob(newMob)
+
+		if len(m.GetPlayers()) > 0 {
+			newController := m.GetPlayers()[0]
+			newController.Write(controlMobPacket(newMob.GetSpawnID(), newMob, true, true))
+		}
+		SendPacketToMap(mapID, showMobPacket(newMob.GetSpawnID(), newMob, true))
+		newMob.SetIsAlive(true)
+	}
 }

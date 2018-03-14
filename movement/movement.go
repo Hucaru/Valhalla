@@ -1,6 +1,7 @@
 package movement
 
 import (
+	"fmt"
 	"log"
 
 	"github.com/Hucaru/gopacket"
@@ -21,6 +22,12 @@ func ParseFragments(nFrags byte, life interfaces.FragObj, reader gopacket.Reader
 			13 / 12: Rope
 			15 / 14: Ladder
 	*/
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Println("Panic in handling movement packet:", reader)
+		}
+	}()
+
 	for frag := byte(0); frag < nFrags; frag++ {
 		movementType := reader.ReadByte()
 
@@ -34,16 +41,16 @@ func ParseFragments(nFrags byte, life interfaces.FragObj, reader gopacket.Reader
 			posX := reader.ReadInt16()
 			posY := reader.ReadInt16()
 
-			velX := reader.ReadInt16()
-			velY := reader.ReadInt16()
+			reader.ReadInt16() // velx
+			reader.ReadInt16() // vely
 
 			foothold := reader.ReadInt16()
 
 			state := reader.ReadByte()
-			duration := reader.ReadUint16()
+			reader.ReadUint16() //duration
 
-			life.SetX(posX + velX*int16(duration))
-			life.SetY(posY + velY*int16(duration))
+			life.SetX(posX)
+			life.SetY(posY)
 			life.SetFoothold(foothold)
 			life.SetState(state)
 
@@ -98,16 +105,16 @@ func ParseFragments(nFrags byte, life interfaces.FragObj, reader gopacket.Reader
 		case 0x11:
 			posX := reader.ReadInt16()
 			posY := reader.ReadInt16()
-			velX := reader.ReadInt16()
-			velY := reader.ReadInt16()
+			reader.ReadInt16() // velX
+			reader.ReadInt16() // velY
 
 			reader.ReadUint16()
 
 			foothold := reader.ReadInt16()
-			duration := reader.ReadUint16()
+			reader.ReadUint16() //duration
 
-			life.SetX(posX + velX*int16(duration))
-			life.SetY(posY + velY*int16(duration))
+			life.SetX(posX)
+			life.SetY(posY)
 			life.SetFoothold(foothold)
 		case 0x08:
 			reader.ReadByte()

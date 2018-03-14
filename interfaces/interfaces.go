@@ -48,8 +48,16 @@ type Life interface {
 	SetSpawnID(uint32)
 	GetSpawnID() uint32
 	Pos
+
+	SetSX(int16)
+	GetSX() int16
+	SetSY(int16)
+	GetSY() int16
+
 	SetFoothold(int16)
 	GetFoothold() int16
+	SetSFoothold(int16)
+	GetSFoothold() int16
 	SetFace(byte)
 	GetFace() byte
 	GetState() byte
@@ -85,8 +93,10 @@ type Mob interface {
 	SetBoss(bool)
 	GetLevel() byte
 	SetLevel(byte)
-	GetMobTime() uint32
-	SetMobTime(uint32)
+	GetMobTime() int64
+	SetMobTime(int64)
+	SetDeathTime(int64)
+	GetDeathTime() int64
 }
 
 type Portal interface {
@@ -105,7 +115,10 @@ type Map interface {
 	GetNpcs() []Npc
 	AddNpc(Npc)
 	GetMobs() []Mob
+	GetNextMobSpawnID() uint32
 	AddMob(Mob)
+	RemoveMob(Mob)
+	CheckMobIsRespawnable(Mob) bool
 	GetMobFromID(uint32) Mob
 	GetReturnMap() uint32
 	SetReturnMap(uint32)

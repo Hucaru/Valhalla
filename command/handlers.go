@@ -75,6 +75,29 @@ func HandleCommand(conn interfaces.ClientConn, text string) {
 		}
 
 		player.SetLevel(conn, byte(val))
+	case "spawn":
+		val, err := strconv.Atoi(command[1])
+
+		if err != nil {
+			return
+		}
+
+		amount := 1
+
+		if len(command) > 2 {
+			amount, err = strconv.Atoi(command[2])
+
+			if err != nil {
+				return
+			}
+		}
+
+		char := charsPtr.GetOnlineCharacterHandle(conn)
+		for i := 0; i < amount; i++ {
+			maps.SpawnMob(char.GetCurrentMap(), uint32(val), char.GetX(), char.GetY(), char.GetFoothold(), conn)
+		}
+	case "killmobs":
+		// add later
 	default:
 		log.Println("Unkown GM command", command)
 	}
