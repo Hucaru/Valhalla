@@ -39,6 +39,7 @@ func GenerateMapsObject() {
 				l.SetSFoothold(life.Fh)
 				l.SetFace(life.F)
 				l.SetMobTime(life.MobTime)
+				l.SetRespawns(true)
 
 				mon := nx.Mob[life.ID]
 
@@ -140,13 +141,11 @@ func (m *mapleMap) GetMobs() []interfaces.Mob {
 }
 
 func (m *mapleMap) GetNextMobSpawnID() uint32 {
-	var result uint32
+	result := uint32(1)
 
 	m.mutex.RLock()
 	if len(m.mobs) > 0 {
 		result = m.mobs[len(m.mobs)-1].GetSpawnID() + 1
-	} else {
-		result = 1
 	}
 	m.mutex.RUnlock()
 
@@ -177,21 +176,6 @@ func (m *mapleMap) RemoveMob(mob interfaces.Mob) {
 		m.mobs = m.mobs[:len(m.mobs)-1]
 	}
 	m.mutex.Unlock()
-}
-
-func (m *mapleMap) CheckMobIsRespawnable(mob interfaces.Mob) bool {
-	result := false
-	m.mutex.RLock()
-	for _, v := range m.spawnableMobs {
-		// Could probably simplyfy the whole system with a respawnable flag on the mob
-		if v.GetID() == mob.GetID() && v.GetBoss() == mob.GetBoss() && v.GetMobTime() == mob.GetMobTime() {
-			result = true
-			break
-		}
-	}
-	m.mutex.RUnlock()
-
-	return result
 }
 
 func (m *mapleMap) addValidSpawnMob(mob mapleMob) {

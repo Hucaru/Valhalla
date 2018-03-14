@@ -97,6 +97,8 @@ type Mob interface {
 	SetMobTime(int64)
 	SetDeathTime(int64)
 	GetDeathTime() int64
+	GetRespawns() bool
+	SetRespawns(bool)
 }
 
 type Portal interface {
@@ -118,7 +120,6 @@ type Map interface {
 	GetNextMobSpawnID() uint32
 	AddMob(Mob)
 	RemoveMob(Mob)
-	CheckMobIsRespawnable(Mob) bool
 	GetMobFromID(uint32) Mob
 	GetReturnMap() uint32
 	SetReturnMap(uint32)

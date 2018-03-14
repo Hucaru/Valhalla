@@ -9,7 +9,7 @@ type mapleMob struct {
 	mapleNpc
 	exp                  uint32
 	hp, maxHp, mp, maxMp uint16
-	boss                 bool
+	boss, respawns       bool
 	level, state         byte
 	x, y                 int16
 	mobTime, deathTime   int64
@@ -35,6 +35,8 @@ func (m *mapleMob) GetMobTime() int64          { return m.mobTime }
 func (m *mapleMob) SetMobTime(mobTime int64)   { m.mobTime = mobTime }
 func (m *mapleMob) SetDeathTime(mobTime int64) { m.deathTime = mobTime }
 func (m *mapleMob) GetDeathTime() int64        { return m.deathTime }
+func (m *mapleMob) GetRespawns() bool          { return m.respawns }
+func (m *mapleMob) SetRespawns(respawns bool)  { m.respawns = respawns }
 
 func CreateMobFromID(mobID uint32) interfaces.Mob {
 	l := mapleMob{}
@@ -42,8 +44,8 @@ func CreateMobFromID(mobID uint32) interfaces.Mob {
 	mon := nx.Mob[mobID]
 
 	l.SetID(mobID)
-	l.SetBoss(false) // don't want it to respawn on maps that happen to contain the same mob
-	l.SetMobTime(0)  // don't want it to respawn on maps that happen to contain the same mob
+	l.SetBoss(mon.Boss)
+	l.SetMobTime(0)
 	l.SetEXP(mon.Exp)
 	l.SetMaxHp(mon.MaxHp)
 	l.SetHp(mon.MaxHp)

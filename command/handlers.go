@@ -92,9 +92,23 @@ func HandleCommand(conn interfaces.ClientConn, text string) {
 			}
 		}
 
+		respawn := false
+
+		if len(command) > 3 {
+			amount, err = strconv.Atoi(command[3])
+
+			if err != nil {
+				return
+			}
+
+			if amount == 1 {
+				respawn = true
+			}
+		}
+
 		char := charsPtr.GetOnlineCharacterHandle(conn)
 		for i := 0; i < amount; i++ {
-			maps.SpawnMob(char.GetCurrentMap(), uint32(val), char.GetX(), char.GetY(), char.GetFoothold(), conn)
+			maps.SpawnMob(char.GetCurrentMap(), uint32(val), char.GetX(), char.GetY(), char.GetFoothold(), respawn, conn)
 		}
 	case "killmobs":
 		// add later

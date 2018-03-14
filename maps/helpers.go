@@ -158,7 +158,6 @@ func DamageMobs(mapID uint32, conn interfaces.ClientConn, damages map[uint32][]u
 				SendPacketToMap(mapID, removeMobPacket(mob.GetSpawnID(), 1))
 				exp = append(exp, mob.GetEXP())
 				mob.SetIsAlive(false)
-				// add a new mob to spawn buffer
 
 				if mob.GetMobTime() > 0 {
 					mob.SetDeathTime(time.Now().Unix())
@@ -186,7 +185,12 @@ func startRespawnMonitors() {
 			for {
 				<-ticker.C
 				for _, mob := range m.GetMobs() {
-					if !m.CheckMobIsRespawnable(mob) {
+					if mob == nil {
+						// GC has not collected nil refs from slice
+						continue
+					}
+
+					if !mob.GetRespawns() && !mob.GetIsAlive() {
 						m.RemoveMob(mob)
 						continue
 					}
@@ -225,7 +229,7 @@ func startRespawnMonitors() {
 	}
 }
 
-func SpawnMob(mapID, mobID uint32, x, y, foothold int16, controller interfaces.ClientConn) {
+func SpawnMob(mapID, mobID uint32, x, y, foothold int16, respawns bool, controller interfaces.ClientConn) {
 	m := mapsPtr.GetMap(mapID)
 
 	if _, exists := nx.Mob[mobID]; exists {
@@ -237,6 +241,8 @@ func SpawnMob(mapID, mobID uint32, x, y, foothold int16, controller interfaces.C
 		newMob.SetFoothold(foothold)
 		newMob.SetSFoothold(foothold)
 		newMob.SetSpawnID(m.GetNextMobSpawnID())
+		newMob.SetRespawns(respawns)
+
 		m.AddMob(newMob)
 
 		if len(m.GetPlayers()) > 0 {
