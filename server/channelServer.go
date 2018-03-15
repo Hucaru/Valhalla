@@ -58,7 +58,7 @@ func Channel(configFile string) {
 		}
 
 		defer conn.Close()
-		clientConnection := handlers.NewChanConnection(connection.NewClientConnection(conn))
+		clientConnection := connection.NewChanConnection(connection.NewClientConnection(conn))
 
 		log.Println("New client connection from", clientConnection)
 

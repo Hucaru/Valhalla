@@ -4,6 +4,7 @@ import (
 	"log"
 
 	"github.com/Hucaru/Valhalla/command"
+	"github.com/Hucaru/Valhalla/connection"
 	"github.com/Hucaru/Valhalla/maps"
 	"github.com/Hucaru/Valhalla/message"
 	"github.com/Hucaru/Valhalla/player"
@@ -14,7 +15,7 @@ import (
 )
 
 // HandleChannelPacket - Purpose is to send a packet to the correct handler(s), packages should aim to use this function to communicate betweeen each other
-func HandleChannelPacket(conn *clientChanConn, reader gopacket.Reader) {
+func HandleChannelPacket(conn *connection.ClientChanConn, reader gopacket.Reader) {
 	switch reader.ReadByte() {
 	case constants.RECV_PING:
 		// Is client expecting a pong?

@@ -3,13 +3,14 @@ package handlers
 import (
 	"log"
 
+	"github.com/Hucaru/Valhalla/connection"
 	"github.com/Hucaru/Valhalla/constants"
 	"github.com/Hucaru/Valhalla/login"
 	"github.com/Hucaru/gopacket"
 )
 
 // HandleLoginPacket -
-func HandleLoginPacket(conn *clientLoginConn, reader gopacket.Reader) {
+func HandleLoginPacket(conn *connection.ClientLoginConn, reader gopacket.Reader) {
 	switch reader.ReadByte() {
 	case constants.RECV_RETURN_TO_LOGIN_SCREEN:
 		login.HandleReturnToLoginScreen(conn, reader)

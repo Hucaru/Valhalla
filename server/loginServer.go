@@ -40,7 +40,7 @@ func Login(configFile string) {
 		}
 
 		defer conn.Close()
-		clientConnection := handlers.NewLoginConnection(connection.NewClientConnection(conn))
+		clientConnection := connection.NewLoginConnection(connection.NewClientConnection(conn))
 
 		log.Println("New client connection from", clientConnection)
 
