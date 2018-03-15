@@ -83,7 +83,7 @@ func HandleMobMovement(conn interfaces.ClientConn, reader gopacket.Reader) {
 		// Implement mob skills
 	}
 
-	unknown := reader.ReadUint32()
+	projPos := reader.ReadUint32() // x & y
 
 	reader.ReadInt32()          //
 	nFrags := reader.ReadByte() // n fragments?
@@ -114,6 +114,6 @@ func HandleMobMovement(conn interfaces.ClientConn, reader gopacket.Reader) {
 
 	movement.ParseFragments(nFrags, mob, reader)
 
-	SendPacketToMap(mapID, moveMobPacket(mobID, skillUsed, skill, unknown, reader.GetBuffer()[13:]))
 	conn.Write(controlAckPacket(mobID, moveID, skillUsed, skill, level, uint16(mp)))
+	SendPacketToMapExcept(mapID, moveMobPacket(mobID, skillUsed, skill, projPos, reader.GetBuffer()[13:]), conn)
 }

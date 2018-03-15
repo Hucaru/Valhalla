@@ -64,7 +64,7 @@ func HandleChannelPacket(conn *connection.ClientChanConn, reader gopacket.Reader
 
 	case constants.RECV_CHANNEL_DMG_RECV:
 		mapID, p := player.HandleTakeDamage(conn, reader)
-		maps.SendPacketToMap(mapID, p)
+		maps.SendPacketToMapExcept(mapID, p, conn)
 
 	case constants.RECV_CHANNEL_PLAYER_SEND_ALL_CHAT:
 		mapID, text, isCommand, p := message.HandleAllChat(conn, reader)

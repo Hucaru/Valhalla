@@ -48,6 +48,20 @@ func SendPacketToMap(mapID uint32, p gopacket.Packet) {
 	}
 }
 
+// SendPacketToMapExcept -
+func SendPacketToMapExcept(mapID uint32, p gopacket.Packet, conn interfaces.ClientConn) {
+	if len(p) > 0 {
+
+		players := mapsPtr.GetMap(mapID).GetPlayers()
+
+		for _, v := range players {
+			if v != nil && v != conn { // check this is still an open socket
+				v.Write(p)
+			}
+		}
+	}
+}
+
 // PlayerEnterMap -
 func PlayerEnterMap(conn interfaces.ClientConn, mapID uint32) {
 	m := mapsPtr.GetMap(mapID)
@@ -224,8 +238,8 @@ func startRespawnMonitors() {
 
 					// need to change to the real respawn method, might be choose random mob from spawnable list?
 					if respawn {
-						mob.SetX(mob.GetX())
-						mob.SetY(mob.GetY())
+						mob.SetX(mob.GetSX())
+						mob.SetY(mob.GetSY())
 						mob.SetFoothold(mob.GetSFoothold()) // I suspect this is the only setting that matters
 						mob.SetHp(mob.GetMaxHp())
 						mob.SetMp(mob.GetMaxMp())

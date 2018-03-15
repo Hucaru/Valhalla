@@ -126,7 +126,7 @@ func controlMobPacket(spawnID uint32, mob interfaces.Mob, isNewSpawn, isAgro boo
 	p := gopacket.NewPacket()
 	p.WriteByte(constants.SEND_CHANNEL_CONTROL_MOB)
 	if isAgro {
-		p.WriteByte(0x04)
+		p.WriteByte(0x01) //
 	} else {
 		p.WriteByte(0x01) // if mob is agroed or not. 0x01 is not agroed, other values means agroed
 	}
@@ -166,13 +166,13 @@ func controlAckPacket(mobID uint32, moveID uint16, useSkill bool, skill byte, le
 	return p
 }
 
-func moveMobPacket(mobID uint32, skillUsed bool, skill byte, unknown uint32, buf []byte) gopacket.Packet {
+func moveMobPacket(mobID uint32, skillUsed bool, skill byte, projPos uint32, buf []byte) gopacket.Packet {
 	p := gopacket.NewPacket()
 	p.WriteByte(constants.SEND_CHANNE_MOVE_MOB)
 	p.WriteUint32(mobID)
 	p.WriteBool(skillUsed)
 	p.WriteByte(skill)
-	p.WriteUint32(unknown)
+	p.WriteUint32(projPos)
 	p.WriteBytes(buf)
 
 	return p
