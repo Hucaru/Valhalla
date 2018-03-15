@@ -1,7 +1,9 @@
 package data
 
 import (
+	"math/rand"
 	"sync"
+	"time"
 
 	"github.com/Hucaru/Valhalla/nx"
 
@@ -40,6 +42,7 @@ func GenerateMapsObject() {
 				l.SetFace(life.F)
 				l.SetMobTime(life.MobTime)
 				l.SetRespawns(true)
+				l.SetDmgReceived(make(map[interfaces.ClientConn]uint32))
 
 				mon := nx.Mob[life.ID]
 
@@ -182,6 +185,17 @@ func (m *mapleMap) addValidSpawnMob(mob mapleMob) {
 	m.mutex.Lock()
 	m.spawnableMobs = append(m.spawnableMobs, mob)
 	m.mutex.Unlock()
+}
+
+func (m *mapleMap) GetRandomSpawnableMob() interfaces.Mob {
+	seed := rand.NewSource(time.Now().UnixNano())
+	randomizer := rand.New(seed)
+	m.mutex.RLock()
+	index := randomizer.Intn(len(m.spawnableMobs))
+	result := m.spawnableMobs[index]
+	m.mutex.RUnlock()
+
+	return &result
 }
 
 func (m *mapleMap) GetMobFromID(id uint32) interfaces.Mob {

@@ -4,6 +4,8 @@ import (
 	"log"
 	"math/rand"
 
+	"github.com/Hucaru/gopacket"
+
 	"github.com/Hucaru/Valhalla/interfaces"
 )
 
@@ -88,4 +90,14 @@ func SetLevel(conn interfaces.ClientConn, newLevel byte) {
 
 	char.SetLevel(newLevel)
 	conn.Write(statChangePacket(true, levelID, uint32(newLevel)))
+}
+
+func GiveExp(conn interfaces.ClientConn, exp uint32) gopacket.Packet {
+	if conn == nil {
+		return []byte{}
+	}
+
+	p := gopacket.NewPacket()
+
+	return p
 }

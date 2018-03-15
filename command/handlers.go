@@ -25,6 +25,9 @@ func HandleCommand(conn interfaces.ClientConn, text string) {
 
 	switch command[0] {
 	case "packet":
+		if len(command) < 2 {
+			return
+		}
 		packet := string(command[1])
 		data, err := hex.DecodeString(packet)
 

@@ -14,7 +14,7 @@ type mapleNpc struct {
 
 func (n *mapleNpc) SetID(id uint32)                                { n.id = id }
 func (n *mapleNpc) GetID() uint32                                  { return n.id }
-func (n *mapleNpc) SetSpawnID(id uint32)                           { n.spawnID = id }
+func (n *mapleNpc) SetSpawnID(spawnID uint32)                      { n.spawnID = spawnID }
 func (n *mapleNpc) GetSpawnID() uint32                             { return n.spawnID }
 func (n *mapleNpc) SetX(x int16)                                   { n.x = x }
 func (n *mapleNpc) GetX() int16                                    { return n.x }

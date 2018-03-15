@@ -122,10 +122,10 @@ func GetRandomSpawnPortal(mapID uint32) (interfaces.Portal, byte) {
 	return portals[pos], byte(pos)
 }
 
-func DamageMobs(mapID uint32, conn interfaces.ClientConn, damages map[uint32][]uint32) []uint32 {
+func DamageMobs(mapID uint32, conn interfaces.ClientConn, damages map[uint32][]uint32) map[interfaces.ClientConn]uint32 {
 	m := mapsPtr.GetMap(mapID)
 
-	var exp []uint32
+	exp := make(map[interfaces.ClientConn]uint32)
 
 	validDamages := make(map[uint32][]uint32)
 
@@ -152,21 +152,35 @@ func DamageMobs(mapID uint32, conn interfaces.ClientConn, damages map[uint32][]u
 		for _, dmg := range dmgs {
 			newHP := int32(int32(mob.GetHp()) - int32(dmg))
 
-			if newHP < 1 {
+			if _, exists := mob.GetDmgReceived()[conn]; !exists {
+				mob.GetDmgReceived()[conn] = dmg
+			} else {
+				mob.GetDmgReceived()[conn] += dmg
+			}
 
+			if newHP < 1 {
 				conn.Write(endMobControlPacket(mob.GetSpawnID()))
 				SendPacketToMap(mapID, removeMobPacket(mob.GetSpawnID(), 1))
-				exp = append(exp, mob.GetEXP())
+
 				mob.SetIsAlive(false)
 
 				if mob.GetMobTime() > 0 {
 					mob.SetDeathTime(time.Now().Unix())
 				}
 
-				break // mob is dead, no need to process further dmg packets
+				// Set the exp object, based on dmg done by connections, fo now just give everyone mob exp
+				for k := range mob.GetDmgReceived() {
+					if charsPtr.GetOnlineCharacterHandle(k).GetCurrentMap() == mapID {
+						exp[k] = mob.GetEXP()
+					}
+				}
+
+				mob.SetDmgReceived(make(map[interfaces.ClientConn]uint32))
+
+				break // mob is dead, no need to process further dmg information for mob
 
 			} else {
-				mob.SetHp(uint16(newHP))
+				mob.SetHp(uint32(newHP))
 				// show hp bar
 			}
 		}
@@ -179,14 +193,13 @@ func startRespawnMonitors() {
 	for mapID := range nx.Maps {
 
 		go func(mapID uint32) {
-			ticker := time.NewTicker(10 * time.Second)
+			ticker := time.NewTicker(3 * time.Second)
 			m := mapsPtr.GetMap(mapID)
 
 			for {
 				<-ticker.C
 				for _, mob := range m.GetMobs() {
 					if mob == nil {
-						// GC has not collected nil refs from slice
 						continue
 					}
 
@@ -194,6 +207,7 @@ func startRespawnMonitors() {
 						m.RemoveMob(mob)
 						continue
 					}
+
 					respawn := false
 
 					// normal mobs
@@ -208,13 +222,22 @@ func startRespawnMonitors() {
 						}
 					}
 
+					// need to change to the real respawn method, might be choose random mob from spawnable list?
 					if respawn {
-						// not sure on how official maple did respawns, here is my attempt
 						mob.SetX(mob.GetX())
 						mob.SetY(mob.GetY())
 						mob.SetFoothold(mob.GetSFoothold()) // I suspect this is the only setting that matters
 						mob.SetHp(mob.GetMaxHp())
 						mob.SetMp(mob.GetMaxMp())
+
+						// This is buggy (id, spawn location missmatch), but is closer to true game spawn system
+						// newMob := m.GetRandomSpawnableMob()
+						// mob.SetID(newMob.GetID())
+						// mob.SetX(newMob.GetSX())
+						// mob.SetY(newMob.GetSY())
+						// mob.SetFoothold(newMob.GetSFoothold()) // I suspect this is the only setting that matters
+						// mob.SetHp(newMob.GetMaxHp())
+						// mob.SetMp(newMob.GetMaxMp())
 
 						if len(m.GetPlayers()) > 0 {
 							newController := m.GetPlayers()[0]
@@ -242,6 +265,7 @@ func SpawnMob(mapID, mobID uint32, x, y, foothold int16, respawns bool, controll
 		newMob.SetSFoothold(foothold)
 		newMob.SetSpawnID(m.GetNextMobSpawnID())
 		newMob.SetRespawns(respawns)
+		newMob.SetDmgReceived(make(map[interfaces.ClientConn]uint32))
 
 		m.AddMob(newMob)
 

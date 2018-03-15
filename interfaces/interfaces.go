@@ -81,14 +81,14 @@ type Mob interface {
 	Life
 	GetEXP() uint32
 	SetEXP(uint32)
-	GetHp() uint16
-	SetHp(uint16)
-	GetMaxHp() uint16
-	SetMaxHp(uint16)
-	GetMp() uint16
-	SetMp(uint16)
-	GetMaxMp() uint16
-	SetMaxMp(uint16)
+	GetHp() uint32
+	SetHp(uint32)
+	GetMaxHp() uint32
+	SetMaxHp(uint32)
+	GetMp() uint32
+	SetMp(uint32)
+	GetMaxMp() uint32
+	SetMaxMp(uint32)
 	GetBoss() bool
 	SetBoss(bool)
 	GetLevel() byte
@@ -99,6 +99,8 @@ type Mob interface {
 	GetDeathTime() int64
 	GetRespawns() bool
 	SetRespawns(bool)
+	SetDmgReceived(map[ClientConn]uint32)
+	GetDmgReceived() map[ClientConn]uint32
 }
 
 type Portal interface {
@@ -128,6 +130,7 @@ type Map interface {
 	GetPlayers() []ClientConn
 	AddPlayer(ClientConn)
 	RemovePlayer(ClientConn)
+	GetRandomSpawnableMob() Mob
 }
 
 type Maps interface {

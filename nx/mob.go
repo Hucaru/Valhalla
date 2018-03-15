@@ -10,10 +10,10 @@ type Monster struct {
 	Accuracy uint16
 	Exp      uint32
 	Level    byte
-	MaxHp    uint16
-	Hp       uint16
-	MaxMp    uint16
-	Mp       uint16
+	MaxHp    uint32
+	Hp       uint32
+	MaxMp    uint32
+	Mp       uint32
 }
 
 var Mob = make(map[uint32]Monster)
@@ -62,10 +62,10 @@ func getMob(options node) Monster {
 		case "level":
 			monst.Level = options.Data[0]
 		case "maxHP":
-			monst.MaxHp = dataToUint16(options.Data)
+			monst.MaxHp = dataToUint32(options.Data)
 			monst.Hp = monst.MaxHp
 		case "maxMP":
-			monst.MaxMp = dataToUint16(options.Data)
+			monst.MaxMp = dataToUint32(options.Data)
 			monst.Mp = monst.MaxMp
 		default:
 		}
