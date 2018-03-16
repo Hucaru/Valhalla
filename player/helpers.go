@@ -6,6 +6,7 @@ import (
 
 	"github.com/Hucaru/gopacket"
 
+	"github.com/Hucaru/Valhalla/constants"
 	"github.com/Hucaru/Valhalla/interfaces"
 )
 
@@ -75,29 +76,52 @@ func SetLevel(conn interfaces.ClientConn, newLevel byte) {
 		char.SetMaxMP(newMp)
 		char.SetMP(newMp)
 
-		conn.Write(statChangePacket(true, hpID, uint32(newHp)))
-		conn.Write(statChangePacket(true, maxHpID, uint32(newHp)))
+		conn.Write(statChangePacket(false, hpID, uint32(newHp)))
+		conn.Write(statChangePacket(false, maxHpID, uint32(newHp)))
 
-		conn.Write(statChangePacket(true, mpID, uint32(newHp)))
-		conn.Write(statChangePacket(true, maxMpID, uint32(newHp)))
+		conn.Write(statChangePacket(false, mpID, uint32(newHp)))
+		conn.Write(statChangePacket(false, maxMpID, uint32(newHp)))
 
-		conn.Write(statChangePacket(true, apID, uint32(newAP)))
-		conn.Write(statChangePacket(true, spID, uint32(newSP)))
+		conn.Write(statChangePacket(false, apID, uint32(newAP)))
+		conn.Write(statChangePacket(false, spID, uint32(newSP)))
 	}
 
-	char.SetEXP(600)
-	conn.Write(statChangePacket(true, expID, 600))
-
 	char.SetLevel(newLevel)
-	conn.Write(statChangePacket(true, levelID, uint32(newLevel)))
+	conn.Write(statChangePacket(false, levelID, uint32(newLevel)))
 }
 
 func GiveExp(conn interfaces.ClientConn, exp uint32) gopacket.Packet {
-	if conn == nil {
+	char := charsPtr.GetOnlineCharacterHandle(conn)
+
+	if conn == nil || char.GetLevel() < 1 || char.GetLevel() > 199 {
 		return []byte{}
 	}
 
-	p := gopacket.NewPacket()
+	newExp := int32(exp * constants.GetRate(constants.ExpRate))
 
-	return p
+	result := []byte{}
+
+	for { // allow character to level up multiple times from exp
+		reqExp := constants.ExpTable[char.GetLevel()-1]
+
+		if char.GetEXP()+uint32(newExp) >= reqExp {
+			SetLevel(conn, char.GetLevel()+1)
+			newExp -= int32(reqExp)
+
+			if newExp < 0 {
+				newExp = 0
+			}
+			char.SetEXP(0)
+
+			result = levelUpAnimationPacket(char.GetCharID())
+		} else {
+			newExp += int32(char.GetEXP())
+			break
+		}
+	}
+
+	conn.Write(statChangePacket(false, expID, uint32(newExp)))
+	char.SetEXP(uint32(newExp))
+
+	return result
 }

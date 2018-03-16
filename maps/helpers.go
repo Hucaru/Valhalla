@@ -185,7 +185,7 @@ func DamageMobs(mapID uint32, conn interfaces.ClientConn, damages map[uint32][]u
 				// Set the exp object, based on dmg done by connections, fo now just give everyone mob exp
 				for k := range mob.GetDmgReceived() {
 					if charsPtr.GetOnlineCharacterHandle(k).GetCurrentMap() == mapID {
-						exp[k] = mob.GetEXP()
+						exp[k] += mob.GetEXP()
 					}
 				}
 

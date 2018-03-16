@@ -11,6 +11,15 @@ import (
 	"github.com/Hucaru/gopacket"
 )
 
+func levelUpAnimationPacket(charID uint32) gopacket.Packet {
+	p := gopacket.NewPacket()
+	p.WriteByte(constants.SEND_CHANNEL_PLAYER_ANIMATION)
+	p.WriteUint32(charID)
+	p.WriteByte(0x00)
+
+	return p
+}
+
 func skillBookUpdatePacket(skillID uint32, level uint32) gopacket.Packet {
 	p := gopacket.NewPacket()
 	p.WriteByte(constants.SEND_CHANNEL_SKILL_RECORD_UPDATE)

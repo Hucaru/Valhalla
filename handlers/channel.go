@@ -41,7 +41,7 @@ func HandleChannelPacket(conn *connection.ClientChanConn, reader gopacket.Reader
 		exp := maps.DamageMobs(mapID, conn, damages)
 
 		for k, v := range exp {
-			player.GiveExp(k, v)
+			maps.SendPacketToMapExcept(mapID, player.GiveExp(k, v), conn)
 		}
 
 	case constants.RECV_CHANNEL_RANGED_SKILL:
@@ -50,7 +50,7 @@ func HandleChannelPacket(conn *connection.ClientChanConn, reader gopacket.Reader
 		exp := maps.DamageMobs(mapID, conn, damages)
 
 		for k, v := range exp {
-			player.GiveExp(k, v)
+			maps.SendPacketToMapExcept(mapID, player.GiveExp(k, v), conn)
 		}
 
 	case constants.RECV_CHANNEL_MAGIC_SKILL:
@@ -59,7 +59,7 @@ func HandleChannelPacket(conn *connection.ClientChanConn, reader gopacket.Reader
 		exp := maps.DamageMobs(mapID, conn, damages)
 
 		for k, v := range exp {
-			player.GiveExp(k, v)
+			maps.SendPacketToMapExcept(mapID, player.GiveExp(k, v), conn)
 		}
 
 	case constants.RECV_CHANNEL_DMG_RECV:

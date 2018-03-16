@@ -115,6 +115,14 @@ func HandleCommand(conn interfaces.ClientConn, text string) {
 		}
 	case "killmobs":
 		// add later
+	case "exp":
+		val, err := strconv.Atoi(command[1])
+
+		if err != nil {
+			return
+		}
+		char := charsPtr.GetOnlineCharacterHandle(conn)
+		maps.SendPacketToMapExcept(char.GetCurrentMap(), player.GiveExp(conn, uint32(val)), conn)
 	default:
 		log.Println("Unkown GM command", command)
 	}
