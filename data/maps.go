@@ -187,15 +187,30 @@ func (m *mapleMap) addValidSpawnMob(mob mapleMob) {
 	m.mutex.Unlock()
 }
 
-func (m *mapleMap) GetRandomSpawnableMob() interfaces.Mob {
-	seed := rand.NewSource(time.Now().UnixNano())
-	randomizer := rand.New(seed)
+func (m *mapleMap) GetRandomSpawnableMob(sx int16, sy int16, sf int16) interfaces.Mob {
+	filtered := make([]mapleMob, 0)
+
 	m.mutex.RLock()
-	index := randomizer.Intn(len(m.spawnableMobs))
-	result := m.spawnableMobs[index]
+	for _, v := range m.spawnableMobs {
+		if v.GetSX() != sx && v.GetSY() != sy {
+			filtered = append(filtered, v)
+		}
+	}
 	m.mutex.RUnlock()
 
-	return &result
+	seed := rand.NewSource(time.Now().UnixNano())
+	randomizer := rand.New(seed)
+	index := randomizer.Intn(len(filtered))
+
+	return &filtered[index]
+}
+
+func (m *mapleMap) GetMobRate() float64 {
+	m.mutex.RLock()
+	result := m.mobRate
+	m.mutex.RUnlock()
+
+	return result
 }
 
 func (m *mapleMap) GetMobFromID(id uint32) interfaces.Mob {

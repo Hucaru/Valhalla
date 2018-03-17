@@ -207,8 +207,14 @@ func startRespawnMonitors() {
 	for mapID := range nx.Maps {
 
 		go func(mapID uint32) {
-			ticker := time.NewTicker(3 * time.Second)
 			m := mapsPtr.GetMap(mapID)
+			mobRate := m.GetMobRate()
+
+			if mobRate == 0 {
+				mobRate = 1
+			}
+
+			ticker := time.NewTicker(time.Duration(5.0/mobRate) * time.Second)
 
 			for {
 				<-ticker.C
@@ -222,44 +228,42 @@ func startRespawnMonitors() {
 						continue
 					}
 
-					respawn := false
-
 					// normal mobs
 					if !mob.GetIsAlive() && !mob.GetBoss() && mob.GetMobTime() == 0 {
-						respawn = true
+						newMob := m.GetRandomSpawnableMob(mob.GetSX(), mob.GetSY(), mob.GetSFoothold())
+						newMob.SetSpawnID(mob.GetSpawnID())
+
+						m.RemoveMob(mob)
+						m.AddMob(newMob)
+
+						if len(m.GetPlayers()) > 0 {
+							newController := m.GetPlayers()[0]
+							newController.Write(controlMobPacket(newMob.GetSpawnID(), newMob, true, false))
+						}
+
+						SendPacketToMap(uint32(mapID), showMobPacket(newMob.GetSpawnID(), newMob, true))
+						newMob.SetIsAlive(true)
 					}
 
 					// bosses and long respawn mbos e.g. iron hog at pig beach
 					if !mob.GetIsAlive() && (mob.GetBoss() || mob.GetMobTime() > 0) {
 						if (time.Now().Unix() - mob.GetDeathTime()) > mob.GetMobTime() {
-							respawn = true
+							mob.SetX(mob.GetSX())
+							mob.SetY(mob.GetSY())
+							mob.SetFoothold(mob.GetSFoothold()) // I suspect this is the only setting that matters
+							mob.SetHp(mob.GetMaxHp())
+							mob.SetMp(mob.GetMaxMp())
+
+							if len(m.GetPlayers()) > 0 {
+								newController := m.GetPlayers()[0]
+								newController.Write(controlMobPacket(mob.GetSpawnID(), mob, true, false))
+							}
+
+							SendPacketToMap(uint32(mapID), showMobPacket(mob.GetSpawnID(), mob, true))
+							mob.SetIsAlive(true)
 						}
 					}
 
-					// need to change to the real respawn method, might be choose random mob from spawnable list?
-					if respawn {
-						mob.SetX(mob.GetSX())
-						mob.SetY(mob.GetSY())
-						mob.SetFoothold(mob.GetSFoothold()) // I suspect this is the only setting that matters
-						mob.SetHp(mob.GetMaxHp())
-						mob.SetMp(mob.GetMaxMp())
-
-						// This is buggy (id, spawn location missmatch), but is closer to true game spawn system
-						// newMob := m.GetRandomSpawnableMob()
-						// mob.SetID(newMob.GetID())
-						// mob.SetX(newMob.GetSX())
-						// mob.SetY(newMob.GetSY())
-						// mob.SetFoothold(newMob.GetSFoothold()) // I suspect this is the only setting that matters
-						// mob.SetHp(newMob.GetMaxHp())
-						// mob.SetMp(newMob.GetMaxMp())
-
-						if len(m.GetPlayers()) > 0 {
-							newController := m.GetPlayers()[0]
-							newController.Write(controlMobPacket(mob.GetSpawnID(), mob, true, false))
-						}
-						SendPacketToMap(uint32(mapID), showMobPacket(mob.GetSpawnID(), mob, true))
-						mob.SetIsAlive(true)
-					}
 				}
 			}
 		}(mapID)
