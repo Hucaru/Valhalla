@@ -12,9 +12,8 @@ import (
 	"github.com/Hucaru/gopacket"
 )
 
-var mapsPtr interfaces.Maps
-
 var charsPtr interfaces.Characters
+var mapsPtr interfaces.Maps
 
 // RegisterCharactersObj -
 func RegisterCharactersObj(chars interfaces.Characters) {
@@ -184,10 +183,12 @@ func DamageMobs(mapID uint32, conn interfaces.ClientConn, damages map[uint32][]u
 					mob.SetDeathTime(time.Now().Unix())
 				}
 
-				// Set the exp object, based on dmg done by connections, to now just give everyone mob exp
 				for k := range mob.GetDmgReceived() {
-					if charsPtr.GetOnlineCharacterHandle(k).GetCurrentMap() == mapID {
-						exp[k] = append(exp[k], mob.GetEXP())
+
+					char := charsPtr.GetOnlineCharacterHandle(k)
+
+					if char != nil && char.GetCurrentMap() == mapID {
+						exp[k] = append(exp[k], mob.GetEXP()) // modify this exp based on % dmg done to mob
 					}
 				}
 

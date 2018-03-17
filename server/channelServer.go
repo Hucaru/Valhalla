@@ -35,8 +35,9 @@ func Channel(configFile string) {
 	message.RegisterCharactersObj(data.GetCharsPtr())
 	maps.RegisterCharactersObj(data.GetCharsPtr())
 	maps.RegisterMapsObj(data.GetMapsPtr())
-	command.RegisterCharactersObj(data.GetCharsPtr())
 	skills.RegisterCharactersObj(data.GetCharsPtr())
+	command.RegisterCharactersObj(data.GetCharsPtr())
+	command.RegisterMapsObj(data.GetMapsPtr())
 
 	listener, err := net.Listen("tcp", "0.0.0.0:8686")
 

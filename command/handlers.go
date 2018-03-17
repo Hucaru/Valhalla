@@ -117,6 +117,16 @@ func HandleCommand(conn interfaces.ClientConn, text string) {
 		}
 	case "killmobs":
 		// add later
+		char := charsPtr.GetOnlineCharacterHandle(conn)
+		m := mapsPtr.GetMap(char.GetCurrentMap())
+
+		for _, mob := range m.GetMobs() {
+			dmg := make(map[uint32][]uint32)
+
+			dmg[mob.GetSpawnID()] = []uint32{mob.GetHp()}
+
+			maps.DamageMobs(char.GetCurrentMap(), conn, dmg)
+		}
 	case "exp":
 		val, err := strconv.Atoi(command[1])
 

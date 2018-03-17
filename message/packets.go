@@ -24,7 +24,7 @@ func dialogueBoxPacket(msg string) gopacket.Packet {
 }
 
 // Need to figure out how to display the username and message atm it bastardises it.
-func broadvastChannelMessagePacket(senderName string, msg string, channel byte, isSameChannel bool) gopacket.Packet {
+func broadcastChannelMessagePacket(senderName string, msg string, channel byte, isSameChannel bool) gopacket.Packet {
 	p := gopacket.NewPacket()
 	p.WriteByte(constants.SEND_CHANNEL_BROADCAST_MESSAGE)
 	p.WriteByte(3)

@@ -41,6 +41,8 @@ func HandleChannelPacket(conn *connection.ClientChanConn, reader gopacket.Reader
 		maps.SendPacketToMap(mapID, p)
 		exp := maps.DamageMobs(mapID, conn, damages)
 
+		// re-adjust exp if in party
+
 		for k, v := range exp {
 			for _, e := range v {
 				maps.SendPacketToMapExcept(mapID, player.GiveExp(k, e), conn)
@@ -54,6 +56,8 @@ func HandleChannelPacket(conn *connection.ClientChanConn, reader gopacket.Reader
 		maps.SendPacketToMap(mapID, p)
 		exp := maps.DamageMobs(mapID, conn, damages)
 
+		// re-adjust exp if in party
+
 		for k, v := range exp {
 			for _, e := range v {
 				maps.SendPacketToMapExcept(mapID, player.GiveExp(k, e), conn)
@@ -66,6 +70,8 @@ func HandleChannelPacket(conn *connection.ClientChanConn, reader gopacket.Reader
 		mapID, p, damages := skills.HandleMagicSkill(conn, reader)
 		maps.SendPacketToMap(mapID, p)
 		exp := maps.DamageMobs(mapID, conn, damages)
+
+		// re-adjust exp if in party
 
 		for k, v := range exp {
 			for _, e := range v {
