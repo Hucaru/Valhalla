@@ -53,6 +53,18 @@ func receivedDmgPacket(charID uint32, ammount uint32, dmgType byte, mobID uint32
 	return p
 }
 
+func expGainedMessage(whiteText, appearInChat bool, ammount uint32) gopacket.Packet {
+	p := gopacket.NewPacket()
+	p.WriteByte(constants.SEND_CHANNEL_INFO_MESSAGE)
+
+	p.WriteByte(3)
+	p.WriteBool(whiteText)
+	p.WriteUint32(ammount)
+	p.WriteBool(appearInChat)
+
+	return p
+}
+
 // Maybe split this into byte, uint16 & uint32 forms by taking interace{} and reflecting value type
 func statChangePacket(byPlayer bool, stat uint32, value uint32) gopacket.Packet {
 	p := gopacket.NewPacket()

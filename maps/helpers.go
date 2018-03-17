@@ -4,6 +4,8 @@ import (
 	"math/rand"
 	"time"
 
+	"github.com/Hucaru/Valhalla/constants"
+
 	"github.com/Hucaru/Valhalla/data"
 	"github.com/Hucaru/Valhalla/interfaces"
 	"github.com/Hucaru/Valhalla/nx"
@@ -136,10 +138,10 @@ func GetRandomSpawnPortal(mapID uint32) (interfaces.Portal, byte) {
 	return portals[pos], byte(pos)
 }
 
-func DamageMobs(mapID uint32, conn interfaces.ClientConn, damages map[uint32][]uint32) map[interfaces.ClientConn]uint32 {
+func DamageMobs(mapID uint32, conn interfaces.ClientConn, damages map[uint32][]uint32) map[interfaces.ClientConn][]uint32 {
 	m := mapsPtr.GetMap(mapID)
 
-	exp := make(map[interfaces.ClientConn]uint32)
+	exp := make(map[interfaces.ClientConn][]uint32)
 
 	validDamages := make(map[uint32][]uint32)
 
@@ -182,10 +184,10 @@ func DamageMobs(mapID uint32, conn interfaces.ClientConn, damages map[uint32][]u
 					mob.SetDeathTime(time.Now().Unix())
 				}
 
-				// Set the exp object, based on dmg done by connections, fo now just give everyone mob exp
+				// Set the exp object, based on dmg done by connections, to now just give everyone mob exp
 				for k := range mob.GetDmgReceived() {
 					if charsPtr.GetOnlineCharacterHandle(k).GetCurrentMap() == mapID {
-						exp[k] += mob.GetEXP()
+						exp[k] = append(exp[k], mob.GetEXP())
 					}
 				}
 
@@ -230,19 +232,21 @@ func startRespawnMonitors() {
 
 					// normal mobs
 					if !mob.GetIsAlive() && !mob.GetBoss() && mob.GetMobTime() == 0 {
-						newMob := m.GetRandomSpawnableMob(mob.GetSX(), mob.GetSY(), mob.GetSFoothold())
-						newMob.SetSpawnID(mob.GetSpawnID())
+						for i := uint32(0); i < constants.GetRate(constants.MobRate); i++ {
+							newMob := m.GetRandomSpawnableMob(mob.GetSX(), mob.GetSY(), mob.GetSFoothold())
+							newMob.SetSpawnID(mob.GetSpawnID())
 
-						m.RemoveMob(mob)
-						m.AddMob(newMob)
+							m.RemoveMob(mob)
+							m.AddMob(newMob)
 
-						if len(m.GetPlayers()) > 0 {
-							newController := m.GetPlayers()[0]
-							newController.Write(controlMobPacket(newMob.GetSpawnID(), newMob, true, false))
+							if len(m.GetPlayers()) > 0 {
+								newController := m.GetPlayers()[0]
+								newController.Write(controlMobPacket(newMob.GetSpawnID(), newMob, true, false))
+							}
+
+							SendPacketToMap(uint32(mapID), showMobPacket(newMob.GetSpawnID(), newMob, true))
+							newMob.SetIsAlive(true)
 						}
-
-						SendPacketToMap(uint32(mapID), showMobPacket(newMob.GetSpawnID(), newMob, true))
-						newMob.SetIsAlive(true)
 					}
 
 					// bosses and long respawn mbos e.g. iron hog at pig beach

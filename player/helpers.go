@@ -101,6 +101,8 @@ func GiveExp(conn interfaces.ClientConn, exp uint32) gopacket.Packet {
 
 	result := []byte{}
 
+	conn.Write(expGainedMessage(true, false, uint32(newExp)))
+
 	for { // allow character to level up multiple times from exp
 		reqExp := constants.ExpTable[char.GetLevel()-1]
 

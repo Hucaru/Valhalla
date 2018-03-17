@@ -5,6 +5,7 @@ import (
 
 	"github.com/Hucaru/Valhalla/command"
 	"github.com/Hucaru/Valhalla/connection"
+	"github.com/Hucaru/Valhalla/interfaces"
 	"github.com/Hucaru/Valhalla/maps"
 	"github.com/Hucaru/Valhalla/message"
 	"github.com/Hucaru/Valhalla/player"
@@ -41,8 +42,12 @@ func HandleChannelPacket(conn *connection.ClientChanConn, reader gopacket.Reader
 		exp := maps.DamageMobs(mapID, conn, damages)
 
 		for k, v := range exp {
-			maps.SendPacketToMapExcept(mapID, player.GiveExp(k, v), conn)
+			for _, e := range v {
+				maps.SendPacketToMapExcept(mapID, player.GiveExp(k, e), conn)
+			}
 		}
+
+		exp = make(map[interfaces.ClientConn][]uint32)
 
 	case constants.RECV_CHANNEL_RANGED_SKILL:
 		mapID, p, damages := skills.HandleRangedSkill(conn, reader)
@@ -50,8 +55,12 @@ func HandleChannelPacket(conn *connection.ClientChanConn, reader gopacket.Reader
 		exp := maps.DamageMobs(mapID, conn, damages)
 
 		for k, v := range exp {
-			maps.SendPacketToMapExcept(mapID, player.GiveExp(k, v), conn)
+			for _, e := range v {
+				maps.SendPacketToMapExcept(mapID, player.GiveExp(k, e), conn)
+			}
 		}
+
+		exp = make(map[interfaces.ClientConn][]uint32)
 
 	case constants.RECV_CHANNEL_MAGIC_SKILL:
 		mapID, p, damages := skills.HandleMagicSkill(conn, reader)
@@ -59,8 +68,12 @@ func HandleChannelPacket(conn *connection.ClientChanConn, reader gopacket.Reader
 		exp := maps.DamageMobs(mapID, conn, damages)
 
 		for k, v := range exp {
-			maps.SendPacketToMapExcept(mapID, player.GiveExp(k, v), conn)
+			for _, e := range v {
+				maps.SendPacketToMapExcept(mapID, player.GiveExp(k, e), conn)
+			}
 		}
+
+		exp = make(map[interfaces.ClientConn][]uint32)
 
 	case constants.RECV_CHANNEL_DMG_RECV:
 		mapID, p := player.HandleTakeDamage(conn, reader)

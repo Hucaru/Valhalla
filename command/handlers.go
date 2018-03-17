@@ -6,6 +6,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/Hucaru/Valhalla/constants"
+
 	"github.com/Hucaru/Valhalla/interfaces"
 	"github.com/Hucaru/Valhalla/maps"
 	"github.com/Hucaru/Valhalla/nx"
@@ -123,6 +125,14 @@ func HandleCommand(conn interfaces.ClientConn, text string) {
 		}
 		char := charsPtr.GetOnlineCharacterHandle(conn)
 		maps.SendPacketToMapExcept(char.GetCurrentMap(), player.GiveExp(conn, uint32(val)), conn)
+	case "mobRate":
+		val, err := strconv.Atoi(command[1])
+
+		if err != nil {
+			return
+		}
+
+		constants.SetRate(constants.MobRate, uint32(val))
 	default:
 		log.Println("Unkown GM command", command)
 	}
