@@ -7,7 +7,7 @@ import (
 	"github.com/Hucaru/Valhalla/interfaces"
 )
 
-type charactersList map[interfaces.OcClientConn]*character.Character
+type charactersList map[interfaces.ClientConn]*character.Character
 
 var onlineChars = make(charactersList)
 
@@ -18,7 +18,7 @@ func GetCharsPtr() charactersList {
 	return onlineChars
 }
 
-func (oc charactersList) AddOnlineCharacter(conn interfaces.OcClientConn, char *character.Character) {
+func (oc charactersList) AddOnlineCharacter(conn interfaces.ClientConn, char *character.Character) {
 	onlineCharactersMutex.RLock()
 	if _, exists := oc[conn]; exists {
 		return
@@ -30,7 +30,7 @@ func (oc charactersList) AddOnlineCharacter(conn interfaces.OcClientConn, char *
 	onlineCharactersMutex.Unlock()
 }
 
-func (oc charactersList) RemoveOnlineCharacter(conn interfaces.OcClientConn) {
+func (oc charactersList) RemoveOnlineCharacter(conn interfaces.ClientConn) {
 	onlineCharactersMutex.RLock()
 	if _, exists := oc[conn]; !exists {
 		return
@@ -42,7 +42,7 @@ func (oc charactersList) RemoveOnlineCharacter(conn interfaces.OcClientConn) {
 	onlineCharactersMutex.Unlock()
 }
 
-func (oc charactersList) GetOnlineCharacterHandle(conn interfaces.OcClientConn) *character.Character {
+func (oc charactersList) GetOnlineCharacterHandle(conn interfaces.ClientConn) *character.Character {
 	onlineCharactersMutex.RLock()
 	char := oc[conn]
 	onlineCharactersMutex.RUnlock()
@@ -50,13 +50,28 @@ func (oc charactersList) GetOnlineCharacterHandle(conn interfaces.OcClientConn) 
 	return char
 }
 
-func (oc charactersList) GetConnectionHandle(name string) interfaces.OcClientConn {
-	var handle interfaces.OcClientConn
+func (oc charactersList) GetConnHandleFromName(name string) interfaces.ClientConn {
+	var handle interfaces.ClientConn
 
 	onlineCharactersMutex.RLock()
 	for k, v := range oc {
 		if v.GetName() == name {
 			handle = k
+			break
+		}
+	}
+	onlineCharactersMutex.RUnlock()
+
+	return handle
+}
+
+func (oc charactersList) GetCharFromID(id uint32) *character.Character {
+	var handle *character.Character
+
+	onlineCharactersMutex.RLock()
+	for _, v := range oc {
+		if v.GetCharID() == id {
+			handle = v
 			break
 		}
 	}

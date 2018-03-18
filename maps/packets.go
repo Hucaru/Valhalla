@@ -195,3 +195,13 @@ func removeMobPacket(mobID uint32, deathType byte) gopacket.Packet {
 
 	return p
 }
+
+func showMobHpChange(spawnID uint32, dmg int32) gopacket.Packet {
+	p := gopacket.NewPacket()
+	p.WriteByte(constants.SEND_CHANNEL_MOB_CHANGE_HP)
+	p.WriteUint32(spawnID)
+	p.WriteByte(0)
+	p.WriteInt32(dmg)
+
+	return p
+}

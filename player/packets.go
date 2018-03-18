@@ -5,11 +5,34 @@ import (
 	"math"
 	"time"
 
+	"github.com/Hucaru/Valhalla/interfaces"
+
 	"github.com/Hucaru/Valhalla/character"
 	"github.com/Hucaru/Valhalla/constants"
 	"github.com/Hucaru/Valhalla/nx"
 	"github.com/Hucaru/gopacket"
 )
+
+func avatarSummaryWindow(charID uint32, char *character.Character, handle interfaces.ClientConn) gopacket.Packet {
+	p := gopacket.NewPacket()
+	p.WriteByte(constants.SEND_CHANNEL_AVATAR_INFO_WINDOW)
+	p.WriteUint32(charID)
+	p.WriteByte(char.GetLevel())
+	p.WriteUint16(char.GetJob())
+	p.WriteUint16(char.GetFame())
+
+	if handle.IsAdmin() {
+		p.WriteString("[Administrator]")
+	} else {
+		// This is player guild name
+		p.WriteString("")
+	}
+
+	p.WriteBool(false) // if has pet
+	p.WriteByte(0)     // wishlist count
+
+	return p
+}
 
 func redTextMessage(msg string) gopacket.Packet {
 	p := gopacket.NewPacket()

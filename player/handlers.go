@@ -41,6 +41,19 @@ func HandleConnect(conn interfaces.ClientConn, reader gopacket.Reader) uint32 {
 	return char.GetCurrentMap()
 }
 
+func HandleRequestAvatarInfoWindow(conn interfaces.ClientConn, reader gopacket.Reader) {
+	charID := reader.ReadUint32()
+	char := charsPtr.GetCharFromID(charID)
+
+	if char == nil {
+		return
+	}
+
+	handle := charsPtr.GetConnHandleFromName(char.GetName())
+
+	conn.Write(avatarSummaryWindow(charID, char, handle))
+}
+
 func HandleMovement(conn interfaces.ClientConn, reader gopacket.Reader) (uint32, gopacket.Packet) {
 	reader.ReadBytes(5) // used in movement validation
 	char := charsPtr.GetOnlineCharacterHandle(conn)

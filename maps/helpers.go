@@ -198,7 +198,7 @@ func DamageMobs(mapID uint32, conn interfaces.ClientConn, damages map[uint32][]u
 			} else {
 				mob.SetHp(uint32(newHP))
 				conn.Write(controlMobPacket(mob.GetSpawnID(), mob, false, true))
-				// show hp bar
+				// if this version has general mob hp bars show it
 			}
 		}
 	}

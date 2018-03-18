@@ -5,16 +5,12 @@ import (
 	"github.com/Hucaru/gopacket"
 )
 
-type OcClientConn interface {
-	GetUserID() uint32
-}
-
 type ClientConn interface {
 	Close()
 	Write(gopacket.Packet) error
 	String() string
 	SetUserID(uint32)
-	OcClientConn
+	GetUserID() uint32
 	SetAdmin(val bool)
 	IsAdmin() bool
 	SetIsLogedIn(bool)
@@ -140,8 +136,9 @@ type Maps interface {
 }
 
 type Characters interface {
-	AddOnlineCharacter(OcClientConn, *character.Character)
-	RemoveOnlineCharacter(OcClientConn)
-	GetOnlineCharacterHandle(OcClientConn) *character.Character
-	GetConnectionHandle(string) OcClientConn
+	AddOnlineCharacter(ClientConn, *character.Character)
+	RemoveOnlineCharacter(ClientConn)
+	GetOnlineCharacterHandle(ClientConn) *character.Character
+	GetConnHandleFromName(string) ClientConn
+	GetCharFromID(uint32) *character.Character
 }

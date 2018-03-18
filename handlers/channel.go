@@ -113,8 +113,8 @@ func HandleChannelPacket(conn *connection.ClientChanConn, reader gopacket.Reader
 		maps.SendPacketToMapExcept(mapID, p, conn)
 		// Send buff to party
 
-	case constants.RECV_CHANNEL_DOUBLE_CLICK_CHARACTER:
-		// player.HandleRequestAvatarInfoWindow(conn, reader)
+	case constants.RECV_CHANNEL_CHARACTER_INFO:
+		player.HandleRequestAvatarInfoWindow(conn, reader)
 
 	case constants.RECV_CHANNEL_LIE_DETECTOR_RESULT:
 		// send to the anti cheat thread
