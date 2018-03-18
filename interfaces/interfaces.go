@@ -130,6 +130,7 @@ type Map interface {
 	GetPlayers() []ClientConn
 	AddPlayer(ClientConn)
 	RemovePlayer(ClientConn)
+	GetNumberSpawnableMobs() int
 	GetRandomSpawnableMob(int16, int16, int16) Mob
 	GetMobRate() float64
 }

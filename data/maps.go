@@ -147,10 +147,12 @@ func (m *mapleMap) GetNextMobSpawnID() uint32 {
 	result := uint32(1)
 
 	m.mutex.RLock()
-	if len(m.mobs) > 0 {
-		result = m.mobs[len(m.mobs)-1].GetSpawnID() + 1
-	}
+	result = m.mobs[len(m.mobs)-1].GetSpawnID() + 1
 	m.mutex.RUnlock()
+
+	if result == 0 {
+		result = 1
+	}
 
 	return result
 }
@@ -173,7 +175,7 @@ func (m *mapleMap) RemoveMob(mob interfaces.Mob) {
 	m.mutex.RUnlock()
 
 	m.mutex.Lock()
-	if index > 0 {
+	if index > -1 {
 		copy(m.mobs[index:], m.mobs[index+1:])
 		m.mobs[len(m.mobs)-1] = nil
 		m.mobs = m.mobs[:len(m.mobs)-1]
@@ -185,6 +187,14 @@ func (m *mapleMap) addValidSpawnMob(mob mapleMob) {
 	m.mutex.Lock()
 	m.spawnableMobs = append(m.spawnableMobs, mob)
 	m.mutex.Unlock()
+}
+
+func (m *mapleMap) GetNumberSpawnableMobs() int {
+	m.mutex.RLock()
+	result := len(m.spawnableMobs)
+	m.mutex.RUnlock()
+
+	return result
 }
 
 func (m *mapleMap) GetRandomSpawnableMob(sx int16, sy int16, sf int16) interfaces.Mob {

@@ -161,7 +161,6 @@ func DamageMobs(mapID uint32, conn interfaces.ClientConn, damages map[uint32][]u
 				mob.GetController().Write(endMobControlPacket(mob.GetSpawnID()))
 			}
 			mob.SetController(conn)
-			conn.Write(controlMobPacket(mob.GetSpawnID(), mob, false, true)) // does mob need to be agroed?
 		}
 
 		for _, dmg := range dmgs {
@@ -198,6 +197,7 @@ func DamageMobs(mapID uint32, conn interfaces.ClientConn, damages map[uint32][]u
 
 			} else {
 				mob.SetHp(uint32(newHP))
+				conn.Write(controlMobPacket(mob.GetSpawnID(), mob, false, true))
 				// show hp bar
 			}
 		}
@@ -234,8 +234,13 @@ func startRespawnMonitors() {
 					// normal mobs
 					if !mob.GetIsAlive() && !mob.GetBoss() && mob.GetMobTime() == 0 {
 						for i := uint32(0); i < constants.GetRate(constants.MobRate); i++ {
+							if len(m.GetMobs()) > m.GetNumberSpawnableMobs()*int(constants.GetRate(constants.MobRate)) {
+								m.RemoveMob(mob)
+								break
+							}
+
 							newMob := m.GetRandomSpawnableMob(mob.GetSX(), mob.GetSY(), mob.GetSFoothold())
-							newMob.SetSpawnID(mob.GetSpawnID())
+							newMob.SetSpawnID(m.GetNextMobSpawnID())
 
 							m.RemoveMob(mob)
 							m.AddMob(newMob)
@@ -245,8 +250,8 @@ func startRespawnMonitors() {
 								newController.Write(controlMobPacket(newMob.GetSpawnID(), newMob, true, false))
 							}
 
-							SendPacketToMap(uint32(mapID), showMobPacket(newMob.GetSpawnID(), newMob, true))
 							newMob.SetIsAlive(true)
+							SendPacketToMap(uint32(mapID), showMobPacket(newMob.GetSpawnID(), newMob, true))
 						}
 					}
 

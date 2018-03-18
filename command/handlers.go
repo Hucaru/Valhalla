@@ -135,7 +135,7 @@ func HandleCommand(conn interfaces.ClientConn, text string) {
 		}
 		char := charsPtr.GetOnlineCharacterHandle(conn)
 		maps.SendPacketToMapExcept(char.GetCurrentMap(), player.GiveExp(conn, uint32(val)), conn)
-	case "mobRate":
+	case "mobrate":
 		val, err := strconv.Atoi(command[1])
 
 		if err != nil {
