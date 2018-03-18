@@ -3,6 +3,7 @@ package player
 import (
 	"log"
 	"math/rand"
+	"time"
 
 	"github.com/Hucaru/gopacket"
 
@@ -15,6 +16,8 @@ var charsPtr interfaces.Characters
 // RegisterCharactersObj -
 func RegisterCharactersObj(chars interfaces.Characters) {
 	charsPtr = chars
+
+	go charactersAutoSave()
 }
 
 func SetJob(conn interfaces.ClientConn, newJob uint16) {
@@ -126,4 +129,13 @@ func GiveExp(conn interfaces.ClientConn, exp uint32) gopacket.Packet {
 	char.SetEXP(uint32(newExp))
 
 	return result
+}
+
+func charactersAutoSave() {
+	// Save character data every 15 mins
+	ticker := time.NewTicker(15 * time.Minute)
+
+	for {
+		<-ticker.C
+	}
 }

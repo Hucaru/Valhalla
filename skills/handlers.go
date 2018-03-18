@@ -142,5 +142,24 @@ func HandleSpecialSkill(conn interfaces.ClientConn, reader gopacket.Reader) (uin
 
 	char := charsPtr.GetOnlineCharacterHandle(conn)
 
+	// add all the various skills that fall under this category
+	switch skillID {
+
+	// GM SKILLS
+	case 5001000: // gm haste normal
+	case 5001001: //gm super dragon roar
+	case 5001002: // gm teleport
+	case 5101000: // // gm heal + dispel
+	case 5101001: // // gm super haste
+	case 5101002: // gm holy symbol
+	case 5101003: // gm bless
+	case 5101004: // gm hide
+		conn.Write(gmHidePacket(true))
+	case 5101005: // gm resurect
+	default:
+		fmt.Println("Unkown skill id:", skillID)
+	}
+
+	conn.Write(continuePacket())
 	return char.GetCurrentMap(), skillAnimationPacket(char.GetCharID(), skillID, level)
 }

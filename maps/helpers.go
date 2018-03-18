@@ -250,7 +250,7 @@ func startRespawnMonitors() {
 						}
 					}
 
-					// bosses and long respawn mbos e.g. iron hog at pig beach
+					// bosses and long respawn mbos e.g. iron hog at pig beach or jr boogies
 					if !mob.GetIsAlive() && (mob.GetBoss() || mob.GetMobTime() > 0) {
 						if (time.Now().Unix() - mob.GetDeathTime()) > mob.GetMobTime() {
 							mob.SetX(mob.GetSX())

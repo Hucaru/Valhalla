@@ -11,6 +11,100 @@ import (
 	"github.com/Hucaru/gopacket"
 )
 
+func redTextMessage(msg string) gopacket.Packet {
+	p := gopacket.NewPacket()
+	p.WriteByte(constants.SEND_CHANNEL_INFO_MESSAGE)
+	p.WriteByte(9)
+	p.WriteString(msg)
+
+	return p
+}
+
+func guildPointsChangeMessage(ammount int32) gopacket.Packet {
+	p := gopacket.NewPacket()
+	p.WriteByte(constants.SEND_CHANNEL_INFO_MESSAGE)
+	p.WriteByte(6)
+	p.WriteInt32(ammount)
+
+	return p
+}
+
+func fameChangeMessage(ammount int32) gopacket.Packet {
+	p := gopacket.NewPacket()
+	p.WriteByte(constants.SEND_CHANNEL_INFO_MESSAGE)
+	p.WriteByte(4)
+	p.WriteInt32(ammount)
+
+	return p
+}
+
+// sends the [item name] has passed its expeiration date and will be removed from your inventory
+func itemExpiredMessage(itemID uint32) gopacket.Packet {
+	p := gopacket.NewPacket()
+	p.WriteByte(constants.SEND_CHANNEL_INFO_MESSAGE)
+	p.WriteByte(2)
+	p.WriteUint32(itemID)
+	return p
+}
+
+func itemExpiredMessage2(itemID uint32) gopacket.Packet {
+	p := gopacket.NewPacket()
+	p.WriteByte(constants.SEND_CHANNEL_INFO_MESSAGE)
+	p.WriteByte(8)
+	p.WriteByte(1)
+	p.WriteUint32(itemID)
+	return p
+}
+
+func mesosChangeChatMessage(ammount int32) gopacket.Packet {
+	p := gopacket.NewPacket()
+	p.WriteByte(constants.SEND_CHANNEL_INFO_MESSAGE)
+	p.WriteByte(5)
+	p.WriteInt32(ammount)
+
+	return p
+}
+
+func unableToPickUpMessage(itemNotAvailable bool) gopacket.Packet {
+	p := gopacket.NewPacket()
+	p.WriteByte(constants.SEND_CHANNEL_INFO_MESSAGE)
+	p.WriteByte(0)
+	if itemNotAvailable {
+		p.WriteByte(0xFE)
+	} else {
+		p.WriteByte(0xFF)
+	}
+
+	return p
+}
+
+func dropPickUpMessage(isMesos bool, itemID, ammount uint32) gopacket.Packet {
+	p := gopacket.NewPacket()
+	p.WriteByte(constants.SEND_CHANNEL_INFO_MESSAGE)
+	p.WriteByte(0)
+
+	if isMesos {
+		p.WriteUint32(ammount)
+		p.WriteUint32(0)
+	} else {
+		p.WriteUint32(itemID)
+		p.WriteUint32(ammount)
+	}
+
+	return p
+}
+
+func expGainedMessage(whiteText, appearInChat bool, ammount uint32) gopacket.Packet {
+	p := gopacket.NewPacket()
+	p.WriteByte(constants.SEND_CHANNEL_INFO_MESSAGE)
+	p.WriteByte(3)
+	p.WriteBool(whiteText)
+	p.WriteUint32(ammount)
+	p.WriteBool(appearInChat)
+
+	return p
+}
+
 func levelUpAnimationPacket(charID uint32) gopacket.Packet {
 	p := gopacket.NewPacket()
 	p.WriteByte(constants.SEND_CHANNEL_PLAYER_ANIMATION)
@@ -49,18 +143,6 @@ func receivedDmgPacket(charID uint32, ammount uint32, dmgType byte, mobID uint32
 		p.WriteUint32(0)       // ?
 		p.WriteUint32(ammount) // skill id of attack?
 	}
-
-	return p
-}
-
-func expGainedMessage(whiteText, appearInChat bool, ammount uint32) gopacket.Packet {
-	p := gopacket.NewPacket()
-	p.WriteByte(constants.SEND_CHANNEL_INFO_MESSAGE)
-
-	p.WriteByte(3)
-	p.WriteBool(whiteText)
-	p.WriteUint32(ammount)
-	p.WriteBool(appearInChat)
 
 	return p
 }
@@ -215,7 +297,7 @@ func enterGame(char character.Character, channelID uint32) gopacket.Packet {
 	}
 
 	// Quests
-	p.WriteUint16(0) // # of quests
+	p.WriteUint16(0) // # of quests?
 
 	// What are these for? Minigame and some other things?
 	p.WriteUint16(0)

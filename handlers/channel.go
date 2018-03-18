@@ -110,7 +110,7 @@ func HandleChannelPacket(conn *connection.ClientChanConn, reader gopacket.Reader
 
 	case constants.RECV_CHANNEL_SPECIAL_SKILL_USAGE:
 		mapID, p := skills.HandleSpecialSkill(conn, reader)
-		maps.SendPacketToMap(mapID, p)
+		maps.SendPacketToMapExcept(mapID, p, conn)
 		// Send buff to party
 
 	case constants.RECV_CHANNEL_DOUBLE_CLICK_CHARACTER:

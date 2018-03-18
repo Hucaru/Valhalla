@@ -94,3 +94,23 @@ func skillAnimationPacket(charID uint32, skillID uint32, level byte) gopacket.Pa
 
 	return p
 }
+
+func continuePacket() gopacket.Packet {
+	p := gopacket.NewPacket()
+	// Continue game opcode is part of inventory opcode list?
+	p.WriteByte(constants.SEND_CHANNEL_INVENTORY_OPERATION)
+	p.WriteByte(0x01)
+	p.WriteByte(0x00)
+	p.WriteByte(0x00)
+
+	return p
+}
+
+func gmHidePacket(isHidden bool) gopacket.Packet {
+	p := gopacket.NewPacket()
+	p.WriteByte(constants.SEND_CHANNEL_EMPLOYEE)
+	p.WriteByte(0x0F)
+	p.WriteBool(isHidden)
+
+	return p
+}

@@ -192,7 +192,7 @@ func (m *mapleMap) GetRandomSpawnableMob(sx int16, sy int16, sf int16) interface
 
 	m.mutex.RLock()
 	for _, v := range m.spawnableMobs {
-		if v.GetSX() != sx && v.GetSY() != sy {
+		if v.GetSX() != sx && v.GetSY() != sy && !v.GetBoss() && v.GetMobTime() == 0 {
 			filtered = append(filtered, v)
 		}
 	}

@@ -68,3 +68,67 @@ func allChatPacket(senderID uint32, isAdmin bool, msg string) gopacket.Packet {
 
 	return p
 }
+
+func gmBanMessage(good bool) gopacket.Packet {
+	p := gopacket.NewPacket()
+	p.WriteByte(constants.SEND_CHANNEL_EMPLOYEE)
+	if good {
+		p.WriteByte(4)
+		p.WriteByte(0)
+	} else {
+		p.WriteByte(6)
+		p.WriteByte(1)
+	}
+
+	return p
+}
+
+func gmRemoveFromRanksMessage() gopacket.Packet {
+	p := gopacket.NewPacket()
+	p.WriteByte(constants.SEND_CHANNEL_EMPLOYEE)
+	p.WriteByte(6)
+	p.WriteByte(0)
+
+	return p
+}
+
+func gmWarningMessage(good bool) gopacket.Packet {
+	p := gopacket.NewPacket()
+	p.WriteByte(constants.SEND_CHANNEL_EMPLOYEE)
+	p.WriteByte(14)
+	if good {
+		p.WriteByte(1)
+	} else {
+		p.WriteByte(0)
+	}
+
+	return p
+}
+
+func gmBlockedAccessMessage() gopacket.Packet {
+	p := gopacket.NewPacket()
+	p.WriteByte(constants.SEND_CHANNEL_EMPLOYEE)
+	p.WriteByte(4)
+	p.WriteByte(0)
+
+	return p
+}
+
+func gmUnblockMessage() gopacket.Packet {
+	p := gopacket.NewPacket()
+	p.WriteByte(constants.SEND_CHANNEL_EMPLOYEE)
+	p.WriteByte(5)
+	p.WriteByte(0)
+
+	return p
+}
+
+// DOn't know what this is used for
+func gmWrongNpcMessage() gopacket.Packet {
+	p := gopacket.NewPacket()
+	p.WriteByte(constants.SEND_CHANNEL_EMPLOYEE)
+	p.WriteByte(8)
+	p.WriteUint16(0)
+
+	return p
+}

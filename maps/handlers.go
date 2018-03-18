@@ -103,12 +103,7 @@ func HandleMobMovement(conn interfaces.ClientConn, reader gopacket.Reader) {
 	}
 
 	// This should only arrise when someone 1hit kos a mob and controller movement packet reaches after attack
-	if mob == nil {
-		return
-	}
-
-	// This should only arrise when someone 1hit kos a mob and controller movement packet reaches after attack
-	if !mob.GetIsAlive() {
+	if mob == nil || !mob.GetIsAlive() {
 		return
 	}
 

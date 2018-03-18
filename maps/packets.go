@@ -158,7 +158,6 @@ func controlAckPacket(mobID uint32, moveID uint16, useSkill bool, skill byte, le
 	p.WriteUint32(mobID)
 	p.WriteUint16(moveID)
 	p.WriteBool(useSkill)
-	p.WriteByte(0)
 	p.WriteUint16(mp)
 	p.WriteByte(skill)
 	p.WriteByte(level)
