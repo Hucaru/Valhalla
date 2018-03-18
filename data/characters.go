@@ -79,3 +79,11 @@ func (oc charactersList) GetCharFromID(id uint32) *character.Character {
 
 	return handle
 }
+
+func (oc charactersList) GetChars() map[interfaces.ClientConn]*character.Character {
+	onlineCharactersMutex.RLock()
+	result := oc
+	onlineCharactersMutex.RUnlock()
+
+	return result
+}

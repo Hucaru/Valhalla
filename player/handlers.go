@@ -3,6 +3,9 @@ package player
 import (
 	"log"
 
+	"github.com/Hucaru/Valhalla/constants"
+	"github.com/Hucaru/Valhalla/message"
+
 	"github.com/Hucaru/Valhalla/character"
 	"github.com/Hucaru/Valhalla/connection"
 	"github.com/Hucaru/Valhalla/interfaces"
@@ -35,6 +38,8 @@ func HandleConnect(conn interfaces.ClientConn, reader gopacket.Reader) uint32 {
 	charsPtr.AddOnlineCharacter(conn, &char)
 
 	conn.Write(enterGame(char, channelID))
+
+	conn.Write(message.ScrollingHeaderPacket(constants.GetHeader()))
 
 	log.Println(char.GetName(), "has loged in from", conn)
 

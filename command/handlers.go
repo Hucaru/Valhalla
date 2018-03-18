@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/Hucaru/Valhalla/constants"
+	"github.com/Hucaru/Valhalla/message"
 
 	"github.com/Hucaru/Valhalla/interfaces"
 	"github.com/Hucaru/Valhalla/maps"
@@ -143,6 +144,18 @@ func HandleCommand(conn interfaces.ClientConn, text string) {
 		}
 
 		constants.SetRate(constants.MobRate, uint32(val))
+	case "header":
+		msg := ""
+		if len(command) >= 2 {
+			msg = strings.Join(command[1:], " ")
+		}
+
+		constants.SetHeader(msg)
+
+		for handle := range charsPtr.GetChars() {
+			handle.Write(message.ScrollingHeaderPacket(msg))
+		}
+
 	default:
 		log.Println("Unkown GM command", command)
 	}

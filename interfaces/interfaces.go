@@ -141,4 +141,5 @@ type Characters interface {
 	GetOnlineCharacterHandle(ClientConn) *character.Character
 	GetConnHandleFromName(string) ClientConn
 	GetCharFromID(uint32) *character.Character
+	GetChars() map[ClientConn]*character.Character
 }

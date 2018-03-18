@@ -5,6 +5,16 @@ import (
 	"github.com/Hucaru/gopacket"
 )
 
+func ScrollingHeaderPacket(msg string) gopacket.Packet {
+	p := gopacket.NewPacket()
+	p.WriteByte(constants.SEND_CHANNEL_BROADCAST_MESSAGE)
+	p.WriteByte(4)
+	p.WriteBool(bool(len(msg) > 0))
+	p.WriteString(msg)
+
+	return p
+}
+
 func noticePacket(msg string) gopacket.Packet {
 	p := gopacket.NewPacket()
 	p.WriteByte(constants.SEND_CHANNEL_BROADCAST_MESSAGE)
