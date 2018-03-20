@@ -1,6 +1,7 @@
 package maps
 
 import (
+	"fmt"
 	"math/rand"
 	"time"
 
@@ -246,12 +247,13 @@ func startRespawnMonitors() {
 							m.RemoveMob(mob)
 							m.AddMob(newMob)
 
+							newMob.SetIsAlive(true)
+
 							if len(m.GetPlayers()) > 0 {
 								newController := m.GetPlayers()[0]
 								newController.Write(controlMobPacket(newMob.GetSpawnID(), newMob, true, false))
 							}
 
-							newMob.SetIsAlive(true)
 							SendPacketToMap(uint32(mapID), showMobPacket(newMob.GetSpawnID(), newMob, true))
 						}
 					}
@@ -259,19 +261,24 @@ func startRespawnMonitors() {
 					// bosses and long respawn mbos e.g. iron hog at pig beach or jr boogies
 					if !mob.GetIsAlive() && (mob.GetBoss() || mob.GetMobTime() > 0) {
 						if (time.Now().Unix() - mob.GetDeathTime()) > mob.GetMobTime() {
+							// Don't keep old id as we take advantage of overflow to recycle them
+							mob.SetSpawnID(m.GetNextMobSpawnID())
 							mob.SetX(mob.GetSX())
 							mob.SetY(mob.GetSY())
-							mob.SetFoothold(mob.GetSFoothold()) // I suspect this is the only setting that matters
+							mob.SetFoothold(mob.GetSFoothold())
 							mob.SetHp(mob.GetMaxHp())
 							mob.SetMp(mob.GetMaxMp())
+							mob.SetIsAlive(true)
+
+							m.RemoveMob(mob)
+							m.AddMob(mob)
 
 							if len(m.GetPlayers()) > 0 {
 								newController := m.GetPlayers()[0]
 								newController.Write(controlMobPacket(mob.GetSpawnID(), mob, true, false))
 							}
-
+							fmt.Println(mob)
 							SendPacketToMap(uint32(mapID), showMobPacket(mob.GetSpawnID(), mob, true))
-							mob.SetIsAlive(true)
 						}
 					}
 

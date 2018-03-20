@@ -34,7 +34,7 @@ func HandleChannelPacket(conn *connection.ClientChanConn, reader gopacket.Reader
 
 	case constants.RECV_CHANNEL_MOVEMENT:
 		mapID, p := player.HandleMovement(conn, reader)
-		maps.SendPacketToMap(mapID, p)
+		maps.SendPacketToMapExcept(mapID, p, conn)
 
 	case constants.RECV_CHANNEL_STANDARD_SKILL:
 		mapID, p, damages := skills.HandleStandardSkill(conn, reader)
