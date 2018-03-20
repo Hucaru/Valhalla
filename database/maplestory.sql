@@ -35,23 +35,26 @@ CREATE TABLE `characters` (
   `mapPos` int(11) unsigned NOT NULL DEFAULT '0',
   `previousMapID` int(11) unsigned NOT NULL DEFAULT '0',
   `mesos` int(11) NOT NULL DEFAULT '0',
-  `equipSlotSize` tinyint(4) NOT NULL DEFAULT '50',
-  `useSlotSize` tinyint(4) NOT NULL DEFAULT '50',
-  `setupSlotSize` tinyint(4) NOT NULL DEFAULT '50',
-  `etcSlotSize` tinyint(4) NOT NULL DEFAULT '50',
-  `cashSlotSize` tinyint(4) NOT NULL DEFAULT '50',
+  `equipSlotSize` tinyint(4) NOT NULL DEFAULT '32',
+  `useSlotSize` tinyint(4) NOT NULL DEFAULT '32',
+  `setupSlotSize` tinyint(4) NOT NULL DEFAULT '32',
+  `etcSlotSize` tinyint(4) NOT NULL DEFAULT '32',
+  `cashSlotSize` tinyint(4) NOT NULL DEFAULT '32',
   PRIMARY KEY (`id`),
   KEY `userID` (`userID`),
   CONSTRAINT `characters_ibfk_1` FOREIGN KEY (`userID`) REFERENCES `users` (`userID`)
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 
 
-DROP TABLE IF EXISTS `equips`;
-CREATE TABLE `equips` (
+DROP TABLE IF EXISTS `items`;
+CREATE TABLE `items` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `characterID` int(11) NOT NULL,
   `itemID` int(11) NOT NULL,
+  `inventoryID` int(11) NOT NULL,
   `slotNumber` int(11) NOT NULL,
+  `amount` int(11) NOT NULL DEFAULT '1',
+  `flag` tinyint(4) NOT NULL DEFAULT '0',
   `upgradeSlots` tinyint(4) NOT NULL DEFAULT '0',
   `level` tinyint(4) NOT NULL DEFAULT '0',
   `str` smallint(6) NOT NULL DEFAULT '0',
@@ -73,25 +76,7 @@ CREATE TABLE `equips` (
   `creatorName` tinytext NOT NULL,
   PRIMARY KEY (`id`),
   KEY `characterID` (`characterID`),
-  CONSTRAINT `equips_ibfk_3` FOREIGN KEY (`characterID`) REFERENCES `characters` (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=latin1;
-
-
-DROP TABLE IF EXISTS `items`;
-CREATE TABLE `items` (
-  `id` int(11) NOT NULL AUTO_INCREMENT,
-  `characterID` int(11) NOT NULL,
-  `inventoryID` tinyint(4) NOT NULL,
-  `itemID` int(11) NOT NULL,
-  `slotNumber` int(11) NOT NULL,
-  `amount` int(11) NOT NULL DEFAULT '1',
-  `flag` tinyint(4) NOT NULL DEFAULT '0',
-  `creatorName` text NOT NULL,
-  `expiration` int(11) NOT NULL DEFAULT '0',
-  `name` tinytext NOT NULL,
-  PRIMARY KEY (`id`),
-  KEY `characterID` (`characterID`),
-  CONSTRAINT `items_ibfk_1` FOREIGN KEY (`characterID`) REFERENCES `characters` (`id`)
+  CONSTRAINT `items_ibfk_5` FOREIGN KEY (`characterID`) REFERENCES `characters` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 
 
@@ -104,7 +89,7 @@ CREATE TABLE `skills` (
   `cooldown` int(11) NOT NULL,
   PRIMARY KEY (`id`),
   KEY `characterID` (`characterID`),
-  CONSTRAINT `skills_ibfk_1` FOREIGN KEY (`characterID`) REFERENCES `characters` (`id`)
+  CONSTRAINT `skills_ibfk_2` FOREIGN KEY (`characterID`) REFERENCES `characters` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 
 
@@ -123,4 +108,4 @@ CREATE TABLE `users` (
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 
 
--- 2018-02-20 01:41:08
+-- 2018-03-20 01:52:55

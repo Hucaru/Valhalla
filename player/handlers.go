@@ -55,6 +55,8 @@ func HandleMoveInventoryItem(conn interfaces.ClientConn, reader gopacket.Reader)
 
 	// Update character obj
 
+	// send result packet
+
 	fmt.Println("Move item in:", invTabID, "from:", origPos, "to:", newPos, reader)
 }
 

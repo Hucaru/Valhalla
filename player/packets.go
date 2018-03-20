@@ -323,7 +323,7 @@ func enterGame(char character.Character, channelID uint32) gopacket.Packet {
 	// Quests
 	p.WriteUint16(0) // # of quests?
 
-	// What are these for? Minigame and some other things?
+	// What are these for? Minigame record and some other things?
 	p.WriteUint16(0)
 	p.WriteUint32(0)
 	p.WriteUint32(0)
