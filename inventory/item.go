@@ -9,7 +9,6 @@ type Base struct {
 	amount      uint16
 	creatorName string
 	flag        uint16
-	isMesos     bool
 }
 
 func (b *Base) GetInvID() byte {
@@ -66,14 +65,6 @@ func (b *Base) GetFlag() uint16 {
 
 func (b *Base) SetFlag(val uint16) {
 	b.flag = val
-}
-
-func (b *Base) GetIsMesos() bool {
-	return b.isMesos
-}
-
-func (b *Base) SetIsMesos(isMesos bool) {
-	b.isMesos = isMesos
 }
 
 // Item -
