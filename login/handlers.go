@@ -304,7 +304,7 @@ func HandleSelectCharacter(conn clientLoginConn, reader gopacket.Reader) {
 }
 
 func addCharacterItem(characterID int64, itemID int32, slot int32) {
-	_, err := connection.Db.Exec("INSERT INTO equips (characterID, itemID, slotNumber, creatorName) VALUES (?, ?, ?, ?)", characterID, itemID, slot, "")
+	_, err := connection.Db.Exec("INSERT INTO items (characterID, itemID, slotNumber, creatorName) VALUES (?, ?, ?, ?)", characterID, itemID, slot, "")
 
 	if err != nil {
 		panic(err.Error())

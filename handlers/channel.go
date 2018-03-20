@@ -99,6 +99,9 @@ func HandleChannelPacket(conn *connection.ClientChanConn, reader gopacket.Reader
 	case constants.RECV_CHANNEL_NPC_DIALOGUE:
 		// npc.HandleNpcDialogue(conn, reader) // Goes off to the script engine.
 
+	case constants.RECV_CHANNEL_INV_MOVE_ITEM:
+		player.HandleMoveInventoryItem(conn, reader)
+
 	case constants.RECV_CHANNEL_CHANGE_STAT:
 		player.HandleChangeStat(conn, reader)
 

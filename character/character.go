@@ -2,6 +2,8 @@ package character
 
 import (
 	"sync"
+
+	"github.com/Hucaru/Valhalla/inventory"
 )
 
 type Character struct {
@@ -38,8 +40,7 @@ type Character struct {
 	etcSlotSize     byte
 	cashSlotSize    byte
 
-	equips []Equip
-	items  []Item
+	items []inventory.Item
 
 	skills map[uint32]uint32
 
@@ -50,26 +51,6 @@ type Character struct {
 	chairID  uint32
 
 	mutex *sync.RWMutex
-}
-
-func (c *Character) GetEquips() []Equip {
-	c.mutex.RLock()
-	val := c.equips
-	c.mutex.RUnlock()
-
-	return val
-}
-
-func (c *Character) SetEquips(val []Equip) {
-	c.mutex.Lock()
-	c.equips = val
-	c.mutex.Unlock()
-}
-
-func (c *Character) AddEquip(val Equip) {
-	c.mutex.Lock()
-	c.equips = append(c.equips, val)
-	c.mutex.Unlock()
 }
 
 func (c *Character) GetSkills() map[uint32]uint32 {
@@ -86,7 +67,7 @@ func (c *Character) SetSkills(val map[uint32]uint32) {
 	c.mutex.Unlock()
 }
 
-func (c *Character) GetItems() []Item {
+func (c *Character) GetItems() []inventory.Item {
 	c.mutex.RLock()
 	val := c.items
 	c.mutex.RUnlock()
@@ -94,13 +75,13 @@ func (c *Character) GetItems() []Item {
 	return val
 }
 
-func (c *Character) SetItems(val []Item) {
+func (c *Character) SetItems(val []inventory.Item) {
 	c.mutex.Lock()
 	c.items = val
 	c.mutex.Unlock()
 }
 
-func (c *Character) AddItem(val Item) {
+func (c *Character) AddItem(val inventory.Item) {
 	c.mutex.Lock()
 	c.items = append(c.items, val)
 	c.mutex.Unlock()

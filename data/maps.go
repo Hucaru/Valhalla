@@ -112,6 +112,8 @@ type mapleMap struct {
 	mobs          []interfaces.Mob
 	spawnableMobs []mapleMob
 
+	drops []mapleDrop
+
 	forcedReturn uint32
 	returnMap    uint32
 	mobRate      float64

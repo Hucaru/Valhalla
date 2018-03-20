@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/Hucaru/Valhalla/constants"
+	"github.com/Hucaru/Valhalla/inventory"
 
 	"github.com/Hucaru/Valhalla/data"
 	"github.com/Hucaru/Valhalla/interfaces"
@@ -304,4 +305,20 @@ func SpawnMob(mapID, mobID uint32, x, y, foothold int16, respawns bool, controll
 		SendPacketToMap(mapID, showMobPacket(newMob.GetSpawnID(), newMob, true))
 		newMob.SetIsAlive(true)
 	}
+}
+
+func showExistingDrop() {
+
+}
+
+// SpawnDrop -
+func SpawnDrop(item inventory.Item, dropAnimation byte, playerDrop bool, dropperID uint32, pos interfaces.Pos, expirationTime time.Duration) {
+	// Add hack detection later (e.g. check person owns item & item is a dropable item)
+
+	// spawn thread to call remove drop after expirationTime, if item in map drop table remove it
+}
+
+// RemoveDrop -
+func RemoveDrop() {
+
 }

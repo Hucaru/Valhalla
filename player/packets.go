@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/Hucaru/Valhalla/interfaces"
+	"github.com/Hucaru/Valhalla/inventory"
 
 	"github.com/Hucaru/Valhalla/character"
 	"github.com/Hucaru/Valhalla/constants"
@@ -254,16 +255,16 @@ func enterGame(char character.Character, channelID uint32) gopacket.Packet {
 	p.WriteByte(char.GetEtcSlotSize())
 	p.WriteByte(char.GetCashSlotSize())
 
-	for _, v := range char.GetEquips() {
-		if !nx.IsCashItem(v.GetItemID()) {
+	for _, v := range char.GetItems() {
+		if v.GetSlotNumber() < 0 && v.GetInvID() == 1 && !nx.IsCashItem(v.GetItemID()) {
 			p.WriteBytes(addEquip(v))
 		}
 	}
 
 	p.WriteByte(0)
 
-	for _, v := range char.GetEquips() {
-		if nx.IsCashItem(v.GetItemID()) {
+	for _, v := range char.GetItems() {
+		if v.GetSlotNumber() < 0 && v.GetInvID() == 1 && nx.IsCashItem(v.GetItemID()) {
 			p.WriteBytes(addEquip(v))
 		}
 	}
@@ -271,8 +272,8 @@ func enterGame(char character.Character, channelID uint32) gopacket.Packet {
 	p.WriteByte(0)
 
 	// Inventory windows starts
-	for _, v := range char.GetEquips() {
-		if v.GetSlotID() > -1 {
+	for _, v := range char.GetItems() {
+		if v.GetSlotNumber() > -1 && v.GetInvID() == 1 {
 			p.WriteBytes(addEquip(v))
 		}
 	}
@@ -280,7 +281,7 @@ func enterGame(char character.Character, channelID uint32) gopacket.Packet {
 	p.WriteByte(0)
 
 	for _, v := range char.GetItems() {
-		if v.GetInvID() == 1 { // Use
+		if v.GetInvID() == 2 { // Use
 			p.WriteBytes(addItem(v))
 		}
 	}
@@ -288,7 +289,7 @@ func enterGame(char character.Character, channelID uint32) gopacket.Packet {
 	p.WriteByte(0)
 
 	for _, v := range char.GetItems() {
-		if v.GetInvID() == 2 { // Set-up
+		if v.GetInvID() == 3 { // Set-up
 			p.WriteBytes(addItem(v))
 		}
 	}
@@ -296,7 +297,7 @@ func enterGame(char character.Character, channelID uint32) gopacket.Packet {
 	p.WriteByte(0)
 
 	for _, v := range char.GetItems() {
-		if v.GetInvID() == 3 { // Etc
+		if v.GetInvID() == 4 { // Etc
 			p.WriteBytes(addItem(v))
 		}
 	}
@@ -304,7 +305,7 @@ func enterGame(char character.Character, channelID uint32) gopacket.Packet {
 	p.WriteByte(0)
 
 	for _, v := range char.GetItems() {
-		if v.GetInvID() == 4 { // Cash  - not working propery :(
+		if v.GetInvID() == 5 { // Cash  - not working propery :(
 			p.WriteBytes(addItem(v))
 		}
 	}
@@ -341,13 +342,13 @@ func enterGame(char character.Character, channelID uint32) gopacket.Packet {
 	return p
 }
 
-func addEquip(item character.Equip) gopacket.Packet {
+func addEquip(item inventory.Item) gopacket.Packet {
 	p := gopacket.NewPacket()
 
 	if nx.IsCashItem(item.GetItemID()) {
-		p.WriteByte(byte(math.Abs(float64(item.GetSlotID() + 100))))
+		p.WriteByte(byte(math.Abs(float64(item.GetSlotNumber() + 100))))
 	} else {
-		p.WriteByte(byte(math.Abs(float64(item.GetSlotID()))))
+		p.WriteByte(byte(math.Abs(float64(item.GetSlotNumber()))))
 	}
 	p.WriteByte(byte(item.GetItemID() / 1000000))
 	p.WriteUint32(item.GetItemID())
@@ -359,7 +360,7 @@ func addEquip(item character.Equip) gopacket.Packet {
 		p.WriteByte(0)
 	}
 
-	p.WriteUint64(item.GetExpireTime())
+	p.WriteUint64(item.GetExpirationTime())
 	p.WriteByte(item.GetUpgradeSlots())
 	p.WriteByte(item.GetLevel())
 	p.WriteUint16(item.GetStr())
@@ -382,15 +383,15 @@ func addEquip(item character.Equip) gopacket.Packet {
 	return p
 }
 
-func addItem(item character.Item) gopacket.Packet {
+func addItem(item inventory.Item) gopacket.Packet {
 	p := gopacket.NewPacket()
 
-	p.WriteByte(item.GetSlotNumber()) // slot id
-	p.WriteByte(2)                    // type of item e.g. equip, has amount, cash
-	p.WriteUint32(item.GetItemID())   //  itemID
+	p.WriteByte(byte(item.GetSlotNumber())) // slot id
+	p.WriteByte(2)                          // type of item e.g. equip, has amount, cash
+	p.WriteUint32(item.GetItemID())         //  itemID
 	p.WriteByte(0)
-	p.WriteUint64(item.GetExpiration()) // expiration
-	p.WriteUint16(item.GetAmount())     // amount
+	p.WriteUint64(item.GetExpirationTime()) // expiration
+	p.WriteUint16(item.GetAmount())         // amount
 	p.WriteString(item.GetCreatorName())
 	p.WriteUint16(item.GetFlag()) // is it sealed
 

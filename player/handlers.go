@@ -1,6 +1,7 @@
 package player
 
 import (
+	"fmt"
 	"log"
 
 	"github.com/Hucaru/Valhalla/constants"
@@ -17,9 +18,8 @@ func HandleConnect(conn interfaces.ClientConn, reader gopacket.Reader) uint32 {
 	charID := reader.ReadUint32()
 
 	char := character.GetCharacter(charID)
-	char.SetEquips(character.GetCharacterEquips(char.GetCharID()))
-	char.SetSkills(character.GetCharacterSkills(char.GetCharID()))
 	char.SetItems(character.GetCharacterItems(char.GetCharID()))
+	char.SetSkills(character.GetCharacterSkills(char.GetCharID()))
 
 	var isAdmin bool
 
@@ -44,6 +44,18 @@ func HandleConnect(conn interfaces.ClientConn, reader gopacket.Reader) uint32 {
 	log.Println(char.GetName(), "has loged in from", conn)
 
 	return char.GetCurrentMap()
+}
+
+func HandleMoveInventoryItem(conn interfaces.ClientConn, reader gopacket.Reader) {
+	invTabID := reader.ReadByte()
+	origPos := reader.ReadUint16()
+	newPos := reader.ReadUint16()
+
+	reader.ReadInt16() // ?
+
+	// Update character obj
+
+	fmt.Println("Move item in:", invTabID, "from:", origPos, "to:", newPos, reader)
 }
 
 func HandleRequestAvatarInfoWindow(conn interfaces.ClientConn, reader gopacket.Reader) {

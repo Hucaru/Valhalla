@@ -4,6 +4,7 @@ import (
 	"sync"
 
 	"github.com/Hucaru/Valhalla/connection"
+	"github.com/Hucaru/Valhalla/inventory"
 )
 
 func GetCharacterSkills(charID uint32) map[uint32]uint32 {
@@ -30,63 +31,26 @@ func GetCharacterSkills(charID uint32) map[uint32]uint32 {
 	return skills
 }
 
-func GetCharacterItems(charID uint32) []Item {
-	filter := "inventoryID,itemID,slotNumber,amount,flag,creatorName,expiration"
+func GetCharacterItems(charID uint32) []inventory.Item {
+	filter := "inventoryID,itemID,slotNumber,amount,flag,upgradeSlots,level,str,dex,intt,luk,hp,mp,watk,matk,wdef,mdef,accuracy,avoid,hands,speed,jump,expireTime,creatorName"
 	row, err := connection.Db.Query("SELECT "+filter+" FROM items WHERE characterID=?", charID)
 
 	if err != nil {
 		panic(err)
 	}
 
-	var items []Item
+	var items []inventory.Item
 
 	defer row.Close()
 
 	for row.Next() {
-		var item Item
 
+		var item inventory.Item
 		var invID byte
-		var slotNumber byte
 		var itemID uint32
-		var expiration uint64
+		var slotID int16
 		var amount uint16
-		var creatorName string
 		var flag uint16
-
-		row.Scan(&invID, &itemID, &slotNumber, &amount, &flag, &creatorName, &expiration)
-
-		item.SetInvID(invID)
-		item.SetItemID(itemID)
-		item.SetSlotNumber(slotNumber)
-		item.SetExpiration(expiration)
-		item.SetAmount(amount)
-		item.SetCreatorName(creatorName)
-		item.SetFlag(flag)
-
-		items = append(items, item)
-	}
-
-	return items
-}
-
-func GetCharacterEquips(charID uint32) []Equip {
-	filter := "itemID,slotNumber,upgradeSlots,level,str,dex,intt,luk,hp,mp,watk,matk,wdef,mdef,accuracy,avoid,hands,speed,jump,expireTime,creatorName"
-	row, err := connection.Db.Query("SELECT "+filter+" FROM equips WHERE characterID=?", charID)
-
-	if err != nil {
-		panic(err)
-	}
-
-	var items []Equip
-
-	defer row.Close()
-
-	for row.Next() {
-
-		var item Equip
-
-		var itemID uint32
-		var slotID int32
 		var upgradeSlots byte
 		var level byte
 		var str uint16
@@ -107,8 +71,11 @@ func GetCharacterEquips(charID uint32) []Equip {
 		var expireTime uint64
 		var creatorName string
 
-		row.Scan(&itemID,
+		row.Scan(&invID,
+			&itemID,
 			&slotID,
+			&amount,
+			&flag,
 			&upgradeSlots,
 			&level,
 			&str,
@@ -129,8 +96,11 @@ func GetCharacterEquips(charID uint32) []Equip {
 			&expireTime,
 			&creatorName)
 
+		item.SetInvID(invID)
 		item.SetItemID(itemID)
-		item.SetSlotID(slotID)
+		item.SetSlotNumber(slotID)
+		item.SetAmount(amount)
+		item.SetFlag(flag)
 		item.SetUpgradeSlots(upgradeSlots)
 		item.SetLevel(level)
 		item.SetStr(str)
@@ -148,7 +118,7 @@ func GetCharacterEquips(charID uint32) []Equip {
 		item.SetHands(hands)
 		item.SetSpeed(speed)
 		item.SetJump(jump)
-		item.SetExpireTime(expireTime)
+		item.SetExpirationTime(expireTime)
 		item.SetCreatorName(creatorName)
 
 		items = append(items, item)
@@ -393,31 +363,7 @@ func GetCharacters(userID uint32, worldID uint32) []Character {
 		newChar.SetEtcSlotSize(etcSlotSize)
 		newChar.SetCashSlotSize(cashSlotSize)
 
-		equips, err := connection.Db.Query("SELECT itemID, slotNumber FROM equips WHERE characterID=?", newChar.GetCharID())
-
-		if err != nil {
-			panic(err)
-		}
-
-		defer equips.Close()
-
-		var equipment []Equip
-
-		for equips.Next() {
-			var equip Equip
-
-			var itemID uint32
-			var slotID int32
-
-			equips.Scan(&itemID, &slotID)
-
-			equip.SetItemID(itemID)
-			equip.SetSlotID(slotID)
-
-			equipment = append(equipment, equip)
-		}
-
-		newChar.SetEquips(equipment)
+		newChar.SetItems(GetCharacterItems(charID))
 
 		characters = append(characters, newChar)
 	}
