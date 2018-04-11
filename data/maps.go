@@ -176,13 +176,14 @@ func (m *mapleMap) RemoveMob(mob interfaces.Mob) {
 	}
 	m.mutex.RUnlock()
 
-	m.mutex.Lock()
 	if index > -1 {
+		m.mutex.Lock()
 		copy(m.mobs[index:], m.mobs[index+1:])
 		m.mobs[len(m.mobs)-1] = nil
 		m.mobs = m.mobs[:len(m.mobs)-1]
+		m.mutex.Unlock()
 	}
-	m.mutex.Unlock()
+
 }
 
 func (m *mapleMap) addValidSpawnMob(mob mapleMob) {

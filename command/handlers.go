@@ -45,7 +45,42 @@ func HandleCommand(conn interfaces.ClientConn, text string) {
 		val, err := strconv.Atoi(command[1])
 
 		if err != nil {
-			return
+			// Check to see if name matches pre-recorded
+			switch command[1] {
+			// Maple island
+			case "amherst":
+				val = 1010000
+			case "southperry":
+				val = 60000
+			// Victoria island
+			case "lith":
+				val = 104000000
+			case "henesys":
+				val = 100000000
+			case "kerning":
+				val = 103000000
+			case "perion":
+				val = 102000000
+			case "ellinia":
+				val = 101000000
+			case "sleepy":
+				val = 105040300
+			case "gm":
+				val = 180000000
+			// Ossyria
+			case "orbis":
+				val = 200000000
+			case "elnath":
+				val = 211000000
+			case "ludi":
+				val = 220000000
+			case "omega":
+				val = 221000000
+			case "aqua":
+				val = 230000000
+			default:
+				return
+			}
 		}
 
 		mapID := uint32(val)
@@ -134,7 +169,7 @@ func HandleCommand(conn interfaces.ClientConn, text string) {
 
 		char := charsPtr.GetOnlineCharacterHandle(conn)
 		for i := 0; i < amount; i++ {
-			maps.SpawnMob(char.GetCurrentMap(), uint32(val), char.GetX(), char.GetY(), char.GetFoothold(), respawn, conn)
+			maps.SpawnMob(char.GetCurrentMap(), uint32(val), char.GetX(), char.GetY(), char.GetFoothold(), respawn)
 		}
 	case "killmobs":
 		// add later
@@ -162,8 +197,11 @@ func HandleCommand(conn interfaces.ClientConn, text string) {
 		if err != nil {
 			return
 		}
-
-		constants.SetRate(constants.MobRate, uint32(val))
+		if 0 < val && val < 6 {
+			constants.SetRate(constants.MobRate, uint32(val))
+		} else {
+			conn.Write(message.CreateDialogeMessage("Enter a value between 1 and 5"))
+		}
 	case "exprate":
 		val, err := strconv.Atoi(command[1])
 

@@ -1,7 +1,6 @@
 package maps
 
 import (
-	"fmt"
 	"math/rand"
 	"time"
 
@@ -178,12 +177,6 @@ func DamageMobs(mapID uint32, conn interfaces.ClientConn, damages map[uint32][]u
 				conn.Write(endMobControlPacket(mob.GetSpawnID()))
 				SendPacketToMap(mapID, removeMobPacket(mob.GetSpawnID(), 1))
 
-				mob.SetIsAlive(false)
-
-				if mob.GetMobTime() > 0 {
-					mob.SetDeathTime(time.Now().Unix())
-				}
-
 				for k := range mob.GetDmgReceived() {
 
 					char := charsPtr.GetOnlineCharacterHandle(k)
@@ -193,10 +186,8 @@ func DamageMobs(mapID uint32, conn interfaces.ClientConn, damages map[uint32][]u
 					}
 				}
 
-				mob.SetDmgReceived(make(map[interfaces.ClientConn]uint32))
-
+				handleMobDeath(mob, m.GetMobRate())
 				break // mob is dead, no need to process further dmg information for mob
-
 			} else {
 				mob.SetHp(uint32(newHP))
 				conn.Write(controlMobPacket(mob.GetSpawnID(), mob, false, true))
@@ -206,6 +197,19 @@ func DamageMobs(mapID uint32, conn interfaces.ClientConn, damages map[uint32][]u
 	}
 
 	return exp
+}
+
+func handleMobDeath(mob interfaces.Mob, mobRate float64) {
+	mob.SetDmgReceived(make(map[interfaces.ClientConn]uint32))
+	mob.SetIsAlive(false)
+
+	mob.SetDeathTime(time.Now().Unix())
+
+	if !mob.GetBoss() || mob.GetMobTime() == 0 {
+		r := rand.New(rand.NewSource(time.Now().Unix()))
+		multiple := 1 + r.ExpFloat64()
+		mob.SetRespawnTime(time.Now().Add(time.Duration(5.0 / mobRate * multiple)).Unix())
+	}
 }
 
 func startRespawnMonitors() {
@@ -219,10 +223,17 @@ func startRespawnMonitors() {
 				mobRate = 1
 			}
 
+			// Is this still needed? How ofter should this tick? Once a second?
 			ticker := time.NewTicker(time.Duration(5.0/mobRate) * time.Second)
+			lastSpawn := time.Now().Unix()
 
 			for {
 				<-ticker.C
+
+				if time.Now().Unix()-lastSpawn < 8 {
+					continue
+				}
+
 				for _, mob := range m.GetMobs() {
 					if mob == nil {
 						continue
@@ -233,62 +244,32 @@ func startRespawnMonitors() {
 						continue
 					}
 
-					// normal mobs
-					if !mob.GetIsAlive() && !mob.GetBoss() && mob.GetMobTime() == 0 {
+					// normal mob
+					if !mob.GetIsAlive() && !mob.GetBoss() && mob.GetMobTime() == 0 && time.Now().Unix() > mob.GetRespawnTime() {
 						for i := uint32(0); i < constants.GetRate(constants.MobRate); i++ {
 							if len(m.GetMobs()) > m.GetNumberSpawnableMobs()*int(constants.GetRate(constants.MobRate)) {
 								m.RemoveMob(mob)
 								break
 							}
 
-							newMob := m.GetRandomSpawnableMob(mob.GetSX(), mob.GetSY(), mob.GetSFoothold())
-							newMob.SetSpawnID(m.GetNextMobSpawnID())
-
 							m.RemoveMob(mob)
-							m.AddMob(newMob)
+							SpawnMob(uint32(mapID), mob.GetID(), mob.GetSX(), mob.GetSY(), mob.GetSFoothold(), true)
 
-							newMob.SetIsAlive(true)
-
-							if len(m.GetPlayers()) > 0 {
-								newController := m.GetPlayers()[0]
-								newController.Write(controlMobPacket(newMob.GetSpawnID(), newMob, true, false))
-							}
-
-							SendPacketToMap(uint32(mapID), showMobPacket(newMob.GetSpawnID(), newMob, true))
+							lastSpawn = time.Now().Unix()
 						}
-					}
-
-					// bosses and long respawn mbos e.g. iron hog at pig beach or jr boogies
-					if !mob.GetIsAlive() && (mob.GetBoss() || mob.GetMobTime() > 0) {
+					} else if !mob.GetIsAlive() && (mob.GetBoss() || mob.GetMobTime() > 0) { // mob on timer e.g. jr balrog, jr boogie, iron hog at pig beach
 						if (time.Now().Unix() - mob.GetDeathTime()) > mob.GetMobTime() {
-							// Don't keep old id as we take advantage of overflow to recycle them
-							mob.SetSpawnID(m.GetNextMobSpawnID())
-							mob.SetX(mob.GetSX())
-							mob.SetY(mob.GetSY())
-							mob.SetFoothold(mob.GetSFoothold())
-							mob.SetHp(mob.GetMaxHp())
-							mob.SetMp(mob.GetMaxMp())
-							mob.SetIsAlive(true)
-
 							m.RemoveMob(mob)
-							m.AddMob(mob)
-
-							if len(m.GetPlayers()) > 0 {
-								newController := m.GetPlayers()[0]
-								newController.Write(controlMobPacket(mob.GetSpawnID(), mob, true, false))
-							}
-							fmt.Println(mob)
-							SendPacketToMap(uint32(mapID), showMobPacket(mob.GetSpawnID(), mob, true))
+							SpawnMob(uint32(mapID), mob.GetID(), mob.GetSX(), mob.GetSY(), mob.GetSFoothold(), true)
 						}
 					}
-
 				}
 			}
 		}(mapID)
 	}
 }
 
-func SpawnMob(mapID, mobID uint32, x, y, foothold int16, respawns bool, controller interfaces.ClientConn) {
+func SpawnMob(mapID, mobID uint32, x, y, foothold int16, respawns bool) {
 	m := mapsPtr.GetMap(mapID)
 
 	if _, exists := nx.Mob[mobID]; exists {
@@ -307,10 +288,11 @@ func SpawnMob(mapID, mobID uint32, x, y, foothold int16, respawns bool, controll
 
 		if len(m.GetPlayers()) > 0 {
 			newController := m.GetPlayers()[0]
-			newController.Write(controlMobPacket(newMob.GetSpawnID(), newMob, true, true))
+			newController.Write(controlMobPacket(newMob.GetSpawnID(), newMob, true, false))
 		}
-		SendPacketToMap(mapID, showMobPacket(newMob.GetSpawnID(), newMob, true))
 		newMob.SetIsAlive(true)
+		SendPacketToMap(mapID, showMobPacket(newMob.GetSpawnID(), newMob, respawns))
+
 	}
 }
 

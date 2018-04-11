@@ -93,6 +93,8 @@ type Mob interface {
 	SetMobTime(int64)
 	SetDeathTime(int64)
 	GetDeathTime() int64
+	SetRespawnTime(int64)
+	GetRespawnTime() int64
 	GetRespawns() bool
 	SetRespawns(bool)
 	SetDmgReceived(map[ClientConn]uint32)

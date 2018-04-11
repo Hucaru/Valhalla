@@ -14,6 +14,7 @@ In order to run the channel server you are required to convert a v28 Data.wz (no
 * To stop everything run docker-compose down
 * To restart a specific container run docker-compose restart \<name e.g. login-server\>, if a container crashes it will auto restart
 * To stop/start a single container run docker-compose stop/start \<name e.g. login-server\>
+* To rebuild and start a container incase of source updates run docker-compose build && docker-compose up -d --no-deps channel-server \<name e.g. channel-server\>, it will say that the login-server is being rebuilt, this is because all the servers run off of the same base image
 
 ***note: database data is stored as docker volume***
 

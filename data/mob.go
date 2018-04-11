@@ -7,13 +7,13 @@ import (
 
 type mapleMob struct {
 	mapleNpc
-	exp                  uint32
-	hp, maxHp, mp, maxMp uint32
-	boss, respawns       bool
-	level, state         byte
-	x, y                 int16
-	mobTime, deathTime   int64
-	dmgReceived          map[interfaces.ClientConn]uint32
+	exp                             uint32
+	hp, maxHp, mp, maxMp            uint32
+	boss, respawns                  bool
+	level, state                    byte
+	x, y                            int16
+	mobTime, deathTime, respawnTime int64
+	dmgReceived                     map[interfaces.ClientConn]uint32
 }
 
 func (m *mapleMob) GetEXP() uint32                                       { return m.exp }
@@ -36,6 +36,8 @@ func (m *mapleMob) GetMobTime() int64                                    { retur
 func (m *mapleMob) SetMobTime(mobTime int64)                             { m.mobTime = mobTime }
 func (m *mapleMob) SetDeathTime(mobTime int64)                           { m.deathTime = mobTime }
 func (m *mapleMob) GetDeathTime() int64                                  { return m.deathTime }
+func (m *mapleMob) SetRespawnTime(mobTime int64)                         { m.respawnTime = mobTime }
+func (m *mapleMob) GetRespawnTime() int64                                { return m.respawnTime }
 func (m *mapleMob) GetRespawns() bool                                    { return m.respawns }
 func (m *mapleMob) SetRespawns(respawns bool)                            { m.respawns = respawns }
 func (m *mapleMob) SetDmgReceived(dmgR map[interfaces.ClientConn]uint32) { m.dmgReceived = dmgR }
