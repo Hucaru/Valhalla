@@ -51,7 +51,7 @@ CREATE TABLE `items` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `characterID` int(11) NOT NULL,
   `itemID` int(11) NOT NULL,
-  `inventoryID` int(11) NOT NULL DEFAULT '0',
+  `inventoryID` int(11) NOT NULL DEFAULT '1',
   `slotNumber` int(11) NOT NULL,
   `amount` int(11) NOT NULL DEFAULT '1',
   `flag` tinyint(4) NOT NULL DEFAULT '0',
@@ -108,4 +108,4 @@ CREATE TABLE `users` (
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 
 
--- 2018-04-11 02:25:12
+-- 2018-04-11 03:54:03

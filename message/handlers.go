@@ -20,7 +20,3 @@ func HandleAllChat(conn interfaces.ClientConn, reader maplepacket.Reader) (uint3
 
 	return mapID, "", false, allChatPacket(charID, conn.IsAdmin(), msg)
 }
-
-func HandleCashShopButton(conn interfaces.ClientConn, reader maplepacket.Reader) {
-	conn.Write(dialogueBoxPacket("Not currently available"))
-}

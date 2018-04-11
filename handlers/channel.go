@@ -30,7 +30,7 @@ func HandleChannelPacket(conn *connection.ClientChanConn, reader maplepacket.Rea
 		maps.HandlePlayerUsePortal(conn, reader)
 
 	case constants.RECV_CHANNEL_REQUEST_TO_ENTER_CASH_SHOP:
-		message.HandleCashShopButton(conn, reader)
+		conn.Write(message.CreateDialogeMessage("Not currently available"))
 
 	case constants.RECV_CHANNEL_MOVEMENT:
 		mapID, p := player.HandleMovement(conn, reader)

@@ -65,6 +65,26 @@ func HandleCommand(conn interfaces.ClientConn, text string) {
 		} else {
 			// check if player id in else if
 		}
+	case "notice":
+		if len(command) < 2 {
+			return
+		}
+
+		msg := strings.Join(command[1:], " ")
+
+		char := charsPtr.GetOnlineCharacterHandle(conn)
+
+		maps.SendPacketToMap(char.GetCurrentMap(), message.CreateNoticePacket(msg))
+	case "dialogue":
+		if len(command) < 2 {
+			return
+		}
+
+		msg := strings.Join(command[1:], " ")
+
+		char := charsPtr.GetOnlineCharacterHandle(conn)
+
+		maps.SendPacketToMap(char.GetCurrentMap(), message.CreateDialogeMessage(msg))
 	case "job":
 		val, err := strconv.Atoi(command[1])
 
@@ -144,6 +164,30 @@ func HandleCommand(conn interfaces.ClientConn, text string) {
 		}
 
 		constants.SetRate(constants.MobRate, uint32(val))
+	case "exprate":
+		val, err := strconv.Atoi(command[1])
+
+		if err != nil {
+			return
+		}
+
+		constants.SetRate(constants.ExpRate, uint32(val))
+	case "mesorate":
+		val, err := strconv.Atoi(command[1])
+
+		if err != nil {
+			return
+		}
+
+		constants.SetRate(constants.MesoRate, uint32(val))
+	case "droprate":
+		val, err := strconv.Atoi(command[1])
+
+		if err != nil {
+			return
+		}
+
+		constants.SetRate(constants.DropRate, uint32(val))
 	case "header":
 		msg := ""
 		if len(command) >= 2 {
