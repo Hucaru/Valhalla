@@ -2,9 +2,6 @@
   <img src="https://i.imgur.com/mo4tfJF.png"/>
 </p>
 
-# Valhalla
-Golang v28 maplestory server written in golang. 
-
 ## Compiling Instructions
 Install [docker](https://docs.docker.com/install/) & [docker-compose](https://docs.docker.com/compose/install/). Thats it! 
 
