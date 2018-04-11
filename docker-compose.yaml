@@ -6,7 +6,7 @@ services:
         ports:
             - 3306:3306
         volumes:
-            - ./database_data:/var/lib/mysql
+            - db-data:/var/lib/mysql
         environment:
             - MYSQL_ROOT_PASSWORD=password
             - MYSQL_DATABASE=maplestory
@@ -34,3 +34,5 @@ services:
     #    environment:
     #    SERVER_NAME: kibana.example.org
     #    ELASTICSEARCH_URL: elasticsearch
+volumes:
+    db-data:
