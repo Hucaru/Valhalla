@@ -6,7 +6,7 @@
 Golang v28 maplestory server written in golang. 
 
 ## Compiling Instructions
-Install [docker](https://docs.docker.com/install/) & [docker-compose](https://docs.docker.com/compose/install/). Thats it!
+Install [docker](https://docs.docker.com/install/) & [docker-compose](https://docs.docker.com/compose/install/). Thats it! 
 
 ## Starting the Server
 
@@ -17,7 +17,8 @@ docker-compose up will start the server components in docker containers (note: d
 ***note: atm the game servers are not dockerised***
 
 ## Connecting To Your Running Containers
-tbc
+<img height="43px" src="https://d29fhpw069ctt2.cloudfront.net/icon/image/38771/preview.svg"/>
+
 ## Roadmap
 * save changes to database
 * improve monster spawn system
