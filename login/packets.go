@@ -2,19 +2,19 @@ package login
 
 import (
 	"github.com/Hucaru/Valhalla/constants"
-	"github.com/Hucaru/gopacket"
+	"github.com/Hucaru/Valhalla/maplepacket"
 )
 
-func returnFromChannel() gopacket.Packet {
-	pac := gopacket.NewPacket()
+func returnFromChannel() maplepacket.Packet {
+	pac := maplepacket.NewPacket()
 	pac.WriteByte(constants.SEND_LOGIN_RESTARTER)
 	pac.WriteByte(0x01)
 
 	return pac
 }
 
-func loginResponce(result byte, userID uint32, gender byte, isAdmin byte, username string, isBanned int) gopacket.Packet {
-	pac := gopacket.NewPacket()
+func loginResponce(result byte, userID uint32, gender byte, isAdmin byte, username string, isBanned int) maplepacket.Packet {
+	pac := maplepacket.NewPacket()
 	pac.WriteByte(constants.SEND_LOGIN_RESPONCE)
 	pac.WriteByte(result)
 	pac.WriteByte(0x00)
@@ -38,8 +38,8 @@ func loginResponce(result byte, userID uint32, gender byte, isAdmin byte, userna
 	return pac
 }
 
-func migrateClient(ip []byte, port uint16, charID int32) gopacket.Packet {
-	pac := gopacket.NewPacket()
+func migrateClient(ip []byte, port uint16, charID int32) maplepacket.Packet {
+	pac := maplepacket.NewPacket()
 	pac.WriteByte(constants.SEND_LOGIN_CHARACTER_MIGRATE)
 	pac.WriteByte(0x00)
 	pac.WriteByte(0x00)
@@ -52,8 +52,8 @@ func migrateClient(ip []byte, port uint16, charID int32) gopacket.Packet {
 	return pac
 }
 
-func sendBadMigrate() gopacket.Packet {
-	pac := gopacket.NewPacket()
+func sendBadMigrate() maplepacket.Packet {
+	pac := maplepacket.NewPacket()
 	pac.WriteByte(constants.SEND_LOGIN_CHARACTER_MIGRATE)
 	pac.WriteByte(0x00) // flipping these 2 bytes makes the character select screen do nothing it appears
 	pac.WriteByte(0x00)

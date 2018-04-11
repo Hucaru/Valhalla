@@ -13,11 +13,11 @@ import (
 	"github.com/Hucaru/Valhalla/constants"
 	"github.com/Hucaru/Valhalla/data"
 	"github.com/Hucaru/Valhalla/handlers"
+	"github.com/Hucaru/Valhalla/maplepacket"
 	"github.com/Hucaru/Valhalla/maps"
 	"github.com/Hucaru/Valhalla/message"
 	"github.com/Hucaru/Valhalla/nx"
 	"github.com/Hucaru/Valhalla/player"
-	"github.com/Hucaru/gopacket"
 )
 
 func Channel(configFile string) {
@@ -63,7 +63,7 @@ func Channel(configFile string) {
 
 		log.Println("New client connection from", clientConnection)
 
-		go connection.HandleNewConnection(clientConnection, func(p gopacket.Reader) {
+		go connection.HandleNewConnection(clientConnection, func(p maplepacket.Reader) {
 			handlers.HandleChannelPacket(clientConnection, p)
 		}, constants.CLIENT_HEADER_SIZE, true)
 	}

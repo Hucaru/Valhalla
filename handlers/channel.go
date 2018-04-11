@@ -12,11 +12,11 @@ import (
 	"github.com/Hucaru/Valhalla/skills"
 
 	"github.com/Hucaru/Valhalla/constants"
-	"github.com/Hucaru/gopacket"
+	"github.com/Hucaru/Valhalla/maplepacket"
 )
 
 // HandleChannelPacket - Purpose is to send a packet to the correct handler(s), packages should aim to use this function to communicate betweeen each other
-func HandleChannelPacket(conn *connection.ClientChanConn, reader gopacket.Reader) {
+func HandleChannelPacket(conn *connection.ClientChanConn, reader maplepacket.Reader) {
 	switch reader.ReadByte() {
 	case constants.RECV_PING:
 		// Is client expecting a pong?

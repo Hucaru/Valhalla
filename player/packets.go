@@ -10,12 +10,12 @@ import (
 
 	"github.com/Hucaru/Valhalla/character"
 	"github.com/Hucaru/Valhalla/constants"
+	"github.com/Hucaru/Valhalla/maplepacket"
 	"github.com/Hucaru/Valhalla/nx"
-	"github.com/Hucaru/gopacket"
 )
 
-func avatarSummaryWindow(charID uint32, char *character.Character, handle interfaces.ClientConn) gopacket.Packet {
-	p := gopacket.NewPacket()
+func avatarSummaryWindow(charID uint32, char *character.Character, handle interfaces.ClientConn) maplepacket.Packet {
+	p := maplepacket.NewPacket()
 	p.WriteByte(constants.SEND_CHANNEL_AVATAR_INFO_WINDOW)
 	p.WriteUint32(charID)
 	p.WriteByte(char.GetLevel())
@@ -35,8 +35,8 @@ func avatarSummaryWindow(charID uint32, char *character.Character, handle interf
 	return p
 }
 
-func redTextMessage(msg string) gopacket.Packet {
-	p := gopacket.NewPacket()
+func redTextMessage(msg string) maplepacket.Packet {
+	p := maplepacket.NewPacket()
 	p.WriteByte(constants.SEND_CHANNEL_INFO_MESSAGE)
 	p.WriteByte(9)
 	p.WriteString(msg)
@@ -44,8 +44,8 @@ func redTextMessage(msg string) gopacket.Packet {
 	return p
 }
 
-func guildPointsChangeMessage(ammount int32) gopacket.Packet {
-	p := gopacket.NewPacket()
+func guildPointsChangeMessage(ammount int32) maplepacket.Packet {
+	p := maplepacket.NewPacket()
 	p.WriteByte(constants.SEND_CHANNEL_INFO_MESSAGE)
 	p.WriteByte(6)
 	p.WriteInt32(ammount)
@@ -53,8 +53,8 @@ func guildPointsChangeMessage(ammount int32) gopacket.Packet {
 	return p
 }
 
-func fameChangeMessage(ammount int32) gopacket.Packet {
-	p := gopacket.NewPacket()
+func fameChangeMessage(ammount int32) maplepacket.Packet {
+	p := maplepacket.NewPacket()
 	p.WriteByte(constants.SEND_CHANNEL_INFO_MESSAGE)
 	p.WriteByte(4)
 	p.WriteInt32(ammount)
@@ -63,16 +63,16 @@ func fameChangeMessage(ammount int32) gopacket.Packet {
 }
 
 // sends the [item name] has passed its expeiration date and will be removed from your inventory
-func itemExpiredMessage(itemID uint32) gopacket.Packet {
-	p := gopacket.NewPacket()
+func itemExpiredMessage(itemID uint32) maplepacket.Packet {
+	p := maplepacket.NewPacket()
 	p.WriteByte(constants.SEND_CHANNEL_INFO_MESSAGE)
 	p.WriteByte(2)
 	p.WriteUint32(itemID)
 	return p
 }
 
-func itemExpiredMessage2(itemID uint32) gopacket.Packet {
-	p := gopacket.NewPacket()
+func itemExpiredMessage2(itemID uint32) maplepacket.Packet {
+	p := maplepacket.NewPacket()
 	p.WriteByte(constants.SEND_CHANNEL_INFO_MESSAGE)
 	p.WriteByte(8)
 	p.WriteByte(1)
@@ -80,8 +80,8 @@ func itemExpiredMessage2(itemID uint32) gopacket.Packet {
 	return p
 }
 
-func mesosChangeChatMessage(ammount int32) gopacket.Packet {
-	p := gopacket.NewPacket()
+func mesosChangeChatMessage(ammount int32) maplepacket.Packet {
+	p := maplepacket.NewPacket()
 	p.WriteByte(constants.SEND_CHANNEL_INFO_MESSAGE)
 	p.WriteByte(5)
 	p.WriteInt32(ammount)
@@ -89,8 +89,8 @@ func mesosChangeChatMessage(ammount int32) gopacket.Packet {
 	return p
 }
 
-func unableToPickUpMessage(itemNotAvailable bool) gopacket.Packet {
-	p := gopacket.NewPacket()
+func unableToPickUpMessage(itemNotAvailable bool) maplepacket.Packet {
+	p := maplepacket.NewPacket()
 	p.WriteByte(constants.SEND_CHANNEL_INFO_MESSAGE)
 	p.WriteByte(0)
 	if itemNotAvailable {
@@ -102,8 +102,8 @@ func unableToPickUpMessage(itemNotAvailable bool) gopacket.Packet {
 	return p
 }
 
-func dropPickUpMessage(isMesos bool, itemID, ammount uint32) gopacket.Packet {
-	p := gopacket.NewPacket()
+func dropPickUpMessage(isMesos bool, itemID, ammount uint32) maplepacket.Packet {
+	p := maplepacket.NewPacket()
 	p.WriteByte(constants.SEND_CHANNEL_INFO_MESSAGE)
 	p.WriteByte(0)
 
@@ -118,8 +118,8 @@ func dropPickUpMessage(isMesos bool, itemID, ammount uint32) gopacket.Packet {
 	return p
 }
 
-func expGainedMessage(whiteText, appearInChat bool, ammount uint32) gopacket.Packet {
-	p := gopacket.NewPacket()
+func expGainedMessage(whiteText, appearInChat bool, ammount uint32) maplepacket.Packet {
+	p := maplepacket.NewPacket()
 	p.WriteByte(constants.SEND_CHANNEL_INFO_MESSAGE)
 	p.WriteByte(3)
 	p.WriteBool(whiteText)
@@ -129,8 +129,8 @@ func expGainedMessage(whiteText, appearInChat bool, ammount uint32) gopacket.Pac
 	return p
 }
 
-func levelUpAnimationPacket(charID uint32) gopacket.Packet {
-	p := gopacket.NewPacket()
+func levelUpAnimationPacket(charID uint32) maplepacket.Packet {
+	p := maplepacket.NewPacket()
 	p.WriteByte(constants.SEND_CHANNEL_PLAYER_ANIMATION)
 	p.WriteUint32(charID)
 	p.WriteByte(0x00)
@@ -138,8 +138,8 @@ func levelUpAnimationPacket(charID uint32) gopacket.Packet {
 	return p
 }
 
-func skillBookUpdatePacket(skillID uint32, level uint32) gopacket.Packet {
-	p := gopacket.NewPacket()
+func skillBookUpdatePacket(skillID uint32, level uint32) maplepacket.Packet {
+	p := maplepacket.NewPacket()
 	p.WriteByte(constants.SEND_CHANNEL_SKILL_RECORD_UPDATE)
 	p.WriteByte(0x01)   // time check?
 	p.WriteUint16(0x01) // number of skills to update
@@ -150,8 +150,8 @@ func skillBookUpdatePacket(skillID uint32, level uint32) gopacket.Packet {
 	return p
 }
 
-func receivedDmgPacket(charID uint32, ammount uint32, dmgType byte, mobID uint32, hit byte, reduction byte, stance byte) gopacket.Packet {
-	p := gopacket.NewPacket()
+func receivedDmgPacket(charID uint32, ammount uint32, dmgType byte, mobID uint32, hit byte, reduction byte, stance byte) maplepacket.Packet {
+	p := maplepacket.NewPacket()
 	p.WriteByte(constants.SEND_CHANNEL_PLAYER_TAKE_DMG)
 	p.WriteUint32(charID)
 	p.WriteByte(dmgType)
@@ -172,8 +172,8 @@ func receivedDmgPacket(charID uint32, ammount uint32, dmgType byte, mobID uint32
 }
 
 // Maybe split this into byte, uint16 & uint32 forms by taking interace{} and reflecting value type
-func statChangePacket(byPlayer bool, stat uint32, value uint32) gopacket.Packet {
-	p := gopacket.NewPacket()
+func statChangePacket(byPlayer bool, stat uint32, value uint32) maplepacket.Packet {
+	p := maplepacket.NewPacket()
 	p.WriteByte(constants.SEND_CHANNEL_STAT_CHANGE)
 	p.WriteBool(byPlayer)
 	p.WriteUint32(stat)
@@ -182,8 +182,8 @@ func statChangePacket(byPlayer bool, stat uint32, value uint32) gopacket.Packet 
 	return p
 }
 
-func statNoChangePacket() gopacket.Packet {
-	p := gopacket.NewPacket()
+func statNoChangePacket() maplepacket.Packet {
+	p := maplepacket.NewPacket()
 	// Continue game opcode is part of inventory opcode list?
 	p.WriteByte(constants.SEND_CHANNEL_INVENTORY_OPERATION)
 	p.WriteByte(0x01)
@@ -193,8 +193,8 @@ func statNoChangePacket() gopacket.Packet {
 	return p
 }
 
-func playerMovePacket(charID uint32, leftOverBytes gopacket.Packet) gopacket.Packet {
-	p := gopacket.NewPacket()
+func playerMovePacket(charID uint32, leftOverBytes maplepacket.Packet) maplepacket.Packet {
+	p := maplepacket.NewPacket()
 	p.WriteByte(constants.SEND_CHANNEL_PLAYER_MOVEMENT)
 	p.WriteUint32(charID)
 	p.WriteBytes(leftOverBytes)
@@ -202,8 +202,8 @@ func playerMovePacket(charID uint32, leftOverBytes gopacket.Packet) gopacket.Pac
 	return p
 }
 
-func enterGame(char character.Character, channelID uint32) gopacket.Packet {
-	p := gopacket.NewPacket()
+func enterGame(char character.Character, channelID uint32) maplepacket.Packet {
+	p := maplepacket.NewPacket()
 	p.WriteByte(constants.SEND_CHANNEL_WARP_TO_MAP)
 	p.WriteUint32(channelID)
 	p.WriteByte(0) // character portal counter
@@ -342,8 +342,8 @@ func enterGame(char character.Character, channelID uint32) gopacket.Packet {
 	return p
 }
 
-func addEquip(item inventory.Item) gopacket.Packet {
-	p := gopacket.NewPacket()
+func addEquip(item inventory.Item) maplepacket.Packet {
+	p := maplepacket.NewPacket()
 
 	if nx.IsCashItem(item.GetItemID()) {
 		p.WriteByte(byte(math.Abs(float64(item.GetSlotNumber() + 100))))
@@ -383,8 +383,8 @@ func addEquip(item inventory.Item) gopacket.Packet {
 	return p
 }
 
-func addItem(item inventory.Item) gopacket.Packet {
-	p := gopacket.NewPacket()
+func addItem(item inventory.Item) maplepacket.Packet {
+	p := maplepacket.NewPacket()
 
 	p.WriteByte(byte(item.GetSlotNumber())) // slot id
 	p.WriteByte(2)                          // type of item e.g. equip, has amount, cash

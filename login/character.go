@@ -3,11 +3,11 @@ package login
 import (
 	"github.com/Hucaru/Valhalla/character"
 	"github.com/Hucaru/Valhalla/constants"
-	"github.com/Hucaru/gopacket"
+	"github.com/Hucaru/Valhalla/maplepacket"
 )
 
-func displayCharacters(characters []character.Character) gopacket.Packet {
-	pac := gopacket.NewPacket()
+func displayCharacters(characters []character.Character) maplepacket.Packet {
+	pac := maplepacket.NewPacket()
 	pac.WriteByte(constants.SEND_LOGIN_CHARACTER_DATA)
 	pac.WriteByte(0) // ?
 
@@ -24,8 +24,8 @@ func displayCharacters(characters []character.Character) gopacket.Packet {
 	return pac
 }
 
-func nameCheck(name string, nameFound int) gopacket.Packet {
-	pac := gopacket.NewPacket()
+func nameCheck(name string, nameFound int) maplepacket.Packet {
+	pac := maplepacket.NewPacket()
 	pac.WriteByte(constants.SEND_LOGIN_NAME_CHECK_RESULT)
 	pac.WriteString(name)
 
@@ -38,8 +38,8 @@ func nameCheck(name string, nameFound int) gopacket.Packet {
 	return pac
 }
 
-func createdCharacter(success bool, character character.Character) gopacket.Packet {
-	pac := gopacket.NewPacket()
+func createdCharacter(success bool, character character.Character) maplepacket.Packet {
+	pac := maplepacket.NewPacket()
 	pac.WriteByte(constants.SEND_LOGIN_NEW_CHARACTER_GOOD)
 
 	if success {
@@ -52,8 +52,8 @@ func createdCharacter(success bool, character character.Character) gopacket.Pack
 	return pac
 }
 
-func deleteCharacter(charID int32, deleted bool, hacking bool) gopacket.Packet {
-	pac := gopacket.NewPacket()
+func deleteCharacter(charID int32, deleted bool, hacking bool) maplepacket.Packet {
+	pac := maplepacket.NewPacket()
 	pac.WriteByte(constants.SEND_LOGIN_DELETE_CHARACTER)
 	pac.WriteInt32(charID)
 
@@ -68,7 +68,7 @@ func deleteCharacter(charID int32, deleted bool, hacking bool) gopacket.Packet {
 	return pac
 }
 
-func writePlayerCharacter(pac *gopacket.Packet, pos uint32, char character.Character) {
+func writePlayerCharacter(pac *maplepacket.Packet, pos uint32, char character.Character) {
 	pac.WriteUint32(pos)
 
 	name := char.GetName()

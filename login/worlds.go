@@ -4,13 +4,13 @@ import (
 	"strconv"
 
 	"github.com/Hucaru/Valhalla/constants"
-	"github.com/Hucaru/gopacket"
+	"github.com/Hucaru/Valhalla/maplepacket"
 )
 
 var worldNames = [...]string{"Scania", "Bera", "Broa", "Windia", "Khaini", "Bellocan", "Mardia", "Kradia", "Yellonde", "Demethos", "Galicia", "El Nido", "Zenith", "Arcania", "Chaos", "Nova", "Renegates"}
 
-func worldListing(worldIndex byte) gopacket.Packet {
-	pac := gopacket.NewPacket()
+func worldListing(worldIndex byte) maplepacket.Packet {
+	pac := maplepacket.NewPacket()
 	pac.WriteByte(constants.SEND_LOGIN_SEND_WORLD_LIST)
 	pac.WriteByte(worldIndex)               // world id
 	pac.WriteString(worldNames[worldIndex]) // World name -
@@ -33,16 +33,16 @@ func worldListing(worldIndex byte) gopacket.Packet {
 	return pac
 }
 
-func endWorldList() gopacket.Packet {
-	pac := gopacket.NewPacket()
+func endWorldList() maplepacket.Packet {
+	pac := maplepacket.NewPacket()
 	pac.WriteByte(constants.SEND_LOGIN_SEND_WORLD_LIST)
 	pac.WriteByte(0xFF)
 
 	return pac
 }
 
-func worldInfo(warning byte, population byte) gopacket.Packet {
-	p := gopacket.NewPacket()
+func worldInfo(warning byte, population byte) maplepacket.Packet {
+	p := maplepacket.NewPacket()
 	p.WriteByte(constants.SEND_LOGIN_WORLD_META)
 	p.WriteByte(warning)    // Warning - 0 = no warning, 1 - high amount of concurent users, 2 = max uesrs in world
 	p.WriteByte(population) // Population marker - 0 = No maker, 1 = Highly populated, 2 = over populated

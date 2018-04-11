@@ -8,7 +8,7 @@ import (
 	"github.com/Hucaru/Valhalla/connection"
 	"github.com/Hucaru/Valhalla/constants"
 	"github.com/Hucaru/Valhalla/handlers"
-	"github.com/Hucaru/gopacket"
+	"github.com/Hucaru/Valhalla/maplepacket"
 )
 
 const (
@@ -44,7 +44,7 @@ func Login(configFile string) {
 
 		log.Println("New client connection from", clientConnection)
 
-		go connection.HandleNewConnection(clientConnection, func(p gopacket.Reader) {
+		go connection.HandleNewConnection(clientConnection, func(p maplepacket.Reader) {
 			handlers.HandleLoginPacket(clientConnection, p)
 		}, constants.CLIENT_HEADER_SIZE, true)
 	}

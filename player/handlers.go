@@ -10,11 +10,11 @@ import (
 	"github.com/Hucaru/Valhalla/character"
 	"github.com/Hucaru/Valhalla/connection"
 	"github.com/Hucaru/Valhalla/interfaces"
+	"github.com/Hucaru/Valhalla/maplepacket"
 	"github.com/Hucaru/Valhalla/movement"
-	"github.com/Hucaru/gopacket"
 )
 
-func HandleConnect(conn interfaces.ClientConn, reader gopacket.Reader) uint32 {
+func HandleConnect(conn interfaces.ClientConn, reader maplepacket.Reader) uint32 {
 	charID := reader.ReadUint32()
 
 	char := character.GetCharacter(charID)
@@ -46,7 +46,7 @@ func HandleConnect(conn interfaces.ClientConn, reader gopacket.Reader) uint32 {
 	return char.GetCurrentMap()
 }
 
-func HandleMoveInventoryItem(conn interfaces.ClientConn, reader gopacket.Reader) {
+func HandleMoveInventoryItem(conn interfaces.ClientConn, reader maplepacket.Reader) {
 	invTabID := reader.ReadByte()
 	origPos := reader.ReadUint16()
 	newPos := reader.ReadUint16()
@@ -60,7 +60,7 @@ func HandleMoveInventoryItem(conn interfaces.ClientConn, reader gopacket.Reader)
 	fmt.Println("Move item in:", invTabID, "from:", origPos, "to:", newPos, reader)
 }
 
-func HandleRequestAvatarInfoWindow(conn interfaces.ClientConn, reader gopacket.Reader) {
+func HandleRequestAvatarInfoWindow(conn interfaces.ClientConn, reader maplepacket.Reader) {
 	charID := reader.ReadUint32()
 	char := charsPtr.GetCharFromID(charID)
 
@@ -73,7 +73,7 @@ func HandleRequestAvatarInfoWindow(conn interfaces.ClientConn, reader gopacket.R
 	conn.Write(avatarSummaryWindow(charID, char, handle))
 }
 
-func HandleMovement(conn interfaces.ClientConn, reader gopacket.Reader) (uint32, gopacket.Packet) {
+func HandleMovement(conn interfaces.ClientConn, reader maplepacket.Reader) (uint32, maplepacket.Packet) {
 	reader.ReadBytes(5) // used in movement validation
 	char := charsPtr.GetOnlineCharacterHandle(conn)
 
@@ -84,7 +84,7 @@ func HandleMovement(conn interfaces.ClientConn, reader gopacket.Reader) (uint32,
 	return char.GetCurrentMap(), playerMovePacket(char.GetCharID(), reader.GetBuffer()[2:])
 }
 
-func HandleTakeDamage(conn interfaces.ClientConn, reader gopacket.Reader) (uint32, gopacket.Packet) {
+func HandleTakeDamage(conn interfaces.ClientConn, reader maplepacket.Reader) (uint32, maplepacket.Packet) {
 	char := charsPtr.GetOnlineCharacterHandle(conn)
 
 	dmgType := reader.ReadByte()
@@ -112,7 +112,7 @@ func HandleTakeDamage(conn interfaces.ClientConn, reader gopacket.Reader) (uint3
 	return char.GetCurrentMap(), receivedDmgPacket(char.GetCharID(), ammount, dmgType, mobID, hit, reduction, stance)
 }
 
-func HandlePassiveRegen(conn interfaces.ClientConn, reader gopacket.Reader) {
+func HandlePassiveRegen(conn interfaces.ClientConn, reader maplepacket.Reader) {
 	reader.ReadBytes(4) //?
 
 	hp := reader.ReadUint16()
@@ -145,7 +145,7 @@ func HandlePassiveRegen(conn interfaces.ClientConn, reader gopacket.Reader) {
 	// If in party return id and new hp, then update hp bar for party members
 }
 
-func HandleUpdateSkillRecord(conn interfaces.ClientConn, reader gopacket.Reader) {
+func HandleUpdateSkillRecord(conn interfaces.ClientConn, reader maplepacket.Reader) {
 	char := charsPtr.GetOnlineCharacterHandle(conn)
 
 	skillID := reader.ReadUint32()
@@ -169,7 +169,7 @@ func HandleUpdateSkillRecord(conn interfaces.ClientConn, reader gopacket.Reader)
 	conn.Write(skillBookUpdatePacket(skillID, newLevel))
 }
 
-func HandleChangeStat(conn interfaces.ClientConn, reader gopacket.Reader) {
+func HandleChangeStat(conn interfaces.ClientConn, reader maplepacket.Reader) {
 	char := charsPtr.GetOnlineCharacterHandle(conn)
 
 	if char.GetAP() == 0 {

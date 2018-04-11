@@ -10,8 +10,8 @@ import (
 
 	"github.com/Hucaru/Valhalla/data"
 	"github.com/Hucaru/Valhalla/interfaces"
+	"github.com/Hucaru/Valhalla/maplepacket"
 	"github.com/Hucaru/Valhalla/nx"
-	"github.com/Hucaru/gopacket"
 )
 
 var charsPtr interfaces.Characters
@@ -38,7 +38,7 @@ func RegisterNewPlayerCallback(conn interfaces.ClientConn) {
 }
 
 // SendPacketToMap -
-func SendPacketToMap(mapID uint32, p gopacket.Packet) {
+func SendPacketToMap(mapID uint32, p maplepacket.Packet) {
 	if len(p) > 0 {
 
 		players := mapsPtr.GetMap(mapID).GetPlayers()
@@ -52,7 +52,7 @@ func SendPacketToMap(mapID uint32, p gopacket.Packet) {
 }
 
 // SendPacketToMapExcept -
-func SendPacketToMapExcept(mapID uint32, p gopacket.Packet, conn interfaces.ClientConn) {
+func SendPacketToMapExcept(mapID uint32, p maplepacket.Packet, conn interfaces.ClientConn) {
 	if len(p) > 0 {
 
 		players := mapsPtr.GetMap(mapID).GetPlayers()

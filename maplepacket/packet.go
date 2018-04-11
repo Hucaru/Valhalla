@@ -28,9 +28,17 @@ func (p Packet) String() string {
 }
 
 // WriteByte -
-func (p *Packet) WriteByte(data byte) error {
+func (p *Packet) WriteByte(data byte) {
 	*p = append(*p, data)
-	return nil
+}
+
+// WriteBool -
+func (p *Packet) WriteBool(data bool) {
+	if data {
+		*p = append(*p, 0x1)
+	} else {
+		*p = append(*p, 0x0)
+	}
 }
 
 // WriteUint16 -
@@ -58,6 +66,16 @@ func (p *Packet) WriteBytes(data []byte) {
 func (p *Packet) WriteString(str string) {
 	p.WriteUint16(uint16(len(str)))
 	p.WriteBytes([]byte(str))
+}
+
+// WritePaddedString -
+func (p *Packet) WritePaddedString(str string, number int) {
+	if len(str) > number {
+		p.WriteBytes([]byte(str)[:number])
+	} else {
+		p.WriteBytes([]byte(str))
+		p.WriteBytes(make([]byte, number-len(str)))
+	}
 }
 
 // WriteInt16 -

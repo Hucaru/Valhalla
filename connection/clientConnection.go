@@ -7,7 +7,7 @@ import (
 
 	"github.com/Hucaru/Valhalla/constants"
 	"github.com/Hucaru/Valhalla/crypt"
-	"github.com/Hucaru/gopacket"
+	"github.com/Hucaru/Valhalla/maplepacket"
 )
 
 // ClientConnection -
@@ -44,17 +44,17 @@ func (handle *ClientConnection) Close() error {
 	return handle.Conn.Close()
 }
 
-func (handle *ClientConnection) sendPacket(p gopacket.Packet) error {
+func (handle *ClientConnection) sendPacket(p maplepacket.Packet) error {
 	_, err := handle.Conn.Write(p)
 	return err
 }
 
-func (handle *ClientConnection) Write(p gopacket.Packet) error {
+func (handle *ClientConnection) Write(p maplepacket.Packet) error {
 	encryptedPacket := append([]byte{}, p...)
 
 	crypt.Encrypt(encryptedPacket)
 
-	header := gopacket.NewPacket()
+	header := maplepacket.NewPacket()
 	header = crypt.GenerateHeader(len(encryptedPacket), handle.ivSend, constants.MAPLE_VERSION)
 	header.Append(encryptedPacket)
 
@@ -65,7 +65,7 @@ func (handle *ClientConnection) Write(p gopacket.Packet) error {
 	return err
 }
 
-func (handle *ClientConnection) Read(p gopacket.Packet) error {
+func (handle *ClientConnection) Read(p maplepacket.Packet) error {
 	_, err := handle.Conn.Read(p)
 
 	if err != nil {
@@ -87,7 +87,7 @@ func (handle *ClientConnection) GetClientIPPort() net.Addr {
 }
 
 func sendHandshake(client ClientConnection) error {
-	packet := gopacket.NewPacket()
+	packet := maplepacket.NewPacket()
 
 	packet.WriteInt16(13)
 	packet.WriteInt16(constants.MAPLE_VERSION)

@@ -20,9 +20,13 @@ func (r *Reader) GetBuffer() []byte {
 	return *r.packet
 }
 
+func (r *Reader) GetRestAsBytes() []byte {
+	return (*r.packet)[r.pos:]
+}
+
 // ReadByte -
-func (r *Reader) ReadByte() (byte, error) {
-	return r.packet.readByte(&r.pos), nil
+func (r *Reader) ReadByte() byte {
+	return r.packet.readByte(&r.pos)
 }
 
 // ReadBytes -

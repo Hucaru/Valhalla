@@ -4,12 +4,12 @@ import (
 	"log"
 
 	"github.com/Hucaru/Valhalla/interfaces"
+	"github.com/Hucaru/Valhalla/maplepacket"
 	"github.com/Hucaru/Valhalla/movement"
-	"github.com/Hucaru/gopacket"
 )
 
 // HandlePlayerUsePortal -
-func HandlePlayerUsePortal(conn interfaces.ClientConn, reader gopacket.Reader) {
+func HandlePlayerUsePortal(conn interfaces.ClientConn, reader maplepacket.Reader) {
 	char := charsPtr.GetOnlineCharacterHandle(conn)
 
 	PlayerLeaveMap(conn, char.GetCurrentMap())
@@ -65,14 +65,14 @@ func HandlePlayerUsePortal(conn interfaces.ClientConn, reader gopacket.Reader) {
 }
 
 // HandlePlayerEmotion -
-func HandlePlayerEmotion(conn interfaces.ClientConn, reader gopacket.Reader) {
+func HandlePlayerEmotion(conn interfaces.ClientConn, reader maplepacket.Reader) {
 	emotion := reader.ReadUint32()
 	char := charsPtr.GetOnlineCharacterHandle(conn)
 	SendPacketToMap(char.GetCurrentMap(), playerEmotionPacket(char.GetCharID(), emotion))
 }
 
 // HandleMobMovement -
-func HandleMobMovement(conn interfaces.ClientConn, reader gopacket.Reader) {
+func HandleMobMovement(conn interfaces.ClientConn, reader maplepacket.Reader) {
 	mobID := reader.ReadUint32()
 	moveID := reader.ReadUint16()
 	skillUsed := bool(reader.ReadByte() != 0)

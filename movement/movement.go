@@ -4,12 +4,12 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/Hucaru/gopacket"
+	"github.com/Hucaru/Valhalla/maplepacket"
 
 	"github.com/Hucaru/Valhalla/interfaces"
 )
 
-func ParseFragments(nFrags byte, life interfaces.FragObj, reader gopacket.Reader) {
+func ParseFragments(nFrags byte, life interfaces.FragObj, reader maplepacket.Reader) {
 	// http://mapleref.wikia.com/wiki/Movement
 	/*
 		State enum:

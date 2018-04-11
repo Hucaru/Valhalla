@@ -4,18 +4,18 @@ import (
 	"log"
 
 	"github.com/Hucaru/Valhalla/crypt"
-	"github.com/Hucaru/gopacket"
+	"github.com/Hucaru/Valhalla/maplepacket"
 )
 
 // Connection -
 type connection interface {
-	Read(p gopacket.Packet) error
+	Read(p maplepacket.Packet) error
 	Close()
 	String() string
 }
 
 // HandleNewConnection -
-func HandleNewConnection(conn connection, handler func(p gopacket.Reader), sizeOfRead int, isMapleCrypt bool) {
+func HandleNewConnection(conn connection, handler func(p maplepacket.Reader), sizeOfRead int, isMapleCrypt bool) {
 	sizeToRead := sizeOfRead
 	isHeader := true
 
@@ -34,15 +34,15 @@ func HandleNewConnection(conn connection, handler func(p gopacket.Reader), sizeO
 			if isMapleCrypt {
 				sizeToRead = crypt.GetPacketLength(buffer)
 			} else {
-				p := gopacket.NewPacket()
+				p := maplepacket.NewPacket()
 				p.Append(buffer)
-				r := gopacket.NewReader(&p)
+				r := maplepacket.NewReader(&p)
 				sizeToRead = int(r.ReadInt32())
 			}
 		} else {
-			p := gopacket.NewPacket()
+			p := maplepacket.NewPacket()
 			p.Append(buffer)
-			handler(gopacket.NewReader(&p))
+			handler(maplepacket.NewReader(&p))
 			sizeToRead = sizeOfRead
 		}
 

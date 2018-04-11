@@ -4,10 +4,10 @@ import (
 	"fmt"
 
 	"github.com/Hucaru/Valhalla/interfaces"
-	"github.com/Hucaru/gopacket"
+	"github.com/Hucaru/Valhalla/maplepacket"
 )
 
-func HandleStandardSkill(conn interfaces.ClientConn, reader gopacket.Reader) (uint32, gopacket.Packet, map[uint32][]uint32) {
+func HandleStandardSkill(conn interfaces.ClientConn, reader maplepacket.Reader) (uint32, maplepacket.Packet, map[uint32][]uint32) {
 	char := charsPtr.GetOnlineCharacterHandle(conn)
 
 	tByte := reader.ReadByte()
@@ -49,7 +49,7 @@ func HandleStandardSkill(conn interfaces.ClientConn, reader gopacket.Reader) (ui
 	return char.GetCurrentMap(), standardSkillPacket(char.GetCharID(), skillID, targets, hits, display, animation, damages), damages
 }
 
-func HandleRangedSkill(conn interfaces.ClientConn, reader gopacket.Reader) (uint32, gopacket.Packet, map[uint32][]uint32) {
+func HandleRangedSkill(conn interfaces.ClientConn, reader maplepacket.Reader) (uint32, maplepacket.Packet, map[uint32][]uint32) {
 	fmt.Println("Ranged skill", reader)
 	char := charsPtr.GetOnlineCharacterHandle(conn)
 
@@ -93,7 +93,7 @@ func HandleRangedSkill(conn interfaces.ClientConn, reader gopacket.Reader) (uint
 	return char.GetCurrentMap(), rangedSkillPacket(char.GetCharID(), skillID, 2070006, targets, hits, display, animation, damages), damages
 }
 
-func HandleMagicSkill(conn interfaces.ClientConn, reader gopacket.Reader) (uint32, gopacket.Packet, map[uint32][]uint32) {
+func HandleMagicSkill(conn interfaces.ClientConn, reader maplepacket.Reader) (uint32, maplepacket.Packet, map[uint32][]uint32) {
 	char := charsPtr.GetOnlineCharacterHandle(conn)
 
 	tByte := reader.ReadByte()
@@ -135,7 +135,7 @@ func HandleMagicSkill(conn interfaces.ClientConn, reader gopacket.Reader) (uint3
 	return char.GetCurrentMap(), magicSkillPacket(char.GetCharID(), skillID, targets, hits, display, animation, damages), damages
 }
 
-func HandleSpecialSkill(conn interfaces.ClientConn, reader gopacket.Reader) (uint32, gopacket.Packet) {
+func HandleSpecialSkill(conn interfaces.ClientConn, reader maplepacket.Reader) (uint32, maplepacket.Packet) {
 	fmt.Println("Special skill", reader)
 	skillID := reader.ReadUint32()
 	level := reader.ReadByte()

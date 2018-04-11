@@ -2,11 +2,11 @@ package skills
 
 import (
 	"github.com/Hucaru/Valhalla/constants"
-	"github.com/Hucaru/gopacket"
+	"github.com/Hucaru/Valhalla/maplepacket"
 )
 
-func standardSkillPacket(charID uint32, skillID uint32, targets, hits, display, animation byte, damages map[uint32][]uint32) gopacket.Packet {
-	p := gopacket.NewPacket()
+func standardSkillPacket(charID uint32, skillID uint32, targets, hits, display, animation byte, damages map[uint32][]uint32) maplepacket.Packet {
+	p := maplepacket.NewPacket()
 	p.WriteByte(constants.SEND_CHANNEL_PLAYER_USE_STANDARD_SKILL)
 	p.WriteUint32(charID)
 	p.WriteByte(byte(targets*0x10) + hits)
@@ -32,8 +32,8 @@ func standardSkillPacket(charID uint32, skillID uint32, targets, hits, display, 
 	return p
 }
 
-func rangedSkillPacket(charID, skillID, objID uint32, targets, hits, display, animation byte, damages map[uint32][]uint32) gopacket.Packet {
-	p := gopacket.NewPacket()
+func rangedSkillPacket(charID, skillID, objID uint32, targets, hits, display, animation byte, damages map[uint32][]uint32) maplepacket.Packet {
+	p := maplepacket.NewPacket()
 	p.WriteByte(constants.SEND_CHANNEL_PLAYER_USE_RANGED_SKILL)
 	p.WriteUint32(charID)
 	p.WriteByte(targets*0x10 + hits)
@@ -58,8 +58,8 @@ func rangedSkillPacket(charID, skillID, objID uint32, targets, hits, display, an
 	return p
 }
 
-func magicSkillPacket(charID uint32, skillID uint32, targets, hits, display, animation byte, damages map[uint32][]uint32) gopacket.Packet {
-	p := gopacket.NewPacket()
+func magicSkillPacket(charID uint32, skillID uint32, targets, hits, display, animation byte, damages map[uint32][]uint32) maplepacket.Packet {
+	p := maplepacket.NewPacket()
 	p.WriteByte(constants.SEND_CHANNEL_PLAYER_USE_MAGIC_SKILL)
 	p.WriteUint32(charID)
 	p.WriteByte(targets*0x10 + hits)
@@ -84,8 +84,8 @@ func magicSkillPacket(charID uint32, skillID uint32, targets, hits, display, ani
 	return p
 }
 
-func skillAnimationPacket(charID uint32, skillID uint32, level byte) gopacket.Packet {
-	p := gopacket.NewPacket()
+func skillAnimationPacket(charID uint32, skillID uint32, level byte) maplepacket.Packet {
+	p := maplepacket.NewPacket()
 	p.WriteByte(constants.SEND_CHANNEL_PLAYER_ANIMATION)
 	p.WriteUint32(charID)
 	p.WriteByte(0x01)
@@ -95,8 +95,8 @@ func skillAnimationPacket(charID uint32, skillID uint32, level byte) gopacket.Pa
 	return p
 }
 
-func continuePacket() gopacket.Packet {
-	p := gopacket.NewPacket()
+func continuePacket() maplepacket.Packet {
+	p := maplepacket.NewPacket()
 	// Continue game opcode is part of inventory opcode list?
 	p.WriteByte(constants.SEND_CHANNEL_INVENTORY_OPERATION)
 	p.WriteByte(0x01)
@@ -106,8 +106,8 @@ func continuePacket() gopacket.Packet {
 	return p
 }
 
-func gmHidePacket(isHidden bool) gopacket.Packet {
-	p := gopacket.NewPacket()
+func gmHidePacket(isHidden bool) maplepacket.Packet {
+	p := maplepacket.NewPacket()
 	p.WriteByte(constants.SEND_CHANNEL_EMPLOYEE)
 	p.WriteByte(0x0F)
 	p.WriteBool(isHidden)

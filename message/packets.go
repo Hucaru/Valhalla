@@ -2,11 +2,11 @@ package message
 
 import (
 	"github.com/Hucaru/Valhalla/constants"
-	"github.com/Hucaru/gopacket"
+	"github.com/Hucaru/Valhalla/maplepacket"
 )
 
-func ScrollingHeaderPacket(msg string) gopacket.Packet {
-	p := gopacket.NewPacket()
+func ScrollingHeaderPacket(msg string) maplepacket.Packet {
+	p := maplepacket.NewPacket()
 	p.WriteByte(constants.SEND_CHANNEL_BROADCAST_MESSAGE)
 	p.WriteByte(4)
 	p.WriteBool(bool(len(msg) > 0))
@@ -15,8 +15,8 @@ func ScrollingHeaderPacket(msg string) gopacket.Packet {
 	return p
 }
 
-func noticePacket(msg string) gopacket.Packet {
-	p := gopacket.NewPacket()
+func noticePacket(msg string) maplepacket.Packet {
+	p := maplepacket.NewPacket()
 	p.WriteByte(constants.SEND_CHANNEL_BROADCAST_MESSAGE)
 	p.WriteByte(0)
 	p.WriteString(msg)
@@ -24,8 +24,8 @@ func noticePacket(msg string) gopacket.Packet {
 	return p
 }
 
-func dialogueBoxPacket(msg string) gopacket.Packet {
-	p := gopacket.NewPacket()
+func dialogueBoxPacket(msg string) maplepacket.Packet {
+	p := maplepacket.NewPacket()
 	p.WriteByte(constants.SEND_CHANNEL_BROADCAST_MESSAGE)
 	p.WriteByte(1)
 	p.WriteString(msg)
@@ -34,8 +34,8 @@ func dialogueBoxPacket(msg string) gopacket.Packet {
 }
 
 // Need to figure out how to display the username and message atm it bastardises it.
-func broadcastChannelMessagePacket(senderName string, msg string, channel byte, isSameChannel bool) gopacket.Packet {
-	p := gopacket.NewPacket()
+func broadcastChannelMessagePacket(senderName string, msg string, channel byte, isSameChannel bool) maplepacket.Packet {
+	p := maplepacket.NewPacket()
 	p.WriteByte(constants.SEND_CHANNEL_BROADCAST_MESSAGE)
 	p.WriteByte(3)
 	p.WriteString(senderName)
@@ -49,8 +49,8 @@ func broadcastChannelMessagePacket(senderName string, msg string, channel byte, 
 	return p
 }
 
-func bubblessChatPacket(msgType byte, sender string, msg string) gopacket.Packet {
-	p := gopacket.NewPacket()
+func bubblessChatPacket(msgType byte, sender string, msg string) maplepacket.Packet {
+	p := maplepacket.NewPacket()
 	p.WriteByte(constants.SEND_CHANNEL_BUBBLESS_CHAT)
 	p.WriteByte(msgType) // 0x00 buddy chat, 0x01 - party, 0x02 - guild
 	p.WriteString(sender)
@@ -59,8 +59,8 @@ func bubblessChatPacket(msgType byte, sender string, msg string) gopacket.Packet
 	return p
 }
 
-func whisperPacket(sender string, message string) gopacket.Packet {
-	p := gopacket.NewPacket()
+func whisperPacket(sender string, message string) maplepacket.Packet {
+	p := maplepacket.NewPacket()
 	p.WriteByte(constants.SEND_CHANNEL_WHISPER)
 	p.WriteString(sender)
 	p.WriteByte(0x00) // Some kind of channel flag, zero is same channel, not sure what non zero means for packet
@@ -69,8 +69,8 @@ func whisperPacket(sender string, message string) gopacket.Packet {
 	return p
 }
 
-func allChatPacket(senderID uint32, isAdmin bool, msg string) gopacket.Packet {
-	p := gopacket.NewPacket()
+func allChatPacket(senderID uint32, isAdmin bool, msg string) maplepacket.Packet {
+	p := maplepacket.NewPacket()
 	p.WriteByte(constants.SEND_CHANNEL_ALL_CHAT_MSG)
 	p.WriteUint32(senderID)
 	p.WriteBool(isAdmin)
@@ -79,8 +79,8 @@ func allChatPacket(senderID uint32, isAdmin bool, msg string) gopacket.Packet {
 	return p
 }
 
-func gmBanMessage(good bool) gopacket.Packet {
-	p := gopacket.NewPacket()
+func gmBanMessage(good bool) maplepacket.Packet {
+	p := maplepacket.NewPacket()
 	p.WriteByte(constants.SEND_CHANNEL_EMPLOYEE)
 	if good {
 		p.WriteByte(4)
@@ -93,8 +93,8 @@ func gmBanMessage(good bool) gopacket.Packet {
 	return p
 }
 
-func gmRemoveFromRanksMessage() gopacket.Packet {
-	p := gopacket.NewPacket()
+func gmRemoveFromRanksMessage() maplepacket.Packet {
+	p := maplepacket.NewPacket()
 	p.WriteByte(constants.SEND_CHANNEL_EMPLOYEE)
 	p.WriteByte(6)
 	p.WriteByte(0)
@@ -102,8 +102,8 @@ func gmRemoveFromRanksMessage() gopacket.Packet {
 	return p
 }
 
-func gmWarningMessage(good bool) gopacket.Packet {
-	p := gopacket.NewPacket()
+func gmWarningMessage(good bool) maplepacket.Packet {
+	p := maplepacket.NewPacket()
 	p.WriteByte(constants.SEND_CHANNEL_EMPLOYEE)
 	p.WriteByte(14)
 	if good {
@@ -115,8 +115,8 @@ func gmWarningMessage(good bool) gopacket.Packet {
 	return p
 }
 
-func gmBlockedAccessMessage() gopacket.Packet {
-	p := gopacket.NewPacket()
+func gmBlockedAccessMessage() maplepacket.Packet {
+	p := maplepacket.NewPacket()
 	p.WriteByte(constants.SEND_CHANNEL_EMPLOYEE)
 	p.WriteByte(4)
 	p.WriteByte(0)
@@ -124,8 +124,8 @@ func gmBlockedAccessMessage() gopacket.Packet {
 	return p
 }
 
-func gmUnblockMessage() gopacket.Packet {
-	p := gopacket.NewPacket()
+func gmUnblockMessage() maplepacket.Packet {
+	p := maplepacket.NewPacket()
 	p.WriteByte(constants.SEND_CHANNEL_EMPLOYEE)
 	p.WriteByte(5)
 	p.WriteByte(0)
@@ -134,8 +134,8 @@ func gmUnblockMessage() gopacket.Packet {
 }
 
 // DOn't know what this is used for
-func gmWrongNpcMessage() gopacket.Packet {
-	p := gopacket.NewPacket()
+func gmWrongNpcMessage() maplepacket.Packet {
+	p := maplepacket.NewPacket()
 	p.WriteByte(constants.SEND_CHANNEL_EMPLOYEE)
 	p.WriteByte(8)
 	p.WriteUint16(0)

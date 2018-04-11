@@ -4,22 +4,22 @@ import (
 	"fmt"
 	"net"
 
-	"github.com/Hucaru/gopacket"
+	"github.com/Hucaru/Valhalla/maplepacket"
 )
 
 // TODO: Add a crypt decrypt step to all packets sent/recv
 
 type Message struct {
-	Reader     gopacket.Reader
-	ReturnChan chan gopacket.Packet
+	Reader     maplepacket.Reader
+	ReturnChan chan maplepacket.Packet
 }
 
-func NewMessage(p gopacket.Packet, ch chan gopacket.Packet) Message {
+func NewMessage(p maplepacket.Packet, ch chan maplepacket.Packet) Message {
 	if ch == nil {
-		ch = make(chan gopacket.Packet)
+		ch = make(chan maplepacket.Packet)
 	}
 
-	return Message{Reader: gopacket.NewReader(&p), ReturnChan: ch}
+	return Message{Reader: maplepacket.NewReader(&p), ReturnChan: ch}
 }
 
 type ServerConnection struct {
@@ -39,8 +39,8 @@ func (handle *ServerConnection) Close() {
 	handle.conn.Close()
 }
 
-func (handle *ServerConnection) Write(p gopacket.Packet) error {
-	header := gopacket.NewPacket()
+func (handle *ServerConnection) Write(p maplepacket.Packet) error {
+	header := maplepacket.NewPacket()
 	header.WriteInt32(int32(len(p)))
 	header.Append(p)
 
@@ -48,7 +48,7 @@ func (handle *ServerConnection) Write(p gopacket.Packet) error {
 	return err
 }
 
-func (handle *ServerConnection) Read(p gopacket.Packet) error {
+func (handle *ServerConnection) Read(p maplepacket.Packet) error {
 	_, err := handle.conn.Read(p)
 	return err
 }

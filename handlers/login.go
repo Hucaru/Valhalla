@@ -6,11 +6,11 @@ import (
 	"github.com/Hucaru/Valhalla/connection"
 	"github.com/Hucaru/Valhalla/constants"
 	"github.com/Hucaru/Valhalla/login"
-	"github.com/Hucaru/gopacket"
+	"github.com/Hucaru/Valhalla/maplepacket"
 )
 
 // HandleLoginPacket -
-func HandleLoginPacket(conn *connection.ClientLoginConn, reader gopacket.Reader) {
+func HandleLoginPacket(conn *connection.ClientLoginConn, reader maplepacket.Reader) {
 	switch reader.ReadByte() {
 	case constants.RECV_RETURN_TO_LOGIN_SCREEN:
 		login.HandleReturnToLoginScreen(conn, reader)

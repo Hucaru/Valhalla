@@ -4,11 +4,11 @@ import (
 	"github.com/Hucaru/Valhalla/character"
 	"github.com/Hucaru/Valhalla/constants"
 	"github.com/Hucaru/Valhalla/interfaces"
-	"github.com/Hucaru/gopacket"
+	"github.com/Hucaru/Valhalla/maplepacket"
 )
 
-func playerEnterMapPacket(char *character.Character) gopacket.Packet {
-	p := gopacket.NewPacket()
+func playerEnterMapPacket(char *character.Character) maplepacket.Packet {
+	p := maplepacket.NewPacket()
 	p.WriteByte(constants.SEND_CHANNEL_CHARCTER_ENTER_FIELD)
 	p.WriteUint32(char.GetCharID()) // player id
 	p.WriteString(char.GetName())   // char name
@@ -34,8 +34,8 @@ func playerEnterMapPacket(char *character.Character) gopacket.Packet {
 	return p
 }
 
-func ChangeMapPacket(mapID uint32, channelID uint32, mapPos byte, hp uint16) gopacket.Packet {
-	p := gopacket.NewPacket()
+func ChangeMapPacket(mapID uint32, channelID uint32, mapPos byte, hp uint16) maplepacket.Packet {
+	p := maplepacket.NewPacket()
 	p.WriteByte(constants.SEND_CHANNEL_WARP_TO_MAP)
 	p.WriteUint32(channelID)
 	p.WriteByte(0) // character portal counter
@@ -48,16 +48,16 @@ func ChangeMapPacket(mapID uint32, channelID uint32, mapPos byte, hp uint16) gop
 	return p
 }
 
-func playerLeftMapPacket(charID uint32) gopacket.Packet {
-	p := gopacket.NewPacket()
+func playerLeftMapPacket(charID uint32) maplepacket.Packet {
+	p := maplepacket.NewPacket()
 	p.WriteByte(constants.SEND_CHANNEL_CHARCTER_LEAVE_FIELD)
 	p.WriteUint32(charID)
 
 	return p
 }
 
-func showMobPacket(spawnID uint32, mob interfaces.Mob, isNewSpawn bool) gopacket.Packet {
-	p := gopacket.NewPacket()
+func showMobPacket(spawnID uint32, mob interfaces.Mob, isNewSpawn bool) maplepacket.Packet {
+	p := maplepacket.NewPacket()
 	p.WriteByte(constants.SEND_CHANNEL_SHOW_MOB)
 	p.WriteUint32(spawnID)
 	p.WriteByte(0x01)
@@ -82,8 +82,8 @@ func showMobPacket(spawnID uint32, mob interfaces.Mob, isNewSpawn bool) gopacket
 	return p
 }
 
-func showNpcPacket(index uint32, npc interfaces.Npc) gopacket.Packet {
-	p := gopacket.NewPacket()
+func showNpcPacket(index uint32, npc interfaces.Npc) maplepacket.Packet {
+	p := maplepacket.NewPacket()
 	p.WriteByte(constants.SEND_CHANNEL_NPC_SPAWN_1)
 	p.WriteUint32(index)
 	p.WriteUint32(npc.GetID())
@@ -113,8 +113,8 @@ func showNpcPacket(index uint32, npc interfaces.Npc) gopacket.Packet {
 	return p
 }
 
-func playerEmotionPacket(playerID uint32, emotion uint32) gopacket.Packet {
-	p := gopacket.NewPacket()
+func playerEmotionPacket(playerID uint32, emotion uint32) maplepacket.Packet {
+	p := maplepacket.NewPacket()
 	p.WriteByte(constants.SEND_CHANNEL_PLAYER_EMOTION)
 	p.WriteUint32(playerID)
 	p.WriteUint32(emotion)
@@ -122,8 +122,8 @@ func playerEmotionPacket(playerID uint32, emotion uint32) gopacket.Packet {
 	return p
 }
 
-func controlMobPacket(spawnID uint32, mob interfaces.Mob, isNewSpawn, isAgro bool) gopacket.Packet {
-	p := gopacket.NewPacket()
+func controlMobPacket(spawnID uint32, mob interfaces.Mob, isNewSpawn, isAgro bool) maplepacket.Packet {
+	p := maplepacket.NewPacket()
 	p.WriteByte(constants.SEND_CHANNEL_CONTROL_MOB)
 	if isAgro {
 		p.WriteByte(0x04) //
@@ -152,8 +152,8 @@ func controlMobPacket(spawnID uint32, mob interfaces.Mob, isNewSpawn, isAgro boo
 	return p
 }
 
-func controlAckPacket(mobID uint32, moveID uint16, useSkill bool, skill byte, level byte, mp uint16) gopacket.Packet {
-	p := gopacket.NewPacket()
+func controlAckPacket(mobID uint32, moveID uint16, useSkill bool, skill byte, level byte, mp uint16) maplepacket.Packet {
+	p := maplepacket.NewPacket()
 	p.WriteByte(constants.SEND_CHANNEL_CONTROL_MOB_ACK)
 	p.WriteUint32(mobID)
 	p.WriteUint16(moveID)
@@ -165,8 +165,8 @@ func controlAckPacket(mobID uint32, moveID uint16, useSkill bool, skill byte, le
 	return p
 }
 
-func moveMobPacket(mobID uint32, skillUsed bool, skill byte, projPos uint32, buf []byte) gopacket.Packet {
-	p := gopacket.NewPacket()
+func moveMobPacket(mobID uint32, skillUsed bool, skill byte, projPos uint32, buf []byte) maplepacket.Packet {
+	p := maplepacket.NewPacket()
 	p.WriteByte(constants.SEND_CHANNE_MOVE_MOB)
 	p.WriteUint32(mobID)
 	p.WriteBool(skillUsed)
@@ -178,8 +178,8 @@ func moveMobPacket(mobID uint32, skillUsed bool, skill byte, projPos uint32, buf
 
 }
 
-func endMobControlPacket(mobID uint32) gopacket.Packet {
-	p := gopacket.NewPacket()
+func endMobControlPacket(mobID uint32) maplepacket.Packet {
+	p := maplepacket.NewPacket()
 	p.WriteByte(constants.SEND_CHANNEL_CONTROL_MOB)
 	p.WriteByte(0)
 	p.WriteUint32(mobID)
@@ -187,8 +187,8 @@ func endMobControlPacket(mobID uint32) gopacket.Packet {
 	return p
 }
 
-func removeMobPacket(mobID uint32, deathType byte) gopacket.Packet {
-	p := gopacket.NewPacket()
+func removeMobPacket(mobID uint32, deathType byte) maplepacket.Packet {
+	p := maplepacket.NewPacket()
 	p.WriteByte(constants.SEND_CHANNEL_REMOVE_MOB)
 	p.WriteUint32(mobID)
 	p.WriteByte(deathType)
@@ -196,8 +196,8 @@ func removeMobPacket(mobID uint32, deathType byte) gopacket.Packet {
 	return p
 }
 
-func showMobHpChange(spawnID uint32, dmg int32) gopacket.Packet {
-	p := gopacket.NewPacket()
+func showMobHpChange(spawnID uint32, dmg int32) maplepacket.Packet {
+	p := maplepacket.NewPacket()
 	p.WriteByte(constants.SEND_CHANNEL_MOB_CHANGE_HP)
 	p.WriteUint32(spawnID)
 	p.WriteByte(0)

@@ -8,11 +8,11 @@ import (
 
 	"github.com/Hucaru/Valhalla/character"
 	"github.com/Hucaru/Valhalla/connection"
-	"github.com/Hucaru/gopacket"
+	"github.com/Hucaru/Valhalla/maplepacket"
 )
 
 type clientLoginConn interface {
-	Write(gopacket.Packet) error
+	Write(maplepacket.Packet) error
 
 	SetGender(byte)
 	GetGender() byte
@@ -32,11 +32,11 @@ type clientLoginConn interface {
 	SetSessionHash(string)
 }
 
-func HandleReturnToLoginScreen(conn clientLoginConn, reader gopacket.Reader) {
+func HandleReturnToLoginScreen(conn clientLoginConn, reader maplepacket.Reader) {
 	conn.Write(returnFromChannel())
 }
 
-func HandleLoginRequest(conn clientLoginConn, reader gopacket.Reader) {
+func HandleLoginRequest(conn clientLoginConn, reader maplepacket.Reader) {
 	usernameLength := reader.ReadInt16()
 	username := reader.ReadString(int(usernameLength))
 
@@ -93,7 +93,7 @@ func HandleLoginRequest(conn clientLoginConn, reader gopacket.Reader) {
 	conn.Write(loginResponce(result, userID, gender, isAdmin, username, isBanned))
 }
 
-func HandleGoodLogin(conn clientLoginConn, reader gopacket.Reader) {
+func HandleGoodLogin(conn clientLoginConn, reader maplepacket.Reader) {
 	var username, password string
 
 	userID := conn.GetUserID()
@@ -118,14 +118,14 @@ func HandleGoodLogin(conn clientLoginConn, reader gopacket.Reader) {
 	conn.Write(endWorldList())
 }
 
-func HandleWorldSelect(conn clientLoginConn, reader gopacket.Reader) {
+func HandleWorldSelect(conn clientLoginConn, reader maplepacket.Reader) {
 	worldID := reader.ReadInt16()
 	conn.SetWorldID(uint32(worldID))
 
 	conn.Write(worldInfo(0, 0)) // hard coded for now
 }
 
-func HandleChannelSelect(conn clientLoginConn, reader gopacket.Reader) {
+func HandleChannelSelect(conn clientLoginConn, reader maplepacket.Reader) {
 	selectedWorld := reader.ReadByte() // world
 	conn.SetChanID(reader.ReadByte())  // Channel
 
@@ -138,7 +138,7 @@ func HandleChannelSelect(conn clientLoginConn, reader gopacket.Reader) {
 	conn.Write(displayCharacters(characters))
 }
 
-func HandleNameCheck(conn clientLoginConn, reader gopacket.Reader) {
+func HandleNameCheck(conn clientLoginConn, reader maplepacket.Reader) {
 	nameLength := reader.ReadInt16()
 	newCharName := reader.ReadString(int(nameLength))
 
@@ -153,7 +153,7 @@ func HandleNameCheck(conn clientLoginConn, reader gopacket.Reader) {
 	conn.Write(nameCheck(newCharName, nameFound))
 }
 
-func HandleNewCharacter(conn clientLoginConn, reader gopacket.Reader) {
+func HandleNewCharacter(conn clientLoginConn, reader maplepacket.Reader) {
 	nameLength := reader.ReadInt16()
 	name := reader.ReadString(int(nameLength))
 	face := reader.ReadInt32()
@@ -248,7 +248,7 @@ func HandleNewCharacter(conn clientLoginConn, reader gopacket.Reader) {
 	conn.Write(createdCharacter(valid, newCharacter))
 }
 
-func HandleDeleteCharacter(conn clientLoginConn, reader gopacket.Reader) {
+func HandleDeleteCharacter(conn clientLoginConn, reader maplepacket.Reader) {
 	dob := reader.ReadInt32()
 	charID := reader.ReadInt32()
 
@@ -285,7 +285,7 @@ func HandleDeleteCharacter(conn clientLoginConn, reader gopacket.Reader) {
 	conn.Write(deleteCharacter(charID, deleted, hacking))
 }
 
-func HandleSelectCharacter(conn clientLoginConn, reader gopacket.Reader) {
+func HandleSelectCharacter(conn clientLoginConn, reader maplepacket.Reader) {
 	charID := reader.ReadInt32()
 
 	var charCount int

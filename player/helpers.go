@@ -5,7 +5,7 @@ import (
 	"math/rand"
 	"time"
 
-	"github.com/Hucaru/gopacket"
+	"github.com/Hucaru/Valhalla/maplepacket"
 
 	"github.com/Hucaru/Valhalla/constants"
 	"github.com/Hucaru/Valhalla/interfaces"
@@ -93,7 +93,7 @@ func SetLevel(conn interfaces.ClientConn, newLevel byte) {
 	conn.Write(statChangePacket(false, levelID, uint32(newLevel)))
 }
 
-func GiveExp(conn interfaces.ClientConn, exp uint32) gopacket.Packet {
+func GiveExp(conn interfaces.ClientConn, exp uint32) maplepacket.Packet {
 	char := charsPtr.GetOnlineCharacterHandle(conn)
 
 	if conn == nil || char.GetLevel() < 1 || char.GetLevel() > 199 {

@@ -2,12 +2,12 @@ package interfaces
 
 import (
 	"github.com/Hucaru/Valhalla/character"
-	"github.com/Hucaru/gopacket"
+	"github.com/Hucaru/Valhalla/maplepacket"
 )
 
 type ClientConn interface {
 	Close()
-	Write(gopacket.Packet) error
+	Write(maplepacket.Packet) error
 	String() string
 	SetUserID(uint32)
 	GetUserID() uint32

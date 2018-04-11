@@ -10,15 +10,15 @@ import (
 	"github.com/Hucaru/Valhalla/message"
 
 	"github.com/Hucaru/Valhalla/interfaces"
+	"github.com/Hucaru/Valhalla/maplepacket"
 	"github.com/Hucaru/Valhalla/maps"
 	"github.com/Hucaru/Valhalla/nx"
 	"github.com/Hucaru/Valhalla/player"
-	"github.com/Hucaru/gopacket"
 )
 
 type clientConn interface {
 	GetUserID() uint32
-	Write(gopacket.Packet) error
+	Write(maplepacket.Packet) error
 }
 
 // HandleCommand -
