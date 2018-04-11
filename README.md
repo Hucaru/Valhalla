@@ -10,11 +10,20 @@ Install [docker](https://docs.docker.com/install/) & [docker-compose](https://do
 
 ## Starting the Server
 
-In order to run the channel server you are required to convert a v28 Data.wz (not provided) to Data.nx ([NX](https://nxformat.github.io/) file format). Note: Make sure to disable re-ordering in for items when performing the conversion. This is needed as Wizet did not match index with id. If the order of items is re-ordered based on id then you will end up with mismatched portals.
+In order to run the channel server you are required to convert a v28 Data.wz (not provided) to Data.nx ([NX](https://nxformat.github.io/) file format). Note: Make sure to disable re-ordering for items when performing the conversion. This is needed as Wizet did not match index with id. If the order of items is re-ordered based on id then you will end up with mismatched portals.
 
-docker-compose up will start the server components in docker containers (note: database data is stored as docker volume)
+* docker-compose up -d && docker-compose logs -f will start the server components in docker containers
+* ctrl+c will stop displaying logs but the servers will be running in the background still
+* To stop everything run docker-compose down
+* To restart a specific container run docker-compose restart \<name e.g. login-server\>, if a container crashes it will auto restart
+* To stop/start a single container run docker-compose stop/start \<name e.g. login-server\>
 
-***note: atm the game servers are not dockerised***
+***note: database data is stored as docker volume***
+
+***note: make sure to configure the services for your ip addresses and ports in the docker-compose.yaml file***
+
+The following is an example of what the docker logs should look like:
+![](https://i.imgur.com/Lqh0Ln7.png)
 
 ## Connecting To Your Running Game Server (running in a docker container)
 <img height="43px" src="https://d29fhpw069ctt2.cloudfront.net/icon/image/38771/preview.svg"/>
@@ -50,6 +59,7 @@ Check command/handlers.go for parameters
 * parties
 * guilds
 * npc scripting system
+* redo wizet data loading to be nx & wz agnostic
 
 <div>Valhalla Logo made with <a href="https://
 www.designevo.com/" title="Free Online Logo Maker">DesignEvo</a></div>

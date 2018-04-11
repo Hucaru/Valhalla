@@ -20,7 +20,7 @@ import (
 	"github.com/Hucaru/Valhalla/player"
 )
 
-func Channel(configFile string) {
+func Channel() {
 	log.Println("ChannelServer")
 
 	start := time.Now()

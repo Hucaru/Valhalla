@@ -17,7 +17,7 @@ const (
 	port     = "8484"
 )
 
-func Login(configFile string) {
+func Login() {
 	log.Println("LoginServer")
 
 	listener, err := net.Listen("tcp", "0.0.0.0:8484")

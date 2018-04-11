@@ -1,6 +1,37 @@
 version: '3.1'
 
 services:
+    login-server:
+        image: valhalla/server
+        build:
+            context: ./
+            dockerfile: docker/Dockerfile
+        command: -type=login
+        environment:
+            - DB_USER=root
+            - DB_PASSWORD=password
+            - DB_DATABASE=maplestory
+            - DB_ADDRESS=db
+            - DB_PORT=3306
+        ports:
+            - 8484:8484
+        restart: always
+
+    channel-server:
+        image: valhalla/server
+        command: -type=channel
+        volumes:
+            - ./Data.nx:/app/Data.nx
+        environment:
+            - DB_USER=root
+            - DB_PASSWORD=password
+            - DB_DATABASE=maplestory
+            - DB_ADDRESS=db
+            - DB_PORT=3306
+        ports:
+            - 8686:8686
+        restart: always
+        
     db:
         image: mysql
         ports:
@@ -14,6 +45,7 @@ services:
         image: adminer
         ports:
             - 8080:8080
+
     #elasticsearch:
     #    image: docker.elastic.co/elasticsearch/elasticsearch:6.2.2
     #    container_name: elasticsearch
@@ -29,6 +61,7 @@ services:
     #    - ./elastic_data:/usr/share/elasticsearch/data
     #    ports:
     #    - 9200:9200
+    
     #kibana:
     #    image: docker.elastic.co/kibana/kibana:6.2.2
     #    environment:
