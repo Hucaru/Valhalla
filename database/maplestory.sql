@@ -1,4 +1,4 @@
--- Adminer 4.3.1 MySQL dump
+-- Adminer 4.6.2 MySQL dump
 
 SET NAMES utf8;
 SET time_zone = '+00:00';
@@ -51,7 +51,7 @@ CREATE TABLE `items` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `characterID` int(11) NOT NULL,
   `itemID` int(11) NOT NULL,
-  `inventoryID` int(11) NOT NULL,
+  `inventoryID` int(11) NOT NULL DEFAULT '0',
   `slotNumber` int(11) NOT NULL,
   `amount` int(11) NOT NULL DEFAULT '1',
   `flag` tinyint(4) NOT NULL DEFAULT '0',
@@ -100,7 +100,7 @@ CREATE TABLE `users` (
   `password` tinytext NOT NULL,
   `isLogedIn` tinyint(4) NOT NULL DEFAULT '0',
   `isAdmin` tinyint(4) NOT NULL DEFAULT '0',
-  `isBanned` int(11) NOT NULL,
+  `isBanned` int(11) NOT NULL DEFAULT '0',
   `gender` tinyint(4) NOT NULL DEFAULT '0',
   `dob` int(11) NOT NULL,
   `isInChannel` tinyint(4) NOT NULL DEFAULT '-1',
@@ -108,4 +108,4 @@ CREATE TABLE `users` (
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 
 
--- 2018-03-20 01:52:55
+-- 2018-04-11 02:25:12
