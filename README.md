@@ -52,8 +52,6 @@ GM Commands, chat, login/logout events, server transitions, party join/leave, tr
 Check command/handlers.go for parameters
 
 ## Roadmap
-* save changes to database
-* improve monster spawn system
 * monster/player drop items
 * inventory management
 * parties
