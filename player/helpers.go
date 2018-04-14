@@ -5,6 +5,7 @@ import (
 	"math/rand"
 	"time"
 
+	"github.com/Hucaru/Valhalla/character"
 	"github.com/Hucaru/Valhalla/maplepacket"
 
 	"github.com/Hucaru/Valhalla/constants"
@@ -16,7 +17,6 @@ var charsPtr interfaces.Characters
 // RegisterCharactersObj -
 func RegisterCharactersObj(chars interfaces.Characters) {
 	charsPtr = chars
-
 	go charactersAutoSave()
 }
 
@@ -137,5 +137,19 @@ func charactersAutoSave() {
 
 	for {
 		<-ticker.C
+		charMap := charsPtr.GetChars()
+
+		if charMap == nil {
+			return
+		}
+
+		for _, char := range charMap {
+			// save changes to db
+			err := character.SaveCharacter(char)
+
+			if err != nil {
+				log.Println("Unable to save character data")
+			}
+		}
 	}
 }

@@ -23,8 +23,6 @@ func (c *ClientChanConn) Close() {
 		}
 	}
 
-	// Remove character from all the lists
-
 	c.Conn.Close()
 }
 

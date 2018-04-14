@@ -4,6 +4,8 @@ import (
 	"math/rand"
 	"time"
 
+	"github.com/Hucaru/Valhalla/character"
+
 	"github.com/Hucaru/Valhalla/constants"
 	"github.com/Hucaru/Valhalla/inventory"
 
@@ -31,7 +33,9 @@ func RegisterMapsObj(mapList interfaces.Maps) {
 // RegisterNewPlayerCallback -
 func RegisterNewPlayerCallback(conn interfaces.ClientConn) {
 	conn.AddCloseCallback(func() {
+		character.SaveCharacter(charsPtr.GetOnlineCharacterHandle(conn))
 		PlayerLeaveMap(conn, charsPtr.GetOnlineCharacterHandle(conn).GetCurrentMap())
+		// Set any drops to anyone can collect
 		charsPtr.RemoveOnlineCharacter(conn)
 	})
 }
