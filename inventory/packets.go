@@ -15,7 +15,7 @@ func addItem(item character.Item, newItem bool) maplepacket.Packet {
 	p.WriteByte(item.GetInvID())
 
 	if newItem {
-
+		// add item data
 	} else {
 		p.WriteInt16(item.GetSlotNumber())
 		p.WriteInt16(item.GetAmount()) // the new amount value (not a delta)
@@ -40,7 +40,7 @@ func changeItemSlot(invTabID byte, origPos, newPos int16) maplepacket.Packet {
 
 func changeEquip(char *character.Character) maplepacket.Packet {
 	p := maplepacket.NewPacket()
-	p.WriteByte(0x6f)
+	p.WriteByte(constants.SEND_CHANNEL_PLAYER_CHANGE_AVATAR)
 	p.WriteUint32(char.GetCharID())
 	p.WriteByte(1)
 	character.WriteDisplayCharacter(char, &p)

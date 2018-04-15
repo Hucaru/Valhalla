@@ -97,8 +97,8 @@ func (c *Character) UpdateItem(orig Item, new Item) {
 }
 
 func (c *Character) SwitchItems(orig Item, new Item) {
-	ind1 := 0
-	ind2 := 0
+	ind1 := -1
+	ind2 := -1
 
 	c.mutex.RLock()
 	for index, i := range c.items {
@@ -112,15 +112,15 @@ func (c *Character) SwitchItems(orig Item, new Item) {
 	}
 	c.mutex.RUnlock()
 
-	if ind1 != 0 {
+	if ind1 > -1 {
 		c.mutex.Lock()
-		c.items[ind1] = orig
+		c.items[ind1].SetSlotNumber(c.items[ind2].GetSlotNumber())
 		c.mutex.Unlock()
 	}
 
-	if ind2 != 0 {
+	if ind2 > -1 {
 		c.mutex.Lock()
-		c.items[ind2] = new
+		c.items[ind2].SetSlotNumber(c.items[ind1].GetSlotNumber())
 		c.mutex.Unlock()
 	}
 }

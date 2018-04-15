@@ -262,6 +262,7 @@ func enterGame(char character.Character, channelID uint32) maplepacket.Packet {
 
 	p.WriteByte(0)
 
+	// Equips
 	for _, v := range char.GetItems() {
 		if v.GetSlotNumber() < 0 && v.GetInvID() == 1 && nx.IsCashItem(v.GetItemID()) {
 			p.WriteBytes(addEquip(v))
@@ -344,7 +345,7 @@ func enterGame(char character.Character, channelID uint32) maplepacket.Packet {
 func addEquip(item character.Item) maplepacket.Packet {
 	p := maplepacket.NewPacket()
 
-	if nx.IsCashItem(item.GetItemID()) {
+	if nx.IsCashItem(item.GetItemID()) && item.GetSlotNumber() < 0 {
 		p.WriteByte(byte(math.Abs(float64(item.GetSlotNumber() + 100))))
 	} else {
 		p.WriteByte(byte(math.Abs(float64(item.GetSlotNumber()))))
