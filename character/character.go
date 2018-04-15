@@ -111,6 +111,7 @@ func (c *Character) SwitchItems(orig Item, new Item) {
 		}
 	}
 	c.mutex.RUnlock()
+
 	if ind1 != 0 {
 		c.mutex.Lock()
 		c.items[ind1] = orig

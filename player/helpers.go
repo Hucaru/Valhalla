@@ -21,7 +21,7 @@ func RegisterCharactersObj(chars interfaces.Characters) {
 }
 
 func SetJob(conn interfaces.ClientConn, newJob uint16) {
-	charsPtr.GetOnlineCharacterHandle(conn).SetJob(jobID)
+	charsPtr.GetOnlineCharacterHandle(conn).SetJob(newJob)
 	conn.Write(statChangePacket(true, jobID, uint32(newJob)))
 }
 

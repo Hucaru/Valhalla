@@ -59,11 +59,15 @@ func HandleMoveInventoryItem(conn interfaces.ClientConn, reader maplepacket.Read
 			}
 
 		} else if len(foundItems) == 2 {
-			if foundItems[0].GetItemID() == foundItems[1].GetItemID() { // Need to add if stackable item check
+			if foundItems[0].GetItemID() == foundItems[1].GetItemID() &&
+				foundItems[1].GetItemID()/1e6 != 5 && // pet item
+				foundItems[1].GetInvID() != 1 && // equip
+				foundItems[1].GetItemID()/1e4 != 207 { // rechargeable item
 				// Handle partial and complete merges
 			} else {
 				char.SwitchItems(foundItems[0], foundItems[1])
 				conn.Write(changeItemSlot(invTabID, origPos, newPos))
+
 			}
 
 		} else {
