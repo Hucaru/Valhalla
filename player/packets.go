@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/Hucaru/Valhalla/interfaces"
-	"github.com/Hucaru/Valhalla/inventory"
 
 	"github.com/Hucaru/Valhalla/character"
 	"github.com/Hucaru/Valhalla/constants"
@@ -342,7 +341,7 @@ func enterGame(char character.Character, channelID uint32) maplepacket.Packet {
 	return p
 }
 
-func addEquip(item inventory.Item) maplepacket.Packet {
+func addEquip(item character.Item) maplepacket.Packet {
 	p := maplepacket.NewPacket()
 
 	if nx.IsCashItem(item.GetItemID()) {
@@ -383,7 +382,7 @@ func addEquip(item inventory.Item) maplepacket.Packet {
 	return p
 }
 
-func addItem(item inventory.Item) maplepacket.Packet {
+func addItem(item character.Item) maplepacket.Packet {
 	p := maplepacket.NewPacket()
 
 	p.WriteByte(byte(item.GetSlotNumber())) // slot id
@@ -391,7 +390,7 @@ func addItem(item inventory.Item) maplepacket.Packet {
 	p.WriteUint32(item.GetItemID())         //  itemID
 	p.WriteByte(0)
 	p.WriteUint64(item.GetExpirationTime()) // expiration
-	p.WriteUint16(item.GetAmount())         // amount
+	p.WriteInt16(item.GetAmount())          // amount
 	p.WriteString(item.GetCreatorName())
 	p.WriteUint16(item.GetFlag()) // is it sealed
 

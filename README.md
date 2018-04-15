@@ -34,7 +34,7 @@ The server sends auditing information to an eleastic search instance running in 
 GM Commands, chat, login/logout events, server transitions, party join/leave, trade transactions, damage received/inflicted, skill used, stat distribution  etc are logged.
 
 #### GM Commands - prefix of ***!***
-* packet - Send packet to GM client (used for development)
+* packet - Send packet to client
 * warp - warp to map
 * notice - send notice message to channel
 * dialogue - send dialogue box message to channel
@@ -43,7 +43,7 @@ GM Commands, chat, login/logout events, server transitions, party join/leave, tr
 * spawn - spawn mob at character location
 * killmobs - kill all mobs on map
 * exp - give exp
-* mobrate - modify mob rate of server
+* mobrate - modify mob rate
 * exprate - modify exp rate
 * mesorate - modify meso rate
 * droprate - modify drop rate
@@ -58,6 +58,8 @@ Check command/handlers.go for parameters
 * guilds
 * npc scripting system
 * redo wizet data loading to be nx & wz agnostic
+* Skills & buffs (incl. item buffs)
+* reactors
 
 <div>Valhalla Logo made with <a href="https://
 www.designevo.com/" title="Free Online Logo Maker">DesignEvo</a></div>

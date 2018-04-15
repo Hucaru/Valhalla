@@ -4,7 +4,6 @@ import (
 	"sync"
 
 	"github.com/Hucaru/Valhalla/connection"
-	"github.com/Hucaru/Valhalla/inventory"
 )
 
 func GetCharacterSkills(charID uint32) map[uint32]uint32 {
@@ -31,7 +30,7 @@ func GetCharacterSkills(charID uint32) map[uint32]uint32 {
 	return skills
 }
 
-func GetCharacterItems(charID uint32) []inventory.Item {
+func GetCharacterItems(charID uint32) []Item {
 	filter := "inventoryID,itemID,slotNumber,amount,flag,upgradeSlots,level,str,dex,intt,luk,hp,mp,watk,matk,wdef,mdef,accuracy,avoid,hands,speed,jump,expireTime,creatorName"
 	row, err := connection.Db.Query("SELECT "+filter+" FROM items WHERE characterID=?", charID)
 
@@ -39,17 +38,17 @@ func GetCharacterItems(charID uint32) []inventory.Item {
 		panic(err)
 	}
 
-	var items []inventory.Item
+	var items []Item
 
 	defer row.Close()
 
 	for row.Next() {
 
-		var item inventory.Item
+		var item Item
 		var invID byte
 		var itemID uint32
 		var slotID int16
-		var amount uint16
+		var amount int16
 		var flag uint16
 		var upgradeSlots byte
 		var level byte

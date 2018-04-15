@@ -6,6 +6,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/Hucaru/Valhalla/inventory"
 	"github.com/Hucaru/Valhalla/skills"
 
 	"github.com/Hucaru/Valhalla/command"
@@ -36,6 +37,7 @@ func Channel() {
 	maps.RegisterCharactersObj(data.GetCharsPtr())
 	maps.RegisterMapsObj(data.GetMapsPtr())
 	skills.RegisterCharactersObj(data.GetCharsPtr())
+	inventory.RegisterCharactersObj(data.GetCharsPtr())
 	command.RegisterCharactersObj(data.GetCharsPtr())
 	command.RegisterMapsObj(data.GetMapsPtr())
 

@@ -2,8 +2,6 @@ package character
 
 import (
 	"sync"
-
-	"github.com/Hucaru/Valhalla/inventory"
 )
 
 type Character struct {
@@ -40,7 +38,7 @@ type Character struct {
 	etcSlotSize     byte
 	cashSlotSize    byte
 
-	items []inventory.Item
+	items []Item
 
 	skills map[uint32]uint32
 
@@ -67,7 +65,7 @@ func (c *Character) SetSkills(val map[uint32]uint32) {
 	c.mutex.Unlock()
 }
 
-func (c *Character) GetItems() []inventory.Item {
+func (c *Character) GetItems() []Item {
 	c.mutex.RLock()
 	val := c.items
 	c.mutex.RUnlock()
@@ -75,16 +73,55 @@ func (c *Character) GetItems() []inventory.Item {
 	return val
 }
 
-func (c *Character) SetItems(val []inventory.Item) {
+func (c *Character) SetItems(val []Item) {
 	c.mutex.Lock()
 	c.items = val
 	c.mutex.Unlock()
 }
 
-func (c *Character) AddItem(val inventory.Item) {
+func (c *Character) AddItem(val Item) {
 	c.mutex.Lock()
 	c.items = append(c.items, val)
 	c.mutex.Unlock()
+}
+
+func (c *Character) UpdateItem(orig Item, new Item) {
+	c.mutex.Lock()
+	for index, i := range c.items {
+		if i.GetSlotNumber() == orig.GetSlotNumber() &&
+			i.GetInvID() == orig.GetInvID() {
+			c.items[index] = new
+		}
+	}
+	c.mutex.Unlock()
+}
+
+func (c *Character) SwitchItems(orig Item, new Item) {
+	ind1 := 0
+	ind2 := 0
+
+	c.mutex.RLock()
+	for index, i := range c.items {
+		if i == orig {
+			ind1 = index
+		}
+
+		if i == new {
+			ind2 = index
+		}
+	}
+	c.mutex.RUnlock()
+	if ind1 != 0 {
+		c.mutex.Lock()
+		c.items[ind1] = orig
+		c.mutex.Unlock()
+	}
+
+	if ind2 != 0 {
+		c.mutex.Lock()
+		c.items[ind2] = new
+		c.mutex.Unlock()
+	}
 }
 
 func (c *Character) GetCharID() uint32 {

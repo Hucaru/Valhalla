@@ -1,11 +1,13 @@
 package handlers
 
 import (
+	"fmt"
 	"log"
 
 	"github.com/Hucaru/Valhalla/command"
 	"github.com/Hucaru/Valhalla/connection"
 	"github.com/Hucaru/Valhalla/interfaces"
+	"github.com/Hucaru/Valhalla/inventory"
 	"github.com/Hucaru/Valhalla/maps"
 	"github.com/Hucaru/Valhalla/message"
 	"github.com/Hucaru/Valhalla/player"
@@ -100,7 +102,13 @@ func HandleChannelPacket(conn *connection.ClientChanConn, reader maplepacket.Rea
 		// npc.HandleNpcDialogue(conn, reader) // Goes off to the script engine.
 
 	case constants.RECV_CHANNEL_INV_MOVE_ITEM:
-		player.HandleMoveInventoryItem(conn, reader)
+		p, mapID, item := inventory.HandleMoveInventoryItem(conn, reader)
+
+		maps.SendPacketToMap(mapID, p)
+
+		if item.GetSlotNumber() == 0 {
+			fmt.Println("Send drop to map, item:", item)
+		}
 
 	case constants.RECV_CHANNEL_CHANGE_STAT:
 		player.HandleChangeStat(conn, reader)

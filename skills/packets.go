@@ -101,7 +101,6 @@ func continuePacket() maplepacket.Packet {
 	p.WriteByte(constants.SEND_CHANNEL_INVENTORY_OPERATION)
 	p.WriteByte(0x01)
 	p.WriteByte(0x00)
-	p.WriteByte(0x00)
 
 	return p
 }

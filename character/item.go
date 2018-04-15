@@ -1,4 +1,4 @@
-package inventory
+package character
 
 // Base -
 type Base struct {
@@ -6,7 +6,7 @@ type Base struct {
 	slotNumber  int16
 	itemID      uint32
 	expireTime  uint64
-	amount      uint16
+	amount      int16
 	creatorName string
 	flag        uint16
 }
@@ -43,11 +43,11 @@ func (b *Base) SetExpirationTime(val uint64) {
 	b.expireTime = val
 }
 
-func (b *Base) GetAmount() uint16 {
+func (b *Base) GetAmount() int16 {
 	return b.amount
 }
 
-func (b *Base) SetAmount(val uint16) {
+func (b *Base) SetAmount(val int16) {
 	b.amount = val
 }
 

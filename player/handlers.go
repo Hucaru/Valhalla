@@ -1,7 +1,6 @@
 package player
 
 import (
-	"fmt"
 	"log"
 
 	"github.com/Hucaru/Valhalla/constants"
@@ -44,20 +43,6 @@ func HandleConnect(conn interfaces.ClientConn, reader maplepacket.Reader) uint32
 	log.Println(char.GetName(), "has loged in from", conn)
 
 	return char.GetCurrentMap()
-}
-
-func HandleMoveInventoryItem(conn interfaces.ClientConn, reader maplepacket.Reader) {
-	invTabID := reader.ReadByte()
-	origPos := reader.ReadUint16()
-	newPos := reader.ReadUint16()
-
-	reader.ReadInt16() // ?
-
-	// Update character obj
-
-	// send result packet
-
-	fmt.Println("Move item in:", invTabID, "from:", origPos, "to:", newPos, reader)
 }
 
 func HandleRequestAvatarInfoWindow(conn interfaces.ClientConn, reader maplepacket.Reader) {

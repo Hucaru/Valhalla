@@ -1,9 +1,7 @@
 package data
 
-import "github.com/Hucaru/Valhalla/inventory"
-
 type mapleDrop struct {
-	inventory.Item
+	// character.Item
 	dropID uint32
 }
 
