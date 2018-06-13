@@ -3,6 +3,7 @@
 *.a
 *.so
 *.nx
+*.wz
 debug
 certs/**
 database_data/**

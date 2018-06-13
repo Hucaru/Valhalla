@@ -4,14 +4,7 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/Hucaru/Valhalla/command"
 	"github.com/Hucaru/Valhalla/connection"
-	"github.com/Hucaru/Valhalla/interfaces"
-	"github.com/Hucaru/Valhalla/inventory"
-	"github.com/Hucaru/Valhalla/maps"
-	"github.com/Hucaru/Valhalla/message"
-	"github.com/Hucaru/Valhalla/player"
-	"github.com/Hucaru/Valhalla/skills"
 
 	"github.com/Hucaru/Valhalla/constants"
 	"github.com/Hucaru/Valhalla/maplepacket"
@@ -21,129 +14,80 @@ import (
 func HandleChannelPacket(conn *connection.ClientChanConn, reader maplepacket.Reader) {
 	switch reader.ReadByte() {
 	case constants.RECV_PING:
-		// Is client expecting a pong?
 
 	case constants.RECV_CHANNEL_PLAYER_LOAD:
-		mapID := player.HandleConnect(conn, reader)
-		maps.PlayerEnterMap(conn, mapID)
-		maps.RegisterNewPlayerCallback(conn)
+		handlePlayerConnect(conn, reader)
 
 	case constants.RECV_CHANNEL_USE_PORTAL:
-		maps.HandlePlayerUsePortal(conn, reader)
-
+		handleUsePortal(conn, reader)
 	case constants.RECV_CHANNEL_REQUEST_TO_ENTER_CASH_SHOP:
-		conn.Write(message.CreateDialogeMessage("Not currently available"))
 
-	case constants.RECV_CHANNEL_MOVEMENT:
-		mapID, p := player.HandleMovement(conn, reader)
-		maps.SendPacketToMapExcept(mapID, p, conn)
+	case constants.RECV_CHANNEL_PLAYER_MOVEMENT:
+		handlePlayerMovement(conn, reader)
 
 	case constants.RECV_CHANNEL_STANDARD_SKILL:
-		mapID, p, damages := skills.HandleStandardSkill(conn, reader)
-		maps.SendPacketToMap(mapID, p)
-		exp := maps.DamageMobs(mapID, conn, damages)
-
-		// re-adjust exp if in party
-
-		for k, v := range exp {
-			for _, e := range v {
-				maps.SendPacketToMapExcept(mapID, player.GiveExp(k, e), conn)
-			}
-		}
-
-		exp = make(map[interfaces.ClientConn][]uint32)
+		handleStandardSkill(conn, reader)
 
 	case constants.RECV_CHANNEL_RANGED_SKILL:
-		mapID, p, damages := skills.HandleRangedSkill(conn, reader)
-		maps.SendPacketToMap(mapID, p)
-		exp := maps.DamageMobs(mapID, conn, damages)
-
-		// re-adjust exp if in party
-
-		for k, v := range exp {
-			for _, e := range v {
-				maps.SendPacketToMapExcept(mapID, player.GiveExp(k, e), conn)
-			}
-		}
-
-		exp = make(map[interfaces.ClientConn][]uint32)
+		handleRangedSkill(conn, reader)
 
 	case constants.RECV_CHANNEL_MAGIC_SKILL:
-		mapID, p, damages := skills.HandleMagicSkill(conn, reader)
-		maps.SendPacketToMap(mapID, p)
-		exp := maps.DamageMobs(mapID, conn, damages)
-
-		// re-adjust exp if in party
-
-		for k, v := range exp {
-			for _, e := range v {
-				maps.SendPacketToMapExcept(mapID, player.GiveExp(k, e), conn)
-			}
-		}
-
-		exp = make(map[interfaces.ClientConn][]uint32)
+		handleMagicSkill(conn, reader)
 
 	case constants.RECV_CHANNEL_DMG_RECV:
-		mapID, p := player.HandleTakeDamage(conn, reader)
-		maps.SendPacketToMapExcept(mapID, p, conn)
+		handleTakeDamage(conn, reader)
 
 	case constants.RECV_CHANNEL_PLAYER_SEND_ALL_CHAT:
-		mapID, text, isCommand, p := message.HandleAllChat(conn, reader)
-		if isCommand {
-			command.HandleCommand(conn, text)
-			return
-		}
-		maps.SendPacketToMap(mapID, p)
+		handleAllChat(conn, reader)
 
-	case constants.RECV_CHANNEL_EMOTION:
-		maps.HandlePlayerEmotion(conn, reader)
+	case constants.RECV_CHANNEL_SLASH_COMMANDS:
+		handleSlashCommand(conn, reader)
+
+	case constants.RECV_CHANNEL_CHARACTER_UI_WINDOW:
+		fmt.Println("Trade packet:", reader)
+
+	case constants.RECV_CHANNEL_EMOTICON:
+		handlePlayerEmoticon(conn, reader)
 
 	case constants.RECV_CHANNEL_NPC_DIALOGUE:
-		// npc.HandleNpcDialogue(conn, reader) // Goes off to the script engine.
+		handleNPCChat(conn, reader)
+
+	case constants.RECV_CHANNEL_NPC_DIALOGUE_CONTINUE:
+		handleNPCChatContinue(conn, reader)
 
 	case constants.RECV_CHANNEL_INV_MOVE_ITEM:
-		p, mapID, item := inventory.HandleMoveInventoryItem(conn, reader)
-
-		maps.SendPacketToMap(mapID, p)
-
-		if item.GetSlotNumber() == 0 {
-			fmt.Println("Send drop to map, item:", item)
-		}
+		handleMoveInventoryItem(conn, reader)
 
 	case constants.RECV_CHANNEL_CHANGE_STAT:
-		player.HandleChangeStat(conn, reader)
+		handleChangeStat(conn, reader)
 
 	case constants.RECV_CHANNEL_PASSIVE_REGEN:
-		player.HandlePassiveRegen(conn, reader)
+		handlePassiveRegen(conn, reader)
 
 	case constants.RECV_CHANNEL_SKILL_UPDATE:
-		player.HandleUpdateSkillRecord(conn, reader)
+		handleUpdateSkillRecord(conn, reader)
 
-	case constants.RECV_CHANNEL_SPECIAL_SKILL_USAGE:
-		mapID, p := skills.HandleSpecialSkill(conn, reader)
-		maps.SendPacketToMapExcept(mapID, p, conn)
-		// Send buff to party
+	case constants.RECV_CHANNEL_SPECIAL_SKILL:
+		handleSpecialSkill(conn, reader)
 
 	case constants.RECV_CHANNEL_CHARACTER_INFO:
-		player.HandleRequestAvatarInfoWindow(conn, reader)
+		handleRequestAvatarInfoWindow(conn, reader)
 
 	case constants.RECV_CHANNEL_LIE_DETECTOR_RESULT:
-		// send to the anti cheat thread
 
 	case constants.RECV_CHANNEL_PARTY_INFO:
-		//
 
 	case constants.RECV_CHANNEL_GUILD_MANAGEMENT:
-		//
 
 	case constants.RECV_CHANNEL_GUILD_REJECT:
-		//
 
 	case constants.RECV_CHANNEL_ADD_BUDDY:
-		//
 
-	case constants.RECV_CHANNEL_MOB_MOVEMENT:
-		maps.HandleMobMovement(conn, reader)
+	case constants.RECV_CHANNEL_MOB_CONTROL:
+		handleMobControl(conn, reader)
+
+	case constants.RECV_CHANNEL_NPC_MOVEMENT:
+		handleNPCMovement(conn, reader)
 
 	default:
 		log.Println("Unkown packet:", reader)

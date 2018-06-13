@@ -1,0 +1,37 @@
+# Henesys Regular Cab 
+
+towns = [104000000, 102000000, 101000000, 103000000]
+prices = ["800", "1,000", "1,000", "1,200"]
+numPrices = [800, 1000, 1000, 1200]
+
+if state == 1 {
+    return SendNext("How's it going? I drive the Regular Cab. If you want to go from town to town safely and fast, then ride our cab. We'll gladly take you to your destination with an affordable price")
+} else if state == 2 {
+    
+    text = "Choose your destination, for fees will change from place to place. \r "
+
+    for i = 0; i  < len(towns); i++ {
+        text += "#L" + i + "##b#m" + towns[i] + "# (" + prices[i] +" mesos)#l \r\n"
+    }
+
+    return SendSelection(text)
+    
+} else if state == 3{
+    return SendYesNo("You don't have anything else to do here, huh? Do you really want to go to #b#m" + towns[selection] + "# #k? It'll cost you #b" + prices[selection] + " mesos")
+
+} else if state == 4 {
+
+    if isYes {
+
+        if toInt(player.GetMesos()) < numPrices[selection] {
+           return SendOk("You don't have enough mesos! Come back when you do.")
+        }
+        
+        player.TakeMesos(numPrices[selection])
+        portal, pID = maps.GetMap(player.GetCurrentMap()).GetRandomSpawnPortal()
+        player.ChangeMap(towns[selection], portal, pID)
+        
+    } else {
+        return SendNext("There's a lot to see in this town, too. Come back and find us when you need to go to a different town.")
+    }
+}

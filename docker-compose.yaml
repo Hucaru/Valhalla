@@ -15,13 +15,14 @@ services:
             - DB_PORT=3306
         ports:
             - 8484:8484
-        restart: always
+        restart: unless-stopped
 
     channel-server:
         image: valhalla/server
         command: -type=channel
         volumes:
-            - ./Data.nx:/app/Data.nx
+            - ./Data.nx:/app/wizetData
+            - ./scripts/:/app/scripts/
         environment:
             - DB_USER=root
             - DB_PASSWORD=password
@@ -30,10 +31,10 @@ services:
             - DB_PORT=3306
         ports:
             - 8686:8686
-        restart: always
+        restart: unless-stopped
         
     db:
-        image: mysql
+        image: mysql:5.7
         ports:
             - 3306:3306
         volumes:
@@ -41,13 +42,13 @@ services:
         environment:
             - MYSQL_ROOT_PASSWORD=password
             - MYSQL_DATABASE=maplestory
-        restart: always
+        restart: unless-stopped
 
     adminer:
         image: adminer
         ports:
             - 8080:8080
-        restart: always
+        restart: unless-stopped
 
     # elasticsearch:
     #     image: docker.elastic.co/elasticsearch/elasticsearch:6.2.3

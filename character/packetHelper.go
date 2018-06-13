@@ -6,7 +6,7 @@ import (
 	"github.com/Hucaru/Valhalla/maplepacket"
 )
 
-func WriteDisplayCharacter(char *Character, p *maplepacket.Packet) {
+func WriteDisplayCharacter(char Character, p *maplepacket.Packet) {
 	p.WriteByte(char.GetGender()) // gender
 	p.WriteByte(char.GetSkin())   // skin
 	p.WriteUint32(char.GetFace()) // face

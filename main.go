@@ -22,5 +22,4 @@ func main() {
 	default:
 		log.Println("Unkown server type:", *typePtr)
 	}
-
 }

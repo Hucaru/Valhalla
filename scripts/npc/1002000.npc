@@ -1,0 +1,35 @@
+# Phil
+
+towns = [100000000, 103000000, 102000000, 101000000]
+prices = ["800", "1,000", "1,000", "1,200"]
+numPrices = [800, 1000, 1000, 1200]
+
+if state == 1 {
+    return SendNext("Do you wanna head over to some other town? With a a little money involved, I can make it happen. It's a tad expensive, but I run a special 90% discount for Beginners.")
+} else if state == 2 {
+     text = "Oh you aren't a beginner, huh? Then I'm afraid I may have to charge you full price. Where would you like to go? \r "
+
+    for i = 0; i  < len(towns); i++ {
+        if player.GetJob() == 0 {
+            text += "#L" + i + "##b#m" + towns[i] + "# (" + numPrices[i] * 0.1 +" mesos)#l \r\n"
+        } else {
+            text += "#L" + i + "##b#m" + towns[i] + "# (" + prices[i] +" mesos)#l \r\n"
+        }
+        
+    }
+
+    return SendSelection(text)
+} else if state == 3 {
+    if toInt(player.GetMesos()) < prices[selection] {
+        return SendOk("You don't have enough mesos! Come back when you do.")
+    }
+
+    # Take mesos
+    if player.GetJob() == 0 {
+        player.TakeMesos(numPrices[selection] * 0.1)
+    } else {
+        player.TakeMesos(numPrices[selection])
+    }
+    portal, pID = maps.GetMap(player.GetCurrentMap()).GetRandomSpawnPortal()
+    player.ChangeMap(towns[selection], portal, pID)
+}
