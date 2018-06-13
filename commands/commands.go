@@ -233,6 +233,23 @@ func HandleGmCommand(conn interop.ClientConn, msg string) {
 		channel.Players.OnCharacters(func(char *channel.MapleCharacter) {
 			char.SendPacket(packets.MessageScrollingHeader(msg))
 		})
+	case "map":
+		if len(command) < 2 {
+			channel.Players.OnCharacters(func(char *channel.MapleCharacter) {
+				char.SendPacket(packets.MessageNotice("Your current map is: " + strconv.Itoa(int(char.GetCurrentMap()))))
+			})
+		} else {
+			switch command[1] {
+			case "mobs":
+				// mobs information
+			case "players":
+				// players information
+			case "reactors":
+				// reactor information
+			default:
+			}
+		}
+
 	case "runNPC":
 		if len(command) < 2 {
 			return
