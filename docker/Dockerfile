@@ -5,6 +5,9 @@ WORKDIR /app
 ENV SRC_DIR=/go/src/github.com/Hucaru/Valhalla/
 
 RUN go get -u github.com/go-sql-driver/mysql
+RUN go get -u golang.org/x/sys/...
+RUN go get -u github.com/fsnotify/fsnotify 
+RUN go get -u github.com/mattn/anko
 
 ADD . $SRC_DIR
 

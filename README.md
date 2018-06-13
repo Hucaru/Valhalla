@@ -33,7 +33,9 @@ The server sends auditing information to an eleastic search instance running in 
 
 GM Commands, chat, login/logout events, server transitions, party join/leave, trade transactions, damage received/inflicted, skill used, stat distribution  etc are logged.
 
-#### GM Commands - prefix of ***!***
+NPC scripts can be found in the scripts/npc folder. There are some examples in there
+
+#### GM Commands - prefix of ***/***
 * packet - Send packet to client
 * warp - warp to map
 * notice - send notice message to channel
@@ -52,14 +54,59 @@ GM Commands, chat, login/logout events, server transitions, party join/leave, tr
 Check command/handlers.go for parameters
 
 ## Roadmap
-* monster/player drop items
-* inventory management
+* inventory drop item ask quantity where relevant
 * parties
 * guilds
-* npc scripting system
 * redo wizet data loading to be nx & wz agnostic
+* Mob death, exp, skills & respawn
+* monster/player drop items
 * Skills & buffs (incl. item buffs)
 * reactors
+
+## NPC chat display info (use this when scripting NPCs)
+
+NPCs are scripted in [anko](https://github.com/mattn/anko)
+
+Taken from [here](http://forum.ragezone.com/f428/add-learning-npcs-start-finish-643364/)
+- #b = Blue text.
+- #c[itemid]# Shows how many [itemid] the player has in their inventory.
+- #d = Purple text.
+- #e = Bold text.
+- #f[imagelocation]# - Shows an image inside the .wz files.
+- #g = Green text.
+- #h # - Shows the name of the player.
+- #i[itemid]# - Shows a picture of the item.
+- #k = Black text.
+- #l - Selection close.
+- #m[mapid]# - Shows the name of the map.
+- #n = Normal text (removes bold).
+- #o[mobid]# - Shows the name of the mob.
+- #p[npcid]# - Shows the name of the NPC.
+- #q[skillid]# - Shows the name of the skill.
+- #r = Red text.
+- #s[skillid]# - Shows the image of the skill.
+- #t[itemid]# - Shows the name of the item.
+- #v[itemid]# - Shows a picture of the item.
+- #x - Returns "0%" (need more information on this).
+- #z[itemid]# - Shows the name of the item.
+- #B[%]# - Shows a 'progress' bar.
+- #F[imagelocation]# - Shows an image inside the .wz files.
+- #L[number]# Selection open.
+- \r\n - Moves down a line.
+- \r = Return Carriage
+- \n = New Line
+- \t = Tab (4 spaces)
+- \b = Backwards
+
+## Screenshots
+
+![](https://i.imgur.com/RIp8OWV.png)
+
+![](https://i.imgur.com/2wYVksH.png)
+
+![](https://i.imgur.com/g7OEhTc.png)
+
+![](https://i.imgur.com/ovAujlt.png)
 
 <div>Valhalla Logo made with <a href="https://
 www.designevo.com/" title="Free Online Logo Maker">DesignEvo</a></div>

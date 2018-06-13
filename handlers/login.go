@@ -5,7 +5,6 @@ import (
 
 	"github.com/Hucaru/Valhalla/connection"
 	"github.com/Hucaru/Valhalla/constants"
-	"github.com/Hucaru/Valhalla/login"
 	"github.com/Hucaru/Valhalla/maplepacket"
 )
 
@@ -13,31 +12,31 @@ import (
 func HandleLoginPacket(conn *connection.ClientLoginConn, reader maplepacket.Reader) {
 	switch reader.ReadByte() {
 	case constants.RECV_RETURN_TO_LOGIN_SCREEN:
-		login.HandleReturnToLoginScreen(conn, reader)
+		handleReturnToLoginScreen(conn, reader)
 
 	case constants.RECV_LOGIN_REQUEST:
-		login.HandleLoginRequest(conn, reader)
+		handleLoginRequest(conn, reader)
 
 	case constants.RECV_LOGIN_CHECK_LOGIN:
-		login.HandleGoodLogin(conn, reader)
+		handleGoodLogin(conn, reader)
 
 	case constants.RECV_LOGIN_WORLD_SELECT:
-		login.HandleWorldSelect(conn, reader)
+		handleWorldSelect(conn, reader)
 
 	case constants.RECV_LOGIN_CHANNEL_SELECT:
-		login.HandleChannelSelect(conn, reader)
+		handleChannelSelect(conn, reader)
 
 	case constants.RECV_LOGIN_NAME_CHECK:
-		login.HandleNameCheck(conn, reader)
+		handleNameCheck(conn, reader)
 
 	case constants.RECV_LOGIN_NEW_CHARACTER:
-		login.HandleNewCharacter(conn, reader)
+		handleNewCharacter(conn, reader)
 
 	case constants.RECV_LOGIN_DELETE_CHAR:
-		login.HandleDeleteCharacter(conn, reader)
+		handleDeleteCharacter(conn, reader)
 
 	case constants.RECV_LOGIN_SELECT_CHARACTER:
-		login.HandleSelectCharacter(conn, reader)
+		handleSelectCharacter(conn, reader)
 
 	default:
 		log.Println("UNKNOWN LOGIN PACKET:", reader)

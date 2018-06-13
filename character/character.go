@@ -65,6 +65,12 @@ func (c *Character) SetSkills(val map[uint32]uint32) {
 	c.mutex.Unlock()
 }
 
+func (c *Character) UpdateSkill(id, level uint32) {
+	c.mutex.Lock()
+	c.skills[id] = level
+	c.mutex.Unlock()
+}
+
 func (c *Character) GetItems() []Item {
 	c.mutex.RLock()
 	val := c.items
@@ -85,6 +91,25 @@ func (c *Character) AddItem(val Item) {
 	c.mutex.Unlock()
 }
 
+func (c *Character) RemoveItem(val Item) {
+	var index int = 0
+
+	c.mutex.RLock()
+	for ind, i := range c.items {
+		if i.GetSlotNumber() == val.GetSlotNumber() &&
+			i.GetItemID() == val.GetItemID() &&
+			i.GetInvID() == val.GetInvID() {
+
+			index = ind
+		}
+	}
+	c.mutex.RUnlock()
+
+	c.mutex.Lock()
+	c.items = append(c.items[:index], c.items[index+1:]...)
+	c.mutex.Unlock()
+}
+
 func (c *Character) UpdateItem(orig Item, new Item) {
 	c.mutex.Lock()
 	for index, i := range c.items {
@@ -97,29 +122,35 @@ func (c *Character) UpdateItem(orig Item, new Item) {
 }
 
 func (c *Character) SwitchItems(orig Item, new Item) {
-	ind1 := 0
-	ind2 := 0
+	var ind1 int = -1
+	var slot1 int16 = -1
+
+	var ind2 int = -1
+	var slot2 int16 = -1
 
 	c.mutex.RLock()
 	for index, i := range c.items {
 		if i == orig {
 			ind1 = index
+			slot1 = i.GetSlotNumber()
 		}
 
 		if i == new {
 			ind2 = index
+			slot2 = i.GetSlotNumber()
 		}
 	}
 	c.mutex.RUnlock()
-	if ind1 != 0 {
+
+	if ind1 > -1 {
 		c.mutex.Lock()
-		c.items[ind1] = orig
+		c.items[ind1].SetSlotNumber(slot2)
 		c.mutex.Unlock()
 	}
 
-	if ind2 != 0 {
+	if ind2 > -1 {
 		c.mutex.Lock()
-		c.items[ind2] = new
+		c.items[ind2].SetSlotNumber(slot1)
 		c.mutex.Unlock()
 	}
 }

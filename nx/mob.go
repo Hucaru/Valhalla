@@ -6,14 +6,16 @@ import (
 )
 
 type Monster struct {
-	Boss     bool
-	Accuracy uint16
-	Exp      uint32
-	Level    byte
-	MaxHp    uint32
-	Hp       uint32
-	MaxMp    uint32
-	Mp       uint32
+	Boss         bool
+	Accuracy     uint16
+	Exp          uint32
+	Level        byte
+	MaxHp        uint32
+	Hp           uint32
+	MaxMp        uint32
+	Mp           uint32
+	FlySpeed     uint32
+	SummonEffect byte
 }
 
 var Mob = make(map[uint32]Monster)
@@ -50,6 +52,7 @@ func getMobInfo() {
 
 func getMob(options node) Monster {
 	monst := Monster{}
+
 	for i := uint32(0); i < uint32(options.ChildCount); i++ {
 		options := nodes[options.ChildID+i]
 		switch strLookup[options.NameID] {
@@ -67,6 +70,10 @@ func getMob(options node) Monster {
 		case "maxMP":
 			monst.MaxMp = dataToUint32(options.Data)
 			monst.Mp = monst.MaxMp
+		case "flySpeed":
+			monst.FlySpeed = dataToUint32(options.Data)
+		case "summonType":
+			monst.SummonEffect = options.Data[0]
 		default:
 		}
 	}

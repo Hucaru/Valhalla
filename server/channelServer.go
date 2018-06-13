@@ -6,40 +6,26 @@ import (
 	"os"
 	"time"
 
-	"github.com/Hucaru/Valhalla/inventory"
-	"github.com/Hucaru/Valhalla/skills"
-
-	"github.com/Hucaru/Valhalla/command"
+	"github.com/Hucaru/Valhalla/channel"
 	"github.com/Hucaru/Valhalla/connection"
 	"github.com/Hucaru/Valhalla/constants"
-	"github.com/Hucaru/Valhalla/data"
 	"github.com/Hucaru/Valhalla/handlers"
 	"github.com/Hucaru/Valhalla/maplepacket"
-	"github.com/Hucaru/Valhalla/maps"
-	"github.com/Hucaru/Valhalla/message"
 	"github.com/Hucaru/Valhalla/nx"
-	"github.com/Hucaru/Valhalla/player"
 )
 
 func Channel() {
 	log.Println("ChannelServer")
 
 	start := time.Now()
-	nx.Parse("Data.nx")
+	nx.Parse("wizetData")
 	elapsed := time.Since(start)
 
-	log.Println("Loaded and parsed nx in", elapsed)
+	log.Println("Loaded and parsed Wizet data in", elapsed)
 
-	data.GenerateMapsObject()
-
-	player.RegisterCharactersObj(data.GetCharsPtr())
-	message.RegisterCharactersObj(data.GetCharsPtr())
-	maps.RegisterCharactersObj(data.GetCharsPtr())
-	maps.RegisterMapsObj(data.GetMapsPtr())
-	skills.RegisterCharactersObj(data.GetCharsPtr())
-	inventory.RegisterCharactersObj(data.GetCharsPtr())
-	command.RegisterCharactersObj(data.GetCharsPtr())
-	command.RegisterMapsObj(data.GetMapsPtr())
+	channel.GenerateMaps()
+	channel.GenerateNPCs()
+	channel.GenerateMobs()
 
 	listener, err := net.Listen("tcp", "0.0.0.0:8686")
 

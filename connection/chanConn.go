@@ -46,11 +46,11 @@ func (c *ClientChanConn) IsAdmin() bool {
 	return c.isAdmin
 }
 
-func (c *ClientChanConn) SetIsLogedIn(val bool) {
+func (c *ClientChanConn) SetIsLoggedIn(val bool) {
 	c.isLogedIn = val
 }
 
-func (c *ClientChanConn) GetIsLogedIn() bool {
+func (c *ClientChanConn) GetIsLoggedIn() bool {
 	return c.isLogedIn
 }
 
