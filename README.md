@@ -98,6 +98,10 @@ Taken from [here](http://forum.ragezone.com/f428/add-learning-npcs-start-finish-
 - \t = Tab (4 spaces)
 - \b = Backwards
 
+## Acknowledgements 
+- [Vana](https://github.com/retep998/Vana)
+- Sunnyboy for providing a [list](http://forum.ragezone.com/f921/library-idbs-versions-named-addresses-987815/) of idbs for which this project would not have started
+
 ## Screenshots
 
 ![](https://i.imgur.com/RIp8OWV.png)
