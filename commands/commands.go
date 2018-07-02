@@ -146,7 +146,7 @@ func HandleGmCommand(conn interop.ClientConn, msg string) {
 
 			channel.Players.OnCharacterFromConn(conn, func(char *channel.MapleCharacter) {
 				if val > 0 {
-					char.GiveEXP(uint32(val))
+					char.GiveEXP(uint32(val), false, true)
 				} else if val < 0 {
 					char.TakeEXP(uint32(val))
 				}
@@ -160,7 +160,7 @@ func HandleGmCommand(conn interop.ClientConn, msg string) {
 
 			channel.Players.OnCharacterFromName(command[1], func(char *channel.MapleCharacter) {
 				if val > 0 {
-					char.GiveEXP(uint32(val))
+					char.GiveEXP(uint32(val), false, true)
 				} else if val < 0 {
 					char.TakeEXP(uint32(val))
 				}

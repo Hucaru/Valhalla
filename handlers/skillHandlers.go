@@ -46,7 +46,17 @@ func handleStandardSkill(conn interop.ClientConn, reader maplepacket.Reader) {
 	channel.Players.OnCharacterFromConn(conn, func(char *channel.MapleCharacter) {
 		channel.Maps.GetMap(char.GetCurrentMap()).SendPacketExcept(packets.SkillMelee(char.GetCharID(), skillID, targets, hits, display, animation, damages),
 			conn)
+
+		for mobID, dmg := range damages {
+			exp := channel.Mobs.MobTakeDamage(char.GetCurrentMap(), mobID, dmg)
+
+			if exp > 0 {
+				// Need to add if in party calculations
+				char.GiveEXP(exp, true, false)
+			}
+		}
 	})
+
 }
 
 func handleRangedSkill(conn interop.ClientConn, reader maplepacket.Reader) {

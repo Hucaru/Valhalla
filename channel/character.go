@@ -259,17 +259,26 @@ func (c *MapleCharacter) TakeMesos(val uint32) {
 	c.SetMesos(c.GetMesos() - val)
 }
 
-func (c *MapleCharacter) GiveEXP(val uint32) {
-	if c.GetLevel() > 199 {
-		c.SetEXP(0)
-		c.conn.Write(packets.PlayerStatChange(true, constants.EXP_ID, 0))
-	} else if c.GetEXP()+val >= ExpTable[c.GetLevel()] {
-		c.SetLevel(c.GetLevel() + 1)
-		c.GiveEXP(c.GetEXP() + val - ExpTable[c.GetLevel()]) // Recursive call to allow multiple level ups
-	} else {
-		c.SetEXP(c.GetEXP() + val)
-		c.conn.Write(packets.PlayerStatChange(true, constants.EXP_ID, c.GetEXP()))
+func (c *MapleCharacter) GiveEXP(val uint32, whiteText, appearInChat bool) {
+	var giveEXP func(val uint32)
+
+	giveEXP = func(val uint32) {
+		if c.GetLevel() > 199 {
+			c.SetEXP(0)
+			c.conn.Write(packets.PlayerStatChange(true, constants.EXP_ID, 0))
+		} else if c.GetEXP()+val >= ExpTable[c.GetLevel()-1] {
+			leftOver := c.GetEXP() + val - ExpTable[c.GetLevel()-1]
+			c.SetLevel(c.GetLevel() + 1)
+			giveEXP(leftOver) // Recursive call to allow multiple level ups
+		} else {
+			c.SetEXP(c.GetEXP() + val)
+			c.conn.Write(packets.PlayerStatChange(true, constants.EXP_ID, c.GetEXP()))
+		}
 	}
+
+	giveEXP(val)
+
+	c.conn.Write(packets.MessageExpGained(whiteText, appearInChat, val))
 }
 
 func (c *MapleCharacter) TakeEXP(val uint32) {
