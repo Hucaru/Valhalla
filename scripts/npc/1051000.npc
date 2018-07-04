@@ -1,6 +1,7 @@
 # Cutthroat Manny - Kerning Shop
 
-items = {13220130: 1, 1092008: 1, 1102054, 1082002:1, 1072004:1, 1062007:1, 1042003:1, 1032006:1, 1002140:1}
+# Golang map order is not preserved, so resort to slice, [[item id, price], [item id]] - no price uses default
+items = [[1332020, 1], [1472000]] 
 
 if state == 1 {
     return SendShop(items)

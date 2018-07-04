@@ -277,16 +277,15 @@ func HandleGmCommand(conn interop.ClientConn, msg string) {
 		os.Exit(1)
 
 	case "shop":
-		items := make(map[uint32]uint32)
-		items[1322013] = 1
-		items[1092008] = 1
-		items[1102054] = 1
-		items[1082002] = 1
-		items[1072004] = 1
-		items[1062007] = 1
-		items[1042003] = 1
-		items[1032006] = 1
-		items[1002140] = 1
+		items := [][]uint32{[]uint32{1322013, 1},
+			[]uint32{1092008, 1},
+			[]uint32{1102054, 1},
+			[]uint32{1082002, 1},
+			[]uint32{1072004, 1},
+			[]uint32{1062007, 1},
+			[]uint32{1042003, 1},
+			[]uint32{1032006, 1},
+			[]uint32{1002140, 1}}
 
 		conn.Write(packets.NPCShop(9200000, items))
 

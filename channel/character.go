@@ -289,11 +289,12 @@ func (c *MapleCharacter) TakeEXP(val uint32) {
 	}
 }
 
-func (c *MapleCharacter) GiveItem() {
-
+func (c *MapleCharacter) GiveItem(item character.Item) {
+	log.Println("Implement Give item:", item)
 }
 
-func (c *MapleCharacter) TakeItem() {
+func (c *MapleCharacter) TakeItem(slotID int16, itemID uint32, ammount uint16) {
+	log.Println("Implement take item:", slotID, itemID, ammount)
 }
 
 func (c *MapleCharacter) TakeDamage(ammount uint32) {

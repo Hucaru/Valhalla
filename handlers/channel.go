@@ -55,6 +55,9 @@ func HandleChannelPacket(conn *connection.ClientChanConn, reader maplepacket.Rea
 	case constants.RECV_CHANNEL_NPC_DIALOGUE_CONTINUE:
 		handleNPCChatContinue(conn, reader)
 
+	case constants.RECV_CHANNEL_NPC_SHOP:
+		handleNPCShop(conn, reader)
+
 	case constants.RECV_CHANNEL_INV_MOVE_ITEM:
 		handleMoveInventoryItem(conn, reader)
 

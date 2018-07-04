@@ -6,8 +6,10 @@ import (
 	"sync"
 
 	"github.com/Hucaru/Valhalla/channel"
+	"github.com/Hucaru/Valhalla/character"
 	"github.com/Hucaru/Valhalla/interop"
 	"github.com/Hucaru/Valhalla/maplepacket"
+	"github.com/Hucaru/Valhalla/nx"
 	"github.com/Hucaru/Valhalla/packets"
 	"github.com/mattn/anko/core"
 	"github.com/mattn/anko/vm"
@@ -90,6 +92,8 @@ type session struct {
 	shopItemID      uint32
 	shopItemAmmount uint16
 
+	shopItems [][]uint32
+
 	script string
 	env    *vm.Env
 	npcID  uint32
@@ -142,8 +146,19 @@ func (s *session) register(npcID uint32, char *channel.MapleCharacter) {
 		return packets.NPCChatStyleWindow(npcID, msg, styles)
 	})
 
-	s.env.Define("SendShop", func(items map[uint32]uint32) maplepacket.Packet {
-		return packets.NPCShop(npcID, items)
+	s.env.Define("SendShop", func(items []interface{}) maplepacket.Packet {
+		tmp := make([][]uint32, len(items))
+
+		for i, v := range items {
+			val := v.([]interface{})
+			tmp[i] = []uint32{}
+			for _, j := range val {
+				tmp[i] = append(tmp[i], uint32(j.(int64)))
+			}
+		}
+		s.shopItems = tmp
+
+		return packets.NPCShop(npcID, tmp)
 	})
 
 	s.env.Define("SendPacketToMap", channel.Maps.GetMap(char.GetCurrentMap()).SendPacket)
@@ -176,16 +191,14 @@ func (s *session) Run() {
 	if ok {
 		s.conn.Write(p)
 	} else {
-		s.state = 1
+		s.state = 1 // should probably delete the session here
 	}
 }
 
 func (s *session) Continue(msgType byte, stateChange byte, reader maplepacket.Reader) {
 
 	if s.state == 0 {
-		sessionsMutex.Lock()
-		delete(sessions, s.conn)
-		sessionsMutex.Unlock()
+
 	} else {
 
 		switch msgType {
@@ -236,7 +249,7 @@ func (s *session) Continue(msgType byte, stateChange byte, reader maplepacket.Re
 		case 5:
 			s.state += 1
 
-			// need to
+			// need to do
 
 		default:
 			log.Println("Unkown npc msg type:", msgType)
@@ -252,15 +265,43 @@ func (s *session) Shop(reader maplepacket.Reader) {
 	s.state += 1
 
 	switch operation {
-	case 0:
+	case 0: // Buy item
 		s.shopItemIndex = reader.ReadUint16()
 		s.shopItemID = reader.ReadUint32()
 		s.shopItemAmmount = reader.ReadUint16()
+
+		for ind, info := range s.shopItems {
+			if uint16(ind) == (s.shopItemIndex) && info[0] == s.shopItemID {
+				channel.Players.OnCharacterFromConn(s.conn, func(char *channel.MapleCharacter) {
+					price := nx.Items[info[0]].Price
+
+					if len(info) == 2 {
+						price = info[1]
+					}
+
+					char.TakeMesos(price)
+
+					for i := uint16(0); i < s.shopItemAmmount; i++ {
+						char.GiveItem(character.CreateItemFromID(info[0])) // these do nothing for now
+					}
+				})
+			}
+		}
+	case 1: // sell item
+		slotID := reader.ReadInt16()
+		itemID := reader.ReadUint32()
+		ammount := reader.ReadUint16()
+
+		channel.Players.OnCharacterFromConn(s.conn, func(char *channel.MapleCharacter) {
+			char.TakeItem(slotID, itemID, ammount)
+		})
 	case 3:
+		// closed window, nothing to handle here, state system takes care of it
 	default:
-		log.Println("Unkown shop operation:", operation)
+		log.Println("Unkown shop operation:", operation, reader)
 	}
-	reader.ReadUint16()
+
+	s.Run()
 }
 
 func (s *session) Storage(reader maplepacket.Reader) {

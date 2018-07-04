@@ -86,6 +86,7 @@ const (
 	RECV_CHANNEL_EMOTICON                   = 0x23
 	RECV_CHANNEL_NPC_DIALOGUE               = 0x27
 	RECV_CHANNEL_NPC_DIALOGUE_CONTINUE      = 0x28
+	RECV_CHANNEL_NPC_SHOP                   = 0x29
 	RECV_CHANNEL_INV_MOVE_ITEM              = 0x2D
 	RECV_CHANNEL_CHANGE_STAT                = 0x36
 	RECV_CHANNEL_PASSIVE_REGEN              = 0x37

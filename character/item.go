@@ -1,5 +1,9 @@
 package character
 
+import (
+	"log"
+)
+
 // Base -
 type Base struct {
 	invID       byte
@@ -87,6 +91,11 @@ type Item struct {
 	hands        uint16
 	speed        uint16
 	jump         uint16
+}
+
+func CreateItemFromID(id uint32) Item {
+	log.Println("Implement create item from id:", id)
+	return Item{}
 }
 
 func (e *Item) GetUpgradeSlots() byte {

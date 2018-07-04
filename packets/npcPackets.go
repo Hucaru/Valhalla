@@ -160,16 +160,22 @@ func NPCChatUnkown2(npcID uint32, msg string) maplepacket.Packet {
 	return p
 }
 
-func NPCShop(npcID uint32, items map[uint32]uint32) maplepacket.Packet {
+func NPCShop(npcID uint32, items [][]uint32) maplepacket.Packet {
 	p := maplepacket.NewPacket()
 	p.WriteByte(0xC8)
 	p.WriteUint32(npcID)
 	p.WriteUint16(uint16(len(items)))
 
-	for id, price := range items {
-		p.WriteUint32(id)
-		p.WriteUint32(price)
-		p.WriteUint16(nx.Items[id].SlotMax) // Get this from nx/wz
+	for _, item := range items {
+		p.WriteUint32(item[0])
+
+		if len(item) == 2 {
+			p.WriteUint32(item[1])
+		} else {
+			p.WriteUint32(nx.Items[item[0]].Price)
+		}
+
+		p.WriteUint16(nx.Items[item[0]].SlotMax) // Get this from nx/wz
 	}
 
 	return p

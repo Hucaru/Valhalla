@@ -108,6 +108,11 @@ func (m *mapleMobs) MobTakeDamage(mapID, mobID uint32, damage []uint32) uint32 {
 	}
 
 	if index > -1 {
+		m.alive[mapID][index].SetHp(m.alive[mapID][index].GetMaxHp())
+		m.alive[mapID][index].SetMp(m.alive[mapID][index].GetMaxMp())
+		m.alive[mapID][index].SetX(m.alive[mapID][index].GetSx())
+		m.alive[mapID][index].SetY(m.alive[mapID][index].GetSy())
+
 		m.dead[mapID] = append(m.dead[mapID], m.alive[mapID][index])
 
 		copy(m.alive[mapID][index:], m.alive[mapID][index+1:])
