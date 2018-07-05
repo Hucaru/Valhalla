@@ -162,7 +162,7 @@ func NPCChatUnkown2(npcID uint32, msg string) maplepacket.Packet {
 
 func NPCShop(npcID uint32, items [][]uint32) maplepacket.Packet {
 	p := maplepacket.NewPacket()
-	p.WriteByte(0xC8)
+	p.WriteByte(constants.SEND_CHANNEL_NPC_SHOP)
 	p.WriteUint32(npcID)
 	p.WriteUint16(uint16(len(items)))
 
@@ -175,7 +175,15 @@ func NPCShop(npcID uint32, items [][]uint32) maplepacket.Packet {
 			p.WriteUint32(nx.Items[item[0]].Price)
 		}
 
-		p.WriteUint16(nx.Items[item[0]].SlotMax) // Get this from nx/wz
+		if nx.IsRechargeAble(item[0]) {
+			p.WriteUint64(uint64(nx.Items[item[0]].UnitPrice))
+		}
+
+		if nx.Items[item[0]].SlotMax == 0 {
+			p.WriteUint16(100)
+		} else {
+			p.WriteUint16(nx.Items[item[0]].SlotMax)
+		}
 	}
 
 	return p

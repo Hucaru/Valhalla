@@ -93,7 +93,7 @@ type Item struct {
 	jump         uint16
 }
 
-func CreateItemFromID(id uint32) Item {
+func CreateItemFromID(id uint32, isDrop bool) Item {
 	log.Println("Implement create item from id:", id)
 	return Item{}
 }

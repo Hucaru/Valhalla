@@ -282,7 +282,7 @@ func (s *session) Shop(reader maplepacket.Reader) {
 					char.TakeMesos(price)
 
 					for i := uint16(0); i < s.shopItemAmmount; i++ {
-						char.GiveItem(character.CreateItemFromID(info[0])) // these do nothing for now
+						char.GiveItem(character.CreateItemFromID(info[0], false)) // these do nothing for now
 					}
 				})
 			}
@@ -293,7 +293,10 @@ func (s *session) Shop(reader maplepacket.Reader) {
 		ammount := reader.ReadUint16()
 
 		channel.Players.OnCharacterFromConn(s.conn, func(char *channel.MapleCharacter) {
+			// Add validate
+
 			char.TakeItem(slotID, itemID, ammount)
+			char.GiveMesos(nx.Items[itemID].Price)
 		})
 	case 3:
 		// closed window, nothing to handle here, state system takes care of it

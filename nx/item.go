@@ -1,6 +1,8 @@
 package nx
 
 import (
+	"encoding/binary"
+	"math"
 	"strconv"
 	"strings"
 )
@@ -10,10 +12,12 @@ type Item struct {
 	SlotMax uint16
 	Cash    bool
 
-	AttackSpeed  uint32
-	Accuracy     uint32
-	Evasion      uint32
-	WeaponAttack uint32
+	AttackSpeed   uint32
+	Accuracy      uint32
+	Evasion       uint32
+	WeaponAttack  uint32
+	MagicAttack   uint32
+	WeaponDefence uint32
 
 	ReqStr   uint32
 	ReqDex   uint32
@@ -22,10 +26,15 @@ type Item struct {
 	ReqJob   uint32
 	ReqLevel uint32
 
-	Upgrades uint32
+	Upgrades  uint32
+	UnitPrice float64
 }
 
 var Items = make(map[uint32]Item)
+
+func IsRechargeAble(itemID uint32) bool {
+	return (math.Floor(float64(itemID/10000)) == 207) // Taken from cliet
+}
 
 func getItemInfo() {
 	base := "Item/"
@@ -124,6 +133,10 @@ func getItem(node node) Item {
 					item.Evasion = dataToUint32(property.Data)
 				case "incPAD":
 					item.WeaponAttack = dataToUint32(property.Data)
+				case "incMAD":
+					item.MagicAttack = dataToUint32(property.Data)
+				case "incPDD":
+					item.WeaponDefence = dataToUint32(property.Data)
 				case "reqSTR":
 					item.ReqStr = dataToUint32(property.Data)
 				case "reqDEX":
@@ -139,7 +152,8 @@ func getItem(node node) Item {
 				case "tuc":
 					item.Upgrades = dataToUint32(property.Data)
 				case "unitPrice":
-					//item.unitPrice = dataToUint32(property.Data)
+					bits := binary.LittleEndian.Uint64([]byte(property.Data[:]))
+					item.UnitPrice = math.Float64frombits(bits)
 				default:
 					//fmt.Println(strLookup[property.NameID])
 				}

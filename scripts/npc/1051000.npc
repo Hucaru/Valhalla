@@ -1,7 +1,7 @@
 # Cutthroat Manny - Kerning Shop
 
 # Golang map order is not preserved, so resort to slice, [[item id, price], [item id]] - no price uses default
-items = [[1332020, 1], [1472000]] 
+items = [[1332020, 1], [1472000], [2070006]] 
 
 if state == 1 {
     return SendShop(items)
