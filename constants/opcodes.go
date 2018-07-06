@@ -59,6 +59,7 @@ const (
 	SEND_CHANNEL_REMOVE_DOOR               = 0xB2
 	SEND_CHANNEL_NPC_DIALOGUE_BOX          = 0xC5
 	SEND_CHANNEL_NPC_SHOP                  = 0xC8
+	SEND_CHANNEL_NPC_SHOP_RESULT           = 0xC9
 	SEND_CHANNEL_NPC_STORAGE               = 0xCD
 
 	// Opcodes Client -> Server

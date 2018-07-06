@@ -171,12 +171,13 @@ func NPCShop(npcID uint32, items [][]uint32) maplepacket.Packet {
 
 		if len(item) == 2 {
 			p.WriteUint32(item[1])
+
 		} else {
 			p.WriteUint32(nx.Items[item[0]].Price)
 		}
 
 		if nx.IsRechargeAble(item[0]) {
-			p.WriteUint64(uint64(nx.Items[item[0]].UnitPrice))
+			p.WriteUint64(uint64(nx.Items[item[0]].UnitPrice * float64(nx.Items[item[0]].SlotMax)))
 		}
 
 		if nx.Items[item[0]].SlotMax == 0 {
@@ -187,6 +188,26 @@ func NPCShop(npcID uint32, items [][]uint32) maplepacket.Packet {
 	}
 
 	return p
+}
+
+func nPCShopResult(code byte) maplepacket.Packet {
+	p := maplepacket.NewPacket()
+	p.WriteByte(constants.SEND_CHANNEL_NPC_SHOP_RESULT)
+	p.WriteByte(code)
+
+	return p
+}
+
+func NPCShopNotEnoughStock() maplepacket.Packet {
+	return nPCShopResult(0x09)
+}
+
+func NPCShopNotEnoughMesos() maplepacket.Packet {
+	return nPCShopResult(0x0A)
+}
+
+func NPCTradeError() maplepacket.Packet {
+	return nPCShopResult(0xFF)
 }
 
 func NPCStorageShow(npcID, storageMesos uint32, storageSlots byte, items []character.Item) maplepacket.Packet {

@@ -5,6 +5,8 @@ import (
 	"math"
 	"strconv"
 	"strings"
+
+	"github.com/Hucaru/Valhalla/constants"
 )
 
 type Item struct {
@@ -34,6 +36,18 @@ var Items = make(map[uint32]Item)
 
 func IsRechargeAble(itemID uint32) bool {
 	return (math.Floor(float64(itemID/10000)) == 207) // Taken from cliet
+}
+
+func IsStackable(itemID uint32, invID byte, ammount int16) bool {
+	if itemID/1e6 != 5 && // pet item
+		invID != 1 && // equip
+		itemID/1e4 != 207 && // star/arrow etc
+		ammount < constants.MAX_ITEM_STACK {
+
+		return true
+	}
+
+	return false
 }
 
 func getItemInfo() {

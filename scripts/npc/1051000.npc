@@ -1,7 +1,9 @@
 # Cutthroat Manny - Kerning Shop
 
-# Golang map order is not preserved, so resort to slice, [[item id, price], [item id]] - no price uses default
-items = [[1332020, 1], [1472000], [2070006]] 
+# Golang map order is not preserved, so resort to slice, [[item id, price], [item id]] 
+# No price uses default, to make a star rechargeable and not allow it to be bought make the price zero, values are converted to uint32
+
+items = [[1332020, 1], [1472000], [2070006], [2070006,0], [2000000]] 
 
 if state == 1 {
     return SendShop(items)

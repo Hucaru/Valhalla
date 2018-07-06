@@ -276,13 +276,17 @@ func (s *session) Shop(reader maplepacket.Reader) {
 					price := nx.Items[info[0]].Price
 
 					if len(info) == 2 {
-						price = info[1]
+						price = info[1] * uint32(s.shopItemAmmount)
 					}
 
-					char.TakeMesos(price)
+					if price > char.GetMesos() {
+						// client is supposed to protect against this
+					} else {
+						char.TakeMesos(price)
 
-					for i := uint16(0); i < s.shopItemAmmount; i++ {
-						char.GiveItem(character.CreateItemFromID(info[0], false)) // these do nothing for now
+						for i := uint16(0); i < s.shopItemAmmount; i++ {
+							char.GiveItem(character.CreateItemFromID(info[0], false)) // these do nothing for now
+						}
 					}
 				})
 			}
@@ -293,10 +297,35 @@ func (s *session) Shop(reader maplepacket.Reader) {
 		ammount := reader.ReadUint16()
 
 		channel.Players.OnCharacterFromConn(s.conn, func(char *channel.MapleCharacter) {
-			// Add validate
+			for _, item := range char.GetItems() {
+				if item.GetItemID() == itemID && item.GetSlotNumber() == slotID {
+					if ammount > uint16(item.GetAmount()) {
+						break
+					}
 
-			char.TakeItem(slotID, itemID, ammount)
-			char.GiveMesos(nx.Items[itemID].Price)
+					char.TakeItem(item.GetInvID(), slotID, ammount)
+					char.GiveMesos(nx.Items[itemID].Price * uint32(ammount))
+					break
+				}
+			}
+		})
+	case 2: // recharge
+		slotID := reader.ReadInt16()
+
+		channel.Players.OnCharacterFromConn(s.conn, func(char *channel.MapleCharacter) {
+			for _, item := range char.GetItems() {
+				if item.GetInvID() == 2 && item.GetSlotNumber() == slotID && nx.IsRechargeAble(item.GetItemID()) {
+					price := uint32(nx.Items[item.GetItemID()].UnitPrice * float64(nx.Items[item.GetItemID()].SlotMax))
+
+					if price > char.GetMesos() {
+						s.conn.Write(packets.NPCShopNotEnoughMesos())
+					} else {
+						item.SetAmount(int16(nx.Items[item.GetItemID()].SlotMax))
+						char.GiveItem(item)
+						char.TakeMesos(price)
+					}
+				}
+			}
 		})
 	case 3:
 		// closed window, nothing to handle here, state system takes care of it

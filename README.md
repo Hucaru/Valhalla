@@ -54,14 +54,19 @@ NPC scripts can be found in the scripts/npc folder. There are some examples in t
 Check command/handlers.go for parameters
 
 ## Roadmap
-* inventory drop item ask quantity where relevant
+* Inventory drop item ask quantity where relevant
+* NPC style window
 * parties
 * guilds
 * redo wizet data loading to be nx & wz agnostic
-* Mob death, exp, skills & respawn
-* monster/player drop items
+* Mob respawn system, Mob EXP & Mob party play
+* Monster/player drop items
 * Skills & buffs (incl. item buffs)
-* reactors
+* Reactors
+* World server
+* I think the client has all numbers as int instead of uint
+* Refactor inventory handler
+* Rename varibales to more sensible names
 
 ## NPC chat display info (use this when scripting NPCs)
 
@@ -111,6 +116,8 @@ Taken from [here](http://forum.ragezone.com/f428/add-learning-npcs-start-finish-
 ![](https://i.imgur.com/g7OEhTc.png)
 
 ![](https://i.imgur.com/ovAujlt.png)
+
+![](https://i.imgur.com/hE0mWItg.png)
 
 <div>Valhalla Logo made with <a href="https://
 www.designevo.com/" title="Free Online Logo Maker">DesignEvo</a></div>

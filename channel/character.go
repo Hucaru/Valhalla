@@ -8,6 +8,7 @@ import (
 	"github.com/Hucaru/Valhalla/constants"
 	"github.com/Hucaru/Valhalla/interop"
 	"github.com/Hucaru/Valhalla/maplepacket"
+	"github.com/Hucaru/Valhalla/nx"
 	"github.com/Hucaru/Valhalla/packets"
 )
 
@@ -290,11 +291,74 @@ func (c *MapleCharacter) TakeEXP(val uint32) {
 }
 
 func (c *MapleCharacter) GiveItem(item character.Item) {
-	log.Println("Implement Give item:", item)
+	update := false
+
+	var activeSlots []int16
+
+	switch item.GetInvID() {
+	case 1:
+		activeSlots = make([]int16, c.GetEquipSlotSize())
+	case 2:
+		activeSlots = make([]int16, c.GetUsetSlotSize())
+	case 3:
+		activeSlots = make([]int16, c.GetSetupSlotSize())
+	case 4:
+		activeSlots = make([]int16, c.GetEtcSlotSize())
+	case 5:
+		activeSlots = make([]int16, c.GetCashSlotSize())
+	default:
+		log.Println("Trying to add item with unkown inv id:", item.GetInvID())
+	}
+
+	for _, currentItem := range c.GetItems() {
+		if currentItem.GetItemID() == item.GetItemID() &&
+			currentItem.GetInvID() == item.GetInvID() &&
+			currentItem.GetSlotNumber() == item.GetSlotNumber() {
+
+			if nx.IsStackable(currentItem.GetItemID(), currentItem.GetInvID(), currentItem.GetAmount()+item.GetAmount()-1) {
+				currentItem.SetAmount(currentItem.GetAmount() + item.GetAmount())
+			}
+
+			c.UpdateItem(currentItem, item)
+			c.conn.Write(packets.InventoryAddItem(item, false))
+			update = true
+		}
+
+		activeSlots[item.GetInvID()] = 1
+	}
+
+	if !update {
+		for _, v := range activeSlots {
+			if v == 0 {
+				item.SetSlotNumber(v)
+				break
+			}
+		}
+
+		c.AddItem(item)
+		c.conn.Write(packets.InventoryAddItem(item, true))
+	}
+
+	if !update {
+		c.conn.Write(packets.NPCTradeError())
+	}
 }
 
-func (c *MapleCharacter) TakeItem(slotID int16, itemID uint32, ammount uint16) {
-	log.Println("Implement take item:", slotID, itemID, ammount)
+func (c *MapleCharacter) TakeItem(invID byte, slotID int16, ammount uint16) {
+	for _, item := range c.GetItems() {
+		if item.GetInvID() == invID &&
+			item.GetSlotNumber() == slotID {
+			if int16(ammount) < item.GetAmount() {
+				updatedItem := item
+				updatedItem.SetAmount(item.GetAmount() - int16(ammount))
+				c.UpdateItem(item, updatedItem)
+				c.conn.Write(packets.InventoryAddItem(updatedItem, false))
+			} else {
+				c.RemoveItem(item)
+				c.conn.Write(packets.InventoryChangeItemSlot(invID, slotID, 0))
+			}
+		}
+	}
 }
 
 func (c *MapleCharacter) TakeDamage(ammount uint32) {
