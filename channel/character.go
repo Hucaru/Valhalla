@@ -267,10 +267,11 @@ func (c *MapleCharacter) GiveEXP(val int32, whiteText, appearInChat bool) {
 		if c.GetLevel() > 199 {
 			c.SetEXP(0)
 			c.conn.Write(packets.PlayerStatChange(true, constants.EXP_ID, 0))
-		} else if c.GetEXP()+val >= ExpTable[c.GetLevel()-1] {
+		} else if c.GetEXP()+val >= ExpTable[c.GetLevel()-1] { // bug here
 			leftOver := c.GetEXP() + val - ExpTable[c.GetLevel()-1]
 			c.SetLevel(c.GetLevel() + 1)
-			giveEXP(leftOver) // Recursive call to allow multiple level ups
+			c.SetEXP(leftOver)
+			giveEXP(leftOver)
 		} else {
 			c.SetEXP(c.GetEXP() + val)
 			c.conn.Write(packets.PlayerStatChange(true, constants.EXP_ID, c.GetEXP()))
@@ -348,9 +349,9 @@ func (c *MapleCharacter) TakeItem(invID byte, slotID int16, ammount int16) {
 	for _, item := range c.GetItems() {
 		if item.GetInvID() == invID &&
 			item.GetSlotNumber() == slotID {
-			if int16(ammount) < item.GetAmount() {
+			if ammount < item.GetAmount() {
 				updatedItem := item
-				updatedItem.SetAmount(item.GetAmount() - int16(ammount))
+				updatedItem.SetAmount(item.GetAmount() - ammount)
 				c.UpdateItem(item, updatedItem)
 				c.conn.Write(packets.InventoryAddItem(updatedItem, false))
 			} else {
@@ -364,14 +365,14 @@ func (c *MapleCharacter) TakeItem(invID byte, slotID int16, ammount int16) {
 func (c *MapleCharacter) TakeDamage(ammount int32) {
 	delta := int32(c.Character.GetHP()) - int32(ammount)
 
-	var newHp int16
+	var newHp int32
 
 	if delta < 1 {
 		newHp = 0
 	} else {
-		newHp = int16(delta)
+		newHp = delta
 	}
 
-	c.Character.SetHP(newHp)
-	c.conn.Write(packets.PlayerStatChange(false, constants.HP_ID, int32(newHp)))
+	c.Character.SetHP(int16(newHp))
+	c.conn.Write(packets.PlayerStatChange(false, constants.HP_ID, newHp))
 }

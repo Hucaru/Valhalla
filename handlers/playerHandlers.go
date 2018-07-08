@@ -88,7 +88,7 @@ func handleTakeDamage(conn interop.ClientConn, reader maplepacket.Reader) {
 	}
 
 	channel.Players.OnCharacterFromConn(conn, func(char *channel.MapleCharacter) {
-		//char.TakeDamage(ammount)
+		char.TakeDamage(ammount)
 
 		channel.Maps.GetMap(char.GetCurrentMap()).SendPacketExcept(packets.PlayerReceivedDmg(char.GetCharID(),
 			ammount, dmgType, mobID, hit, reduction, stance),

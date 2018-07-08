@@ -58,15 +58,12 @@ Check command/handlers.go for parameters
 * NPC style window
 * parties
 * guilds
-* redo wizet data loading to be nx & wz agnostic
 * Mob respawn system, Mob EXP & Mob party play
 * Monster/player drop items
 * Skills & buffs (incl. item buffs)
 * Reactors
 * World server
-* I think the client has all numbers as int instead of uint
-* Refactor inventory handler
-* Rename varibales to more sensible names
+* General refactor
 
 ## NPC chat display info (use this when scripting NPCs)
 
