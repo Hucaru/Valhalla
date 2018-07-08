@@ -6,11 +6,11 @@ import (
 
 type ClientLoginConn struct {
 	ClientConnection
-	userID    uint32
+	userID    int32
 	isLogedIn bool
 	isAdmin   bool
 	hash      string
-	worldID   uint32
+	worldID   int32
 	chanID    byte
 	gender    byte
 }
@@ -39,11 +39,11 @@ func (c *ClientLoginConn) String() string {
 	return c.ClientConnection.String()
 }
 
-func (c *ClientLoginConn) SetUserID(val uint32) {
+func (c *ClientLoginConn) SetUserID(val int32) {
 	c.userID = val
 }
 
-func (c *ClientLoginConn) GetUserID() uint32 {
+func (c *ClientLoginConn) GetUserID() int32 {
 	return c.userID
 }
 
@@ -71,11 +71,11 @@ func (c *ClientLoginConn) GetIsLogedIn() bool {
 	return c.isLogedIn
 }
 
-func (c *ClientLoginConn) SetWorldID(val uint32) {
+func (c *ClientLoginConn) SetWorldID(val int32) {
 	c.worldID = val
 }
 
-func (c *ClientLoginConn) GetWorldID() uint32 {
+func (c *ClientLoginConn) GetWorldID() int32 {
 	return c.worldID
 }
 

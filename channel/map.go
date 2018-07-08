@@ -12,8 +12,8 @@ import (
 )
 
 type mapleMap struct {
-	forcedReturn uint32
-	returnMap    uint32
+	forcedReturn int32
+	returnMap    int32
 	mobRate      float64
 	isTown       bool
 	portals      []maplePortal
@@ -29,7 +29,7 @@ func (m *mapleMap) GetMobRate() float64 {
 	return result
 }
 
-func (m *mapleMap) GetReturnMap() uint32 {
+func (m *mapleMap) GetReturnMap() int32 {
 	m.mutex.RLock()
 	result := m.returnMap
 	m.mutex.RUnlock()
@@ -37,7 +37,7 @@ func (m *mapleMap) GetReturnMap() uint32 {
 	return result
 }
 
-func (m *mapleMap) SetReturnMap(mapID uint32) {
+func (m *mapleMap) SetReturnMap(mapID int32) {
 	m.mutex.Lock()
 	m.returnMap = mapID
 	m.mutex.Unlock()

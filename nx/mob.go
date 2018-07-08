@@ -7,18 +7,18 @@ import (
 
 type Monster struct {
 	Boss         bool
-	Accuracy     uint16
-	Exp          uint32
+	Accuracy     int16
+	Exp          int32
 	Level        byte
-	MaxHp        uint32
-	Hp           uint32
-	MaxMp        uint32
-	Mp           uint32
-	FlySpeed     uint32
+	MaxHp        int32
+	Hp           int32
+	MaxMp        int32
+	Mp           int32
+	FlySpeed     int32
 	SummonEffect byte
 }
 
-var Mob = make(map[uint32]Monster)
+var Mob = make(map[int32]Monster)
 
 func getMobInfo() {
 	result := searchNode("Mob", func(cursor *node) {
@@ -36,7 +36,7 @@ func getMobInfo() {
 						panic(err)
 					}
 
-					Mob[uint32(ID)] = getMob(options)
+					Mob[int32(ID)] = getMob(options)
 				default:
 				}
 
@@ -59,19 +59,19 @@ func getMob(options node) Monster {
 		case "boss":
 			monst.Boss = bool(options.Data[0] == 1)
 		case "acc":
-			monst.Accuracy = dataToUint16(options.Data)
+			monst.Accuracy = dataToInt16(options.Data)
 		case "exp":
-			monst.Exp = dataToUint32(options.Data)
+			monst.Exp = dataToInt32(options.Data)
 		case "level":
 			monst.Level = options.Data[0]
 		case "maxHP":
-			monst.MaxHp = dataToUint32(options.Data)
+			monst.MaxHp = dataToInt32(options.Data)
 			monst.Hp = monst.MaxHp
 		case "maxMP":
-			monst.MaxMp = dataToUint32(options.Data)
+			monst.MaxMp = dataToInt32(options.Data)
 			monst.Mp = monst.MaxMp
 		case "flySpeed":
-			monst.FlySpeed = dataToUint32(options.Data)
+			monst.FlySpeed = dataToInt32(options.Data)
 		case "summonType":
 			monst.SummonEffect = options.Data[0]
 		default:

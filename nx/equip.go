@@ -7,17 +7,17 @@ import (
 
 type EquipItem struct {
 	Cash     bool
-	ReqDex   uint16
-	ReInt    uint16
-	ReqJob   uint16
-	ReqLuk   uint16
-	ReqLevel uint16
-	ReqStr   uint16
+	ReqDex   int16
+	ReInt    int16
+	ReqJob   int16
+	ReqLuk   int16
+	ReqLevel int16
+	ReqStr   int16
 }
 
-var Equip = make(map[uint32]EquipItem)
+var Equip = make(map[int32]EquipItem)
 
-func validEquipID(ID uint32) bool {
+func validEquipID(ID int32) bool {
 	if _, ok := Equip[ID]; ok {
 		return true
 	}
@@ -25,7 +25,7 @@ func validEquipID(ID uint32) bool {
 	return false
 }
 
-func IsCashItem(ID uint32) bool {
+func IsCashItem(ID int32) bool {
 	if validEquipID(ID) {
 		return Equip[ID].Cash
 	}
@@ -79,7 +79,7 @@ func getEquipInfo() {
 						panic(err)
 					}
 
-					Equip[uint32(equipID)] = getEquipItem(itemNode)
+					Equip[int32(equipID)] = getEquipItem(itemNode)
 				}
 			default:
 				//
@@ -107,17 +107,17 @@ func getEquipItem(item node) EquipItem {
 				case "cash":
 					equip.Cash = bool(dataToInt64(option.Data) == 1)
 				case "reqDEX":
-					equip.ReqDex = dataToUint16(option.Data)
+					equip.ReqDex = int16(dataToUint16(option.Data))
 				case "reqINT":
-					equip.ReInt = dataToUint16(option.Data)
+					equip.ReInt = int16(dataToUint16(option.Data))
 				case "reqJob":
-					equip.ReqJob = dataToUint16(option.Data)
+					equip.ReqJob = int16(dataToUint16(option.Data))
 				case "reqLUK":
-					equip.ReqLuk = dataToUint16(option.Data)
+					equip.ReqLuk = int16(dataToUint16(option.Data))
 				case "reqLevel":
-					equip.ReqLevel = dataToUint16(option.Data)
+					equip.ReqLevel = int16(dataToUint16(option.Data))
 				case "reqSTR":
-					equip.ReqStr = dataToUint16(option.Data)
+					equip.ReqStr = int16(dataToUint16(option.Data))
 				default:
 				}
 

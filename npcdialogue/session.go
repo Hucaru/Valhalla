@@ -1,4 +1,4 @@
-package npcChat
+package npcdialogue
 
 import (
 	"log"
@@ -19,13 +19,13 @@ var sessionsMutex = &sync.RWMutex{}
 var scriptsMutex = &sync.RWMutex{}
 
 var sessions = make(map[interop.ClientConn]*session)
-var scripts = make(map[uint32]string)
+var scripts = make(map[int32]string)
 
-func addScript(npcID uint32, contents string) {
+func addScript(npcID int32, contents string) {
 	scripts[npcID] = contents
 }
 
-func removeScripts(npcID uint32) {
+func removeScripts(npcID int32) {
 	delete(scripts, npcID)
 }
 
@@ -35,7 +35,7 @@ func init() {
 	go watchFiles()
 }
 
-func NewSession(conn interop.ClientConn, npcID uint32, char *channel.MapleCharacter) {
+func NewSession(conn interop.ClientConn, npcID int32, char *channel.MapleCharacter) {
 	var script string
 
 	scriptsMutex.RLock()
@@ -88,18 +88,18 @@ type session struct {
 	intInput    int
 	style       int
 
-	shopItemIndex   uint16
-	shopItemID      uint32
-	shopItemAmmount uint16
+	shopItemIndex   int16
+	shopItemID      int32
+	shopItemAmmount int16
 
-	shopItems [][]uint32
+	shopItems [][]int32
 
 	script string
 	env    *vm.Env
-	npcID  uint32
+	npcID  int32
 }
 
-func (s *session) register(npcID uint32, char *channel.MapleCharacter) {
+func (s *session) register(npcID int32, char *channel.MapleCharacter) {
 	s.env.Define("SendYesNo", func(msg string) maplepacket.Packet {
 		return packets.NPCChatYesNo(npcID, msg)
 	})
@@ -120,11 +120,11 @@ func (s *session) register(npcID uint32, char *channel.MapleCharacter) {
 		return packets.NPCChatBackNext(npcID, msg, true, false)
 	})
 
-	s.env.Define("SendUserStringInput", func(msg, defaultInput string, minLength, maxLength uint16) maplepacket.Packet {
+	s.env.Define("SendUserStringInput", func(msg, defaultInput string, minLength, maxLength int16) maplepacket.Packet {
 		return packets.NPCChatUserString(npcID, msg, defaultInput, minLength, maxLength)
 	})
 
-	s.env.Define("SendUserIntInput", func(msg string, defaultInput, minLength, maxLength uint32) maplepacket.Packet {
+	s.env.Define("SendUserIntInput", func(msg string, defaultInput, minLength, maxLength int32) maplepacket.Packet {
 		return packets.NPCChatUserNumber(npcID, msg, defaultInput, minLength, maxLength)
 	})
 
@@ -133,13 +133,13 @@ func (s *session) register(npcID uint32, char *channel.MapleCharacter) {
 	})
 
 	s.env.Define("SendStyleWindow", func(msg string, array []interface{}) maplepacket.Packet {
-		var styles []uint32
+		var styles []int32
 
 		for _, i := range array {
 			val, ok := i.(int64)
 
 			if ok {
-				styles = append(styles, uint32(val))
+				styles = append(styles, int32(val))
 			}
 		}
 
@@ -147,13 +147,13 @@ func (s *session) register(npcID uint32, char *channel.MapleCharacter) {
 	})
 
 	s.env.Define("SendShop", func(items []interface{}) maplepacket.Packet {
-		tmp := make([][]uint32, len(items))
+		tmp := make([][]int32, len(items))
 
 		for i, v := range items {
 			val := v.([]interface{})
-			tmp[i] = []uint32{}
+			tmp[i] = []int32{}
 			for _, j := range val {
-				tmp[i] = append(tmp[i], uint32(j.(int64)))
+				tmp[i] = append(tmp[i], int32(j.(int64)))
 			}
 		}
 		s.shopItems = tmp
@@ -266,17 +266,17 @@ func (s *session) Shop(reader maplepacket.Reader) {
 
 	switch operation {
 	case 0: // Buy item
-		s.shopItemIndex = reader.ReadUint16()
-		s.shopItemID = reader.ReadUint32()
-		s.shopItemAmmount = reader.ReadUint16()
+		s.shopItemIndex = reader.ReadInt16()
+		s.shopItemID = reader.ReadInt32()
+		s.shopItemAmmount = reader.ReadInt16()
 
 		for ind, info := range s.shopItems {
-			if uint16(ind) == (s.shopItemIndex) && info[0] == s.shopItemID {
+			if int16(ind) == (s.shopItemIndex) && info[0] == s.shopItemID {
 				channel.Players.OnCharacterFromConn(s.conn, func(char *channel.MapleCharacter) {
 					price := nx.Items[info[0]].Price
 
 					if len(info) == 2 {
-						price = info[1] * uint32(s.shopItemAmmount)
+						price = info[1] * int32(s.shopItemAmmount)
 					}
 
 					if price > char.GetMesos() {
@@ -284,7 +284,7 @@ func (s *session) Shop(reader maplepacket.Reader) {
 					} else {
 						char.TakeMesos(price)
 
-						for i := uint16(0); i < s.shopItemAmmount; i++ {
+						for i := int16(0); i < s.shopItemAmmount; i++ {
 							char.GiveItem(character.CreateItemFromID(info[0], false)) // these do nothing for now
 						}
 					}
@@ -293,18 +293,18 @@ func (s *session) Shop(reader maplepacket.Reader) {
 		}
 	case 1: // sell item
 		slotID := reader.ReadInt16()
-		itemID := reader.ReadUint32()
-		ammount := reader.ReadUint16()
+		itemID := reader.ReadInt32()
+		ammount := reader.ReadInt16()
 
 		channel.Players.OnCharacterFromConn(s.conn, func(char *channel.MapleCharacter) {
 			for _, item := range char.GetItems() {
 				if item.GetItemID() == itemID && item.GetSlotNumber() == slotID {
-					if ammount > uint16(item.GetAmount()) {
+					if ammount > item.GetAmount() {
 						break
 					}
 
 					char.TakeItem(item.GetInvID(), slotID, ammount)
-					char.GiveMesos(nx.Items[itemID].Price * uint32(ammount))
+					char.GiveMesos(nx.Items[itemID].Price * int32(ammount))
 					break
 				}
 			}
@@ -315,7 +315,7 @@ func (s *session) Shop(reader maplepacket.Reader) {
 		channel.Players.OnCharacterFromConn(s.conn, func(char *channel.MapleCharacter) {
 			for _, item := range char.GetItems() {
 				if item.GetInvID() == 2 && item.GetSlotNumber() == slotID && nx.IsRechargeAble(item.GetItemID()) {
-					price := uint32(nx.Items[item.GetItemID()].UnitPrice * float64(nx.Items[item.GetItemID()].SlotMax))
+					price := int32(nx.Items[item.GetItemID()].UnitPrice * float64(nx.Items[item.GetItemID()].SlotMax))
 
 					if price > char.GetMesos() {
 						s.conn.Write(packets.NPCShopNotEnoughMesos())

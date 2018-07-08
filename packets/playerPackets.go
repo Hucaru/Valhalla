@@ -11,72 +11,72 @@ import (
 	"github.com/Hucaru/Valhalla/nx"
 )
 
-func PlayerReceivedDmg(charID uint32, ammount uint32, dmgType byte, mobID uint32, hit byte, reduction byte, stance byte) maplepacket.Packet {
+func PlayerReceivedDmg(charID int32, ammount int32, dmgType byte, mobID int32, hit byte, reduction byte, stance byte) maplepacket.Packet {
 	p := maplepacket.NewPacket()
 	p.WriteByte(constants.SEND_CHANNEL_PLAYER_TAKE_DMG)
-	p.WriteUint32(charID)
+	p.WriteInt32(charID)
 	p.WriteByte(dmgType)
 
 	if dmgType == 0xFE {
-		p.WriteUint32(ammount)
-		p.WriteUint32(ammount)
+		p.WriteInt32(ammount)
+		p.WriteInt32(ammount)
 	} else {
-		p.WriteUint32(0) // ?
-		p.WriteUint32(mobID)
+		p.WriteInt32(0) // ?
+		p.WriteInt32(mobID)
 		p.WriteByte(hit)
 		p.WriteByte(stance)
-		p.WriteUint32(0)       // ?
-		p.WriteUint32(ammount) // skill id of attack?
+		p.WriteInt32(0)       // ?
+		p.WriteInt32(ammount) // skill id of attack?
 	}
 
 	return p
 }
 
-func PlayerLevelUpAnimation(charID uint32) maplepacket.Packet {
+func PlayerLevelUpAnimation(charID int32) maplepacket.Packet {
 	p := maplepacket.NewPacket()
 	p.WriteByte(constants.SEND_CHANNEL_PLAYER_ANIMATION)
-	p.WriteUint32(charID)
+	p.WriteInt32(charID)
 	p.WriteByte(0x00)
 
 	return p
 }
 
-func PlayerMove(charID uint32, leftOverBytes maplepacket.Packet) maplepacket.Packet {
+func PlayerMove(charID int32, leftOverBytes maplepacket.Packet) maplepacket.Packet {
 	p := maplepacket.NewPacket()
 	p.WriteByte(constants.SEND_CHANNEL_PLAYER_MOVEMENT)
-	p.WriteUint32(charID)
+	p.WriteInt32(charID)
 	p.WriteBytes(leftOverBytes)
 
 	return p
 }
 
-func PlayerEmoticon(playerID uint32, emotion uint32) maplepacket.Packet {
+func PlayerEmoticon(playerID int32, emotion int32) maplepacket.Packet {
 	p := maplepacket.NewPacket()
 	p.WriteByte(constants.SEND_CHANNEL_PLAYER_EMOTION)
-	p.WriteUint32(playerID)
-	p.WriteUint32(emotion)
+	p.WriteInt32(playerID)
+	p.WriteInt32(emotion)
 
 	return p
 }
 
-func PlayerSkillBookUpdate(skillID uint32, level uint32) maplepacket.Packet {
+func PlayerSkillBookUpdate(skillID int32, level int32) maplepacket.Packet {
 	p := maplepacket.NewPacket()
 	p.WriteByte(constants.SEND_CHANNEL_SKILL_RECORD_UPDATE)
-	p.WriteByte(0x01)   // time check?
-	p.WriteUint16(0x01) // number of skills to update
-	p.WriteUint32(skillID)
-	p.WriteUint32(level)
+	p.WriteByte(0x01)  // time check?
+	p.WriteInt16(0x01) // number of skills to update
+	p.WriteInt32(skillID)
+	p.WriteInt32(level)
 	p.WriteByte(0x01)
 
 	return p
 }
 
-func PlayerStatChange(byPlayer bool, stat uint32, value uint32) maplepacket.Packet {
+func PlayerStatChange(byPlayer bool, stat int32, value int32) maplepacket.Packet {
 	p := maplepacket.NewPacket()
 	p.WriteByte(constants.SEND_CHANNEL_STAT_CHANGE)
 	p.WriteBool(byPlayer)
-	p.WriteUint32(stat)
-	p.WriteUint32(value)
+	p.WriteInt32(stat)
+	p.WriteInt32(value)
 
 	return p
 }
@@ -92,13 +92,13 @@ func PlayerStatNoChange() maplepacket.Packet {
 	return p
 }
 
-func PlayerAvatarSummaryWindow(charID uint32, char character.Character, guildName string) maplepacket.Packet {
+func PlayerAvatarSummaryWindow(charID int32, char character.Character, guildName string) maplepacket.Packet {
 	p := maplepacket.NewPacket()
 	p.WriteByte(constants.SEND_CHANNEL_AVATAR_INFO_WINDOW)
-	p.WriteUint32(charID)
+	p.WriteInt32(charID)
 	p.WriteByte(char.GetLevel())
-	p.WriteUint16(char.GetJob())
-	p.WriteUint16(char.GetFame())
+	p.WriteInt16(char.GetJob())
+	p.WriteInt16(char.GetFame())
 
 	p.WriteString(guildName)
 
@@ -108,10 +108,10 @@ func PlayerAvatarSummaryWindow(charID uint32, char character.Character, guildNam
 	return p
 }
 
-func PlayerEnterGame(char character.Character, channelID uint32) maplepacket.Packet {
+func PlayerEnterGame(char character.Character, channelID int32) maplepacket.Packet {
 	p := maplepacket.NewPacket()
 	p.WriteByte(constants.SEND_CHANNEL_WARP_TO_MAP)
-	p.WriteUint32(channelID)
+	p.WriteInt32(channelID)
 	p.WriteByte(0) // character portal counter
 	p.WriteByte(1) // Is connecting
 
@@ -125,35 +125,35 @@ func PlayerEnterGame(char character.Character, channelID uint32) maplepacket.Pac
 	p.WriteBytes(randomBytes)
 	p.WriteBytes(randomBytes)
 	p.WriteBytes([]byte{0xFF, 0xFF}) // seperators? For what?
-	p.WriteUint32(char.GetCharID())
+	p.WriteInt32(char.GetCharID())
 	p.WritePaddedString(char.GetName(), 13)
 	p.WriteByte(char.GetGender())
 	p.WriteByte(char.GetSkin())
-	p.WriteUint32(char.GetFace())
-	p.WriteUint32(char.GetHair())
+	p.WriteInt32(char.GetFace())
+	p.WriteInt32(char.GetHair())
 
 	p.WriteInt64(0) // Pet Cash ID
 
 	p.WriteByte(char.GetLevel())
-	p.WriteUint16(char.GetJob())
-	p.WriteUint16(char.GetStr())
-	p.WriteUint16(char.GetDex())
-	p.WriteUint16(char.GetInt())
-	p.WriteUint16(char.GetLuk())
-	p.WriteUint16(char.GetHP())
-	p.WriteUint16(char.GetMaxHP())
-	p.WriteUint16(char.GetMP())
-	p.WriteUint16(char.GetMaxMP())
-	p.WriteUint16(char.GetAP())
-	p.WriteUint16(char.GetSP())
-	p.WriteUint32(char.GetEXP())
-	p.WriteUint16(char.GetFame())
+	p.WriteInt16(char.GetJob())
+	p.WriteInt16(char.GetStr())
+	p.WriteInt16(char.GetDex())
+	p.WriteInt16(char.GetInt())
+	p.WriteInt16(char.GetLuk())
+	p.WriteInt16(char.GetHP())
+	p.WriteInt16(char.GetMaxHP())
+	p.WriteInt16(char.GetMP())
+	p.WriteInt16(char.GetMaxMP())
+	p.WriteInt16(char.GetAP())
+	p.WriteInt16(char.GetSP())
+	p.WriteInt32(char.GetEXP())
+	p.WriteInt16(char.GetFame())
 
-	p.WriteUint32(char.GetCurrentMap())
+	p.WriteInt32(char.GetCurrentMap())
 	p.WriteByte(char.GetCurrentMapPos())
 
 	p.WriteByte(20) // budy list size
-	p.WriteUint32(char.GetMesos())
+	p.WriteInt32(char.GetMesos())
 
 	p.WriteByte(char.GetEquipSlotSize())
 	p.WriteByte(char.GetUsetSlotSize())
@@ -220,23 +220,23 @@ func PlayerEnterGame(char character.Character, channelID uint32) maplepacket.Pac
 	p.WriteByte(0)
 
 	// Skills
-	p.WriteUint16(uint16(len(char.GetSkills()))) // number of skills
+	p.WriteInt16(int16(len(char.GetSkills()))) // number of skills
 
 	for id, level := range char.GetSkills() {
-		p.WriteUint32(id)
-		p.WriteUint32(level)
+		p.WriteInt32(id)
+		p.WriteInt32(level)
 	}
 
 	// Quests
-	p.WriteUint16(0) // # of quests?
+	p.WriteInt16(0) // # of quests?
 
 	// What are these for? Minigame record and some other things?
-	p.WriteUint16(0)
-	p.WriteUint32(0)
-	p.WriteUint32(0)
-	p.WriteUint32(0)
-	p.WriteUint32(0)
-	p.WriteUint32(0)
+	p.WriteInt16(0)
+	p.WriteInt32(0)
+	p.WriteInt32(0)
+	p.WriteInt32(0)
+	p.WriteInt32(0)
+	p.WriteInt32(0)
 
 	p.WriteUint64(0)
 	p.WriteUint64(0)
@@ -258,7 +258,7 @@ func addEquip(item character.Item) maplepacket.Packet {
 		p.WriteByte(byte(math.Abs(float64(item.GetSlotNumber()))))
 	}
 	p.WriteByte(byte(item.GetItemID() / 1000000))
-	p.WriteUint32(item.GetItemID())
+	p.WriteInt32(item.GetItemID())
 
 	if nx.IsCashItem(item.GetItemID()) {
 		p.WriteByte(1)
@@ -270,21 +270,21 @@ func addEquip(item character.Item) maplepacket.Packet {
 	p.WriteUint64(item.GetExpirationTime())
 	p.WriteByte(item.GetUpgradeSlots())
 	p.WriteByte(item.GetLevel())
-	p.WriteUint16(item.GetStr())
-	p.WriteUint16(item.GetDex())
-	p.WriteUint16(item.GetInt())
-	p.WriteUint16(item.GetLuk())
-	p.WriteUint16(item.GetHP())
-	p.WriteUint16(item.GetMP())
-	p.WriteUint16(item.GetWatk())
-	p.WriteUint16(item.GetMatk())
-	p.WriteUint16(item.GetWdef())
-	p.WriteUint16(item.GetMdef())
-	p.WriteUint16(item.GetAccuracy())
-	p.WriteUint16(item.GetAvoid())
-	p.WriteUint16(item.GetHands())
-	p.WriteUint16(item.GetSpeed())
-	p.WriteUint16(item.GetJump())
+	p.WriteInt16(item.GetStr())
+	p.WriteInt16(item.GetDex())
+	p.WriteInt16(item.GetInt())
+	p.WriteInt16(item.GetLuk())
+	p.WriteInt16(item.GetHP())
+	p.WriteInt16(item.GetMP())
+	p.WriteInt16(item.GetWatk())
+	p.WriteInt16(item.GetMatk())
+	p.WriteInt16(item.GetWdef())
+	p.WriteInt16(item.GetMdef())
+	p.WriteInt16(item.GetAccuracy())
+	p.WriteInt16(item.GetAvoid())
+	p.WriteInt16(item.GetHands())
+	p.WriteInt16(item.GetSpeed())
+	p.WriteInt16(item.GetJump())
 	p.WriteString(item.GetCreatorName()) // Name of creator
 	p.WriteInt16(2)                      // lock, show, spikes, cape, cold protection etc ?
 	return p
@@ -295,12 +295,12 @@ func addItem(item character.Item) maplepacket.Packet {
 
 	p.WriteByte(byte(item.GetSlotNumber())) // slot id
 	p.WriteByte(2)                          // type of item e.g. equip, has amount, cash
-	p.WriteUint32(item.GetItemID())         //  itemID
+	p.WriteInt32(item.GetItemID())          //  itemID
 	p.WriteByte(0)
 	p.WriteUint64(item.GetExpirationTime()) // expiration
 	p.WriteInt16(item.GetAmount())          // amount
 	p.WriteString(item.GetCreatorName())
-	p.WriteUint16(item.GetFlag()) // is it sealed
+	p.WriteInt16(item.GetFlag()) // is it sealed
 
 	return p
 }

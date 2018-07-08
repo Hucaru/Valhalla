@@ -16,7 +16,7 @@ func LoginReturnFromChannel() maplepacket.Packet {
 	return pac
 }
 
-func LoginResponce(result byte, userID uint32, gender byte, isAdmin byte, username string, isBanned int) maplepacket.Packet {
+func LoginResponce(result byte, userID int32, gender byte, isAdmin byte, username string, isBanned int) maplepacket.Packet {
 	pac := maplepacket.NewPacket()
 	pac.WriteByte(constants.SEND_LOGIN_RESPONCE)
 	pac.WriteByte(result)
@@ -24,7 +24,7 @@ func LoginResponce(result byte, userID uint32, gender byte, isAdmin byte, userna
 	pac.WriteInt32(0)
 
 	if result <= 0x01 {
-		pac.WriteUint32(userID)
+		pac.WriteInt32(userID)
 		pac.WriteByte(gender)
 		pac.WriteByte(isAdmin)
 		pac.WriteByte(0x01)
@@ -41,13 +41,13 @@ func LoginResponce(result byte, userID uint32, gender byte, isAdmin byte, userna
 	return pac
 }
 
-func LoginMigrateClient(ip []byte, port uint16, charID int32) maplepacket.Packet {
+func LoginMigrateClient(ip []byte, port int16, charID int32) maplepacket.Packet {
 	pac := maplepacket.NewPacket()
 	pac.WriteByte(constants.SEND_LOGIN_CHARACTER_MIGRATE)
 	pac.WriteByte(0x00)
 	pac.WriteByte(0x00)
 	pac.WriteBytes(ip)
-	pac.WriteUint16(port)
+	pac.WriteInt16(port)
 	pac.WriteInt32(charID)
 	pac.WriteByte(byte(0) | byte(1<<0))
 	pac.WriteInt32(1)
@@ -61,7 +61,7 @@ func LoginSendBadMigrate() maplepacket.Packet {
 	pac.WriteByte(0x00) // flipping these 2 bytes makes the character select screen do nothing it appears
 	pac.WriteByte(0x00)
 	pac.WriteBytes([]byte{0, 0, 0, 0})
-	pac.WriteUint16(0)
+	pac.WriteInt16(0)
 	pac.WriteInt32(8)
 	pac.WriteByte(byte(0) | byte(1<<0))
 	pac.WriteInt32(1)
@@ -131,8 +131,8 @@ func LoginDeleteCharacter(charID int32, deleted bool, hacking bool) maplepacket.
 	return pac
 }
 
-func LoginWritePlayerCharacter(pac *maplepacket.Packet, pos uint32, char character.Character) {
-	pac.WriteUint32(pos)
+func LoginWritePlayerCharacter(pac *maplepacket.Packet, pos int32, char character.Character) {
+	pac.WriteInt32(pos)
 
 	name := char.GetName()
 
@@ -149,27 +149,27 @@ func LoginWritePlayerCharacter(pac *maplepacket.Packet, pos uint32, char charact
 
 	pac.WriteByte(char.GetGender()) //gender
 	pac.WriteByte(char.GetSkin())   // skin
-	pac.WriteUint32(char.GetFace()) // face
-	pac.WriteUint32(char.GetHair()) // Hair
+	pac.WriteInt32(char.GetFace())  // face
+	pac.WriteInt32(char.GetHair())  // Hair
 
 	pac.WriteInt64(0x0) // Pet cash ID
 
-	pac.WriteByte(char.GetLevel())   // level
-	pac.WriteUint16(char.GetJob())   // Job
-	pac.WriteUint16(char.GetStr())   // str
-	pac.WriteUint16(char.GetDex())   // dex
-	pac.WriteUint16(char.GetInt())   // int
-	pac.WriteUint16(char.GetLuk())   // luk
-	pac.WriteUint16(char.GetHP())    // hp
-	pac.WriteUint16(char.GetMaxHP()) // max hp
-	pac.WriteUint16(char.GetMP())    // mp
-	pac.WriteUint16(char.GetMaxMP()) // max mp
-	pac.WriteUint16(char.GetAP())    // ap
-	pac.WriteUint16(char.GetSP())    // sp
-	pac.WriteUint32(char.GetEXP())   // exp
-	pac.WriteUint16(char.GetFame())  // fame
+	pac.WriteByte(char.GetLevel())  // level
+	pac.WriteInt16(char.GetJob())   // Job
+	pac.WriteInt16(char.GetStr())   // str
+	pac.WriteInt16(char.GetDex())   // dex
+	pac.WriteInt16(char.GetInt())   // int
+	pac.WriteInt16(char.GetLuk())   // luk
+	pac.WriteInt16(char.GetHP())    // hp
+	pac.WriteInt16(char.GetMaxHP()) // max hp
+	pac.WriteInt16(char.GetMP())    // mp
+	pac.WriteInt16(char.GetMaxMP()) // max mp
+	pac.WriteInt16(char.GetAP())    // ap
+	pac.WriteInt16(char.GetSP())    // sp
+	pac.WriteInt32(char.GetEXP())   // exp
+	pac.WriteInt16(char.GetFame())  // fame
 
-	pac.WriteUint32(char.GetCurrentMap())  // map id
+	pac.WriteInt32(char.GetCurrentMap())   // map id
 	pac.WriteByte(char.GetCurrentMapPos()) // map
 
 	character.WriteDisplayCharacter(char, pac)

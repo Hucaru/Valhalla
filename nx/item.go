@@ -10,35 +10,35 @@ import (
 )
 
 type Item struct {
-	Price   uint32
-	SlotMax uint16
+	Price   int32
+	SlotMax int16
 	Cash    bool
 
-	AttackSpeed   uint32
-	Accuracy      uint32
-	Evasion       uint32
-	WeaponAttack  uint32
-	MagicAttack   uint32
-	WeaponDefence uint32
+	AttackSpeed   int32
+	Accuracy      int32
+	Evasion       int32
+	WeaponAttack  int32
+	MagicAttack   int32
+	WeaponDefence int32
 
-	ReqStr   uint32
-	ReqDex   uint32
-	ReqInt   uint32
-	ReqLuk   uint32
-	ReqJob   uint32
-	ReqLevel uint32
+	ReqStr   int32
+	ReqDex   int32
+	ReqInt   int32
+	ReqLuk   int32
+	ReqJob   int32
+	ReqLevel int32
 
-	Upgrades  uint32
+	Upgrades  int32
 	UnitPrice float64
 }
 
-var Items = make(map[uint32]Item)
+var Items = make(map[int32]Item)
 
-func IsRechargeAble(itemID uint32) bool {
+func IsRechargeAble(itemID int32) bool {
 	return (math.Floor(float64(itemID/10000)) == 207) // Taken from cliet
 }
 
-func IsStackable(itemID uint32, invID byte, ammount int16) bool {
+func IsStackable(itemID int32, invID byte, ammount int16) bool {
 	if itemID/1e6 != 5 && // pet item
 		invID != 1 && // equip
 		itemID/1e4 != 207 && // star/arrow etc
@@ -68,7 +68,7 @@ func getItemInfo() {
 						panic(err)
 					}
 
-					Items[uint32(itemID)] = getItem(itemIDNode)
+					Items[int32(itemID)] = getItem(itemIDNode)
 				}
 			}
 		})
@@ -88,7 +88,7 @@ func getItemInfo() {
 				panic(err)
 			}
 
-			Items[uint32(itemID)] = getItem(itemIDNode)
+			Items[int32(itemID)] = getItem(itemIDNode)
 		}
 	})
 
@@ -111,7 +111,7 @@ func getItemInfo() {
 					panic(err)
 				}
 
-				Items[uint32(itemID)] = getItem(itemIDNode)
+				Items[int32(itemID)] = getItem(itemIDNode)
 
 			}
 		})
@@ -136,35 +136,35 @@ func getItem(node node) Item {
 				case "cash":
 					item.Cash = bool(dataToInt64(property.Data) == 1)
 				case "slotMax":
-					item.SlotMax = dataToUint16(property.Data)
+					item.SlotMax = dataToInt16(property.Data)
 				case "price":
-					item.Price = dataToUint32(property.Data)
+					item.Price = dataToInt32(property.Data)
 				case "attackSpeed":
-					item.AttackSpeed = dataToUint32(property.Data)
+					item.AttackSpeed = dataToInt32(property.Data)
 				case "incAcc":
-					item.Accuracy = dataToUint32(property.Data)
+					item.Accuracy = dataToInt32(property.Data)
 				case "incEVA":
-					item.Evasion = dataToUint32(property.Data)
+					item.Evasion = dataToInt32(property.Data)
 				case "incPAD":
-					item.WeaponAttack = dataToUint32(property.Data)
+					item.WeaponAttack = dataToInt32(property.Data)
 				case "incMAD":
-					item.MagicAttack = dataToUint32(property.Data)
+					item.MagicAttack = dataToInt32(property.Data)
 				case "incPDD":
-					item.WeaponDefence = dataToUint32(property.Data)
+					item.WeaponDefence = dataToInt32(property.Data)
 				case "reqSTR":
-					item.ReqStr = dataToUint32(property.Data)
+					item.ReqStr = dataToInt32(property.Data)
 				case "reqDEX":
-					item.ReqDex = dataToUint32(property.Data)
+					item.ReqDex = dataToInt32(property.Data)
 				case "reqINT":
-					item.ReqInt = dataToUint32(property.Data)
+					item.ReqInt = dataToInt32(property.Data)
 				case "reqLUK":
-					item.ReqLuk = dataToUint32(property.Data)
+					item.ReqLuk = dataToInt32(property.Data)
 				case "reqJob":
-					item.ReqJob = dataToUint32(property.Data)
+					item.ReqJob = dataToInt32(property.Data)
 				case "reqLevel":
-					item.ReqLevel = dataToUint32(property.Data)
+					item.ReqLevel = dataToInt32(property.Data)
 				case "tuc":
-					item.Upgrades = dataToUint32(property.Data)
+					item.Upgrades = dataToInt32(property.Data)
 				case "unitPrice":
 					bits := binary.LittleEndian.Uint64([]byte(property.Data[:]))
 					item.UnitPrice = math.Float64frombits(bits)

@@ -33,20 +33,20 @@ func MessageFameChange(ammount int32) maplepacket.Packet {
 }
 
 // sends the [item name] has passed its expeiration date and will be removed from your inventory
-func MessageItemExpired(itemID uint32) maplepacket.Packet {
+func MessageItemExpired(itemID int32) maplepacket.Packet {
 	p := maplepacket.NewPacket()
 	p.WriteByte(constants.SEND_CHANNEL_INFO_MESSAGE)
 	p.WriteByte(2)
-	p.WriteUint32(itemID)
+	p.WriteInt32(itemID)
 	return p
 }
 
-func MessageItemExpired2(itemID uint32) maplepacket.Packet {
+func MessageItemExpired2(itemID int32) maplepacket.Packet {
 	p := maplepacket.NewPacket()
 	p.WriteByte(constants.SEND_CHANNEL_INFO_MESSAGE)
 	p.WriteByte(8)
 	p.WriteByte(1)
-	p.WriteUint32(itemID)
+	p.WriteInt32(itemID)
 	return p
 }
 
@@ -72,28 +72,28 @@ func MessageUnableToPickUp(itemNotAvailable bool) maplepacket.Packet {
 	return p
 }
 
-func MessageDropPickUp(isMesos bool, itemID, ammount uint32) maplepacket.Packet {
+func MessageDropPickUp(isMesos bool, itemID, ammount int32) maplepacket.Packet {
 	p := maplepacket.NewPacket()
 	p.WriteByte(constants.SEND_CHANNEL_INFO_MESSAGE)
 	p.WriteByte(0)
 
 	if isMesos {
-		p.WriteUint32(ammount)
-		p.WriteUint32(0)
+		p.WriteInt32(ammount)
+		p.WriteInt32(0)
 	} else {
-		p.WriteUint32(itemID)
-		p.WriteUint32(ammount)
+		p.WriteInt32(itemID)
+		p.WriteInt32(ammount)
 	}
 
 	return p
 }
 
-func MessageExpGained(whiteText, appearInChat bool, ammount uint32) maplepacket.Packet {
+func MessageExpGained(whiteText, appearInChat bool, ammount int32) maplepacket.Packet {
 	p := maplepacket.NewPacket()
 	p.WriteByte(constants.SEND_CHANNEL_INFO_MESSAGE)
 	p.WriteByte(3)
 	p.WriteBool(whiteText)
-	p.WriteUint32(ammount)
+	p.WriteInt32(ammount)
 	p.WriteBool(appearInChat)
 
 	return p
@@ -173,7 +173,7 @@ func MessageWhisper(sender string, message string, channel byte) maplepacket.Pac
 	return p
 }
 
-func MessageFindResult(character string, isAdmin, inCashShop, sameChannel bool, mapID uint32) maplepacket.Packet {
+func MessageFindResult(character string, isAdmin, inCashShop, sameChannel bool, mapID int32) maplepacket.Packet {
 	p := maplepacket.NewPacket()
 	p.WriteByte(constants.SEND_CHANNEL_WHISPER)
 
@@ -190,11 +190,11 @@ func MessageFindResult(character string, isAdmin, inCashShop, sameChannel bool, 
 			p.WriteInt32(0) // ?
 		} else if sameChannel {
 			p.WriteByte(0x01)
-			p.WriteUint32(mapID)
-			p.WriteUint32(0) // ?
+			p.WriteInt32(mapID)
+			p.WriteInt32(0) // ?
 		} else {
 			p.WriteByte(0x01)
-			p.WriteUint32(mapID)
+			p.WriteInt32(mapID)
 		}
 
 		p.WriteInt32(0) // ?
@@ -207,10 +207,10 @@ func MessageFindResult(character string, isAdmin, inCashShop, sameChannel bool, 
 	return p
 }
 
-func MessageAllChat(senderID uint32, isAdmin bool, msg string) maplepacket.Packet {
+func MessageAllChat(senderID int32, isAdmin bool, msg string) maplepacket.Packet {
 	p := maplepacket.NewPacket()
 	p.WriteByte(constants.SEND_CHANNEL_ALL_CHAT_MSG)
-	p.WriteUint32(senderID)
+	p.WriteInt32(senderID)
 	p.WriteBool(isAdmin)
 	p.WriteString(msg)
 
@@ -277,7 +277,7 @@ func MessageGmWrongNpc() maplepacket.Packet {
 	p := maplepacket.NewPacket()
 	p.WriteByte(constants.SEND_CHANNEL_EMPLOYEE)
 	p.WriteByte(8)
-	p.WriteUint16(0)
+	p.WriteInt16(0)
 
 	return p
 }

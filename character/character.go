@@ -5,33 +5,33 @@ import (
 )
 
 type Character struct {
-	charID          uint32
-	userID          uint32
-	worldID         uint32
+	charID          int32
+	userID          int32
+	worldID         int32
 	name            string
 	gender          byte
 	skin            byte
-	face            uint32
-	hair            uint32
+	face            int32
+	hair            int32
 	level           byte
-	job             uint16
-	str             uint16
-	dex             uint16
-	intt            uint16
-	luk             uint16
-	hp              uint16
-	maxHP           uint16
-	mp              uint16
-	maxMP           uint16
-	ap              uint16
-	sp              uint16
-	exp             uint32
-	fame            uint16
-	currentMap      uint32
+	job             int16
+	str             int16
+	dex             int16
+	intt            int16
+	luk             int16
+	hp              int16
+	maxHP           int16
+	mp              int16
+	maxMP           int16
+	ap              int16
+	sp              int16
+	exp             int32
+	fame            int16
+	currentMap      int32
 	currentMapPos   byte
-	previousMap     uint32
-	feeMarketReturn uint32
-	mesos           uint32
+	previousMap     int32
+	feeMarketReturn int32
+	mesos           int32
 	equipSlotSize   byte
 	useSlotSize     byte
 	setupSlotSize   byte
@@ -40,18 +40,18 @@ type Character struct {
 
 	items []Item
 
-	skills map[uint32]uint32
+	skills map[int32]int32
 
 	x        int16
 	y        int16
 	foothold int16
 	state    byte
-	chairID  uint32
+	chairID  int32
 
 	mutex *sync.RWMutex
 }
 
-func (c *Character) GetSkills() map[uint32]uint32 {
+func (c *Character) GetSkills() map[int32]int32 {
 	c.mutex.RLock()
 	val := c.skills
 	c.mutex.RUnlock()
@@ -59,13 +59,13 @@ func (c *Character) GetSkills() map[uint32]uint32 {
 	return val
 }
 
-func (c *Character) SetSkills(val map[uint32]uint32) {
+func (c *Character) SetSkills(val map[int32]int32) {
 	c.mutex.Lock()
 	c.skills = val
 	c.mutex.Unlock()
 }
 
-func (c *Character) UpdateSkill(id, level uint32) {
+func (c *Character) UpdateSkill(id, level int32) {
 	c.mutex.Lock()
 	c.skills[id] = level
 	c.mutex.Unlock()
@@ -155,7 +155,7 @@ func (c *Character) SwitchItems(orig Item, new Item) {
 	}
 }
 
-func (c *Character) GetCharID() uint32 {
+func (c *Character) GetCharID() int32 {
 	c.mutex.RLock()
 	val := c.charID
 	c.mutex.RUnlock()
@@ -163,13 +163,13 @@ func (c *Character) GetCharID() uint32 {
 	return val
 }
 
-func (c *Character) SetCharID(val uint32) {
+func (c *Character) SetCharID(val int32) {
 	c.mutex.Lock()
 	c.charID = val
 	c.mutex.Unlock()
 }
 
-func (c *Character) GetUserID() uint32 {
+func (c *Character) GetUserID() int32 {
 	c.mutex.RLock()
 	val := c.userID
 	c.mutex.RUnlock()
@@ -177,13 +177,13 @@ func (c *Character) GetUserID() uint32 {
 	return val
 }
 
-func (c *Character) SetUserID(val uint32) {
+func (c *Character) SetUserID(val int32) {
 	c.mutex.Lock()
 	c.userID = val
 	c.mutex.Unlock()
 }
 
-func (c *Character) GetWorldID() uint32 {
+func (c *Character) GetWorldID() int32 {
 	c.mutex.RLock()
 	val := c.worldID
 	c.mutex.RUnlock()
@@ -191,7 +191,7 @@ func (c *Character) GetWorldID() uint32 {
 	return val
 }
 
-func (c *Character) SetWorldID(val uint32) {
+func (c *Character) SetWorldID(val int32) {
 	c.mutex.Lock()
 	c.worldID = val
 	c.mutex.Unlock()
@@ -239,7 +239,7 @@ func (c *Character) SetSkin(val byte) {
 	c.mutex.Unlock()
 }
 
-func (c *Character) GetFace() uint32 {
+func (c *Character) GetFace() int32 {
 	c.mutex.RLock()
 	val := c.face
 	c.mutex.RUnlock()
@@ -247,13 +247,13 @@ func (c *Character) GetFace() uint32 {
 	return val
 }
 
-func (c *Character) SetFace(val uint32) {
+func (c *Character) SetFace(val int32) {
 	c.mutex.Lock()
 	c.face = val
 	c.mutex.Unlock()
 }
 
-func (c *Character) GetHair() uint32 {
+func (c *Character) GetHair() int32 {
 	c.mutex.RLock()
 	val := c.hair
 	c.mutex.RUnlock()
@@ -261,7 +261,7 @@ func (c *Character) GetHair() uint32 {
 	return val
 }
 
-func (c *Character) SetHair(val uint32) {
+func (c *Character) SetHair(val int32) {
 	c.mutex.Lock()
 	c.hair = val
 	c.mutex.Unlock()
@@ -281,7 +281,7 @@ func (c *Character) SetLevel(val byte) {
 	c.mutex.Unlock()
 }
 
-func (c *Character) GetJob() uint16 {
+func (c *Character) GetJob() int16 {
 	c.mutex.RLock()
 	val := c.job
 	c.mutex.RUnlock()
@@ -289,13 +289,13 @@ func (c *Character) GetJob() uint16 {
 	return val
 }
 
-func (c *Character) SetJob(val uint16) {
+func (c *Character) SetJob(val int16) {
 	c.mutex.Lock()
 	c.job = val
 	c.mutex.Unlock()
 }
 
-func (c *Character) GetStr() uint16 {
+func (c *Character) GetStr() int16 {
 	c.mutex.RLock()
 	val := c.str
 	c.mutex.RUnlock()
@@ -303,13 +303,13 @@ func (c *Character) GetStr() uint16 {
 	return val
 }
 
-func (c *Character) SetStr(val uint16) {
+func (c *Character) SetStr(val int16) {
 	c.mutex.Lock()
 	c.str = val
 	c.mutex.Unlock()
 }
 
-func (c *Character) GetDex() uint16 {
+func (c *Character) GetDex() int16 {
 	c.mutex.RLock()
 	val := c.dex
 	c.mutex.RUnlock()
@@ -317,13 +317,13 @@ func (c *Character) GetDex() uint16 {
 	return val
 }
 
-func (c *Character) SetDex(val uint16) {
+func (c *Character) SetDex(val int16) {
 	c.mutex.Lock()
 	c.dex = val
 	c.mutex.Unlock()
 }
 
-func (c *Character) GetInt() uint16 {
+func (c *Character) GetInt() int16 {
 	c.mutex.RLock()
 	val := c.intt
 	c.mutex.RUnlock()
@@ -331,13 +331,13 @@ func (c *Character) GetInt() uint16 {
 	return val
 }
 
-func (c *Character) SetInt(val uint16) {
+func (c *Character) SetInt(val int16) {
 	c.mutex.Lock()
 	c.intt = val
 	c.mutex.Unlock()
 }
 
-func (c *Character) GetLuk() uint16 {
+func (c *Character) GetLuk() int16 {
 	c.mutex.RLock()
 	val := c.luk
 	c.mutex.RUnlock()
@@ -345,13 +345,13 @@ func (c *Character) GetLuk() uint16 {
 	return val
 }
 
-func (c *Character) SetLuk(val uint16) {
+func (c *Character) SetLuk(val int16) {
 	c.mutex.Lock()
 	c.luk = val
 	c.mutex.Unlock()
 }
 
-func (c *Character) GetHP() uint16 {
+func (c *Character) GetHP() int16 {
 	c.mutex.RLock()
 	val := c.hp
 	c.mutex.RUnlock()
@@ -359,13 +359,13 @@ func (c *Character) GetHP() uint16 {
 	return val
 }
 
-func (c *Character) SetHP(val uint16) {
+func (c *Character) SetHP(val int16) {
 	c.mutex.Lock()
 	c.hp = val
 	c.mutex.Unlock()
 }
 
-func (c *Character) GetMaxHP() uint16 {
+func (c *Character) GetMaxHP() int16 {
 	c.mutex.RLock()
 	val := c.maxHP
 	c.mutex.RUnlock()
@@ -373,13 +373,13 @@ func (c *Character) GetMaxHP() uint16 {
 	return val
 }
 
-func (c *Character) SetMaxHP(val uint16) {
+func (c *Character) SetMaxHP(val int16) {
 	c.mutex.Lock()
 	c.maxHP = val
 	c.mutex.Unlock()
 }
 
-func (c *Character) GetMP() uint16 {
+func (c *Character) GetMP() int16 {
 	c.mutex.RLock()
 	val := c.mp
 	c.mutex.RUnlock()
@@ -387,13 +387,13 @@ func (c *Character) GetMP() uint16 {
 	return val
 }
 
-func (c *Character) SetMP(val uint16) {
+func (c *Character) SetMP(val int16) {
 	c.mutex.Lock()
 	c.mp = val
 	c.mutex.Unlock()
 }
 
-func (c *Character) GetMaxMP() uint16 {
+func (c *Character) GetMaxMP() int16 {
 	c.mutex.RLock()
 	val := c.maxMP
 	c.mutex.RUnlock()
@@ -401,13 +401,13 @@ func (c *Character) GetMaxMP() uint16 {
 	return val
 }
 
-func (c *Character) SetMaxMP(val uint16) {
+func (c *Character) SetMaxMP(val int16) {
 	c.mutex.Lock()
 	c.maxMP = val
 	c.mutex.Unlock()
 }
 
-func (c *Character) GetAP() uint16 {
+func (c *Character) GetAP() int16 {
 	c.mutex.RLock()
 	val := c.ap
 	c.mutex.RUnlock()
@@ -415,12 +415,12 @@ func (c *Character) GetAP() uint16 {
 	return val
 }
 
-func (c *Character) SetAP(val uint16) {
+func (c *Character) SetAP(val int16) {
 	c.mutex.Lock()
 	c.ap = val
 	c.mutex.Unlock()
 }
-func (c *Character) GetSP() uint16 {
+func (c *Character) GetSP() int16 {
 	c.mutex.RLock()
 	val := c.sp
 	c.mutex.RUnlock()
@@ -428,13 +428,13 @@ func (c *Character) GetSP() uint16 {
 	return val
 }
 
-func (c *Character) SetSP(val uint16) {
+func (c *Character) SetSP(val int16) {
 	c.mutex.Lock()
 	c.sp = val
 	c.mutex.Unlock()
 }
 
-func (c *Character) GetEXP() uint32 {
+func (c *Character) GetEXP() int32 {
 	c.mutex.RLock()
 	val := c.exp
 	c.mutex.RUnlock()
@@ -442,13 +442,13 @@ func (c *Character) GetEXP() uint32 {
 	return val
 }
 
-func (c *Character) SetEXP(val uint32) {
+func (c *Character) SetEXP(val int32) {
 	c.mutex.Lock()
 	c.exp = val
 	c.mutex.Unlock()
 }
 
-func (c *Character) GetFame() uint16 {
+func (c *Character) GetFame() int16 {
 	c.mutex.RLock()
 	val := c.fame
 	c.mutex.RUnlock()
@@ -456,13 +456,13 @@ func (c *Character) GetFame() uint16 {
 	return val
 }
 
-func (c *Character) SetFame(val uint16) {
+func (c *Character) SetFame(val int16) {
 	c.mutex.Lock()
 	c.fame = val
 	c.mutex.Unlock()
 }
 
-func (c *Character) GetCurrentMap() uint32 {
+func (c *Character) GetCurrentMap() int32 {
 	c.mutex.RLock()
 	val := c.currentMap
 	c.mutex.RUnlock()
@@ -470,7 +470,7 @@ func (c *Character) GetCurrentMap() uint32 {
 	return val
 }
 
-func (c *Character) SetCurrentMap(val uint32) {
+func (c *Character) SetCurrentMap(val int32) {
 	c.mutex.Lock()
 	c.currentMap = val
 	c.mutex.Unlock()
@@ -490,7 +490,7 @@ func (c *Character) SetCurrentMapPos(val byte) {
 	c.mutex.Unlock()
 }
 
-func (c *Character) GetPreviousMap() uint32 {
+func (c *Character) GetPreviousMap() int32 {
 	c.mutex.RLock()
 	val := c.previousMap
 	c.mutex.RUnlock()
@@ -498,13 +498,13 @@ func (c *Character) GetPreviousMap() uint32 {
 	return val
 }
 
-func (c *Character) SetPreviousMap(val uint32) {
+func (c *Character) SetPreviousMap(val int32) {
 	c.mutex.Lock()
 	c.previousMap = val
 	c.mutex.Unlock()
 }
 
-func (c *Character) GetFeeMarketReturn() uint32 {
+func (c *Character) GetFeeMarketReturn() int32 {
 	c.mutex.RLock()
 	val := c.feeMarketReturn
 	c.mutex.RUnlock()
@@ -512,13 +512,13 @@ func (c *Character) GetFeeMarketReturn() uint32 {
 	return val
 }
 
-func (c *Character) SetFreeMarketReturn(val uint32) {
+func (c *Character) SetFreeMarketReturn(val int32) {
 	c.mutex.Lock()
 	c.feeMarketReturn = val
 	c.mutex.Unlock()
 }
 
-func (c *Character) GetMesos() uint32 {
+func (c *Character) GetMesos() int32 {
 	c.mutex.RLock()
 	val := c.mesos
 	c.mutex.RUnlock()
@@ -526,7 +526,7 @@ func (c *Character) GetMesos() uint32 {
 	return val
 }
 
-func (c *Character) SetMesos(val uint32) {
+func (c *Character) SetMesos(val int32) {
 	c.mutex.Lock()
 	c.mesos = val
 	c.mutex.Unlock()
@@ -654,7 +654,7 @@ func (c *Character) SetState(val byte) {
 	c.mutex.Unlock()
 }
 
-func (c *Character) GetChairID() uint32 {
+func (c *Character) GetChairID() int32 {
 	c.mutex.RLock()
 	val := c.chairID
 	c.mutex.RUnlock()
@@ -662,7 +662,7 @@ func (c *Character) GetChairID() uint32 {
 	return val
 }
 
-func (c *Character) SetChairID(val uint32) {
+func (c *Character) SetChairID(val int32) {
 	c.mutex.Lock()
 	c.chairID = val
 	c.mutex.Unlock()

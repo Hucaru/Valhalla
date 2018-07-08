@@ -1,10 +1,10 @@
 package interop
 
 type Life interface {
-	SetID(uint32)
-	GetID() uint32
-	SetSpawnID(uint32)
-	GetSpawnID() uint32
+	SetID(int32)
+	GetID() int32
+	SetSpawnID(int32)
+	GetSpawnID() int32
 	Pos
 
 	SetFoothold(int16)

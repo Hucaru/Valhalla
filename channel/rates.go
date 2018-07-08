@@ -12,15 +12,15 @@ const (
 	MobRate  = 0x04
 )
 
-var serverExpRate = uint32(1)
-var serverDropRate = uint32(1)
-var serverMesoRate = uint32(1)
-var serverMobSpawnRate = uint32(1)
+var serverExpRate = int32(1)
+var serverDropRate = int32(1)
+var serverMesoRate = int32(1)
+var serverMobSpawnRate = int32(1)
 
 var serverRateMutex = &sync.RWMutex{}
 
-func GetRate(rateType byte) uint32 {
-	val := uint32(1)
+func GetRate(rateType byte) int32 {
+	val := int32(1)
 
 	serverRateMutex.RLock()
 	switch rateType {
@@ -40,7 +40,7 @@ func GetRate(rateType byte) uint32 {
 	return val
 }
 
-func SetRate(rateType byte, rate uint32) {
+func SetRate(rateType byte, rate int32) {
 	serverRateMutex.Lock()
 
 	switch rateType {
@@ -59,7 +59,7 @@ func SetRate(rateType byte, rate uint32) {
 	serverRateMutex.Unlock()
 }
 
-var ExpTable = [201]uint32{15, 34, 57, 92, 135, 372, 560, 840, 1242, 1144, // Beginner
+var ExpTable = [201]int32{15, 34, 57, 92, 135, 372, 560, 840, 1242, 1144, // Beginner
 
 	// 1st Job
 	1573, 2144, 2800, 3640, 4700, 5893, 7360, 9144, 11120, 13477, 16268,

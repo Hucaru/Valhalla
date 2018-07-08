@@ -10,7 +10,7 @@ import (
 	"github.com/Hucaru/Valhalla/nx"
 )
 
-var Mobs = mapleMobs{alive: make(map[uint32][]*MapleMob), dead: make(map[uint32][]*MapleMob), mutex: &sync.RWMutex{}}
+var Mobs = mapleMobs{alive: make(map[int32][]*MapleMob), dead: make(map[int32][]*MapleMob), mutex: &sync.RWMutex{}}
 
 func GenerateMobs() {
 	for mapID, stage := range nx.Maps {
@@ -20,7 +20,7 @@ func GenerateMobs() {
 				mob := &MapleMob{}
 
 				mob.SetID(life.ID)
-				mob.SetSpawnID(uint32(spawnID + 1))
+				mob.SetSpawnID(int32(spawnID + 1))
 				mob.SetX(life.X)
 				mob.SetSx(life.X)
 				mob.SetY(life.Y)
@@ -54,18 +54,18 @@ func GenerateMobs() {
 }
 
 type mapleMobs struct {
-	alive map[uint32][]*MapleMob
-	dead  map[uint32][]*MapleMob
+	alive map[int32][]*MapleMob
+	dead  map[int32][]*MapleMob
 	mutex *sync.RWMutex
 }
 
-func (m *mapleMobs) AddMob(mapID uint32, newMob *MapleMob) {
+func (m *mapleMobs) AddMob(mapID int32, newMob *MapleMob) {
 	m.mutex.Lock()
 	m.alive[mapID] = append(m.alive[mapID], newMob)
 	m.mutex.Unlock()
 }
 
-func (m *mapleMobs) OnMob(mapID, mobID uint32, action func(mob *MapleMob)) {
+func (m *mapleMobs) OnMob(mapID, mobID int32, action func(mob *MapleMob)) {
 	m.mutex.RLock()
 	for _, value := range m.alive[mapID] {
 		if value.GetSpawnID() == mobID {
@@ -75,7 +75,7 @@ func (m *mapleMobs) OnMob(mapID, mobID uint32, action func(mob *MapleMob)) {
 	m.mutex.RUnlock()
 }
 
-func (m *mapleMobs) OnMobs(mapID uint32, action func(mob *MapleMob)) {
+func (m *mapleMobs) OnMobs(mapID int32, action func(mob *MapleMob)) {
 	m.mutex.RLock()
 	for _, value := range m.alive[mapID] {
 		action(value)
@@ -83,8 +83,8 @@ func (m *mapleMobs) OnMobs(mapID uint32, action func(mob *MapleMob)) {
 	m.mutex.RUnlock()
 }
 
-func (m *mapleMobs) MobTakeDamage(mapID, mobID uint32, damage []uint32) uint32 {
-	var exp uint32
+func (m *mapleMobs) MobTakeDamage(mapID, mobID int32, damage []int32) int32 {
+	var exp int32
 
 	var index = -1
 
@@ -124,13 +124,13 @@ func (m *mapleMobs) MobTakeDamage(mapID, mobID uint32, damage []uint32) uint32 {
 	return exp
 }
 
-func (m *mapleMobs) SpawnMob(mapID uint32, mob *MapleMob) {
+func (m *mapleMobs) SpawnMob(mapID int32, mob *MapleMob) {
 	mob.SetController(Maps.GetMap(mapID).GetPlayers()[0], true)
 	m.AddMob(mapID, mob)
 	Maps.GetMap(mapID).SendPacket(packets.MobShow(mob, true))
 }
 
-func (m *mapleMobs) mobRespawner(mapID uint32) {
+func (m *mapleMobs) mobRespawner(mapID int32) {
 	for {
 		// Need to find proper way of handling respawns
 		time.Sleep(time.Second * 5)
@@ -143,7 +143,7 @@ func (m *mapleMobs) mobRespawner(mapID uint32) {
 			m.mutex.Lock()
 			deadMobs := m.dead[mapID]
 			m.dead = nil // manually free memory just to be sure
-			m.dead = make(map[uint32][]*MapleMob)
+			m.dead = make(map[int32][]*MapleMob)
 			m.mutex.Unlock()
 
 			for _, mob := range deadMobs {

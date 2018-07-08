@@ -175,6 +175,13 @@ func dataToUint32(data [8]byte) uint32 {
 		uint32(data[3])<<24
 }
 
+func dataToInt32(data [8]byte) int32 {
+	return int32(data[0]) |
+		int32(data[1])<<8 |
+		int32(data[2])<<16 |
+		int32(data[3])<<24
+}
+
 func dataToInt16(data [8]byte) int16 {
 	return int16(data[0]) |
 		int16(data[1])<<8

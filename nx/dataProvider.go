@@ -4,7 +4,7 @@ import (
 	"strconv"
 )
 
-func GetMobSummonType(mobID uint32) (summonType byte) {
+func GetMobSummonType(mobID int32) (summonType byte) {
 	result := searchNode("Mob/"+strconv.Itoa(int(mobID))+".img/info", func(cursor *node) {
 		for i := uint32(0); i < uint32(cursor.ChildCount); i++ {
 			option := nodes[cursor.ChildID+i]
@@ -25,10 +25,10 @@ func GetMobSummonType(mobID uint32) (summonType byte) {
 
 type MobSkill struct {
 	SkillID, Level      byte
-	MpCon, Interval, HP uint32
+	MpCon, Interval, HP int32
 }
 
-func GetMobSkills(mobID uint32) []MobSkill {
+func GetMobSkills(mobID int32) []MobSkill {
 	mobSkills := make([]MobSkill, 0)
 
 	searchNode("Mob/"+strconv.Itoa(int(mobID))+".img/info/skill", func(cursor *node) {
@@ -56,11 +56,11 @@ func GetMobSkills(mobID uint32) []MobSkill {
 				option := nodes[cursor.ChildID+i]
 				switch strLookup[option.NameID] {
 				case "mpCon":
-					mobSkills[index].MpCon = dataToUint32(option.Data)
+					mobSkills[index].MpCon = dataToInt32(option.Data)
 				case "interval":
-					mobSkills[index].Interval = dataToUint32(option.Data)
+					mobSkills[index].Interval = dataToInt32(option.Data)
 				case "hp":
-					mobSkills[index].HP = dataToUint32(option.Data)
+					mobSkills[index].HP = dataToInt32(option.Data)
 				default:
 				}
 			}
@@ -70,10 +70,10 @@ func GetMobSkills(mobID uint32) []MobSkill {
 }
 
 type mobAttack struct {
-	ConMP uint32
+	ConMP int32
 }
 
-func GetMobAttack(mobID uint32, attackID int8) (attack mobAttack, valid bool) {
+func GetMobAttack(mobID int32, attackID int8) (attack mobAttack, valid bool) {
 	valid = true
 
 	result := searchNode("Mob/"+strconv.Itoa(int(mobID))+".img/attack"+strconv.Itoa(int(attackID))+"/info", func(cursor *node) {
@@ -81,7 +81,7 @@ func GetMobAttack(mobID uint32, attackID int8) (attack mobAttack, valid bool) {
 			option := nodes[cursor.ChildID+i]
 			switch strLookup[option.NameID] {
 			case "conMP":
-				attack.ConMP = dataToUint32(option.Data)
+				attack.ConMP = dataToInt32(option.Data)
 			default:
 			}
 		}

@@ -41,7 +41,7 @@ func InventoryChangeItemSlot(invTabID byte, origPos, newPos int16) maplepacket.P
 func InventoryChangeEquip(char character.Character) maplepacket.Packet {
 	p := maplepacket.NewPacket()
 	p.WriteByte(constants.SEND_CHANNEL_PLAYER_CHANGE_AVATAR)
-	p.WriteUint32(char.GetCharID())
+	p.WriteInt32(char.GetCharID())
 	p.WriteByte(1)
 	character.WriteDisplayCharacter(char, &p)
 	p.WriteByte(0xFF)

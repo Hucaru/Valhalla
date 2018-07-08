@@ -2,6 +2,6 @@ package interop
 
 type Mob interface {
 	Npc
-	GetFlySpeed() uint32
+	GetFlySpeed() int32
 	GetSummoner() ClientConn
 }

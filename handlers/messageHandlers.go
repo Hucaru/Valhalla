@@ -31,7 +31,7 @@ func handleSlashCommand(conn interop.ClientConn, reader maplepacket.Reader) {
 
 	switch cmdType {
 	case 5:
-		length := reader.ReadUint16()
+		length := reader.ReadInt16()
 		name := reader.ReadString(int(length))
 
 		found := false

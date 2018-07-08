@@ -77,7 +77,7 @@ func (p *maplePlayers) OnCharacterFromName(name string, action func(char *MapleC
 	p.mutex.RUnlock()
 }
 
-func (p *maplePlayers) OnCharacterFromID(id uint32, action func(char *MapleCharacter)) {
+func (p *maplePlayers) OnCharacterFromID(id int32, action func(char *MapleCharacter)) {
 	p.mutex.RLock()
 	for _, char := range p.players {
 		if char.GetCharID() == id {

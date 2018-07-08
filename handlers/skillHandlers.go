@@ -15,29 +15,29 @@ func handleStandardSkill(conn interop.ClientConn, reader maplepacket.Reader) {
 	targets := tByte / 0x10
 	hits := tByte % 0x10
 
-	skillID := reader.ReadUint32()
+	skillID := reader.ReadInt32()
 
 	reader.ReadByte()
 
 	display := reader.ReadByte()
 	animation := reader.ReadByte()
 
-	reader.ReadUint32()
+	reader.ReadInt32()
 
-	damages := make(map[uint32][]uint32)
+	damages := make(map[int32][]int32)
 
 	for i := byte(0); i < targets; i++ {
-		objID := reader.ReadUint32()
+		objID := reader.ReadInt32()
 
 		reader.ReadInt32() // ?
 		reader.ReadInt32() // ?
 		reader.ReadInt32() // ?
 		reader.ReadInt16() // ?
 
-		var dmgs []uint32
+		var dmgs []int32
 
 		for j := byte(0); j < hits; j++ {
-			dmgs = append(dmgs, reader.ReadUint32())
+			dmgs = append(dmgs, reader.ReadInt32())
 		}
 
 		damages[objID] = dmgs
@@ -65,29 +65,29 @@ func handleRangedSkill(conn interop.ClientConn, reader maplepacket.Reader) {
 	targets := tByte / 0x10
 	hits := tByte % 0x10
 
-	skillID := reader.ReadUint32()
+	skillID := reader.ReadInt32()
 
 	reader.ReadByte()
 
 	display := reader.ReadByte()
 	animation := reader.ReadByte()
 
-	reader.ReadUint32() // ?
+	reader.ReadInt32() // ?
 	invPos := reader.ReadByte()
 	reader.ReadBytes(4)
 	fmt.Println("Ranged weapon inventory location:", invPos)
 
-	damages := make(map[uint32][]uint32)
+	damages := make(map[int32][]int32)
 
 	for i := byte(0); i < targets; i++ {
-		objID := reader.ReadUint32()
+		objID := reader.ReadInt32()
 
 		reader.ReadBytes(14)
 
-		var dmgs []uint32
+		var dmgs []int32
 
 		for j := byte(0); j < hits; j++ {
-			dmgs = append(dmgs, reader.ReadUint32())
+			dmgs = append(dmgs, reader.ReadInt32())
 		}
 
 		damages[objID] = dmgs
@@ -109,29 +109,29 @@ func handleMagicSkill(conn interop.ClientConn, reader maplepacket.Reader) {
 	targets := tByte / 0x10
 	hits := tByte % 0x10
 
-	skillID := reader.ReadUint32()
+	skillID := reader.ReadInt32()
 
 	reader.ReadByte()
 
 	display := reader.ReadByte()
 	animation := reader.ReadByte()
 
-	reader.ReadUint32() //?
+	reader.ReadInt32() //?
 
-	damages := make(map[uint32][]uint32)
+	damages := make(map[int32][]int32)
 
 	for i := byte(0); i < targets; i++ {
-		objID := reader.ReadUint32()
+		objID := reader.ReadInt32()
 
 		reader.ReadInt32() // ?
 		reader.ReadInt32() // ?
 		reader.ReadInt32() // ?
 		reader.ReadInt16() // ?
 
-		var dmgs []uint32
+		var dmgs []int32
 
 		for j := byte(0); j < hits; j++ {
-			dmgs = append(dmgs, reader.ReadUint32())
+			dmgs = append(dmgs, reader.ReadInt32())
 		}
 
 		damages[objID] = dmgs
@@ -147,7 +147,7 @@ func handleMagicSkill(conn interop.ClientConn, reader maplepacket.Reader) {
 }
 
 func handleSpecialSkill(conn interop.ClientConn, reader maplepacket.Reader) {
-	skillID := reader.ReadUint32()
+	skillID := reader.ReadInt32()
 	level := reader.ReadByte()
 
 	// add all the various skills that fall under this category

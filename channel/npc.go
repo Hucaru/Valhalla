@@ -6,24 +6,24 @@ import (
 )
 
 type mapleNpc struct {
-	id, spawnID              uint32
+	id, spawnID              int32
 	x, y, rx0, rx1, foothold int16
 	face, state              byte
 }
 
-func (n *mapleNpc) SetID(id uint32) {
+func (n *mapleNpc) SetID(id int32) {
 	n.id = id
 }
 
-func (n *mapleNpc) GetID() uint32 {
+func (n *mapleNpc) GetID() int32 {
 	return n.id
 }
 
-func (n *mapleNpc) SetSpawnID(spawnID uint32) {
+func (n *mapleNpc) SetSpawnID(spawnID int32) {
 	n.spawnID = spawnID
 }
 
-func (n *mapleNpc) GetSpawnID() uint32 {
+func (n *mapleNpc) GetSpawnID() int32 {
 	return n.spawnID
 }
 

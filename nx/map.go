@@ -8,7 +8,7 @@ import (
 )
 
 type Life struct {
-	ID      uint32
+	ID      int32
 	Cy      int64
 	F       byte
 	Fh      int16
@@ -23,7 +23,7 @@ type Life struct {
 
 type Portal struct {
 	ID      byte
-	Tm      uint32
+	Tm      int32
 	Tn      string
 	Pt      byte
 	IsSpawn bool
@@ -34,14 +34,14 @@ type Portal struct {
 
 type Stage struct {
 	Life         []Life
-	ForcedReturn uint32
-	ReturnMap    uint32
+	ForcedReturn int32
+	ReturnMap    int32
 	MobRate      float64
 	IsTown       bool
 	Portals      []Portal
 }
 
-var Maps = make(map[uint32]Stage)
+var Maps = make(map[int32]Stage)
 
 func getMapInfo() {
 	var maps []string
@@ -74,7 +74,7 @@ func getMapInfo() {
 				panic(err)
 			}
 
-			mapID := uint32(val)
+			mapID := int32(val)
 			var lifes node
 			var info node
 			var portals node
@@ -101,11 +101,11 @@ func getMapInfo() {
 
 				switch strLookup[infoNode.NameID] {
 				case "forcedReturn":
-					mapItem.ForcedReturn = dataToUint32(infoNode.Data)
+					mapItem.ForcedReturn = dataToInt32(infoNode.Data)
 				case "mobRate":
 					mapItem.MobRate = math.Float64frombits(dataToUint64(infoNode.Data))
 				case "returnMap":
-					mapItem.ReturnMap = dataToUint32(infoNode.Data)
+					mapItem.ReturnMap = dataToInt32(infoNode.Data)
 				case "town":
 					mapItem.IsTown = bool(infoNode.Data[0] == 1)
 				}
@@ -146,12 +146,12 @@ func getPortalItem(n node) []Portal {
 			case "pt":
 				portal.Pt = options.Data[0]
 			case "pn":
-				portal.IsSpawn = bool(strLookup[dataToUint32(options.Data)] == "sp")
-				portal.Name = strLookup[dataToUint32(options.Data)]
+				portal.IsSpawn = bool(strLookup[dataToInt32(options.Data)] == "sp")
+				portal.Name = strLookup[dataToInt32(options.Data)]
 			case "tm":
-				portal.Tm = dataToUint32(options.Data)
+				portal.Tm = dataToInt32(options.Data)
 			case "tn":
-				portal.Tn = strLookup[dataToUint32(options.Data)]
+				portal.Tn = strLookup[dataToInt32(options.Data)]
 			case "x":
 				portal.X = dataToInt16(options.Data)
 			case "y":
@@ -173,13 +173,13 @@ func getLifeItem(n node) Life {
 
 		switch strLookup[lifeNode.NameID] {
 		case "id":
-			val, err := strconv.Atoi(strLookup[dataToUint32(lifeNode.Data)])
+			val, err := strconv.Atoi(strLookup[dataToInt32(lifeNode.Data)])
 
 			if err != nil {
 				panic(err)
 			}
 
-			lifeItem.ID = uint32(val)
+			lifeItem.ID = int32(val)
 		case "cy":
 			lifeItem.Cy = dataToInt64(lifeNode.Data)
 		case "f":
@@ -195,7 +195,7 @@ func getLifeItem(n node) Life {
 		case "rx1":
 			lifeItem.Rx1 = dataToInt16(lifeNode.Data)
 		case "type":
-			lifeItem.IsMob = bool(strLookup[dataToUint32(lifeNode.Data)] == "m")
+			lifeItem.IsMob = bool(strLookup[dataToInt32(lifeNode.Data)] == "m")
 		case "x":
 			lifeItem.X = dataToInt16(lifeNode.Data)
 		case "y":

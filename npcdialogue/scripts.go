@@ -1,4 +1,4 @@
-package npcChat
+package npcdialogue
 
 import (
 	"fmt"
@@ -55,7 +55,7 @@ func watchFiles() {
 						log.Fatal(err)
 					}
 
-					removeScripts(uint32(npcID))
+					removeScripts(int32(npcID))
 				}
 
 			case err := <-watcher.Errors:
@@ -84,5 +84,5 @@ func loadScript(file string) {
 		log.Fatal(err)
 	}
 
-	addScript(uint32(npcID), string(content))
+	addScript(int32(npcID), string(content))
 }

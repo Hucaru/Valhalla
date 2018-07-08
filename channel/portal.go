@@ -1,15 +1,15 @@
 package channel
 
 type maplePortal struct {
-	toMap    uint32
+	toMap    int32
 	toPortal string
 	name     string
 	x, y     int16
 	isSpawn  bool
 }
 
-func (m *maplePortal) GetToMap() uint32              { return m.toMap }
-func (m *maplePortal) SetToMap(mapID uint32)         { m.toMap = mapID }
+func (m *maplePortal) GetToMap() int32               { return m.toMap }
+func (m *maplePortal) SetToMap(mapID int32)          { m.toMap = mapID }
 func (m *maplePortal) GetToPortal() string           { return m.toPortal }
 func (m *maplePortal) SetToPortal(portalName string) { m.toPortal = portalName }
 func (m *maplePortal) GetName() string               { return m.name }

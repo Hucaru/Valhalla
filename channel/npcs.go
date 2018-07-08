@@ -6,7 +6,7 @@ import (
 	"github.com/Hucaru/Valhalla/nx"
 )
 
-var NPCs = mapleNPCs{maps: make(map[uint32][]*mapleNpc), mutex: &sync.RWMutex{}}
+var NPCs = mapleNPCs{maps: make(map[int32][]*mapleNpc), mutex: &sync.RWMutex{}}
 
 func GenerateNPCs() {
 	for mapID, stage := range nx.Maps {
@@ -16,7 +16,7 @@ func GenerateNPCs() {
 				npc := &mapleNpc{}
 
 				npc.SetID(life.ID)
-				npc.SetSpawnID(uint32(spawnID + 1))
+				npc.SetSpawnID(int32(spawnID + 1))
 				npc.SetX(life.X)
 				npc.SetY(life.Y)
 				npc.SetRx0(life.Rx0)
@@ -31,17 +31,17 @@ func GenerateNPCs() {
 }
 
 type mapleNPCs struct {
-	maps  map[uint32][]*mapleNpc
+	maps  map[int32][]*mapleNpc
 	mutex *sync.RWMutex
 }
 
-func (m *mapleNPCs) AddNpc(mapID uint32, newNpc *mapleNpc) {
+func (m *mapleNPCs) AddNpc(mapID int32, newNpc *mapleNpc) {
 	m.mutex.Lock()
 	m.maps[mapID] = append(m.maps[mapID], newNpc)
 	m.mutex.Unlock()
 }
 
-func (m *mapleNPCs) GetNpcs(mapID uint32) []*mapleNpc {
+func (m *mapleNPCs) GetNpcs(mapID int32) []*mapleNpc {
 	m.mutex.RLock()
 	result := m.maps[mapID]
 	m.mutex.RUnlock()

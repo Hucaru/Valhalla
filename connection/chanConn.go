@@ -2,11 +2,11 @@ package connection
 
 type ClientChanConn struct {
 	ClientConnection
-	userID        uint32
+	userID        int32
 	isLogedIn     bool
 	isAdmin       bool
-	worldID       uint32
-	chanID        uint32
+	worldID       int32
+	chanID        int32
 	closeCallback []func()
 }
 
@@ -30,11 +30,11 @@ func (c *ClientChanConn) String() string {
 	return c.ClientConnection.String()
 }
 
-func (c *ClientChanConn) SetUserID(val uint32) {
+func (c *ClientChanConn) SetUserID(val int32) {
 	c.userID = val
 }
 
-func (c *ClientChanConn) GetUserID() uint32 {
+func (c *ClientChanConn) GetUserID() int32 {
 	return c.userID
 }
 
@@ -54,19 +54,19 @@ func (c *ClientChanConn) GetIsLoggedIn() bool {
 	return c.isLogedIn
 }
 
-func (c *ClientChanConn) SetWorldID(val uint32) {
+func (c *ClientChanConn) SetWorldID(val int32) {
 	c.worldID = val
 }
 
-func (c *ClientChanConn) GetWorldID() uint32 {
+func (c *ClientChanConn) GetWorldID() int32 {
 	return c.worldID
 }
 
-func (c *ClientChanConn) SetChanID(val uint32) {
+func (c *ClientChanConn) SetChanID(val int32) {
 	c.chanID = val
 }
 
-func (c *ClientChanConn) GetChanID() uint32 {
+func (c *ClientChanConn) GetChanID() int32 {
 	return c.chanID
 }
 

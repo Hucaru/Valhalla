@@ -8,16 +8,16 @@ type ClientConn interface {
 	Close()
 	Write(maplepacket.Packet) error
 	String() string
-	SetUserID(uint32)
-	GetUserID() uint32
+	SetUserID(int32)
+	GetUserID() int32
 	SetAdmin(val bool)
 	IsAdmin() bool
 	SetIsLoggedIn(bool)
 	GetIsLoggedIn() bool
-	SetChanID(uint32)
-	GetChanID() uint32
+	SetChanID(int32)
+	GetChanID() int32
 	AddCloseCallback(func())
 	// Below here might not be needed
-	SetWorldID(uint32)
-	GetWorldID() uint32
+	SetWorldID(int32)
+	GetWorldID() int32
 }

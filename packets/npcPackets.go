@@ -11,8 +11,8 @@ import (
 func NpcShow(npc interop.Npc) maplepacket.Packet {
 	p := maplepacket.NewPacket()
 	p.WriteByte(constants.SEND_CHANNEL_NPC_SHOW)
-	p.WriteUint32(npc.GetSpawnID())
-	p.WriteUint32(npc.GetID())
+	p.WriteInt32(npc.GetSpawnID())
+	p.WriteInt32(npc.GetID())
 	p.WriteInt16(npc.GetX())
 	p.WriteInt16(npc.GetY())
 
@@ -25,19 +25,19 @@ func NpcShow(npc interop.Npc) maplepacket.Packet {
 	return p
 }
 
-func NPCRemove(npcID uint32) maplepacket.Packet {
+func NPCRemove(npcID int32) maplepacket.Packet {
 	p := maplepacket.NewPacket()
 	p.WriteByte(constants.SEND_CHANNEL_NPC_REMOVE)
-	p.WriteUint32(npcID)
+	p.WriteInt32(npcID)
 
 	return p
 }
 
-func NPCSetController(npcID uint32, isLocal bool) maplepacket.Packet {
+func NPCSetController(npcID int32, isLocal bool) maplepacket.Packet {
 	p := maplepacket.NewPacket()
 	p.WriteByte(constants.SEND_CHANNEL_NPC_CONTROL)
 	p.WriteBool(isLocal)
-	p.WriteUint32(npcID)
+	p.WriteInt32(npcID)
 
 	return p
 }
@@ -50,11 +50,11 @@ func NPCMovement(bytes []byte) maplepacket.Packet {
 	return p
 }
 
-func NPCChatBackNext(npcID uint32, msg string, front, back bool) maplepacket.Packet {
+func NPCChatBackNext(npcID int32, msg string, front, back bool) maplepacket.Packet {
 	p := maplepacket.NewPacket()
 	p.WriteByte(constants.SEND_CHANNEL_NPC_DIALOGUE_BOX)
 	p.WriteByte(4)
-	p.WriteUint32(npcID)
+	p.WriteInt32(npcID)
 	p.WriteByte(0)
 	p.WriteString(msg)
 	p.WriteBool(front)
@@ -63,77 +63,77 @@ func NPCChatBackNext(npcID uint32, msg string, front, back bool) maplepacket.Pac
 	return p
 }
 
-func NPCChatYesNo(npcID uint32, msg string) maplepacket.Packet {
+func NPCChatYesNo(npcID int32, msg string) maplepacket.Packet {
 	p := maplepacket.NewPacket()
 	p.WriteByte(constants.SEND_CHANNEL_NPC_DIALOGUE_BOX)
 	p.WriteByte(4)
-	p.WriteUint32(npcID)
+	p.WriteInt32(npcID)
 	p.WriteByte(1)
 	p.WriteString(msg)
 
 	return p
 }
 
-func NPCChatUserString(npcID uint32, msg string, defaultInput string, minLength, maxLength uint16) maplepacket.Packet {
+func NPCChatUserString(npcID int32, msg string, defaultInput string, minLength, maxLength int16) maplepacket.Packet {
 	p := maplepacket.NewPacket()
 	p.WriteByte(constants.SEND_CHANNEL_NPC_DIALOGUE_BOX)
 	p.WriteByte(4)
-	p.WriteUint32(npcID)
+	p.WriteInt32(npcID)
 	p.WriteByte(2)
 	p.WriteString(msg)
 	p.WriteString(defaultInput)
-	p.WriteUint16(minLength)
-	p.WriteUint16(maxLength)
+	p.WriteInt16(minLength)
+	p.WriteInt16(maxLength)
 
 	return p
 }
 
-func NPCChatUserNumber(npcID uint32, msg string, defaultInput, minLength, maxLength uint32) maplepacket.Packet {
+func NPCChatUserNumber(npcID int32, msg string, defaultInput, minLength, maxLength int32) maplepacket.Packet {
 	p := maplepacket.NewPacket()
 	p.WriteByte(constants.SEND_CHANNEL_NPC_DIALOGUE_BOX)
 	p.WriteByte(4)
-	p.WriteUint32(npcID)
+	p.WriteInt32(npcID)
 	p.WriteByte(3)
 	p.WriteString(msg)
-	p.WriteUint32(defaultInput)
-	p.WriteUint32(minLength)
-	p.WriteUint32(maxLength)
+	p.WriteInt32(defaultInput)
+	p.WriteInt32(minLength)
+	p.WriteInt32(maxLength)
 
 	return p
 }
 
-func NPCChatSelection(npcID uint32, msg string) maplepacket.Packet {
+func NPCChatSelection(npcID int32, msg string) maplepacket.Packet {
 	p := maplepacket.NewPacket()
 	p.WriteByte(constants.SEND_CHANNEL_NPC_DIALOGUE_BOX)
 	p.WriteByte(4)
-	p.WriteUint32(npcID)
+	p.WriteInt32(npcID)
 	p.WriteByte(4)
 	p.WriteString(msg)
 
 	return p
 }
 
-func NPCChatStyleWindow(npcID uint32, msg string, styles []uint32) maplepacket.Packet {
+func NPCChatStyleWindow(npcID int32, msg string, styles []int32) maplepacket.Packet {
 	p := maplepacket.NewPacket()
 	p.WriteByte(constants.SEND_CHANNEL_NPC_DIALOGUE_BOX)
 	p.WriteByte(4)
-	p.WriteUint32(npcID)
+	p.WriteInt32(npcID)
 	p.WriteByte(5)
 	p.WriteString(msg)
 	p.WriteByte(byte(len(styles)))
 
 	for _, style := range styles {
-		p.WriteUint32(style)
+		p.WriteInt32(style)
 	}
 
 	return p
 }
 
-func NPCChatUnkown1(npcID uint32, msg string) maplepacket.Packet {
+func NPCChatUnkown1(npcID int32, msg string) maplepacket.Packet {
 	p := maplepacket.NewPacket()
 	p.WriteByte(constants.SEND_CHANNEL_NPC_DIALOGUE_BOX)
 	p.WriteByte(4)
-	p.WriteUint32(npcID)
+	p.WriteInt32(npcID)
 	p.WriteByte(6)
 	p.WriteString(msg)
 	// Unkown from here
@@ -144,11 +144,11 @@ func NPCChatUnkown1(npcID uint32, msg string) maplepacket.Packet {
 	return p
 }
 
-func NPCChatUnkown2(npcID uint32, msg string) maplepacket.Packet {
+func NPCChatUnkown2(npcID int32, msg string) maplepacket.Packet {
 	p := maplepacket.NewPacket()
 	p.WriteByte(constants.SEND_CHANNEL_NPC_DIALOGUE_BOX)
 	p.WriteByte(4)
-	p.WriteUint32(npcID)
+	p.WriteInt32(npcID)
 	p.WriteByte(6)
 	p.WriteString(msg)
 	// Unkown from here
@@ -160,20 +160,20 @@ func NPCChatUnkown2(npcID uint32, msg string) maplepacket.Packet {
 	return p
 }
 
-func NPCShop(npcID uint32, items [][]uint32) maplepacket.Packet {
+func NPCShop(npcID int32, items [][]int32) maplepacket.Packet {
 	p := maplepacket.NewPacket()
 	p.WriteByte(constants.SEND_CHANNEL_NPC_SHOP)
-	p.WriteUint32(npcID)
-	p.WriteUint16(uint16(len(items)))
+	p.WriteInt32(npcID)
+	p.WriteInt16(int16(len(items)))
 
 	for _, item := range items {
-		p.WriteUint32(item[0])
+		p.WriteInt32(item[0])
 
 		if len(item) == 2 {
-			p.WriteUint32(item[1])
+			p.WriteInt32(item[1])
 
 		} else {
-			p.WriteUint32(nx.Items[item[0]].Price)
+			p.WriteInt32(nx.Items[item[0]].Price)
 		}
 
 		if nx.IsRechargeAble(item[0]) {
@@ -181,9 +181,9 @@ func NPCShop(npcID uint32, items [][]uint32) maplepacket.Packet {
 		}
 
 		if nx.Items[item[0]].SlotMax == 0 {
-			p.WriteUint16(100)
+			p.WriteInt16(100)
 		} else {
-			p.WriteUint16(nx.Items[item[0]].SlotMax)
+			p.WriteInt16(nx.Items[item[0]].SlotMax)
 		}
 	}
 
@@ -210,13 +210,13 @@ func NPCTradeError() maplepacket.Packet {
 	return nPCShopResult(0xFF)
 }
 
-func NPCStorageShow(npcID, storageMesos uint32, storageSlots byte, items []character.Item) maplepacket.Packet {
+func NPCStorageShow(npcID, storageMesos int32, storageSlots byte, items []character.Item) maplepacket.Packet {
 	p := maplepacket.NewPacket()
 	p.WriteByte(constants.SEND_CHANNEL_NPC_STORAGE)
-	p.WriteUint32(npcID)
+	p.WriteInt32(npcID)
 	p.WriteByte(storageSlots)
 	p.WriteInt16(0x7e)
-	p.WriteUint32(storageMesos)
+	p.WriteInt32(storageMesos)
 	for _, item := range items {
 		addItem(item)
 	}

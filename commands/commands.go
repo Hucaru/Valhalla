@@ -10,7 +10,7 @@ import (
 	"github.com/Hucaru/Valhalla/channel"
 	"github.com/Hucaru/Valhalla/character"
 	"github.com/Hucaru/Valhalla/interop"
-	"github.com/Hucaru/Valhalla/npcChat"
+	"github.com/Hucaru/Valhalla/npcdialogue"
 	"github.com/Hucaru/Valhalla/nx"
 	"github.com/Hucaru/Valhalla/packets"
 )
@@ -85,7 +85,7 @@ func HandleGmCommand(conn interop.ClientConn, msg string) {
 			}
 		}
 
-		mapID := uint32(val)
+		mapID := int32(val)
 
 		if len(command) == 2 {
 			channel.Players.OnCharacterFromConn(conn, func(char *channel.MapleCharacter) {
@@ -111,7 +111,7 @@ func HandleGmCommand(conn interop.ClientConn, msg string) {
 		}
 
 		channel.Players.OnCharacterFromConn(conn, func(char *channel.MapleCharacter) {
-			char.SetJob(uint16(val))
+			char.SetJob(int16(val))
 		})
 
 	case "level":
@@ -146,9 +146,9 @@ func HandleGmCommand(conn interop.ClientConn, msg string) {
 
 			channel.Players.OnCharacterFromConn(conn, func(char *channel.MapleCharacter) {
 				if val > 0 {
-					char.GiveEXP(uint32(val), false, true)
+					char.GiveEXP(int32(val), false, true)
 				} else if val < 0 {
-					char.TakeEXP(uint32(val))
+					char.TakeEXP(int32(val))
 				}
 			})
 		} else if len(command) == 3 {
@@ -160,9 +160,9 @@ func HandleGmCommand(conn interop.ClientConn, msg string) {
 
 			channel.Players.OnCharacterFromName(command[1], func(char *channel.MapleCharacter) {
 				if val > 0 {
-					char.GiveEXP(uint32(val), false, true)
+					char.GiveEXP(int32(val), false, true)
 				} else if val < 0 {
-					char.TakeEXP(uint32(val))
+					char.TakeEXP(int32(val))
 				}
 			})
 
@@ -194,7 +194,7 @@ func HandleGmCommand(conn interop.ClientConn, msg string) {
 			return
 		}
 		if 0 < val && val < 6 {
-			channel.SetRate(channel.MobRate, uint32(val))
+			channel.SetRate(channel.MobRate, int32(val))
 		} else {
 			conn.Write(packets.MessageDialogueBox("Enter a value between 1 and 5"))
 		}
@@ -205,7 +205,7 @@ func HandleGmCommand(conn interop.ClientConn, msg string) {
 			return
 		}
 
-		channel.SetRate(channel.ExpRate, uint32(val))
+		channel.SetRate(channel.ExpRate, int32(val))
 	case "mesorate":
 		val, err := strconv.Atoi(command[1])
 
@@ -213,7 +213,7 @@ func HandleGmCommand(conn interop.ClientConn, msg string) {
 			return
 		}
 
-		channel.SetRate(channel.MesoRate, uint32(val))
+		channel.SetRate(channel.MesoRate, int32(val))
 	case "droprate":
 		val, err := strconv.Atoi(command[1])
 
@@ -221,7 +221,7 @@ func HandleGmCommand(conn interop.ClientConn, msg string) {
 			return
 		}
 
-		channel.SetRate(channel.DropRate, uint32(val))
+		channel.SetRate(channel.DropRate, int32(val))
 	case "header":
 		msg := ""
 		if len(command) >= 2 {
@@ -262,8 +262,8 @@ func HandleGmCommand(conn interop.ClientConn, msg string) {
 		}
 
 		channel.Players.OnCharacterFromConn(conn, func(char *channel.MapleCharacter) {
-			npcChat.NewSession(conn, uint32(npcID), char)
-			npcChat.GetSession(conn).Run()
+			npcdialogue.NewSession(conn, int32(npcID), char)
+			npcdialogue.GetSession(conn).Run()
 		})
 	case "restart":
 		channel.Players.OnCharacters(func(char *channel.MapleCharacter) {
@@ -277,15 +277,15 @@ func HandleGmCommand(conn interop.ClientConn, msg string) {
 		os.Exit(1)
 
 	case "shop":
-		items := [][]uint32{[]uint32{1322013, 1},
-			[]uint32{1092008, 1},
-			[]uint32{1102054, 1},
-			[]uint32{1082002, 1},
-			[]uint32{1072004, 1},
-			[]uint32{1062007, 1},
-			[]uint32{1042003, 1},
-			[]uint32{1032006, 1},
-			[]uint32{1002140, 1}}
+		items := [][]int32{[]int32{1322013, 1},
+			[]int32{1092008, 1},
+			[]int32{1102054, 1},
+			[]int32{1082002, 1},
+			[]int32{1072004, 1},
+			[]int32{1062007, 1},
+			[]int32{1042003, 1},
+			[]int32{1032006, 1},
+			[]int32{1002140, 1}}
 
 		conn.Write(packets.NPCShop(9200000, items))
 

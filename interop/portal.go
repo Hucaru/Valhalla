@@ -1,8 +1,8 @@
 package interop
 
 type Portal interface {
-	GetToMap() uint32
-	SetToMap(uint32)
+	GetToMap() int32
+	SetToMap(int32)
 	GetToPortal() string
 	SetToPortal(string)
 	GetName() string

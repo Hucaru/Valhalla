@@ -6,7 +6,7 @@ import (
 	"github.com/Hucaru/Valhalla/connection"
 )
 
-func GetCharacterSkills(charID uint32) map[uint32]uint32 {
+func GetCharacterSkills(charID int32) map[int32]int32 {
 	filter := "skillID,level"
 	row, err := connection.Db.Query("SELECT "+filter+" FROM skills WHERE characterID=?", charID)
 
@@ -16,11 +16,11 @@ func GetCharacterSkills(charID uint32) map[uint32]uint32 {
 
 	defer row.Close()
 
-	skills := make(map[uint32]uint32)
+	skills := make(map[int32]int32)
 
 	for row.Next() {
-		var ID uint32
-		var level uint32
+		var ID int32
+		var level int32
 
 		row.Scan(&ID, &level)
 
@@ -30,7 +30,7 @@ func GetCharacterSkills(charID uint32) map[uint32]uint32 {
 	return skills
 }
 
-func GetCharacterItems(charID uint32) []Item {
+func GetCharacterItems(charID int32) []Item {
 	filter := "inventoryID,itemID,slotNumber,amount,flag,upgradeSlots,level,str,dex,intt,luk,hp,mp,watk,matk,wdef,mdef,accuracy,avoid,hands,speed,jump,expireTime,creatorName"
 	row, err := connection.Db.Query("SELECT "+filter+" FROM items WHERE characterID=?", charID)
 
@@ -46,27 +46,27 @@ func GetCharacterItems(charID uint32) []Item {
 
 		var item Item
 		var invID byte
-		var itemID uint32
+		var itemID int32
 		var slotID int16
 		var amount int16
-		var flag uint16
+		var flag int16
 		var upgradeSlots byte
 		var level byte
-		var str uint16
-		var dex uint16
-		var intt uint16
-		var luk uint16
-		var hp uint16
-		var mp uint16
-		var watk uint16
-		var matk uint16
-		var wdef uint16
-		var mdef uint16
-		var accuracy uint16
-		var avoid uint16
-		var hands uint16
-		var speed uint16
-		var jump uint16
+		var str int16
+		var dex int16
+		var intt int16
+		var luk int16
+		var hp int16
+		var mp int16
+		var watk int16
+		var matk int16
+		var wdef int16
+		var mdef int16
+		var accuracy int16
+		var avoid int16
+		var hands int16
+		var speed int16
+		var jump int16
 		var expireTime uint64
 		var creatorName string
 
@@ -126,38 +126,38 @@ func GetCharacterItems(charID uint32) []Item {
 	return items
 }
 
-func GetCharacter(charID uint32) Character {
+func GetCharacter(charID int32) Character {
 	var newChar Character
 	filter := "id,userID,worldID,name,gender,skin,hair,face,level,job,str,dex,intt," +
 		"luk,hp,maxHP,mp,maxMP,ap,sp, exp,fame,mapID,mapPos,previousMapID,mesos," +
 		"equipSlotSize,useSlotSize,setupSlotSize,etcSlotSize,cashSlotSize"
 
-	var userID uint32
-	var worldID uint32
+	var userID int32
+	var worldID int32
 	var name string
 	var gender byte
 	var skin byte
-	var face uint32
-	var hair uint32
+	var face int32
+	var hair int32
 	var level byte
-	var job uint16
-	var str uint16
-	var dex uint16
-	var intt uint16
-	var luk uint16
-	var hp uint16
-	var maxHP uint16
-	var mp uint16
-	var maxMP uint16
-	var ap uint16
-	var sp uint16
-	var exp uint32
-	var fame uint16
-	var currentMap uint32
+	var job int16
+	var str int16
+	var dex int16
+	var intt int16
+	var luk int16
+	var hp int16
+	var maxHP int16
+	var mp int16
+	var maxMP int16
+	var ap int16
+	var sp int16
+	var exp int32
+	var fame int16
+	var currentMap int32
 	var currentMapPos byte
-	var previousMap uint32
-	var feeMarketReturn uint32
-	var mesos uint32
+	var previousMap int32
+	var feeMarketReturn int32
+	var mesos int32
 	var equipSlotSize byte
 	var useSlotSize byte
 	var setupSlotSize byte
@@ -240,7 +240,7 @@ func GetCharacter(charID uint32) Character {
 	return newChar
 }
 
-func GetCharacters(userID uint32, worldID uint32) []Character {
+func GetCharacters(userID int32, worldID int32) []Character {
 	filter := "id,userID,worldID,name,gender,skin,hair,face,level,job,str,dex,intt," +
 		"luk,hp,maxHP,mp,maxMP,ap,sp, exp,fame,mapID,mapPos,previousMapID,mesos," +
 		"equipSlotSize,useSlotSize,setupSlotSize,etcSlotSize,cashSlotSize"
@@ -260,33 +260,33 @@ func GetCharacters(userID uint32, worldID uint32) []Character {
 
 		newChar.mutex = &sync.RWMutex{}
 
-		var charID uint32
-		var userID uint32
-		var worldID uint32
+		var charID int32
+		var userID int32
+		var worldID int32
 		var name string
 		var gender byte
 		var skin byte
-		var face uint32
-		var hair uint32
+		var face int32
+		var hair int32
 		var level byte
-		var job uint16
-		var str uint16
-		var dex uint16
-		var intt uint16
-		var luk uint16
-		var hp uint16
-		var maxHP uint16
-		var mp uint16
-		var maxMP uint16
-		var ap uint16
-		var sp uint16
-		var exp uint32
-		var fame uint16
-		var currentMap uint32
+		var job int16
+		var str int16
+		var dex int16
+		var intt int16
+		var luk int16
+		var hp int16
+		var maxHP int16
+		var mp int16
+		var maxMP int16
+		var ap int16
+		var sp int16
+		var exp int32
+		var fame int16
+		var currentMap int32
 		var currentMapPos byte
-		var previousMap uint32
-		var feeMarketReturn uint32
-		var mesos uint32
+		var previousMap int32
+		var feeMarketReturn int32
+		var mesos int32
 		var equipSlotSize byte
 		var useSlotSize byte
 		var setupSlotSize byte

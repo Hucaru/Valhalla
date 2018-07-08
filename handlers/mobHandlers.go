@@ -10,15 +10,15 @@ import (
 )
 
 func handleMobControl(conn interop.ClientConn, reader maplepacket.Reader) {
-	mobID := reader.ReadUint32()
-	moveID := reader.ReadUint16()
+	mobID := reader.ReadInt32()
+	moveID := reader.ReadInt16()
 	nibbles := reader.ReadByte()
 	activity := reader.ReadByte()
 	skillID := reader.ReadByte()
 	skillLevel := reader.ReadByte()
-	option := reader.ReadUint16()
+	option := reader.ReadInt16()
 
-	reader.ReadUint32()
+	reader.ReadInt32()
 
 	nFrags := reader.ReadByte()
 
@@ -84,7 +84,7 @@ func handleMobControl(conn interop.ClientConn, reader maplepacket.Reader) {
 
 			movement.ParseFragments(nFrags, mob, reader)
 
-			conn.Write(packets.MobAck(mobID, moveID, allowedToUseSkill, uint16(mob.GetMp()), mob.GetNextSkillID(), mob.GetNextSkillLevel()))
+			conn.Write(packets.MobAck(mobID, moveID, allowedToUseSkill, int16(mob.GetMp()), mob.GetNextSkillID(), mob.GetNextSkillLevel()))
 
 			channel.Maps.GetMap(char.GetCurrentMap()).SendPacketExcept(packets.MobMove(mobID, allowedToUseSkill, activity, skillID, skillLevel, option, reader.GetBuffer()[13:]), conn)
 		})

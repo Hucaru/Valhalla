@@ -21,13 +21,13 @@ type clientLoginConn interface {
 	SetAdmin(bool)
 	IsAdmin() bool
 
-	SetUserID(uint32)
-	GetUserID() uint32
+	SetUserID(int32)
+	GetUserID() int32
 
 	SetIsLogedIn(bool)
 
-	SetWorldID(uint32)
-	GetWorldID() uint32
+	SetWorldID(int32)
+	GetWorldID() int32
 
 	SetChanID(byte)
 	SetSessionHash(string)
@@ -49,7 +49,7 @@ func handleLoginRequest(conn clientLoginConn, reader maplepacket.Reader) {
 	hasher.Write([]byte(password))
 	hashedPassword := hex.EncodeToString(hasher.Sum(nil))
 
-	var userID uint32
+	var userID int32
 	var user string
 	var databasePassword string
 	var gender byte
@@ -121,7 +121,7 @@ func handleGoodLogin(conn clientLoginConn, reader maplepacket.Reader) {
 
 func handleWorldSelect(conn clientLoginConn, reader maplepacket.Reader) {
 	worldID := reader.ReadInt16()
-	conn.SetWorldID(uint32(worldID))
+	conn.SetWorldID(int32(worldID))
 
 	conn.Write(packets.LoginWorldInfo(0, 0)) // hard coded for now
 }
@@ -132,7 +132,7 @@ func handleChannelSelect(conn clientLoginConn, reader maplepacket.Reader) {
 
 	var characters []character.Character
 
-	if uint32(selectedWorld) == conn.GetWorldID() {
+	if int32(selectedWorld) == conn.GetWorldID() {
 		characters = character.GetCharacters(conn.GetUserID(), conn.GetWorldID())
 	}
 
@@ -299,7 +299,7 @@ func handleSelectCharacter(conn clientLoginConn, reader maplepacket.Reader) {
 
 	if charCount == 1 {
 		ip := []byte{192, 168, 1, 240}
-		port := uint16(8686)
+		port := int16(8686)
 		conn.Write(packets.LoginMigrateClient(ip, port, charID))
 	}
 }

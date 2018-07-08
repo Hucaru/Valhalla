@@ -12,8 +12,8 @@ import (
 
 type MapleMob struct {
 	mapleNpc
-	exp, status                        uint32
-	hp, maxHp, mp, maxMp, flySpeed     uint32
+	exp, status                        int32
+	hp, maxHp, mp, maxMp, flySpeed     int32
 	boss, respawns                     bool
 	level, nextSkillID, nextSkillLevel byte
 	sx, sy                             int16
@@ -21,26 +21,26 @@ type MapleMob struct {
 	controller, summoner               interop.ClientConn
 
 	lastSkillUseTime int64
-	nSpawns          uint16
+	nSpawns          int16
 	skillTimes       map[byte]int64
 }
 
-func (m *MapleMob) GetEXP() uint32              { return m.exp }
-func (m *MapleMob) SetEXP(exp uint32)           { m.exp = exp }
-func (m *MapleMob) GetStatus() uint32           { return m.status }
-func (m *MapleMob) SetStatus(status uint32)     { m.status = status }
-func (m *MapleMob) GetHp() uint32               { return m.hp }
-func (m *MapleMob) SetHp(hp uint32)             { m.hp = hp }
-func (m *MapleMob) GetMaxHp() uint32            { return m.maxHp }
-func (m *MapleMob) SetMaxHp(maxHp uint32)       { m.maxHp = maxHp }
-func (m *MapleMob) GetMp() uint32               { return m.mp }
-func (m *MapleMob) SetMp(mp uint32)             { m.mp = mp }
-func (m *MapleMob) GetMaxMp() uint32            { return m.maxMp }
-func (m *MapleMob) SetMaxMp(maxMp uint32)       { m.maxMp = maxMp }
-func (m *MapleMob) GetFlySpeed() uint32         { return m.flySpeed }
-func (m *MapleMob) SetFlySpeed(flySpeed uint32) { m.flySpeed = flySpeed }
-func (m *MapleMob) GetBoss() bool               { return m.boss }
-func (m *MapleMob) SetBoss(boss bool)           { m.boss = boss }
+func (m *MapleMob) GetEXP() int32              { return m.exp }
+func (m *MapleMob) SetEXP(exp int32)           { m.exp = exp }
+func (m *MapleMob) GetStatus() int32           { return m.status }
+func (m *MapleMob) SetStatus(status int32)     { m.status = status }
+func (m *MapleMob) GetHp() int32               { return m.hp }
+func (m *MapleMob) SetHp(hp int32)             { m.hp = hp }
+func (m *MapleMob) GetMaxHp() int32            { return m.maxHp }
+func (m *MapleMob) SetMaxHp(maxHp int32)       { m.maxHp = maxHp }
+func (m *MapleMob) GetMp() int32               { return m.mp }
+func (m *MapleMob) SetMp(mp int32)             { m.mp = mp }
+func (m *MapleMob) GetMaxMp() int32            { return m.maxMp }
+func (m *MapleMob) SetMaxMp(maxMp int32)       { m.maxMp = maxMp }
+func (m *MapleMob) GetFlySpeed() int32         { return m.flySpeed }
+func (m *MapleMob) SetFlySpeed(flySpeed int32) { m.flySpeed = flySpeed }
+func (m *MapleMob) GetBoss() bool              { return m.boss }
+func (m *MapleMob) SetBoss(boss bool)          { m.boss = boss }
 
 func (m *MapleMob) GetLevel() byte      { return m.level }
 func (m *MapleMob) SetLevel(level byte) { m.level = level }
@@ -94,12 +94,12 @@ func (m *MapleMob) CanCastSkills() bool {
 	return !(m.HasStatus(constants.MOB_STATUS_FREEZE) || m.HasStatus(constants.MOB_STATUS_STUN) || m.HasStatus(constants.MOB_STATUS_SHADOW_WEB))
 }
 
-func (m *MapleMob) HasStatus(status uint32) bool {
+func (m *MapleMob) HasStatus(status int32) bool {
 	return m.status&status > 0
 }
 
 func (m *MapleMob) HasImmunity() bool {
-	var mask uint32 = constants.MOB_STATUS_WEAPON_IMMUNITY | constants.MOB_STATUS_MAGIC_IMMUNITY | constants.MOB_STATUS_WEAPON_DAMAGE_REFLECT | constants.MOB_STATUS_MAGIC_DAMAGE_REFLECT
+	var mask int32 = constants.MOB_STATUS_WEAPON_IMMUNITY | constants.MOB_STATUS_MAGIC_IMMUNITY | constants.MOB_STATUS_WEAPON_DAMAGE_REFLECT | constants.MOB_STATUS_MAGIC_DAMAGE_REFLECT
 	return (m.status & mask) != 0
 }
 
@@ -157,7 +157,7 @@ func (m *MapleMob) ChooseRandomSkill() {
 
 		for k, v := range m.skillTimes {
 			if k == skill.SkillID {
-				stop = time.Now().Unix() < int64(uint32(v)+skill.Interval)
+				stop = time.Now().Unix() < int64(int32(v)+skill.Interval)
 			}
 		}
 

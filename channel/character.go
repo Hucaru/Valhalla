@@ -31,33 +31,33 @@ func (c *MapleCharacter) IsAdmin() bool {
 	return c.conn.IsAdmin()
 }
 
-func (c *MapleCharacter) SetHP(hp uint16) {
+func (c *MapleCharacter) SetHP(hp int16) {
 	c.Character.SetHP(c.GetHP() + hp)
 
 	if c.GetHP() > c.GetMaxHP() {
 		c.Character.SetHP(c.GetMaxHP())
 	}
 
-	c.conn.Write(packets.PlayerStatChange(true, constants.HP_ID, uint32(c.GetHP())))
+	c.conn.Write(packets.PlayerStatChange(true, constants.HP_ID, int32(c.GetHP())))
 }
 
-func (c *MapleCharacter) SetMP(mp uint16) {
+func (c *MapleCharacter) SetMP(mp int16) {
 	c.Character.SetMP(c.Character.GetMP() + mp)
 
 	if c.GetMP() > c.GetMaxMP() {
 		c.Character.SetMP(c.GetMaxMP())
 	}
 
-	c.conn.Write(packets.PlayerStatChange(true, constants.MP_ID, uint32(c.GetMP())))
+	c.conn.Write(packets.PlayerStatChange(true, constants.MP_ID, int32(c.GetMP())))
 }
 
-func (c *MapleCharacter) SetAP(ap uint16) {
+func (c *MapleCharacter) SetAP(ap int16) {
 	c.Character.SetAP(ap)
-	c.conn.Write(packets.PlayerStatChange(true, constants.AP_ID, uint32(ap)))
+	c.conn.Write(packets.PlayerStatChange(true, constants.AP_ID, int32(ap)))
 }
 
-func (c *MapleCharacter) SetStr(str uint16) {
-	var maxValue uint16 = 2000
+func (c *MapleCharacter) SetStr(str int16) {
+	var maxValue int16 = 2000
 
 	if c.GetStr() >= maxValue {
 		c.conn.Write(packets.PlayerStatNoChange())
@@ -66,13 +66,13 @@ func (c *MapleCharacter) SetStr(str uint16) {
 
 	c.Character.SetStr(str)
 
-	c.conn.Write(packets.PlayerStatChange(true, constants.STR_ID, uint32(str)))
+	c.conn.Write(packets.PlayerStatChange(true, constants.STR_ID, int32(str)))
 
 	c.SetAP(c.GetAP() - 1)
 }
 
-func (c *MapleCharacter) SetDex(dex uint16) {
-	var maxValue uint16 = 2000
+func (c *MapleCharacter) SetDex(dex int16) {
+	var maxValue int16 = 2000
 
 	if c.GetDex() >= maxValue {
 		c.conn.Write(packets.PlayerStatNoChange())
@@ -81,13 +81,13 @@ func (c *MapleCharacter) SetDex(dex uint16) {
 
 	c.Character.SetDex(dex)
 
-	c.conn.Write(packets.PlayerStatChange(true, constants.DEX_ID, uint32(dex)))
+	c.conn.Write(packets.PlayerStatChange(true, constants.DEX_ID, int32(dex)))
 
 	c.SetAP(c.GetAP() - 1)
 }
 
-func (c *MapleCharacter) SetInt(intt uint16) {
-	var maxValue uint16 = 2000
+func (c *MapleCharacter) SetInt(intt int16) {
+	var maxValue int16 = 2000
 
 	if c.GetInt() >= maxValue {
 		c.conn.Write(packets.PlayerStatNoChange())
@@ -96,13 +96,13 @@ func (c *MapleCharacter) SetInt(intt uint16) {
 
 	c.Character.SetInt(intt)
 
-	c.conn.Write(packets.PlayerStatChange(true, constants.INT_ID, uint32(intt)))
+	c.conn.Write(packets.PlayerStatChange(true, constants.INT_ID, int32(intt)))
 
 	c.SetAP(c.GetAP() - 1)
 }
 
-func (c *MapleCharacter) SetLuk(luk uint16) {
-	var maxValue uint16 = 2000
+func (c *MapleCharacter) SetLuk(luk int16) {
+	var maxValue int16 = 2000
 
 	if c.GetLuk() >= maxValue {
 		c.conn.Write(packets.PlayerStatNoChange())
@@ -111,13 +111,13 @@ func (c *MapleCharacter) SetLuk(luk uint16) {
 
 	c.Character.SetLuk(luk)
 
-	c.conn.Write(packets.PlayerStatChange(true, constants.LUK_ID, uint32(luk)))
+	c.conn.Write(packets.PlayerStatChange(true, constants.LUK_ID, int32(luk)))
 
 	c.SetAP(c.GetAP() - 1)
 }
 
-func (c *MapleCharacter) SetMaxHP(mp uint16) {
-	var maxValue uint16 = 30000
+func (c *MapleCharacter) SetMaxHP(mp int16) {
+	var maxValue int16 = 30000
 
 	if c.GetMaxHP() >= maxValue {
 		c.conn.Write(packets.PlayerStatNoChange())
@@ -126,13 +126,13 @@ func (c *MapleCharacter) SetMaxHP(mp uint16) {
 
 	c.Character.SetMaxHP(mp)
 
-	c.conn.Write(packets.PlayerStatChange(true, constants.MAX_HP_ID, uint32(mp)))
+	c.conn.Write(packets.PlayerStatChange(true, constants.MAX_HP_ID, int32(mp)))
 
 	c.SetAP(c.GetAP() - 1)
 }
 
-func (c *MapleCharacter) SetMaxMP(hp uint16) {
-	var maxValue uint16 = 30000
+func (c *MapleCharacter) SetMaxMP(hp int16) {
+	var maxValue int16 = 30000
 
 	if c.GetMaxMP() >= maxValue {
 		c.conn.Write(packets.PlayerStatNoChange())
@@ -141,23 +141,23 @@ func (c *MapleCharacter) SetMaxMP(hp uint16) {
 
 	c.Character.SetMaxMP(hp)
 
-	c.conn.Write(packets.PlayerStatChange(true, constants.MAX_MP_ID, uint32(hp)))
+	c.conn.Write(packets.PlayerStatChange(true, constants.MAX_MP_ID, int32(hp)))
 
 	c.SetAP(c.GetAP() - 1)
 }
 
-func (c *MapleCharacter) SetSP(sp uint16) {
+func (c *MapleCharacter) SetSP(sp int16) {
 	c.Character.SetSP(sp)
-	c.conn.Write(packets.PlayerStatChange(true, constants.SP_ID, uint32(sp)))
+	c.conn.Write(packets.PlayerStatChange(true, constants.SP_ID, int32(sp)))
 }
 
-func (c *MapleCharacter) UpdateSkill(id, level uint32) {
+func (c *MapleCharacter) UpdateSkill(id, level int32) {
 	c.Character.UpdateSkill(id, level)
 	c.SetSP(c.GetSP() - 1)
 	c.conn.Write(packets.PlayerSkillBookUpdate(id, level))
 }
 
-func (c *MapleCharacter) ChangeMap(mapID uint32, portal maplePortal, pID byte) {
+func (c *MapleCharacter) ChangeMap(mapID int32, portal maplePortal, pID byte) {
 	Maps.GetMap(c.GetCurrentMap()).RemovePlayer(c.conn)
 
 	c.SetX(portal.GetX())
@@ -175,15 +175,15 @@ func (c *MapleCharacter) LevelUP() {
 	newSP := c.Character.GetSP() + 3
 	c.Character.SetSP(newSP)
 
-	var hpToAdd uint16
-	var mpToAdd uint16
+	var hpToAdd int16
+	var mpToAdd int16
 
-	levelUpHp := func(classIncrease uint16, bonus uint16) uint16 {
-		return uint16(rand.Intn(3)+1) + classIncrease + bonus // deterministic rand, maybe seed with time?
+	levelUpHp := func(classIncrease int16, bonus int16) int16 {
+		return int16(rand.Intn(3)+1) + classIncrease + bonus // deterministic rand, maybe seed with time?
 	}
 
-	levelUpMp := func(classIncrease uint16, bonus uint16) uint16 {
-		return uint16(rand.Intn(1)+1) + classIncrease + bonus // deterministic rand, maybe seed with time?
+	levelUpMp := func(classIncrease int16, bonus int16) int16 {
+		return int16(rand.Intn(1)+1) + classIncrease + bonus // deterministic rand, maybe seed with time?
 	}
 
 	switch int(c.Character.GetJob() / 100) {
@@ -217,14 +217,14 @@ func (c *MapleCharacter) LevelUP() {
 	c.Character.SetMaxMP(newMp)
 	c.Character.SetMP(newMp)
 
-	c.conn.Write(packets.PlayerStatChange(false, constants.HP_ID, uint32(newHp)))
-	c.conn.Write(packets.PlayerStatChange(false, constants.MAX_HP_ID, uint32(newHp)))
+	c.conn.Write(packets.PlayerStatChange(false, constants.HP_ID, int32(newHp)))
+	c.conn.Write(packets.PlayerStatChange(false, constants.MAX_HP_ID, int32(newHp)))
 
-	c.conn.Write(packets.PlayerStatChange(false, constants.MP_ID, uint32(newHp)))
-	c.conn.Write(packets.PlayerStatChange(false, constants.MAX_MP_ID, uint32(newHp)))
+	c.conn.Write(packets.PlayerStatChange(false, constants.MP_ID, int32(newHp)))
+	c.conn.Write(packets.PlayerStatChange(false, constants.MAX_MP_ID, int32(newHp)))
 
-	c.conn.Write(packets.PlayerStatChange(false, constants.AP_ID, uint32(newAP)))
-	c.conn.Write(packets.PlayerStatChange(false, constants.SP_ID, uint32(newSP)))
+	c.conn.Write(packets.PlayerStatChange(false, constants.AP_ID, int32(newAP)))
+	c.conn.Write(packets.PlayerStatChange(false, constants.SP_ID, int32(newSP)))
 }
 
 func (c *MapleCharacter) SetLevel(level byte) {
@@ -238,32 +238,32 @@ func (c *MapleCharacter) SetLevel(level byte) {
 	}
 
 	c.Character.SetLevel(level)
-	c.conn.Write(packets.PlayerStatChange(true, constants.LEVEL_ID, uint32(level)))
+	c.conn.Write(packets.PlayerStatChange(true, constants.LEVEL_ID, int32(level)))
 
 }
 
-func (c *MapleCharacter) SetJob(jobID uint16) {
+func (c *MapleCharacter) SetJob(jobID int16) {
 	c.Character.SetJob(jobID)
-	c.conn.Write(packets.PlayerStatChange(true, constants.JOB_ID, uint32(jobID)))
+	c.conn.Write(packets.PlayerStatChange(true, constants.JOB_ID, int32(jobID)))
 }
 
-func (c *MapleCharacter) SetMesos(val uint32) {
+func (c *MapleCharacter) SetMesos(val int32) {
 	c.Character.SetMesos(val)
 	c.conn.Write(packets.PlayerStatChange(true, constants.MESOS_ID, val))
 }
 
-func (c *MapleCharacter) GiveMesos(val uint32) {
+func (c *MapleCharacter) GiveMesos(val int32) {
 	c.SetMesos(c.GetMesos() + val)
 }
 
-func (c *MapleCharacter) TakeMesos(val uint32) {
+func (c *MapleCharacter) TakeMesos(val int32) {
 	c.SetMesos(c.GetMesos() - val)
 }
 
-func (c *MapleCharacter) GiveEXP(val uint32, whiteText, appearInChat bool) {
-	var giveEXP func(val uint32)
+func (c *MapleCharacter) GiveEXP(val int32, whiteText, appearInChat bool) {
+	var giveEXP func(val int32)
 
-	giveEXP = func(val uint32) {
+	giveEXP = func(val int32) {
 		if c.GetLevel() > 199 {
 			c.SetEXP(0)
 			c.conn.Write(packets.PlayerStatChange(true, constants.EXP_ID, 0))
@@ -282,7 +282,7 @@ func (c *MapleCharacter) GiveEXP(val uint32, whiteText, appearInChat bool) {
 	c.conn.Write(packets.MessageExpGained(whiteText, appearInChat, val))
 }
 
-func (c *MapleCharacter) TakeEXP(val uint32) {
+func (c *MapleCharacter) TakeEXP(val int32) {
 	if c.GetEXP() < val {
 		c.SetEXP(0)
 	} else {
@@ -344,7 +344,7 @@ func (c *MapleCharacter) GiveItem(item character.Item) {
 	}
 }
 
-func (c *MapleCharacter) TakeItem(invID byte, slotID int16, ammount uint16) {
+func (c *MapleCharacter) TakeItem(invID byte, slotID int16, ammount int16) {
 	for _, item := range c.GetItems() {
 		if item.GetInvID() == invID &&
 			item.GetSlotNumber() == slotID {
@@ -361,17 +361,17 @@ func (c *MapleCharacter) TakeItem(invID byte, slotID int16, ammount uint16) {
 	}
 }
 
-func (c *MapleCharacter) TakeDamage(ammount uint32) {
+func (c *MapleCharacter) TakeDamage(ammount int32) {
 	delta := int32(c.Character.GetHP()) - int32(ammount)
 
-	var newHp uint16
+	var newHp int16
 
 	if delta < 1 {
 		newHp = 0
 	} else {
-		newHp = uint16(delta)
+		newHp = int16(delta)
 	}
 
 	c.Character.SetHP(newHp)
-	c.conn.Write(packets.PlayerStatChange(false, constants.HP_ID, uint32(newHp)))
+	c.conn.Write(packets.PlayerStatChange(false, constants.HP_ID, int32(newHp)))
 }

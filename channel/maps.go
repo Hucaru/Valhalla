@@ -6,7 +6,7 @@ import (
 	"github.com/Hucaru/Valhalla/nx"
 )
 
-var Maps = mapleMaps{maps: make(map[uint32]*mapleMap), mutex: &sync.RWMutex{}}
+var Maps = mapleMaps{maps: make(map[int32]*mapleMap), mutex: &sync.RWMutex{}}
 
 func GenerateMaps() {
 	for mapID, stage := range nx.Maps {
@@ -36,17 +36,17 @@ func init() {
 }
 
 type mapleMaps struct {
-	maps  map[uint32]*mapleMap
+	maps  map[int32]*mapleMap
 	mutex *sync.RWMutex
 }
 
-func (m *mapleMaps) AddMap(mapID uint32, newMap *mapleMap) {
+func (m *mapleMaps) AddMap(mapID int32, newMap *mapleMap) {
 	m.mutex.Lock()
 	m.maps[mapID] = newMap
 	m.mutex.Unlock()
 }
 
-func (m *mapleMaps) GetMap(mapID uint32) *mapleMap {
+func (m *mapleMaps) GetMap(mapID int32) *mapleMap {
 	m.mutex.RLock()
 	result := m.maps[mapID]
 	m.mutex.RUnlock()

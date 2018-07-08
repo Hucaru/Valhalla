@@ -25,7 +25,7 @@ func handleUsePortal(conn interop.ClientConn, reader maplepacket.Reader) {
 			}
 		})
 	case -1:
-		portalName := reader.ReadString(int(reader.ReadUint16()))
+		portalName := reader.ReadString(int(reader.ReadInt16()))
 
 		channel.Players.OnCharacterFromConn(conn, func(char *channel.MapleCharacter) {
 			channel.Maps.GetMap(char.GetCurrentMap()).RemovePlayer(conn)

@@ -9,15 +9,15 @@ import (
 func WriteDisplayCharacter(char Character, p *maplepacket.Packet) {
 	p.WriteByte(char.GetGender()) // gender
 	p.WriteByte(char.GetSkin())   // skin
-	p.WriteUint32(char.GetFace()) // face
+	p.WriteInt32(char.GetFace())  // face
 	p.WriteByte(0x00)             // ?
-	p.WriteUint32(char.GetHair()) // hair
-	cashWeapon := uint32(0)
+	p.WriteInt32(char.GetHair())  // hair
+	cashWeapon := int32(0)
 
 	for _, b := range char.GetItems() {
 		if b.GetSlotNumber() < 0 && b.GetSlotNumber() > -20 {
 			p.WriteByte(byte(math.Abs(float64(b.GetSlotNumber()))))
-			p.WriteUint32(b.GetItemID())
+			p.WriteInt32(b.GetItemID())
 		}
 	}
 
@@ -27,7 +27,7 @@ func WriteDisplayCharacter(char Character, p *maplepacket.Packet) {
 				cashWeapon = b.GetItemID()
 			} else {
 				p.WriteByte(byte(math.Abs(float64(b.GetSlotNumber() + 100))))
-				p.WriteUint32(b.GetItemID())
+				p.WriteInt32(b.GetItemID())
 			}
 		}
 	}
@@ -35,5 +35,5 @@ func WriteDisplayCharacter(char Character, p *maplepacket.Packet) {
 	p.WriteByte(0xFF)
 	// What items go here?
 	p.WriteByte(0xFF)
-	p.WriteUint32(cashWeapon)
+	p.WriteInt32(cashWeapon)
 }
