@@ -8,6 +8,7 @@ import (
 	"github.com/Hucaru/Valhalla/connection"
 	"github.com/Hucaru/Valhalla/constants"
 	"github.com/Hucaru/Valhalla/interop"
+	"github.com/Hucaru/Valhalla/inventory"
 	"github.com/Hucaru/Valhalla/maplepacket"
 	"github.com/Hucaru/Valhalla/movement"
 	"github.com/Hucaru/Valhalla/npcdialogue"
@@ -18,7 +19,7 @@ func handlePlayerConnect(conn interop.ClientConn, reader maplepacket.Reader) {
 	charID := reader.ReadInt32()
 
 	char := character.GetCharacter(charID)
-	char.SetItems(character.GetCharacterItems(char.GetCharID()))
+	char.SetItems(inventory.GetCharacterInventory(char.GetCharID()))
 	char.SetSkills(character.GetCharacterSkills(char.GetCharID()))
 
 	var isAdmin bool
@@ -38,7 +39,7 @@ func handlePlayerConnect(conn interop.ClientConn, reader maplepacket.Reader) {
 
 	conn.AddCloseCallback(func() {
 		channel.Players.OnCharacterFromConn(conn, func(char *channel.MapleCharacter) {
-			err := character.SaveCharacter(&char.Character)
+			err := char.Save()
 
 			if err != nil {
 				log.Println("Unable to save character data")

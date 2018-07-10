@@ -8,8 +8,8 @@ import (
 	"strings"
 
 	"github.com/Hucaru/Valhalla/channel"
-	"github.com/Hucaru/Valhalla/character"
 	"github.com/Hucaru/Valhalla/interop"
+	"github.com/Hucaru/Valhalla/inventory"
 	"github.com/Hucaru/Valhalla/npcdialogue"
 	"github.com/Hucaru/Valhalla/nx"
 	"github.com/Hucaru/Valhalla/packets"
@@ -267,7 +267,7 @@ func HandleGmCommand(conn interop.ClientConn, msg string) {
 		})
 	case "restart":
 		channel.Players.OnCharacters(func(char *channel.MapleCharacter) {
-			err := character.SaveCharacter(&char.Character)
+			err := char.Save()
 
 			if err != nil {
 				log.Println("Unable to save character data")
@@ -288,6 +288,33 @@ func HandleGmCommand(conn interop.ClientConn, msg string) {
 			[]int32{1002140, 1}}
 
 		conn.Write(packets.NPCShop(9200000, items))
+
+	case "item":
+		if len(command) < 2 {
+			return
+		}
+
+		itemID, err := strconv.Atoi(command[1])
+
+		if err != nil {
+			return
+		}
+
+		ammount := 1
+
+		if len(command) > 2 {
+			ammount, err = strconv.Atoi(command[2])
+
+			if err != nil {
+				return
+			}
+		}
+
+		channel.Players.OnCharacterFromConn(conn, func(char *channel.MapleCharacter) {
+			item := inventory.CreateFromID(int32(itemID), false)
+			item.SetAmount(int16(ammount))
+			char.GiveItem(item)
+		})
 
 	default:
 		log.Println("Unkown GM command:", msg)

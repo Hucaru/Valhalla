@@ -4,9 +4,9 @@ import (
 	"fmt"
 
 	"github.com/Hucaru/Valhalla/channel"
-	"github.com/Hucaru/Valhalla/character"
 	"github.com/Hucaru/Valhalla/constants"
 	"github.com/Hucaru/Valhalla/interop"
+	"github.com/Hucaru/Valhalla/inventory"
 	"github.com/Hucaru/Valhalla/maplepacket"
 	"github.com/Hucaru/Valhalla/packets"
 )
@@ -22,16 +22,16 @@ func handleMoveInventoryItem(conn interop.ClientConn, reader maplepacket.Reader)
 		conn.Write(packets.PlayerStatNoChange()) // bad packet, hacker?
 	}
 
-	items := make([]character.Item, 1)
+	items := make([]inventory.Item, 1)
 
 	channel.Players.OnCharacterFromConn(conn, func(char *channel.MapleCharacter) {
 		currentItems := char.GetItems()
 
 		for _, item := range currentItems {
 			if item.GetInvID() == invTabID {
-				if item.GetSlotNumber() == origPos {
+				if item.GetSlotID() == origPos {
 					items[0] = item
-				} else if item.GetSlotNumber() == newPos {
+				} else if item.GetSlotID() == newPos {
 					items = append(items, item)
 				}
 			}
@@ -39,7 +39,7 @@ func handleMoveInventoryItem(conn interop.ClientConn, reader maplepacket.Reader)
 
 		if len(items) == 1 && newPos != 0 {
 			modified := items[0]
-			modified.SetSlotNumber(newPos)
+			modified.SetSlotID(newPos)
 			char.UpdateItem(items[0], modified)
 
 			conn.Write(packets.InventoryChangeItemSlot(invTabID, origPos, newPos))
@@ -51,14 +51,14 @@ func handleMoveInventoryItem(conn interop.ClientConn, reader maplepacket.Reader)
 
 		} else if len(items) == 1 && newPos == 0 {
 			dropItem := items[0]
-			dropItem.SetSlotNumber(0)
+			dropItem.SetSlotID(0)
 			char.UpdateItem(items[0], dropItem)
 			conn.Write(packets.InventoryChangeItemSlot(invTabID, origPos, 0)) // successful drop of whole item
 			conn.Write(packets.PlayerStatNoChange())
 			fmt.Println("drop amount:", amount, reader)
 
 		} else if len(items) == 2 {
-			if items[0].GetItemID() == items[1].GetItemID() && isStackable(items[0]) && isStackable(items[1]) {
+			if items[0].GetItemID() == items[1].GetItemID() && inventory.IsStackable(items[0].GetItemID(), items[0].GetAmount()) && inventory.IsStackable(items[1].GetItemID(), items[1].GetAmount()) {
 				// Handle partial and complete merges
 				remainder := items[0].GetAmount() + items[1].GetAmount() - constants.MAX_ITEM_STACK
 
@@ -104,19 +104,7 @@ func handleMoveInventoryItem(conn interop.ClientConn, reader maplepacket.Reader)
 	})
 }
 
-func isStackable(item character.Item) bool {
-	if item.GetItemID()/1e6 != 5 && // pet item
-		item.GetInvID() != 1 && // equip
-		item.GetItemID()/1e4 != 207 && // star/arrow etc
-		item.GetAmount() < constants.MAX_ITEM_STACK {
-
-		return true
-	}
-
-	return false
-}
-
-func isEquipable(item character.Item) bool {
+func isEquipable(item inventory.Item) bool {
 	if item.GetItemID()/1e6 != 5 || item.GetInvID() != 1 {
 		return true
 	}

@@ -2,11 +2,10 @@ package nx
 
 import (
 	"encoding/binary"
+	"fmt"
 	"math"
 	"strconv"
 	"strings"
-
-	"github.com/Hucaru/Valhalla/constants"
 )
 
 type Item struct {
@@ -14,41 +13,31 @@ type Item struct {
 	SlotMax int16
 	Cash    bool
 
-	AttackSpeed   int32
-	Accuracy      int32
-	Evasion       int32
-	WeaponAttack  int32
-	MagicAttack   int32
-	WeaponDefence int32
+	AttackSpeed   int16
+	Accuracy      int16
+	Evasion       int16
+	WeaponAttack  int16
+	MagicAttack   int16
+	MagicDefence  int16
+	WeaponDefence int16
 
-	ReqStr   int32
-	ReqDex   int32
-	ReqInt   int32
-	ReqLuk   int32
-	ReqJob   int32
-	ReqLevel int32
+	Str int16
+	Dex int16
+	Int int16
+	Luk int16
 
-	Upgrades  int32
+	ReqStr   int16
+	ReqDex   int16
+	ReqInt   int16
+	ReqLuk   int16
+	ReqJob   int16
+	ReqLevel byte
+
+	Upgrades  byte
 	UnitPrice float64
 }
 
 var Items = make(map[int32]Item)
-
-func IsRechargeAble(itemID int32) bool {
-	return (math.Floor(float64(itemID/10000)) == 207) // Taken from cliet
-}
-
-func IsStackable(itemID int32, invID byte, ammount int16) bool {
-	if itemID/1e6 != 5 && // pet item
-		invID != 1 && // equip
-		itemID/1e4 != 207 && // star/arrow etc
-		ammount < constants.MAX_ITEM_STACK {
-
-		return true
-	}
-
-	return false
-}
 
 func getItemInfo() {
 	base := "Item/"
@@ -140,36 +129,50 @@ func getItem(node node) Item {
 				case "price":
 					item.Price = dataToInt32(property.Data)
 				case "attackSpeed":
-					item.AttackSpeed = dataToInt32(property.Data)
+					item.AttackSpeed = dataToInt16(property.Data)
 				case "incAcc":
-					item.Accuracy = dataToInt32(property.Data)
+					item.Accuracy = dataToInt16(property.Data)
 				case "incEVA":
-					item.Evasion = dataToInt32(property.Data)
+					item.Evasion = dataToInt16(property.Data)
 				case "incPAD":
-					item.WeaponAttack = dataToInt32(property.Data)
+					item.WeaponAttack = dataToInt16(property.Data)
 				case "incMAD":
-					item.MagicAttack = dataToInt32(property.Data)
+					item.MagicAttack = dataToInt16(property.Data)
+				case "incMDD":
+					item.MagicDefence = dataToInt16(property.Data)
 				case "incPDD":
-					item.WeaponDefence = dataToInt32(property.Data)
+					item.WeaponDefence = dataToInt16(property.Data)
+				case "incSTR":
+					item.Str = dataToInt16(property.Data)
+				case "incDEX":
+					item.Dex = dataToInt16(property.Data)
+				case "incINT":
+					item.Int = dataToInt16(property.Data)
+				case "incLUK":
+					item.Luk = dataToInt16(property.Data)
 				case "reqSTR":
-					item.ReqStr = dataToInt32(property.Data)
+					item.ReqStr = dataToInt16(property.Data)
 				case "reqDEX":
-					item.ReqDex = dataToInt32(property.Data)
+					item.ReqDex = dataToInt16(property.Data)
 				case "reqINT":
-					item.ReqInt = dataToInt32(property.Data)
+					item.ReqInt = dataToInt16(property.Data)
 				case "reqLUK":
-					item.ReqLuk = dataToInt32(property.Data)
+					item.ReqLuk = dataToInt16(property.Data)
 				case "reqJob":
-					item.ReqJob = dataToInt32(property.Data)
+					item.ReqJob = dataToInt16(property.Data)
 				case "reqLevel":
-					item.ReqLevel = dataToInt32(property.Data)
+					item.ReqLevel = property.Data[0]
 				case "tuc":
-					item.Upgrades = dataToInt32(property.Data)
+					item.Upgrades = property.Data[0]
 				case "unitPrice":
 					bits := binary.LittleEndian.Uint64([]byte(property.Data[:]))
 					item.UnitPrice = math.Float64frombits(bits)
+				case "icon":
+				case "iconRaw":
+				case "vslot":
+				case "islot":
 				default:
-					//fmt.Println(strLookup[property.NameID])
+					fmt.Println(strLookup[property.NameID])
 				}
 			}
 		default:

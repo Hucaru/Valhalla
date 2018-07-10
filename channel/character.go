@@ -1,14 +1,15 @@
 package channel
 
 import (
+	"fmt"
 	"log"
 	"math/rand"
 
 	"github.com/Hucaru/Valhalla/character"
 	"github.com/Hucaru/Valhalla/constants"
 	"github.com/Hucaru/Valhalla/interop"
+	"github.com/Hucaru/Valhalla/inventory"
 	"github.com/Hucaru/Valhalla/maplepacket"
-	"github.com/Hucaru/Valhalla/nx"
 	"github.com/Hucaru/Valhalla/packets"
 )
 
@@ -291,64 +292,66 @@ func (c *MapleCharacter) TakeEXP(val int32) {
 	}
 }
 
-func (c *MapleCharacter) GiveItem(item character.Item) {
+func (c *MapleCharacter) GiveItem(item inventory.Item) bool {
 	update := false
 
 	var activeSlots []int16
 
 	switch item.GetInvID() {
 	case 1:
-		activeSlots = make([]int16, c.GetEquipSlotSize())
+		activeSlots = make([]int16, c.GetEquipSlotSize()+1)
 	case 2:
-		activeSlots = make([]int16, c.GetUsetSlotSize())
+		activeSlots = make([]int16, c.GetUsetSlotSize()+1)
 	case 3:
-		activeSlots = make([]int16, c.GetSetupSlotSize())
+		activeSlots = make([]int16, c.GetSetupSlotSize()+1)
 	case 4:
-		activeSlots = make([]int16, c.GetEtcSlotSize())
+		activeSlots = make([]int16, c.GetEtcSlotSize()+1)
 	case 5:
-		activeSlots = make([]int16, c.GetCashSlotSize())
+		activeSlots = make([]int16, c.GetCashSlotSize()+1)
 	default:
 		log.Println("Trying to add item with unkown inv id:", item.GetInvID())
 	}
 
 	for _, currentItem := range c.GetItems() {
-		if currentItem.GetItemID() == item.GetItemID() &&
-			currentItem.GetInvID() == item.GetInvID() &&
-			currentItem.GetSlotNumber() == item.GetSlotNumber() {
-
-			if nx.IsStackable(currentItem.GetItemID(), currentItem.GetInvID(), currentItem.GetAmount()+item.GetAmount()-1) {
-				currentItem.SetAmount(currentItem.GetAmount() + item.GetAmount())
-			}
-
-			c.UpdateItem(currentItem, item)
-			c.conn.Write(packets.InventoryAddItem(item, false))
-			update = true
+		if currentItem.GetSlotID() < 1 || currentItem.GetInvID() != item.GetInvID() {
+			continue
 		}
 
-		activeSlots[item.GetInvID()] = 1
+		if inventory.IsStackable(currentItem.GetItemID(), currentItem.GetAmount()+item.GetAmount()) &&
+			currentItem.GetItemID() == item.GetItemID() {
+
+			tmp := currentItem
+			tmp.SetAmount(tmp.GetAmount() + item.GetAmount())
+			c.UpdateItem(currentItem, tmp)
+			c.conn.Write(packets.InventoryAddItem(tmp, false))
+			update = true
+			break
+		}
+
+		fmt.Println(len(activeSlots), currentItem.GetSlotID())
+		activeSlots[currentItem.GetSlotID()] = 1
 	}
 
 	if !update {
 		for _, v := range activeSlots {
 			if v == 0 {
-				item.SetSlotNumber(v)
+				item.SetSlotID(v)
 				break
 			}
 		}
 
 		c.AddItem(item)
 		c.conn.Write(packets.InventoryAddItem(item, true))
+		update = true
 	}
 
-	if !update {
-		c.conn.Write(packets.NPCTradeError())
-	}
+	return update
 }
 
 func (c *MapleCharacter) TakeItem(invID byte, slotID int16, ammount int16) {
 	for _, item := range c.GetItems() {
 		if item.GetInvID() == invID &&
-			item.GetSlotNumber() == slotID {
+			item.GetSlotID() == slotID {
 			if ammount < item.GetAmount() {
 				updatedItem := item
 				updatedItem.SetAmount(item.GetAmount() - ammount)

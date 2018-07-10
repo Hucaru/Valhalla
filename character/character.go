@@ -2,6 +2,8 @@ package character
 
 import (
 	"sync"
+
+	"github.com/Hucaru/Valhalla/inventory"
 )
 
 type Character struct {
@@ -38,7 +40,7 @@ type Character struct {
 	etcSlotSize     byte
 	cashSlotSize    byte
 
-	items []Item
+	items []inventory.Item
 
 	skills map[int32]int32
 
@@ -48,7 +50,7 @@ type Character struct {
 	state    byte
 	chairID  int32
 
-	mutex *sync.RWMutex
+	mutex *sync.RWMutex // Is this needed anymore? Player character information access is guarded by mutex already
 }
 
 func (c *Character) GetSkills() map[int32]int32 {
@@ -71,7 +73,7 @@ func (c *Character) UpdateSkill(id, level int32) {
 	c.mutex.Unlock()
 }
 
-func (c *Character) GetItems() []Item {
+func (c *Character) GetItems() []inventory.Item {
 	c.mutex.RLock()
 	val := c.items
 	c.mutex.RUnlock()
@@ -79,24 +81,24 @@ func (c *Character) GetItems() []Item {
 	return val
 }
 
-func (c *Character) SetItems(val []Item) {
+func (c *Character) SetItems(val []inventory.Item) {
 	c.mutex.Lock()
 	c.items = val
 	c.mutex.Unlock()
 }
 
-func (c *Character) AddItem(val Item) {
+func (c *Character) AddItem(val inventory.Item) {
 	c.mutex.Lock()
 	c.items = append(c.items, val)
 	c.mutex.Unlock()
 }
 
-func (c *Character) RemoveItem(val Item) {
+func (c *Character) RemoveItem(val inventory.Item) {
 	var index int = 0
 
 	c.mutex.RLock()
 	for ind, i := range c.items {
-		if i.GetSlotNumber() == val.GetSlotNumber() &&
+		if i.GetSlotID() == val.GetSlotID() &&
 			i.GetItemID() == val.GetItemID() &&
 			i.GetInvID() == val.GetInvID() {
 
@@ -110,10 +112,10 @@ func (c *Character) RemoveItem(val Item) {
 	c.mutex.Unlock()
 }
 
-func (c *Character) UpdateItem(orig Item, new Item) {
+func (c *Character) UpdateItem(orig inventory.Item, new inventory.Item) {
 	c.mutex.Lock()
 	for index, i := range c.items {
-		if i.GetSlotNumber() == orig.GetSlotNumber() &&
+		if i.GetSlotID() == orig.GetSlotID() &&
 			i.GetInvID() == orig.GetInvID() {
 			c.items[index] = new
 		}
@@ -121,7 +123,7 @@ func (c *Character) UpdateItem(orig Item, new Item) {
 	c.mutex.Unlock()
 }
 
-func (c *Character) SwitchItems(orig Item, new Item) {
+func (c *Character) SwitchItems(orig inventory.Item, new inventory.Item) {
 	var ind1 int = -1
 	var slot1 int16 = -1
 
@@ -132,25 +134,25 @@ func (c *Character) SwitchItems(orig Item, new Item) {
 	for index, i := range c.items {
 		if i == orig {
 			ind1 = index
-			slot1 = i.GetSlotNumber()
+			slot1 = i.GetSlotID()
 		}
 
 		if i == new {
 			ind2 = index
-			slot2 = i.GetSlotNumber()
+			slot2 = i.GetSlotID()
 		}
 	}
 	c.mutex.RUnlock()
 
 	if ind1 > -1 {
 		c.mutex.Lock()
-		c.items[ind1].SetSlotNumber(slot2)
+		c.items[ind1].SetSlotID(slot2)
 		c.mutex.Unlock()
 	}
 
 	if ind2 > -1 {
 		c.mutex.Lock()
-		c.items[ind2].SetSlotNumber(slot1)
+		c.items[ind2].SetSlotID(slot1)
 		c.mutex.Unlock()
 	}
 }

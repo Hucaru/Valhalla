@@ -1,9 +1,9 @@
 package packets
 
 import (
-	"github.com/Hucaru/Valhalla/character"
 	"github.com/Hucaru/Valhalla/constants"
 	"github.com/Hucaru/Valhalla/interop"
+	"github.com/Hucaru/Valhalla/inventory"
 	"github.com/Hucaru/Valhalla/maplepacket"
 	"github.com/Hucaru/Valhalla/nx"
 )
@@ -166,24 +166,24 @@ func NPCShop(npcID int32, items [][]int32) maplepacket.Packet {
 	p.WriteInt32(npcID)
 	p.WriteInt16(int16(len(items)))
 
-	for _, item := range items {
-		p.WriteInt32(item[0])
+	for _, currentItem := range items {
+		p.WriteInt32(currentItem[0])
 
-		if len(item) == 2 {
-			p.WriteInt32(item[1])
+		if len(currentItem) == 2 {
+			p.WriteInt32(currentItem[1])
 
 		} else {
-			p.WriteInt32(nx.Items[item[0]].Price)
+			p.WriteInt32(nx.Items[currentItem[0]].Price)
 		}
 
-		if nx.IsRechargeAble(item[0]) {
-			p.WriteUint64(uint64(nx.Items[item[0]].UnitPrice * float64(nx.Items[item[0]].SlotMax)))
+		if inventory.IsRechargeAble(currentItem[0]) {
+			p.WriteUint64(uint64(nx.Items[currentItem[0]].UnitPrice * float64(nx.Items[currentItem[0]].SlotMax)))
 		}
 
-		if nx.Items[item[0]].SlotMax == 0 {
+		if nx.Items[currentItem[0]].SlotMax == 0 {
 			p.WriteInt16(100)
 		} else {
-			p.WriteInt16(nx.Items[item[0]].SlotMax)
+			p.WriteInt16(nx.Items[currentItem[0]].SlotMax)
 		}
 	}
 
@@ -210,7 +210,7 @@ func NPCTradeError() maplepacket.Packet {
 	return nPCShopResult(0xFF)
 }
 
-func NPCStorageShow(npcID, storageMesos int32, storageSlots byte, items []character.Item) maplepacket.Packet {
+func NPCStorageShow(npcID, storageMesos int32, storageSlots byte, items []inventory.Item) maplepacket.Packet {
 	p := maplepacket.NewPacket()
 	p.WriteByte(constants.SEND_CHANNEL_NPC_STORAGE)
 	p.WriteInt32(npcID)

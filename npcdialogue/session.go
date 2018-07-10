@@ -6,8 +6,8 @@ import (
 	"sync"
 
 	"github.com/Hucaru/Valhalla/channel"
-	"github.com/Hucaru/Valhalla/character"
 	"github.com/Hucaru/Valhalla/interop"
+	"github.com/Hucaru/Valhalla/inventory"
 	"github.com/Hucaru/Valhalla/maplepacket"
 	"github.com/Hucaru/Valhalla/nx"
 	"github.com/Hucaru/Valhalla/packets"
@@ -270,8 +270,16 @@ func (s *session) Shop(reader maplepacket.Reader) {
 		s.shopItemID = reader.ReadInt32()
 		s.shopItemAmmount = reader.ReadInt16()
 
-		for ind, info := range s.shopItems {
-			if int16(ind) == (s.shopItemIndex) && info[0] == s.shopItemID {
+		shopInd := int16(-1)
+
+		for _, info := range s.shopItems {
+			if len(info) == 2 && info[1] == 0 { // Rechargeables do not count as part of the ind counter
+				continue
+			}
+
+			shopInd++
+
+			if shopInd == s.shopItemIndex && info[0] == s.shopItemID {
 				channel.Players.OnCharacterFromConn(s.conn, func(char *channel.MapleCharacter) {
 					price := nx.Items[info[0]].Price
 
@@ -282,10 +290,13 @@ func (s *session) Shop(reader maplepacket.Reader) {
 					if price > char.GetMesos() {
 						// client is supposed to protect against this
 					} else {
-						char.TakeMesos(price)
+						newItem := inventory.CreateFromID(info[0], false)
+						newItem.SetAmount(s.shopItemAmmount)
 
-						for i := int16(0); i < s.shopItemAmmount; i++ {
-							char.GiveItem(character.CreateItemFromID(info[0], false)) // these do nothing for now
+						if char.GiveItem(newItem) {
+							char.TakeMesos(price)
+						} else {
+							s.conn.Write(packets.NPCShopNotEnoughStock())
 						}
 					}
 				})
@@ -298,7 +309,7 @@ func (s *session) Shop(reader maplepacket.Reader) {
 
 		channel.Players.OnCharacterFromConn(s.conn, func(char *channel.MapleCharacter) {
 			for _, item := range char.GetItems() {
-				if item.GetItemID() == itemID && item.GetSlotNumber() == slotID {
+				if item.GetItemID() == itemID && item.GetSlotID() == slotID {
 					if ammount > item.GetAmount() {
 						break
 					}
@@ -313,15 +324,15 @@ func (s *session) Shop(reader maplepacket.Reader) {
 		slotID := reader.ReadInt16()
 
 		channel.Players.OnCharacterFromConn(s.conn, func(char *channel.MapleCharacter) {
-			for _, item := range char.GetItems() {
-				if item.GetInvID() == 2 && item.GetSlotNumber() == slotID && nx.IsRechargeAble(item.GetItemID()) {
-					price := int32(nx.Items[item.GetItemID()].UnitPrice * float64(nx.Items[item.GetItemID()].SlotMax))
+			for _, currentItem := range char.GetItems() {
+				if currentItem.GetInvID() == 2 && currentItem.GetSlotID() == slotID && inventory.IsRechargeAble(currentItem.GetItemID()) {
+					price := int32(nx.Items[currentItem.GetItemID()].UnitPrice * float64(nx.Items[currentItem.GetItemID()].SlotMax))
 
 					if price > char.GetMesos() {
 						s.conn.Write(packets.NPCShopNotEnoughMesos())
 					} else {
-						item.SetAmount(int16(nx.Items[item.GetItemID()].SlotMax))
-						char.GiveItem(item)
+						currentItem.SetAmount(int16(nx.Items[currentItem.GetItemID()].SlotMax))
+						char.GiveItem(currentItem)
 						char.TakeMesos(price)
 					}
 				}

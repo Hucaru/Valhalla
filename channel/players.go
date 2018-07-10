@@ -20,7 +20,7 @@ func init() {
 			<-ticker.C
 
 			Players.OnCharacters(func(char *MapleCharacter) {
-				err := character.SaveCharacter(&char.Character)
+				err := char.Save()
 
 				if err != nil {
 					log.Println("Unable to save character data")
