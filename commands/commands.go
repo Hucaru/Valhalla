@@ -239,15 +239,41 @@ func HandleGmCommand(conn interop.ClientConn, msg string) {
 				char.SendPacket(packets.MessageNotice("Your current map is: " + strconv.Itoa(int(char.GetCurrentMap()))))
 			})
 		} else {
+			var mapID int32
+			channel.Players.OnCharacters(func(char *channel.MapleCharacter) {
+				mapID = char.GetCurrentMap()
+			})
+
+			if mapID == 0 {
+				return
+			}
+
+			var info string
+
 			switch command[1] {
 			case "mobs":
-				// mobs information
+				info += "Mobs on map: "
+				channel.Mobs.OnMobs(mapID, func(mob *channel.MapleMob) {
+					info += "{HP:" + strconv.Itoa(int(mob.GetHp())) + "/" + strconv.Itoa(int(mob.GetMaxHp())) +
+						", (" + strconv.Itoa(int(mob.GetX())) + "," + strconv.Itoa(int(mob.GetY())) + ")} "
+				})
 			case "players":
-				// players information
+				info += "Players on map: "
+				for _, p := range channel.Maps.GetMap(mapID).GetPlayers() {
+					channel.Players.OnCharacterFromConn(p, func(char *channel.MapleCharacter) {
+						info += "{" + char.GetName() + ", (" + strconv.Itoa(int(char.GetX())) + "," +
+							strconv.Itoa(int(char.GetY())) + "), HP:" + strconv.Itoa(int(char.GetHP())) + "} "
+					})
+				}
 			case "reactors":
 				// reactor information
 			default:
+				return
 			}
+
+			channel.Players.OnCharacters(func(char *channel.MapleCharacter) {
+				char.SendPacket(packets.MessageNotice(info))
+			})
 		}
 
 	case "runNPC":
@@ -314,6 +340,20 @@ func HandleGmCommand(conn interop.ClientConn, msg string) {
 			item := inventory.CreateFromID(int32(itemID), false)
 			item.SetAmount(int16(ammount))
 			char.GiveItem(item)
+		})
+	case "mesos":
+		if len(command) < 2 {
+			return
+		}
+
+		ammount, err := strconv.Atoi(command[1])
+
+		if err != nil {
+			return
+		}
+
+		channel.Players.OnCharacterFromConn(conn, func(char *channel.MapleCharacter) {
+			char.GiveMesos(int32(ammount))
 		})
 
 	default:

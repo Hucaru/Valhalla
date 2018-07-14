@@ -1,7 +1,6 @@
 package channel
 
 import (
-	"fmt"
 	"log"
 	"math/rand"
 
@@ -292,6 +291,21 @@ func (c *MapleCharacter) TakeEXP(val int32) {
 	}
 }
 
+func (c *MapleCharacter) UpdateItem(item inventory.Item) bool {
+	for _, currentItem := range c.GetItems() {
+
+		if currentItem.GetItemID() == item.GetItemID() && currentItem.GetInvID() == item.GetInvID() &&
+			currentItem.GetSlotID() == item.GetSlotID() {
+
+			c.Character.UpdateItem(currentItem, item)
+			c.conn.Write(packets.InventoryAddItem(item, false))
+			return true
+		}
+	}
+
+	return false
+}
+
 func (c *MapleCharacter) GiveItem(item inventory.Item) bool {
 	update := false
 
@@ -312,6 +326,8 @@ func (c *MapleCharacter) GiveItem(item inventory.Item) bool {
 		log.Println("Trying to add item with unkown inv id:", item.GetInvID())
 	}
 
+	activeSlots[0] = 1
+
 	for _, currentItem := range c.GetItems() {
 		if currentItem.GetSlotID() < 1 || currentItem.GetInvID() != item.GetInvID() {
 			continue
@@ -322,20 +338,19 @@ func (c *MapleCharacter) GiveItem(item inventory.Item) bool {
 
 			tmp := currentItem
 			tmp.SetAmount(tmp.GetAmount() + item.GetAmount())
-			c.UpdateItem(currentItem, tmp)
+			c.Character.UpdateItem(currentItem, tmp)
 			c.conn.Write(packets.InventoryAddItem(tmp, false))
 			update = true
 			break
 		}
 
-		fmt.Println(len(activeSlots), currentItem.GetSlotID())
 		activeSlots[currentItem.GetSlotID()] = 1
 	}
 
 	if !update {
-		for _, v := range activeSlots {
+		for index, v := range activeSlots {
 			if v == 0 {
-				item.SetSlotID(v)
+				item.SetSlotID(int16(index))
 				break
 			}
 		}
@@ -355,7 +370,7 @@ func (c *MapleCharacter) TakeItem(invID byte, slotID int16, ammount int16) {
 			if ammount < item.GetAmount() {
 				updatedItem := item
 				updatedItem.SetAmount(item.GetAmount() - ammount)
-				c.UpdateItem(item, updatedItem)
+				c.UpdateItem(updatedItem)
 				c.conn.Write(packets.InventoryAddItem(updatedItem, false))
 			} else {
 				c.RemoveItem(item)

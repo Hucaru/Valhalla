@@ -288,13 +288,14 @@ func (s *session) Shop(reader maplepacket.Reader) {
 					}
 
 					if price > char.GetMesos() {
-						// client is supposed to protect against this
+						s.conn.Write(packets.NPCShopNotEnoughMesos())
 					} else {
 						newItem := inventory.CreateFromID(info[0], false)
 						newItem.SetAmount(s.shopItemAmmount)
 
 						if char.GiveItem(newItem) {
 							char.TakeMesos(price)
+							s.conn.Write(packets.NPCShopContinue())
 						} else {
 							s.conn.Write(packets.NPCShopNotEnoughStock())
 						}
@@ -316,6 +317,7 @@ func (s *session) Shop(reader maplepacket.Reader) {
 
 					char.TakeItem(item.GetInvID(), slotID, ammount)
 					char.GiveMesos(nx.Items[itemID].Price * int32(ammount))
+					s.conn.Write(packets.NPCShopContinue())
 					break
 				}
 			}
@@ -332,7 +334,7 @@ func (s *session) Shop(reader maplepacket.Reader) {
 						s.conn.Write(packets.NPCShopNotEnoughMesos())
 					} else {
 						currentItem.SetAmount(int16(nx.Items[currentItem.GetItemID()].SlotMax))
-						char.GiveItem(currentItem)
+						char.UpdateItem(currentItem)
 						char.TakeMesos(price)
 					}
 				}

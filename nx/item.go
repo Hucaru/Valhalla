@@ -2,7 +2,6 @@ package nx
 
 import (
 	"encoding/binary"
-	"fmt"
 	"math"
 	"strconv"
 	"strings"
@@ -172,7 +171,7 @@ func getItem(node node) Item {
 				case "vslot":
 				case "islot":
 				default:
-					fmt.Println(strLookup[property.NameID])
+					//fmt.Println(strLookup[property.NameID])
 				}
 			}
 		default:

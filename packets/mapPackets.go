@@ -16,7 +16,7 @@ func MapPlayerEnter(char character.Character) maplepacket.Packet {
 	p.WriteInt32(0)                // map buffs?
 	p.WriteInt32(0)                // map buffs?
 
-	writeDisplayCharacter(char, &p)
+	p.WriteBytes(writeDisplayCharacter(char))
 
 	p.WriteInt32(0)                 // ?
 	p.WriteInt32(0)                 // ?

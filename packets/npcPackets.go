@@ -198,6 +198,10 @@ func nPCShopResult(code byte) maplepacket.Packet {
 	return p
 }
 
+func NPCShopContinue() maplepacket.Packet {
+	return nPCShopResult(0x08)
+}
+
 func NPCShopNotEnoughStock() maplepacket.Packet {
 	return nPCShopResult(0x09)
 }
@@ -218,7 +222,7 @@ func NPCStorageShow(npcID, storageMesos int32, storageSlots byte, items []invent
 	p.WriteInt16(0x7e)
 	p.WriteInt32(storageMesos)
 	for _, item := range items {
-		addItem(item)
+		addItem(item, false)
 	}
 
 	return p

@@ -61,14 +61,11 @@ type Item struct {
 
 // TODO: Fill the rest out, for now this can be used to check functionality
 func CreateFromID(id int32, isDrop bool) Item {
-	log.Println("Finish create item from ID function")
 	newItem := Item{}
 
 	nxInfo := nx.Items[id]
 
-	invID := byte(math.Floor(float64(id) / 1e6))
-
-	newItem.SetInvID(invID)
+	newItem.SetInvID(byte(id / 1e6))
 	newItem.SetItemID(id)
 	newItem.SetAccuracy(nxInfo.Accuracy)
 	newItem.SetAvoid(nxInfo.Evasion)
@@ -87,6 +84,8 @@ func CreateFromID(id int32, isDrop bool) Item {
 	newItem.SetUpgradeSlots(nxInfo.Upgrades)
 
 	newItem.SetAmount(1)
+
+	log.Println("Finish create item from ID function", newItem)
 
 	return newItem
 }

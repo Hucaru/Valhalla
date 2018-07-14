@@ -40,7 +40,7 @@ func handleMoveInventoryItem(conn interop.ClientConn, reader maplepacket.Reader)
 		if len(items) == 1 && newPos != 0 {
 			modified := items[0]
 			modified.SetSlotID(newPos)
-			char.UpdateItem(items[0], modified)
+			char.UpdateItem(modified)
 
 			conn.Write(packets.InventoryChangeItemSlot(invTabID, origPos, newPos))
 
@@ -52,7 +52,7 @@ func handleMoveInventoryItem(conn interop.ClientConn, reader maplepacket.Reader)
 		} else if len(items) == 1 && newPos == 0 {
 			dropItem := items[0]
 			dropItem.SetSlotID(0)
-			char.UpdateItem(items[0], dropItem)
+			char.UpdateItem(dropItem)
 			conn.Write(packets.InventoryChangeItemSlot(invTabID, origPos, 0)) // successful drop of whole item
 			conn.Write(packets.PlayerStatNoChange())
 			fmt.Println("drop amount:", amount, reader)
@@ -66,18 +66,18 @@ func handleMoveInventoryItem(conn interop.ClientConn, reader maplepacket.Reader)
 					// partial
 					modified := items[0]
 					modified.SetAmount(remainder)
-					char.UpdateItem(items[0], modified)
+					char.UpdateItem(modified)
 					conn.Write(packets.InventoryAddItem(modified, false))
 
 					modified = items[1]
 					modified.SetAmount(modified.GetAmount() + items[0].GetAmount() - remainder)
-					char.UpdateItem(items[1], modified)
+					char.UpdateItem(modified)
 					conn.Write(packets.InventoryAddItem(modified, false))
 				} else {
 					// complete
 					modified := items[1]
 					modified.SetAmount(modified.GetAmount() + items[0].GetAmount())
-					char.UpdateItem(items[1], modified)
+					char.UpdateItem(modified)
 					conn.Write(packets.InventoryAddItem(modified, false))
 
 					char.RemoveItem(items[0])

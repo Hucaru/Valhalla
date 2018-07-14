@@ -172,7 +172,7 @@ func LoginWritePlayerCharacter(pac *maplepacket.Packet, pos int32, char characte
 	pac.WriteInt32(char.GetCurrentMap())   // map id
 	pac.WriteByte(char.GetCurrentMapPos()) // map
 
-	writeDisplayCharacter(char, pac)
+	pac.WriteBytes(writeDisplayCharacter(char))
 
 	pac.WriteInt32(0) // is character is selected and which one
 	pac.WriteByte(1)  // Rankings
