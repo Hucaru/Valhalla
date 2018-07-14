@@ -74,7 +74,7 @@ func GetCharacterInventory(charID int32) []Item {
 		item.SetAmount(amount)
 		item.SetFlag(flag)
 		item.SetUpgradeSlots(upgradeSlots)
-		item.SetLevel(level)
+		item.SetReqLevel(level)
 		item.SetStr(str)
 		item.SetDex(dex)
 		item.SetInt(intt)

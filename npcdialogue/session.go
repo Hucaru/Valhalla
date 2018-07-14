@@ -336,6 +336,7 @@ func (s *session) Shop(reader maplepacket.Reader) {
 						currentItem.SetAmount(int16(nx.Items[currentItem.GetItemID()].SlotMax))
 						char.UpdateItem(currentItem)
 						char.TakeMesos(price)
+						s.conn.Write(packets.NPCShopContinue())
 					}
 				}
 			}

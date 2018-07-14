@@ -37,7 +37,8 @@ type Item struct {
 	creatorName  string
 	flag         int16
 	upgradeSlots byte
-	level        byte
+	reqLevel     byte
+	scrollLevel  byte
 	str          int16
 	dex          int16
 	intt         int16
@@ -80,7 +81,7 @@ func CreateFromID(id int32, isDrop bool) Item {
 	newItem.SetInt(nxInfo.Int)
 	newItem.SetLuk(nxInfo.Luk)
 
-	newItem.SetLevel(nxInfo.ReqLevel)
+	newItem.SetReqLevel(nxInfo.ReqLevel)
 	newItem.SetUpgradeSlots(nxInfo.Upgrades)
 
 	newItem.SetAmount(1)
@@ -154,12 +155,20 @@ func (i *Item) SetUpgradeSlots(val byte) {
 	i.upgradeSlots = val
 }
 
-func (i *Item) GetLevel() byte {
-	return i.level
+func (i *Item) GetScrollLevel() byte {
+	return i.scrollLevel
 }
 
-func (i *Item) SetLevel(val byte) {
-	i.level = val
+func (i *Item) SetScrollLevel(val byte) {
+	i.scrollLevel = val
+}
+
+func (i *Item) GetReqLevel() byte {
+	return i.reqLevel
+}
+
+func (i *Item) SetReqLevel(val byte) {
+	i.reqLevel = val
 }
 
 func (i *Item) GetStr() int16 {

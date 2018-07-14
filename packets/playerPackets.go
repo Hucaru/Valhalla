@@ -264,6 +264,7 @@ func addItem(item inventory.Item, needInvID bool) maplepacket.Packet {
 		p.WriteByte(item.GetInvID())
 	} else {
 		p.WriteInt16(item.GetSlotID())
+		p.WriteByte(item.GetInvID())
 	}
 
 	p.WriteInt32(item.GetItemID())
@@ -280,7 +281,7 @@ func addItem(item inventory.Item, needInvID bool) maplepacket.Packet {
 	switch item.GetInvID() {
 	case 1:
 		p.WriteByte(item.GetUpgradeSlots())
-		p.WriteByte(item.GetLevel())
+		p.WriteByte(item.GetScrollLevel())
 		p.WriteInt16(item.GetStr())
 		p.WriteInt16(item.GetDex())
 		p.WriteInt16(item.GetInt())

@@ -333,7 +333,7 @@ func (c *MapleCharacter) GiveItem(item inventory.Item) bool {
 			continue
 		}
 
-		if inventory.IsStackable(currentItem.GetItemID(), currentItem.GetAmount()+item.GetAmount()) &&
+		if inventory.IsStackable(currentItem.GetItemID(), currentItem.GetAmount()+item.GetAmount()) && // change to allow stack splitting
 			currentItem.GetItemID() == item.GetItemID() {
 
 			tmp := currentItem

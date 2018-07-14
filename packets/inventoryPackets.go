@@ -17,6 +17,7 @@ func InventoryAddItem(item inventory.Item, newItem bool) maplepacket.Packet {
 
 	if newItem {
 		p.WriteBytes(addItem(item, false))
+		p.WriteBytes(make([]byte, 8))
 	} else {
 		p.WriteInt16(item.GetSlotID())
 		p.WriteInt16(item.GetAmount()) // the new amount value (not a delta)
@@ -39,13 +40,14 @@ func InventoryChangeItemSlot(invTabID byte, origPos, newPos int16) maplepacket.P
 	return p
 }
 
-func InventoryRemoveItem(slotID int16) maplepacket.Packet {
+func InventoryRemoveItem(item inventory.Item) maplepacket.Packet {
 	p := maplepacket.NewPacket()
 	p.WriteByte(constants.SEND_CHANNEL_INVENTORY_OPERATION)
 	p.WriteByte(0x01)
 	p.WriteByte(0x01)
 	p.WriteByte(0x03)
-	p.WriteInt16(slotID)
+	p.WriteByte(item.GetInvID())
+	p.WriteInt16(item.GetSlotID())
 
 	return p
 }
