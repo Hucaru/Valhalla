@@ -303,17 +303,21 @@ func HandleGmCommand(conn interop.ClientConn, msg string) {
 		os.Exit(1)
 
 	case "shop":
-		items := [][]int32{[]int32{1322013, 1},
-			[]int32{1092008, 1},
-			[]int32{1102054, 1},
-			[]int32{1082002, 1},
-			[]int32{1072004, 1},
-			[]int32{1062007, 1},
-			[]int32{1042003, 1},
-			[]int32{1032006, 1},
-			[]int32{1002140, 1}}
+		channel.Players.OnCharacterFromConn(conn, func(char *channel.MapleCharacter) {
+			npcdialogue.NewSession(conn, 9200000, char)
+		})
 
-		conn.Write(packets.NPCShop(9200000, items))
+		script := `
+		items = [[1322013, 1], [1092008,1], [1102054,1], [1082002,1], [1072004,1], [1062007,1], [1042003,1], [1032006,1], [1002140,1]] 
+
+		if state == 1 {
+    		return SendShop(items)
+		}
+		`
+
+		npcdialogue.GetSession(conn).OverrideScript(script)
+		npcdialogue.GetSession(conn).Run()
+		// conn.Write(packets.NPCShop(9200000, items))
 
 	case "item":
 		if len(command) < 2 {

@@ -64,6 +64,10 @@ func NewSession(conn interop.ClientConn, npcID int32, char *channel.MapleCharact
 	scriptsMutex.RUnlock()
 }
 
+func (s *session) OverrideScript(script string) {
+	s.script = script
+}
+
 func RemoveSession(conn interop.ClientConn) {
 	sessionsMutex.Lock()
 	delete(sessions, conn)
