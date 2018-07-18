@@ -4,8 +4,8 @@ import (
 	"log"
 )
 
-type ClientLoginConn struct {
-	ClientConnection
+type Login struct {
+	Client
 	userID    int32
 	isLogedIn bool
 	isAdmin   bool
@@ -16,12 +16,12 @@ type ClientLoginConn struct {
 }
 
 // NewLoginConnection -
-func NewLoginConnection(conn ClientConnection) *ClientLoginConn {
-	loginConn := &ClientLoginConn{ClientConnection: conn, isAdmin: false}
+func NewLogin(conn Client) *Login {
+	loginConn := &Login{Client: conn, isAdmin: false}
 	return loginConn
 }
 
-func (c *ClientLoginConn) Close() {
+func (c *Login) Close() {
 	if c.isLogedIn {
 		records, err := Db.Query("UPDATE users set isLogedIn=0 WHERE userID=?", c.userID)
 
@@ -35,62 +35,62 @@ func (c *ClientLoginConn) Close() {
 	c.Conn.Close()
 }
 
-func (c *ClientLoginConn) String() string {
-	return c.ClientConnection.String()
+func (c *Login) String() string {
+	return c.Client.String()
 }
 
-func (c *ClientLoginConn) SetUserID(val int32) {
+func (c *Login) SetUserID(val int32) {
 	c.userID = val
 }
 
-func (c *ClientLoginConn) GetUserID() int32 {
+func (c *Login) GetUserID() int32 {
 	return c.userID
 }
 
-func (c *ClientLoginConn) SetAdmin(val bool) {
+func (c *Login) SetAdmin(val bool) {
 	c.isAdmin = val
 }
 
-func (c *ClientLoginConn) IsAdmin() bool {
+func (c *Login) IsAdmin() bool {
 	return c.isAdmin
 }
 
-func (c *ClientLoginConn) SetSessionHash(val string) {
+func (c *Login) SetSessionHash(val string) {
 	c.hash = val
 }
 
-func (c *ClientLoginConn) GetSessionHash() string {
+func (c *Login) GetSessionHash() string {
 	return c.hash
 }
 
-func (c *ClientLoginConn) SetIsLogedIn(val bool) {
+func (c *Login) SetIsLogedIn(val bool) {
 	c.isLogedIn = val
 }
 
-func (c *ClientLoginConn) GetIsLogedIn() bool {
+func (c *Login) GetIsLogedIn() bool {
 	return c.isLogedIn
 }
 
-func (c *ClientLoginConn) SetWorldID(val int32) {
+func (c *Login) SetWorldID(val int32) {
 	c.worldID = val
 }
 
-func (c *ClientLoginConn) GetWorldID() int32 {
+func (c *Login) GetWorldID() int32 {
 	return c.worldID
 }
 
-func (c *ClientLoginConn) SetChanID(val byte) {
+func (c *Login) SetChanID(val byte) {
 	c.chanID = val
 }
 
-func (c *ClientLoginConn) GetChanID() byte {
+func (c *Login) GetChanID() byte {
 	return c.chanID
 }
 
-func (c *ClientLoginConn) SetGender(val byte) {
+func (c *Login) SetGender(val byte) {
 	c.gender = val
 }
 
-func (c *ClientLoginConn) GetGender() byte {
+func (c *Login) GetGender() byte {
 	return c.gender
 }

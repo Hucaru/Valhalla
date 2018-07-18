@@ -2,14 +2,14 @@ package handlers
 
 import (
 	"github.com/Hucaru/Valhalla/channel"
-	"github.com/Hucaru/Valhalla/interop"
+	"github.com/Hucaru/Valhalla/connection"
 	"github.com/Hucaru/Valhalla/maplepacket"
 	"github.com/Hucaru/Valhalla/movement"
 	"github.com/Hucaru/Valhalla/nx"
 	"github.com/Hucaru/Valhalla/packets"
 )
 
-func handleMobControl(conn interop.ClientConn, reader maplepacket.Reader) {
+func handleMobControl(conn *connection.Channel, reader maplepacket.Reader) {
 	mobID := reader.ReadInt32()
 	moveID := reader.ReadInt16()
 	nibbles := reader.ReadByte()

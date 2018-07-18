@@ -4,11 +4,11 @@ import (
 	"log"
 
 	"github.com/Hucaru/Valhalla/channel"
-	"github.com/Hucaru/Valhalla/interop"
+	"github.com/Hucaru/Valhalla/connection"
 	"github.com/Hucaru/Valhalla/maplepacket"
 )
 
-func handleUsePortal(conn interop.ClientConn, reader maplepacket.Reader) {
+func handleUsePortal(conn *connection.Channel, reader maplepacket.Reader) {
 	reader.ReadByte()
 	entryType := reader.ReadInt32()
 

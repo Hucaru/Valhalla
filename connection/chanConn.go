@@ -1,7 +1,7 @@
 package connection
 
-type ClientChanConn struct {
-	ClientConnection
+type Channel struct {
+	Client
 	userID        int32
 	isLogedIn     bool
 	isAdmin       bool
@@ -11,12 +11,12 @@ type ClientChanConn struct {
 }
 
 // NewChanConnection -
-func NewChanConnection(conn ClientConnection) *ClientChanConn {
-	loginConn := &ClientChanConn{ClientConnection: conn, isAdmin: false}
+func NewChannel(conn Client) *Channel {
+	loginConn := &Channel{Client: conn, isAdmin: false}
 	return loginConn
 }
 
-func (c *ClientChanConn) Close() {
+func (c *Channel) Close() {
 	if c.isLogedIn {
 		for i := range c.closeCallback {
 			c.closeCallback[i]()
@@ -26,50 +26,50 @@ func (c *ClientChanConn) Close() {
 	c.Conn.Close()
 }
 
-func (c *ClientChanConn) String() string {
-	return c.ClientConnection.String()
+func (c *Channel) String() string {
+	return c.Client.String()
 }
 
-func (c *ClientChanConn) SetUserID(val int32) {
+func (c *Channel) SetUserID(val int32) {
 	c.userID = val
 }
 
-func (c *ClientChanConn) GetUserID() int32 {
+func (c *Channel) GetUserID() int32 {
 	return c.userID
 }
 
-func (c *ClientChanConn) SetAdmin(val bool) {
+func (c *Channel) SetAdmin(val bool) {
 	c.isAdmin = val
 }
 
-func (c *ClientChanConn) IsAdmin() bool {
+func (c *Channel) IsAdmin() bool {
 	return c.isAdmin
 }
 
-func (c *ClientChanConn) SetIsLoggedIn(val bool) {
+func (c *Channel) SetIsLoggedIn(val bool) {
 	c.isLogedIn = val
 }
 
-func (c *ClientChanConn) GetIsLoggedIn() bool {
+func (c *Channel) GetIsLoggedIn() bool {
 	return c.isLogedIn
 }
 
-func (c *ClientChanConn) SetWorldID(val int32) {
+func (c *Channel) SetWorldID(val int32) {
 	c.worldID = val
 }
 
-func (c *ClientChanConn) GetWorldID() int32 {
+func (c *Channel) GetWorldID() int32 {
 	return c.worldID
 }
 
-func (c *ClientChanConn) SetChanID(val int32) {
+func (c *Channel) SetChanID(val int32) {
 	c.chanID = val
 }
 
-func (c *ClientChanConn) GetChanID() int32 {
+func (c *Channel) GetChanID() int32 {
 	return c.chanID
 }
 
-func (c *ClientChanConn) AddCloseCallback(callbacK func()) {
+func (c *Channel) AddCloseCallback(callbacK func()) {
 	c.closeCallback = append(c.closeCallback, callbacK)
 }

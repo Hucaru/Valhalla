@@ -4,12 +4,12 @@ import (
 	"fmt"
 
 	"github.com/Hucaru/Valhalla/channel"
-	"github.com/Hucaru/Valhalla/interop"
+	"github.com/Hucaru/Valhalla/connection"
 	"github.com/Hucaru/Valhalla/maplepacket"
 	"github.com/Hucaru/Valhalla/packets"
 )
 
-func handleStandardSkill(conn interop.ClientConn, reader maplepacket.Reader) {
+func handleStandardSkill(conn *connection.Channel, reader maplepacket.Reader) {
 	tByte := reader.ReadByte()
 
 	targets := tByte / 0x10
@@ -59,7 +59,7 @@ func handleStandardSkill(conn interop.ClientConn, reader maplepacket.Reader) {
 
 }
 
-func handleRangedSkill(conn interop.ClientConn, reader maplepacket.Reader) {
+func handleRangedSkill(conn *connection.Channel, reader maplepacket.Reader) {
 	tByte := reader.ReadByte()
 
 	targets := tByte / 0x10
@@ -103,7 +103,7 @@ func handleRangedSkill(conn interop.ClientConn, reader maplepacket.Reader) {
 	})
 }
 
-func handleMagicSkill(conn interop.ClientConn, reader maplepacket.Reader) {
+func handleMagicSkill(conn *connection.Channel, reader maplepacket.Reader) {
 	tByte := reader.ReadByte()
 
 	targets := tByte / 0x10
@@ -146,7 +146,7 @@ func handleMagicSkill(conn interop.ClientConn, reader maplepacket.Reader) {
 	})
 }
 
-func handleSpecialSkill(conn interop.ClientConn, reader maplepacket.Reader) {
+func handleSpecialSkill(conn *connection.Channel, reader maplepacket.Reader) {
 	skillID := reader.ReadInt32()
 	level := reader.ReadByte()
 

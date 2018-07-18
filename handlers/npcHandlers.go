@@ -2,14 +2,14 @@ package handlers
 
 import (
 	"github.com/Hucaru/Valhalla/channel"
+	"github.com/Hucaru/Valhalla/connection"
 	"github.com/Hucaru/Valhalla/npcdialogue"
 
-	"github.com/Hucaru/Valhalla/interop"
 	"github.com/Hucaru/Valhalla/maplepacket"
 	"github.com/Hucaru/Valhalla/packets"
 )
 
-func handleNPCMovement(conn interop.ClientConn, reader maplepacket.Reader) {
+func handleNPCMovement(conn *connection.Channel, reader maplepacket.Reader) {
 	data := reader.GetRestAsBytes()
 	id := reader.ReadInt32()
 
@@ -17,7 +17,7 @@ func handleNPCMovement(conn interop.ClientConn, reader maplepacket.Reader) {
 	conn.Write(packets.NPCSetController(id, true))
 }
 
-func handleNPCChat(conn interop.ClientConn, reader maplepacket.Reader) {
+func handleNPCChat(conn *connection.Channel, reader maplepacket.Reader) {
 	npcSpawnID := reader.ReadInt32()
 
 	channel.Players.OnCharacterFromConn(conn, func(char *channel.MapleCharacter) {
@@ -30,13 +30,13 @@ func handleNPCChat(conn interop.ClientConn, reader maplepacket.Reader) {
 	})
 }
 
-func handleNPCChatContinue(conn interop.ClientConn, reader maplepacket.Reader) {
+func handleNPCChatContinue(conn *connection.Channel, reader maplepacket.Reader) {
 	msgType := reader.ReadByte()
 
 	stateChange := reader.ReadByte()
 	npcdialogue.GetSession(conn).Continue(msgType, stateChange, reader)
 }
 
-func handleNPCShop(conn interop.ClientConn, reader maplepacket.Reader) {
+func handleNPCShop(conn *connection.Channel, reader maplepacket.Reader) {
 	npcdialogue.GetSession(conn).Shop(reader)
 }

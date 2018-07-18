@@ -2,12 +2,11 @@ package packets
 
 import (
 	"github.com/Hucaru/Valhalla/constants"
-	"github.com/Hucaru/Valhalla/interop"
 	"github.com/Hucaru/Valhalla/maplepacket"
 	"github.com/Hucaru/Valhalla/nx"
 )
 
-func MobShow(mob interop.Mob, isNewSpawn bool) maplepacket.Packet {
+func MobShow(mob mobInter, isNewSpawn bool) maplepacket.Packet {
 	p := maplepacket.NewPacket()
 	p.WriteByte(constants.SEND_CHANNEL_SHOW_MOB)
 	p.Append(addMob(mob, isNewSpawn))
@@ -15,7 +14,7 @@ func MobShow(mob interop.Mob, isNewSpawn bool) maplepacket.Packet {
 	return p
 }
 
-func MobControl(mob interop.Mob, isNewSpawn bool) maplepacket.Packet {
+func MobControl(mob mobInter, isNewSpawn bool) maplepacket.Packet {
 	p := maplepacket.NewPacket()
 	p.WriteByte(constants.SEND_CHANNEL_CONTROL_MOB)
 	p.WriteByte(0x01) // flag for end control or not
@@ -25,7 +24,7 @@ func MobControl(mob interop.Mob, isNewSpawn bool) maplepacket.Packet {
 	return p
 }
 
-func addMob(mob interop.Mob, isNewSpawn bool) maplepacket.Packet {
+func addMob(mob mobInter, isNewSpawn bool) maplepacket.Packet {
 	p := maplepacket.NewPacket()
 
 	p.WriteInt32(mob.GetSpawnID())
@@ -102,7 +101,7 @@ func MobMove(mobID int32, allowedToUseSkill bool, activity, skill, level byte, o
 
 }
 
-func MobEndControl(mob interop.Mob) maplepacket.Packet {
+func MobEndControl(mob mobInter) maplepacket.Packet {
 	p := maplepacket.NewPacket()
 	p.WriteByte(constants.SEND_CHANNEL_CONTROL_MOB)
 	p.WriteByte(0)
@@ -111,7 +110,7 @@ func MobEndControl(mob interop.Mob) maplepacket.Packet {
 	return p
 }
 
-func MobRemove(mob interop.Mob, deathType byte) maplepacket.Packet {
+func MobRemove(mob mobInter, deathType byte) maplepacket.Packet {
 	p := maplepacket.NewPacket()
 	p.WriteByte(constants.SEND_CHANNEL_REMOVE_MOB)
 	p.WriteInt32(mob.GetSpawnID())

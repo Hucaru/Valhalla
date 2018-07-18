@@ -13,14 +13,14 @@ func InventoryAddItem(item inventory.Item, newItem bool) maplepacket.Packet {
 	p.WriteByte(0x01)     // ?
 	p.WriteByte(0x01)     // number of operations? // e.g. loop over multiple interweaved operations
 	p.WriteBool(!newItem) // operation type
-	p.WriteByte(item.GetInvID())
+	p.WriteByte(item.InvID)
 
 	if newItem {
-		p.WriteBytes(addItem(item, false))
+		p.WriteBytes(addItem(item, true))
 		p.WriteBytes(make([]byte, 8))
 	} else {
-		p.WriteInt16(item.GetSlotID())
-		p.WriteInt16(item.GetAmount()) // the new amount value (not a delta)
+		p.WriteInt16(item.SlotID)
+		p.WriteInt16(item.Amount) // the new amount value (not a delta)
 	}
 
 	return p
@@ -46,8 +46,9 @@ func InventoryRemoveItem(item inventory.Item) maplepacket.Packet {
 	p.WriteByte(0x01)
 	p.WriteByte(0x01)
 	p.WriteByte(0x03)
-	p.WriteByte(item.GetInvID())
-	p.WriteInt16(item.GetSlotID())
+	p.WriteByte(item.InvID)
+	p.WriteInt16(item.SlotID)
+	p.WriteUint64(0) //?
 
 	return p
 }

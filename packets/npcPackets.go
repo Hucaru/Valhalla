@@ -2,13 +2,12 @@ package packets
 
 import (
 	"github.com/Hucaru/Valhalla/constants"
-	"github.com/Hucaru/Valhalla/interop"
 	"github.com/Hucaru/Valhalla/inventory"
 	"github.com/Hucaru/Valhalla/maplepacket"
 	"github.com/Hucaru/Valhalla/nx"
 )
 
-func NpcShow(npc interop.Npc) maplepacket.Packet {
+func NpcShow(npc npcInter) maplepacket.Packet {
 	p := maplepacket.NewPacket()
 	p.WriteByte(constants.SEND_CHANNEL_NPC_SHOW)
 	p.WriteInt32(npc.GetSpawnID())
@@ -222,7 +221,7 @@ func NPCStorageShow(npcID, storageMesos int32, storageSlots byte, items []invent
 	p.WriteInt16(0x7e)
 	p.WriteInt32(storageMesos)
 	for _, item := range items {
-		addItem(item, false)
+		addItem(item, true)
 	}
 
 	return p

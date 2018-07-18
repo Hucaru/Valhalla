@@ -6,10 +6,10 @@ import (
 	"time"
 
 	"github.com/Hucaru/Valhalla/character"
-	"github.com/Hucaru/Valhalla/interop"
+	"github.com/Hucaru/Valhalla/connection"
 )
 
-var Players = maplePlayers{players: make(map[interop.ClientConn]*MapleCharacter), mutex: &sync.RWMutex{}}
+var Players = maplePlayers{players: make(map[*connection.Channel]*MapleCharacter), mutex: &sync.RWMutex{}}
 
 func init() {
 	go func() {
@@ -32,17 +32,17 @@ func init() {
 }
 
 type maplePlayers struct {
-	players map[interop.ClientConn]*MapleCharacter // keep as maps as it's sparse data?
+	players map[*connection.Channel]*MapleCharacter // keep as maps as it's sparse data?
 	mutex   *sync.RWMutex
 }
 
-func (p *maplePlayers) AddPlayer(conn interop.ClientConn, char *character.Character) {
+func (p *maplePlayers) AddPlayer(conn *connection.Channel, char *character.Character) {
 	p.mutex.Lock()
 	p.players[conn] = &MapleCharacter{*char, conn}
 	p.mutex.Unlock()
 }
 
-func (p *maplePlayers) RemovePlayer(conn interop.ClientConn) {
+func (p *maplePlayers) RemovePlayer(conn *connection.Channel) {
 	p.mutex.Lock()
 	if _, exists := p.players[conn]; exists {
 		delete(p.players, conn)
@@ -58,7 +58,7 @@ func (p *maplePlayers) OnCharacters(action func(char *MapleCharacter)) {
 	p.mutex.RUnlock()
 }
 
-func (p *maplePlayers) OnCharacterFromConn(conn interop.ClientConn, action func(char *MapleCharacter)) {
+func (p *maplePlayers) OnCharacterFromConn(conn *connection.Channel, action func(char *MapleCharacter)) {
 	p.mutex.RLock()
 	if _, exists := p.players[conn]; exists {
 		action(p.players[conn])

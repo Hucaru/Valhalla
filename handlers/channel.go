@@ -11,7 +11,7 @@ import (
 )
 
 // HandleChannelPacket - Purpose is to send a packet to the correct handler(s), packages should aim to use this function to communicate betweeen each other
-func HandleChannelPacket(conn *connection.ClientChanConn, reader maplepacket.Reader) {
+func HandleChannelPacket(conn *connection.Channel, reader maplepacket.Reader) {
 	switch reader.ReadByte() {
 	case constants.RECV_PING:
 

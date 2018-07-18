@@ -7,7 +7,6 @@ import (
 	"github.com/Hucaru/Valhalla/character"
 	"github.com/Hucaru/Valhalla/connection"
 	"github.com/Hucaru/Valhalla/constants"
-	"github.com/Hucaru/Valhalla/interop"
 	"github.com/Hucaru/Valhalla/inventory"
 	"github.com/Hucaru/Valhalla/maplepacket"
 	"github.com/Hucaru/Valhalla/movement"
@@ -15,7 +14,7 @@ import (
 	"github.com/Hucaru/Valhalla/packets"
 )
 
-func handlePlayerConnect(conn interop.ClientConn, reader maplepacket.Reader) {
+func handlePlayerConnect(conn *connection.Channel, reader maplepacket.Reader) {
 	charID := reader.ReadInt32()
 
 	char := character.GetCharacter(charID)
@@ -29,7 +28,7 @@ func handlePlayerConnect(conn interop.ClientConn, reader maplepacket.Reader) {
 		panic(err)
 	}
 
-	var channelID int32 = 0 // Get from world server or docker-compose
+	var channelID int32 // Get from world server or docker-compose
 
 	conn.SetAdmin(isAdmin)
 	conn.SetIsLoggedIn(true) // review if this is needed
@@ -69,7 +68,7 @@ func handlePlayerConnect(conn interop.ClientConn, reader maplepacket.Reader) {
 
 }
 
-func handleTakeDamage(conn interop.ClientConn, reader maplepacket.Reader) {
+func handleTakeDamage(conn *connection.Channel, reader maplepacket.Reader) {
 	dmgType := reader.ReadByte()
 	ammount := reader.ReadInt32()
 
@@ -97,7 +96,7 @@ func handleTakeDamage(conn interop.ClientConn, reader maplepacket.Reader) {
 	})
 }
 
-func handleRequestAvatarInfoWindow(conn interop.ClientConn, reader maplepacket.Reader) {
+func handleRequestAvatarInfoWindow(conn *connection.Channel, reader maplepacket.Reader) {
 	charID := reader.ReadInt32()
 
 	channel.Players.OnCharacterFromID(charID, func(char *channel.MapleCharacter) {
@@ -105,7 +104,7 @@ func handleRequestAvatarInfoWindow(conn interop.ClientConn, reader maplepacket.R
 	})
 }
 
-func handlePassiveRegen(conn interop.ClientConn, reader maplepacket.Reader) {
+func handlePassiveRegen(conn *connection.Channel, reader maplepacket.Reader) {
 	reader.ReadBytes(4) //?
 
 	hp := reader.ReadInt16()
@@ -126,7 +125,7 @@ func handlePassiveRegen(conn interop.ClientConn, reader maplepacket.Reader) {
 	// If in party return id and new hp, then update hp bar for party members
 }
 
-func handleChangeStat(conn interop.ClientConn, reader maplepacket.Reader) {
+func handleChangeStat(conn *connection.Channel, reader maplepacket.Reader) {
 	channel.Players.OnCharacterFromConn(conn, func(char *channel.MapleCharacter) {
 		if char.GetAP() == 0 {
 			return
@@ -153,7 +152,7 @@ func handleChangeStat(conn interop.ClientConn, reader maplepacket.Reader) {
 	})
 }
 
-func handleUpdateSkillRecord(conn interop.ClientConn, reader maplepacket.Reader) {
+func handleUpdateSkillRecord(conn *connection.Channel, reader maplepacket.Reader) {
 	skillID := reader.ReadInt32()
 	newLevel := int32(0)
 
@@ -174,7 +173,7 @@ func handleUpdateSkillRecord(conn interop.ClientConn, reader maplepacket.Reader)
 	})
 }
 
-func handlePlayerMovement(conn interop.ClientConn, reader maplepacket.Reader) {
+func handlePlayerMovement(conn *connection.Channel, reader maplepacket.Reader) {
 	reader.ReadBytes(5) // used in movement validation
 	nFrags := reader.ReadByte()
 
@@ -184,7 +183,7 @@ func handlePlayerMovement(conn interop.ClientConn, reader maplepacket.Reader) {
 	})
 }
 
-func handlePlayerEmoticon(conn interop.ClientConn, reader maplepacket.Reader) {
+func handlePlayerEmoticon(conn *connection.Channel, reader maplepacket.Reader) {
 	emoticon := reader.ReadInt32()
 	channel.Players.OnCharacterFromConn(conn, func(char *channel.MapleCharacter) {
 		channel.Maps.GetMap(char.GetCurrentMap()).SendPacketExcept(packets.PlayerEmoticon(char.GetCharID(), emoticon), conn)

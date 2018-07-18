@@ -1,4 +1,4 @@
-package npcdialogue
+package npcChat
 
 import (
 	"log"
@@ -6,8 +6,8 @@ import (
 	"sync"
 
 	"github.com/Hucaru/Valhalla/channel"
-	"github.com/Hucaru/Valhalla/connection"
-	"github.com/Hucaru/Valhalla/inventory"
+	"github.com/Hucaru/Valhalla/character"
+	"github.com/Hucaru/Valhalla/interop"
 	"github.com/Hucaru/Valhalla/maplepacket"
 	"github.com/Hucaru/Valhalla/nx"
 	"github.com/Hucaru/Valhalla/packets"
@@ -18,7 +18,7 @@ import (
 var sessionsMutex = &sync.RWMutex{}
 var scriptsMutex = &sync.RWMutex{}
 
-var sessions = make(map[*connection.Channel]*session)
+var sessions = make(map[connection.Channel]*session)
 var scripts = make(map[int32]string)
 
 func addScript(npcID int32, contents string) {
@@ -62,10 +62,6 @@ func NewSession(conn *connection.Channel, npcID int32, char *channel.MapleCharac
 	scriptsMutex.RLock()
 	sessions[conn].register(npcID, char)
 	scriptsMutex.RUnlock()
-}
-
-func (s *session) OverrideScript(script string) {
-	s.script = script
 }
 
 func RemoveSession(conn *connection.Channel) {
@@ -270,20 +266,12 @@ func (s *session) Shop(reader maplepacket.Reader) {
 
 	switch operation {
 	case 0: // Buy item
-		s.shopItemIndex = reader.ReadInt16()
-		s.shopItemID = reader.ReadInt32()
-		s.shopItemAmmount = reader.ReadInt16()
+		s.shopItemIndex = reader.ReadUint16()
+		s.shopItemID = reader.ReadUint32()
+		s.shopItemAmmount = reader.ReadUint16()
 
-		shopInd := int16(-1)
-
-		for _, info := range s.shopItems {
-			if len(info) == 2 && info[1] == 0 { // Rechargeables do not count as part of the ind counter
-				continue
-			}
-
-			shopInd++
-
-			if shopInd == s.shopItemIndex && info[0] == s.shopItemID {
+		for ind, info := range s.shopItems {
+			if int16(ind) == (s.shopItemIndex) && info[0] == s.shopItemID {
 				channel.Players.OnCharacterFromConn(s.conn, func(char *channel.MapleCharacter) {
 					price := nx.Items[info[0]].Price
 
@@ -292,16 +280,12 @@ func (s *session) Shop(reader maplepacket.Reader) {
 					}
 
 					if price > char.GetMesos() {
-						s.conn.Write(packets.NPCShopNotEnoughMesos())
+						// client is supposed to protect against this
 					} else {
-						newItem, _ := inventory.CreateFromID(info[0], false)
-						newItem.Amount = s.shopItemAmmount
+						char.TakeMesos(price)
 
-						if char.GiveItem(newItem) {
-							char.TakeMesos(price)
-							s.conn.Write(packets.NPCShopContinue())
-						} else {
-							s.conn.Write(packets.NPCShopNotEnoughStock())
+						for i := int16(0); i < s.shopItemAmmount; i++ {
+							char.GiveItem(character.CreateItemFromID(info[0], false)) // these do nothing for now
 						}
 					}
 				})
@@ -309,21 +293,18 @@ func (s *session) Shop(reader maplepacket.Reader) {
 		}
 	case 1: // sell item
 		slotID := reader.ReadInt16()
-		itemID := reader.ReadInt32()
-		ammount := reader.ReadInt16()
+		itemID := reader.ReadUint32()
+		ammount := reader.ReadUint16()
 
 		channel.Players.OnCharacterFromConn(s.conn, func(char *channel.MapleCharacter) {
 			for _, item := range char.GetItems() {
-				if item.ItemID == itemID && item.SlotID == slotID {
-					if ammount > item.Amount {
+				if item.GetItemID() == itemID && item.GetSlotID() == slotID {
+					if ammount > int16(item.GetAmount()) {
 						break
 					}
 
-					if char.TakeItem(item, ammount) {
-						char.GiveMesos(nx.Items[itemID].Price * int32(ammount))
-					}
-
-					s.conn.Write(packets.NPCShopContinue())
+					char.TakeItem(item.GetInvID(), slotID, ammount)
+					char.GiveMesos(nx.Items[itemID].Price * int32(ammount))
 					break
 				}
 			}
@@ -332,17 +313,16 @@ func (s *session) Shop(reader maplepacket.Reader) {
 		slotID := reader.ReadInt16()
 
 		channel.Players.OnCharacterFromConn(s.conn, func(char *channel.MapleCharacter) {
-			for _, curItem := range char.GetItems() {
-				if curItem.InvID == 2 && curItem.SlotID == slotID && inventory.IsRechargeAble(curItem.ItemID) {
-					price := int32(nx.Items[curItem.ItemID].UnitPrice * float64(nx.Items[curItem.ItemID].SlotMax))
+			for _, item := range char.GetItems() {
+				if item.GetInvID() == 2 && item.GetSlotID() == slotID && nx.IsRechargeAble(item.GetItemID()) {
+					price := int32(nx.Items[item.GetItemID()].UnitPrice * float64(nx.Items[item.GetItemID()].SlotMax))
 
 					if price > char.GetMesos() {
 						s.conn.Write(packets.NPCShopNotEnoughMesos())
 					} else {
-						curItem.Amount = int16(nx.Items[curItem.ItemID].SlotMax)
-						char.UpdateItem(curItem)
+						item.SetAmount(int16(nx.Items[item.GetItemID()].SlotMax))
+						char.GiveItem(item)
 						char.TakeMesos(price)
-						s.conn.Write(packets.NPCShopContinue())
 					}
 				}
 			}

@@ -164,8 +164,8 @@ func PlayerEnterGame(char character.Character, channelID int32) maplepacket.Pack
 	p.WriteByte(char.GetCashSlotSize())
 
 	for _, v := range char.GetItems() {
-		if v.GetSlotID() < 0 && v.GetInvID() == 1 && !nx.IsCashItem(v.GetItemID()) {
-			p.WriteBytes(addItem(v, true))
+		if v.SlotID < 0 && v.InvID == 1 && !nx.IsCashItem(v.ItemID) {
+			p.WriteBytes(addItem(v, false))
 		}
 	}
 
@@ -173,8 +173,8 @@ func PlayerEnterGame(char character.Character, channelID int32) maplepacket.Pack
 
 	// Equips
 	for _, v := range char.GetItems() {
-		if v.GetSlotID() < 0 && v.GetInvID() == 1 && nx.IsCashItem(v.GetItemID()) {
-			p.WriteBytes(addItem(v, true))
+		if v.SlotID < 0 && v.InvID == 1 && nx.IsCashItem(v.ItemID) {
+			p.WriteBytes(addItem(v, false))
 		}
 	}
 
@@ -182,40 +182,40 @@ func PlayerEnterGame(char character.Character, channelID int32) maplepacket.Pack
 
 	// Inventory windows starts
 	for _, v := range char.GetItems() {
-		if v.GetSlotID() > -1 && v.GetInvID() == 1 {
-			p.WriteBytes(addItem(v, true))
+		if v.SlotID > -1 && v.InvID == 1 {
+			p.WriteBytes(addItem(v, false))
 		}
 	}
 
 	p.WriteByte(0)
 
 	for _, v := range char.GetItems() {
-		if v.GetInvID() == 2 { // Use
-			p.WriteBytes(addItem(v, true))
+		if v.InvID == 2 { // Use
+			p.WriteBytes(addItem(v, false))
 		}
 	}
 
 	p.WriteByte(0)
 
 	for _, v := range char.GetItems() {
-		if v.GetInvID() == 3 { // Set-up
-			p.WriteBytes(addItem(v, true))
+		if v.InvID == 3 { // Set-up
+			p.WriteBytes(addItem(v, false))
 		}
 	}
 
 	p.WriteByte(0)
 
 	for _, v := range char.GetItems() {
-		if v.GetInvID() == 4 { // Etc
-			p.WriteBytes(addItem(v, true))
+		if v.InvID == 4 { // Etc
+			p.WriteBytes(addItem(v, false))
 		}
 	}
 
 	p.WriteByte(0)
 
 	for _, v := range char.GetItems() {
-		if v.GetInvID() == 5 { // Cash  - not working propery :(
-			p.WriteBytes(addItem(v, true))
+		if v.InvID == 5 { // Cash  - not working propery :(
+			p.WriteBytes(addItem(v, false))
 		}
 	}
 
@@ -251,58 +251,58 @@ func PlayerEnterGame(char character.Character, channelID int32) maplepacket.Pack
 	return p
 }
 
-func addItem(item inventory.Item, needInvID bool) maplepacket.Packet {
+func addItem(item inventory.Item, shortSlot bool) maplepacket.Packet {
 	p := maplepacket.NewPacket()
 
-	if needInvID {
-		if nx.IsCashItem(item.GetItemID()) && item.GetSlotID() < 0 {
-			p.WriteByte(byte(math.Abs(float64(item.GetSlotID() + 100))))
+	if !shortSlot {
+		if nx.IsCashItem(item.ItemID) && item.SlotID < 0 {
+			p.WriteByte(byte(math.Abs(float64(item.SlotID + 100))))
 		} else {
-			p.WriteByte(byte(math.Abs(float64(item.GetSlotID()))))
+			p.WriteByte(byte(math.Abs(float64(item.SlotID))))
 		}
 
-		p.WriteByte(item.GetInvID())
+		p.WriteByte(item.InvID)
 	} else {
-		p.WriteInt16(item.GetSlotID())
-		p.WriteByte(item.GetInvID())
+		p.WriteInt16(item.SlotID)
+		p.WriteByte(item.InvID)
 	}
 
-	p.WriteInt32(item.GetItemID())
+	p.WriteInt32(item.ItemID)
 
-	if nx.IsCashItem(item.GetItemID()) {
+	if nx.IsCashItem(item.ItemID) {
 		p.WriteByte(1)
-		p.WriteUint64(uint64(item.GetItemID()))
+		p.WriteUint64(uint64(item.ItemID))
 	} else {
 		p.WriteByte(0)
 	}
 
-	p.WriteUint64(item.GetExpirationTime())
+	p.WriteUint64(item.ExpireTime)
 
-	switch item.GetInvID() {
+	switch item.InvID {
 	case 1:
-		p.WriteByte(item.GetUpgradeSlots())
-		p.WriteByte(item.GetScrollLevel())
-		p.WriteInt16(item.GetStr())
-		p.WriteInt16(item.GetDex())
-		p.WriteInt16(item.GetInt())
-		p.WriteInt16(item.GetLuk())
-		p.WriteInt16(item.GetHP())
-		p.WriteInt16(item.GetMP())
-		p.WriteInt16(item.GetWatk())
-		p.WriteInt16(item.GetMatk())
-		p.WriteInt16(item.GetWdef())
-		p.WriteInt16(item.GetMdef())
-		p.WriteInt16(item.GetAccuracy())
-		p.WriteInt16(item.GetAvoid())
-		p.WriteInt16(item.GetHands())
-		p.WriteInt16(item.GetSpeed())
-		p.WriteInt16(item.GetJump())
-		p.WriteString(item.GetCreatorName())
-		p.WriteInt16(item.GetFlag()) // lock, show, spikes, cape, cold protection etc ?
+		p.WriteByte(item.UpgradeSlots)
+		p.WriteByte(item.ScrollLevel)
+		p.WriteInt16(item.Str)
+		p.WriteInt16(item.Dex)
+		p.WriteInt16(item.Int)
+		p.WriteInt16(item.Luk)
+		p.WriteInt16(item.HP)
+		p.WriteInt16(item.MP)
+		p.WriteInt16(item.Watk)
+		p.WriteInt16(item.Matk)
+		p.WriteInt16(item.Wdef)
+		p.WriteInt16(item.Mdef)
+		p.WriteInt16(item.Accuracy)
+		p.WriteInt16(item.Avoid)
+		p.WriteInt16(item.Hands)
+		p.WriteInt16(item.Speed)
+		p.WriteInt16(item.Jump)
+		p.WriteString(item.CreatorName)
+		p.WriteInt16(item.Flag) // lock, show, spikes, cape, cold protection etc ?
 	case 2:
-		p.WriteInt16(item.GetAmount()) // amount
-		p.WriteString(item.GetCreatorName())
-		p.WriteInt16(item.GetFlag()) // lock, show, spikes, cape, cold protection etc ?
+		p.WriteInt16(item.Amount) // amount
+		p.WriteString(item.CreatorName)
+		p.WriteInt16(item.Flag) // lock, show, spikes, cape, cold protection etc ?
 	case 3:
 	case 4:
 	case 5:
@@ -323,19 +323,19 @@ func writeDisplayCharacter(char character.Character) maplepacket.Packet {
 	cashWeapon := int32(0)
 
 	for _, b := range char.GetItems() {
-		if b.GetSlotID() < 0 && b.GetSlotID() > -20 {
-			p.WriteByte(byte(math.Abs(float64(b.GetSlotID()))))
-			p.WriteInt32(b.GetItemID())
+		if b.SlotID < 0 && b.SlotID > -20 {
+			p.WriteByte(byte(math.Abs(float64(b.SlotID))))
+			p.WriteInt32(b.ItemID)
 		}
 	}
 
 	for _, b := range char.GetItems() {
-		if b.GetSlotID() < -100 {
-			if b.GetSlotID() == -111 {
-				cashWeapon = b.GetItemID()
+		if b.SlotID < -100 {
+			if b.SlotID == -111 {
+				cashWeapon = b.ItemID
 			} else {
-				p.WriteByte(byte(math.Abs(float64(b.GetSlotID() + 100))))
-				p.WriteInt32(b.GetItemID())
+				p.WriteByte(byte(math.Abs(float64(b.SlotID + 100))))
+				p.WriteInt32(b.ItemID)
 			}
 		}
 	}

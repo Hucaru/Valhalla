@@ -9,7 +9,7 @@ import (
 )
 
 // HandleLoginPacket -
-func HandleLoginPacket(conn *connection.ClientLoginConn, reader maplepacket.Reader) {
+func HandleLoginPacket(conn *connection.Login, reader maplepacket.Reader) {
 	switch reader.ReadByte() {
 	case constants.RECV_RETURN_TO_LOGIN_SCREEN:
 		handleReturnToLoginScreen(conn, reader)

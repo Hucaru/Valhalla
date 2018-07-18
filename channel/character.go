@@ -5,8 +5,8 @@ import (
 	"math/rand"
 
 	"github.com/Hucaru/Valhalla/character"
+	"github.com/Hucaru/Valhalla/connection"
 	"github.com/Hucaru/Valhalla/constants"
-	"github.com/Hucaru/Valhalla/interop"
 	"github.com/Hucaru/Valhalla/inventory"
 	"github.com/Hucaru/Valhalla/maplepacket"
 	"github.com/Hucaru/Valhalla/packets"
@@ -14,7 +14,7 @@ import (
 
 type MapleCharacter struct {
 	character.Character
-	conn interop.ClientConn // Might be worth compositing this in?
+	conn *connection.Channel // Might be worth compositing this in?
 }
 
 func (c *MapleCharacter) SendPacket(p maplepacket.Packet) {
@@ -23,7 +23,7 @@ func (c *MapleCharacter) SendPacket(p maplepacket.Packet) {
 	}
 }
 
-func (c *MapleCharacter) GetConn() interop.ClientConn {
+func (c *MapleCharacter) GetConn() *connection.Channel {
 	return c.conn
 }
 
@@ -291,19 +291,25 @@ func (c *MapleCharacter) TakeEXP(val int32) {
 	}
 }
 
-func (c *MapleCharacter) UpdateItem(item inventory.Item) bool {
-	for _, currentItem := range c.GetItems() {
+func (c *MapleCharacter) UpdateItem(modified inventory.Item) {
+	items := c.GetItems()
+	for i, curItem := range items {
 
-		if currentItem.GetItemID() == item.GetItemID() && currentItem.GetInvID() == item.GetInvID() &&
-			currentItem.GetSlotID() == item.GetSlotID() {
+		if curItem.UUID == modified.UUID {
+			if curItem.Amount != modified.Amount {
+				c.conn.Write(packets.InventoryAddItem(modified, false))
+			} else if curItem.SlotID != modified.SlotID {
+				c.conn.Write(packets.InventoryChangeItemSlot(modified.InvID, curItem.SlotID, modified.SlotID))
+			}
 
-			c.Character.UpdateItem(currentItem, item)
-			c.conn.Write(packets.InventoryAddItem(item, false))
-			return true
+			// Add stat change packets
+			items[i] = modified
+
+			break
 		}
 	}
 
-	return false
+	c.conn.Write(packets.PlayerStatNoChange()) // Figure out why partial stackable item merge appears to needs this
 }
 
 func (c *MapleCharacter) GiveItem(item inventory.Item) bool {
@@ -311,7 +317,7 @@ func (c *MapleCharacter) GiveItem(item inventory.Item) bool {
 
 	var activeSlots []int16
 
-	switch item.GetInvID() {
+	switch item.InvID {
 	case 1:
 		activeSlots = make([]int16, c.GetEquipSlotSize()+1)
 	case 2:
@@ -323,61 +329,110 @@ func (c *MapleCharacter) GiveItem(item inventory.Item) bool {
 	case 5:
 		activeSlots = make([]int16, c.GetCashSlotSize()+1)
 	default:
-		log.Println("Trying to add item with unkown inv id:", item.GetInvID())
+		log.Println("Trying to add item with unkown inv id:", item.InvID)
 	}
 
 	activeSlots[0] = 1
 
-	for _, currentItem := range c.GetItems() {
-		if currentItem.GetSlotID() < 1 || currentItem.GetInvID() != item.GetInvID() {
+	items := c.GetItems()
+	newItem := inventory.Item{}
+
+	for _, curItem := range items {
+		if curItem.SlotID < 1 || curItem.InvID != item.InvID {
 			continue
 		}
 
-		if inventory.IsStackable(currentItem.GetItemID(), currentItem.GetAmount()+item.GetAmount()) && // change to allow stack splitting
-			currentItem.GetItemID() == item.GetItemID() {
+		if curItem.ItemID == item.ItemID &&
+			inventory.IsStackable(curItem.ItemID, curItem.Amount) { // change to allow stack splitting
 
-			tmp := currentItem
-			tmp.SetAmount(tmp.GetAmount() + item.GetAmount())
-			c.Character.UpdateItem(currentItem, tmp)
-			c.conn.Write(packets.InventoryAddItem(tmp, false))
+			ammount := item.Amount
+
+			// if item.Amount > (constants.MAX_ITEM_STACK - curItem.Amount) {
+			// 	ammount = constants.MAX_ITEM_STACK - curItem.Amount
+			// }
+
 			update = true
+
+			curItem.Amount += ammount
+			c.UpdateItem(curItem)
 			break
 		}
 
-		activeSlots[currentItem.GetSlotID()] = 1
+		activeSlots[curItem.SlotID] = 1
 	}
 
 	if !update {
 		for index, v := range activeSlots {
 			if v == 0 {
-				item.SetSlotID(int16(index))
+				item.SlotID = int16(index)
 				break
 			}
 		}
 
-		c.AddItem(item)
-		c.conn.Write(packets.InventoryAddItem(item, true))
+		newItem = item
+		c.conn.Write(packets.InventoryAddItem(newItem, true))
 		update = true
 	}
+
+	c.SetItems(append(items, newItem))
 
 	return update
 }
 
-func (c *MapleCharacter) TakeItem(invID byte, slotID int16, ammount int16) {
-	for _, item := range c.GetItems() {
-		if item.GetInvID() == invID &&
-			item.GetSlotID() == slotID {
-			if ammount < item.GetAmount() {
-				updatedItem := item
-				updatedItem.SetAmount(item.GetAmount() - ammount)
-				c.UpdateItem(updatedItem)
-				c.conn.Write(packets.InventoryAddItem(updatedItem, false))
+func (c *MapleCharacter) TakeItem(modified inventory.Item, amount int16) bool {
+	items := c.GetItems()
+
+	for i, item := range items {
+
+		if modified.InvID == item.InvID && modified.SlotID == item.SlotID {
+			if amount == item.Amount {
+				c.SetItems(append(items[:i], items[i+1:]...))
+				c.conn.Write(packets.InventoryRemoveItem(item))
+				return true
+			} else if amount < item.Amount {
+				item.Amount -= amount
+				c.UpdateItem(item)
+				return true
+			}
+		}
+
+		// Redo following logic
+		if modified.SlotID == 0 && modified.ItemID == item.ItemID {
+			// Handle case where something has requested I would like to remove x number of item id y, e.g. remove Kerning PQ tickets
+			remainder := amount
+			inds := []int{}
+			k := -1
+
+			for j := range items {
+				if items[j].ItemID == modified.ItemID {
+					remainder -= modified.Amount
+
+					if remainder < 1 {
+						k = j
+						break
+					}
+
+					inds = append(inds, j)
+				}
+			}
+
+			if remainder < 1 {
+				for _, v := range inds {
+					c.SetItems(append(items[:v], items[v+1:]...))
+					c.conn.Write(packets.InventoryRemoveItem(items[v]))
+				}
+
+				c.SetItems(append(items[:k], items[k+1:]...))
+				c.conn.Write(packets.InventoryRemoveItem(items[k]))
+				return true
 			} else {
-				c.RemoveItem(item)
-				c.conn.Write(packets.InventoryChangeItemSlot(invID, slotID, 0))
+				return false
 			}
 		}
 	}
+
+	c.conn.Write(packets.PlayerStatNoChange())
+	return false
 }
 
 func (c *MapleCharacter) TakeDamage(ammount int32) {

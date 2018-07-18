@@ -50,7 +50,7 @@ type Character struct {
 	state    byte
 	chairID  int32
 
-	mutex *sync.RWMutex // Is this needed anymore? Player character information access is guarded by mutex already
+	mutex *sync.RWMutex // Players On methods is RW mutex, list of MapleCharacters in slice is protected only
 }
 
 func (c *Character) GetSkills() map[int32]int32 {
@@ -85,76 +85,6 @@ func (c *Character) SetItems(val []inventory.Item) {
 	c.mutex.Lock()
 	c.items = val
 	c.mutex.Unlock()
-}
-
-func (c *Character) AddItem(val inventory.Item) {
-	c.mutex.Lock()
-	c.items = append(c.items, val)
-	c.mutex.Unlock()
-}
-
-func (c *Character) RemoveItem(val inventory.Item) {
-	var index int = 0
-
-	c.mutex.RLock()
-	for ind, i := range c.items {
-		if i.GetSlotID() == val.GetSlotID() &&
-			i.GetItemID() == val.GetItemID() &&
-			i.GetInvID() == val.GetInvID() {
-
-			index = ind
-		}
-	}
-	c.mutex.RUnlock()
-
-	c.mutex.Lock()
-	c.items = append(c.items[:index], c.items[index+1:]...)
-	c.mutex.Unlock()
-}
-
-func (c *Character) UpdateItem(orig inventory.Item, new inventory.Item) {
-	c.mutex.Lock()
-	for index, i := range c.items {
-		if i.GetSlotID() == orig.GetSlotID() &&
-			i.GetInvID() == orig.GetInvID() {
-			c.items[index] = new
-		}
-	}
-	c.mutex.Unlock()
-}
-
-func (c *Character) SwitchItems(orig inventory.Item, new inventory.Item) {
-	var ind1 int = -1
-	var slot1 int16 = -1
-
-	var ind2 int = -1
-	var slot2 int16 = -1
-
-	c.mutex.RLock()
-	for index, i := range c.items {
-		if i == orig {
-			ind1 = index
-			slot1 = i.GetSlotID()
-		}
-
-		if i == new {
-			ind2 = index
-			slot2 = i.GetSlotID()
-		}
-	}
-	c.mutex.RUnlock()
-
-	if ind1 > -1 {
-		c.mutex.Lock()
-		c.items[ind1].SetSlotID(slot2)
-		c.mutex.Unlock()
-	}
-
-	if ind2 > -1 {
-		c.mutex.Lock()
-		c.items[ind2].SetSlotID(slot1)
-		c.mutex.Unlock()
-	}
 }
 
 func (c *Character) GetCharID() int32 {

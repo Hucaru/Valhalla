@@ -4,11 +4,17 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/Hucaru/Valhalla/interop"
 	"github.com/Hucaru/Valhalla/maplepacket"
 )
 
-func ParseFragments(nFrags byte, life interop.FragObj, reader maplepacket.Reader) {
+type fragObj interface {
+	SetX(int16)
+	SetY(int16)
+	SetState(byte)
+	SetFoothold(int16)
+}
+
+func ParseFragments(nFrags byte, life fragObj, reader maplepacket.Reader) {
 	// http://mapleref.wikia.com/wiki/Movement
 	/*
 		State enum:

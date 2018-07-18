@@ -8,14 +8,14 @@ import (
 	"strings"
 
 	"github.com/Hucaru/Valhalla/channel"
-	"github.com/Hucaru/Valhalla/interop"
+	"github.com/Hucaru/Valhalla/connection"
 	"github.com/Hucaru/Valhalla/inventory"
 	"github.com/Hucaru/Valhalla/npcdialogue"
 	"github.com/Hucaru/Valhalla/nx"
 	"github.com/Hucaru/Valhalla/packets"
 )
 
-func HandleGmCommand(conn interop.ClientConn, msg string) {
+func HandleGmCommand(conn *connection.Channel, msg string) {
 	ind := strings.Index(msg, "/")
 	command := strings.SplitN(msg[ind+1:], " ", -1)
 
@@ -317,7 +317,6 @@ func HandleGmCommand(conn interop.ClientConn, msg string) {
 
 		npcdialogue.GetSession(conn).OverrideScript(script)
 		npcdialogue.GetSession(conn).Run()
-		// conn.Write(packets.NPCShop(9200000, items))
 
 	case "item":
 		if len(command) < 2 {
@@ -341,8 +340,13 @@ func HandleGmCommand(conn interop.ClientConn, msg string) {
 		}
 
 		channel.Players.OnCharacterFromConn(conn, func(char *channel.MapleCharacter) {
-			item := inventory.CreateFromID(int32(itemID), false)
-			item.SetAmount(int16(ammount))
+			item, valid := inventory.CreateFromID(int32(itemID), false)
+
+			if !valid {
+				return
+			}
+
+			item.Amount = int16(ammount)
 			char.GiveItem(item)
 		})
 	case "mesos":

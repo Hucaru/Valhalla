@@ -5,14 +5,14 @@ import (
 	"strings"
 
 	"github.com/Hucaru/Valhalla/commands"
+	"github.com/Hucaru/Valhalla/connection"
 	"github.com/Hucaru/Valhalla/packets"
 
 	"github.com/Hucaru/Valhalla/channel"
-	"github.com/Hucaru/Valhalla/interop"
 	"github.com/Hucaru/Valhalla/maplepacket"
 )
 
-func handleAllChat(conn interop.ClientConn, reader maplepacket.Reader) {
+func handleAllChat(conn *connection.Channel, reader maplepacket.Reader) {
 	channel.Players.OnCharacterFromConn(conn, func(char *channel.MapleCharacter) {
 		mapID := char.GetCurrentMap()
 
@@ -26,7 +26,7 @@ func handleAllChat(conn interop.ClientConn, reader maplepacket.Reader) {
 	})
 }
 
-func handleSlashCommand(conn interop.ClientConn, reader maplepacket.Reader) {
+func handleSlashCommand(conn *connection.Channel, reader maplepacket.Reader) {
 	cmdType := reader.ReadByte()
 
 	switch cmdType {

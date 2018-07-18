@@ -10,17 +10,17 @@ import (
 	"github.com/Hucaru/Valhalla/maplepacket"
 )
 
-// ClientConnection -
-type ClientConnection struct {
+// Client -
+type Client struct {
 	net.Conn
 	readingHeader bool
 	ivRecv        []byte
 	ivSend        []byte
 }
 
-// NewClientConnection -
-func NewClientConnection(conn net.Conn) ClientConnection {
-	client := ClientConnection{Conn: conn, readingHeader: true, ivSend: make([]byte, 4), ivRecv: make([]byte, 4)}
+// NewClient -
+func NewClient(conn net.Conn) Client {
+	client := Client{Conn: conn, readingHeader: true, ivSend: make([]byte, 4), ivRecv: make([]byte, 4)}
 
 	rand.Read(client.ivSend[:])
 	rand.Read(client.ivRecv[:])
@@ -35,21 +35,21 @@ func NewClientConnection(conn net.Conn) ClientConnection {
 }
 
 // String -
-func (handle ClientConnection) String() string {
+func (handle Client) String() string {
 	return fmt.Sprintf("[Address] %s", handle.Conn.RemoteAddr())
 }
 
 // Close -
-func (handle *ClientConnection) Close() error {
+func (handle *Client) Close() error {
 	return handle.Conn.Close()
 }
 
-func (handle *ClientConnection) sendPacket(p maplepacket.Packet) error {
+func (handle *Client) sendPacket(p maplepacket.Packet) error {
 	_, err := handle.Conn.Write(p)
 	return err
 }
 
-func (handle *ClientConnection) Write(p maplepacket.Packet) error {
+func (handle *Client) Write(p maplepacket.Packet) error {
 	encryptedPacket := append([]byte{}, p...)
 
 	crypt.Encrypt(encryptedPacket)
@@ -65,7 +65,7 @@ func (handle *ClientConnection) Write(p maplepacket.Packet) error {
 	return err
 }
 
-func (handle *ClientConnection) Read(p maplepacket.Packet) error {
+func (handle *Client) Read(p maplepacket.Packet) error {
 	_, err := handle.Conn.Read(p)
 
 	if err != nil {
@@ -82,11 +82,11 @@ func (handle *ClientConnection) Read(p maplepacket.Packet) error {
 	return err
 }
 
-func (handle *ClientConnection) GetClientIPPort() net.Addr {
+func (handle *Client) GetClientIPPort() net.Addr {
 	return handle.Conn.RemoteAddr()
 }
 
-func sendHandshake(client ClientConnection) error {
+func sendHandshake(client Client) error {
 	packet := maplepacket.NewPacket()
 
 	packet.WriteInt16(13)

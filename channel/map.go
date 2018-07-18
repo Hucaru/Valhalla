@@ -5,10 +5,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/Hucaru/Valhalla/connection"
 	"github.com/Hucaru/Valhalla/maplepacket"
 	"github.com/Hucaru/Valhalla/packets"
-
-	"github.com/Hucaru/Valhalla/interop"
 )
 
 type mapleMap struct {
@@ -18,7 +17,7 @@ type mapleMap struct {
 	isTown       bool
 	portals      []maplePortal
 	mutex        *sync.RWMutex
-	players      []interop.ClientConn
+	players      []*connection.Channel
 }
 
 func (m *mapleMap) GetMobRate() float64 {
@@ -57,7 +56,7 @@ func (m *mapleMap) AddPortal(portal maplePortal) {
 	m.mutex.Unlock()
 }
 
-func (m *mapleMap) GetPlayers() []interop.ClientConn {
+func (m *mapleMap) GetPlayers() []*connection.Channel {
 	m.mutex.RLock()
 	result := m.players
 	m.mutex.RUnlock()
@@ -65,7 +64,7 @@ func (m *mapleMap) GetPlayers() []interop.ClientConn {
 	return result
 }
 
-func (m *mapleMap) AddPlayer(player interop.ClientConn) {
+func (m *mapleMap) AddPlayer(player *connection.Channel) {
 	m.playerEnterMap(player)
 
 	m.mutex.Lock()
@@ -73,7 +72,7 @@ func (m *mapleMap) AddPlayer(player interop.ClientConn) {
 	m.mutex.Unlock()
 }
 
-func (m *mapleMap) RemovePlayer(player interop.ClientConn) {
+func (m *mapleMap) RemovePlayer(player *connection.Channel) {
 	index := -1
 
 	m.mutex.RLock()
@@ -106,7 +105,7 @@ func (m *mapleMap) SendPacket(packet maplepacket.Packet) {
 	}
 }
 
-func (m *mapleMap) SendPacketExcept(packet maplepacket.Packet, conn interop.ClientConn) {
+func (m *mapleMap) SendPacketExcept(packet maplepacket.Packet, conn *connection.Channel) {
 	if len(packet) > 0 {
 		m.mutex.RLock()
 		for _, player := range m.players {
@@ -131,7 +130,7 @@ func (m *mapleMap) GetRandomSpawnPortal() (maplePortal, byte) {
 	return portals[pos], byte(pos)
 }
 
-func (m *mapleMap) playerEnterMap(conn interop.ClientConn) {
+func (m *mapleMap) playerEnterMap(conn *connection.Channel) {
 	for _, other := range m.GetPlayers() {
 		Players.OnCharacterFromConn(conn, func(char *MapleCharacter) {
 			other.Write(packets.MapPlayerEnter(char.Character))
@@ -157,7 +156,7 @@ func (m *mapleMap) playerEnterMap(conn interop.ClientConn) {
 	})
 }
 
-func (m *mapleMap) playerLeaveMap(conn interop.ClientConn) {
+func (m *mapleMap) playerLeaveMap(conn *connection.Channel) {
 	Players.OnCharacterFromConn(conn, func(char *MapleCharacter) {
 		for _, npc := range NPCs.GetNpcs(char.GetCurrentMap()) {
 			npc.Hide(conn)

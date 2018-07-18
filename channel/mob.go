@@ -4,8 +4,8 @@ import (
 	"math/rand"
 	"time"
 
+	"github.com/Hucaru/Valhalla/connection"
 	"github.com/Hucaru/Valhalla/constants"
-	"github.com/Hucaru/Valhalla/interop"
 	"github.com/Hucaru/Valhalla/nx"
 	"github.com/Hucaru/Valhalla/packets"
 )
@@ -18,7 +18,7 @@ type MapleMob struct {
 	level, nextSkillID, nextSkillLevel byte
 	sx, sy                             int16
 	mobTime, deathTime, respawnTime    int64
-	controller, summoner               interop.ClientConn
+	controller, summoner               *connection.Channel
 
 	lastSkillUseTime int64
 	nSpawns          int16
@@ -63,12 +63,12 @@ func (m *MapleMob) SetDeathTime(mobTime int64)       { m.deathTime = mobTime }
 func (m *MapleMob) GetRespawnTime() int64            { return m.respawnTime }
 func (m *MapleMob) SetRespawnTime(respawnTime int64) { m.respawnTime = respawnTime }
 
-func (m *MapleMob) SetSummoner(summoner interop.ClientConn) { m.summoner = summoner }
-func (m *MapleMob) GetSummoner() interop.ClientConn         { return m.summoner }
+func (m *MapleMob) SetSummoner(summoner *connection.Channel) { m.summoner = summoner }
+func (m *MapleMob) GetSummoner() *connection.Channel         { return m.summoner }
 
-func (m *MapleMob) GetController() interop.ClientConn { return m.controller }
+func (m *MapleMob) GetController() *connection.Channel { return m.controller }
 
-func (m *MapleMob) SetController(controller interop.ClientConn, isSpawn bool) {
+func (m *MapleMob) SetController(controller *connection.Channel, isSpawn bool) {
 	m.controller = controller
 	m.controller.Write(packets.MobControl(m, isSpawn))
 }
@@ -78,15 +78,15 @@ func (m *MapleMob) RemoveController() {
 	m.controller = nil
 }
 
-func (m *MapleMob) Spawn(conn interop.ClientConn) {
+func (m *MapleMob) Spawn(conn *connection.Channel) {
 	conn.Write(packets.MobShow(m, true))
 }
 
-func (m *MapleMob) Show(conn interop.ClientConn) {
+func (m *MapleMob) Show(conn *connection.Channel) {
 	conn.Write(packets.MobShow(m, false))
 }
 
-func (m *MapleMob) Hide(conn interop.ClientConn) {
+func (m *MapleMob) Hide(conn *connection.Channel) {
 	conn.Write(packets.MobRemove(m, 0))
 }
 
