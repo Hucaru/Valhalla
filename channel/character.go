@@ -425,13 +425,11 @@ func (c *MapleCharacter) TakeItem(modified inventory.Item, amount int16) bool {
 				c.SetItems(append(items[:k], items[k+1:]...))
 				c.conn.Write(packets.InventoryRemoveItem(items[k]))
 				return true
-			} else {
-				return false
 			}
 		}
 	}
 
-	c.conn.Write(packets.PlayerStatNoChange())
+	c.conn.Write(packets.PlayerStatNoChange()) // find out if needed
 	return false
 }
 
