@@ -56,14 +56,14 @@ Check command/handlers.go for parameters
 ## Roadmap
 * Inventory drop item ask quantity where relevant
 * NPC style window
-* parties
-* guilds
+* Parties
+* Guilds
+* Trades
 * Mob respawn system, Mob EXP & Mob party play
 * Monster/player drop items
 * Skills & buffs (incl. item buffs)
 * Reactors
 * World server
-* General refactor
 
 ## NPC chat display info (use this when scripting NPCs)
 

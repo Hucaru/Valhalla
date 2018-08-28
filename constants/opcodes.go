@@ -61,6 +61,7 @@ const (
 	SEND_CHANNEL_NPC_SHOP                  = 0xC8
 	SEND_CHANNEL_NPC_SHOP_RESULT           = 0xC9
 	SEND_CHANNEL_NPC_STORAGE               = 0xCD
+	SEND_CHANNEL_ROOM                      = 0xDC
 
 	// Opcodes Client -> Server
 	RECV_LOGIN_REQUEST          = 0x01

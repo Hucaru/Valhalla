@@ -343,7 +343,7 @@ func (c *MapleCharacter) GiveItem(item inventory.Item) bool {
 		}
 
 		if curItem.ItemID == item.ItemID &&
-			inventory.IsStackable(curItem.ItemID, curItem.Amount) { // change to allow stack splitting
+			inventory.IsStackable(curItem.ItemID, curItem.Amount+item.Amount) { // change to allow stack splitting
 
 			ammount := item.Amount
 

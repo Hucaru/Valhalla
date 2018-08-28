@@ -341,7 +341,7 @@ func writeDisplayCharacter(char character.Character) maplepacket.Packet {
 	}
 
 	p.WriteByte(0xFF)
-	// What items go here?
+	p.WriteInt32(0) // something to do with pets?
 	p.WriteByte(0xFF)
 	p.WriteInt32(cashWeapon)
 

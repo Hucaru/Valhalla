@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"fmt"
 	"log"
 
 	"github.com/Hucaru/Valhalla/connection"
@@ -44,7 +43,7 @@ func HandleChannelPacket(conn *connection.Channel, reader maplepacket.Reader) {
 		handleSlashCommand(conn, reader)
 
 	case constants.RECV_CHANNEL_CHARACTER_UI_WINDOW:
-		fmt.Println("Trade packet:", reader)
+		handleUIWindow(conn, reader)
 
 	case constants.RECV_CHANNEL_EMOTICON:
 		handlePlayerEmoticon(conn, reader)
