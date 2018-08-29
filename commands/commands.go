@@ -364,6 +364,19 @@ func HandleGmCommand(conn *connection.Channel, msg string) {
 			char.GiveMesos(int32(ammount))
 		})
 
+	case "toRooms":
+		if len(command) < 2 {
+			return
+		}
+
+		msg := strings.Join(command[1:], " ")
+
+		channel.Players.OnCharacterFromConn(conn, func(char *channel.MapleCharacter) {
+			channel.ActiveRooms.OnRoom(func(r *channel.Room) {
+				r.Broadcast(packets.RoomChat(char.GetName(), msg, 0x0)) // simulates trade request sender
+			})
+		})
+
 	default:
 		log.Println("Unkown GM command:", msg)
 	}
