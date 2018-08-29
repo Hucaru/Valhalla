@@ -232,3 +232,19 @@ func (r *Room) Accept(char *MapleCharacter) (bool, int32) {
 
 	return success, r.ID
 }
+
+func (r *Room) UpdateCharDisplay() {
+
+}
+
+func (r *Room) AddItem() {
+
+}
+
+func (r *Room) RemoveItem() {
+
+}
+
+func (r *Room) AddMesos() {
+
+}

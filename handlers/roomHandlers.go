@@ -50,6 +50,10 @@ func handleUIWindow(conn *connection.Channel, reader maplepacket.Reader) {
 
 		channel.Players.OnCharacterFromID(charID, func(recipient *channel.MapleCharacter) {
 			channel.Players.OnCharacterFromConn(conn, func(sender *channel.MapleCharacter) {
+				if sender.GetCurrentMap() != recipient.GetCurrentMap() {
+					return // hacker
+				}
+
 				channel.ActiveRooms.OnConn(conn, func(r *channel.Room) {
 					recipient.SendPacket(packets.RoomInvite(r.Type, sender.GetName(), r.ID))
 				})

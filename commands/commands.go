@@ -377,6 +377,25 @@ func HandleGmCommand(conn *connection.Channel, msg string) {
 			})
 		})
 
+	case "gmTrade": // can trade between maps
+		if len(command) < 2 {
+			return
+		}
+
+		name := strings.Join(command[1:], " ")
+
+		channel.Players.OnCharacterFromConn(conn, func(char *channel.MapleCharacter) {
+			channel.CreateTradeRoom(char)
+		})
+
+		channel.Players.OnCharacterFromName(name, func(recipient *channel.MapleCharacter) {
+			channel.Players.OnCharacterFromConn(conn, func(sender *channel.MapleCharacter) {
+				channel.ActiveRooms.OnConn(conn, func(r *channel.Room) {
+					recipient.SendPacket(packets.RoomInvite(r.Type, sender.GetName(), r.ID))
+				})
+			})
+		})
+
 	default:
 		log.Println("Unkown GM command:", msg)
 	}
