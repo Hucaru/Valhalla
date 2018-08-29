@@ -10,6 +10,8 @@ import (
 	"github.com/Hucaru/Valhalla/packets"
 )
 
+// TODO: move packet sending and some logic into channel room.go, allows other systems to create rooms and make sure packets are sent
+
 func handleUIWindow(conn *connection.Channel, reader maplepacket.Reader) {
 	operation := reader.ReadByte() // Trade operation
 
@@ -33,9 +35,9 @@ func handleUIWindow(conn *connection.Channel, reader maplepacket.Reader) {
 		case 0:
 			fmt.Println("Create Room type 0")
 		case 1:
-			fmt.Println("Create Room type 1")
+			fmt.Println("Create Omok Game Room")
 		case 2:
-			fmt.Println("Create Room type 2")
+			fmt.Println("Create Memory Game Room")
 		case 3:
 			// create trade
 			newTradeRoom := channel.Room{Type: 0x03}
@@ -96,11 +98,11 @@ func handleUIWindow(conn *connection.Channel, reader maplepacket.Reader) {
 			for i, p := range r.Participants { // change this to walk over the max size
 				if p == nil {
 					channel.Players.OnCharacterFromConn(conn, func(recipient *channel.MapleCharacter) {
-						p = recipient
+						r.Participants[i] = recipient
 					})
 					spaceAvailable = true
 					roomPos = i
-					displayInfo = append(displayInfo, p.Character)
+					displayInfo = append(displayInfo, r.Participants[i].Character)
 				} else {
 					displayInfo = append(displayInfo, p.Character)
 				}
@@ -113,13 +115,14 @@ func handleUIWindow(conn *connection.Channel, reader maplepacket.Reader) {
 			} else {
 				channel.Players.OnCharacterFromConn(conn, func(recipient *channel.MapleCharacter) {
 					recipient.SendPacket(packets.RoomShowTradeWindow(byte(roomPos), displayInfo))
-				})
 
-				for i, p := range r.Participants {
-					if p != nil && i != roomPos {
-
+					for i, p := range r.Participants {
+						if p != nil && i != roomPos {
+							// show send room join
+							p.SendPacket(packets.RoomJoin(byte(roomPos), recipient.Character))
+						}
 					}
-				}
+				})
 			}
 		})
 
@@ -129,29 +132,96 @@ func handleUIWindow(conn *connection.Channel, reader maplepacket.Reader) {
 			})
 		}
 
-	case 0x0A:
-		// close window
-		roomID := int32(-1)
+	case 0x06:
+		// chat
+		message := reader.ReadString(int(reader.ReadInt16()))
+		name := ""
+		roomSlot := byte(0x0)
+
+		channel.Players.OnCharacterFromConn(conn, func(sender *channel.MapleCharacter) {
+			name = sender.GetName()
+		})
 
 		channel.ActiveRooms.OnConn(conn, func(r *channel.Room) {
 			for i, p := range r.Participants {
-				if p.GetConn() == conn {
-					r.Participants[i] = nil
-					break
+				if p == nil || p.GetConn() == conn {
+					roomSlot = byte(i)
 				}
 			}
+		})
 
+		channel.ActiveRooms.OnConn(conn, func(r *channel.Room) {
 			for _, p := range r.Participants {
-				if p != nil {
-					return
+
+				if p == nil {
+					continue
 				}
+
+				p.SendPacket(packets.RoomChat(name, message, roomSlot))
+			}
+		})
+
+	case 0x0A:
+		// close window
+		roomID := int32(-1)
+		removeRoom := false
+
+		channel.ActiveRooms.OnConn(conn, func(r *channel.Room) {
+			roomSlot := 0
+			counter := 0
+			for i, p := range r.Participants {
+				if p != nil && p.GetConn() == conn {
+					r.Participants[i] = nil
+					roomSlot = i
+					continue
+				}
+				counter++
 			}
 
 			roomID = r.ID
+
+			if r.Type == 0x03 && counter == 1 { // for trade windows if 1 person is left after a window close then trade is over
+				removeRoom = true
+
+				for _, p := range r.Participants {
+					if p != nil {
+						if r.Accept > 0 {
+							p.SendPacket(packets.RoomLeave(byte(roomSlot), 7))
+						} else {
+							p.SendPacket(packets.RoomLeave(byte(roomSlot), 2))
+						}
+					}
+				}
+
+			} else if counter == 0 {
+				removeRoom = true
+			}
 		})
 
-		channel.ActiveRooms.Remove(roomID)
+		if removeRoom {
+			channel.ActiveRooms.Remove(roomID)
+		}
+	case 0x0F:
+		// accept trade button pressed
+		channel.ActiveRooms.OnConn(conn, func(r *channel.Room) {
+			r.Accept++
 
+			for _, p := range r.Participants {
+				if p != nil && p.GetConn() != conn {
+					// Show accept
+					p.SendPacket(packets.RoomShowAccept())
+				}
+			}
+
+			if r.Accept == 2 {
+				// do trade
+				for i, p := range r.Participants {
+					if p != nil {
+						p.SendPacket(packets.RoomLeave(byte(i), 6))
+					}
+				}
+			}
+		})
 	default:
 		fmt.Println("Unkown case type", operation, reader)
 	}

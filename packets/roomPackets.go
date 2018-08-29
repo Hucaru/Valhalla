@@ -38,7 +38,37 @@ func RoomJoin(roomSlot byte, char character.Character) maplepacket.Packet {
 	p.WriteByte(0x04)
 	p.WriteByte(roomSlot)
 	p.Append(writeDisplayCharacter(char))
+	p.WriteInt32(0) //?
 	p.WriteString(char.GetName())
+
+	return p
+}
+
+func RoomLeave(roomSlot byte, leaveCode byte) maplepacket.Packet {
+	p := maplepacket.NewPacket()
+	p.WriteByte(constants.SEND_CHANNEL_ROOM)
+	p.WriteByte(0x0A)
+	p.WriteByte(roomSlot)
+	p.WriteByte(leaveCode)
+
+	return p
+}
+
+func RoomChat(sender, message string, roomSlot byte) maplepacket.Packet {
+	p := maplepacket.NewPacket()
+	p.WriteByte(constants.SEND_CHANNEL_ROOM)
+	p.WriteByte(0x06)
+	p.WriteByte(8)        // find out what other values do
+	p.WriteByte(roomSlot) // find out what other values do
+	p.WriteString(sender + " : " + message)
+
+	return p
+}
+
+func RoomShowAccept() maplepacket.Packet {
+	p := maplepacket.NewPacket()
+	p.WriteByte(constants.SEND_CHANNEL_ROOM)
+	p.WriteByte(0x0F)
 
 	return p
 }

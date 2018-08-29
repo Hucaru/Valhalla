@@ -95,7 +95,8 @@ func (t *rooms) OnID(id int32, action func(r *Room)) {
 type Room struct {
 	ID           int32
 	Participants [2]*MapleCharacter
-	Iitems       []inventory.Item
-	Ritems       []inventory.Item
+	Sitems       [9]inventory.Item
+	Ritems       [9]inventory.Item
+	Accept       int
 	Type         byte
 }
