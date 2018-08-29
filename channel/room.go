@@ -1,7 +1,6 @@
 package channel
 
 import (
-	"fmt"
 	"sync"
 
 	"github.com/Hucaru/Valhalla/connection"
@@ -15,32 +14,35 @@ type rooms struct {
 	mutex  *sync.RWMutex
 }
 
-func (t *rooms) GetNextRoomID() int32 {
-	previousID := int32(-1)
+func (t *rooms) getNextRoomID() int32 {
+	nextID := int32(0)
 
 	t.mutex.RLock()
-	for _, v := range t.active {
-		fmt.Println(v)
-		if v.ID != (previousID + 1) {
-			break
-		}
+
+	if len(t.active) > 0 {
+		nextID = int32(len(t.active)) // if somehow we overflow and get back to zero from negative max and the first trade is still open then....
+	} else {
+		nextID = 0
 	}
+
 	t.mutex.RUnlock()
 
-	return previousID + 1
+	return nextID + 1
 }
 
 func (t *rooms) Add(val Room) {
+	val.ID = t.getNextRoomID()
+
 	t.mutex.Lock()
 	t.active = append(t.active, val)
 	t.mutex.Unlock()
 }
 
-func (t *rooms) Remove(val Room) {
+func (t *rooms) Remove(val int32) {
 	index := -1
 	t.mutex.RLock()
 	for i, v := range t.active {
-		if v.Participants == val.Participants {
+		if v.ID == val {
 			index = i
 			break
 		}
@@ -78,9 +80,22 @@ func (t *rooms) OnConn(conn *connection.Channel, action func(r *Room)) {
 	t.mutex.RUnlock()
 }
 
+func (t *rooms) OnID(id int32, action func(r *Room)) {
+
+	t.mutex.RLock()
+	for i, v := range t.active {
+		if v.ID == id {
+			action(&t.active[i])
+			break
+		}
+	}
+	t.mutex.RUnlock()
+}
+
 type Room struct {
 	ID           int32
 	Participants [2]*MapleCharacter
 	Iitems       []inventory.Item
 	Ritems       []inventory.Item
+	Type         byte
 }

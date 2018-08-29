@@ -23,6 +23,7 @@ func roomWindow(roomType, maxUsers, roomSlot byte, chars []character.Character) 
 	for i, c := range chars {
 		p.WriteByte(byte(i))
 		p.Append(writeDisplayCharacter(c))
+		p.WriteInt32(0) // not sure what this is, room id?
 		p.WriteString(c.GetName())
 	}
 
@@ -42,7 +43,7 @@ func RoomJoin(roomSlot byte, char character.Character) maplepacket.Packet {
 	return p
 }
 
-func roomInvite(roomType byte, name string, roomID int32) maplepacket.Packet {
+func RoomInvite(roomType byte, name string, roomID int32) maplepacket.Packet {
 	p := maplepacket.NewPacket()
 	p.WriteByte(constants.SEND_CHANNEL_ROOM)
 	p.WriteByte(0x02)
@@ -53,12 +54,18 @@ func roomInvite(roomType byte, name string, roomID int32) maplepacket.Packet {
 	return p
 }
 
-func RoomTradeInvite(name string, roomID int32) maplepacket.Packet {
-	return roomInvite(room_trade, name, roomID)
-}
-
 func RoomShowTradeWindow(roomSlot byte, chars []character.Character) maplepacket.Packet {
 	return roomWindow(room_trade, 2, roomSlot, chars)
+}
+
+func RoomInviteResult(resultCode byte, name string) maplepacket.Packet {
+	p := maplepacket.NewPacket()
+	p.WriteByte(constants.SEND_CHANNEL_ROOM)
+	p.WriteByte(0x03)
+	p.WriteByte(resultCode)
+	p.WriteString(name)
+
+	return p
 }
 
 func roomEnterErrorMsg(errorCode byte) maplepacket.Packet {

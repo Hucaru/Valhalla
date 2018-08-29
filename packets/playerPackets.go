@@ -320,6 +320,7 @@ func writeDisplayCharacter(char character.Character) maplepacket.Packet {
 	p.WriteInt32(char.GetFace())  // face
 	p.WriteByte(0x00)             // ?
 	p.WriteInt32(char.GetHair())  // hair
+
 	cashWeapon := int32(0)
 
 	for _, b := range char.GetItems() {
@@ -341,7 +342,6 @@ func writeDisplayCharacter(char character.Character) maplepacket.Packet {
 	}
 
 	p.WriteByte(0xFF)
-	p.WriteInt32(0) // something to do with pets?
 	p.WriteByte(0xFF)
 	p.WriteInt32(cashWeapon)
 
