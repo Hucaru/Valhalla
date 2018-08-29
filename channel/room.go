@@ -218,6 +218,8 @@ func (r *Room) Accept(char *MapleCharacter) (bool, int32) {
 			p.SendPacket(packets.RoomShowAccept())
 			if r.accept == 2 {
 				// do trade
+				// RoomLeave of 8 is for when trading unique items, use this for cash shop items as well
+				// RoomLeave of 9 is for when on seperate maps, make sure to ignore if one side is a gm
 
 				for i := range r.participants {
 					r.Broadcast(packets.RoomLeave(byte(i), 6))

@@ -60,13 +60,18 @@ func handleUIWindow(conn *connection.Channel, reader maplepacket.Reader) {
 			})
 		})
 	case 0x03:
-		//reject - check if window closes for trade
+		//reject
 		roomID := reader.ReadInt32()
 		rejectCode := reader.ReadByte()
 
 		channel.ActiveRooms.OnID(roomID, func(r *channel.Room) {
 			channel.Players.OnCharacterFromConn(conn, func(recipient *channel.MapleCharacter) {
 				r.Broadcast(packets.RoomInviteResult(rejectCode, recipient.GetName())) // I think we can broadcast this to everyone
+
+				if r.Type == 0x03 {
+					// Can't remember if a reject caused the window cancel in original
+					r.Broadcast(packets.RoomLeave(0, 2))
+				}
 			})
 		})
 	case 0x04:
