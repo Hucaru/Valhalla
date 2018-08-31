@@ -153,6 +153,14 @@ func (m *mapleMap) playerEnterMap(conn *connection.Channel) {
 
 			mob.Show(conn)
 		})
+
+		ActiveRooms.OnRoom(func(r *Room) {
+			if r.MapID == char.GetCurrentMap() {
+				if p, valid := r.GetBox(); valid {
+					char.SendPacket(p)
+				}
+			}
+		})
 	})
 }
 

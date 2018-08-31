@@ -26,20 +26,50 @@ func handleUIWindow(conn *connection.Channel, reader maplepacket.Reader) {
 		}
 
 		// create room
-		roomType := reader.ReadInt16()
+		roomType := reader.ReadByte()
 
 		switch roomType {
 		case 0:
 			fmt.Println("Create Room type 0")
 		case 1:
-			fmt.Println("Create Omok Game Room")
+			// create memory game
+			name := reader.ReadString(int(reader.ReadInt16()))
+
+			var password string
+			if reader.ReadByte() == 0x01 {
+				password = reader.ReadString(int(reader.ReadInt16()))
+			}
+
+			boardType := reader.ReadByte()
+
+			channel.Players.OnCharacterFromConn(conn, func(char *channel.MapleCharacter) {
+				channel.CreateOmokGame(char, name, password, boardType)
+			})
 		case 2:
-			fmt.Println("Create Memory Game Room")
+			// create memory game
+			name := reader.ReadString(int(reader.ReadInt16()))
+
+			var password string
+			if reader.ReadByte() == 0x01 {
+				password = reader.ReadString(int(reader.ReadInt16()))
+			}
+
+			boardType := reader.ReadByte()
+
+			channel.Players.OnCharacterFromConn(conn, func(char *channel.MapleCharacter) {
+				channel.CreateMemoryGame(char, name, password, boardType)
+			})
 		case 3:
 			// create trade
 			channel.Players.OnCharacterFromConn(conn, func(char *channel.MapleCharacter) {
 				channel.CreateTradeRoom(char)
 			})
+		case 4:
+			// create personal shop
+		case 5:
+			// create other shop
+		default:
+			fmt.Println("Unknown room", roomType, reader)
 		}
 
 	case 0x01:
@@ -55,7 +85,7 @@ func handleUIWindow(conn *connection.Channel, reader maplepacket.Reader) {
 				}
 
 				channel.ActiveRooms.OnConn(conn, func(r *channel.Room) {
-					recipient.SendPacket(packets.RoomInvite(r.Type, sender.GetName(), r.ID))
+					recipient.SendPacket(packets.RoomInvite(r.RoomType, sender.GetName(), r.ID))
 				})
 			})
 		})
@@ -68,7 +98,7 @@ func handleUIWindow(conn *connection.Channel, reader maplepacket.Reader) {
 			channel.Players.OnCharacterFromConn(conn, func(recipient *channel.MapleCharacter) {
 				r.Broadcast(packets.RoomInviteResult(rejectCode, recipient.GetName())) // I think we can broadcast this to everyone
 
-				if r.Type == 0x03 {
+				if r.RoomType == 0x03 {
 					// Can't remember if a reject caused the window cancel in original
 					r.Broadcast(packets.RoomLeave(0, 2))
 				}

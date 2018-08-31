@@ -17,7 +17,6 @@ func InventoryAddItem(item inventory.Item, newItem bool) maplepacket.Packet {
 
 	if newItem {
 		p.WriteBytes(addItem(item, true))
-		p.WriteBytes(make([]byte, 8))
 	} else {
 		p.WriteInt16(item.SlotID)
 		p.WriteInt16(item.Amount) // the new amount value (not a delta)

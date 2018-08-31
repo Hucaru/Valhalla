@@ -1,6 +1,7 @@
 package channel
 
 import (
+	"fmt"
 	"sync"
 
 	"github.com/Hucaru/Valhalla/character"
@@ -104,17 +105,33 @@ func (t *rooms) OnRoom(action func(r *Room)) {
 }
 
 type Room struct {
-	ID           int32
-	participants [2]*MapleCharacter
-	sitems       [9]inventory.Item
-	ritems       [9]inventory.Item
-	accept       int
-	Type         byte
-	mutex        *sync.RWMutex
+	ID             int32
+	participants   [4]*MapleCharacter
+	sItems, rItems [9]inventory.Item
+	sMesos, rMesos int32
+	name, password string
+	boardType      byte
+	accept         int
+	RoomType       byte
+	maxPlayers     byte
+	MapID          int32
+	mutex          *sync.RWMutex
 }
 
 func CreateTradeRoom(char *MapleCharacter) {
-	newRoom := Room{Type: 0x03, mutex: &sync.RWMutex{}}
+	newRoom := Room{RoomType: 0x03, mutex: &sync.RWMutex{}, maxPlayers: 0x02}
+	newRoom.AddParticipant(char)
+	ActiveRooms.Add(newRoom)
+}
+
+func CreateMemoryGame(char *MapleCharacter, name, password string, boardType byte) {
+	newRoom := Room{RoomType: 0x02, mutex: &sync.RWMutex{}, maxPlayers: 0x04, name: name, password: password, boardType: boardType, MapID: char.GetCurrentMap()}
+	newRoom.AddParticipant(char)
+	ActiveRooms.Add(newRoom)
+}
+
+func CreateOmokGame(char *MapleCharacter, name, password string, boardType byte) {
+	newRoom := Room{RoomType: 0x01, mutex: &sync.RWMutex{}, maxPlayers: 0x04, name: name, password: password, boardType: boardType, MapID: char.GetCurrentMap()}
 	newRoom.AddParticipant(char)
 	ActiveRooms.Add(newRoom)
 }
@@ -124,6 +141,7 @@ func (r *Room) Broadcast(packet maplepacket.Packet) {
 	for _, p := range r.participants {
 		if p != nil {
 			p.SendPacket(packet)
+			fmt.Println("Broadcast1", p.GetName())
 		}
 	}
 	r.mutex.RUnlock()
@@ -132,8 +150,8 @@ func (r *Room) Broadcast(packet maplepacket.Packet) {
 func (r *Room) AddParticipant(char *MapleCharacter) {
 	index := -1
 	r.mutex.RLock()
-	for i, p := range r.participants {
-		if p == nil {
+	for i := 0; i < int(r.maxPlayers); i++ {
+		if r.participants[i] == nil {
 			r.Broadcast(packets.RoomJoin(byte(i), char.Character))
 			index = i
 			break
@@ -154,38 +172,69 @@ func (r *Room) AddParticipant(char *MapleCharacter) {
 				displayInfo = append(displayInfo, p.Character)
 			}
 		}
+
+		char.SendPacket(packets.RoomShowWindow(r.RoomType, r.maxPlayers, byte(index), r.name, displayInfo))
+
+		if p, valid := r.GetBox(); valid {
+			Maps.GetMap(r.MapID).SendPacket(p)
+		}
+
 		r.mutex.RUnlock()
 
-		char.SendPacket(packets.RoomShowTradeWindow(byte(index), displayInfo))
 	} else {
 		char.SendPacket(packets.RoomFull())
 	}
 
 }
 
+func (r *Room) GetBox() (maplepacket.Packet, bool) {
+	p := []byte{}
+	valid := false
+	r.mutex.RLock()
+	if r.RoomType != 0x03 {
+		koreanText := false
+
+		hasPassword := false
+
+		if len(r.password) > 0 {
+			hasPassword = true
+		}
+
+		p = packets.RoomShowMapBox(r.participants[0].GetCharID(), r.ID, r.RoomType, r.boardType, r.name, hasPassword, koreanText)
+		valid = true
+	}
+	r.mutex.RUnlock()
+
+	return p, valid
+}
+
 func (r *Room) RemoveParticipant(char *MapleCharacter) (bool, int32) {
 	roomSlot := -1
-	counter := 0
+	counter := byte(0)
 
 	r.mutex.Lock()
-	for i, p := range r.participants {
-		if p == char {
-			p = nil
+	for i := 0; i < int(r.maxPlayers); i++ {
+		if r.participants[i] == char {
+			r.participants[i] = nil
 			roomSlot = i
-			continue
 		}
-		counter++
+
+		if r.participants[i] == nil {
+			counter++
+		}
 	}
 	r.mutex.Unlock()
 
 	if roomSlot > -1 {
 		r.mutex.RLock()
-		if r.Type == 0x03 && counter == 1 {
+		if r.RoomType == 0x03 && (r.maxPlayers-counter) == 1 {
 			if r.accept > 0 {
 				r.Broadcast(packets.RoomLeave(byte(roomSlot), 7))
 			} else {
 				r.Broadcast(packets.RoomLeave(byte(roomSlot), 2))
 			}
+		} else if r.RoomType != 0x03 && (r.maxPlayers-counter) == 0 {
+			Maps.GetMap(r.MapID).SendPacket(packets.RoomRemoveBox(char.GetCharID()))
 		}
 		r.mutex.RUnlock()
 

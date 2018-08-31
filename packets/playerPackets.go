@@ -260,11 +260,15 @@ func addItem(item inventory.Item, shortSlot bool) maplepacket.Packet {
 		} else {
 			p.WriteByte(byte(math.Abs(float64(item.SlotID))))
 		}
-
-		p.WriteByte(item.InvID)
 	} else {
 		p.WriteInt16(item.SlotID)
-		p.WriteByte(item.InvID)
+	}
+
+	switch item.InvID {
+	case 1:
+		p.WriteByte(0x01)
+	default:
+		p.WriteByte(0x02)
 	}
 
 	p.WriteInt32(item.ItemID)
@@ -300,14 +304,17 @@ func addItem(item inventory.Item, shortSlot bool) maplepacket.Packet {
 		p.WriteString(item.CreatorName)
 		p.WriteInt16(item.Flag) // lock, show, spikes, cape, cold protection etc ?
 	case 2:
-		p.WriteInt16(item.Amount) // amount
+		fallthrough
+	case 3:
+		fallthrough
+	case 4:
+		fallthrough
+	case 5:
+		p.WriteInt16(item.Amount)
 		p.WriteString(item.CreatorName)
 		p.WriteInt16(item.Flag) // lock, show, spikes, cape, cold protection etc ?
-	case 3:
-	case 4:
-	case 5:
 	default:
-		fmt.Println("Unsuported item type")
+		fmt.Println("Unsuported item type", item.InvID)
 	}
 
 	return p

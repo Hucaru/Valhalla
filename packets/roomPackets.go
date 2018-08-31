@@ -1,33 +1,58 @@
 package packets
 
 import (
+	"fmt"
+
 	"github.com/Hucaru/Valhalla/character"
 	"github.com/Hucaru/Valhalla/constants"
 	"github.com/Hucaru/Valhalla/maplepacket"
 )
 
-var room_omok_game byte = 0x01
-var room_memory_game byte = 0x02
-var room_trade byte = 0x03
-var room_personal_shop byte = 0x04
-var room_other_shop byte = 0x05
-
-func roomWindow(roomType, maxUsers, roomSlot byte, chars []character.Character) maplepacket.Packet {
+func RoomShowWindow(roomType, maxPlayers, roomSlot byte, roomTitle string, chars []character.Character) maplepacket.Packet {
 	p := maplepacket.NewPacket()
 	p.WriteByte(constants.SEND_CHANNEL_ROOM)
 	p.WriteByte(0x05)
 	p.WriteByte(roomType)
-	p.WriteByte(maxUsers)
+	p.WriteByte(maxPlayers)
 	p.WriteByte(roomSlot)
 
 	for i, c := range chars {
 		p.WriteByte(byte(i))
 		p.Append(writeDisplayCharacter(c))
-		p.WriteInt32(0) // not sure what this is, room id?
+		p.WriteInt32(0) // not sure what this is, board settings?
 		p.WriteString(c.GetName())
 	}
 
 	p.WriteByte(0xFF)
+
+	if roomType == 0x03 {
+		return p
+	}
+
+	for i, c := range chars {
+		p.WriteByte(byte(i))
+
+		p.WriteInt32(1) // not sure what this is!?
+		switch roomType {
+		case 0x01:
+			p.WriteInt32(c.GetOmokWins())
+			p.WriteInt32(c.GetOmokTies())
+			p.WriteInt32(c.GetOmokLosses())
+		case 0x02:
+			p.WriteInt32(c.GetMemoryWins())
+			p.WriteInt32(c.GetMemoryTies())
+			p.WriteInt32(c.GetMemoryLosses())
+		default:
+			fmt.Println("Unknown game type", roomType)
+		}
+
+		p.WriteInt32(1234) // Points in the ui. What does it represent?
+	}
+
+	p.WriteByte(0xFF)
+	p.WriteString(roomTitle)
+	p.WriteByte(0)
+	p.WriteByte(0)
 
 	return p
 }
@@ -84,16 +109,38 @@ func RoomInvite(roomType byte, name string, roomID int32) maplepacket.Packet {
 	return p
 }
 
-func RoomShowTradeWindow(roomSlot byte, chars []character.Character) maplepacket.Packet {
-	return roomWindow(room_trade, 2, roomSlot, chars)
-}
-
 func RoomInviteResult(resultCode byte, name string) maplepacket.Packet {
 	p := maplepacket.NewPacket()
 	p.WriteByte(constants.SEND_CHANNEL_ROOM)
 	p.WriteByte(0x03)
 	p.WriteByte(resultCode)
 	p.WriteString(name)
+
+	return p
+}
+
+func RoomShowMapBox(charID, roomID int32, roomType, boardType byte, name string, hasPassword, koreanText bool) maplepacket.Packet {
+	p := maplepacket.NewPacket()
+	p.WriteByte(constants.SEND_CHANNEL_ROOM_BOX)
+	p.WriteInt32(charID)
+	p.WriteByte(roomType)
+	p.WriteInt32(roomID)
+	p.WriteString(name)
+	p.WriteBool(hasPassword)
+	p.WriteByte(boardType)
+	// win loss record since room opened?
+	p.WriteByte(1)
+	p.WriteByte(2)
+	p.WriteBool(koreanText)
+
+	return p
+}
+
+func RoomRemoveBox(charID int32) maplepacket.Packet {
+	p := maplepacket.NewPacket()
+	p.WriteByte(constants.SEND_CHANNEL_ROOM_BOX)
+	p.WriteInt32(charID)
+	p.WriteInt32(0)
 
 	return p
 }
