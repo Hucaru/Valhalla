@@ -1,6 +1,7 @@
 package channel
 
 import (
+	"math"
 	"sync"
 
 	"github.com/Hucaru/Valhalla/character"
@@ -15,28 +16,26 @@ var ActiveRooms = rooms{mutex: &sync.RWMutex{}}
 
 type rooms struct {
 	active []Room
+	lastID int32
 	mutex  *sync.RWMutex
 }
 
 func (t *rooms) getNextRoomID() int32 {
 	nextID := int32(0)
 
-	t.mutex.RLock()
+	t.mutex.Lock()
 
-	if len(t.active) > 0 {
-		nextID = int32(len(t.active)) // if somehow we overflow and get back to zero from negative max and the first trade is still open then....
-	} else {
-		nextID = 0
+	if t.lastID < math.MaxInt32 {
+		t.lastID++
+		nextID = t.lastID
 	}
 
-	t.mutex.RUnlock()
+	t.mutex.Unlock()
 
-	return nextID + 1
+	return nextID
 }
 
 func (t *rooms) Add(val Room) {
-	val.ID = t.getNextRoomID()
-
 	t.mutex.Lock()
 	t.active = append(t.active, val)
 	t.mutex.Unlock()
@@ -115,22 +114,24 @@ type Room struct {
 	maxPlayers     byte
 	MapID          int32
 	mutex          *sync.RWMutex
+	P1Turn         bool
+	InProgress     bool
 }
 
 func CreateTradeRoom(char *MapleCharacter) {
-	newRoom := Room{RoomType: 0x03, mutex: &sync.RWMutex{}, maxPlayers: 0x02}
+	newRoom := Room{ID: ActiveRooms.getNextRoomID(), RoomType: 0x03, mutex: &sync.RWMutex{}, maxPlayers: 0x02}
 	newRoom.AddParticipant(char)
 	ActiveRooms.Add(newRoom)
 }
 
 func CreateMemoryGame(char *MapleCharacter, name, password string, boardType byte) {
-	newRoom := Room{RoomType: 0x02, mutex: &sync.RWMutex{}, maxPlayers: 0x04, name: name, password: password, boardType: boardType, MapID: char.GetCurrentMap()}
+	newRoom := Room{ID: ActiveRooms.getNextRoomID(), RoomType: 0x02, mutex: &sync.RWMutex{}, maxPlayers: 0x04, name: name, password: password, boardType: boardType, MapID: char.GetCurrentMap(), P1Turn: true}
 	newRoom.AddParticipant(char)
 	ActiveRooms.Add(newRoom)
 }
 
 func CreateOmokGame(char *MapleCharacter, name, password string, boardType byte) {
-	newRoom := Room{RoomType: 0x01, mutex: &sync.RWMutex{}, maxPlayers: 0x04, name: name, password: password, boardType: boardType, MapID: char.GetCurrentMap()}
+	newRoom := Room{ID: ActiveRooms.getNextRoomID(), RoomType: 0x01, mutex: &sync.RWMutex{}, maxPlayers: 0x04, name: name, password: password, boardType: boardType, MapID: char.GetCurrentMap(), P1Turn: true}
 	newRoom.AddParticipant(char)
 	ActiveRooms.Add(newRoom)
 }
@@ -145,12 +146,20 @@ func (r *Room) Broadcast(packet maplepacket.Packet) {
 	r.mutex.RUnlock()
 }
 
+func (r *Room) GetPassword() string {
+	r.mutex.RLock()
+	password := r.password
+	r.mutex.RUnlock()
+
+	return password
+}
+
 func (r *Room) AddParticipant(char *MapleCharacter) {
 	index := -1
 	r.mutex.RLock()
 	for i := 0; i < int(r.maxPlayers); i++ {
 		if r.participants[i] == nil {
-			r.Broadcast(packets.RoomJoin(byte(i), char.Character))
+			r.Broadcast(packets.RoomJoin(r.RoomType, byte(i), char.Character))
 			index = i
 			break
 		}
@@ -190,23 +199,23 @@ func (r *Room) GetBox() (maplepacket.Packet, bool) {
 	valid := false
 	r.mutex.RLock()
 	if r.RoomType != 0x03 {
-		koreanText := false
-
 		hasPassword := false
 
 		if len(r.password) > 0 {
 			hasPassword = true
 		}
 
-		p = packets.RoomShowMapBox(r.participants[0].GetCharID(), r.ID, r.RoomType, r.boardType, r.name, hasPassword, koreanText)
-		valid = true
+		if r.participants[0] != nil {
+			p = packets.RoomShowMapBox(r.participants[0].GetCharID(), r.ID, r.RoomType, r.boardType, r.name, hasPassword, r.InProgress)
+			valid = true
+		}
 	}
 	r.mutex.RUnlock()
 
 	return p, valid
 }
 
-func (r *Room) RemoveParticipant(char *MapleCharacter) (bool, int32) {
+func (r *Room) RemoveParticipant(char *MapleCharacter, expelled bool) (bool, int32) {
 	roomSlot := -1
 	counter := byte(0)
 
@@ -223,6 +232,8 @@ func (r *Room) RemoveParticipant(char *MapleCharacter) (bool, int32) {
 	}
 	r.mutex.Unlock()
 
+	closeRoom := false
+
 	if roomSlot > -1 {
 		r.mutex.RLock()
 		if r.RoomType == 0x03 && (r.maxPlayers-counter) == 1 {
@@ -231,15 +242,33 @@ func (r *Room) RemoveParticipant(char *MapleCharacter) (bool, int32) {
 			} else {
 				r.Broadcast(packets.RoomLeave(byte(roomSlot), 2))
 			}
-		} else if r.RoomType != 0x03 && (r.maxPlayers-counter) == 0 {
-			Maps.GetMap(r.MapID).SendPacket(packets.RoomRemoveBox(char.GetCharID()))
+			closeRoom = true
+		} else if r.RoomType == 0x01 || r.RoomType == 0x02 {
+			if r.participants[0] == nil {
+				// kick everyone
+				Maps.GetMap(r.MapID).SendPacket(packets.RoomRemoveBox(char.GetCharID()))
+				for i, c := range r.participants {
+					if c != nil {
+						c.SendPacket(packets.RoomLeave(byte(i), 0))
+						closeRoom = true
+					}
+				}
+			} else {
+				// I think the numbers change on the box depending on how many inside?
+				char.SendPacket(packets.RoomLeave(byte(roomSlot), 5))
+
+				if expelled {
+					r.Broadcast(packets.RoomYellowChat(0, char.GetName()))
+				} else {
+					r.Broadcast(packets.RoomLeave(byte(roomSlot), 5))
+					// r.Broadcast(packets.RoomYellowChat(4, char.GetName())) // this is a yellow text of above
+				}
+			}
 		}
 		r.mutex.RUnlock()
-
-		return true, r.ID
 	}
 
-	return false, -1
+	return closeRoom, r.ID
 }
 
 func (r *Room) SendMessage(name, msg string) {
@@ -281,6 +310,21 @@ func (r *Room) Accept(char *MapleCharacter) (bool, int32) {
 	r.mutex.RUnlock()
 
 	return success, r.ID
+}
+
+func (r *Room) Expel(roomSlot int) {
+	for i, p := range r.participants {
+		if p != nil && i == roomSlot {
+			r.RemoveParticipant(p, true)
+			break
+		}
+	}
+}
+
+func (r *Room) PlacePiece(x, y int32) {
+	// validate placement
+	// if valid, place and check for win or other condition
+	r.Broadcast(packets.RoomPlaceOmokPiece(x, y))
 }
 
 func (r *Room) UpdateCharDisplay() {

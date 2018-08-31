@@ -107,14 +107,26 @@ func handleUIWindow(conn *connection.Channel, reader maplepacket.Reader) {
 	case 0x04:
 		//accept
 		roomID := reader.ReadInt32()
-		// unknown := reader.ReadByte()
+		hasPassword := false
+		var password string
+
+		if reader.ReadByte() > 0 {
+			hasPassword = true
+			password = reader.ReadString(int(reader.ReadInt16()))
+		}
 
 		activeRoom := false
-
 		channel.ActiveRooms.OnID(roomID, func(r *channel.Room) {
 			activeRoom = true
 
 			channel.Players.OnCharacterFromConn(conn, func(recipient *channel.MapleCharacter) {
+				if hasPassword {
+					if password != r.GetPassword() {
+						recipient.SendPacket(packets.RoomIncorrectPassword())
+						return
+					}
+				}
+
 				r.AddParticipant(recipient)
 			})
 		})
@@ -146,7 +158,7 @@ func handleUIWindow(conn *connection.Channel, reader maplepacket.Reader) {
 
 		channel.ActiveRooms.OnConn(conn, func(r *channel.Room) {
 			channel.Players.OnCharacterFromConn(conn, func(char *channel.MapleCharacter) {
-				removeRoom, roomID = r.RemoveParticipant(char)
+				removeRoom, roomID = r.RemoveParticipant(char, false)
 			})
 		})
 
@@ -177,6 +189,58 @@ func handleUIWindow(conn *connection.Channel, reader maplepacket.Reader) {
 		if removeRoom {
 			channel.ActiveRooms.Remove(roomID)
 		}
+	case 0x2A:
+		// Request tie
+	case 0x2C:
+		// Request give up
+	case 0x32:
+		// Ready button pressed
+		channel.ActiveRooms.OnConn(conn, func(r *channel.Room) {
+			r.Broadcast(packets.RoomReady())
+		})
+	case 0x30:
+		// Request exit during game
+	case 0x33:
+		// Unready
+		channel.ActiveRooms.OnConn(conn, func(r *channel.Room) {
+			r.Broadcast(packets.RoomUnReady())
+		})
+	case 0x34:
+		// owner expells
+		channel.ActiveRooms.OnConn(conn, func(r *channel.Room) {
+			channel.Players.OnCharacterFromConn(conn, func(char *channel.MapleCharacter) {
+				r.Expel(1) // can only expell slot 1
+			})
+		})
+	case 0x35:
+		// Game start
+		channel.ActiveRooms.OnConn(conn, func(r *channel.Room) {
+			r.InProgress = true
+
+			if p, valid := r.GetBox(); valid {
+				channel.Maps.GetMap(r.MapID).SendPacket(p)
+			}
+
+			r.Broadcast(packets.RoomTurnIndication(r.P1Turn))
+		})
+	case 0x37:
+		// change turn
+		channel.ActiveRooms.OnConn(conn, func(r *channel.Room) {
+			r.P1Turn = !r.P1Turn
+			r.Broadcast(packets.RoomTurnIndication(r.P1Turn))
+		})
+	case 0x38:
+		// place piece
+		reader.ReadByte()
+		x := reader.ReadInt32()
+		y := reader.ReadInt32()
+
+		channel.ActiveRooms.OnConn(conn, func(r *channel.Room) {
+			r.PlacePiece(x, y)
+			r.P1Turn = !r.P1Turn
+			r.Broadcast(packets.RoomTurnIndication(r.P1Turn))
+		})
+
 	default:
 		fmt.Println("Unkown case type", operation, reader)
 	}

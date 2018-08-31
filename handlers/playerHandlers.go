@@ -44,6 +44,17 @@ func handlePlayerConnect(conn *connection.Channel, reader maplepacket.Reader) {
 				log.Println("Unable to save character data")
 			}
 			channel.Maps.GetMap(char.GetCurrentMap()).RemovePlayer(conn)
+
+			removeRoom := false
+			var roomID int32
+
+			channel.ActiveRooms.OnConn(conn, func(r *channel.Room) {
+				removeRoom, roomID = r.RemoveParticipant(char, false)
+			})
+
+			if removeRoom {
+				channel.ActiveRooms.Remove(roomID)
+			}
 		})
 
 		npcdialogue.RemoveSession(conn)

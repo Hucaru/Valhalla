@@ -57,7 +57,7 @@ func RoomShowWindow(roomType, maxPlayers, roomSlot byte, roomTitle string, chars
 	return p
 }
 
-func RoomJoin(roomSlot byte, char character.Character) maplepacket.Packet {
+func RoomJoin(roomType, roomSlot byte, char character.Character) maplepacket.Packet {
 	p := maplepacket.NewPacket()
 	p.WriteByte(constants.SEND_CHANNEL_ROOM)
 	p.WriteByte(0x04)
@@ -65,6 +65,26 @@ func RoomJoin(roomSlot byte, char character.Character) maplepacket.Packet {
 	p.Append(writeDisplayCharacter(char))
 	p.WriteInt32(0) //?
 	p.WriteString(char.GetName())
+
+	if roomType == 0x03 {
+		return p
+	}
+
+	p.WriteInt32(1) // not sure what this is!?
+	switch roomType {
+	case 0x01:
+		p.WriteInt32(char.GetOmokWins())
+		p.WriteInt32(char.GetOmokTies())
+		p.WriteInt32(char.GetOmokLosses())
+	case 0x02:
+		p.WriteInt32(char.GetMemoryWins())
+		p.WriteInt32(char.GetMemoryTies())
+		p.WriteInt32(char.GetMemoryLosses())
+	default:
+		fmt.Println("Unknown game type", roomType)
+	}
+
+	p.WriteInt32(1234) // Points in the ui. What does it represent?
 
 	return p
 }
@@ -83,9 +103,20 @@ func RoomChat(sender, message string, roomSlot byte) maplepacket.Packet {
 	p := maplepacket.NewPacket()
 	p.WriteByte(constants.SEND_CHANNEL_ROOM)
 	p.WriteByte(0x06)
-	p.WriteByte(8)        // find out what other values do
-	p.WriteByte(roomSlot) // find out what other values do
+	p.WriteByte(8)        // msg type
+	p.WriteByte(roomSlot) //
 	p.WriteString(sender + " : " + message)
+
+	return p
+}
+
+func RoomYellowChat(msgType byte, name string) maplepacket.Packet {
+	p := maplepacket.NewPacket()
+	p.WriteByte(constants.SEND_CHANNEL_ROOM)
+	p.WriteByte(0x06)
+	p.WriteByte(7)
+	p.WriteByte(msgType) // expelled: 0, x's turn: 1, forfeit: 2, handicap request: 3, left: 4
+	p.WriteString(name)
 
 	return p
 }
@@ -115,6 +146,82 @@ func RoomInviteResult(resultCode byte, name string) maplepacket.Packet {
 	p.WriteByte(0x03)
 	p.WriteByte(resultCode)
 	p.WriteString(name)
+
+	return p
+}
+
+func RoomReady() maplepacket.Packet {
+	p := maplepacket.NewPacket()
+	p.WriteByte(constants.SEND_CHANNEL_ROOM)
+	p.WriteByte(0x32)
+
+	return p
+}
+
+func RoomUnReady() maplepacket.Packet {
+	p := maplepacket.NewPacket()
+	p.WriteByte(constants.SEND_CHANNEL_ROOM)
+	p.WriteByte(0x33)
+
+	return p
+}
+
+func RoomRequestTie() maplepacket.Packet {
+	p := maplepacket.NewPacket()
+	p.WriteByte(constants.SEND_CHANNEL_ROOM)
+	p.WriteByte(0x2a)
+
+	return p
+}
+
+func RoomRejectTie() maplepacket.Packet {
+	p := maplepacket.NewPacket()
+	p.WriteByte(constants.SEND_CHANNEL_ROOM)
+	p.WriteByte(0x2b)
+
+	return p
+}
+
+func RoomRequestUndo() maplepacket.Packet {
+	p := maplepacket.NewPacket()
+	p.WriteByte(constants.SEND_CHANNEL_ROOM)
+	p.WriteByte(0x2e)
+
+	return p
+}
+
+func RoomRejectUndo() maplepacket.Packet {
+	p := maplepacket.NewPacket()
+	p.WriteByte(constants.SEND_CHANNEL_ROOM)
+	p.WriteByte(0x2e)
+
+	return p
+}
+
+func RoomTurnIndication(p1Turn bool) maplepacket.Packet {
+	p := maplepacket.NewPacket()
+	p.WriteByte(constants.SEND_CHANNEL_ROOM)
+	p.WriteByte(0x35)
+	p.WriteBool(p1Turn)
+
+	return p
+}
+
+func RoomPlaceOmokPiece(x, y int32) maplepacket.Packet {
+	p := maplepacket.NewPacket()
+	p.WriteByte(constants.SEND_CHANNEL_ROOM)
+	p.WriteByte(0x38)
+	p.WriteInt32(x)
+	p.WriteInt32(y)
+	p.WriteByte(0)
+
+	return p
+}
+
+func RoomInvalidPlaceMsg() maplepacket.Packet {
+	p := maplepacket.NewPacket()
+	p.WriteByte(constants.SEND_CHANNEL_ROOM)
+	p.WriteByte(0x39)
 
 	return p
 }
