@@ -1,7 +1,6 @@
 package channel
 
 import (
-	"fmt"
 	"sync"
 
 	"github.com/Hucaru/Valhalla/character"
@@ -141,7 +140,6 @@ func (r *Room) Broadcast(packet maplepacket.Packet) {
 	for _, p := range r.participants {
 		if p != nil {
 			p.SendPacket(packet)
-			fmt.Println("Broadcast1", p.GetName())
 		}
 	}
 	r.mutex.RUnlock()
@@ -247,8 +245,9 @@ func (r *Room) RemoveParticipant(char *MapleCharacter) (bool, int32) {
 func (r *Room) SendMessage(name, msg string) {
 	r.mutex.RLock()
 	for i, p := range r.participants {
-		if p == nil || p.GetName() == name {
+		if p != nil || p.GetName() == name {
 			r.Broadcast(packets.RoomChat(name, msg, byte(i)))
+			break
 		}
 	}
 	r.mutex.RUnlock()
