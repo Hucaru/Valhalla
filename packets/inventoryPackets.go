@@ -9,7 +9,7 @@ import (
 
 func InventoryAddItem(item inventory.Item, newItem bool) maplepacket.Packet {
 	p := maplepacket.NewPacket()
-	p.WriteByte(constants.SEND_CHANNEL_INVENTORY_OPERATION)
+	p.WriteByte(constants.SendChannelInventoryOperation)
 	p.WriteByte(0x01)     // ?
 	p.WriteByte(0x01)     // number of operations? // e.g. loop over multiple interweaved operations
 	p.WriteBool(!newItem) // operation type
@@ -27,7 +27,7 @@ func InventoryAddItem(item inventory.Item, newItem bool) maplepacket.Packet {
 
 func InventoryChangeItemSlot(invTabID byte, origPos, newPos int16) maplepacket.Packet {
 	p := maplepacket.NewPacket()
-	p.WriteByte(constants.SEND_CHANNEL_INVENTORY_OPERATION)
+	p.WriteByte(constants.SendChannelInventoryOperation)
 	p.WriteByte(0x01)
 	p.WriteByte(0x01)
 	p.WriteByte(0x02)
@@ -41,7 +41,7 @@ func InventoryChangeItemSlot(invTabID byte, origPos, newPos int16) maplepacket.P
 
 func InventoryRemoveItem(item inventory.Item) maplepacket.Packet {
 	p := maplepacket.NewPacket()
-	p.WriteByte(constants.SEND_CHANNEL_INVENTORY_OPERATION)
+	p.WriteByte(constants.SendChannelInventoryOperation)
 	p.WriteByte(0x01)
 	p.WriteByte(0x01)
 	p.WriteByte(0x03)
@@ -54,7 +54,7 @@ func InventoryRemoveItem(item inventory.Item) maplepacket.Packet {
 
 func InventoryChangeEquip(char character.Character) maplepacket.Packet {
 	p := maplepacket.NewPacket()
-	p.WriteByte(constants.SEND_CHANNEL_PLAYER_CHANGE_AVATAR)
+	p.WriteByte(constants.SendChannelPlayerChangeAvatar)
 	p.WriteInt32(char.GetCharID())
 	p.WriteByte(1)
 	p.WriteBytes(writeDisplayCharacter(char))

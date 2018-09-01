@@ -50,8 +50,7 @@ type Character struct {
 	state    byte
 	chairID  int32
 
-	omokWins, omokTies, omokLosses       int32
-	memoryWins, memoryTies, memoryLosses int32
+	omokWins, omokTies, omokLosses int32
 
 	mutex *sync.RWMutex // Players On methods is RW mutex, list of MapleCharacters in slice is protected only
 }
@@ -642,47 +641,5 @@ func (c *Character) GetOmokLosses() int32 {
 func (c *Character) SetOmokLosses(val int32) {
 	c.mutex.Lock()
 	c.omokLosses = val
-	c.mutex.Unlock()
-}
-
-func (c *Character) GetMemoryWins() int32 {
-	c.mutex.RLock()
-	val := c.memoryWins
-	c.mutex.RUnlock()
-
-	return val
-}
-
-func (c *Character) SetMemoryWins(val int32) {
-	c.mutex.Lock()
-	c.memoryWins = val
-	c.mutex.Unlock()
-}
-
-func (c *Character) GetMemoryTies() int32 {
-	c.mutex.RLock()
-	val := c.memoryTies
-	c.mutex.RUnlock()
-
-	return val
-}
-
-func (c *Character) SetMemoryTies(val int32) {
-	c.mutex.Lock()
-	c.memoryTies = val
-	c.mutex.Unlock()
-}
-
-func (c *Character) GetMemoryLosses() int32 {
-	c.mutex.RLock()
-	val := c.memoryLosses
-	c.mutex.RUnlock()
-
-	return val
-}
-
-func (c *Character) SetMemoryLosses(val int32) {
-	c.mutex.Lock()
-	c.memoryLosses = val
 	c.mutex.Unlock()
 }

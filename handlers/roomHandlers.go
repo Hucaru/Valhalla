@@ -158,7 +158,7 @@ func handleUIWindow(conn *connection.Channel, reader maplepacket.Reader) {
 
 		channel.ActiveRooms.OnConn(conn, func(r *channel.Room) {
 			channel.Players.OnCharacterFromConn(conn, func(char *channel.MapleCharacter) {
-				removeRoom, roomID = r.RemoveParticipant(char, false)
+				removeRoom, roomID = r.RemoveParticipant(char)
 			})
 		})
 
@@ -209,7 +209,8 @@ func handleUIWindow(conn *connection.Channel, reader maplepacket.Reader) {
 		// owner expells
 		channel.ActiveRooms.OnConn(conn, func(r *channel.Room) {
 			channel.Players.OnCharacterFromConn(conn, func(char *channel.MapleCharacter) {
-				r.Expel(1) // can only expell slot 1
+				r.RemoveParticipant(r.GetParticipantFromSlot(1))
+				r.Broadcast(packets.RoomYellowChat(0, char.GetName())) // sending this causes a crash to login screen when re-join
 			})
 		})
 	case 0x35:
@@ -231,6 +232,7 @@ func handleUIWindow(conn *connection.Channel, reader maplepacket.Reader) {
 	case 0x37:
 		// change turn
 		channel.ActiveRooms.OnConn(conn, func(r *channel.Room) {
+			r.Broadcast(packets.RoomOmokSkip(r.P1Turn))
 			r.P1Turn = !r.P1Turn
 		})
 	case 0x38:

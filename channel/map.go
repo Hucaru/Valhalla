@@ -56,12 +56,15 @@ func (m *mapleMap) AddPortal(portal maplePortal) {
 	m.mutex.Unlock()
 }
 
-func (m *mapleMap) GetPlayers() []*connection.Channel {
+func (m *mapleMap) OnPlayers(action func(conn *connection.Channel) bool) {
 	m.mutex.RLock()
-	result := m.players
+	for i := range m.players {
+		done := action(m.players[i])
+		if done {
+			break
+		}
+	}
 	m.mutex.RUnlock()
-
-	return result
 }
 
 func (m *mapleMap) AddPlayer(player *connection.Channel) {
@@ -131,7 +134,8 @@ func (m *mapleMap) GetRandomSpawnPortal() (maplePortal, byte) {
 }
 
 func (m *mapleMap) playerEnterMap(conn *connection.Channel) {
-	for _, other := range m.GetPlayers() {
+	m.OnPlayers(func(other *connection.Channel) bool {
+
 		Players.OnCharacterFromConn(conn, func(char *MapleCharacter) {
 			other.Write(packets.MapPlayerEnter(char.Character))
 		})
@@ -139,7 +143,9 @@ func (m *mapleMap) playerEnterMap(conn *connection.Channel) {
 		Players.OnCharacterFromConn(other, func(char *MapleCharacter) {
 			conn.Write(packets.MapPlayerEnter(char.Character))
 		})
-	}
+
+		return false
+	})
 
 	Players.OnCharacterFromConn(conn, func(char *MapleCharacter) {
 		for _, npc := range NPCs.GetNpcs(char.GetCurrentMap()) {
@@ -174,11 +180,10 @@ func (m *mapleMap) playerLeaveMap(conn *connection.Channel) {
 			if mob.GetController() == conn {
 				mob.RemoveController()
 
-				m.mutex.RLock()
-				if len(m.GetPlayers()) > 0 {
-					mob.SetController(m.GetPlayers()[0], false)
-				}
-				m.mutex.RUnlock()
+				m.OnPlayers(func(conn *connection.Channel) bool {
+					mob.SetController(conn, false)
+					return true
+				})
 			}
 
 			mob.Hide(conn)

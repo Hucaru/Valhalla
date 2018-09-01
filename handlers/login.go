@@ -11,31 +11,31 @@ import (
 // HandleLoginPacket -
 func HandleLoginPacket(conn *connection.Login, reader maplepacket.Reader) {
 	switch reader.ReadByte() {
-	case constants.RECV_RETURN_TO_LOGIN_SCREEN:
+	case constants.RecvReturnToLoginScreen:
 		handleReturnToLoginScreen(conn, reader)
 
-	case constants.RECV_LOGIN_REQUEST:
+	case constants.RecvLoginRequest:
 		handleLoginRequest(conn, reader)
 
-	case constants.RECV_LOGIN_CHECK_LOGIN:
+	case constants.RecvLoginCheckLogin:
 		handleGoodLogin(conn, reader)
 
-	case constants.RECV_LOGIN_WORLD_SELECT:
+	case constants.RecvLoginWorldSelect:
 		handleWorldSelect(conn, reader)
 
-	case constants.RECV_LOGIN_CHANNEL_SELECT:
+	case constants.RecvLoginChannelSelect:
 		handleChannelSelect(conn, reader)
 
-	case constants.RECV_LOGIN_NAME_CHECK:
+	case constants.RecvLoginNameCheck:
 		handleNameCheck(conn, reader)
 
-	case constants.RECV_LOGIN_NEW_CHARACTER:
+	case constants.RecvLoginNewCharacter:
 		handleNewCharacter(conn, reader)
 
-	case constants.RECV_LOGIN_DELETE_CHAR:
+	case constants.RecvLoginDeleteChar:
 		handleDeleteCharacter(conn, reader)
 
-	case constants.RECV_LOGIN_SELECT_CHARACTER:
+	case constants.RecvLoginSelectCharacter:
 		handleSelectCharacter(conn, reader)
 
 	default:

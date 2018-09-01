@@ -299,12 +299,16 @@ func handleGmCommand(conn *connection.Channel, msg string) {
 				})
 			case "players":
 				info += "Players on map: "
-				for _, p := range channel.Maps.GetMap(mapID).GetPlayers() {
-					channel.Players.OnCharacterFromConn(p, func(char *channel.MapleCharacter) {
+
+				channel.Maps.GetMap(mapID).OnPlayers(func(conn *connection.Channel) bool {
+					channel.Players.OnCharacterFromConn(conn, func(char *channel.MapleCharacter) {
 						info += "{" + char.GetName() + ", (" + strconv.Itoa(int(char.GetX())) + "," +
 							strconv.Itoa(int(char.GetY())) + "), HP:" + strconv.Itoa(int(char.GetHP())) + "} "
 					})
-				}
+
+					return false
+				})
+
 			case "reactors":
 				// reactor information
 			default:

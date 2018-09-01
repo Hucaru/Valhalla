@@ -55,7 +55,7 @@ func (handle *Client) Write(p maplepacket.Packet) error {
 	crypt.Encrypt(encryptedPacket)
 
 	header := maplepacket.NewPacket()
-	header = crypt.GenerateHeader(len(encryptedPacket), handle.ivSend, constants.MAPLE_VERSION)
+	header = crypt.GenerateHeader(len(encryptedPacket), handle.ivSend, constants.MapleVersion)
 	header.Append(encryptedPacket)
 
 	handle.ivSend = crypt.GenerateNewIV(handle.ivSend)
@@ -90,7 +90,7 @@ func sendHandshake(client Client) error {
 	packet := maplepacket.NewPacket()
 
 	packet.WriteInt16(13)
-	packet.WriteInt16(constants.MAPLE_VERSION)
+	packet.WriteInt16(constants.MapleVersion)
 	packet.WriteString("")
 	packet.Append(client.ivRecv)
 	packet.Append(client.ivSend)

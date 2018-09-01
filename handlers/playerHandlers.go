@@ -49,7 +49,7 @@ func handlePlayerConnect(conn *connection.Channel, reader maplepacket.Reader) {
 			var roomID int32
 
 			channel.ActiveRooms.OnConn(conn, func(r *channel.Room) {
-				removeRoom, roomID = r.RemoveParticipant(char, false)
+				removeRoom, roomID = r.RemoveParticipant(char)
 			})
 
 			if removeRoom {

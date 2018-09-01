@@ -120,6 +120,7 @@ type Room struct {
 	name, password string
 	boardType      byte
 	board          [15][15]byte
+	leaveAfterGame bool
 
 	mutex *sync.RWMutex
 }
@@ -158,6 +159,20 @@ func (r *Room) GetPassword() string {
 	r.mutex.RUnlock()
 
 	return password
+}
+
+func (r *Room) GetParticipantFromSlot(slotId byte) *MapleCharacter {
+	r.mutex.RLock()
+
+	var char *MapleCharacter
+
+	if slotId < r.maxPlayers && r.participants[slotId] != nil {
+		char = r.participants[slotId]
+	}
+
+	r.mutex.RUnlock()
+
+	return char
 }
 
 func (r *Room) AddParticipant(char *MapleCharacter) {
@@ -221,7 +236,7 @@ func (r *Room) GetBox() (maplepacket.Packet, bool) {
 	return p, valid
 }
 
-func (r *Room) RemoveParticipant(char *MapleCharacter, expelled bool) (bool, int32) {
+func (r *Room) removeParticipant(char *MapleCharacter) (int, byte) {
 	roomSlot := -1
 	counter := byte(0)
 
@@ -238,6 +253,11 @@ func (r *Room) RemoveParticipant(char *MapleCharacter, expelled bool) (bool, int
 	}
 	r.mutex.Unlock()
 
+	return roomSlot, counter
+}
+
+func (r *Room) RemoveParticipant(char *MapleCharacter) (bool, int32) {
+	roomSlot, counter := r.removeParticipant(char)
 	closeRoom := false
 
 	if roomSlot > -1 {
@@ -260,15 +280,9 @@ func (r *Room) RemoveParticipant(char *MapleCharacter, expelled bool) (bool, int
 					}
 				}
 			} else {
-				// I think the numbers change on the box depending on how many inside?
+				// I think the numbers change on box on map depending on how many people are in?
 				char.SendPacket(packets.RoomLeave(byte(roomSlot), 5))
-
-				if expelled {
-					r.Broadcast(packets.RoomYellowChat(0, char.GetName()))
-				} else {
-					r.Broadcast(packets.RoomLeave(byte(roomSlot), 5))
-					// r.Broadcast(packets.RoomYellowChat(4, char.GetName())) // this is a yellow text of above
-				}
+				r.Broadcast(packets.RoomLeave(byte(roomSlot), 5))
 			}
 		}
 		r.mutex.RUnlock()
@@ -318,21 +332,18 @@ func (r *Room) Accept(char *MapleCharacter) (bool, int32) {
 	return success, r.ID
 }
 
-func (r *Room) Expel(roomSlot int) {
-	for i, p := range r.participants {
-		if p != nil && i == roomSlot {
-			r.RemoveParticipant(p, true)
-			break
-		}
-	}
-}
-
 func (r *Room) PlacePiece(x, y int32, piece byte) {
-	r.mutex.Lock()
 	if r.board[x][y] != 0 {
+		if r.P1Turn {
+			r.participants[0].SendPacket(packets.RoomOmokInvalidPlaceMsg())
+		} else {
+			r.participants[1].SendPacket(packets.RoomOmokInvalidPlaceMsg())
+		}
+
 		return
 	}
 
+	r.mutex.Lock()
 	if r.P1Turn == true {
 		r.board[x][y] = piece
 	} else {

@@ -46,6 +46,6 @@ func Login() {
 
 		go connection.HandleNewConnection(clientConnection, func(p maplepacket.Reader) {
 			handlers.HandleLoginPacket(clientConnection, p)
-		}, constants.CLIENT_HEADER_SIZE, true)
+		}, constants.ClientHeaderSize, true)
 	}
 }
