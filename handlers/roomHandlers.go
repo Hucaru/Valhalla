@@ -221,24 +221,26 @@ func handleUIWindow(conn *connection.Channel, reader maplepacket.Reader) {
 				channel.Maps.GetMap(r.MapID).SendPacket(p)
 			}
 
-			r.Broadcast(packets.RoomTurnIndication(r.P1Turn))
+			if r.RoomType == 0x01 {
+				r.Broadcast(packets.RoomOmokStart(r.P1Turn))
+			} else if r.RoomType == 0x02 {
+
+			}
+
 		})
 	case 0x37:
 		// change turn
 		channel.ActiveRooms.OnConn(conn, func(r *channel.Room) {
 			r.P1Turn = !r.P1Turn
-			r.Broadcast(packets.RoomTurnIndication(r.P1Turn))
 		})
 	case 0x38:
 		// place piece
-		reader.ReadByte()
 		x := reader.ReadInt32()
 		y := reader.ReadInt32()
+		piece := reader.ReadByte()
 
 		channel.ActiveRooms.OnConn(conn, func(r *channel.Room) {
-			r.PlacePiece(x, y)
-			r.P1Turn = !r.P1Turn
-			r.Broadcast(packets.RoomTurnIndication(r.P1Turn))
+			r.PlacePiece(x, y, piece)
 		})
 
 	default:

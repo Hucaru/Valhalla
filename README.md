@@ -116,5 +116,7 @@ Taken from [here](http://forum.ragezone.com/f428/add-learning-npcs-start-finish-
 
 ![](https://i.imgur.com/hE0mWItg.png)
 
+![](https://i.imgur.com/4bizhIi.png)
+
 <div>Valhalla Logo made with <a href="https://
 www.designevo.com/" title="Free Online Logo Maker">DesignEvo</a></div>

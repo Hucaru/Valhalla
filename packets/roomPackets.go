@@ -8,7 +8,7 @@ import (
 	"github.com/Hucaru/Valhalla/maplepacket"
 )
 
-func RoomShowWindow(roomType, maxPlayers, roomSlot byte, roomTitle string, chars []character.Character) maplepacket.Packet {
+func RoomShowWindow(roomType, boardType, maxPlayers, roomSlot byte, roomTitle string, chars []character.Character) maplepacket.Packet {
 	p := maplepacket.NewPacket()
 	p.WriteByte(constants.SEND_CHANNEL_ROOM)
 	p.WriteByte(0x05)
@@ -19,7 +19,7 @@ func RoomShowWindow(roomType, maxPlayers, roomSlot byte, roomTitle string, chars
 	for i, c := range chars {
 		p.WriteByte(byte(i))
 		p.Append(writeDisplayCharacter(c))
-		p.WriteInt32(0) // not sure what this is, board settings?
+		p.WriteInt32(0) // not sure what this is - memory card game seed? board settings?
 		p.WriteString(c.GetName())
 	}
 
@@ -32,7 +32,7 @@ func RoomShowWindow(roomType, maxPlayers, roomSlot byte, roomTitle string, chars
 	for i, c := range chars {
 		p.WriteByte(byte(i))
 
-		p.WriteInt32(1) // not sure what this is!?
+		p.WriteInt32(0) // not sure what this is!?
 		switch roomType {
 		case 0x01:
 			p.WriteInt32(c.GetOmokWins())
@@ -46,13 +46,14 @@ func RoomShowWindow(roomType, maxPlayers, roomSlot byte, roomTitle string, chars
 			fmt.Println("Unknown game type", roomType)
 		}
 
-		p.WriteInt32(1234) // Points in the ui. What does it represent?
+		p.WriteInt32(2000) // Points in the ui. What does it represent?
 	}
 
 	p.WriteByte(0xFF)
 	p.WriteString(roomTitle)
-	p.WriteByte(0)
-	p.WriteByte(0)
+	// extends packet
+	p.WriteByte(0) // p1 omok piece?
+	p.WriteByte(0) // p2 omok piece?
 
 	return p
 }
@@ -70,7 +71,7 @@ func RoomJoin(roomType, roomSlot byte, char character.Character) maplepacket.Pac
 		return p
 	}
 
-	p.WriteInt32(1) // not sure what this is!?
+	p.WriteInt32(0) // not sure what this is!?
 	switch roomType {
 	case 0x01:
 		p.WriteInt32(char.GetOmokWins())
@@ -84,7 +85,7 @@ func RoomJoin(roomType, roomSlot byte, char character.Character) maplepacket.Pac
 		fmt.Println("Unknown game type", roomType)
 	}
 
-	p.WriteInt32(1234) // Points in the ui. What does it represent?
+	p.WriteInt32(2000) // Points in the ui. What does it represent?
 
 	return p
 }
@@ -198,7 +199,7 @@ func RoomRejectUndo() maplepacket.Packet {
 	return p
 }
 
-func RoomTurnIndication(p1Turn bool) maplepacket.Packet {
+func RoomOmokStart(p1Turn bool) maplepacket.Packet {
 	p := maplepacket.NewPacket()
 	p.WriteByte(constants.SEND_CHANNEL_ROOM)
 	p.WriteByte(0x35)
@@ -207,13 +208,13 @@ func RoomTurnIndication(p1Turn bool) maplepacket.Packet {
 	return p
 }
 
-func RoomPlaceOmokPiece(x, y int32) maplepacket.Packet {
+func RoomPlaceOmokPiece(x, y int32, piece byte) maplepacket.Packet {
 	p := maplepacket.NewPacket()
 	p.WriteByte(constants.SEND_CHANNEL_ROOM)
 	p.WriteByte(0x38)
 	p.WriteInt32(x)
 	p.WriteInt32(y)
-	p.WriteByte(0)
+	p.WriteByte(piece)
 
 	return p
 }

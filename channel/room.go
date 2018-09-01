@@ -103,19 +103,25 @@ func (t *rooms) OnRoom(action func(r *Room)) {
 }
 
 type Room struct {
-	ID             int32
-	participants   [4]*MapleCharacter
+	// Move these to be under mutex protection
+	ID         int32
+	MapID      int32 // Change to retrieve from players
+	P1Turn     bool
+	InProgress bool
+
+	RoomType     byte
+	maxPlayers   byte
+	participants [4]*MapleCharacter
+
 	sItems, rItems [9]inventory.Item
 	sMesos, rMesos int32
+	accept         int
+
 	name, password string
 	boardType      byte
-	accept         int
-	RoomType       byte
-	maxPlayers     byte
-	MapID          int32
-	mutex          *sync.RWMutex
-	P1Turn         bool
-	InProgress     bool
+	board          [15][15]byte
+
+	mutex *sync.RWMutex
 }
 
 func CreateTradeRoom(char *MapleCharacter) {
@@ -180,7 +186,7 @@ func (r *Room) AddParticipant(char *MapleCharacter) {
 			}
 		}
 
-		char.SendPacket(packets.RoomShowWindow(r.RoomType, r.maxPlayers, byte(index), r.name, displayInfo))
+		char.SendPacket(packets.RoomShowWindow(r.RoomType, r.boardType, r.maxPlayers, byte(index), r.name, displayInfo))
 
 		if p, valid := r.GetBox(); valid {
 			Maps.GetMap(r.MapID).SendPacket(p)
@@ -321,10 +327,42 @@ func (r *Room) Expel(roomSlot int) {
 	}
 }
 
-func (r *Room) PlacePiece(x, y int32) {
-	// validate placement
-	// if valid, place and check for win or other condition
-	r.Broadcast(packets.RoomPlaceOmokPiece(x, y))
+func (r *Room) PlacePiece(x, y int32, piece byte) {
+	r.mutex.Lock()
+	if r.board[x][y] != 0 {
+		return
+	}
+
+	if r.P1Turn == true {
+		r.board[x][y] = piece
+	} else {
+		r.board[x][y] = piece
+	}
+
+	r.P1Turn = !r.P1Turn
+	r.mutex.Unlock()
+
+	r.mutex.RLock()
+	win, draw := checkOmokWin(r.board, piece)
+	r.mutex.RUnlock()
+
+	r.Broadcast(packets.RoomPlaceOmokPiece(x, y, piece))
+
+	if win {
+		// end game and broadcast win
+		r.mutex.Lock()
+		r.board = [15][15]byte{}
+		r.mutex.Unlock()
+	} else if draw {
+		// end game and broadcast draw
+		r.mutex.Lock()
+		r.board = [15][15]byte{}
+		r.mutex.Unlock()
+	}
+}
+
+func checkOmokWin(board [15][15]byte, piece byte) (bool, bool) {
+	return false, false
 }
 
 func (r *Room) UpdateCharDisplay() {
