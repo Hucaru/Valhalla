@@ -225,7 +225,7 @@ func handleUIWindow(conn *connection.Channel, reader maplepacket.Reader) {
 			if r.RoomType == 0x01 {
 				r.Broadcast(packets.RoomOmokStart(r.P1Turn))
 			} else if r.RoomType == 0x02 {
-
+				r.Broadcast(packets.RoomMemoryStart(r.P1Turn, int32(r.GetBoardType())))
 			}
 
 		})

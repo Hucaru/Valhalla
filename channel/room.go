@@ -161,6 +161,14 @@ func (r *Room) GetPassword() string {
 	return password
 }
 
+func (r *Room) GetBoardType() byte {
+	r.mutex.RLock()
+	boardType := r.boardType
+	r.mutex.RUnlock()
+
+	return boardType
+}
+
 func (r *Room) GetParticipantFromSlot(slotId byte) *MapleCharacter {
 	r.mutex.RLock()
 
@@ -227,7 +235,13 @@ func (r *Room) GetBox() (maplepacket.Packet, bool) {
 		}
 
 		if r.participants[0] != nil {
-			p = packets.RoomShowMapBox(r.participants[0].GetCharID(), r.ID, r.RoomType, r.boardType, r.name, hasPassword, r.InProgress)
+			var ammount byte = 0x1
+
+			if r.InProgress {
+				ammount = 2
+			}
+
+			p = packets.RoomShowMapBox(r.participants[0].GetCharID(), r.ID, r.RoomType, r.boardType, r.name, hasPassword, r.InProgress, ammount)
 			valid = true
 		}
 	}
@@ -359,20 +373,30 @@ func (r *Room) PlacePiece(x, y int32, piece byte) {
 
 	r.Broadcast(packets.RoomPlaceOmokPiece(x, y, piece))
 
-	if win {
+	if win || draw {
 		// end game and broadcast win
+		chars := make([]character.Character, 0)
+
+		r.mutex.RLock()
+		for i := 0; i < 2; i++ {
+			chars = append(chars, r.participants[i].Character)
+		}
+		r.mutex.RUnlock()
+
+		r.Broadcast(packets.RoomGameResult(draw, 1, chars))
+
 		r.mutex.Lock()
 		r.board = [15][15]byte{}
 		r.mutex.Unlock()
-	} else if draw {
-		// end game and broadcast draw
-		r.mutex.Lock()
-		r.board = [15][15]byte{}
-		r.mutex.Unlock()
+
+		// reset the window
+
+		// if player registered to leave after game over, remove them
 	}
 }
 
 func checkOmokWin(board [15][15]byte, piece byte) (bool, bool) {
+
 	return false, false
 }
 

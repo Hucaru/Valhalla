@@ -39,8 +39,7 @@ func RoomShowWindow(roomType, boardType, maxPlayers, roomSlot byte, roomTitle st
 
 	p.WriteByte(0xFF)
 	p.WriteString(roomTitle)
-	// extends packet, omok info e.g. cards or piece?
-	p.WriteByte(0)
+	p.WriteByte(boardType)
 	p.WriteByte(0)
 
 	return p
@@ -186,6 +185,21 @@ func RoomOmokStart(ownerStart bool) maplepacket.Packet {
 	return p
 }
 
+func RoomMemoryStart(ownerStart bool, boardType int32) maplepacket.Packet {
+	p := maplepacket.NewPacket()
+	p.WriteByte(constants.SendChannelRoom)
+	p.WriteByte(0x35)
+	p.WriteBool(ownerStart)
+	p.WriteByte(0x0C)
+	p.WriteInt32(boardType)
+
+	for i := 0; i < 20; i++ {
+		p.WriteUint64(0) // figure out what needs to be done to shuffle the cards
+	}
+
+	return p
+}
+
 func RoomGameResult(draw bool, forfeit int, chars []character.Character) maplepacket.Packet {
 	p := maplepacket.NewPacket()
 	p.WriteByte(constants.SendChannelRoom)
@@ -241,7 +255,7 @@ func RoomOmokInvalidPlaceMsg() maplepacket.Packet {
 	return p
 }
 
-func RoomShowMapBox(charID, roomID int32, roomType, boardType byte, name string, hasPassword, koreanText bool) maplepacket.Packet {
+func RoomShowMapBox(charID, roomID int32, roomType, boardType byte, name string, hasPassword, koreanText bool, ammount byte) maplepacket.Packet {
 	p := maplepacket.NewPacket()
 	p.WriteByte(constants.SendChannelRoomBox)
 	p.WriteInt32(charID)
@@ -251,7 +265,7 @@ func RoomShowMapBox(charID, roomID int32, roomType, boardType byte, name string,
 	p.WriteBool(hasPassword)
 	p.WriteByte(boardType)
 	// win loss record since room opened?
-	p.WriteByte(1)
+	p.WriteByte(ammount)
 	p.WriteByte(2)
 	p.WriteBool(koreanText)
 
