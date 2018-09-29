@@ -481,8 +481,9 @@ func (r *Room) GameEnd(draw bool, slotID byte, forfeit bool) {
 	}
 
 	if r.leaveAfterGame[0] == true {
-		r.RemoveParticipant(r.GetParticipantFromSlot(0), 0)
-		r.participants[0].SendPacket(packets.RoomLeave(byte(0), 0))
+		char := r.participants[0]
+		r.RemoveParticipant(char, 0)
+		char.SendPacket(packets.RoomLeave(byte(0), 0))
 	}
 }
 

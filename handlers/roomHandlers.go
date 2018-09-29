@@ -70,7 +70,6 @@ func handleUIWindow(conn *connection.Channel, reader maplepacket.Reader) {
 		default:
 			fmt.Println("Unknown room", roomType, reader)
 		}
-
 	case 0x01:
 		fmt.Println("case 1", reader)
 	case 0x02: // Send invite
@@ -132,7 +131,6 @@ func handleUIWindow(conn *connection.Channel, reader maplepacket.Reader) {
 				recipient.SendPacket(packets.RoomClosed())
 			})
 		}
-
 	case 0x06: // Chat
 		message := reader.ReadString(int(reader.ReadInt16()))
 		name := ""
@@ -145,7 +143,6 @@ func handleUIWindow(conn *connection.Channel, reader maplepacket.Reader) {
 		channel.ActiveRooms.OnConn(conn, func(r *channel.Room) {
 			r.SendMessage(name, message)
 		})
-
 	case 0x0A: // Close window
 		roomID := int32(-1)
 		removeRoom := false
@@ -184,12 +181,28 @@ func handleUIWindow(conn *connection.Channel, reader maplepacket.Reader) {
 		channel.ActiveRooms.OnConn(conn, func(r *channel.Room) {
 			channel.Players.OnCharacterFromConn(conn, func(char *channel.MapleCharacter) {
 				if r.GetSlotIDFromChar(char) == 0 {
-					// send draw to player 1
+					r.GetParticipantFromSlot(1).SendPacket(packets.RoomRequestTie())
 				} else {
-					// send draw to player 0
+					r.GetParticipantFromSlot(0).SendPacket(packets.RoomRequestTie())
 				}
 			})
 		})
+	case 0x2B: // Request tie result
+		if reader.ReadByte() == 1 {
+			channel.ActiveRooms.OnConn(conn, func(r *channel.Room) {
+				r.GameEnd(true, 0, false)
+			})
+		} else {
+			channel.ActiveRooms.OnConn(conn, func(r *channel.Room) {
+				channel.Players.OnCharacterFromConn(conn, func(char *channel.MapleCharacter) {
+					if r.GetSlotIDFromChar(char) == 0 {
+						r.GetParticipantFromSlot(1).SendPacket(packets.RoomRejectTie())
+					} else {
+						r.GetParticipantFromSlot(0).SendPacket(packets.RoomRejectTie())
+					}
+				})
+			})
+		}
 	case 0x2C: // Request give up
 		channel.ActiveRooms.OnConn(conn, func(r *channel.Room) {
 			channel.Players.OnCharacterFromConn(conn, func(char *channel.MapleCharacter) {
@@ -218,7 +231,6 @@ func handleUIWindow(conn *connection.Channel, reader maplepacket.Reader) {
 		channel.ActiveRooms.OnConn(conn, func(r *channel.Room) {
 			channel.Players.OnCharacterFromConn(conn, func(char *channel.MapleCharacter) {
 				r.RemoveParticipant(r.GetParticipantFromSlot(1), 5)
-				// r.Broadcast(packets.RoomYellowChat(0, r.GetParticipantFromSlot(1).GetName())) // sending this causes a crash to login screen when re-join
 			})
 		})
 	case 0x35: // Game start
@@ -234,7 +246,6 @@ func handleUIWindow(conn *connection.Channel, reader maplepacket.Reader) {
 			} else if r.RoomType == 0x02 {
 				r.Broadcast(packets.RoomMemoryStart(r.P1Turn, int32(r.GetBoardType())))
 			}
-
 		})
 	case 0x37: // change turn
 		channel.ActiveRooms.OnConn(conn, func(r *channel.Room) {
@@ -249,7 +260,6 @@ func handleUIWindow(conn *connection.Channel, reader maplepacket.Reader) {
 		channel.ActiveRooms.OnConn(conn, func(r *channel.Room) {
 			r.PlacePiece(x, y, piece)
 		})
-
 	default:
 		fmt.Println("Unkown case type", operation, reader)
 	}
