@@ -120,7 +120,9 @@ type Room struct {
 	name, password string
 	boardType      byte
 	board          [15][15]byte
-	leaveAfterGame [4]bool
+	leaveAfterGame [2]bool
+	lastTurnP1     [2]int32
+	lastTurnP2     [2]int32
 
 	mutex *sync.RWMutex
 }
@@ -384,6 +386,18 @@ func (r *Room) ChangeTurn() {
 	r.mutex.Unlock()
 }
 
+func (r *Room) UndoTurn(p1 bool) { // figure out packet for this
+	if p1 {
+		r.mutex.Lock()
+		r.board[r.lastTurnP1[0]][r.lastTurnP1[1]] = 0
+		r.mutex.Unlock()
+	} else {
+		r.mutex.Lock()
+		r.board[r.lastTurnP2[0]][r.lastTurnP2[1]] = 0
+		r.mutex.Unlock()
+	}
+}
+
 func (r *Room) PlacePiece(x, y int32, piece byte) {
 	if r.board[x][y] != 0 {
 		if r.P1Turn {
@@ -398,10 +412,18 @@ func (r *Room) PlacePiece(x, y int32, piece byte) {
 	var slotId byte
 
 	if r.GetP1Turn() == true {
+		r.mutex.RLock()
 		r.board[x][y] = piece
+		r.lastTurnP1[0] = x
+		r.lastTurnP1[1] = y
+		r.mutex.RUnlock()
 		slotId = 0
 	} else {
+		r.mutex.RLock()
 		r.board[x][y] = piece
+		r.lastTurnP2[0] = x
+		r.lastTurnP2[1] = y
+		r.mutex.RUnlock()
 		slotId = 1
 	}
 
@@ -421,9 +443,9 @@ func (r *Room) PlacePiece(x, y int32, piece byte) {
 
 	if win || draw {
 		r.GameEnd(draw, slotId, false)
-	} else {
-		r.ChangeTurn()
 	}
+
+	r.ChangeTurn()
 }
 
 func (r *Room) GameEnd(draw bool, slotID byte, forfeit bool) {

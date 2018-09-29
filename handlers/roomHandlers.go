@@ -213,6 +213,34 @@ func handleUIWindow(conn *connection.Channel, reader maplepacket.Reader) {
 				r.GameEnd(false, slotID, true)
 			})
 		})
+	case 0x2e: // Request undo
+		channel.ActiveRooms.OnConn(conn, func(r *channel.Room) {
+			channel.Players.OnCharacterFromConn(conn, func(char *channel.MapleCharacter) {
+				if r.GetSlotIDFromChar(char) == 0 {
+					r.GetParticipantFromSlot(1).SendPacket(packets.RoomRequestUndo())
+				} else {
+					r.GetParticipantFromSlot(0).SendPacket(packets.RoomRequestUndo())
+				}
+			})
+		})
+	case 0x2F: // Request undo result
+		channel.ActiveRooms.OnConn(conn, func(r *channel.Room) {
+			channel.Players.OnCharacterFromConn(conn, func(char *channel.MapleCharacter) {
+				if reader.ReadByte() == 1 {
+					if r.GetSlotIDFromChar(char) == 0 {
+						r.UndoTurn(true)
+					} else {
+						r.UndoTurn(false)
+					}
+				} else {
+					if r.GetSlotIDFromChar(char) == 0 {
+						r.GetParticipantFromSlot(1).SendPacket(packets.RoomRejectUndo())
+					} else {
+						r.GetParticipantFromSlot(0).SendPacket(packets.RoomRejectUndo())
+					}
+				}
+			})
+		})
 	case 0x32: // Ready button pressed
 		channel.ActiveRooms.OnConn(conn, func(r *channel.Room) {
 			r.Broadcast(packets.RoomReady())
