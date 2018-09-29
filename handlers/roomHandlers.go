@@ -13,7 +13,7 @@ func handleUIWindow(conn *connection.Channel, reader maplepacket.Reader) {
 	operation := reader.ReadByte() // Trade operation
 
 	switch operation {
-	case 0x00:
+	case 0x00: // Create room
 		// check not in a room already
 		alreadyInRoom := false
 
@@ -25,14 +25,13 @@ func handleUIWindow(conn *connection.Channel, reader maplepacket.Reader) {
 			return
 		}
 
-		// create room
 		roomType := reader.ReadByte()
 
 		switch roomType {
 		case 0:
 			fmt.Println("Create Room type 0")
-		case 1:
-			// create memory game
+		case 1: // Create memory game
+
 			name := reader.ReadString(int(reader.ReadInt16()))
 
 			var password string
@@ -45,8 +44,8 @@ func handleUIWindow(conn *connection.Channel, reader maplepacket.Reader) {
 			channel.Players.OnCharacterFromConn(conn, func(char *channel.MapleCharacter) {
 				channel.CreateOmokGame(char, name, password, boardType)
 			})
-		case 2:
-			// create memory game
+		case 2: // Create memory game
+
 			name := reader.ReadString(int(reader.ReadInt16()))
 
 			var password string
@@ -59,23 +58,22 @@ func handleUIWindow(conn *connection.Channel, reader maplepacket.Reader) {
 			channel.Players.OnCharacterFromConn(conn, func(char *channel.MapleCharacter) {
 				channel.CreateMemoryGame(char, name, password, boardType)
 			})
-		case 3:
-			// create trade
+		case 3: // Create trade
+
 			channel.Players.OnCharacterFromConn(conn, func(char *channel.MapleCharacter) {
 				channel.CreateTradeRoom(char)
 			})
-		case 4:
-			// create personal shop
-		case 5:
-			// create other shop
+		case 4: // Create personal shop
+
+		case 5: // Create other shop
+
 		default:
 			fmt.Println("Unknown room", roomType, reader)
 		}
 
 	case 0x01:
 		fmt.Println("case 1", reader)
-	case 0x02:
-		// send invite
+	case 0x02: // Send invite
 		charID := reader.ReadInt32()
 
 		channel.Players.OnCharacterFromID(charID, func(recipient *channel.MapleCharacter) {
@@ -89,8 +87,7 @@ func handleUIWindow(conn *connection.Channel, reader maplepacket.Reader) {
 				})
 			})
 		})
-	case 0x03:
-		//reject
+	case 0x03: // Reject
 		roomID := reader.ReadInt32()
 		rejectCode := reader.ReadByte()
 
@@ -104,8 +101,7 @@ func handleUIWindow(conn *connection.Channel, reader maplepacket.Reader) {
 				}
 			})
 		})
-	case 0x04:
-		//accept
+	case 0x04: // Accept
 		roomID := reader.ReadInt32()
 		hasPassword := false
 		var password string
@@ -137,8 +133,7 @@ func handleUIWindow(conn *connection.Channel, reader maplepacket.Reader) {
 			})
 		}
 
-	case 0x06:
-		// chat
+	case 0x06: // Chat
 		message := reader.ReadString(int(reader.ReadInt16()))
 		name := ""
 		// roomSlot := byte(0x0)
@@ -151,32 +146,28 @@ func handleUIWindow(conn *connection.Channel, reader maplepacket.Reader) {
 			r.SendMessage(name, message)
 		})
 
-	case 0x0A:
-		// close window
+	case 0x0A: // Close window
 		roomID := int32(-1)
 		removeRoom := false
 
 		channel.ActiveRooms.OnConn(conn, func(r *channel.Room) {
 			channel.Players.OnCharacterFromConn(conn, func(char *channel.MapleCharacter) {
-				removeRoom, roomID = r.RemoveParticipant(char)
+				removeRoom, roomID = r.RemoveParticipant(char, 0)
 			})
 		})
 
 		if removeRoom {
 			channel.ActiveRooms.Remove(roomID)
 		}
-	case 0x0D:
-		// insert item
+	case 0x0D: // Insert item
 		// invTab := reader.ReadByte()
 		// itemSlot := reader.ReadInt16()
 		// quantity := reader.ReadInt16()
 		// tradeWindowSlot := reader.ReadByte()
 
-	case 0x0E:
-		// mesos
+	case 0x0E: // Mesos
 		// amount := reader.ReadInt32()
-	case 0x0F:
-		// accept trade button pressed
+	case 0x0F: // accept trade button pressed
 		removeRoom := false
 		roomID := int32(-1)
 
@@ -189,32 +180,48 @@ func handleUIWindow(conn *connection.Channel, reader maplepacket.Reader) {
 		if removeRoom {
 			channel.ActiveRooms.Remove(roomID)
 		}
-	case 0x2A:
-		// Request tie
-	case 0x2C:
-		// Request give up
-	case 0x32:
-		// Ready button pressed
+	case 0x2A: // Request tie
+		channel.ActiveRooms.OnConn(conn, func(r *channel.Room) {
+			channel.Players.OnCharacterFromConn(conn, func(char *channel.MapleCharacter) {
+				if r.GetSlotIDFromChar(char) == 0 {
+					// send draw to player 1
+				} else {
+					// send draw to player 0
+				}
+			})
+		})
+	case 0x2C: // Request give up
+		channel.ActiveRooms.OnConn(conn, func(r *channel.Room) {
+			channel.Players.OnCharacterFromConn(conn, func(char *channel.MapleCharacter) {
+				slotID := byte(0)
+				if r.GetSlotIDFromChar(char) == 0 {
+					slotID = 1
+				}
+				r.GameEnd(false, slotID, true)
+			})
+		})
+	case 0x32: // Ready button pressed
 		channel.ActiveRooms.OnConn(conn, func(r *channel.Room) {
 			r.Broadcast(packets.RoomReady())
 		})
-	case 0x30:
-		// Request exit during game
-	case 0x33:
-		// Unready
+	case 0x30: // Request exit during game
+		channel.ActiveRooms.OnConn(conn, func(r *channel.Room) {
+			channel.Players.OnCharacterFromConn(conn, func(char *channel.MapleCharacter) {
+				r.AddLeave(char)
+			})
+		})
+	case 0x33: // Unready
 		channel.ActiveRooms.OnConn(conn, func(r *channel.Room) {
 			r.Broadcast(packets.RoomUnReady())
 		})
-	case 0x34:
-		// owner expells
+	case 0x34: // owner expells
 		channel.ActiveRooms.OnConn(conn, func(r *channel.Room) {
 			channel.Players.OnCharacterFromConn(conn, func(char *channel.MapleCharacter) {
-				r.RemoveParticipant(r.GetParticipantFromSlot(1))
-				r.Broadcast(packets.RoomYellowChat(0, char.GetName())) // sending this causes a crash to login screen when re-join
+				r.RemoveParticipant(r.GetParticipantFromSlot(1), 5)
+				// r.Broadcast(packets.RoomYellowChat(0, r.GetParticipantFromSlot(1).GetName())) // sending this causes a crash to login screen when re-join
 			})
 		})
-	case 0x35:
-		// Game start
+	case 0x35: // Game start
 		channel.ActiveRooms.OnConn(conn, func(r *channel.Room) {
 			r.InProgress = true
 
@@ -229,14 +236,12 @@ func handleUIWindow(conn *connection.Channel, reader maplepacket.Reader) {
 			}
 
 		})
-	case 0x37:
-		// change turn
+	case 0x37: // change turn
 		channel.ActiveRooms.OnConn(conn, func(r *channel.Room) {
 			r.Broadcast(packets.RoomOmokSkip(r.P1Turn))
-			r.P1Turn = !r.P1Turn
+			r.ChangeTurn()
 		})
-	case 0x38:
-		// place piece
+	case 0x38: // place piece
 		x := reader.ReadInt32()
 		y := reader.ReadInt32()
 		piece := reader.ReadByte()

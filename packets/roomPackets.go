@@ -200,20 +200,20 @@ func RoomMemoryStart(ownerStart bool, boardType int32) maplepacket.Packet {
 	return p
 }
 
-func RoomGameResult(draw bool, forfeit int, chars []character.Character) maplepacket.Packet {
+func RoomGameResult(draw bool, winningSlot byte, forfeit bool, chars []character.Character) maplepacket.Packet {
 	p := maplepacket.NewPacket()
 	p.WriteByte(constants.SendChannelRoom)
 	p.WriteByte(0x36)
 
-	if !draw && forfeit != 1 {
+	if !draw && !forfeit {
 		p.WriteBool(draw)
 	} else if draw {
 		p.WriteBool(draw)
-	} else if forfeit == 1 {
+	} else if forfeit {
 		p.WriteByte(2)
 	}
 
-	p.WriteByte(0)
+	p.WriteByte(winningSlot)
 
 	for _, char := range chars {
 		p.WriteInt32(1) // ?

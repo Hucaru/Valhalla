@@ -120,7 +120,7 @@ type Room struct {
 	name, password string
 	boardType      byte
 	board          [15][15]byte
-	leaveAfterGame bool
+	leaveAfterGame [4]bool
 
 	mutex *sync.RWMutex
 }
@@ -270,7 +270,7 @@ func (r *Room) removeParticipant(char *MapleCharacter) (int, byte) {
 	return roomSlot, counter
 }
 
-func (r *Room) RemoveParticipant(char *MapleCharacter) (bool, int32) {
+func (r *Room) RemoveParticipant(char *MapleCharacter, msgCode byte) (bool, int32) {
 	roomSlot, counter := r.removeParticipant(char)
 	closeRoom := false
 
@@ -294,9 +294,12 @@ func (r *Room) RemoveParticipant(char *MapleCharacter) (bool, int32) {
 					}
 				}
 			} else {
-				// I think the numbers change on box on map depending on how many people are in?
-				char.SendPacket(packets.RoomLeave(byte(roomSlot), 5))
-				r.Broadcast(packets.RoomLeave(byte(roomSlot), 5))
+				char.SendPacket(packets.RoomLeave(byte(roomSlot), msgCode))
+				r.Broadcast(packets.RoomLeave(byte(roomSlot), msgCode))
+
+				if msgCode == 5 {
+					r.Broadcast(packets.RoomYellowChat(0, char.GetName()))
+				}
 			}
 		}
 		r.mutex.RUnlock()
@@ -346,6 +349,41 @@ func (r *Room) Accept(char *MapleCharacter) (bool, int32) {
 	return success, r.ID
 }
 
+func (r *Room) GetP1Turn() bool {
+	r.mutex.RLock()
+	result := r.P1Turn
+	r.mutex.RUnlock()
+
+	return result
+}
+
+func (r *Room) GetSlotIDFromChar(char *MapleCharacter) byte {
+	id := byte(0)
+	r.mutex.RLock()
+	for i, v := range r.participants {
+		if v == char {
+			id = byte(i)
+		}
+	}
+	r.mutex.RUnlock()
+
+	return id
+}
+
+func (r *Room) AddLeave(char *MapleCharacter) {
+	id := r.GetSlotIDFromChar(char)
+
+	r.mutex.Lock()
+	r.leaveAfterGame[id] = true
+	r.mutex.Unlock()
+}
+
+func (r *Room) ChangeTurn() {
+	r.mutex.Lock()
+	r.P1Turn = !r.P1Turn
+	r.mutex.Unlock()
+}
+
 func (r *Room) PlacePiece(x, y int32, piece byte) {
 	if r.board[x][y] != 0 {
 		if r.P1Turn {
@@ -357,47 +395,163 @@ func (r *Room) PlacePiece(x, y int32, piece byte) {
 		return
 	}
 
-	r.mutex.Lock()
-	if r.P1Turn == true {
+	var slotId byte
+
+	if r.GetP1Turn() == true {
 		r.board[x][y] = piece
+		slotId = 0
 	} else {
 		r.board[x][y] = piece
+		slotId = 1
 	}
 
-	r.P1Turn = !r.P1Turn
-	r.mutex.Unlock()
-
 	r.mutex.RLock()
-	win, draw := checkOmokWin(r.board, piece)
+	win := checkOmokWin(r.board, piece)
 	r.mutex.RUnlock()
+
+	draw := false
+
+	if !win {
+		r.mutex.RLock()
+		draw = checkOmokDraw(r.board)
+		r.mutex.RUnlock()
+	}
 
 	r.Broadcast(packets.RoomPlaceOmokPiece(x, y, piece))
 
 	if win || draw {
-		// end game and broadcast win
-		chars := make([]character.Character, 0)
-
-		r.mutex.RLock()
-		for i := 0; i < 2; i++ {
-			chars = append(chars, r.participants[i].Character)
-		}
-		r.mutex.RUnlock()
-
-		r.Broadcast(packets.RoomGameResult(draw, 1, chars))
-
-		r.mutex.Lock()
-		r.board = [15][15]byte{}
-		r.mutex.Unlock()
-
-		// reset the window
-
-		// if player registered to leave after game over, remove them
+		r.GameEnd(draw, slotId, false)
+	} else {
+		r.ChangeTurn()
 	}
 }
 
-func checkOmokWin(board [15][15]byte, piece byte) (bool, bool) {
+func (r *Room) GameEnd(draw bool, slotID byte, forfeit bool) {
+	// Update the map box for current map players
+	p, _ := r.GetBox()
 
-	return false, false
+	r.mutex.RLock()
+	r.InProgress = false
+	Maps.GetMap(r.participants[0].GetCurrentMap()).SendPacket(p)
+	r.mutex.RUnlock()
+
+	// Update players records
+	if forfeit {
+		if slotID == 1 { // for forfeits slot id is inversed
+			r.participants[0].SetOmokLosses(r.participants[0].GetOmokLosses() + 1)
+			r.participants[1].SetOmokWins(r.participants[1].GetOmokWins() + 1)
+		} else {
+			r.participants[1].SetOmokLosses(r.participants[1].GetOmokLosses() + 1)
+			r.participants[0].SetOmokWins(r.participants[0].GetOmokWins() + 1)
+		}
+
+	} else if draw {
+		r.participants[0].SetOmokTies(r.participants[0].GetOmokTies() + 1)
+		r.participants[1].SetOmokTies(r.participants[1].GetOmokTies() + 1)
+	} else {
+		r.participants[slotID].SetOmokWins(r.participants[slotID].GetOmokWins() + 1)
+
+		if slotID == 1 {
+			r.participants[0].SetOmokLosses(r.participants[0].GetOmokLosses() + 1)
+		} else {
+			r.participants[1].SetOmokLosses(r.participants[1].GetOmokLosses() + 1)
+		}
+
+	}
+
+	chars := make([]character.Character, 0)
+
+	r.mutex.RLock()
+	for i := 0; i < 2; i++ {
+		if r.participants[i] != nil {
+			chars = append(chars, r.participants[i].Character)
+		}
+	}
+	r.mutex.RUnlock()
+
+	r.Broadcast(packets.RoomGameResult(draw, slotID, forfeit, chars))
+
+	r.mutex.Lock()
+	r.board = [15][15]byte{}
+	r.mutex.Unlock()
+
+	// Remove players registered to leave
+	if r.leaveAfterGame[1] == true {
+		r.RemoveParticipant(r.GetParticipantFromSlot(1), 0)
+	}
+
+	if r.leaveAfterGame[0] == true {
+		r.RemoveParticipant(r.GetParticipantFromSlot(0), 0)
+		r.participants[0].SendPacket(packets.RoomLeave(byte(0), 0))
+	}
+}
+
+func checkOmokDraw(board [15][15]byte) bool {
+	for i := 0; i < 15; i++ {
+		for j := 0; j < 15; j++ {
+			if board[i][j] > 0 {
+				return false
+			}
+		}
+	}
+
+	return true
+}
+
+func checkOmokWin(board [15][15]byte, piece byte) bool {
+	// Check horizontal
+	for i := 0; i < 15; i++ {
+		for j := 0; j < 11; j++ {
+			if board[j][i] == piece &&
+				board[j+1][i] == piece &&
+				board[j+2][i] == piece &&
+				board[j+3][i] == piece &&
+				board[j+4][i] == piece {
+				return true
+			}
+		}
+	}
+
+	// Check vertical
+	for i := 0; i < 11; i++ {
+		for j := 0; j < 15; j++ {
+			if board[j][i] == piece &&
+				board[j][i+1] == piece &&
+				board[j][i+2] == piece &&
+				board[j][i+3] == piece &&
+				board[j][i+4] == piece {
+				return true
+			}
+		}
+	}
+
+	// Check diagonal 1
+	for i := 4; i < 15; i++ {
+		for j := 0; j < 11; j++ {
+			if board[j][i] == piece &&
+				board[j+1][i-1] == piece &&
+				board[j+2][i-2] == piece &&
+				board[j+3][i-3] == piece &&
+				board[j+4][i-4] == piece {
+				return true
+			}
+		}
+	}
+
+	// Check diagonal 2
+	for i := 0; i < 11; i++ {
+		for j := 0; j < 11; j++ {
+			if board[j][i] == piece &&
+				board[j+1][i+1] == piece &&
+				board[j+2][i+2] == piece &&
+				board[j+3][i+3] == piece &&
+				board[j+4][i+4] == piece {
+				return true
+			}
+		}
+	}
+
+	return false
 }
 
 func (r *Room) UpdateCharDisplay() {
