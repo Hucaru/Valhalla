@@ -14,8 +14,7 @@ import (
 )
 
 func PlayerReceivedDmg(charID int32, ammount int32, dmgType byte, mobID int32, hit byte, reduction byte, stance byte) maplepacket.Packet {
-	p := maplepacket.NewPacket()
-	p.WriteByte(constants.SendChannelPlayerTakeDmg)
+	p := maplepacket.CreateWithOpcode(constants.SendChannelPlayerTakeDmg)
 	p.WriteInt32(charID)
 	p.WriteByte(dmgType)
 
@@ -35,8 +34,7 @@ func PlayerReceivedDmg(charID int32, ammount int32, dmgType byte, mobID int32, h
 }
 
 func PlayerLevelUpAnimation(charID int32) maplepacket.Packet {
-	p := maplepacket.NewPacket()
-	p.WriteByte(constants.SendChannelPlayerAnimation)
+	p := maplepacket.CreateWithOpcode(constants.SendChannelPlayerAnimation)
 	p.WriteInt32(charID)
 	p.WriteByte(0x00)
 
@@ -44,8 +42,7 @@ func PlayerLevelUpAnimation(charID int32) maplepacket.Packet {
 }
 
 func PlayerMove(charID int32, leftOverBytes maplepacket.Packet) maplepacket.Packet {
-	p := maplepacket.NewPacket()
-	p.WriteByte(constants.SendChannelPlayerMovement)
+	p := maplepacket.CreateWithOpcode(constants.SendChannelPlayerMovement)
 	p.WriteInt32(charID)
 	p.WriteBytes(leftOverBytes)
 
@@ -53,8 +50,7 @@ func PlayerMove(charID int32, leftOverBytes maplepacket.Packet) maplepacket.Pack
 }
 
 func PlayerEmoticon(playerID int32, emotion int32) maplepacket.Packet {
-	p := maplepacket.NewPacket()
-	p.WriteByte(constants.SendChannelPlayerEmoticon)
+	p := maplepacket.CreateWithOpcode(constants.SendChannelPlayerEmoticon)
 	p.WriteInt32(playerID)
 	p.WriteInt32(emotion)
 
@@ -62,8 +58,7 @@ func PlayerEmoticon(playerID int32, emotion int32) maplepacket.Packet {
 }
 
 func PlayerSkillBookUpdate(skillID int32, level int32) maplepacket.Packet {
-	p := maplepacket.NewPacket()
-	p.WriteByte(constants.SendChannelSkillRecordUpdate)
+	p := maplepacket.CreateWithOpcode(constants.SendChannelSkillRecordUpdate)
 	p.WriteByte(0x01)  // time check?
 	p.WriteInt16(0x01) // number of skills to update
 	p.WriteInt32(skillID)
@@ -74,8 +69,7 @@ func PlayerSkillBookUpdate(skillID int32, level int32) maplepacket.Packet {
 }
 
 func PlayerStatChange(byPlayer bool, stat int32, value int32) maplepacket.Packet {
-	p := maplepacket.NewPacket()
-	p.WriteByte(constants.SendChannelStatChange)
+	p := maplepacket.CreateWithOpcode(constants.SendChannelStatChange)
 	p.WriteBool(byPlayer)
 	p.WriteInt32(stat)
 	p.WriteInt32(value)
@@ -84,9 +78,7 @@ func PlayerStatChange(byPlayer bool, stat int32, value int32) maplepacket.Packet
 }
 
 func PlayerStatNoChange() maplepacket.Packet {
-	p := maplepacket.NewPacket()
-	// Continue game opcode is part of inventory opcode list?
-	p.WriteByte(constants.SendChannelInventoryOperation)
+	p := maplepacket.CreateWithOpcode(constants.SendChannelInventoryOperation)
 	p.WriteByte(0x01)
 	p.WriteByte(0x00)
 	p.WriteByte(0x00)
@@ -95,8 +87,7 @@ func PlayerStatNoChange() maplepacket.Packet {
 }
 
 func PlayerAvatarSummaryWindow(charID int32, char character.Character, guildName string) maplepacket.Packet {
-	p := maplepacket.NewPacket()
-	p.WriteByte(constants.SendChannelAvatarInfoWindow)
+	p := maplepacket.CreateWithOpcode(constants.SendChannelAvatarInfoWindow)
 	p.WriteInt32(charID)
 	p.WriteByte(char.GetLevel())
 	p.WriteInt16(char.GetJob())
@@ -111,8 +102,7 @@ func PlayerAvatarSummaryWindow(charID int32, char character.Character, guildName
 }
 
 func PlayerEnterGame(char character.Character, channelID int32) maplepacket.Packet {
-	p := maplepacket.NewPacket()
-	p.WriteByte(constants.SendChannelWarpToMap)
+	p := maplepacket.CreateWithOpcode(constants.SendChannelWarpToMap)
 	p.WriteInt32(channelID)
 	p.WriteByte(0) // character portal counter
 	p.WriteByte(1) // Is connecting

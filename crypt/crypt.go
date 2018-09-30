@@ -53,9 +53,8 @@ func GenerateNewIV(oldIv []byte) []byte {
 	return newIV
 }
 
-func GenerateHeader(dataLength int, iv []byte, mapleVersion int) []byte {
+func GenerateHeader(header []byte, dataLength int, iv []byte, mapleVersion int) {
 	a := (int(iv[3]) << 8) | int(iv[2])
-	header := make([]byte, 4)
 
 	a ^= -(mapleVersion + 1)
 	b := a ^ dataLength
@@ -64,8 +63,6 @@ func GenerateHeader(dataLength int, iv []byte, mapleVersion int) []byte {
 	header[1] = byte((a - int(header[0])) / 0x100)
 	header[2] = byte(b ^ 0x100)
 	header[3] = byte((b - int(header[2])) / 0x100)
-
-	return header
 }
 
 // ror - Taken from Kagami

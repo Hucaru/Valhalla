@@ -50,17 +50,12 @@ func (handle *Client) sendPacket(p maplepacket.Packet) error {
 }
 
 func (handle *Client) Write(p maplepacket.Packet) error {
-	encryptedPacket := append([]byte{}, p...)
-
-	crypt.Encrypt(encryptedPacket)
-
-	header := maplepacket.NewPacket()
-	header = crypt.GenerateHeader(len(encryptedPacket), handle.ivSend, constants.MapleVersion)
-	header.Append(encryptedPacket)
+	crypt.GenerateHeader(p[:4], len(p[4:]), handle.ivSend, constants.MapleVersion)
+	crypt.Encrypt(p[4:])
 
 	handle.ivSend = crypt.GenerateNewIV(handle.ivSend)
 
-	_, err := handle.Conn.Write(header)
+	_, err := handle.Conn.Write(p)
 
 	return err
 }

@@ -12,6 +12,15 @@ func NewPacket() Packet {
 	return make(Packet, 0)
 }
 
+// CreateWithOpcode -
+func CreateWithOpcode(op byte) Packet {
+	p := make(Packet, 0)
+	p.WriteInt32(0)
+	p.WriteByte(op)
+
+	return p
+}
+
 // Append -
 func (p *Packet) Append(data []byte) {
 	*p = append(*p, data...)

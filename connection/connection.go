@@ -15,7 +15,7 @@ type connection interface {
 }
 
 // HandleNewConnection -
-func HandleNewConnection(conn connection, handler func(p maplepacket.Reader), sizeOfRead int, isMapleCrypt bool) {
+func HandleNewConnection(conn connection, handler func(p maplepacket.Reader), sizeOfRead int) {
 	sizeToRead := sizeOfRead
 	isHeader := true
 
@@ -31,14 +31,7 @@ func HandleNewConnection(conn connection, handler func(p maplepacket.Reader), si
 		}
 
 		if isHeader {
-			if isMapleCrypt {
-				sizeToRead = crypt.GetPacketLength(buffer)
-			} else {
-				p := maplepacket.NewPacket()
-				p.Append(buffer)
-				r := maplepacket.NewReader(&p)
-				sizeToRead = int(r.ReadInt32())
-			}
+			sizeToRead = crypt.GetPacketLength(buffer)
 		} else {
 			p := maplepacket.NewPacket()
 			p.Append(buffer)

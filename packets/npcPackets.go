@@ -8,8 +8,7 @@ import (
 )
 
 func NpcShow(npc npcInter) maplepacket.Packet {
-	p := maplepacket.NewPacket()
-	p.WriteByte(constants.SendChannelNpcShow)
+	p := maplepacket.CreateWithOpcode(constants.SendChannelNpcShow)
 	p.WriteInt32(npc.GetSpawnID())
 	p.WriteInt32(npc.GetID())
 	p.WriteInt16(npc.GetX())
@@ -25,16 +24,14 @@ func NpcShow(npc npcInter) maplepacket.Packet {
 }
 
 func NPCRemove(npcID int32) maplepacket.Packet {
-	p := maplepacket.NewPacket()
-	p.WriteByte(constants.SendChannelNpcRemove)
+	p := maplepacket.CreateWithOpcode(constants.SendChannelNpcRemove)
 	p.WriteInt32(npcID)
 
 	return p
 }
 
 func NPCSetController(npcID int32, isLocal bool) maplepacket.Packet {
-	p := maplepacket.NewPacket()
-	p.WriteByte(constants.SendChannelNpcControl)
+	p := maplepacket.CreateWithOpcode(constants.SendChannelNpcControl)
 	p.WriteBool(isLocal)
 	p.WriteInt32(npcID)
 
@@ -42,16 +39,14 @@ func NPCSetController(npcID int32, isLocal bool) maplepacket.Packet {
 }
 
 func NPCMovement(bytes []byte) maplepacket.Packet {
-	p := maplepacket.NewPacket()
-	p.WriteByte(constants.SendChannelNpcMovement)
+	p := maplepacket.CreateWithOpcode(constants.SendChannelNpcMovement)
 	p.WriteBytes(bytes)
 
 	return p
 }
 
 func NPCChatBackNext(npcID int32, msg string, front, back bool) maplepacket.Packet {
-	p := maplepacket.NewPacket()
-	p.WriteByte(constants.SendChannelNpcDialogueBox)
+	p := maplepacket.CreateWithOpcode(constants.SendChannelNpcDialogueBox)
 	p.WriteByte(4)
 	p.WriteInt32(npcID)
 	p.WriteByte(0)
@@ -63,8 +58,7 @@ func NPCChatBackNext(npcID int32, msg string, front, back bool) maplepacket.Pack
 }
 
 func NPCChatYesNo(npcID int32, msg string) maplepacket.Packet {
-	p := maplepacket.NewPacket()
-	p.WriteByte(constants.SendChannelNpcDialogueBox)
+	p := maplepacket.CreateWithOpcode(constants.SendChannelNpcDialogueBox)
 	p.WriteByte(4)
 	p.WriteInt32(npcID)
 	p.WriteByte(1)
@@ -74,8 +68,7 @@ func NPCChatYesNo(npcID int32, msg string) maplepacket.Packet {
 }
 
 func NPCChatUserString(npcID int32, msg string, defaultInput string, minLength, maxLength int16) maplepacket.Packet {
-	p := maplepacket.NewPacket()
-	p.WriteByte(constants.SendChannelNpcDialogueBox)
+	p := maplepacket.CreateWithOpcode(constants.SendChannelNpcDialogueBox)
 	p.WriteByte(4)
 	p.WriteInt32(npcID)
 	p.WriteByte(2)
@@ -88,8 +81,7 @@ func NPCChatUserString(npcID int32, msg string, defaultInput string, minLength, 
 }
 
 func NPCChatUserNumber(npcID int32, msg string, defaultInput, minLength, maxLength int32) maplepacket.Packet {
-	p := maplepacket.NewPacket()
-	p.WriteByte(constants.SendChannelNpcDialogueBox)
+	p := maplepacket.CreateWithOpcode(constants.SendChannelNpcDialogueBox)
 	p.WriteByte(4)
 	p.WriteInt32(npcID)
 	p.WriteByte(3)
@@ -102,8 +94,7 @@ func NPCChatUserNumber(npcID int32, msg string, defaultInput, minLength, maxLeng
 }
 
 func NPCChatSelection(npcID int32, msg string) maplepacket.Packet {
-	p := maplepacket.NewPacket()
-	p.WriteByte(constants.SendChannelNpcDialogueBox)
+	p := maplepacket.CreateWithOpcode(constants.SendChannelNpcDialogueBox)
 	p.WriteByte(4)
 	p.WriteInt32(npcID)
 	p.WriteByte(4)
@@ -113,8 +104,7 @@ func NPCChatSelection(npcID int32, msg string) maplepacket.Packet {
 }
 
 func NPCChatStyleWindow(npcID int32, msg string, styles []int32) maplepacket.Packet {
-	p := maplepacket.NewPacket()
-	p.WriteByte(constants.SendChannelNpcDialogueBox)
+	p := maplepacket.CreateWithOpcode(constants.SendChannelNpcDialogueBox)
 	p.WriteByte(4)
 	p.WriteInt32(npcID)
 	p.WriteByte(5)
@@ -129,8 +119,7 @@ func NPCChatStyleWindow(npcID int32, msg string, styles []int32) maplepacket.Pac
 }
 
 func NPCChatUnkown1(npcID int32, msg string) maplepacket.Packet {
-	p := maplepacket.NewPacket()
-	p.WriteByte(constants.SendChannelNpcDialogueBox)
+	p := maplepacket.CreateWithOpcode(constants.SendChannelNpcDialogueBox)
 	p.WriteByte(4)
 	p.WriteInt32(npcID)
 	p.WriteByte(6)
@@ -144,8 +133,7 @@ func NPCChatUnkown1(npcID int32, msg string) maplepacket.Packet {
 }
 
 func NPCChatUnkown2(npcID int32, msg string) maplepacket.Packet {
-	p := maplepacket.NewPacket()
-	p.WriteByte(constants.SendChannelNpcDialogueBox)
+	p := maplepacket.CreateWithOpcode(constants.SendChannelNpcDialogueBox)
 	p.WriteByte(4)
 	p.WriteInt32(npcID)
 	p.WriteByte(6)
@@ -160,8 +148,7 @@ func NPCChatUnkown2(npcID int32, msg string) maplepacket.Packet {
 }
 
 func NPCShop(npcID int32, items [][]int32) maplepacket.Packet {
-	p := maplepacket.NewPacket()
-	p.WriteByte(constants.SendChannelNpcShop)
+	p := maplepacket.CreateWithOpcode(constants.SendChannelNpcShop)
 	p.WriteInt32(npcID)
 	p.WriteInt16(int16(len(items)))
 
@@ -190,8 +177,7 @@ func NPCShop(npcID int32, items [][]int32) maplepacket.Packet {
 }
 
 func nPCShopResult(code byte) maplepacket.Packet {
-	p := maplepacket.NewPacket()
-	p.WriteByte(constants.SendChannelNpcShopResult)
+	p := maplepacket.CreateWithOpcode(constants.SendChannelNpcShopResult)
 	p.WriteByte(code)
 
 	return p
@@ -214,8 +200,7 @@ func NPCTradeError() maplepacket.Packet {
 }
 
 func NPCStorageShow(npcID, storageMesos int32, storageSlots byte, items []inventory.Item) maplepacket.Packet {
-	p := maplepacket.NewPacket()
-	p.WriteByte(constants.SendChannelNpcStorage)
+	p := maplepacket.CreateWithOpcode(constants.SendChannelNpcStorage)
 	p.WriteInt32(npcID)
 	p.WriteByte(storageSlots)
 	p.WriteInt16(0x7e)

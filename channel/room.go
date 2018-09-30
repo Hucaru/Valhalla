@@ -577,6 +577,10 @@ func checkOmokWin(board [15][15]byte, piece byte) bool {
 	return false
 }
 
+func (r *Room) ShuffleCards() {
+
+}
+
 func (r *Room) UpdateCharDisplay() {
 
 }

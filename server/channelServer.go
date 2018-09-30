@@ -53,6 +53,6 @@ func Channel() {
 
 		go connection.HandleNewConnection(clientConnection, func(p maplepacket.Reader) {
 			handlers.HandleChannelPacket(clientConnection, p)
-		}, constants.ClientHeaderSize, true)
+		}, constants.ClientHeaderSize)
 	}
 }
