@@ -55,12 +55,12 @@ func (handle *Client) sendPacket(p maplepacket.Packet) error {
 }
 
 func (handle *Client) Write(p maplepacket.Packet) error {
-	tmp := make([]byte, len(p))
-	copy(tmp, p)
+	local := make([]byte, len(p))
+	copy(local, p)
 
-	handle.cSend.Encrypt(tmp, true, false)
+	handle.cSend.Encrypt(local, true, false)
 
-	_, err := handle.Conn.Write(tmp)
+	_, err := handle.Conn.Write(local)
 
 	return err
 }
