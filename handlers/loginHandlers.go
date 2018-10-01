@@ -24,8 +24,6 @@ type clientLoginConn interface {
 	SetUserID(int32)
 	GetUserID() int32
 
-	SetIsLogedIn(bool)
-
 	SetWorldID(int32)
 	GetWorldID() int32
 
@@ -79,7 +77,7 @@ func handleLoginRequest(conn clientLoginConn, reader maplepacket.Reader) {
 		conn.SetGender(gender)
 		conn.SetAdmin(byte(0x01) == isAdmin)
 		conn.SetUserID(userID)
-		conn.SetIsLogedIn(true)
+
 		records, err := connection.Db.Query("UPDATE users set isLogedIn=1 WHERE userID=?", userID)
 
 		defer records.Close()

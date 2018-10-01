@@ -6,13 +6,12 @@ import (
 
 type Login struct {
 	Client
-	userID    int32
-	isLogedIn bool
-	isAdmin   bool
-	hash      string
-	worldID   int32
-	chanID    byte
-	gender    byte
+	userID  int32
+	isAdmin bool
+	hash    string
+	worldID int32
+	chanID  byte
+	gender  byte
 }
 
 // NewLoginConnection -
@@ -22,14 +21,12 @@ func NewLogin(conn Client) *Login {
 }
 
 func (c *Login) Close() {
-	if c.isLogedIn {
-		records, err := Db.Query("UPDATE users set isLogedIn=0 WHERE userID=?", c.userID)
+	records, err := Db.Query("UPDATE users set isLogedIn=0 WHERE userID=?", c.userID)
 
-		defer records.Close()
+	defer records.Close()
 
-		if err != nil {
-			log.Println("Error in auto log out of user on disconnect, userID:", c.userID)
-		}
+	if err != nil {
+		log.Println("Error in auto log out of user on disconnect, userID:", c.userID)
 	}
 
 	c.Conn.Close()
@@ -61,14 +58,6 @@ func (c *Login) SetSessionHash(val string) {
 
 func (c *Login) GetSessionHash() string {
 	return c.hash
-}
-
-func (c *Login) SetIsLogedIn(val bool) {
-	c.isLogedIn = val
-}
-
-func (c *Login) GetIsLogedIn() bool {
-	return c.isLogedIn
 }
 
 func (c *Login) SetWorldID(val int32) {
