@@ -14,16 +14,21 @@ import (
 type Client struct {
 	net.Conn
 	readingHeader bool
-	ivRecv        []byte
-	ivSend        []byte
+	cSend         crypt.Crypt
+	cRecv         crypt.Crypt
 }
 
 // NewClient -
 func NewClient(conn net.Conn) Client {
-	client := Client{Conn: conn, readingHeader: true, ivSend: make([]byte, 4), ivRecv: make([]byte, 4)}
+	client := Client{Conn: conn, readingHeader: true}
 
-	rand.Read(client.ivSend[:])
-	rand.Read(client.ivRecv[:])
+	key := [4]byte{}
+	rand.Read(key[:])
+
+	client.cSend = crypt.New(key, constants.MapleVersion)
+
+	rand.Read(key[:])
+	client.cRecv = crypt.New(key, constants.MapleVersion)
 
 	err := sendHandshake(client)
 
@@ -50,12 +55,12 @@ func (handle *Client) sendPacket(p maplepacket.Packet) error {
 }
 
 func (handle *Client) Write(p maplepacket.Packet) error {
-	crypt.GenerateHeader(p[:4], len(p[4:]), handle.ivSend, constants.MapleVersion)
-	crypt.Encrypt(p[4:])
+	tmp := make([]byte, len(p))
+	copy(tmp, p)
 
-	handle.ivSend = crypt.GenerateNewIV(handle.ivSend)
+	handle.cSend.Encrypt(tmp, true, false)
 
-	_, err := handle.Conn.Write(p)
+	_, err := handle.Conn.Write(tmp)
 
 	return err
 }
@@ -70,8 +75,7 @@ func (handle *Client) Read(p maplepacket.Packet) error {
 		handle.readingHeader = false
 	} else {
 		handle.readingHeader = true
-		handle.ivRecv = crypt.GenerateNewIV(handle.ivRecv)
-		crypt.Decrypt(p)
+		handle.cRecv.Decrypt(p, true, false)
 	}
 
 	return err
@@ -87,8 +91,8 @@ func sendHandshake(client Client) error {
 	packet.WriteInt16(13)
 	packet.WriteInt16(constants.MapleVersion)
 	packet.WriteString("")
-	packet.Append(client.ivRecv)
-	packet.Append(client.ivSend)
+	packet.Append(client.cRecv.IV()[:4])
+	packet.Append(client.cSend.IV()[:4])
 	packet.WriteByte(8)
 
 	err := client.sendPacket(packet)

@@ -170,15 +170,15 @@ func RoomOmokStart(ownerStart bool) maplepacket.Packet {
 	return p
 }
 
-func RoomMemoryStart(ownerStart bool, boardType int32) maplepacket.Packet {
+func RoomMemoryStart(ownerStart bool, boardType int32, cards []byte) maplepacket.Packet {
 	p := maplepacket.CreateWithOpcode(constants.SendChannelRoom)
 	p.WriteByte(0x35)
 	p.WriteBool(ownerStart)
 	p.WriteByte(0x0C)
 	p.WriteInt32(boardType)
 
-	for i := 0; i < 20; i++ {
-		p.WriteUint64(0) // figure out what needs to be done to shuffle the cards
+	for i := 0; i < len(cards); i++ {
+		p.WriteInt32(int32(cards[i])) // figure out what needs to be done to shuffle the cards
 	}
 
 	return p

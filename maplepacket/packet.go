@@ -14,7 +14,7 @@ func NewPacket() Packet {
 
 // CreateWithOpcode -
 func CreateWithOpcode(op byte) Packet {
-	p := make(Packet, 0)
+	p := Packet{}
 	p.WriteInt32(0)
 	p.WriteByte(op)
 

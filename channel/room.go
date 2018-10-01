@@ -2,7 +2,9 @@ package channel
 
 import (
 	"math"
+	"math/rand"
 	"sync"
+	"time"
 
 	"github.com/Hucaru/Valhalla/character"
 	"github.com/Hucaru/Valhalla/maplepacket"
@@ -120,6 +122,7 @@ type Room struct {
 	name, password string
 	boardType      byte
 	board          [15][15]byte
+	cards          []byte
 	leaveAfterGame [2]bool
 	lastTurnP1     [2]int32
 	lastTurnP2     [2]int32
@@ -319,36 +322,6 @@ func (r *Room) SendMessage(name, msg string) {
 		}
 	}
 	r.mutex.RUnlock()
-}
-
-func (r *Room) Accept(char *MapleCharacter) (bool, int32) {
-	r.mutex.Lock()
-	r.accept++
-	r.mutex.Unlock()
-
-	success := false
-
-	r.mutex.RLock()
-	for _, p := range r.participants {
-		if p != nil && p != char {
-			p.SendPacket(packets.RoomShowAccept())
-			if r.accept == 2 {
-				// do trade
-				// RoomLeave of 8 is for when trading unique items, use this for cash shop items as well
-				// RoomLeave of 9 is for when on seperate maps, make sure to ignore if one side is a gm
-
-				for i := range r.participants {
-					r.Broadcast(packets.RoomLeave(byte(i), 6))
-				}
-
-				success = true
-			}
-			break
-		}
-	}
-	r.mutex.RUnlock()
-
-	return success, r.ID
 }
 
 func (r *Room) GetP1Turn() bool {
@@ -578,7 +551,46 @@ func checkOmokWin(board [15][15]byte, piece byte) bool {
 }
 
 func (r *Room) ShuffleCards() {
+	r.mutex.RLock()
+	boardType := r.boardType
+	r.mutex.RUnlock()
 
+	if boardType == 0 { // 4x3 6 matches to win
+		for i := byte(0); i < 6; i++ {
+			r.mutex.Lock()
+			r.cards = append(r.cards, i, i)
+			r.mutex.Unlock()
+		}
+	} else if boardType == 1 { // 5x4 10 matches to win
+		for i := byte(0); i < 10; i++ {
+			r.mutex.Lock()
+			r.cards = append(r.cards, i, i)
+			r.mutex.Unlock()
+		}
+	} else if boardType == 2 { // 6x4 15 matches to win
+		for i := byte(0); i < 15; i++ {
+			r.mutex.Lock()
+			r.cards = append(r.cards, i, i)
+			r.mutex.Unlock()
+		}
+	}
+
+	randomiser := rand.New(rand.NewSource(time.Now().Unix()))
+
+	r.mutex.Lock()
+	for n := len(r.cards); n > 0; n-- {
+		randInd := randomiser.Intn(n)
+		r.cards[n-1], r.cards[randInd] = r.cards[randInd], r.cards[n-1]
+	}
+	r.mutex.Unlock()
+}
+
+func (r *Room) GetCards() []byte {
+	r.mutex.RLock()
+	cards := r.cards
+	r.mutex.RUnlock()
+
+	return cards
 }
 
 func (r *Room) UpdateCharDisplay() {
@@ -595,4 +607,34 @@ func (r *Room) RemoveItem() {
 
 func (r *Room) AddMesos() {
 
+}
+
+func (r *Room) Accept(char *MapleCharacter) (bool, int32) {
+	r.mutex.Lock()
+	r.accept++
+	r.mutex.Unlock()
+
+	success := false
+
+	r.mutex.RLock()
+	for _, p := range r.participants {
+		if p != nil && p != char {
+			p.SendPacket(packets.RoomShowAccept())
+			if r.accept == 2 {
+				// do trade
+				// RoomLeave of 8 is for when trading unique items, use this for cash shop items as well
+				// RoomLeave of 9 is for when on seperate maps, make sure to ignore if one side is a gm
+
+				for i := range r.participants {
+					r.Broadcast(packets.RoomLeave(byte(i), 6))
+				}
+
+				success = true
+			}
+			break
+		}
+	}
+	r.mutex.RUnlock()
+
+	return success, r.ID
 }

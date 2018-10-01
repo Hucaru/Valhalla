@@ -45,7 +45,6 @@ func handleUIWindow(conn *connection.Channel, reader maplepacket.Reader) {
 				channel.CreateOmokGame(char, name, password, boardType)
 			})
 		case 2: // Create memory game
-
 			name := reader.ReadString(int(reader.ReadInt16()))
 
 			var password string
@@ -59,7 +58,6 @@ func handleUIWindow(conn *connection.Channel, reader maplepacket.Reader) {
 				channel.CreateMemoryGame(char, name, password, boardType)
 			})
 		case 3: // Create trade
-
 			channel.Players.OnCharacterFromConn(conn, func(char *channel.MapleCharacter) {
 				channel.CreateTradeRoom(char)
 			})
@@ -133,15 +131,14 @@ func handleUIWindow(conn *connection.Channel, reader maplepacket.Reader) {
 		}
 	case 0x06: // Chat
 		message := reader.ReadString(int(reader.ReadInt16()))
-		name := ""
 		// roomSlot := byte(0x0)
 
 		channel.Players.OnCharacterFromConn(conn, func(sender *channel.MapleCharacter) {
-			name = sender.GetName()
-		})
+			name := sender.GetName()
 
-		channel.ActiveRooms.OnConn(conn, func(r *channel.Room) {
-			r.SendMessage(name, message)
+			channel.ActiveRooms.OnConn(conn, func(r *channel.Room) {
+				r.SendMessage(name, message)
+			})
 		})
 	case 0x0A: // Close window
 		roomID := int32(-1)
@@ -273,7 +270,7 @@ func handleUIWindow(conn *connection.Channel, reader maplepacket.Reader) {
 				r.Broadcast(packets.RoomOmokStart(r.P1Turn))
 			} else if r.RoomType == 0x02 {
 				r.ShuffleCards()
-				r.Broadcast(packets.RoomMemoryStart(r.P1Turn, int32(r.GetBoardType())))
+				r.Broadcast(packets.RoomMemoryStart(r.P1Turn, int32(r.GetBoardType()), r.GetCards()))
 			}
 		})
 	case 0x37: // change turn
