@@ -1,6 +1,11 @@
 <p align="center">
   <img src="https://i.imgur.com/mo4tfJF.png"/>
+  <br/>Valhalla Logo made with <a href="https://
+www.designevo.com/" title="Free Online Logo Maker">DesignEvo</a>
 </p>
+
+## What is this?
+This project exists to preserve and archive an early version of the game
 
 ## Compiling Instructions
 Install [docker](https://docs.docker.com/install/) & [docker-compose](https://docs.docker.com/compose/install/). Thats it! 
@@ -16,7 +21,7 @@ In order to run the channel server you are required to convert a v28 Data.wz (no
 * To stop/start a single container run docker-compose stop/start \<name e.g. login-server\>
 * To rebuild and start a container incase of source updates run docker-compose build && docker-compose up -d --no-deps \<name e.g. channel-server\>, it will say that the login-server is being rebuilt, this is because all the servers run off of the same base image
 
-***note: curently the logins server tells the client the channel server at a fixed ip address. change this before docker-compose build***
+***note: curently the login server tells the client the channel server at a fixed ip address. change this before docker-compose build***
 
 ***note: database data is stored as docker volume***
 
@@ -25,44 +30,8 @@ In order to run the channel server you are required to convert a v28 Data.wz (no
 The following is an example of what the docker logs should look like:
 ![](https://i.imgur.com/Lqh0Ln7.png)
 
-## Connecting To Your Running Game Server (running in a docker container)
-<img height="43px" src="https://d29fhpw069ctt2.cloudfront.net/icon/image/38771/preview.svg"/>
-
-## Administrating Your Server
-The server sends auditing information to an eleastic search instance running in a docker container. Kibana can be used to view the data.
-
-GM Commands, chat, login/logout events, server transitions, party join/leave, trade transactions, damage received/inflicted, skill used, stat distribution  etc are logged.
-
-NPC scripts can be found in the scripts/npc folder. There are some examples in there
-
-#### GM Commands - prefix of ***/***
-* packet - Send packet to client
-* warp - warp to map
-* notice - send notice message to channel
-* dialogue - send dialogue box message to channel
-* job - change job
-* level - change level
-* spawn - spawn mob at character location
-* killmobs - kill all mobs on map
-* exp - give exp
-* mobrate - modify mob rate
-* exprate - modify exp rate
-* mesorate - modify meso rate
-* droprate - modify drop rate
-* header - change channel header message
-
-Check command/handlers.go for parameters
-
 ## Roadmap
-* Inventory drop item ask quantity where relevant
-* NPC style window
-* Parties
-* Guilds
-* Trades
-* Mob respawn system, Mob EXP & Mob party play
-* Monster/player drop items
-* Skills & buffs (incl. item buffs)
-* Reactors
+* Redo login & channel server to handle single events and move away from mutexes
 * World server
 
 ## NPC chat display info (use this when scripting NPCs)
@@ -117,6 +86,3 @@ Taken from [here](http://forum.ragezone.com/f428/add-learning-npcs-start-finish-
 ![](https://i.imgur.com/hE0mWItg.png)
 
 ![](https://i.imgur.com/4bizhIi.png)
-
-<div>Valhalla Logo made with <a href="https://
-www.designevo.com/" title="Free Online Logo Maker">DesignEvo</a></div>
