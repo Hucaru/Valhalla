@@ -5,9 +5,9 @@ import (
 	"time"
 
 	"github.com/Hucaru/Valhalla/connection"
+	"github.com/Hucaru/Valhalla/consts"
 	"github.com/Hucaru/Valhalla/packets"
 
-	"github.com/Hucaru/Valhalla/constants"
 	"github.com/Hucaru/Valhalla/nx"
 )
 
@@ -34,7 +34,7 @@ func GenerateMobs() {
 				mob.SetMobTime(life.MobTime)
 				mob.SetRespawns(true)
 
-				mob.SetStatus(constants.MOB_STATUS_EMPTY)
+				mob.SetStatus(consts.MOB_STATUS_EMPTY)
 
 				mon := nx.Mob[life.ID]
 

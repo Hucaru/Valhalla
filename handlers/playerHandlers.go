@@ -6,7 +6,7 @@ import (
 	"github.com/Hucaru/Valhalla/channel"
 	"github.com/Hucaru/Valhalla/character"
 	"github.com/Hucaru/Valhalla/connection"
-	"github.com/Hucaru/Valhalla/constants"
+	"github.com/Hucaru/Valhalla/consts"
 	"github.com/Hucaru/Valhalla/inventory"
 	"github.com/Hucaru/Valhalla/maplepacket"
 	"github.com/Hucaru/Valhalla/movement"
@@ -145,17 +145,17 @@ func handleChangeStat(conn *connection.Channel, reader maplepacket.Reader) {
 		stat := reader.ReadInt32()
 
 		switch stat {
-		case constants.STR_ID:
+		case consts.STR_ID:
 			char.SetStr(char.GetStr() + 1)
-		case constants.DEX_ID:
+		case consts.DEX_ID:
 			char.SetDex(char.GetDex() + 1)
-		case constants.INT_ID:
+		case consts.INT_ID:
 			char.SetInt(char.GetInt() + 1)
-		case constants.LUK_ID:
+		case consts.LUK_ID:
 			char.SetLuk(char.GetLuk() + 1)
-		case constants.MAX_HP_ID:
+		case consts.MAX_HP_ID:
 			char.SetMaxHP(char.GetMaxHP() + 1)
-		case constants.MAX_MP_ID:
+		case consts.MAX_MP_ID:
 			char.SetMaxMP(char.GetMaxMP() + 1)
 		default:
 			log.Println("Unknown stat ID:", stat)

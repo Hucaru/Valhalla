@@ -2,12 +2,12 @@ package packets
 
 import (
 	"github.com/Hucaru/Valhalla/character"
-	"github.com/Hucaru/Valhalla/constants"
+	"github.com/Hucaru/Valhalla/consts/opcodes"
 	"github.com/Hucaru/Valhalla/maplepacket"
 )
 
 func MapPlayerEnter(char character.Character) maplepacket.Packet {
-	p := maplepacket.CreateWithOpcode(constants.SendChannelCharacterEnterField)
+	p := maplepacket.CreateWithOpcode(opcodes.Send.ChannelCharacterEnterField)
 	p.WriteInt32(char.GetCharID()) // player id
 	p.WriteString(char.GetName())  // char name
 	p.WriteInt32(0)                // map buffs?
@@ -33,14 +33,14 @@ func MapPlayerEnter(char character.Character) maplepacket.Packet {
 }
 
 func MapPlayerLeft(charID int32) maplepacket.Packet {
-	p := maplepacket.CreateWithOpcode(constants.SendChannelCharacterLeaveField)
+	p := maplepacket.CreateWithOpcode(opcodes.Send.ChannelCharacterLeaveField)
 	p.WriteInt32(charID)
 
 	return p
 }
 
 func MapChange(mapID int32, channelID int32, mapPos byte, hp int16) maplepacket.Packet {
-	p := maplepacket.CreateWithOpcode(constants.SendChannelWarpToMap)
+	p := maplepacket.CreateWithOpcode(opcodes.Send.ChannelWarpToMap)
 	p.WriteInt32(channelID)
 	p.WriteByte(0) // character portal counter
 	p.WriteByte(0) // Is connecting

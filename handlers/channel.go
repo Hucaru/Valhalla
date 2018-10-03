@@ -4,93 +4,93 @@ import (
 	"log"
 
 	"github.com/Hucaru/Valhalla/connection"
-	"github.com/Hucaru/Valhalla/constants"
+	"github.com/Hucaru/Valhalla/consts/opcodes"
 	"github.com/Hucaru/Valhalla/maplepacket"
 )
 
 // HandleChannelPacket - Purpose is to send a packet to the correct handler(s), packages should aim to use this function to communicate betweeen each other
 func HandleChannelPacket(conn *connection.Channel, reader maplepacket.Reader) {
 	switch reader.ReadByte() {
-	case constants.RecvPing:
+	case opcodes.Recv.Ping:
 
-	case constants.RecvChannelPlayerLoad:
+	case opcodes.Recv.ChannelPlayerLoad:
 		handlePlayerConnect(conn, reader)
 
-	case constants.RecvChannelUserPortal:
+	case opcodes.Recv.ChannelUserPortal:
 		handleUsePortal(conn, reader)
-	case constants.RecvChannelEnterCashShop:
+	case opcodes.Recv.ChannelEnterCashShop:
 
-	case constants.RecvChannelPlayerMovement:
+	case opcodes.Recv.ChannelPlayerMovement:
 		handlePlayerMovement(conn, reader)
 
-	case constants.RecvChannelStandardSkill:
+	case opcodes.Recv.ChannelStandardSkill:
 		handleStandardSkill(conn, reader)
 
-	case constants.RecvChannelRangedSkill:
+	case opcodes.Recv.ChannelRangedSkill:
 		handleRangedSkill(conn, reader)
 
-	case constants.RecvChannelMagicSkill:
+	case opcodes.Recv.ChannelMagicSkill:
 		handleMagicSkill(conn, reader)
 
-	case constants.RecvChannelDmgRecv:
+	case opcodes.Recv.ChannelDmgRecv:
 		handleTakeDamage(conn, reader)
 
-	case constants.RecvChannelPlayerSendAllChat:
+	case opcodes.Recv.ChannelPlayerSendAllChat:
 		handleAllChat(conn, reader)
 
-	case constants.RecvChannelSlashCommands:
+	case opcodes.Recv.ChannelSlashCommands:
 		handleSlashCommand(conn, reader)
 
-	case constants.RecvChannelCharacterUIWindow:
+	case opcodes.Recv.ChannelCharacterUIWindow:
 		handleUIWindow(conn, reader)
 
-	case constants.RecvChannelEmoticon:
+	case opcodes.Recv.ChannelEmoticon:
 		handlePlayerEmoticon(conn, reader)
 
-	case constants.RecvChannelNpcDialogue:
+	case opcodes.Recv.ChannelNpcDialogue:
 		handleNPCChat(conn, reader)
 
-	case constants.RecvChannelNpcDialogueContinue:
+	case opcodes.Recv.ChannelNpcDialogueContinue:
 		handleNPCChatContinue(conn, reader)
 
-	case constants.RecvChannelNpcShop:
+	case opcodes.Recv.ChannelNpcShop:
 		handleNPCShop(conn, reader)
 
-	case constants.RecvChannelInvMoveItem:
+	case opcodes.Recv.ChannelInvMoveItem:
 		handleMoveInventoryItem(conn, reader)
 
-	case constants.RecvChannelChangeStat:
+	case opcodes.Recv.ChannelChangeStat:
 		handleChangeStat(conn, reader)
 
-	case constants.RecvChannelPassiveRegen:
+	case opcodes.Recv.ChannelPassiveRegen:
 		handlePassiveRegen(conn, reader)
 
-	case constants.RecvChannelSkillUpdate:
+	case opcodes.Recv.ChannelSkillUpdate:
 		handleUpdateSkillRecord(conn, reader)
 
-	case constants.RecvChannelSpecialSkill:
+	case opcodes.Recv.ChannelSpecialSkill:
 		handleSpecialSkill(conn, reader)
 
-	case constants.RecvChannelCharacterInfo:
+	case opcodes.Recv.ChannelCharacterInfo:
 		handleRequestAvatarInfoWindow(conn, reader)
 
-	case constants.RecvChannelLieDetectorResult:
+	case opcodes.Recv.ChannelLieDetectorResult:
 
-	case constants.RecvChannelPartyInfo:
+	case opcodes.Recv.ChannelPartyInfo:
 
-	case constants.RecvChannelGuildManagement:
+	case opcodes.Recv.ChannelGuildManagement:
 
-	case constants.RecvChannelGuildReject:
+	case opcodes.Recv.ChannelGuildReject:
 
-	case constants.RecvChannelAddBuddy:
+	case opcodes.Recv.ChannelAddBuddy:
 
-	case constants.RecvChannelMobControl:
+	case opcodes.Recv.ChannelMobControl:
 		handleMobControl(conn, reader)
 
-	case constants.RecvChannelNpcMovement:
+	case opcodes.Recv.ChannelNpcMovement:
 		handleNPCMovement(conn, reader)
 
 	default:
-		log.Println("Unkown packet:", reader)
+		log.Println("Unkown packet:", reader, opcodes.Recv.ChannelPlayerLoad)
 	}
 }

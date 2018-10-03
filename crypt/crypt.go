@@ -10,13 +10,13 @@ const (
 	blocksize         = 1460
 )
 
-type Crypt struct {
+type Maple struct {
 	mapleVersion int
 	key          [16]byte
 }
 
-func New(key [4]byte, mapleVersion int) Crypt {
-	var c Crypt
+func New(key [4]byte, mapleVersion int) Maple {
+	var c Maple
 
 	for i := 0; i < 4; i++ {
 		copy(c.key[4*i:], key[:])
@@ -27,7 +27,7 @@ func New(key [4]byte, mapleVersion int) Crypt {
 	return c
 }
 
-func (c *Crypt) Encrypt(p []byte, maple, aes bool) {
+func (c *Maple) Encrypt(p []byte, maple, aes bool) {
 	c.generateHeader(p)
 
 	if maple {
@@ -41,7 +41,7 @@ func (c *Crypt) Encrypt(p []byte, maple, aes bool) {
 	c.Shuffle()
 }
 
-func (c *Crypt) Decrypt(p []byte, maple, aes bool) {
+func (c *Maple) Decrypt(p []byte, maple, aes bool) {
 	if aes {
 		c.aesCrypt(p)
 	}
@@ -53,7 +53,7 @@ func (c *Crypt) Decrypt(p []byte, maple, aes bool) {
 	c.Shuffle()
 }
 
-func (c *Crypt) IV() []byte {
+func (c *Maple) IV() []byte {
 	return c.key[:]
 }
 
@@ -80,7 +80,7 @@ var ivShiftKey = [...]byte{
 	0x96, 0x41, 0x74, 0xAC, 0x52, 0x33, 0xF0, 0xD9, 0x29, 0x80, 0xB1, 0x16, 0xD3, 0xAB, 0x91, 0xB9,
 	0x84, 0x7F, 0x61, 0x1E, 0xCF, 0xC5, 0xD1, 0x56, 0x3D, 0xCA, 0xF4, 0x05, 0xC6, 0xE5, 0x08, 0x49}
 
-func (c *Crypt) Shuffle() {
+func (c *Maple) Shuffle() {
 	newIV := []byte{0xF2, 0x53, 0x50, 0xC6}
 
 	for i := 0; i < 4; i++ {
@@ -106,7 +106,7 @@ func (c *Crypt) Shuffle() {
 	}
 }
 
-func (c *Crypt) generateHeader(p []byte) {
+func (c *Maple) generateHeader(p []byte) {
 	dataLength := len(p[encryptHeaderSize:])
 
 	a := (int(c.key[3]) << 8) | int(c.key[2])
@@ -241,7 +241,7 @@ var aeskey = [32]byte{
 	0x52, 0x00, 0x00, 0x00}
 
 // Taken from kagami
-func (c *Crypt) aesCrypt(buf []byte) {
+func (c *Maple) aesCrypt(buf []byte) {
 	var pos, tpos, cbwrite, cb int32 = 0, 0, 0, int32(len(buf))
 	var first byte = 1
 

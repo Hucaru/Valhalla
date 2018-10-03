@@ -1,12 +1,12 @@
 package packets
 
 import (
-	"github.com/Hucaru/Valhalla/constants"
+	"github.com/Hucaru/Valhalla/consts/opcodes"
 	"github.com/Hucaru/Valhalla/maplepacket"
 )
 
 func SkillMelee(charID int32, skillID int32, targets, hits, display, animation byte, damages map[int32][]int32) maplepacket.Packet {
-	p := maplepacket.CreateWithOpcode(constants.SendChannelPlayerUseStandardSkill)
+	p := maplepacket.CreateWithOpcode(opcodes.Send.ChannelPlayerUseStandardSkill)
 	p.WriteInt32(charID)
 	p.WriteByte(byte(targets*0x10) + hits)
 	p.WriteBool(bool(skillID != 0))
@@ -32,7 +32,7 @@ func SkillMelee(charID int32, skillID int32, targets, hits, display, animation b
 }
 
 func SkillRanged(charID, skillID, objID int32, targets, hits, display, animation byte, damages map[int32][]int32) maplepacket.Packet {
-	p := maplepacket.CreateWithOpcode(constants.SendChannelPlayerUseRangedSkill)
+	p := maplepacket.CreateWithOpcode(opcodes.Send.ChannelPlayerUseRangedSkill)
 	p.WriteInt32(charID)
 	p.WriteByte(targets*0x10 + hits)
 	p.WriteBool(bool(skillID != 0))
@@ -57,7 +57,7 @@ func SkillRanged(charID, skillID, objID int32, targets, hits, display, animation
 }
 
 func SkillMagic(charID int32, skillID int32, targets, hits, display, animation byte, damages map[int32][]int32) maplepacket.Packet {
-	p := maplepacket.CreateWithOpcode(constants.SendChannelPlayerUseMagicSkill)
+	p := maplepacket.CreateWithOpcode(opcodes.Send.ChannelPlayerUseMagicSkill)
 	p.WriteInt32(charID)
 	p.WriteByte(targets*0x10 + hits)
 	p.WriteBool(bool(skillID != 0))
@@ -82,7 +82,7 @@ func SkillMagic(charID int32, skillID int32, targets, hits, display, animation b
 }
 
 func SkillAnimation(charID int32, skillID int32, level byte) maplepacket.Packet {
-	p := maplepacket.CreateWithOpcode(constants.SendChannelPlayerAnimation)
+	p := maplepacket.CreateWithOpcode(opcodes.Send.ChannelPlayerAnimation)
 	p.WriteInt32(charID)
 	p.WriteByte(0x01)
 	p.WriteInt32(skillID)
@@ -92,7 +92,7 @@ func SkillAnimation(charID int32, skillID int32, level byte) maplepacket.Packet 
 }
 
 func SkillGmHide(isHidden bool) maplepacket.Packet {
-	p := maplepacket.CreateWithOpcode(constants.SendChannelEmployee)
+	p := maplepacket.CreateWithOpcode(opcodes.Send.ChannelEmployee)
 	p.WriteByte(0x0F)
 	p.WriteBool(isHidden)
 

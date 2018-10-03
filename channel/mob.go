@@ -5,7 +5,8 @@ import (
 	"time"
 
 	"github.com/Hucaru/Valhalla/connection"
-	"github.com/Hucaru/Valhalla/constants"
+	"github.com/Hucaru/Valhalla/consts"
+	"github.com/Hucaru/Valhalla/consts/skills"
 	"github.com/Hucaru/Valhalla/nx"
 	"github.com/Hucaru/Valhalla/packets"
 )
@@ -91,7 +92,7 @@ func (m *MapleMob) Hide(conn *connection.Channel) {
 }
 
 func (m *MapleMob) CanCastSkills() bool {
-	return !(m.HasStatus(constants.MOB_STATUS_FREEZE) || m.HasStatus(constants.MOB_STATUS_STUN) || m.HasStatus(constants.MOB_STATUS_SHADOW_WEB))
+	return !(m.HasStatus(consts.MOB_STATUS_FREEZE) || m.HasStatus(consts.MOB_STATUS_STUN) || m.HasStatus(consts.MOB_STATUS_SHADOW_WEB))
 }
 
 func (m *MapleMob) HasStatus(status int32) bool {
@@ -99,7 +100,7 @@ func (m *MapleMob) HasStatus(status int32) bool {
 }
 
 func (m *MapleMob) HasImmunity() bool {
-	var mask int32 = constants.MOB_STATUS_WEAPON_IMMUNITY | constants.MOB_STATUS_MAGIC_IMMUNITY | constants.MOB_STATUS_WEAPON_DAMAGE_REFLECT | constants.MOB_STATUS_MAGIC_DAMAGE_REFLECT
+	var mask int32 = consts.MOB_STATUS_WEAPON_IMMUNITY | consts.MOB_STATUS_MAGIC_IMMUNITY | consts.MOB_STATUS_WEAPON_DAMAGE_REFLECT | consts.MOB_STATUS_MAGIC_DAMAGE_REFLECT
 	return (m.status & mask) != 0
 }
 
@@ -124,29 +125,29 @@ func (m *MapleMob) ChooseRandomSkill() {
 		var stop bool
 
 		switch skill.SkillID {
-		case constants.MOB_SKILL_WEAPON_ATTACK_UP:
+		case skills.Mob.WeaponAttackUp:
 			fallthrough
-		case constants.MOB_SKILL_WEAPON_ATTACK_UP_AOE:
-			stop = m.HasStatus(constants.MOB_STATUS_WATK)
-		case constants.MOB_SKILL_MAGIC_ATTACK_UP:
+		case skills.Mob.WeaponAttackUpAoe:
+			stop = m.HasStatus(consts.MOB_STATUS_WATK)
+		case skills.Mob.MagicAttackUp:
 			fallthrough
-		case constants.MOB_SKILL_MAGIC_ATTACK_UP_AOE:
-			stop = m.HasStatus(constants.MOB_STATUS_MAGIC_ATTACK_UP)
-		case constants.MOB_SKILL_WEAPON_DEFENSE_UP:
+		case skills.Mob.MagicAttackUpAoe:
+			stop = m.HasStatus(consts.MOB_STATUS_MAGIC_ATTACK_UP)
+		case skills.Mob.WeaponDefenceUp:
 			fallthrough
-		case constants.MOB_SKILL_WEAPON_DEFENSE_UP_AOE:
-			stop = m.HasStatus(constants.MOB_STATUS_WEAPON_DEFENSE_UP)
-		case constants.MOB_SKILL_MAGIC_DEFENSE_UP:
-		case constants.MOB_SKILL_MAGIC_DEFENSE_UP_AOE:
-			stop = m.HasStatus(constants.MOB_STATUS_MAGIC_DEFENSE_UP)
-		case constants.MOB_SKILL_WEAPON_IMMUNITY:
-		case constants.MOB_SKILL_MAGIC_IMMUNITY:
-		case constants.MOB_SKILL_WEAPON_DAMAGE_REFLECT:
-		case constants.MOB_SKILL_MAGIC_DAMAGE_REFLECT:
+		case skills.Mob.WeaponDefenceUpAoe:
+			stop = m.HasStatus(consts.MOB_STATUS_WEAPON_DEFENSE_UP)
+		case skills.Mob.MagicDefenceUp:
+		case skills.Mob.MagicDefenceUpAoe:
+			stop = m.HasStatus(consts.MOB_STATUS_MAGIC_DEFENSE_UP)
+		case skills.Mob.WeaponImmunity:
+		case skills.Mob.MagicImmunity:
+		case skills.Mob.WeaponDamageReflect:
+		case skills.Mob.MagicDamageReflect:
 			stop = m.HasImmunity()
-		case constants.MOB_SKILL_MC_SPEED_UP:
-			stop = m.HasStatus(constants.MOB_STATUS_SPEED)
-		case constants.MOB_SKILL_SUMMON:
+		case skills.Mob.McSpeedUp:
+			stop = m.HasStatus(consts.MOB_STATUS_SPEED)
+		case skills.Mob.Summon:
 			stop = m.nSpawns > 3 // get summon max count from the skillid
 		default:
 		}

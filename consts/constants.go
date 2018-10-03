@@ -1,6 +1,14 @@
-package constants
+package consts
 
 var WORLD_NAMES = [...]string{"Scania", "Bera", "Broa", "Windia", "Khaini", "Bellocan", "Mardia", "Kradia", "Yellonde", "Demethos", "Galicia", "El Nido", "Zenith", "Arcania", "Chaos", "Nova", "Renegates"}
+
+// Generic Constants
+const (
+	MapleVersion          = 28
+	ClientHeaderSize      = 4
+	InterserverHeaderSize = 4
+	OpcodeLength          = 1
+)
 
 const (
 	MAX_ITEM_STACK = 200

@@ -2,12 +2,12 @@ package packets
 
 import (
 	"github.com/Hucaru/Valhalla/character"
-	"github.com/Hucaru/Valhalla/constants"
+	"github.com/Hucaru/Valhalla/consts/opcodes"
 	"github.com/Hucaru/Valhalla/maplepacket"
 )
 
 func RoomShowWindow(roomType, boardType, maxPlayers, roomSlot byte, roomTitle string, chars []character.Character) maplepacket.Packet {
-	p := maplepacket.CreateWithOpcode(constants.SendChannelRoom)
+	p := maplepacket.CreateWithOpcode(opcodes.Send.ChannelRoom)
 	p.WriteByte(0x05)
 	p.WriteByte(roomType)
 	p.WriteByte(maxPlayers)
@@ -45,7 +45,7 @@ func RoomShowWindow(roomType, boardType, maxPlayers, roomSlot byte, roomTitle st
 }
 
 func RoomJoin(roomType, roomSlot byte, char character.Character) maplepacket.Packet {
-	p := maplepacket.CreateWithOpcode(constants.SendChannelRoom)
+	p := maplepacket.CreateWithOpcode(opcodes.Send.ChannelRoom)
 	p.WriteByte(0x04)
 	p.WriteByte(roomSlot)
 	p.Append(writeDisplayCharacter(char))
@@ -66,7 +66,7 @@ func RoomJoin(roomType, roomSlot byte, char character.Character) maplepacket.Pac
 }
 
 func RoomLeave(roomSlot byte, leaveCode byte) maplepacket.Packet {
-	p := maplepacket.CreateWithOpcode(constants.SendChannelRoom)
+	p := maplepacket.CreateWithOpcode(opcodes.Send.ChannelRoom)
 	p.WriteByte(0x0A)
 	p.WriteByte(roomSlot)
 	p.WriteByte(leaveCode)
@@ -75,7 +75,7 @@ func RoomLeave(roomSlot byte, leaveCode byte) maplepacket.Packet {
 }
 
 func RoomChat(sender, message string, roomSlot byte) maplepacket.Packet {
-	p := maplepacket.CreateWithOpcode(constants.SendChannelRoom)
+	p := maplepacket.CreateWithOpcode(opcodes.Send.ChannelRoom)
 	p.WriteByte(0x06)
 	p.WriteByte(8)        // msg type
 	p.WriteByte(roomSlot) //
@@ -85,7 +85,7 @@ func RoomChat(sender, message string, roomSlot byte) maplepacket.Packet {
 }
 
 func RoomYellowChat(msgType byte, name string) maplepacket.Packet {
-	p := maplepacket.CreateWithOpcode(constants.SendChannelRoom)
+	p := maplepacket.CreateWithOpcode(opcodes.Send.ChannelRoom)
 	p.WriteByte(0x06)
 	p.WriteByte(7)
 	p.WriteByte(msgType) // expelled: 0, x's turn: 1, forfeit: 2, handicap request: 3, left: 4
@@ -95,14 +95,14 @@ func RoomYellowChat(msgType byte, name string) maplepacket.Packet {
 }
 
 func RoomShowAccept() maplepacket.Packet {
-	p := maplepacket.CreateWithOpcode(constants.SendChannelRoom)
+	p := maplepacket.CreateWithOpcode(opcodes.Send.ChannelRoom)
 	p.WriteByte(0x0F)
 
 	return p
 }
 
 func RoomInvite(roomType byte, name string, roomID int32) maplepacket.Packet {
-	p := maplepacket.CreateWithOpcode(constants.SendChannelRoom)
+	p := maplepacket.CreateWithOpcode(opcodes.Send.ChannelRoom)
 	p.WriteByte(0x02)
 	p.WriteByte(roomType)
 	p.WriteString(name)
@@ -112,7 +112,7 @@ func RoomInvite(roomType byte, name string, roomID int32) maplepacket.Packet {
 }
 
 func RoomInviteResult(resultCode byte, name string) maplepacket.Packet {
-	p := maplepacket.CreateWithOpcode(constants.SendChannelRoom)
+	p := maplepacket.CreateWithOpcode(opcodes.Send.ChannelRoom)
 	p.WriteByte(0x03)
 	p.WriteByte(resultCode)
 	p.WriteString(name)
@@ -121,49 +121,49 @@ func RoomInviteResult(resultCode byte, name string) maplepacket.Packet {
 }
 
 func RoomRequestTie() maplepacket.Packet {
-	p := maplepacket.CreateWithOpcode(constants.SendChannelRoom)
+	p := maplepacket.CreateWithOpcode(opcodes.Send.ChannelRoom)
 	p.WriteByte(0x2a)
 
 	return p
 }
 
 func RoomRejectTie() maplepacket.Packet {
-	p := maplepacket.CreateWithOpcode(constants.SendChannelRoom)
+	p := maplepacket.CreateWithOpcode(opcodes.Send.ChannelRoom)
 	p.WriteByte(0x2b)
 
 	return p
 }
 
 func RoomRequestUndo() maplepacket.Packet {
-	p := maplepacket.CreateWithOpcode(constants.SendChannelRoom)
+	p := maplepacket.CreateWithOpcode(opcodes.Send.ChannelRoom)
 	p.WriteByte(0x2e)
 
 	return p
 }
 
 func RoomRejectUndo() maplepacket.Packet {
-	p := maplepacket.CreateWithOpcode(constants.SendChannelRoom)
+	p := maplepacket.CreateWithOpcode(opcodes.Send.ChannelRoom)
 	p.WriteByte(0x2e)
 
 	return p
 }
 
 func RoomReady() maplepacket.Packet {
-	p := maplepacket.CreateWithOpcode(constants.SendChannelRoom)
+	p := maplepacket.CreateWithOpcode(opcodes.Send.ChannelRoom)
 	p.WriteByte(0x32)
 
 	return p
 }
 
 func RoomUnReady() maplepacket.Packet {
-	p := maplepacket.CreateWithOpcode(constants.SendChannelRoom)
+	p := maplepacket.CreateWithOpcode(opcodes.Send.ChannelRoom)
 	p.WriteByte(0x33)
 
 	return p
 }
 
 func RoomOmokStart(ownerStart bool) maplepacket.Packet {
-	p := maplepacket.CreateWithOpcode(constants.SendChannelRoom)
+	p := maplepacket.CreateWithOpcode(opcodes.Send.ChannelRoom)
 	p.WriteByte(0x35)
 	p.WriteBool(ownerStart)
 
@@ -171,7 +171,7 @@ func RoomOmokStart(ownerStart bool) maplepacket.Packet {
 }
 
 func RoomMemoryStart(ownerStart bool, boardType int32, cards []byte) maplepacket.Packet {
-	p := maplepacket.CreateWithOpcode(constants.SendChannelRoom)
+	p := maplepacket.CreateWithOpcode(opcodes.Send.ChannelRoom)
 	p.WriteByte(0x35)
 	p.WriteBool(ownerStart)
 	p.WriteByte(0x0C)
@@ -185,7 +185,7 @@ func RoomMemoryStart(ownerStart bool, boardType int32, cards []byte) maplepacket
 }
 
 func RoomGameResult(draw bool, winningSlot byte, forfeit bool, chars []character.Character) maplepacket.Packet {
-	p := maplepacket.CreateWithOpcode(constants.SendChannelRoom)
+	p := maplepacket.CreateWithOpcode(opcodes.Send.ChannelRoom)
 	p.WriteByte(0x36)
 
 	if !draw && !forfeit {
@@ -210,7 +210,7 @@ func RoomGameResult(draw bool, winningSlot byte, forfeit bool, chars []character
 }
 
 func RoomOmokSkip(isOwner bool) maplepacket.Packet {
-	p := maplepacket.CreateWithOpcode(constants.SendChannelRoom)
+	p := maplepacket.CreateWithOpcode(opcodes.Send.ChannelRoom)
 	p.WriteByte(0x37)
 	p.WriteBool(isOwner)
 
@@ -218,7 +218,7 @@ func RoomOmokSkip(isOwner bool) maplepacket.Packet {
 }
 
 func RoomPlaceOmokPiece(x, y int32, piece byte) maplepacket.Packet {
-	p := maplepacket.CreateWithOpcode(constants.SendChannelRoom)
+	p := maplepacket.CreateWithOpcode(opcodes.Send.ChannelRoom)
 	p.WriteByte(0x38)
 	p.WriteInt32(x)
 	p.WriteInt32(y)
@@ -228,7 +228,7 @@ func RoomPlaceOmokPiece(x, y int32, piece byte) maplepacket.Packet {
 }
 
 func RoomOmokInvalidPlaceMsg() maplepacket.Packet {
-	p := maplepacket.CreateWithOpcode(constants.SendChannelRoom)
+	p := maplepacket.CreateWithOpcode(opcodes.Send.ChannelRoom)
 	p.WriteByte(0x39)
 	p.WriteByte(0x0)
 
@@ -236,7 +236,7 @@ func RoomOmokInvalidPlaceMsg() maplepacket.Packet {
 }
 
 func RoomShowMapBox(charID, roomID int32, roomType, boardType byte, name string, hasPassword, koreanText bool, ammount byte) maplepacket.Packet {
-	p := maplepacket.CreateWithOpcode(constants.SendChannelRoomBox)
+	p := maplepacket.CreateWithOpcode(opcodes.Send.ChannelRoomBox)
 	p.WriteInt32(charID)
 	p.WriteByte(roomType)
 	p.WriteInt32(roomID)
@@ -252,7 +252,7 @@ func RoomShowMapBox(charID, roomID int32, roomType, boardType byte, name string,
 }
 
 func RoomRemoveBox(charID int32) maplepacket.Packet {
-	p := maplepacket.CreateWithOpcode(constants.SendChannelRoomBox)
+	p := maplepacket.CreateWithOpcode(opcodes.Send.ChannelRoomBox)
 	p.WriteInt32(charID)
 	p.WriteInt32(0)
 
@@ -260,7 +260,7 @@ func RoomRemoveBox(charID int32) maplepacket.Packet {
 }
 
 func roomEnterErrorMsg(errorCode byte) maplepacket.Packet {
-	p := maplepacket.CreateWithOpcode(constants.SendChannelRoom)
+	p := maplepacket.CreateWithOpcode(opcodes.Send.ChannelRoom)
 	p.WriteByte(0x05)
 	p.WriteByte(0x00)
 	p.WriteByte(errorCode)

@@ -5,7 +5,7 @@ import (
 
 	"github.com/Hucaru/Valhalla/channel"
 	"github.com/Hucaru/Valhalla/connection"
-	"github.com/Hucaru/Valhalla/constants"
+	"github.com/Hucaru/Valhalla/consts"
 	"github.com/Hucaru/Valhalla/inventory"
 	"github.com/Hucaru/Valhalla/maplepacket"
 	"github.com/Hucaru/Valhalla/packets"
@@ -55,7 +55,7 @@ func handleMoveInventoryItem(conn *connection.Channel, reader maplepacket.Reader
 		} else if len(items) == 2 {
 			if items[0].ItemID == items[1].ItemID && inventory.IsStackable(items[0].ItemID, items[0].Amount) && inventory.IsStackable(items[1].ItemID, items[1].Amount) {
 				// Handle partial and complete merges
-				remainder := items[0].Amount + items[1].Amount - constants.MAX_ITEM_STACK
+				remainder := items[0].Amount + items[1].Amount - consts.MAX_ITEM_STACK
 
 				if remainder > 0 {
 					// partial

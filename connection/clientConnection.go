@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"net"
 
-	"github.com/Hucaru/Valhalla/constants"
+	"github.com/Hucaru/Valhalla/consts"
 	"github.com/Hucaru/Valhalla/crypt"
 	"github.com/Hucaru/Valhalla/maplepacket"
 )
@@ -14,8 +14,8 @@ import (
 type Client struct {
 	net.Conn
 	readingHeader bool
-	cSend         crypt.Crypt
-	cRecv         crypt.Crypt
+	cSend         crypt.Maple
+	cRecv         crypt.Maple
 }
 
 // NewClient -
@@ -25,10 +25,10 @@ func NewClient(conn net.Conn) Client {
 	key := [4]byte{}
 	rand.Read(key[:])
 
-	client.cSend = crypt.New(key, constants.MapleVersion)
+	client.cSend = crypt.New(key, consts.MapleVersion)
 
 	rand.Read(key[:])
-	client.cRecv = crypt.New(key, constants.MapleVersion)
+	client.cRecv = crypt.New(key, consts.MapleVersion)
 
 	err := sendHandshake(client)
 
@@ -89,7 +89,7 @@ func sendHandshake(client Client) error {
 	packet := maplepacket.NewPacket()
 
 	packet.WriteInt16(13)
-	packet.WriteInt16(constants.MapleVersion)
+	packet.WriteInt16(consts.MapleVersion)
 	packet.WriteString("")
 	packet.Append(client.cRecv.IV()[:4])
 	packet.Append(client.cSend.IV()[:4])

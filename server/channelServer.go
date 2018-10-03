@@ -8,7 +8,7 @@ import (
 
 	"github.com/Hucaru/Valhalla/channel"
 	"github.com/Hucaru/Valhalla/connection"
-	"github.com/Hucaru/Valhalla/constants"
+	"github.com/Hucaru/Valhalla/consts"
 	"github.com/Hucaru/Valhalla/handlers"
 	"github.com/Hucaru/Valhalla/maplepacket"
 	"github.com/Hucaru/Valhalla/nx"
@@ -53,6 +53,6 @@ func Channel() {
 
 		go connection.HandleNewConnection(clientConnection, func(p maplepacket.Reader) {
 			handlers.HandleChannelPacket(clientConnection, p)
-		}, constants.ClientHeaderSize)
+		}, consts.ClientHeaderSize)
 	}
 }

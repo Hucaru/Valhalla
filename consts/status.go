@@ -1,4 +1,4 @@
-package constants
+package consts
 
 const (
 	MOB_STATUS_WATK = 0x01

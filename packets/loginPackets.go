@@ -4,19 +4,20 @@ import (
 	"strconv"
 
 	"github.com/Hucaru/Valhalla/character"
-	"github.com/Hucaru/Valhalla/constants"
+	"github.com/Hucaru/Valhalla/consts"
+	"github.com/Hucaru/Valhalla/consts/opcodes"
 	"github.com/Hucaru/Valhalla/maplepacket"
 )
 
 func LoginReturnFromChannel() maplepacket.Packet {
-	pac := maplepacket.CreateWithOpcode(constants.SendLoginRestarter)
+	pac := maplepacket.CreateWithOpcode(opcodes.Send.LoginRestarter)
 	pac.WriteByte(0x01)
 
 	return pac
 }
 
 func LoginResponce(result byte, userID int32, gender byte, isAdmin byte, username string, isBanned int) maplepacket.Packet {
-	pac := maplepacket.CreateWithOpcode(constants.SendLoginResponce)
+	pac := maplepacket.CreateWithOpcode(opcodes.Send.LoginResponce)
 	pac.WriteByte(result)
 	pac.WriteByte(0x00)
 	pac.WriteInt32(0)
@@ -40,7 +41,7 @@ func LoginResponce(result byte, userID int32, gender byte, isAdmin byte, usernam
 }
 
 func LoginMigrateClient(ip []byte, port int16, charID int32) maplepacket.Packet {
-	pac := maplepacket.CreateWithOpcode(constants.SendLoginCharacterMigrate)
+	pac := maplepacket.CreateWithOpcode(opcodes.Send.LoginCharacterMigrate)
 	pac.WriteByte(0x00)
 	pac.WriteByte(0x00)
 	pac.WriteBytes(ip)
@@ -53,7 +54,7 @@ func LoginMigrateClient(ip []byte, port int16, charID int32) maplepacket.Packet 
 }
 
 func LoginSendBadMigrate() maplepacket.Packet {
-	pac := maplepacket.CreateWithOpcode(constants.SendLoginCharacterMigrate)
+	pac := maplepacket.CreateWithOpcode(opcodes.Send.LoginCharacterMigrate)
 	pac.WriteByte(0x00) // flipping these 2 bytes makes the character select screen do nothing it appears
 	pac.WriteByte(0x00)
 	pac.WriteBytes([]byte{0, 0, 0, 0})
@@ -66,7 +67,7 @@ func LoginSendBadMigrate() maplepacket.Packet {
 }
 
 func LoginDisplayCharacters(characters []character.Character) maplepacket.Packet {
-	pac := maplepacket.CreateWithOpcode(constants.SendLoginCharacterData)
+	pac := maplepacket.CreateWithOpcode(opcodes.Send.LoginCharacterData)
 	pac.WriteByte(0) // ?
 
 	if len(characters) < 4 && len(characters) > 0 {
@@ -83,7 +84,7 @@ func LoginDisplayCharacters(characters []character.Character) maplepacket.Packet
 }
 
 func LoginNameCheck(name string, nameFound int) maplepacket.Packet {
-	pac := maplepacket.CreateWithOpcode(constants.SendLoginNameCheckResult)
+	pac := maplepacket.CreateWithOpcode(opcodes.Send.LoginNameCheckResult)
 	pac.WriteString(name)
 
 	if nameFound > 0 {
@@ -96,7 +97,7 @@ func LoginNameCheck(name string, nameFound int) maplepacket.Packet {
 }
 
 func LoginCreatedCharacter(success bool, character character.Character) maplepacket.Packet {
-	pac := maplepacket.CreateWithOpcode(constants.SendLoginNewCharacterGood)
+	pac := maplepacket.CreateWithOpcode(opcodes.Send.LoginNewCharacterGood)
 
 	if success {
 		pac.WriteByte(0x0) // if creation was sucessfull - 0 = good, 1 = bad
@@ -109,7 +110,7 @@ func LoginCreatedCharacter(success bool, character character.Character) maplepac
 }
 
 func LoginDeleteCharacter(charID int32, deleted bool, hacking bool) maplepacket.Packet {
-	pac := maplepacket.CreateWithOpcode(constants.SendLoginDeleteCharacter)
+	pac := maplepacket.CreateWithOpcode(opcodes.Send.LoginDeleteCharacter)
 	pac.WriteInt32(charID)
 
 	if deleted {
@@ -175,10 +176,10 @@ func LoginWritePlayerCharacter(pac *maplepacket.Packet, pos int32, char characte
 }
 
 func LoginWorldListing(worldIndex byte) maplepacket.Packet {
-	pac := maplepacket.CreateWithOpcode(constants.SendLoginWorldList)
-	pac.WriteByte(worldIndex)                          // world id
-	pac.WriteString(constants.WORLD_NAMES[worldIndex]) // World name -
-	pac.WriteByte(3)                                   // Ribbon on world - 0 = normal, 1 = event, 2 = new, 3 = hot
+	pac := maplepacket.CreateWithOpcode(opcodes.Send.LoginWorldList)
+	pac.WriteByte(worldIndex)                       // world id
+	pac.WriteString(consts.WORLD_NAMES[worldIndex]) // World name -
+	pac.WriteByte(3)                                // Ribbon on world - 0 = normal, 1 = event, 2 = new, 3 = hot
 	pac.WriteString("test")
 	pac.WriteByte(0)  // ? exp event notification?
 	pac.WriteByte(20) // number of channels
@@ -187,7 +188,7 @@ func LoginWorldListing(worldIndex byte) maplepacket.Packet {
 	population := 50
 
 	for j := 1; j < 21; j++ {
-		pac.WriteString(constants.WORLD_NAMES[worldIndex] + "-" + strconv.Itoa(j))     // channel name
+		pac.WriteString(consts.WORLD_NAMES[worldIndex] + "-" + strconv.Itoa(j))        // channel name
 		pac.WriteInt32(int32(1200.0 * (float64(population) / float64(maxPopulation)))) // Population
 		pac.WriteByte(worldIndex)                                                      // world id
 		pac.WriteByte(byte(j))                                                         // channel id
@@ -198,14 +199,14 @@ func LoginWorldListing(worldIndex byte) maplepacket.Packet {
 }
 
 func LoginEndWorldList() maplepacket.Packet {
-	pac := maplepacket.CreateWithOpcode(constants.SendLoginWorldList)
+	pac := maplepacket.CreateWithOpcode(opcodes.Send.LoginWorldList)
 	pac.WriteByte(0xFF)
 
 	return pac
 }
 
 func LoginWorldInfo(warning byte, population byte) maplepacket.Packet {
-	p := maplepacket.CreateWithOpcode(constants.SendLoginWorldMeta)
+	p := maplepacket.CreateWithOpcode(opcodes.Send.LoginWorldMeta)
 	p.WriteByte(warning)    // Warning - 0 = no warning, 1 - high amount of concurent users, 2 = max uesrs in world
 	p.WriteByte(population) // Population marker - 0 = No maker, 1 = Highly populated, 2 = over populated
 
