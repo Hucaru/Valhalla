@@ -11,3 +11,9 @@ type mage struct {
 
 type thief struct {
 }
+
+type gm struct {
+}
+
+type superGm struct {
+}

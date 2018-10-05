@@ -30,10 +30,9 @@ func handleUsePortal(conn *connection.Channel, reader maplepacket.Reader) {
 		channel.Players.OnCharacterFromConn(conn, func(char *channel.MapleCharacter) {
 			channel.Maps.GetMap(char.GetCurrentMap()).RemovePlayer(conn)
 
-			for i, v := range channel.Maps.GetMap(char.GetCurrentMap()).GetPortals() {
+			for _, v := range channel.Maps.GetMap(char.GetCurrentMap()).GetPortals() {
 				if v.GetName() == portalName {
-
-					for _, portal := range channel.Maps.GetMap(v.GetToMap()).GetPortals() {
+					for i, portal := range channel.Maps.GetMap(v.GetToMap()).GetPortals() {
 						if portal.GetName() == v.GetToPortal() {
 							mapID := v.GetToMap()
 							char.ChangeMap(mapID, portal, byte(i))
