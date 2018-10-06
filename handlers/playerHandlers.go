@@ -45,6 +45,11 @@ func handlePlayerConnect(conn *connection.Channel, reader maplepacket.Reader) {
 			}
 			channel.Maps.GetMap(char.GetCurrentMap()).RemovePlayer(conn)
 
+			spID := channel.Maps.GetMap(char.GetCurrentMap()).GetNearestSpawnPortalID(char)
+
+			records, err := connection.Db.Query("UPDATE characters set mapPos=? WHERE id=?", spID, char.GetCharID())
+			defer records.Close()
+
 			removeRoom := false
 			var roomID int32
 

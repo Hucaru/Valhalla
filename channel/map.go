@@ -1,6 +1,7 @@
 package channel
 
 import (
+	"math"
 	"math/rand"
 	"sync"
 	"time"
@@ -48,6 +49,29 @@ func (m *mapleMap) GetPortals() []maplePortal {
 	m.mutex.RUnlock()
 
 	return result
+}
+
+func (m *mapleMap) GetNearestSpawnPortalID(char *MapleCharacter) int {
+	var distance float64 = -1
+	var ind int
+
+	m.mutex.RLock()
+	for i, v := range m.portals {
+		if !v.GetIsSpawn() {
+			continue
+		}
+		calc := math.Hypot(float64(char.GetX()-v.GetX()), float64(char.GetX()-v.GetX()))
+
+		if distance == -1 {
+			distance = calc // guaranteed to always return a portal this way
+		} else if distance > calc {
+			distance = calc
+			ind = i
+		}
+	}
+	m.mutex.RUnlock()
+
+	return ind
 }
 
 func (m *mapleMap) AddPortal(portal maplePortal) {
