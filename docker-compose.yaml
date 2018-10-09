@@ -5,14 +5,8 @@ services:
         image: valhalla/server
         build:
             context: ./
-            dockerfile: docker/Dockerfile
+            dockerfile: Dockerfile
         command: -type=login
-        environment:
-            - DB_USER=root
-            - DB_PASSWORD=password
-            - DB_DATABASE=maplestory
-            - DB_ADDRESS=db
-            - DB_PORT=3306
         ports:
             - 8484:8484
         restart: unless-stopped

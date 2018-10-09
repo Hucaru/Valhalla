@@ -1,0 +1,20 @@
+[database]
+# address = "db"
+address = "127.0.0.1"
+port = "3306"
+user = "root"
+password = "password"
+database = "maplestory"
+
+[login]
+listenAddress = "0.0.0.0"
+listenPort = "8484"
+packetQueueSize = 10240
+
+[world]
+listenPort = "8584"
+packetQueueSize = 10240
+
+[channel]
+listenPort = "8684"
+packetQueueSize = 10240
