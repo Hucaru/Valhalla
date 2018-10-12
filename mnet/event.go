@@ -1,6 +1,8 @@
 package mnet
 
 import (
+	"net"
+
 	"github.com/Hucaru/Valhalla/maplepacket"
 )
 
@@ -13,5 +15,5 @@ const (
 type Event struct {
 	Type   int
 	Packet maplepacket.Packet
-	Conn   MConn
+	Conn   net.Conn
 }

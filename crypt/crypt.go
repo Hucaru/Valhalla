@@ -15,7 +15,7 @@ type Maple struct {
 	key          [16]byte
 }
 
-func New(key [4]byte, mapleVersion int) Maple {
+func New(key [4]byte, mapleVersion int) *Maple {
 	var c Maple
 
 	for i := 0; i < 4; i++ {
@@ -24,7 +24,7 @@ func New(key [4]byte, mapleVersion int) Maple {
 
 	c.mapleVersion = mapleVersion
 
-	return c
+	return &c
 }
 
 func (c *Maple) Encrypt(p []byte, maple, aes bool) {

@@ -1,6 +1,6 @@
 package packets
 
-import "github.com/Hucaru/Valhalla/connection"
+import "net"
 
 type posInter interface {
 	SetX(int16)
@@ -35,5 +35,6 @@ type npcInter interface {
 type mobInter interface {
 	npcInter
 	GetFlySpeed() int32
-	GetSummoner() *connection.Channel
+	// GetSummoner() *connection.Channel
+	GetSummoner() net.Conn
 }

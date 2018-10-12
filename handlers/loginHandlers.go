@@ -7,35 +7,17 @@ import (
 	"strings"
 
 	"github.com/Hucaru/Valhalla/character"
-	"github.com/Hucaru/Valhalla/connection"
+	"github.com/Hucaru/Valhalla/database"
 	"github.com/Hucaru/Valhalla/maplepacket"
+	"github.com/Hucaru/Valhalla/mnet"
 	"github.com/Hucaru/Valhalla/packets"
 )
 
-type clientLoginConn interface {
-	Write(maplepacket.Packet) error
-
-	SetGender(byte)
-	GetGender() byte
-
-	SetAdmin(bool)
-	IsAdmin() bool
-
-	SetUserID(int32)
-	GetUserID() int32
-
-	SetWorldID(int32)
-	GetWorldID() int32
-
-	SetChanID(byte)
-	SetSessionHash(string)
-}
-
-func handleReturnToLoginScreen(conn clientLoginConn, reader maplepacket.Reader) {
+func handleReturnToLoginScreen(conn mnet.MConnLogin, reader maplepacket.Reader) {
 	conn.Write(packets.LoginReturnFromChannel())
 }
 
-func handleLoginRequest(conn clientLoginConn, reader maplepacket.Reader) {
+func handleLoginRequest(conn mnet.MConnLogin, reader maplepacket.Reader) {
 	usernameLength := reader.ReadInt16()
 	username := reader.ReadString(int(usernameLength))
 
@@ -55,7 +37,7 @@ func handleLoginRequest(conn clientLoginConn, reader maplepacket.Reader) {
 	var isBanned int
 	var isAdmin byte
 
-	err := connection.Db.QueryRow("SELECT userID, username, password, gender, isLogedIn, isBanned, isAdmin FROM users WHERE username=?", username).
+	err := database.Db.QueryRow("SELECT userID, username, password, gender, isLogedIn, isBanned, isAdmin FROM users WHERE username=?", username).
 		Scan(&userID, &user, &databasePassword, &gender, &isLogedIn, &isBanned, &isAdmin)
 
 	result := byte(0x00)
@@ -78,7 +60,7 @@ func handleLoginRequest(conn clientLoginConn, reader maplepacket.Reader) {
 		conn.SetAdmin(byte(0x01) == isAdmin)
 		conn.SetUserID(userID)
 
-		records, err := connection.Db.Query("UPDATE users set isLogedIn=1 WHERE userID=?", userID)
+		records, err := database.Db.Query("UPDATE users set isLogedIn=1 WHERE userID=?", userID)
 
 		defer records.Close()
 
@@ -92,12 +74,12 @@ func handleLoginRequest(conn clientLoginConn, reader maplepacket.Reader) {
 	conn.Write(packets.LoginResponce(result, userID, gender, isAdmin, username, isBanned))
 }
 
-func handleGoodLogin(conn clientLoginConn, reader maplepacket.Reader) {
+func handleGoodLogin(conn mnet.MConnLogin, reader maplepacket.Reader) {
 	var username, password string
 
 	userID := conn.GetUserID()
 
-	err := connection.Db.QueryRow("SELECT username, password FROM users WHERE userID=?", userID).
+	err := database.Db.QueryRow("SELECT username, password FROM users WHERE userID=?", userID).
 		Scan(&username, &password)
 
 	if err != nil {
@@ -117,14 +99,14 @@ func handleGoodLogin(conn clientLoginConn, reader maplepacket.Reader) {
 	conn.Write(packets.LoginEndWorldList())
 }
 
-func handleWorldSelect(conn clientLoginConn, reader maplepacket.Reader) {
+func handleWorldSelect(conn mnet.MConnLogin, reader maplepacket.Reader) {
 	worldID := reader.ReadInt16()
 	conn.SetWorldID(int32(worldID))
 
 	conn.Write(packets.LoginWorldInfo(0, 0)) // hard coded for now
 }
 
-func handleChannelSelect(conn clientLoginConn, reader maplepacket.Reader) {
+func handleChannelSelect(conn mnet.MConnLogin, reader maplepacket.Reader) {
 	selectedWorld := reader.ReadByte() // world
 	conn.SetChanID(reader.ReadByte())  // Channel
 
@@ -137,12 +119,12 @@ func handleChannelSelect(conn clientLoginConn, reader maplepacket.Reader) {
 	conn.Write(packets.LoginDisplayCharacters(characters))
 }
 
-func handleNameCheck(conn clientLoginConn, reader maplepacket.Reader) {
+func handleNameCheck(conn mnet.MConnLogin, reader maplepacket.Reader) {
 	nameLength := reader.ReadInt16()
 	newCharName := reader.ReadString(int(nameLength))
 
 	var nameFound int
-	err := connection.Db.QueryRow("SELECT count(*) name FROM characters WHERE name=?", newCharName).
+	err := database.Db.QueryRow("SELECT count(*) name FROM characters WHERE name=?", newCharName).
 		Scan(&nameFound)
 
 	if err != nil {
@@ -152,7 +134,7 @@ func handleNameCheck(conn clientLoginConn, reader maplepacket.Reader) {
 	conn.Write(packets.LoginNameCheck(newCharName, nameFound))
 }
 
-func handleNewCharacter(conn clientLoginConn, reader maplepacket.Reader) {
+func handleNewCharacter(conn mnet.MConnLogin, reader maplepacket.Reader) {
 	nameLength := reader.ReadInt16()
 	name := reader.ReadString(int(nameLength))
 	face := reader.ReadInt32()
@@ -173,7 +155,7 @@ func handleNewCharacter(conn clientLoginConn, reader maplepacket.Reader) {
 
 	var counter int
 
-	err := connection.Db.QueryRow("SELECT count(*) FROM characters where name=? and worldID=?", name, conn.GetWorldID()).Scan(&counter)
+	err := database.Db.QueryRow("SELECT count(*) FROM characters where name=? and worldID=?", name, conn.GetWorldID()).Scan(&counter)
 
 	if err != nil {
 		panic(err.Error())
@@ -210,7 +192,7 @@ func handleNewCharacter(conn clientLoginConn, reader maplepacket.Reader) {
 	}
 
 	if valid {
-		res, err := connection.Db.Exec("INSERT INTO characters (name, userID, worldID, face, hair, skin, gender, str, dex, intt, luk) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+		res, err := database.Db.Exec("INSERT INTO characters (name, userID, worldID, face, hair, skin, gender, str, dex, intt, luk) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
 			name, conn.GetUserID(), conn.GetWorldID(), face, hair+hairColour, skin, conn.GetGender(), str, dex, intelligence, luk)
 
 		characterID, err := res.LastInsertId()
@@ -247,15 +229,15 @@ func handleNewCharacter(conn clientLoginConn, reader maplepacket.Reader) {
 	conn.Write(packets.LoginCreatedCharacter(valid, newCharacter))
 }
 
-func handleDeleteCharacter(conn clientLoginConn, reader maplepacket.Reader) {
+func handleDeleteCharacter(conn mnet.MConnLogin, reader maplepacket.Reader) {
 	dob := reader.ReadInt32()
 	charID := reader.ReadInt32()
 
 	var storedDob int32
 	var charCount int
 
-	err := connection.Db.QueryRow("SELECT dob FROM users where userID=?", conn.GetUserID()).Scan(&storedDob)
-	err = connection.Db.QueryRow("SELECT count(*) FROM characters where userID=? AND id=?", conn.GetUserID(), charID).Scan(&charCount)
+	err := database.Db.QueryRow("SELECT dob FROM users where userID=?", conn.GetUserID()).Scan(&storedDob)
+	err = database.Db.QueryRow("SELECT count(*) FROM characters where userID=? AND id=?", conn.GetUserID(), charID).Scan(&charCount)
 
 	if err != nil {
 		panic(err.Error())
@@ -270,7 +252,7 @@ func handleDeleteCharacter(conn clientLoginConn, reader maplepacket.Reader) {
 	}
 
 	if dob == storedDob {
-		records, err := connection.Db.Query("DELETE FROM characters where id=?", charID)
+		records, err := database.Db.Query("DELETE FROM characters where id=?", charID)
 
 		if err != nil {
 			panic(err.Error())
@@ -284,12 +266,12 @@ func handleDeleteCharacter(conn clientLoginConn, reader maplepacket.Reader) {
 	conn.Write(packets.LoginDeleteCharacter(charID, deleted, hacking))
 }
 
-func handleSelectCharacter(conn clientLoginConn, reader maplepacket.Reader) {
+func handleSelectCharacter(conn mnet.MConnLogin, reader maplepacket.Reader) {
 	charID := reader.ReadInt32()
 
 	var charCount int
 
-	err := connection.Db.QueryRow("SELECT count(*) FROM characters where userID=? AND id=?", conn.GetUserID(), charID).Scan(&charCount)
+	err := database.Db.QueryRow("SELECT count(*) FROM characters where userID=? AND id=?", conn.GetUserID(), charID).Scan(&charCount)
 
 	if err != nil {
 		panic(err.Error())
@@ -303,7 +285,7 @@ func handleSelectCharacter(conn clientLoginConn, reader maplepacket.Reader) {
 }
 
 func addCharacterItem(characterID int64, itemID int32, slot int32) {
-	_, err := connection.Db.Exec("INSERT INTO items (characterID, itemID, slotNumber, creatorName) VALUES (?, ?, ?, ?)", characterID, itemID, slot, "")
+	_, err := database.Db.Exec("INSERT INTO items (characterID, itemID, slotNumber, creatorName) VALUES (?, ?, ?, ?)", characterID, itemID, slot, "")
 
 	if err != nil {
 		panic(err.Error())
