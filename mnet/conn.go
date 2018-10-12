@@ -5,7 +5,6 @@ import (
 
 	"github.com/Hucaru/Valhalla/consts"
 	"github.com/Hucaru/Valhalla/crypt"
-	"github.com/Hucaru/Valhalla/packets"
 
 	"github.com/Hucaru/Valhalla/maplepacket"
 )
@@ -13,12 +12,11 @@ import (
 type MConn interface {
 	String() string
 	Send(maplepacket.Packet)
+	Cleanup()
 }
 
 func clientReader(conn net.Conn, eRecv chan *Event, mapleVersion int16, headerSize int, cryptRecv, cryptSend *crypt.Maple) {
 	eRecv <- &Event{Type: MEClientConnected, Conn: conn}
-
-	conn.Write(packets.ClientHandshake(mapleVersion, cryptRecv.IV()[:4], cryptSend.IV()[:4]))
 
 	header := true
 	readSize := headerSize
@@ -43,6 +41,12 @@ func clientReader(conn net.Conn, eRecv chan *Event, mapleVersion int16, headerSi
 	}
 }
 
+func serverReader() {
+	for {
+
+	}
+}
+
 type baseConn struct {
 	net.Conn
 	eSend  chan maplepacket.Packet
@@ -64,7 +68,11 @@ func (bc *baseConn) Writer() {
 			if !ok {
 				return
 			}
-			bc.cryptSend.Encrypt(p, true, false)
+
+			if bc.cryptSend != nil {
+				bc.cryptSend.Encrypt(p, true, false)
+			}
+
 			bc.Conn.Write(p)
 		}
 

@@ -3,13 +3,14 @@ package handlers
 import (
 	"log"
 
-	"github.com/Hucaru/Valhalla/connection"
+	"github.com/Hucaru/Valhalla/mnet"
+
 	"github.com/Hucaru/Valhalla/consts/opcodes"
 	"github.com/Hucaru/Valhalla/maplepacket"
 )
 
 // HandleLoginPacket -
-func HandleLoginPacket(conn *connection.Login, reader maplepacket.Reader) {
+func HandleLoginPacket(conn mnet.MConnLogin, reader maplepacket.Reader) {
 	switch reader.ReadByte() {
 	case opcodes.Recv.ReturnToLoginScreen:
 		handleReturnToLoginScreen(conn, reader)

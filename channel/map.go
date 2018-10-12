@@ -6,8 +6,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Hucaru/Valhalla/connection"
 	"github.com/Hucaru/Valhalla/maplepacket"
+	"github.com/Hucaru/Valhalla/mnet"
 	"github.com/Hucaru/Valhalla/packets"
 )
 
@@ -18,7 +18,7 @@ type mapleMap struct {
 	isTown       bool
 	portals      []maplePortal
 	mutex        *sync.RWMutex
-	players      []*connection.Channel
+	players      []mnet.MConnChannel
 }
 
 func (m *mapleMap) GetMobRate() float64 {
@@ -80,7 +80,7 @@ func (m *mapleMap) AddPortal(portal maplePortal) {
 	m.mutex.Unlock()
 }
 
-func (m *mapleMap) OnPlayers(action func(conn *connection.Channel) bool) {
+func (m *mapleMap) OnPlayers(action func(conn mnet.MConnChannel) bool) {
 	m.mutex.RLock()
 	for i := range m.players {
 		done := action(m.players[i])
@@ -91,7 +91,7 @@ func (m *mapleMap) OnPlayers(action func(conn *connection.Channel) bool) {
 	m.mutex.RUnlock()
 }
 
-func (m *mapleMap) AddPlayer(player *connection.Channel) {
+func (m *mapleMap) AddPlayer(player mnet.MConnChannel) {
 	m.playerEnterMap(player)
 
 	m.mutex.Lock()
@@ -99,7 +99,7 @@ func (m *mapleMap) AddPlayer(player *connection.Channel) {
 	m.mutex.Unlock()
 }
 
-func (m *mapleMap) RemovePlayer(player *connection.Channel) {
+func (m *mapleMap) RemovePlayer(player mnet.MConnChannel) {
 	index := -1
 
 	m.mutex.RLock()
@@ -126,20 +126,20 @@ func (m *mapleMap) SendPacket(packet maplepacket.Packet) {
 	if len(packet) > 0 {
 		m.mutex.RLock()
 		for _, player := range m.players {
-			player.Write(packet)
+			player.Send(packet)
 		}
 		m.mutex.RUnlock()
 	}
 }
 
-func (m *mapleMap) SendPacketExcept(packet maplepacket.Packet, conn *connection.Channel) {
+func (m *mapleMap) SendPacketExcept(packet maplepacket.Packet, conn mnet.MConnChannel) {
 	if len(packet) > 0 {
 		m.mutex.RLock()
 		for _, player := range m.players {
 			if player == conn {
 				continue
 			}
-			player.Write(packet)
+			player.Send(packet)
 		}
 		m.mutex.RUnlock()
 	}
@@ -157,15 +157,15 @@ func (m *mapleMap) GetRandomSpawnPortal() (maplePortal, byte) {
 	return portals[pos], byte(pos)
 }
 
-func (m *mapleMap) playerEnterMap(conn *connection.Channel) {
-	m.OnPlayers(func(other *connection.Channel) bool {
+func (m *mapleMap) playerEnterMap(conn mnet.MConnChannel) {
+	m.OnPlayers(func(other mnet.MConnChannel) bool {
 
 		Players.OnCharacterFromConn(conn, func(char *MapleCharacter) {
-			other.Write(packets.MapPlayerEnter(char.Character))
+			other.Send(packets.MapPlayerEnter(char.Character))
 		})
 
 		Players.OnCharacterFromConn(other, func(char *MapleCharacter) {
-			conn.Write(packets.MapPlayerEnter(char.Character))
+			conn.Send(packets.MapPlayerEnter(char.Character))
 		})
 
 		return false
@@ -194,7 +194,7 @@ func (m *mapleMap) playerEnterMap(conn *connection.Channel) {
 	})
 }
 
-func (m *mapleMap) playerLeaveMap(conn *connection.Channel) {
+func (m *mapleMap) playerLeaveMap(conn mnet.MConnChannel) {
 	Players.OnCharacterFromConn(conn, func(char *MapleCharacter) {
 		for _, npc := range NPCs.GetNpcs(char.GetCurrentMap()) {
 			npc.Hide(conn)
@@ -204,7 +204,7 @@ func (m *mapleMap) playerLeaveMap(conn *connection.Channel) {
 			if mob.GetController() == conn {
 				mob.RemoveController()
 
-				m.OnPlayers(func(conn *connection.Channel) bool {
+				m.OnPlayers(func(conn mnet.MConnChannel) bool {
 					mob.SetController(conn, false)
 					return true
 				})

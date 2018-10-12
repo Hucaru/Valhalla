@@ -14,7 +14,7 @@ import (
 )
 
 func handleReturnToLoginScreen(conn mnet.MConnLogin, reader maplepacket.Reader) {
-	conn.Write(packets.LoginReturnFromChannel())
+	conn.Send(packets.LoginReturnFromChannel())
 }
 
 func handleLoginRequest(conn mnet.MConnLogin, reader maplepacket.Reader) {
@@ -58,7 +58,7 @@ func handleLoginRequest(conn mnet.MConnLogin, reader maplepacket.Reader) {
 	if result <= 0x01 {
 		conn.SetGender(gender)
 		conn.SetAdmin(byte(0x01) == isAdmin)
-		conn.SetUserID(userID)
+		conn.SetAccountID(userID)
 
 		records, err := database.Db.Query("UPDATE users set isLogedIn=1 WHERE userID=?", userID)
 
@@ -71,7 +71,7 @@ func handleLoginRequest(conn mnet.MConnLogin, reader maplepacket.Reader) {
 		}
 	}
 
-	conn.Write(packets.LoginResponce(result, userID, gender, isAdmin, username, isBanned))
+	conn.Send(packets.LoginResponce(result, userID, gender, isAdmin, username, isBanned))
 }
 
 func handleGoodLogin(conn mnet.MConnLogin, reader maplepacket.Reader) {
@@ -94,16 +94,16 @@ func handleGoodLogin(conn mnet.MConnLogin, reader maplepacket.Reader) {
 	const maxNumberOfWorlds = 14
 
 	for i := maxNumberOfWorlds; i > -1; i-- {
-		conn.Write(packets.LoginWorldListing(byte(i))) // hard coded for now
+		conn.Send(packets.LoginWorldListing(byte(i))) // hard coded for now
 	}
-	conn.Write(packets.LoginEndWorldList())
+	conn.Send(packets.LoginEndWorldList())
 }
 
 func handleWorldSelect(conn mnet.MConnLogin, reader maplepacket.Reader) {
 	worldID := reader.ReadInt16()
 	conn.SetWorldID(int32(worldID))
 
-	conn.Write(packets.LoginWorldInfo(0, 0)) // hard coded for now
+	conn.Send(packets.LoginWorldInfo(0, 0)) // hard coded for now
 }
 
 func handleChannelSelect(conn mnet.MConnLogin, reader maplepacket.Reader) {
@@ -116,7 +116,7 @@ func handleChannelSelect(conn mnet.MConnLogin, reader maplepacket.Reader) {
 		characters = character.GetCharacters(conn.GetUserID(), conn.GetWorldID())
 	}
 
-	conn.Write(packets.LoginDisplayCharacters(characters))
+	conn.Send(packets.LoginDisplayCharacters(characters))
 }
 
 func handleNameCheck(conn mnet.MConnLogin, reader maplepacket.Reader) {
@@ -131,7 +131,7 @@ func handleNameCheck(conn mnet.MConnLogin, reader maplepacket.Reader) {
 		panic(err.Error())
 	}
 
-	conn.Write(packets.LoginNameCheck(newCharName, nameFound))
+	conn.Send(packets.LoginNameCheck(newCharName, nameFound))
 }
 
 func handleNewCharacter(conn mnet.MConnLogin, reader maplepacket.Reader) {
@@ -226,7 +226,7 @@ func handleNewCharacter(conn mnet.MConnLogin, reader maplepacket.Reader) {
 		newCharacter = characters[len(characters)-1]
 	}
 
-	conn.Write(packets.LoginCreatedCharacter(valid, newCharacter))
+	conn.Send(packets.LoginCreatedCharacter(valid, newCharacter))
 }
 
 func handleDeleteCharacter(conn mnet.MConnLogin, reader maplepacket.Reader) {
@@ -263,7 +263,7 @@ func handleDeleteCharacter(conn mnet.MConnLogin, reader maplepacket.Reader) {
 		deleted = true
 	}
 
-	conn.Write(packets.LoginDeleteCharacter(charID, deleted, hacking))
+	conn.Send(packets.LoginDeleteCharacter(charID, deleted, hacking))
 }
 
 func handleSelectCharacter(conn mnet.MConnLogin, reader maplepacket.Reader) {
@@ -280,7 +280,7 @@ func handleSelectCharacter(conn mnet.MConnLogin, reader maplepacket.Reader) {
 	if charCount == 1 {
 		ip := []byte{192, 168, 1, 240}
 		port := int16(8686)
-		conn.Write(packets.LoginMigrateClient(ip, port, charID))
+		conn.Send(packets.LoginMigrateClient(ip, port, charID))
 	}
 }
 

@@ -5,30 +5,30 @@ import (
 	"math/rand"
 
 	"github.com/Hucaru/Valhalla/character"
-	"github.com/Hucaru/Valhalla/connection"
 	"github.com/Hucaru/Valhalla/consts"
 	"github.com/Hucaru/Valhalla/inventory"
 	"github.com/Hucaru/Valhalla/maplepacket"
+	"github.com/Hucaru/Valhalla/mnet"
 	"github.com/Hucaru/Valhalla/packets"
 )
 
 type MapleCharacter struct {
 	character.Character
-	conn *connection.Channel // Might be worth compositing this in?
+	conn mnet.MConnChannel // Might be worth compositing this in?
 }
 
 func (c *MapleCharacter) SendPacket(p maplepacket.Packet) {
 	if len(p) > 0 {
-		c.conn.Write(p)
+		c.conn.Send(p)
 	}
 }
 
-func (c *MapleCharacter) GetConn() *connection.Channel {
+func (c *MapleCharacter) GetConn() mnet.MConnChannel {
 	return c.conn
 }
 
-func (c *MapleCharacter) IsAdmin() bool {
-	return c.conn.IsAdmin()
+func (c *MapleCharacter) GetAdmin() bool {
+	return c.conn.GetAdmin()
 }
 
 func (c *MapleCharacter) SetHP(hp int16) {
@@ -38,7 +38,7 @@ func (c *MapleCharacter) SetHP(hp int16) {
 		c.Character.SetHP(c.GetMaxHP())
 	}
 
-	c.conn.Write(packets.PlayerStatChange(true, consts.HP_ID, int32(c.GetHP())))
+	c.conn.Send(packets.PlayerStatChange(true, consts.HP_ID, int32(c.GetHP())))
 }
 
 func (c *MapleCharacter) SetMP(mp int16) {
@@ -48,25 +48,25 @@ func (c *MapleCharacter) SetMP(mp int16) {
 		c.Character.SetMP(c.GetMaxMP())
 	}
 
-	c.conn.Write(packets.PlayerStatChange(true, consts.MP_ID, int32(c.GetMP())))
+	c.conn.Send(packets.PlayerStatChange(true, consts.MP_ID, int32(c.GetMP())))
 }
 
 func (c *MapleCharacter) SetAP(ap int16) {
 	c.Character.SetAP(ap)
-	c.conn.Write(packets.PlayerStatChange(true, consts.AP_ID, int32(ap)))
+	c.conn.Send(packets.PlayerStatChange(true, consts.AP_ID, int32(ap)))
 }
 
 func (c *MapleCharacter) SetStr(str int16) {
 	var maxValue int16 = 2000
 
 	if c.GetStr() >= maxValue {
-		c.conn.Write(packets.PlayerStatNoChange())
+		c.conn.Send(packets.PlayerStatNoChange())
 		return
 	}
 
 	c.Character.SetStr(str)
 
-	c.conn.Write(packets.PlayerStatChange(true, consts.STR_ID, int32(str)))
+	c.conn.Send(packets.PlayerStatChange(true, consts.STR_ID, int32(str)))
 
 	c.SetAP(c.GetAP() - 1)
 }
@@ -75,13 +75,13 @@ func (c *MapleCharacter) SetDex(dex int16) {
 	var maxValue int16 = 2000
 
 	if c.GetDex() >= maxValue {
-		c.conn.Write(packets.PlayerStatNoChange())
+		c.conn.Send(packets.PlayerStatNoChange())
 		return
 	}
 
 	c.Character.SetDex(dex)
 
-	c.conn.Write(packets.PlayerStatChange(true, consts.DEX_ID, int32(dex)))
+	c.conn.Send(packets.PlayerStatChange(true, consts.DEX_ID, int32(dex)))
 
 	c.SetAP(c.GetAP() - 1)
 }
@@ -90,13 +90,13 @@ func (c *MapleCharacter) SetInt(intt int16) {
 	var maxValue int16 = 2000
 
 	if c.GetInt() >= maxValue {
-		c.conn.Write(packets.PlayerStatNoChange())
+		c.conn.Send(packets.PlayerStatNoChange())
 		return
 	}
 
 	c.Character.SetInt(intt)
 
-	c.conn.Write(packets.PlayerStatChange(true, consts.INT_ID, int32(intt)))
+	c.conn.Send(packets.PlayerStatChange(true, consts.INT_ID, int32(intt)))
 
 	c.SetAP(c.GetAP() - 1)
 }
@@ -105,13 +105,13 @@ func (c *MapleCharacter) SetLuk(luk int16) {
 	var maxValue int16 = 2000
 
 	if c.GetLuk() >= maxValue {
-		c.conn.Write(packets.PlayerStatNoChange())
+		c.conn.Send(packets.PlayerStatNoChange())
 		return
 	}
 
 	c.Character.SetLuk(luk)
 
-	c.conn.Write(packets.PlayerStatChange(true, consts.LUK_ID, int32(luk)))
+	c.conn.Send(packets.PlayerStatChange(true, consts.LUK_ID, int32(luk)))
 
 	c.SetAP(c.GetAP() - 1)
 }
@@ -120,13 +120,13 @@ func (c *MapleCharacter) SetMaxHP(mp int16) {
 	var maxValue int16 = 30000
 
 	if c.GetMaxHP() >= maxValue {
-		c.conn.Write(packets.PlayerStatNoChange())
+		c.conn.Send(packets.PlayerStatNoChange())
 		return
 	}
 
 	c.Character.SetMaxHP(mp)
 
-	c.conn.Write(packets.PlayerStatChange(true, consts.MAX_HP_ID, int32(mp)))
+	c.conn.Send(packets.PlayerStatChange(true, consts.MAX_HP_ID, int32(mp)))
 
 	c.SetAP(c.GetAP() - 1)
 }
@@ -135,26 +135,26 @@ func (c *MapleCharacter) SetMaxMP(hp int16) {
 	var maxValue int16 = 30000
 
 	if c.GetMaxMP() >= maxValue {
-		c.conn.Write(packets.PlayerStatNoChange())
+		c.conn.Send(packets.PlayerStatNoChange())
 		return
 	}
 
 	c.Character.SetMaxMP(hp)
 
-	c.conn.Write(packets.PlayerStatChange(true, consts.MAX_MP_ID, int32(hp)))
+	c.conn.Send(packets.PlayerStatChange(true, consts.MAX_MP_ID, int32(hp)))
 
 	c.SetAP(c.GetAP() - 1)
 }
 
 func (c *MapleCharacter) SetSP(sp int16) {
 	c.Character.SetSP(sp)
-	c.conn.Write(packets.PlayerStatChange(true, consts.SP_ID, int32(sp)))
+	c.conn.Send(packets.PlayerStatChange(true, consts.SP_ID, int32(sp)))
 }
 
 func (c *MapleCharacter) UpdateSkill(id, level int32) {
 	c.Character.UpdateSkill(id, level)
 	c.SetSP(c.GetSP() - 1)
-	c.conn.Write(packets.PlayerSkillBookUpdate(id, level))
+	c.conn.Send(packets.PlayerSkillBookUpdate(id, level))
 }
 
 func (c *MapleCharacter) ChangeMap(mapID int32, portal maplePortal, pID byte) {
@@ -163,7 +163,7 @@ func (c *MapleCharacter) ChangeMap(mapID int32, portal maplePortal, pID byte) {
 	c.SetX(portal.GetX())
 	c.SetY(portal.GetY())
 
-	c.conn.Write(packets.MapChange(mapID, 1, pID, c.GetHP())) // replace 1 with channel id
+	c.conn.Send(packets.MapChange(mapID, 1, pID, c.GetHP())) // replace 1 with channel id
 	c.SetCurrentMap(mapID)
 	Maps.GetMap(mapID).AddPlayer(c.conn)
 }
@@ -217,14 +217,14 @@ func (c *MapleCharacter) LevelUP() {
 	c.Character.SetMaxMP(newMp)
 	c.Character.SetMP(newMp)
 
-	c.conn.Write(packets.PlayerStatChange(false, consts.HP_ID, int32(newHp)))
-	c.conn.Write(packets.PlayerStatChange(false, consts.MAX_HP_ID, int32(newHp)))
+	c.conn.Send(packets.PlayerStatChange(false, consts.HP_ID, int32(newHp)))
+	c.conn.Send(packets.PlayerStatChange(false, consts.MAX_HP_ID, int32(newHp)))
 
-	c.conn.Write(packets.PlayerStatChange(false, consts.MP_ID, int32(newHp)))
-	c.conn.Write(packets.PlayerStatChange(false, consts.MAX_MP_ID, int32(newHp)))
+	c.conn.Send(packets.PlayerStatChange(false, consts.MP_ID, int32(newHp)))
+	c.conn.Send(packets.PlayerStatChange(false, consts.MAX_MP_ID, int32(newHp)))
 
-	c.conn.Write(packets.PlayerStatChange(false, consts.AP_ID, int32(newAP)))
-	c.conn.Write(packets.PlayerStatChange(false, consts.SP_ID, int32(newSP)))
+	c.conn.Send(packets.PlayerStatChange(false, consts.AP_ID, int32(newAP)))
+	c.conn.Send(packets.PlayerStatChange(false, consts.SP_ID, int32(newSP)))
 }
 
 func (c *MapleCharacter) SetLevel(level byte) {
@@ -238,18 +238,18 @@ func (c *MapleCharacter) SetLevel(level byte) {
 	}
 
 	c.Character.SetLevel(level)
-	c.conn.Write(packets.PlayerStatChange(true, consts.LEVEL_ID, int32(level)))
+	c.conn.Send(packets.PlayerStatChange(true, consts.LEVEL_ID, int32(level)))
 
 }
 
 func (c *MapleCharacter) SetJob(jobID int16) {
 	c.Character.SetJob(jobID)
-	c.conn.Write(packets.PlayerStatChange(true, consts.JOB_ID, int32(jobID)))
+	c.conn.Send(packets.PlayerStatChange(true, consts.JOB_ID, int32(jobID)))
 }
 
 func (c *MapleCharacter) SetMesos(val int32) {
 	c.Character.SetMesos(val)
-	c.conn.Write(packets.PlayerStatChange(true, consts.MESOS_ID, val))
+	c.conn.Send(packets.PlayerStatChange(true, consts.MESOS_ID, val))
 }
 
 func (c *MapleCharacter) GiveMesos(val int32) {
@@ -266,7 +266,7 @@ func (c *MapleCharacter) GiveEXP(val int32, whiteText, appearInChat bool) {
 	giveEXP = func(val int32) {
 		if c.GetLevel() > 199 {
 			c.SetEXP(0)
-			c.conn.Write(packets.PlayerStatChange(true, consts.EXP_ID, 0))
+			c.conn.Send(packets.PlayerStatChange(true, consts.EXP_ID, 0))
 		} else if c.GetEXP()+val >= ExpTable[c.GetLevel()-1] { // bug here
 			leftOver := c.GetEXP() + val - ExpTable[c.GetLevel()-1]
 			c.SetLevel(c.GetLevel() + 1)
@@ -274,13 +274,13 @@ func (c *MapleCharacter) GiveEXP(val int32, whiteText, appearInChat bool) {
 			giveEXP(leftOver)
 		} else {
 			c.SetEXP(c.GetEXP() + val)
-			c.conn.Write(packets.PlayerStatChange(true, consts.EXP_ID, c.GetEXP()))
+			c.conn.Send(packets.PlayerStatChange(true, consts.EXP_ID, c.GetEXP()))
 		}
 	}
 
 	giveEXP(val)
 
-	c.conn.Write(packets.MessageExpGained(whiteText, appearInChat, val))
+	c.conn.Send(packets.MessageExpGained(whiteText, appearInChat, val))
 }
 
 func (c *MapleCharacter) TakeEXP(val int32) {
@@ -297,9 +297,9 @@ func (c *MapleCharacter) UpdateItem(modified inventory.Item) {
 
 		if curItem.UUID == modified.UUID {
 			if curItem.Amount != modified.Amount {
-				c.conn.Write(packets.InventoryAddItem(modified, false))
+				c.conn.Send(packets.InventoryAddItem(modified, false))
 			} else if curItem.SlotID != modified.SlotID {
-				c.conn.Write(packets.InventoryChangeItemSlot(modified.InvID, curItem.SlotID, modified.SlotID))
+				c.conn.Send(packets.InventoryChangeItemSlot(modified.InvID, curItem.SlotID, modified.SlotID))
 			}
 
 			// Add stat change packets
@@ -309,7 +309,7 @@ func (c *MapleCharacter) UpdateItem(modified inventory.Item) {
 		}
 	}
 
-	c.conn.Write(packets.PlayerStatNoChange()) // Figure out why partial stackable item merge appears to needs this
+	c.conn.Send(packets.PlayerStatNoChange()) // Figure out why partial stackable item merge appears to needs this
 }
 
 func (c *MapleCharacter) GiveItem(item inventory.Item) bool {
@@ -370,7 +370,7 @@ func (c *MapleCharacter) GiveItem(item inventory.Item) bool {
 		}
 
 		newItem = item
-		c.conn.Write(packets.InventoryAddItem(newItem, true))
+		c.conn.Send(packets.InventoryAddItem(newItem, true))
 		update = true
 	}
 
@@ -387,7 +387,7 @@ func (c *MapleCharacter) TakeItem(modified inventory.Item, amount int16) bool {
 		if modified.InvID == item.InvID && modified.SlotID == item.SlotID {
 			if amount == item.Amount {
 				c.SetItems(append(items[:i], items[i+1:]...))
-				c.conn.Write(packets.InventoryRemoveItem(item))
+				c.conn.Send(packets.InventoryRemoveItem(item))
 				return true
 			} else if amount < item.Amount {
 				item.Amount -= amount
@@ -419,17 +419,17 @@ func (c *MapleCharacter) TakeItem(modified inventory.Item, amount int16) bool {
 			if remainder < 1 {
 				for _, v := range inds {
 					c.SetItems(append(items[:v], items[v+1:]...))
-					c.conn.Write(packets.InventoryRemoveItem(items[v]))
+					c.conn.Send(packets.InventoryRemoveItem(items[v]))
 				}
 
 				c.SetItems(append(items[:k], items[k+1:]...))
-				c.conn.Write(packets.InventoryRemoveItem(items[k]))
+				c.conn.Send(packets.InventoryRemoveItem(items[k]))
 				return true
 			}
 		}
 	}
 
-	c.conn.Write(packets.PlayerStatNoChange()) // find out if needed
+	c.conn.Send(packets.PlayerStatNoChange()) // find out if needed
 	return false
 }
 
@@ -445,5 +445,5 @@ func (c *MapleCharacter) TakeDamage(ammount int32) {
 	}
 
 	c.Character.SetHP(int16(newHp))
-	c.conn.Write(packets.PlayerStatChange(false, consts.HP_ID, newHp))
+	c.conn.Send(packets.PlayerStatChange(false, consts.HP_ID, newHp))
 }

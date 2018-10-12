@@ -1,7 +1,6 @@
 package mnet
 
 import (
-	"crypto/rand"
 	"net"
 
 	"github.com/Hucaru/Valhalla/consts"
@@ -12,8 +11,6 @@ import (
 
 type MConnLogin interface {
 	MConn
-
-	Cleanup()
 
 	GetAccountID() int32
 	SetAccountID(int32)
@@ -29,28 +26,21 @@ type login struct {
 	gender    byte
 }
 
-func NewLogin(conn net.Conn, eRecv chan *Event, queueSize int) *login {
+func NewLogin(conn net.Conn, eRecv chan *Event, queueSize int, keySend, keyRecv [4]byte) *login {
 	l := &login{}
 	l.Conn = conn
 
 	l.eSend = make(chan maplepacket.Packet, queueSize)
 	l.eRecv = eRecv
 
-	key := [4]byte{}
-	rand.Read(key[:])
-	l.cryptSend = crypt.New(key, consts.MapleVersion)
-	rand.Read(key[:])
-	l.cryptRecv = crypt.New(key, consts.MapleVersion)
+	l.cryptSend = crypt.New(keySend, consts.MapleVersion)
+	l.cryptRecv = crypt.New(keyRecv, consts.MapleVersion)
 
 	l.reader = func() {
 		clientReader(l, l.eRecv, consts.MapleVersion, consts.ClientHeaderSize, l.cryptRecv, l.cryptSend)
 	}
 
 	return l
-}
-
-func (l *login) Cleanup() {
-	l.baseConn.Cleanup()
 }
 
 func (l *login) GetAccountID() int32 {

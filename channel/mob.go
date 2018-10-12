@@ -4,9 +4,9 @@ import (
 	"math/rand"
 	"time"
 
-	"github.com/Hucaru/Valhalla/connection"
 	"github.com/Hucaru/Valhalla/consts"
 	"github.com/Hucaru/Valhalla/consts/skills"
+	"github.com/Hucaru/Valhalla/mnet"
 	"github.com/Hucaru/Valhalla/nx"
 	"github.com/Hucaru/Valhalla/packets"
 )
@@ -19,7 +19,7 @@ type MapleMob struct {
 	level, nextSkillID, nextSkillLevel byte
 	sx, sy                             int16
 	mobTime, deathTime, respawnTime    int64
-	controller, summoner               *connection.Channel
+	controller, summoner               mnet.MConnChannel
 
 	lastSkillUseTime int64
 	nSpawns          int16
@@ -64,31 +64,31 @@ func (m *MapleMob) SetDeathTime(mobTime int64)       { m.deathTime = mobTime }
 func (m *MapleMob) GetRespawnTime() int64            { return m.respawnTime }
 func (m *MapleMob) SetRespawnTime(respawnTime int64) { m.respawnTime = respawnTime }
 
-func (m *MapleMob) SetSummoner(summoner *connection.Channel) { m.summoner = summoner }
-func (m *MapleMob) GetSummoner() *connection.Channel         { return m.summoner }
+func (m *MapleMob) SetSummoner(summoner mnet.MConnChannel) { m.summoner = summoner }
+func (m *MapleMob) GetSummoner() mnet.MConnChannel         { return m.summoner }
 
-func (m *MapleMob) GetController() *connection.Channel { return m.controller }
+func (m *MapleMob) GetController() mnet.MConnChannel { return m.controller }
 
-func (m *MapleMob) SetController(controller *connection.Channel, isSpawn bool) {
+func (m *MapleMob) SetController(controller mnet.MConnChannel, isSpawn bool) {
 	m.controller = controller
-	m.controller.Write(packets.MobControl(m, isSpawn))
+	m.controller.Send(packets.MobControl(m, isSpawn))
 }
 
 func (m *MapleMob) RemoveController() {
-	m.controller.Write(packets.MobEndControl(m))
+	m.controller.Send(packets.MobEndControl(m))
 	m.controller = nil
 }
 
-func (m *MapleMob) Spawn(conn *connection.Channel) {
-	conn.Write(packets.MobShow(m, true))
+func (m *MapleMob) Spawn(conn mnet.MConnChannel) {
+	conn.Send(packets.MobShow(m, true))
 }
 
-func (m *MapleMob) Show(conn *connection.Channel) {
-	conn.Write(packets.MobShow(m, false))
+func (m *MapleMob) Show(conn mnet.MConnChannel) {
+	conn.Send(packets.MobShow(m, false))
 }
 
-func (m *MapleMob) Hide(conn *connection.Channel) {
-	conn.Write(packets.MobRemove(m, 0))
+func (m *MapleMob) Hide(conn mnet.MConnChannel) {
+	conn.Send(packets.MobRemove(m, 0))
 }
 
 func (m *MapleMob) CanCastSkills() bool {

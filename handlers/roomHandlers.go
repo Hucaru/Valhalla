@@ -4,12 +4,12 @@ import (
 	"fmt"
 
 	"github.com/Hucaru/Valhalla/channel"
-	"github.com/Hucaru/Valhalla/connection"
 	"github.com/Hucaru/Valhalla/maplepacket"
+	"github.com/Hucaru/Valhalla/mnet"
 	"github.com/Hucaru/Valhalla/packets"
 )
 
-func handleUIWindow(conn *connection.Channel, reader maplepacket.Reader) {
+func handleUIWindow(conn mnet.MConnChannel, reader maplepacket.Reader) {
 	operation := reader.ReadByte() // Trade operation
 
 	switch operation {

@@ -1,7 +1,7 @@
 package channel
 
 import (
-	"github.com/Hucaru/Valhalla/connection"
+	"github.com/Hucaru/Valhalla/mnet"
 	"github.com/Hucaru/Valhalla/packets"
 )
 
@@ -83,12 +83,12 @@ func (n *mapleNpc) GetState() byte {
 	return n.state
 }
 
-func (n *mapleNpc) Show(conn *connection.Channel) {
-	conn.Write(packets.NpcShow(n))
-	conn.Write(packets.NPCSetController(n.GetSpawnID(), true))
+func (n *mapleNpc) Show(conn mnet.MConnChannel) {
+	conn.Send(packets.NpcShow(n))
+	conn.Send(packets.NPCSetController(n.GetSpawnID(), true))
 }
 
-func (n *mapleNpc) Hide(conn *connection.Channel) {
-	conn.Write(packets.NPCSetController(n.GetSpawnID(), false))
-	conn.Write(packets.NPCRemove(n.GetSpawnID()))
+func (n *mapleNpc) Hide(conn mnet.MConnChannel) {
+	conn.Send(packets.NPCSetController(n.GetSpawnID(), false))
+	conn.Send(packets.NPCRemove(n.GetSpawnID()))
 }

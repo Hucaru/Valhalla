@@ -5,16 +5,17 @@ import (
 
 	"github.com/Hucaru/Valhalla/channel"
 	"github.com/Hucaru/Valhalla/character"
-	"github.com/Hucaru/Valhalla/connection"
 	"github.com/Hucaru/Valhalla/consts"
+	"github.com/Hucaru/Valhalla/database"
 	"github.com/Hucaru/Valhalla/inventory"
 	"github.com/Hucaru/Valhalla/maplepacket"
+	"github.com/Hucaru/Valhalla/mnet"
 	"github.com/Hucaru/Valhalla/movement"
 	"github.com/Hucaru/Valhalla/npcdialogue"
 	"github.com/Hucaru/Valhalla/packets"
 )
 
-func handlePlayerConnect(conn *connection.Channel, reader maplepacket.Reader) {
+func handlePlayerConnect(conn mnet.MConnChannel, reader maplepacket.Reader) {
 	charID := reader.ReadInt32()
 
 	char := character.GetCharacter(charID)
@@ -22,7 +23,7 @@ func handlePlayerConnect(conn *connection.Channel, reader maplepacket.Reader) {
 	char.SetSkills(character.GetCharacterSkills(char.GetCharID()))
 
 	var isAdmin bool
-	err := connection.Db.QueryRow("SELECT isAdmin from users where userID=?", char.GetUserID()).Scan(&isAdmin)
+	err := database.Db.QueryRow("SELECT isAdmin from users where userID=?", char.GetUserID()).Scan(&isAdmin)
 
 	if err != nil {
 		panic(err)
@@ -47,7 +48,7 @@ func handlePlayerConnect(conn *connection.Channel, reader maplepacket.Reader) {
 
 			spID := channel.Maps.GetMap(char.GetCurrentMap()).GetNearestSpawnPortalID(char)
 
-			records, err := connection.Db.Query("UPDATE characters set mapPos=? WHERE id=?", spID, char.GetCharID())
+			records, err := database.Db.Query("UPDATE characters set mapPos=? WHERE id=?", spID, char.GetCharID())
 			defer records.Close()
 
 			removeRoom := false
@@ -84,7 +85,7 @@ func handlePlayerConnect(conn *connection.Channel, reader maplepacket.Reader) {
 
 }
 
-func handleTakeDamage(conn *connection.Channel, reader maplepacket.Reader) {
+func handleTakeDamage(conn mnet.MConnChannel, reader maplepacket.Reader) {
 	dmgType := reader.ReadByte()
 	ammount := reader.ReadInt32()
 
@@ -112,7 +113,7 @@ func handleTakeDamage(conn *connection.Channel, reader maplepacket.Reader) {
 	})
 }
 
-func handleRequestAvatarInfoWindow(conn *connection.Channel, reader maplepacket.Reader) {
+func handleRequestAvatarInfoWindow(conn mnet.MConnChannel, reader maplepacket.Reader) {
 	charID := reader.ReadInt32()
 
 	channel.Players.OnCharacterFromID(charID, func(char *channel.MapleCharacter) {
@@ -120,7 +121,7 @@ func handleRequestAvatarInfoWindow(conn *connection.Channel, reader maplepacket.
 	})
 }
 
-func handlePassiveRegen(conn *connection.Channel, reader maplepacket.Reader) {
+func handlePassiveRegen(conn mnet.MConnChannel, reader maplepacket.Reader) {
 	reader.ReadBytes(4) //?
 
 	hp := reader.ReadInt16()
@@ -141,7 +142,7 @@ func handlePassiveRegen(conn *connection.Channel, reader maplepacket.Reader) {
 	// If in party return id and new hp, then update hp bar for party members
 }
 
-func handleChangeStat(conn *connection.Channel, reader maplepacket.Reader) {
+func handleChangeStat(conn mnet.MConnChannel, reader maplepacket.Reader) {
 	channel.Players.OnCharacterFromConn(conn, func(char *channel.MapleCharacter) {
 		if char.GetAP() == 0 {
 			return
@@ -168,7 +169,7 @@ func handleChangeStat(conn *connection.Channel, reader maplepacket.Reader) {
 	})
 }
 
-func handleUpdateSkillRecord(conn *connection.Channel, reader maplepacket.Reader) {
+func handleUpdateSkillRecord(conn mnet.MConnChannel, reader maplepacket.Reader) {
 	skillID := reader.ReadInt32()
 	newLevel := int32(0)
 
@@ -189,7 +190,7 @@ func handleUpdateSkillRecord(conn *connection.Channel, reader maplepacket.Reader
 	})
 }
 
-func handlePlayerMovement(conn *connection.Channel, reader maplepacket.Reader) {
+func handlePlayerMovement(conn mnet.MConnChannel, reader maplepacket.Reader) {
 	reader.ReadBytes(5) // used in movement validation
 	nFrags := reader.ReadByte()
 
@@ -199,7 +200,7 @@ func handlePlayerMovement(conn *connection.Channel, reader maplepacket.Reader) {
 	})
 }
 
-func handlePlayerEmoticon(conn *connection.Channel, reader maplepacket.Reader) {
+func handlePlayerEmoticon(conn mnet.MConnChannel, reader maplepacket.Reader) {
 	emoticon := reader.ReadInt32()
 	channel.Players.OnCharacterFromConn(conn, func(char *channel.MapleCharacter) {
 		channel.Maps.GetMap(char.GetCurrentMap()).SendPacketExcept(packets.PlayerEmoticon(char.GetCharID(), emoticon), conn)

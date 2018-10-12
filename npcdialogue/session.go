@@ -6,9 +6,9 @@ import (
 	"sync"
 
 	"github.com/Hucaru/Valhalla/channel"
-	"github.com/Hucaru/Valhalla/connection"
 	"github.com/Hucaru/Valhalla/inventory"
 	"github.com/Hucaru/Valhalla/maplepacket"
+	"github.com/Hucaru/Valhalla/mnet"
 	"github.com/Hucaru/Valhalla/nx"
 	"github.com/Hucaru/Valhalla/packets"
 	"github.com/mattn/anko/core"
@@ -18,7 +18,7 @@ import (
 var sessionsMutex = &sync.RWMutex{}
 var scriptsMutex = &sync.RWMutex{}
 
-var sessions = make(map[*connection.Channel]*session)
+var sessions = make(map[mnet.MConnChannel]*session)
 var scripts = make(map[int32]string)
 
 func addScript(npcID int32, contents string) {
@@ -35,7 +35,7 @@ func init() {
 	go watchFiles()
 }
 
-func NewSession(conn *connection.Channel, npcID int32, char *channel.MapleCharacter) {
+func NewSession(conn mnet.MConnChannel, npcID int32, char *channel.MapleCharacter) {
 	var script string
 
 	scriptsMutex.RLock()
@@ -68,13 +68,13 @@ func (s *session) OverrideScript(script string) {
 	s.script = script
 }
 
-func RemoveSession(conn *connection.Channel) {
+func RemoveSession(conn mnet.MConnChannel) {
 	sessionsMutex.Lock()
 	delete(sessions, conn)
 	sessionsMutex.Unlock()
 }
 
-func GetSession(conn *connection.Channel) *session {
+func GetSession(conn mnet.MConnChannel) *session {
 	scriptsMutex.RLock()
 	result := sessions[conn]
 	scriptsMutex.RUnlock()
@@ -83,7 +83,7 @@ func GetSession(conn *connection.Channel) *session {
 }
 
 type session struct {
-	conn *connection.Channel
+	conn mnet.MConnChannel
 
 	state       int
 	isYes       bool
@@ -193,7 +193,7 @@ func (s *session) Run() {
 	p, ok := packet.(maplepacket.Packet)
 
 	if ok {
-		s.conn.Write(p)
+		s.conn.Send(p)
 	} else {
 		s.state = 1 // should probably delete the session here
 	}
@@ -292,16 +292,16 @@ func (s *session) Shop(reader maplepacket.Reader) {
 					}
 
 					if price > char.GetMesos() {
-						s.conn.Write(packets.NPCShopNotEnoughMesos())
+						s.conn.Send(packets.NPCShopNotEnoughMesos())
 					} else {
 						newItem, _ := inventory.CreateFromID(info[0], false)
 						newItem.Amount = s.shopItemAmmount
 
 						if char.GiveItem(newItem) {
 							char.TakeMesos(price)
-							s.conn.Write(packets.NPCShopContinue())
+							s.conn.Send(packets.NPCShopContinue())
 						} else {
-							s.conn.Write(packets.NPCShopNotEnoughStock())
+							s.conn.Send(packets.NPCShopNotEnoughStock())
 						}
 					}
 				})
@@ -323,7 +323,7 @@ func (s *session) Shop(reader maplepacket.Reader) {
 						char.GiveMesos(nx.Items[itemID].Price * int32(ammount))
 					}
 
-					s.conn.Write(packets.NPCShopContinue())
+					s.conn.Send(packets.NPCShopContinue())
 					break
 				}
 			}
@@ -337,12 +337,12 @@ func (s *session) Shop(reader maplepacket.Reader) {
 					price := int32(nx.Items[curItem.ItemID].UnitPrice * float64(nx.Items[curItem.ItemID].SlotMax))
 
 					if price > char.GetMesos() {
-						s.conn.Write(packets.NPCShopNotEnoughMesos())
+						s.conn.Send(packets.NPCShopNotEnoughMesos())
 					} else {
 						curItem.Amount = int16(nx.Items[curItem.ItemID].SlotMax)
 						char.UpdateItem(curItem)
 						char.TakeMesos(price)
-						s.conn.Write(packets.NPCShopContinue())
+						s.conn.Send(packets.NPCShopContinue())
 					}
 				}
 			}

@@ -7,8 +7,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/Hucaru/Valhalla/connection"
 	"github.com/Hucaru/Valhalla/inventory"
+	"github.com/Hucaru/Valhalla/mnet"
 	"github.com/Hucaru/Valhalla/npcdialogue"
 	"github.com/Hucaru/Valhalla/nx"
 	"github.com/Hucaru/Valhalla/packets"
@@ -17,7 +17,7 @@ import (
 	"github.com/Hucaru/Valhalla/maplepacket"
 )
 
-func handleAllChat(conn *connection.Channel, reader maplepacket.Reader) {
+func handleAllChat(conn mnet.MConnChannel, reader maplepacket.Reader) {
 	channel.Players.OnCharacterFromConn(conn, func(char *channel.MapleCharacter) {
 		mapID := char.GetCurrentMap()
 
@@ -31,7 +31,7 @@ func handleAllChat(conn *connection.Channel, reader maplepacket.Reader) {
 	})
 }
 
-func handleSlashCommand(conn *connection.Channel, reader maplepacket.Reader) {
+func handleSlashCommand(conn mnet.MConnChannel, reader maplepacket.Reader) {
 	cmdType := reader.ReadByte()
 
 	switch cmdType {
@@ -55,7 +55,7 @@ func handleSlashCommand(conn *connection.Channel, reader maplepacket.Reader) {
 	}
 }
 
-func handleGmCommand(conn *connection.Channel, msg string) {
+func handleGmCommand(conn mnet.MConnChannel, msg string) {
 	ind := strings.Index(msg, "/")
 	command := strings.SplitN(msg[ind+1:], " ", -1)
 
@@ -300,7 +300,7 @@ func handleGmCommand(conn *connection.Channel, msg string) {
 			case "players":
 				info += "Players on map: "
 
-				channel.Maps.GetMap(mapID).OnPlayers(func(conn *connection.Channel) bool {
+				channel.Maps.GetMap(mapID).OnPlayers(func(conn mnet.MConnChannel) bool {
 					channel.Players.OnCharacterFromConn(conn, func(char *channel.MapleCharacter) {
 						info += "{" + char.GetName() + ", (" + strconv.Itoa(int(char.GetX())) + "," +
 							strconv.Itoa(int(char.GetY())) + "), HP:" + strconv.Itoa(int(char.GetHP())) + "} "

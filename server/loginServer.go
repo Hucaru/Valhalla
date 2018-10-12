@@ -1,13 +1,19 @@
 package server
 
 import (
+	"crypto/rand"
 	"log"
 	"net"
 	"os"
 	"sync"
 
+	"github.com/Hucaru/Valhalla/handlers"
+	"github.com/Hucaru/Valhalla/maplepacket"
+
+	"github.com/Hucaru/Valhalla/consts"
 	"github.com/Hucaru/Valhalla/database"
 	"github.com/Hucaru/Valhalla/mnet"
+	"github.com/Hucaru/Valhalla/packets"
 )
 
 type loginServer struct {
@@ -70,10 +76,17 @@ func (ls *loginServer) acceptNewConnections() {
 			return
 		}
 
-		loginConn := mnet.NewLogin(conn, ls.eRecv, ls.config.PacketQueueSize)
+		keySend := [4]byte{}
+		rand.Read(keySend[:])
+		keyRecv := [4]byte{}
+		rand.Read(keyRecv[:])
 
-		go loginConn.Reader() // reads packets from client and generates and dispatches events to the processEvent thread
-		go loginConn.Writer() // listens on a buffered channel to write packets to client.
+		loginConn := mnet.NewLogin(conn, ls.eRecv, ls.config.PacketQueueSize, keySend, keyRecv)
+
+		go loginConn.Reader()
+		go loginConn.Writer()
+
+		conn.Write(packets.ClientHandshake(consts.MapleVersion, keyRecv[:], keySend[:]))
 	}
 }
 
@@ -102,7 +115,7 @@ func (ls *loginServer) processEvent() {
 				log.Println("Client at", loginConn, "disconnected")
 				loginConn.Cleanup()
 			case mnet.MEClientPacket:
-				// go off to handler
+				handlers.HandleLoginPacket(loginConn, maplepacket.NewReader(&e.Packet))
 			}
 		}
 	}

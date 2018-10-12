@@ -4,8 +4,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Hucaru/Valhalla/connection"
 	"github.com/Hucaru/Valhalla/consts"
+	"github.com/Hucaru/Valhalla/mnet"
 	"github.com/Hucaru/Valhalla/packets"
 
 	"github.com/Hucaru/Valhalla/nx"
@@ -126,7 +126,7 @@ func (m *mapleMobs) MobTakeDamage(mapID, mobID int32, damage []int32) int32 {
 }
 
 func (m *mapleMobs) SpawnMob(mapID int32, mob *MapleMob) {
-	Maps.GetMap(mapID).OnPlayers(func(conn *connection.Channel) bool {
+	Maps.GetMap(mapID).OnPlayers(func(conn mnet.MConnChannel) bool {
 		mob.SetController(conn, true)
 		return true
 	})

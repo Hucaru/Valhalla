@@ -4,14 +4,14 @@ import (
 	"fmt"
 
 	"github.com/Hucaru/Valhalla/channel"
-	"github.com/Hucaru/Valhalla/connection"
 	"github.com/Hucaru/Valhalla/consts"
 	"github.com/Hucaru/Valhalla/inventory"
 	"github.com/Hucaru/Valhalla/maplepacket"
+	"github.com/Hucaru/Valhalla/mnet"
 	"github.com/Hucaru/Valhalla/packets"
 )
 
-func handleMoveInventoryItem(conn *connection.Channel, reader maplepacket.Reader) {
+func handleMoveInventoryItem(conn mnet.MConnChannel, reader maplepacket.Reader) {
 	invTabID := reader.ReadByte()
 	origPos := reader.ReadInt16()
 	newPos := reader.ReadInt16()

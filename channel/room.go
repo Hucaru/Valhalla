@@ -8,9 +8,9 @@ import (
 
 	"github.com/Hucaru/Valhalla/character"
 	"github.com/Hucaru/Valhalla/maplepacket"
+	"github.com/Hucaru/Valhalla/mnet"
 	"github.com/Hucaru/Valhalla/packets"
 
-	"github.com/Hucaru/Valhalla/connection"
 	"github.com/Hucaru/Valhalla/inventory"
 )
 
@@ -62,7 +62,7 @@ func (t *rooms) Remove(val int32) {
 
 }
 
-func (t *rooms) OnConn(conn *connection.Channel, action func(r *Room)) {
+func (t *rooms) OnConn(conn mnet.MConnChannel, action func(r *Room)) {
 	didWork := false
 
 	t.mutex.RLock()
