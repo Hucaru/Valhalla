@@ -1,48 +1,53 @@
 package inventory
 
-func GetCharacterInventory(charID int32) []Item {
-	// filter := "inventoryID,itemID,slotNumber,amount,flag,upgradeSlots,level,str,dex,intt,luk,hp,mp,watk,matk,wdef,mdef,accuracy,avoid,hands,speed,jump,expireTime,creatorName"
-	// row, err := connection.Db.Query("SELECT "+filter+" FROM items WHERE characterID=?", charID)
+import (
+	"github.com/Hucaru/Valhalla/database"
+	"github.com/google/uuid"
+)
 
-	// if err != nil {
-	// 	panic(err)
-	// }
+func GetCharacterInventory(charID int32) []Item {
+	filter := "inventoryID,itemID,slotNumber,amount,flag,upgradeSlots,level,str,dex,intt,luk,hp,mp,watk,matk,wdef,mdef,accuracy,avoid,hands,speed,jump,expireTime,creatorName"
+	row, err := database.Handle.Query("SELECT "+filter+" FROM items WHERE characterID=?", charID)
+
+	if err != nil {
+		panic(err)
+	}
 
 	var items []Item
 
-	// defer row.Close()
+	defer row.Close()
 
-	// for row.Next() {
+	for row.Next() {
 
-	// 	item := Item{UUID: uuid.Must(uuid.NewRandom())}
+		item := Item{UUID: uuid.Must(uuid.NewRandom())}
 
-	// 	row.Scan(&item.InvID,
-	// 		&item.ItemID,
-	// 		&item.SlotID,
-	// 		&item.Amount,
-	// 		&item.Flag,
-	// 		&item.UpgradeSlots,
-	// 		&item.ScrollLevel,
-	// 		&item.Str,
-	// 		&item.Dex,
-	// 		&item.Int,
-	// 		&item.Luk,
-	// 		&item.HP,
-	// 		&item.MP,
-	// 		&item.Watk,
-	// 		&item.Matk,
-	// 		&item.Wdef,
-	// 		&item.Mdef,
-	// 		&item.Accuracy,
-	// 		&item.Avoid,
-	// 		&item.Hands,
-	// 		&item.Speed,
-	// 		&item.Jump,
-	// 		&item.ExpireTime,
-	// 		&item.CreatorName)
+		row.Scan(&item.InvID,
+			&item.ItemID,
+			&item.SlotID,
+			&item.Amount,
+			&item.Flag,
+			&item.UpgradeSlots,
+			&item.ScrollLevel,
+			&item.Str,
+			&item.Dex,
+			&item.Int,
+			&item.Luk,
+			&item.HP,
+			&item.MP,
+			&item.Watk,
+			&item.Matk,
+			&item.Wdef,
+			&item.Mdef,
+			&item.Accuracy,
+			&item.Avoid,
+			&item.Hands,
+			&item.Speed,
+			&item.Jump,
+			&item.ExpireTime,
+			&item.CreatorName)
 
-	// 	items = append(items, item)
-	// }
+		items = append(items, item)
+	}
 
 	return items
 }

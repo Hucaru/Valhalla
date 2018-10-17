@@ -8,19 +8,19 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 )
 
-var Db *sql.DB
+var Handle *sql.DB
 
 func Connect(user, password, address, port, database string) {
 	var err error
-	Db, err = sql.Open("mysql", user+":"+password+"@tcp("+address+":"+port+")/"+database)
+	Handle, err = sql.Open("mysql", user+":"+password+"@tcp("+address+":"+port+")/"+database)
 
 	if err != nil {
 		log.Fatal(err.Error())
 	}
 
-	defer Db.Close()
+	defer Handle.Close()
 
-	err = Db.Ping()
+	err = Handle.Ping()
 
 	if err != nil {
 		log.Fatal(err.Error()) // change to attempt to re-connect
@@ -33,7 +33,7 @@ func Connect(user, password, address, port, database string) {
 	for {
 		select {
 		case <-timer.C:
-			err = Db.Ping()
+			err = Handle.Ping()
 
 			if err != nil {
 				log.Fatal(err.Error()) // change to attempt to re-connect

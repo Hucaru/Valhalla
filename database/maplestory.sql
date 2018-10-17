@@ -5,10 +5,25 @@ SET time_zone = '+00:00';
 SET foreign_key_checks = 0;
 SET sql_mode = 'NO_AUTO_VALUE_ON_ZERO';
 
+DROP TABLE IF EXISTS `accounts`;
+CREATE TABLE `accounts` (
+  `accountID` int(10) unsigned NOT NULL AUTO_INCREMENT,
+  `username` tinytext NOT NULL,
+  `password` tinytext NOT NULL,
+  `isLogedIn` tinyint(4) NOT NULL DEFAULT '0',
+  `adminLevel` tinyint(4) NOT NULL DEFAULT '0',
+  `isBanned` int(11) NOT NULL DEFAULT '0',
+  `gender` tinyint(4) NOT NULL DEFAULT '0',
+  `dob` int(11) NOT NULL,
+  `isInChannel` tinyint(4) NOT NULL DEFAULT '-1',
+  PRIMARY KEY (`accountID`)
+) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+
+
 DROP TABLE IF EXISTS `characters`;
 CREATE TABLE `characters` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
-  `userID` int(10) unsigned NOT NULL,
+  `accountID` int(10) unsigned NOT NULL,
   `worldID` int(11) unsigned NOT NULL,
   `isMigratingWorld` tinyint(4) NOT NULL DEFAULT '-1',
   `isMigratingChannel` tinyint(4) NOT NULL DEFAULT '-1',
@@ -34,15 +49,15 @@ CREATE TABLE `characters` (
   `mapID` int(11) unsigned NOT NULL DEFAULT '0',
   `mapPos` int(11) unsigned NOT NULL DEFAULT '0',
   `previousMapID` int(11) unsigned NOT NULL DEFAULT '0',
-  `mesos` int(11) NOT NULL DEFAULT '0',
+  `mesos` int(11) unsigned NOT NULL DEFAULT '0',
   `equipSlotSize` tinyint(4) NOT NULL DEFAULT '32',
   `useSlotSize` tinyint(4) NOT NULL DEFAULT '32',
   `setupSlotSize` tinyint(4) NOT NULL DEFAULT '32',
   `etcSlotSize` tinyint(4) NOT NULL DEFAULT '32',
   `cashSlotSize` tinyint(4) NOT NULL DEFAULT '32',
   PRIMARY KEY (`id`),
-  KEY `userID` (`userID`),
-  CONSTRAINT `characters_ibfk_1` FOREIGN KEY (`userID`) REFERENCES `users` (`userID`)
+  KEY `userID` (`accountID`),
+  CONSTRAINT `characters_ibfk_1` FOREIGN KEY (`accountID`) REFERENCES `accounts` (`accountID`)
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 
 
@@ -93,19 +108,4 @@ CREATE TABLE `skills` (
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 
 
-DROP TABLE IF EXISTS `users`;
-CREATE TABLE `users` (
-  `userID` int(10) unsigned NOT NULL AUTO_INCREMENT,
-  `username` tinytext NOT NULL,
-  `password` tinytext NOT NULL,
-  `isLogedIn` tinyint(4) NOT NULL DEFAULT '0',
-  `isAdmin` tinyint(4) NOT NULL DEFAULT '0',
-  `isBanned` int(11) NOT NULL DEFAULT '0',
-  `gender` tinyint(4) NOT NULL DEFAULT '0',
-  `dob` int(11) NOT NULL,
-  `isInChannel` tinyint(4) NOT NULL DEFAULT '-1',
-  PRIMARY KEY (`userID`)
-) ENGINE=InnoDB DEFAULT CHARSET=latin1;
-
-
--- 2018-04-11 03:54:03
+-- 2018-10-17 21:29:30

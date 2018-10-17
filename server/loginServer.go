@@ -7,7 +7,7 @@ import (
 	"os"
 	"sync"
 
-	"github.com/Hucaru/Valhalla/handlers"
+	"github.com/Hucaru/Valhalla/handlers/loginhandlers"
 	"github.com/Hucaru/Valhalla/maplepacket"
 
 	"github.com/Hucaru/Valhalla/consts"
@@ -115,7 +115,7 @@ func (ls *loginServer) processEvent() {
 				log.Println("Client at", loginConn, "disconnected")
 				loginConn.Cleanup()
 			case mnet.MEClientPacket:
-				handlers.HandleLoginPacket(loginConn, maplepacket.NewReader(&e.Packet))
+				loginhandlers.HandlePacket(loginConn, maplepacket.NewReader(&e.Packet))
 			}
 		}
 	}

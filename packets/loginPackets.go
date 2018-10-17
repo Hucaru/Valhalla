@@ -9,14 +9,7 @@ import (
 	"github.com/Hucaru/Valhalla/maplepacket"
 )
 
-func LoginReturnFromChannel() maplepacket.Packet {
-	pac := maplepacket.CreateWithOpcode(opcodes.Send.LoginRestarter)
-	pac.WriteByte(0x01)
-
-	return pac
-}
-
-func LoginResponce(result byte, userID int32, gender byte, isAdmin byte, username string, isBanned int) maplepacket.Packet {
+func LoginResponce(result byte, userID int32, gender byte, isAdmin bool, username string, isBanned int) maplepacket.Packet {
 	pac := maplepacket.CreateWithOpcode(opcodes.Send.LoginResponce)
 	pac.WriteByte(result)
 	pac.WriteByte(0x00)
@@ -25,7 +18,8 @@ func LoginResponce(result byte, userID int32, gender byte, isAdmin byte, usernam
 	if result <= 0x01 {
 		pac.WriteInt32(userID)
 		pac.WriteByte(gender)
-		pac.WriteByte(isAdmin)
+		// pac.WriteByte(isAdmin)
+		pac.WriteBool(isAdmin)
 		pac.WriteByte(0x01)
 		pac.WriteString(username)
 	} else if result == 0x02 {
@@ -211,4 +205,11 @@ func LoginWorldInfo(warning byte, population byte) maplepacket.Packet {
 	p.WriteByte(population) // Population marker - 0 = No maker, 1 = Highly populated, 2 = over populated
 
 	return p
+}
+
+func LoginReturnFromChannel() maplepacket.Packet {
+	pac := maplepacket.CreateWithOpcode(opcodes.Send.LoginRestarter)
+	pac.WriteByte(0x01)
+
+	return pac
 }

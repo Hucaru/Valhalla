@@ -12,18 +12,29 @@ import (
 type MConnLogin interface {
 	MConn
 
+	GetLogedIn() bool
+	SetLogedIn(bool)
 	GetAccountID() int32
 	SetAccountID(int32)
-
 	GetGender() byte
 	SetGender(byte)
+	GetWorldID() byte
+	SetWorldID(byte)
+	GetChannelID() byte
+	SetChannelID(byte)
+	GetAdminLevel() int
+	SetAdminLevel(int)
 }
 
 type login struct {
 	baseConn
 
-	accountID int32
-	gender    byte
+	logedIn    bool
+	accountID  int32
+	gender     byte
+	worldID    byte
+	channelID  byte
+	adminLevel int
 }
 
 func NewLogin(conn net.Conn, eRecv chan *Event, queueSize int, keySend, keyRecv [4]byte) *login {
@@ -43,6 +54,23 @@ func NewLogin(conn net.Conn, eRecv chan *Event, queueSize int, keySend, keyRecv 
 	return l
 }
 
+func (l *login) Cleanup() {
+	l.baseConn.Cleanup()
+
+	if l.logedIn {
+		// run query to set isLogedIn to 0
+		// run query to set isInChannel to -1
+	}
+}
+
+func (l *login) GetLogedIn() bool {
+	return l.logedIn
+}
+
+func (l *login) SetLogedIn(logedIn bool) {
+	l.logedIn = logedIn
+}
+
 func (l *login) GetAccountID() int32 {
 	return l.accountID
 }
@@ -57,4 +85,28 @@ func (l *login) GetGender() byte {
 
 func (l *login) SetGender(gender byte) {
 	l.gender = gender
+}
+
+func (l *login) GetWorldID() byte {
+	return l.worldID
+}
+
+func (l *login) SetWorldID(id byte) {
+	l.worldID = id
+}
+
+func (l *login) GetChannelID() byte {
+	return l.channelID
+}
+
+func (l *login) SetChannelID(id byte) {
+	l.channelID = id
+}
+
+func (l *login) GetAdminLevel() int {
+	return l.adminLevel
+}
+
+func (l *login) SetAdminLevel(level int) {
+	l.adminLevel = level
 }
