@@ -1,12 +1,12 @@
 package packets
 
 import (
-	"github.com/Hucaru/Valhalla/character"
 	"github.com/Hucaru/Valhalla/consts/opcodes"
 	"github.com/Hucaru/Valhalla/maplepacket"
+	"github.com/Hucaru/Valhalla/types"
 )
 
-func RoomShowWindow(roomType, boardType, maxPlayers, roomSlot byte, roomTitle string, chars []character.Character) maplepacket.Packet {
+func RoomShowWindow(roomType, boardType, maxPlayers, roomSlot byte, roomTitle string, chars []types.Character) maplepacket.Packet {
 	p := maplepacket.CreateWithOpcode(opcodes.Send.ChannelRoom)
 	p.WriteByte(0x05)
 	p.WriteByte(roomType)
@@ -17,7 +17,7 @@ func RoomShowWindow(roomType, boardType, maxPlayers, roomSlot byte, roomTitle st
 		p.WriteByte(byte(i))
 		p.Append(writeDisplayCharacter(c))
 		p.WriteInt32(0) // not sure what this is - memory card game seed? board settings?
-		p.WriteString(c.GetName())
+		p.WriteString(c.Name)
 	}
 
 	p.WriteByte(0xFF)
@@ -30,9 +30,9 @@ func RoomShowWindow(roomType, boardType, maxPlayers, roomSlot byte, roomTitle st
 		p.WriteByte(byte(i))
 
 		p.WriteInt32(0) // not sure what this is!?
-		p.WriteInt32(c.GetOmokWins())
-		p.WriteInt32(c.GetOmokTies())
-		p.WriteInt32(c.GetOmokLosses())
+		p.WriteInt32(c.MiniGameWins)
+		p.WriteInt32(c.MiniGameTies)
+		p.WriteInt32(c.MiniGameLosses)
 		p.WriteInt32(2000) // Points in the ui. What does it represent?
 	}
 
@@ -44,22 +44,22 @@ func RoomShowWindow(roomType, boardType, maxPlayers, roomSlot byte, roomTitle st
 	return p
 }
 
-func RoomJoin(roomType, roomSlot byte, char character.Character) maplepacket.Packet {
+func RoomJoin(roomType, roomSlot byte, char types.Character) maplepacket.Packet {
 	p := maplepacket.CreateWithOpcode(opcodes.Send.ChannelRoom)
 	p.WriteByte(0x04)
 	p.WriteByte(roomSlot)
 	p.Append(writeDisplayCharacter(char))
 	p.WriteInt32(0) //?
-	p.WriteString(char.GetName())
+	p.WriteString(char.Name)
 
 	if roomType == 0x03 {
 		return p
 	}
 
 	p.WriteInt32(1) // not sure what this is!?
-	p.WriteInt32(char.GetOmokWins())
-	p.WriteInt32(char.GetOmokTies())
-	p.WriteInt32(char.GetOmokLosses())
+	p.WriteInt32(char.MiniGameWins)
+	p.WriteInt32(char.MiniGameTies)
+	p.WriteInt32(char.MiniGameLosses)
 	p.WriteInt32(2000) // Points in the ui. What does it represent?
 
 	return p
@@ -184,7 +184,7 @@ func RoomMemoryStart(ownerStart bool, boardType int32, cards []byte) maplepacket
 	return p
 }
 
-func RoomGameResult(draw bool, winningSlot byte, forfeit bool, chars []character.Character) maplepacket.Packet {
+func RoomGameResult(draw bool, winningSlot byte, forfeit bool, chars []types.Character) maplepacket.Packet {
 	p := maplepacket.CreateWithOpcode(opcodes.Send.ChannelRoom)
 	p.WriteByte(0x36)
 
@@ -200,9 +200,9 @@ func RoomGameResult(draw bool, winningSlot byte, forfeit bool, chars []character
 
 	for _, char := range chars {
 		p.WriteInt32(1) // ?
-		p.WriteInt32(char.GetOmokWins())
-		p.WriteInt32(char.GetOmokTies())
-		p.WriteInt32(char.GetOmokLosses())
+		p.WriteInt32(char.MiniGameWins)
+		p.WriteInt32(char.MiniGameTies)
+		p.WriteInt32(char.MiniGameLosses)
 		p.WriteInt32(2000)
 	}
 

@@ -6,11 +6,10 @@ import (
 	"math"
 	"time"
 
-	"github.com/Hucaru/Valhalla/character"
 	"github.com/Hucaru/Valhalla/consts/opcodes"
-	"github.com/Hucaru/Valhalla/inventory"
 	"github.com/Hucaru/Valhalla/maplepacket"
 	"github.com/Hucaru/Valhalla/nx"
+	"github.com/Hucaru/Valhalla/types"
 )
 
 func PlayerReceivedDmg(charID int32, ammount int32, dmgType byte, mobID int32, hit byte, reduction byte, stance byte) maplepacket.Packet {
@@ -86,12 +85,12 @@ func PlayerStatNoChange() maplepacket.Packet {
 	return p
 }
 
-func PlayerAvatarSummaryWindow(charID int32, char character.Character, guildName string) maplepacket.Packet {
+func PlayerAvatarSummaryWindow(charID int32, char types.Character, guildName string) maplepacket.Packet {
 	p := maplepacket.CreateWithOpcode(opcodes.Send.ChannelAvatarInfoWindow)
 	p.WriteInt32(charID)
-	p.WriteByte(char.GetLevel())
-	p.WriteInt16(char.GetJob())
-	p.WriteInt16(char.GetFame())
+	p.WriteByte(char.Level)
+	p.WriteInt16(char.Job)
+	p.WriteInt16(char.Fame)
 
 	p.WriteString(guildName)
 
@@ -101,7 +100,7 @@ func PlayerAvatarSummaryWindow(charID int32, char character.Character, guildName
 	return p
 }
 
-func PlayerEnterGame(char character.Character, channelID int32) maplepacket.Packet {
+func PlayerEnterGame(char types.Character, channelID int32) maplepacket.Packet {
 	p := maplepacket.CreateWithOpcode(opcodes.Send.ChannelWarpToMap)
 	p.WriteInt32(channelID)
 	p.WriteByte(0) // character portal counter
@@ -117,43 +116,43 @@ func PlayerEnterGame(char character.Character, channelID int32) maplepacket.Pack
 	p.WriteBytes(randomBytes)
 	p.WriteBytes(randomBytes)
 	p.WriteBytes([]byte{0xFF, 0xFF}) // seperators? For what?
-	p.WriteInt32(char.GetCharID())
-	p.WritePaddedString(char.GetName(), 13)
-	p.WriteByte(char.GetGender())
-	p.WriteByte(char.GetSkin())
-	p.WriteInt32(char.GetFace())
-	p.WriteInt32(char.GetHair())
+	p.WriteInt32(char.ID)
+	p.WritePaddedString(char.Name, 13)
+	p.WriteByte(char.Gender)
+	p.WriteByte(char.Skin)
+	p.WriteInt32(char.Face)
+	p.WriteInt32(char.Hair)
 
 	p.WriteInt64(0) // Pet Cash ID
 
-	p.WriteByte(char.GetLevel())
-	p.WriteInt16(char.GetJob())
-	p.WriteInt16(char.GetStr())
-	p.WriteInt16(char.GetDex())
-	p.WriteInt16(char.GetInt())
-	p.WriteInt16(char.GetLuk())
-	p.WriteInt16(char.GetHP())
-	p.WriteInt16(char.GetMaxHP())
-	p.WriteInt16(char.GetMP())
-	p.WriteInt16(char.GetMaxMP())
-	p.WriteInt16(char.GetAP())
-	p.WriteInt16(char.GetSP())
-	p.WriteInt32(char.GetEXP())
-	p.WriteInt16(char.GetFame())
+	p.WriteByte(char.Level)
+	p.WriteInt16(char.Job)
+	p.WriteInt16(char.Str)
+	p.WriteInt16(char.Dex)
+	p.WriteInt16(char.Int)
+	p.WriteInt16(char.Luk)
+	p.WriteInt16(char.HP)
+	p.WriteInt16(char.MaxHP)
+	p.WriteInt16(char.MP)
+	p.WriteInt16(char.MaxMP)
+	p.WriteInt16(char.AP)
+	p.WriteInt16(char.SP)
+	p.WriteInt32(char.EXP)
+	p.WriteInt16(char.Fame)
 
-	p.WriteInt32(char.GetCurrentMap())
-	p.WriteByte(char.GetCurrentMapPos())
+	p.WriteInt32(char.CurrentMap)
+	p.WriteByte(char.CurrentMapPos)
 
 	p.WriteByte(20) // budy list size
-	p.WriteInt32(char.GetMesos())
+	p.WriteInt32(char.Mesos)
 
-	p.WriteByte(char.GetEquipSlotSize())
-	p.WriteByte(char.GetUsetSlotSize())
-	p.WriteByte(char.GetSetupSlotSize())
-	p.WriteByte(char.GetEtcSlotSize())
-	p.WriteByte(char.GetCashSlotSize())
+	p.WriteByte(char.EquipSlotSize)
+	p.WriteByte(char.UseSlotSize)
+	p.WriteByte(char.SetupSlotSize)
+	p.WriteByte(char.EtcSlotSize)
+	p.WriteByte(char.CashSlotSize)
 
-	for _, v := range char.GetItems() {
+	for _, v := range char.Equip {
 		if v.SlotID < 0 && v.InvID == 1 && !nx.IsCashItem(v.ItemID) {
 			p.WriteBytes(addItem(v, false))
 		}
@@ -162,7 +161,7 @@ func PlayerEnterGame(char character.Character, channelID int32) maplepacket.Pack
 	p.WriteByte(0)
 
 	// Equips
-	for _, v := range char.GetItems() {
+	for _, v := range char.Equip {
 		if v.SlotID < 0 && v.InvID == 1 && nx.IsCashItem(v.ItemID) {
 			p.WriteBytes(addItem(v, false))
 		}
@@ -171,7 +170,7 @@ func PlayerEnterGame(char character.Character, channelID int32) maplepacket.Pack
 	p.WriteByte(0)
 
 	// Inventory windows starts
-	for _, v := range char.GetItems() {
+	for _, v := range char.Equip {
 		if v.SlotID > -1 && v.InvID == 1 {
 			p.WriteBytes(addItem(v, false))
 		}
@@ -179,7 +178,7 @@ func PlayerEnterGame(char character.Character, channelID int32) maplepacket.Pack
 
 	p.WriteByte(0)
 
-	for _, v := range char.GetItems() {
+	for _, v := range char.Use {
 		if v.InvID == 2 { // Use
 			p.WriteBytes(addItem(v, false))
 		}
@@ -187,7 +186,7 @@ func PlayerEnterGame(char character.Character, channelID int32) maplepacket.Pack
 
 	p.WriteByte(0)
 
-	for _, v := range char.GetItems() {
+	for _, v := range char.SetUp {
 		if v.InvID == 3 { // Set-up
 			p.WriteBytes(addItem(v, false))
 		}
@@ -195,7 +194,7 @@ func PlayerEnterGame(char character.Character, channelID int32) maplepacket.Pack
 
 	p.WriteByte(0)
 
-	for _, v := range char.GetItems() {
+	for _, v := range char.Etc {
 		if v.InvID == 4 { // Etc
 			p.WriteBytes(addItem(v, false))
 		}
@@ -203,7 +202,7 @@ func PlayerEnterGame(char character.Character, channelID int32) maplepacket.Pack
 
 	p.WriteByte(0)
 
-	for _, v := range char.GetItems() {
+	for _, v := range char.Cash {
 		if v.InvID == 5 { // Cash  - not working propery :(
 			p.WriteBytes(addItem(v, false))
 		}
@@ -212,9 +211,9 @@ func PlayerEnterGame(char character.Character, channelID int32) maplepacket.Pack
 	p.WriteByte(0)
 
 	// Skills
-	p.WriteInt16(int16(len(char.GetSkills()))) // number of skills
+	p.WriteInt16(int16(len(char.Skills))) // number of skills
 
-	for id, level := range char.GetSkills() {
+	for id, level := range char.Skills {
 		p.WriteInt32(id)
 		p.WriteInt32(level)
 	}
@@ -241,7 +240,7 @@ func PlayerEnterGame(char character.Character, channelID int32) maplepacket.Pack
 	return p
 }
 
-func addItem(item inventory.Item, shortSlot bool) maplepacket.Packet {
+func addItem(item types.Item, shortSlot bool) maplepacket.Packet {
 	p := maplepacket.NewPacket()
 
 	if !shortSlot {
@@ -310,24 +309,24 @@ func addItem(item inventory.Item, shortSlot bool) maplepacket.Packet {
 	return p
 }
 
-func writeDisplayCharacter(char character.Character) maplepacket.Packet {
+func writeDisplayCharacter(char types.Character) maplepacket.Packet {
 	p := maplepacket.NewPacket()
-	p.WriteByte(char.GetGender()) // gender
-	p.WriteByte(char.GetSkin())   // skin
-	p.WriteInt32(char.GetFace())  // face
-	p.WriteByte(0x00)             // ?
-	p.WriteInt32(char.GetHair())  // hair
+	p.WriteByte(char.Gender) // gender
+	p.WriteByte(char.Skin)   // skin
+	p.WriteInt32(char.Face)  // face
+	p.WriteByte(0x00)        // ?
+	p.WriteInt32(char.Hair)  // hair
 
 	cashWeapon := int32(0)
 
-	for _, b := range char.GetItems() {
+	for _, b := range char.Equip {
 		if b.SlotID < 0 && b.SlotID > -20 {
 			p.WriteByte(byte(math.Abs(float64(b.SlotID))))
 			p.WriteInt32(b.ItemID)
 		}
 	}
 
-	for _, b := range char.GetItems() {
+	for _, b := range char.Equip {
 		if b.SlotID < -100 {
 			if b.SlotID == -111 {
 				cashWeapon = b.ItemID

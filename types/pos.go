@@ -1,6 +1,6 @@
 package types
 
 type Pos struct {
-	x int16
-	y int16
+	X int16
+	Y int16
 }

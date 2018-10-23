@@ -1,32 +1,32 @@
 package packets
 
 import (
-	"github.com/Hucaru/Valhalla/character"
 	"github.com/Hucaru/Valhalla/consts/opcodes"
 	"github.com/Hucaru/Valhalla/maplepacket"
+	"github.com/Hucaru/Valhalla/types"
 )
 
-func MapPlayerEnter(char character.Character) maplepacket.Packet {
+func MapPlayerEnter(char types.Character) maplepacket.Packet {
 	p := maplepacket.CreateWithOpcode(opcodes.Send.ChannelCharacterEnterField)
-	p.WriteInt32(char.GetCharID()) // player id
-	p.WriteString(char.GetName())  // char name
-	p.WriteInt32(0)                // map buffs?
-	p.WriteInt32(0)                // map buffs?
-	p.WriteInt32(0)                // map buffs?
-	p.WriteInt32(0)                // map buffs?
+	p.WriteInt32(char.ID)    // player id
+	p.WriteString(char.Name) // char name
+	p.WriteInt32(0)          // map buffs?
+	p.WriteInt32(0)          // map buffs?
+	p.WriteInt32(0)          // map buffs?
+	p.WriteInt32(0)          // map buffs?
 
 	p.WriteBytes(writeDisplayCharacter(char))
 
-	p.WriteInt32(0)                 // ?
-	p.WriteInt32(0)                 // ?
-	p.WriteInt32(0)                 // ?
-	p.WriteInt32(char.GetChairID()) // 0 means no chair in use, stance needs to be changed to match
+	p.WriteInt32(0)            // ?
+	p.WriteInt32(0)            // ?
+	p.WriteInt32(0)            // ?
+	p.WriteInt32(char.ChairID) // 0 means no chair in use, stance needs to be changed to match
 
-	p.WriteInt16(char.GetX())
-	p.WriteInt16(char.GetY())
+	p.WriteInt16(char.Pos.X)
+	p.WriteInt16(char.Pos.Y)
 
-	p.WriteByte(char.GetState())
-	p.WriteInt16(char.GetFoothold())
+	p.WriteByte(char.State)
+	p.WriteInt16(char.Foothold)
 	p.WriteInt32(0) // ?
 
 	return p

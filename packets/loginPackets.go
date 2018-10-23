@@ -3,10 +3,10 @@ package packets
 import (
 	"strconv"
 
-	"github.com/Hucaru/Valhalla/character"
 	"github.com/Hucaru/Valhalla/consts"
 	"github.com/Hucaru/Valhalla/consts/opcodes"
 	"github.com/Hucaru/Valhalla/maplepacket"
+	"github.com/Hucaru/Valhalla/types"
 )
 
 func LoginResponce(result byte, userID int32, gender byte, isAdmin bool, username string, isBanned int) maplepacket.Packet {
@@ -60,7 +60,7 @@ func LoginSendBadMigrate() maplepacket.Packet {
 	return pac
 }
 
-func LoginDisplayCharacters(characters []character.Character) maplepacket.Packet {
+func LoginDisplayCharacters(characters []types.Character) maplepacket.Packet {
 	pac := maplepacket.CreateWithOpcode(opcodes.Send.LoginCharacterData)
 	pac.WriteByte(0) // ?
 
@@ -68,7 +68,7 @@ func LoginDisplayCharacters(characters []character.Character) maplepacket.Packet
 		pac.WriteByte(byte(len(characters)))
 
 		for _, c := range characters {
-			LoginWritePlayerCharacter(&pac, c.GetCharID(), c)
+			LoginWritePlayerCharacter(&pac, c.ID, c)
 		}
 	} else {
 		pac.WriteByte(0)
@@ -90,12 +90,12 @@ func LoginNameCheck(name string, nameFound int) maplepacket.Packet {
 	return pac
 }
 
-func LoginCreatedCharacter(success bool, character character.Character) maplepacket.Packet {
+func LoginCreatedCharacter(success bool, character types.Character) maplepacket.Packet {
 	pac := maplepacket.CreateWithOpcode(opcodes.Send.LoginNewCharacterGood)
 
 	if success {
 		pac.WriteByte(0x0) // if creation was sucessfull - 0 = good, 1 = bad
-		LoginWritePlayerCharacter(&pac, character.GetCharID(), character)
+		LoginWritePlayerCharacter(&pac, character.ID, character)
 	} else {
 		pac.WriteByte(0x1)
 	}
@@ -118,10 +118,10 @@ func LoginDeleteCharacter(charID int32, deleted bool, hacking bool) maplepacket.
 	return pac
 }
 
-func LoginWritePlayerCharacter(pac *maplepacket.Packet, pos int32, char character.Character) {
+func LoginWritePlayerCharacter(pac *maplepacket.Packet, pos int32, char types.Character) {
 	pac.WriteInt32(pos)
 
-	name := char.GetName()
+	name := char.Name
 
 	if len(name) > 13 {
 		name = name[:13]
@@ -134,34 +134,34 @@ func LoginWritePlayerCharacter(pac *maplepacket.Packet, pos int32, char characte
 		pac.WriteByte(0x0)
 	}
 
-	pac.WriteByte(char.GetGender()) //gender
-	pac.WriteByte(char.GetSkin())   // skin
-	pac.WriteInt32(char.GetFace())  // face
-	pac.WriteInt32(char.GetHair())  // Hair
+	pac.WriteByte(char.Gender) //gender
+	pac.WriteByte(char.Skin)   // skin
+	pac.WriteInt32(char.Face)  // face
+	pac.WriteInt32(char.Hair)  // Hair
 
 	pac.WriteInt64(0x0) // Pet cash ID
 
-	pac.WriteByte(char.GetLevel())  // level
-	pac.WriteInt16(char.GetJob())   // Job
-	pac.WriteInt16(char.GetStr())   // str
-	pac.WriteInt16(char.GetDex())   // dex
-	pac.WriteInt16(char.GetInt())   // int
-	pac.WriteInt16(char.GetLuk())   // luk
-	pac.WriteInt16(char.GetHP())    // hp
-	pac.WriteInt16(char.GetMaxHP()) // max hp
-	pac.WriteInt16(char.GetMP())    // mp
-	pac.WriteInt16(char.GetMaxMP()) // max mp
-	pac.WriteInt16(char.GetAP())    // ap
-	pac.WriteInt16(char.GetSP())    // sp
-	pac.WriteInt32(char.GetEXP())   // exp
-	pac.WriteInt16(char.GetFame())  // fame
+	pac.WriteByte(char.Level)  // level
+	pac.WriteInt16(char.Job)   // Job
+	pac.WriteInt16(char.Str)   // str
+	pac.WriteInt16(char.Dex)   // dex
+	pac.WriteInt16(char.Int)   // int
+	pac.WriteInt16(char.Luk)   // luk
+	pac.WriteInt16(char.HP)    // hp
+	pac.WriteInt16(char.MaxHP) // max hp
+	pac.WriteInt16(char.MP)    // mp
+	pac.WriteInt16(char.MaxMP) // max mp
+	pac.WriteInt16(char.AP)    // ap
+	pac.WriteInt16(char.SP)    // sp
+	pac.WriteInt32(char.EXP)   // exp
+	pac.WriteInt16(char.Fame)  // fame
 
-	pac.WriteInt32(char.GetCurrentMap())   // map id
-	pac.WriteByte(char.GetCurrentMapPos()) // map
+	pac.WriteInt32(char.CurrentMap)   // map id
+	pac.WriteByte(char.CurrentMapPos) // map
 
 	pac.WriteBytes(writeDisplayCharacter(char))
 
-	pac.WriteInt32(0) // is character is selected and which one
+	pac.WriteInt32(0) // if character is selected and which one
 	pac.WriteByte(1)  // Rankings
 	pac.WriteInt32(1) // world ranking position
 	pac.WriteInt32(2) // increase / decrease amount

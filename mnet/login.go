@@ -5,6 +5,7 @@ import (
 
 	"github.com/Hucaru/Valhalla/consts"
 	"github.com/Hucaru/Valhalla/crypt"
+	"github.com/Hucaru/Valhalla/database"
 
 	"github.com/Hucaru/Valhalla/maplepacket"
 )
@@ -58,8 +59,13 @@ func (l *login) Cleanup() {
 	l.baseConn.Cleanup()
 
 	if l.logedIn {
-		// run query to set isLogedIn to 0
-		// run query to set isInChannel to -1
+		records, err := database.Handle.Query("UPDATE accounts set isLogedIn=?", 0)
+
+		defer records.Close()
+
+		if err != nil {
+			panic(err)
+		}
 	}
 }
 

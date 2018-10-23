@@ -6,7 +6,8 @@ import (
 	"log"
 	"strings"
 
-	"github.com/Hucaru/Valhalla/character"
+	"github.com/Hucaru/Valhalla/types"
+
 	"github.com/Hucaru/Valhalla/consts/opcodes"
 	"github.com/Hucaru/Valhalla/database"
 	"github.com/Hucaru/Valhalla/maplepacket"
@@ -143,13 +144,10 @@ func handleChannelSelect(conn mnet.MConnLogin, reader maplepacket.Reader) {
 	selectedWorld := reader.ReadByte()   // world
 	conn.SetChannelID(reader.ReadByte()) // Channel
 
-	var characters []character.Character
-
 	if selectedWorld == conn.GetWorldID() {
-		characters = character.GetCharacters(conn.GetAccountID(), int32(conn.GetWorldID()))
+		characters := types.GetCharactersFromAccountWorldID(conn.GetAccountID(), conn.GetWorldID())
+		conn.Send(packets.LoginDisplayCharacters(characters))
 	}
-
-	conn.Send(packets.LoginDisplayCharacters(characters))
 }
 
 func handleNameCheck(conn mnet.MConnLogin, reader maplepacket.Reader) {
@@ -216,7 +214,7 @@ func handleNewCharacter(conn mnet.MConnLogin, reader maplepacket.Reader) {
 		inSlice(bottom, allowedBottom) && inSlice(top, allowedTop) && inSlice(shoes, allowedShoes) &&
 		inSlice(weapon, allowedWeapons) && inSlice(skin, allowedSkinColour) && (counter == 0)
 
-	var newCharacter character.Character
+	newCharacter := types.Character{}
 
 	if conn.GetAdminLevel() > 0 {
 		name = "[GM]" + name
@@ -255,7 +253,7 @@ func handleNewCharacter(conn mnet.MConnLogin, reader maplepacket.Reader) {
 			panic(err)
 		}
 
-		characters := character.GetCharacters(conn.GetAccountID(), int32(conn.GetWorldID()))
+		characters := types.GetCharactersFromAccountWorldID(conn.GetAccountID(), conn.GetWorldID())
 		newCharacter = characters[len(characters)-1]
 	}
 
