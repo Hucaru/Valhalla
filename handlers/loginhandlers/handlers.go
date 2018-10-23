@@ -68,11 +68,12 @@ func handleLoginRequest(conn mnet.MConnLogin, reader maplepacket.Reader) {
 	var databasePassword string
 	var gender byte
 	var isLogedIn bool
+	var isInChannel int8
 	var isBanned int
 	var adminLevel int
 
-	err := database.Handle.QueryRow("SELECT accountID, username, password, gender, isLogedIn, isBanned, adminLevel FROM accounts WHERE username=?", username).
-		Scan(&accountID, &user, &databasePassword, &gender, &isLogedIn, &isBanned, &adminLevel)
+	err := database.Handle.QueryRow("SELECT accountID, username, password, gender, isLogedIn, isBanned, adminLevel, isInChannel FROM accounts WHERE username=?", username).
+		Scan(&accountID, &user, &databasePassword, &gender, &isLogedIn, &isBanned, &adminLevel, &isInChannel)
 
 	result := byte(0x00)
 
@@ -80,7 +81,7 @@ func handleLoginRequest(conn mnet.MConnLogin, reader maplepacket.Reader) {
 		result = 0x05
 	} else if hashedPassword != databasePassword {
 		result = 0x04
-	} else if isLogedIn {
+	} else if isLogedIn || isInChannel > -1 {
 		result = 0x07
 	} else if isBanned > 0 {
 		result = 0x02
@@ -118,12 +119,6 @@ func handleGoodLogin(conn mnet.MConnLogin, reader maplepacket.Reader) {
 	if err != nil {
 		log.Println("handleCheckLogin database retrieval issue for accountID:", accountID, err)
 	}
-
-	// Could use this to keep track of login -> channel migration as well as channel -> channel migration?
-	// hasher := sha512.New()
-	// hasher.Write([]byte(username + password)) // should be unique
-	// hash := hex.EncodeToString(hasher.Sum(nil))
-	// conn.SetSessionHash(hash)
 
 	const maxNumberOfWorlds = 14
 
