@@ -58,6 +58,16 @@ func (ls *loginServer) establishDatabaseConnection() {
 func (ls *loginServer) acceptNewConnections() {
 	defer ls.wg.Done()
 
+	records, err := database.Handle.Query("UPDATE accounts SET isLogedIn=?", 0)
+
+	defer records.Close()
+
+	if err != nil {
+		panic(err)
+	}
+
+	log.Println("Reset all accounts login server status")
+
 	listener, err := net.Listen("tcp", ls.config.ListenAddress+":"+ls.config.ListenPort)
 
 	if err != nil {

@@ -59,7 +59,7 @@ func (l *login) Cleanup() {
 	l.baseConn.Cleanup()
 
 	if l.logedIn {
-		records, err := database.Handle.Query("UPDATE accounts set isLogedIn=?", 0)
+		records, err := database.Handle.Query("UPDATE accounts SET isLogedIn=? WHERE accountID=?", 0, l.accountID)
 
 		defer records.Close()
 
