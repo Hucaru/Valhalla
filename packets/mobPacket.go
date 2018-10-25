@@ -4,16 +4,17 @@ import (
 	"github.com/Hucaru/Valhalla/consts/opcodes"
 	"github.com/Hucaru/Valhalla/maplepacket"
 	"github.com/Hucaru/Valhalla/nx"
+	"github.com/Hucaru/Valhalla/types"
 )
 
-func MobShow(mob mobInter, isNewSpawn bool) maplepacket.Packet {
+func MobShow(mob types.Mob, isNewSpawn bool) maplepacket.Packet {
 	p := maplepacket.CreateWithOpcode(opcodes.Send.ChannelShowMob)
 	p.Append(addMob(mob, isNewSpawn))
 
 	return p
 }
 
-func MobControl(mob mobInter, isNewSpawn bool) maplepacket.Packet {
+func MobControl(mob types.Mob, isNewSpawn bool) maplepacket.Packet {
 	p := maplepacket.CreateWithOpcode(opcodes.Send.ChannelControlMob)
 	p.WriteByte(0x01) // flag for end control or not
 
@@ -22,42 +23,42 @@ func MobControl(mob mobInter, isNewSpawn bool) maplepacket.Packet {
 	return p
 }
 
-func addMob(mob mobInter, isNewSpawn bool) maplepacket.Packet {
+func addMob(mob types.Mob, isNewSpawn bool) maplepacket.Packet {
 	p := maplepacket.NewPacket()
 
-	p.WriteInt32(mob.GetSpawnID())
+	p.WriteInt32(mob.SpawnID)
 	p.WriteByte(0x01) // control status?
-	p.WriteInt32(mob.GetID())
+	p.WriteInt32(mob.ID)
 
 	p.WriteInt32(0) // some kind of status?
 
-	p.WriteInt16(mob.GetX())
-	p.WriteInt16(mob.GetY())
+	p.WriteInt16(mob.X)
+	p.WriteInt16(mob.Y)
 
 	var bitfield byte
 
-	if mob.GetSummoner() != nil {
+	if mob.Summoner != nil {
 		bitfield = 0x08
 	} else {
 		bitfield = 0x02
 	}
 
-	if mob.GetState()%2 == 1 {
+	if mob.State%2 == 1 {
 		bitfield |= 0x01
 	} else {
 		bitfield |= 0
 	}
 
-	if mob.GetFlySpeed() > 0 {
+	if mob.FlySpeed > 0 {
 		bitfield |= 0x04
 	}
 
-	p.WriteByte(bitfield)           // 0x08 - a summon, 0x04 - flying, 0x02 - ???, 0x01 - faces left
-	p.WriteInt16(mob.GetFoothold()) // foothold to oscillate around
-	p.WriteInt16(mob.GetFoothold()) // spawn foothold
+	p.WriteByte(bitfield) // 0x08 - a summon, 0x04 - flying, 0x02 - ???, 0x01 - faces left
+	p.WriteInt16(mob.Fh)  // foothold to oscillate around
+	p.WriteInt16(mob.Fh)  // spawn foothold
 
-	if mob.GetSummoner() != nil {
-		p.WriteByte(nx.GetMobSummonType(mob.GetID()))
+	if mob.Summoner != nil {
+		p.WriteByte(nx.GetMobSummonType(mob.ID))
 	} else {
 		if isNewSpawn {
 			p.WriteByte(0xFE)

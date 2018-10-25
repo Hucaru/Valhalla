@@ -32,11 +32,21 @@ func GetPlayerFromConn(conn mnet.MConnChannel) Player {
 }
 
 func SendToMap(mapID int32, p maplepacket.Packet) {
-
+	for _, player := range players {
+		if player.Char().CurrentMap == mapID {
+			player.Send(p)
+		}
+	}
 }
 
-func SendToMapExcept(mapID int32, p maplepacket.Packet, conn mnet.MConnChannel) {
-
+func SendToMapExcept(mapID int32, p maplepacket.Packet, exception mnet.MConnChannel) {
+	for conn, player := range players {
+		if conn == exception {
+			continue
+		} else if player.Char().CurrentMap == mapID {
+			player.Send(p)
+		}
+	}
 }
 
 func GetRandomSpawnPortal(mapID int32) (nx.Portal, byte) {

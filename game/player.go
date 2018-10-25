@@ -44,6 +44,10 @@ func (p *Player) sendMapItems() {
 		p.Send(packets.NpcShow(npc))
 	}
 
+	for _, mob := range maps[p.char.CurrentMap].mobs {
+		p.Send(packets.MobShow(mob, false))
+	}
+
 	for _, player := range players {
 		if player.Char().CurrentMap == p.char.CurrentMap {
 			player.Send(packets.MapPlayerEnter(p.Char()))

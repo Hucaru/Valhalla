@@ -17,10 +17,11 @@ type gameMap struct {
 func InitMaps() {
 	for mapID, nxMap := range nx.Maps {
 		npcs := []types.NPC{}
+		mobs := []types.Mob{}
 
 		for _, l := range nxMap.Life {
 			if l.IsMob {
-
+				mobs = append(mobs, types.CreateMob(int32(len(mobs)), l, nx.Mob[l.ID], nil))
 			} else {
 				npcs = append(npcs, types.CreateNPC(int32(len(npcs)), l))
 			}
@@ -28,6 +29,7 @@ func InitMaps() {
 
 		maps[mapID] = &gameMap{
 			npcs: npcs,
+			mobs: mobs,
 		}
 	}
 }
