@@ -20,7 +20,8 @@ func main() {
 	case "world":
 		log.Println("World server not implemented yet")
 	case "channel":
-		server.Channel()
+		s := server.NewChannelServer(*configPtr)
+		s.Run()
 	default:
 		log.Println("Unkown server type:", *typePtr)
 	}

@@ -37,7 +37,7 @@ func NewLoginServer(configFile string) *loginServer {
 }
 
 func (ls *loginServer) Run() {
-	log.Println("LoginServer")
+	log.Println("Login Server")
 
 	ls.wg.Add(1)
 	go ls.establishDatabaseConnection()
@@ -75,7 +75,7 @@ func (ls *loginServer) acceptNewConnections() {
 		os.Exit(1)
 	}
 
-	log.Println("Client listener ready")
+	log.Println("Client listener ready:", ls.config.ListenAddress+":"+ls.config.ListenPort)
 
 	for {
 		conn, err := listener.Accept()

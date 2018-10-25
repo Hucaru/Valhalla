@@ -5,6 +5,7 @@ import (
 	"math"
 	"strconv"
 	"strings"
+	"sync"
 )
 
 type Item struct {
@@ -38,7 +39,9 @@ type Item struct {
 
 var Items = make(map[int32]Item)
 
-func getItemInfo() {
+func getItemInfo(wg *sync.WaitGroup) {
+	defer wg.Done()
+
 	base := "Item/"
 	commonPaths := []string{"Cash", "Consume", "Etc", "Install", "Special"}
 

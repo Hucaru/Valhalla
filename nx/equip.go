@@ -3,6 +3,7 @@ package nx
 import (
 	"strconv"
 	"strings"
+	"sync"
 )
 
 type EquipItem struct {
@@ -33,7 +34,8 @@ func IsCashItem(ID int32) bool {
 	return false
 }
 
-func getEquipInfo() {
+func getEquipInfo(wg *sync.WaitGroup) {
+	defer wg.Done()
 
 	path := "Character"
 

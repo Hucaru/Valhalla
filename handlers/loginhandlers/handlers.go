@@ -305,7 +305,7 @@ func handleSelectCharacter(conn mnet.MConnLogin, reader maplepacket.Reader) {
 
 	if charCount == 1 {
 		ip := []byte{192, 168, 1, 240}
-		port := int16(8686)
+		port := int16(8684)
 		conn.Send(packets.LoginMigrateClient(ip, port, charID))
 	}
 }

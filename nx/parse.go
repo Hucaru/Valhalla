@@ -4,6 +4,7 @@ import (
 	"encoding/binary"
 	"os"
 	"strings"
+	"sync"
 )
 
 type header struct {
@@ -52,10 +53,21 @@ func Parse(fname string) {
 	readStrings(f, head)
 	readNodes(f, head)
 
-	getMapInfo()
-	getEquipInfo()
-	getItemInfo()
-	getMobInfo()
+	wg := &sync.WaitGroup{}
+
+	wg.Add(1)
+	go getMapInfo(wg)
+
+	wg.Add(1)
+	go getEquipInfo(wg)
+
+	wg.Add(1)
+	go getItemInfo(wg)
+
+	wg.Add(1)
+	go getMobInfo(wg)
+
+	wg.Wait()
 }
 
 func searchNode(search string, fnc func(*node)) bool {

@@ -21,6 +21,7 @@ type loginConfig struct {
 }
 
 type channelConfig struct {
+	ListenAddress   string
 	ListenPort      string
 	PacketQueueSize int
 }

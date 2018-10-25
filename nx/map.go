@@ -5,6 +5,7 @@ import (
 	"math"
 	"strconv"
 	"strings"
+	"sync"
 )
 
 type Life struct {
@@ -43,7 +44,9 @@ type Stage struct {
 
 var Maps = make(map[int32]Stage)
 
-func getMapInfo() {
+func getMapInfo(wg *sync.WaitGroup) {
+	defer wg.Done()
+
 	var maps []string
 
 	// Get the list of maps

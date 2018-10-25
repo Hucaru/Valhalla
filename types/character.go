@@ -1,6 +1,9 @@
 package types
 
-import "github.com/Hucaru/Valhalla/database"
+import (
+	"github.com/Hucaru/Valhalla/database"
+	"github.com/Hucaru/Valhalla/nx"
+)
 
 type Character struct {
 	ID        int32
@@ -99,7 +102,7 @@ func GetCharactersFromAccountWorldID(accountID int32, worldID byte) []Character 
 func GetCharacterFromID(id int32) Character {
 	var char Character
 
-	filter := "id,userID,worldID,name,gender,skin,hair,face,level,job,str,dex,intt," +
+	filter := "id,accountID,worldID,name,gender,skin,hair,face,level,job,str,dex,intt," +
 		"luk,hp,maxHP,mp,maxMP,ap,sp, exp,fame,mapID,mapPos,previousMapID,mesos," +
 		"equipSlotSize,useSlotSize,setupSlotSize,etcSlotSize,cashSlotSize"
 
@@ -115,6 +118,9 @@ func GetCharacterFromID(id int32) Character {
 	}
 
 	char.Inventory = GetInventoryFromCharID(char.ID)
+
+	char.Pos.X = nx.Maps[char.CurrentMap].Portals[char.CurrentMapPos].X
+	char.Pos.Y = nx.Maps[char.CurrentMap].Portals[char.CurrentMapPos].Y
 
 	return char
 }

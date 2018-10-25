@@ -72,7 +72,6 @@ func (bc *baseConn) Writer() {
 			if bc.cryptSend != nil {
 				bc.cryptSend.Encrypt(p, true, false)
 			}
-
 			bc.Conn.Write(p)
 		}
 

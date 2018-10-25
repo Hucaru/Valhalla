@@ -16,5 +16,6 @@ listenPort = "8584"
 packetQueueSize = 10240
 
 [channel]
+listenAddress = "0.0.0.0"
 listenPort = "8684"
 packetQueueSize = 10240

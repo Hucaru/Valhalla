@@ -3,6 +3,7 @@ package nx
 import (
 	"strconv"
 	"strings"
+	"sync"
 )
 
 type Monster struct {
@@ -20,7 +21,9 @@ type Monster struct {
 
 var Mob = make(map[int32]Monster)
 
-func getMobInfo() {
+func getMobInfo(wg *sync.WaitGroup) {
+	defer wg.Done()
+
 	result := searchNode("Mob", func(cursor *node) {
 		for i := uint32(0); i < uint32(cursor.ChildCount); i++ {
 			mob := nodes[cursor.ChildID+i]

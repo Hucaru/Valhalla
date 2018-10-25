@@ -7,18 +7,18 @@ import (
 	"github.com/Hucaru/Valhalla/types"
 )
 
-func NpcShow(npc npcInter) maplepacket.Packet {
+func NpcShow(npc types.NPC) maplepacket.Packet {
 	p := maplepacket.CreateWithOpcode(opcodes.Send.ChannelNpcShow)
-	p.WriteInt32(npc.GetSpawnID())
-	p.WriteInt32(npc.GetID())
-	p.WriteInt16(npc.GetX())
-	p.WriteInt16(npc.GetY())
+	p.WriteInt32(npc.SpawnID)
+	p.WriteInt32(npc.ID)
+	p.WriteInt16(npc.X)
+	p.WriteInt16(npc.Y)
 
-	p.WriteByte(1 - npc.GetFace())
+	p.WriteByte(1 - npc.F)
 
-	p.WriteInt16(npc.GetFoothold())
-	p.WriteInt16(npc.GetRx0())
-	p.WriteInt16(npc.GetRx1())
+	p.WriteInt16(npc.Fh)
+	p.WriteInt16(npc.Rx0)
+	p.WriteInt16(npc.Rx1)
 
 	return p
 }

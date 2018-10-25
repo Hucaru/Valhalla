@@ -1,44 +1,134 @@
 package server
 
-func Channel() {
-	// log.Println("ChannelServer")
+import (
+	"crypto/rand"
+	"log"
+	"net"
+	"os"
+	"sync"
+	"time"
 
-	// start := time.Now()
-	// nx.Parse("wizetData")
-	// elapsed := time.Since(start)
+	"github.com/Hucaru/Valhalla/game"
+	"github.com/Hucaru/Valhalla/nx"
 
-	// log.Println("Loaded and parsed Wizet data in", elapsed)
+	"github.com/Hucaru/Valhalla/consts"
+	"github.com/Hucaru/Valhalla/database"
+	"github.com/Hucaru/Valhalla/handlers/channelhandlers"
+	"github.com/Hucaru/Valhalla/maplepacket"
+	"github.com/Hucaru/Valhalla/mnet"
+	"github.com/Hucaru/Valhalla/packets"
+)
 
-	// channel.GenerateMaps()
-	// channel.GenerateNPCs()
-	// channel.GenerateMobs()
+type channelServer struct {
+	config   channelConfig
+	dbConfig dbConfig
+	eRecv    chan *mnet.Event
+	wg       *sync.WaitGroup
+}
 
-	// listener, err := net.Listen("tcp", "0.0.0.0:8686")
+func NewChannelServer(configFile string) *channelServer {
+	config, dbConfig := channelConfigFromFile("config.toml")
 
-	// if err != nil {
-	// 	log.Println(err)
-	// 	os.Exit(1)
-	// }
+	cs := &channelServer{
+		eRecv:    make(chan *mnet.Event),
+		config:   config,
+		dbConfig: dbConfig,
+		wg:       &sync.WaitGroup{},
+	}
 
-	// defer connection.Db.Close()
-	// connection.ConnectToDb()
+	return cs
+}
 
-	// log.Println("Client listener ready")
+func (cs *channelServer) Run() {
+	log.Println("Channel Server")
 
-	// for {
-	// 	conn, err := listener.Accept()
+	cs.wg.Add(1)
+	go cs.establishDatabaseConnection()
 
-	// 	if err != nil {
-	// 		log.Println("Error in accepting client", err)
-	// 	}
+	start := time.Now()
+	nx.Parse("Data.nx")
+	elapsed := time.Since(start)
 
-	// 	defer conn.Close()
-	// 	clientConnection := connection.NewChannel(connection.NewClient(conn))
+	log.Println("Loaded and parsed Wizet data (NX) in", elapsed)
 
-	// 	log.Println("New client connection from", clientConnection)
+	game.InitMaps()
 
-	// 	go connection.HandleNewConnection(clientConnection, func(p maplepacket.Reader) {
-	// 		handlers.HandleChannelPacket(clientConnection, p)
-	// 	}, consts.ClientHeaderSize)
-	// }
+	cs.wg.Add(1)
+	go cs.acceptNewConnections()
+
+	cs.wg.Add(1)
+	go cs.processEvent()
+
+	cs.wg.Wait()
+}
+
+func (cs *channelServer) establishDatabaseConnection() {
+	database.Connect(cs.dbConfig.User, cs.dbConfig.Password, cs.dbConfig.Address, cs.dbConfig.Port, cs.dbConfig.Database)
+}
+
+func (cs *channelServer) acceptNewConnections() {
+	defer cs.wg.Done()
+
+	listener, err := net.Listen("tcp", cs.config.ListenAddress+":"+cs.config.ListenPort)
+
+	if err != nil {
+		log.Println(err)
+		os.Exit(1)
+	}
+
+	log.Println("Client listener ready:", cs.config.ListenAddress+":"+cs.config.ListenPort)
+
+	for {
+		conn, err := listener.Accept()
+
+		if err != nil {
+			log.Println("Error in accepting client", err)
+			close(cs.eRecv)
+			return
+		}
+
+		keySend := [4]byte{}
+		rand.Read(keySend[:])
+		keyRecv := [4]byte{}
+		rand.Read(keyRecv[:])
+
+		loginConn := mnet.NewLogin(conn, cs.eRecv, cs.config.PacketQueueSize, keySend, keyRecv)
+
+		go loginConn.Reader()
+		go loginConn.Writer()
+
+		conn.Write(packets.ClientHandshake(consts.MapleVersion, keyRecv[:], keySend[:]))
+	}
+}
+
+func (cs *channelServer) processEvent() {
+	defer cs.wg.Done()
+
+	for {
+		select {
+		case e, ok := <-cs.eRecv:
+
+			if !ok {
+				log.Println("Stopping event handling due to channel error")
+				return
+			}
+
+			channelConn, ok := e.Conn.(mnet.MConnChannel)
+
+			if !ok {
+				log.Fatal("Error in converting MConn to MConnChannel")
+			}
+
+			switch e.Type {
+			case mnet.MEClientConnected:
+				log.Println("New client from", channelConn)
+			case mnet.MEClientDisconnect:
+				log.Println("Client at", channelConn, "disconnected")
+				channelConn.Cleanup()
+				game.RemovePlayer(channelConn)
+			case mnet.MEClientPacket:
+				channelhandlers.HandlePacket(channelConn, maplepacket.NewReader(&e.Packet))
+			}
+		}
+	}
 }
