@@ -18,7 +18,8 @@ func main() {
 		s := server.NewLoginServer(*configPtr)
 		s.Run()
 	case "world":
-		log.Println("World server not implemented yet")
+		s := server.NewWorldServer(*configPtr)
+		s.Run()
 	case "channel":
 		s := server.NewChannelServer(*configPtr)
 		s.Run()

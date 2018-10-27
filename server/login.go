@@ -8,6 +8,7 @@ import (
 	"sync"
 
 	"github.com/Hucaru/Valhalla/handlers/loginhandlers"
+	"github.com/Hucaru/Valhalla/handlers/worldhandlers"
 	"github.com/Hucaru/Valhalla/maplepacket"
 
 	"github.com/Hucaru/Valhalla/consts"
@@ -165,7 +166,7 @@ func (ls *loginServer) processEvent() {
 					case mnet.MEServerDisconnect:
 						log.Println("Server at", serverConn, "disconnected")
 					case mnet.MEServerPacket:
-
+						worldhandlers.HandlePacket(nil, maplepacket.NewReader(&e.Packet))
 					}
 				}
 			}

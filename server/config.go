@@ -22,7 +22,18 @@ type loginConfig struct {
 	PacketQueueSize     int
 }
 
+type worldConfig struct {
+	Name            string
+	LoginAddress    string
+	LoginPort       string
+	ListenAddress   string
+	ListenPort      string
+	PacketQueueSize int
+}
+
 type channelConfig struct {
+	WorldAddress    string
+	WorldPort       string
 	ListenAddress   string
 	ListenPort      string
 	PacketQueueSize int
@@ -31,6 +42,7 @@ type channelConfig struct {
 type fullConfig struct {
 	Database dbConfig
 	Login    loginConfig
+	World    worldConfig
 	Channel  channelConfig
 }
 
@@ -42,6 +54,16 @@ func loginConfigFromFile(fname string) (loginConfig, dbConfig) {
 	}
 
 	return config.Login, config.Database
+}
+
+func worldConfigFromFile(fname string) (worldConfig, dbConfig) {
+	config := &fullConfig{}
+
+	if _, err := toml.DecodeFile(fname, config); err != nil {
+		log.Fatal(err)
+	}
+
+	return config.World, config.Database
 }
 
 func channelConfigFromFile(fname string) (channelConfig, dbConfig) {

@@ -14,6 +14,7 @@ import (
 	"github.com/Hucaru/Valhalla/consts"
 	"github.com/Hucaru/Valhalla/database"
 	"github.com/Hucaru/Valhalla/handlers/channelhandlers"
+	"github.com/Hucaru/Valhalla/handlers/worldhandlers"
 	"github.com/Hucaru/Valhalla/maplepacket"
 	"github.com/Hucaru/Valhalla/mnet"
 	"github.com/Hucaru/Valhalla/packets"
@@ -24,6 +25,7 @@ type channelServer struct {
 	dbConfig dbConfig
 	eRecv    chan *mnet.Event
 	wg       *sync.WaitGroup
+	wconn    net.Conn
 }
 
 func NewChannelServer(configFile string) *channelServer {
@@ -52,6 +54,8 @@ func (cs *channelServer) Run() {
 
 	game.InitMaps()
 
+	cs.connectToWorld()
+
 	cs.wg.Add(1)
 	go cs.acceptNewConnections()
 
@@ -64,6 +68,19 @@ func (cs *channelServer) Run() {
 func (cs *channelServer) establishDatabaseConnection() {
 	database.Connect(cs.dbConfig.User, cs.dbConfig.Password, cs.dbConfig.Address, cs.dbConfig.Port, cs.dbConfig.Database)
 	go database.Monitor()
+}
+
+func (cs *channelServer) connectToWorld() {
+	conn, err := net.Dial("tcp", cs.config.WorldAddress+":"+cs.config.WorldPort)
+
+	if err != nil {
+		log.Println(err)
+		os.Exit(1)
+	}
+
+	log.Println("Connected to world server at", cs.config.WorldAddress+":"+cs.config.WorldPort)
+
+	cs.wconn = conn
 }
 
 func (cs *channelServer) acceptNewConnections() {
@@ -115,20 +132,30 @@ func (cs *channelServer) processEvent() {
 
 			channelConn, ok := e.Conn.(mnet.MConnChannel)
 
-			if !ok {
-				log.Fatal("Error in converting MConn to MConnChannel")
+			if ok {
+				switch e.Type {
+				case mnet.MEClientConnected:
+					log.Println("New client from", channelConn)
+				case mnet.MEClientDisconnect:
+					log.Println("Client at", channelConn, "disconnected")
+					channelConn.Cleanup()
+					game.RemovePlayer(channelConn)
+				case mnet.MEClientPacket:
+					channelhandlers.HandlePacket(channelConn, maplepacket.NewReader(&e.Packet))
+				}
+			} else {
+				serverConn, ok := e.Conn.(mnet.MConnServer)
+
+				if ok {
+					switch e.Type {
+					case mnet.MEServerDisconnect:
+						log.Println("Server at", serverConn, "disconnected")
+					case mnet.MEServerPacket:
+						worldhandlers.HandlePacket(nil, maplepacket.NewReader(&e.Packet))
+					}
+				}
 			}
 
-			switch e.Type {
-			case mnet.MEClientConnected:
-				log.Println("New client from", channelConn)
-			case mnet.MEClientDisconnect:
-				log.Println("Client at", channelConn, "disconnected")
-				channelConn.Cleanup()
-				game.RemovePlayer(channelConn)
-			case mnet.MEClientPacket:
-				channelhandlers.HandlePacket(channelConn, maplepacket.NewReader(&e.Packet))
-			}
 		}
 	}
 }

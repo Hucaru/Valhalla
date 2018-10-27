@@ -46,6 +46,7 @@ func clientReader(conn net.Conn, eRecv chan *Event, mapleVersion int16, headerSi
 }
 
 func serverReader(conn net.Conn, eRecv chan *Event, headerSize int) {
+	eRecv <- &Event{Type: MEServerConnected, Conn: conn}
 	header := true
 	readSize := headerSize
 
@@ -53,7 +54,7 @@ func serverReader(conn net.Conn, eRecv chan *Event, headerSize int) {
 		buffer := make([]byte, readSize)
 
 		if _, err := conn.Read(buffer); err != nil {
-			eRecv <- &Event{Type: MEClientDisconnect, Conn: conn}
+			eRecv <- &Event{Type: MEServerDisconnect, Conn: conn}
 			break
 		}
 
