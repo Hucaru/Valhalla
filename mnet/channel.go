@@ -39,7 +39,7 @@ func NewChannel(conn net.Conn, eRecv chan *Event, queueSize int, keySend, keyRec
 	c.cryptRecv = crypt.New(keyRecv, consts.MapleVersion)
 
 	c.reader = func() {
-		clientReader(c, c.eRecv, consts.MapleVersion, consts.ClientHeaderSize, c.cryptRecv, c.cryptSend)
+		clientReader(c, c.eRecv, consts.MapleVersion, consts.ClientHeaderSize, c.cryptRecv)
 	}
 
 	return c

@@ -23,6 +23,7 @@ func HandlePacket(conn mnet.MConnChannel, reader maplepacket.Reader) {
 	case opcodes.Recv.ChannelMagicSkill:
 	case opcodes.Recv.ChannelDmgRecv:
 	case opcodes.Recv.ChannelPlayerSendAllChat:
+		chatSendAll(conn, reader)
 	case opcodes.Recv.ChannelSlashCommands:
 	case opcodes.Recv.ChannelCharacterUIWindow:
 	case opcodes.Recv.ChannelEmoticon:

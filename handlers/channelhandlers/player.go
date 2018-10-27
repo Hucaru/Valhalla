@@ -3,6 +3,7 @@ package channelhandlers
 import (
 	"log"
 
+	"github.com/Hucaru/Valhalla/database"
 	"github.com/Hucaru/Valhalla/game"
 	"github.com/Hucaru/Valhalla/maplepacket"
 	"github.com/Hucaru/Valhalla/mnet"
@@ -14,11 +15,30 @@ import (
 func playerConnect(conn mnet.MConnChannel, reader maplepacket.Reader) {
 	charID := reader.ReadInt32()
 
-	// check that the account this id is associated with has channel id of -1
+	var accountID int32
+	err := database.Handle.QueryRow("SELECT accountID FROM characters WHERE id=?", charID).Scan(&accountID)
+
+	if err != nil {
+		panic(err)
+	}
+
+	// check migration, channel status
+
+	conn.SetAccountID(accountID)
+
 	// check that the world this characters belongs to is the same as the world this channel is part of
 	conn.SetLogedIn(true)
 
 	char := types.GetCharacterFromID(charID)
+
+	var adminLevel int
+	err = database.Handle.QueryRow("SELECT adminLevel FROM accounts WHERE accountID=?", conn.GetAccountID()).Scan(&adminLevel)
+
+	if err != nil {
+		panic(err)
+	}
+
+	conn.SetAdminLevel(adminLevel)
 
 	conn.Send(packets.PlayerEnterGame(char, 0))
 	conn.Send(packets.MessageScrollingHeader("dummy header"))
@@ -78,10 +98,6 @@ func playerMagicSkill(conn mnet.MConnChannel, reader maplepacket.Reader) {
 }
 
 func playerTakeDamage(conn mnet.MConnChannel, reader maplepacket.Reader) {
-
-}
-
-func playerSendAllChat(conn mnet.MConnChannel, reader maplepacket.Reader) {
 
 }
 

@@ -15,9 +15,11 @@ type dbConfig struct {
 }
 
 type loginConfig struct {
-	ListenAddress   string
-	ListenPort      string
-	PacketQueueSize int
+	ClientListenAddress string
+	ClientListenPort    string
+	ServerListenAddress string
+	ServerListenPort    string
+	PacketQueueSize     int
 }
 
 type channelConfig struct {

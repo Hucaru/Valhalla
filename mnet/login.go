@@ -49,7 +49,7 @@ func NewLogin(conn net.Conn, eRecv chan *Event, queueSize int, keySend, keyRecv 
 	l.cryptRecv = crypt.New(keyRecv, consts.MapleVersion)
 
 	l.reader = func() {
-		clientReader(l, l.eRecv, consts.MapleVersion, consts.ClientHeaderSize, l.cryptRecv, l.cryptSend)
+		clientReader(l, l.eRecv, consts.MapleVersion, consts.ClientHeaderSize, l.cryptRecv)
 	}
 
 	return l

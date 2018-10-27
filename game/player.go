@@ -42,6 +42,7 @@ func (p *Player) ChangeMap(mapID int32, portal nx.Portal, portalID byte) {
 func (p *Player) sendMapItems() {
 	for _, npc := range maps[p.char.CurrentMap].npcs {
 		p.Send(packets.NpcShow(npc))
+		p.Send(packets.NPCSetController(npc.SpawnID, true))
 	}
 
 	for _, mob := range maps[p.char.CurrentMap].mobs {

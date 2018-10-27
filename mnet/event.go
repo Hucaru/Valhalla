@@ -10,6 +10,9 @@ const (
 	MEClientConnected = iota
 	MEClientDisconnect
 	MEClientPacket
+	MEServerConnected
+	MEServerDisconnect
+	MEServerPacket
 )
 
 type Event struct {

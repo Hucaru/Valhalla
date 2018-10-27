@@ -15,7 +15,7 @@ type MConn interface {
 	Cleanup()
 }
 
-func clientReader(conn net.Conn, eRecv chan *Event, mapleVersion int16, headerSize int, cryptRecv, cryptSend *crypt.Maple) {
+func clientReader(conn net.Conn, eRecv chan *Event, mapleVersion int16, headerSize int, cryptRecv *crypt.Maple) {
 	eRecv <- &Event{Type: MEClientConnected, Conn: conn}
 
 	header := true
@@ -33,7 +33,11 @@ func clientReader(conn net.Conn, eRecv chan *Event, mapleVersion int16, headerSi
 			readSize = crypt.GetPacketLength(buffer)
 		} else {
 			readSize = consts.ClientHeaderSize
-			cryptRecv.Decrypt(buffer, true, false)
+
+			if cryptRecv != nil {
+				cryptRecv.Decrypt(buffer, true, false)
+			}
+
 			eRecv <- &Event{Type: MEClientPacket, Conn: conn, Packet: buffer}
 		}
 
@@ -41,9 +45,26 @@ func clientReader(conn net.Conn, eRecv chan *Event, mapleVersion int16, headerSi
 	}
 }
 
-func serverReader() {
-	for {
+func serverReader(conn net.Conn, eRecv chan *Event, headerSize int) {
+	header := true
+	readSize := headerSize
 
+	for {
+		buffer := make([]byte, readSize)
+
+		if _, err := conn.Read(buffer); err != nil {
+			eRecv <- &Event{Type: MEClientDisconnect, Conn: conn}
+			break
+		}
+
+		if header {
+			readSize = crypt.GetPacketLength(buffer)
+		} else {
+			readSize = consts.ClientHeaderSize
+			eRecv <- &Event{Type: MEClientPacket, Conn: conn, Packet: buffer}
+		}
+
+		header = !header
 	}
 }
 
@@ -72,9 +93,9 @@ func (bc *baseConn) Writer() {
 			if bc.cryptSend != nil {
 				bc.cryptSend.Encrypt(p, true, false)
 			}
+
 			bc.Conn.Write(p)
 		}
-
 	}
 }
 

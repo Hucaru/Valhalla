@@ -7,15 +7,17 @@ password = "password"
 database = "maplestory"
 
 [login]
-listenAddress = "0.0.0.0"
-listenPort = "8484"
-packetQueueSize = 10240
+clientListenAddress = "0.0.0.0"
+clientListenPort = "8484"
+serverListenAddress = "0.0.0.0"
+serverListenPort = "8485"
+packetQueueSize = 10
 
 [world]
 listenPort = "8584"
-packetQueueSize = 10240
+packetQueueSize = 10
 
 [channel]
 listenAddress = "0.0.0.0"
 listenPort = "8684"
-packetQueueSize = 10240
+packetQueueSize = 10

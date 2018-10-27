@@ -18,8 +18,6 @@ func Connect(user, password, address, port, database string) {
 		log.Fatal(err.Error())
 	}
 
-	defer Handle.Close()
-
 	err = Handle.Ping()
 
 	if err != nil {
@@ -27,13 +25,15 @@ func Connect(user, password, address, port, database string) {
 	}
 
 	log.Println("Connected to database")
+}
 
+func Monitor() {
 	timer := time.NewTicker(60 * time.Second) // short enough ping time?
 
 	for {
 		select {
 		case <-timer.C:
-			err = Handle.Ping()
+			err := Handle.Ping()
 
 			if err != nil {
 				log.Fatal(err.Error()) // change to attempt to re-connect

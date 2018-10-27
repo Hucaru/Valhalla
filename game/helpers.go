@@ -18,13 +18,15 @@ func AddPlayer(player Player) {
 
 func RemovePlayer(conn mnet.MConnChannel) {
 	p := players[conn]
+
+	delete(players, conn)
+
 	for _, player := range players {
 		if player.Char().CurrentMap == p.Char().CurrentMap {
 			player.Send(packets.MapPlayerLeft(p.Char().ID))
 		}
 	}
 
-	delete(players, conn)
 }
 
 func GetPlayerFromConn(conn mnet.MConnChannel) Player {
@@ -34,7 +36,9 @@ func GetPlayerFromConn(conn mnet.MConnChannel) Player {
 func SendToMap(mapID int32, p maplepacket.Packet) {
 	for _, player := range players {
 		if player.Char().CurrentMap == mapID {
-			player.Send(p)
+			tmp := make(maplepacket.Packet, len(p))
+			copy(tmp, p)
+			player.Send(tmp)
 		}
 	}
 }
@@ -44,7 +48,9 @@ func SendToMapExcept(mapID int32, p maplepacket.Packet, exception mnet.MConnChan
 		if conn == exception {
 			continue
 		} else if player.Char().CurrentMap == mapID {
-			player.Send(p)
+			tmp := make(maplepacket.Packet, len(p))
+			copy(tmp, p)
+			player.Send(tmp)
 		}
 	}
 }

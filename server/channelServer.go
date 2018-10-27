@@ -42,8 +42,7 @@ func NewChannelServer(configFile string) *channelServer {
 func (cs *channelServer) Run() {
 	log.Println("Channel Server")
 
-	cs.wg.Add(1)
-	go cs.establishDatabaseConnection()
+	cs.establishDatabaseConnection()
 
 	start := time.Now()
 	nx.Parse("Data.nx")
@@ -64,6 +63,7 @@ func (cs *channelServer) Run() {
 
 func (cs *channelServer) establishDatabaseConnection() {
 	database.Connect(cs.dbConfig.User, cs.dbConfig.Password, cs.dbConfig.Address, cs.dbConfig.Port, cs.dbConfig.Database)
+	go database.Monitor()
 }
 
 func (cs *channelServer) acceptNewConnections() {
