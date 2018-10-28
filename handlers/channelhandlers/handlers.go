@@ -44,6 +44,7 @@ func HandlePacket(conn mnet.MConnChannel, reader maplepacket.Reader) {
 	case opcodes.Recv.ChannelAddBuddy:
 	case opcodes.Recv.ChannelMobControl:
 	case opcodes.Recv.ChannelNpcMovement:
+		npcMovement(conn, reader)
 	default:
 		log.Println("Unkown packet:", reader)
 	}
