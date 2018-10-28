@@ -25,7 +25,7 @@ func MapPlayerEnter(char types.Character) maplepacket.Packet {
 	p.WriteInt16(char.Pos.X)
 	p.WriteInt16(char.Pos.Y)
 
-	p.WriteByte(char.State)
+	p.WriteByte(char.Stance)
 	p.WriteInt16(char.Foothold)
 	p.WriteInt32(0) // ?
 

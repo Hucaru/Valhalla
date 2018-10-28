@@ -4,7 +4,6 @@ import (
 	"crypto/rand"
 	"fmt"
 	"math"
-	"time"
 
 	"github.com/Hucaru/Valhalla/consts/opcodes"
 	"github.com/Hucaru/Valhalla/maplepacket"
@@ -40,10 +39,10 @@ func PlayerLevelUpAnimation(charID int32) maplepacket.Packet {
 	return p
 }
 
-func PlayerMove(charID int32, leftOverBytes maplepacket.Packet) maplepacket.Packet {
+func PlayerMove(charID int32, bytes []byte) maplepacket.Packet {
 	p := maplepacket.CreateWithOpcode(opcodes.Send.ChannelPlayerMovement)
 	p.WriteInt32(charID)
-	p.WriteBytes(leftOverBytes)
+	p.WriteBytes(bytes)
 
 	return p
 }
@@ -234,8 +233,7 @@ func PlayerEnterGame(char types.Character, channelID int32) maplepacket.Packet {
 	p.WriteUint64(0)
 	p.WriteUint64(0)
 	p.WriteUint64(0)
-
-	p.WriteInt64(time.Now().Unix())
+	p.WriteInt64(0)
 
 	return p
 }

@@ -7,7 +7,7 @@ type Avatar struct {
 	Face     int32
 	Hair     int32
 	ChairID  int32
-	State    byte
+	Stance   byte
 	Pos      Pos
 	Foothold int16
 }

@@ -82,7 +82,19 @@ func playerEnterCashShop(conn mnet.MConnChannel, reader maplepacket.Reader) {
 }
 
 func playerMovement(conn mnet.MConnChannel, reader maplepacket.Reader) {
+	reader.ReadByte() // portal count
+	moveData, finalData := parseMovement(reader)
 
+	// validate movementData
+
+	moveBytes := generateMovementBytes(moveData)
+
+	player := game.GetPlayerFromConn(conn)
+
+	player.UpdateMovement(finalData)
+	char := player.Char()
+
+	game.SendToMapExcept(char.CurrentMap, packets.PlayerMove(char.ID, moveBytes), conn)
 }
 
 func playerStandardSkill(conn mnet.MConnChannel, reader maplepacket.Reader) {

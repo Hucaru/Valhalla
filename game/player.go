@@ -56,3 +56,10 @@ func (p *Player) sendMapItems() {
 		}
 	}
 }
+
+func (p *Player) UpdateMovement(moveData types.MovementFrag) {
+	p.char.Pos.X = moveData.X
+	p.char.Pos.Y = moveData.Y
+	p.char.Foothold = moveData.Foothold
+	p.char.Stance = moveData.Stance
+}

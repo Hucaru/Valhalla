@@ -18,6 +18,7 @@ func HandlePacket(conn mnet.MConnChannel, reader maplepacket.Reader) {
 		playerUsePortal(conn, reader)
 	case opcodes.Recv.ChannelEnterCashShop:
 	case opcodes.Recv.ChannelPlayerMovement:
+		playerMovement(conn, reader)
 	case opcodes.Recv.ChannelStandardSkill:
 	case opcodes.Recv.ChannelRangedSkill:
 	case opcodes.Recv.ChannelMagicSkill:
