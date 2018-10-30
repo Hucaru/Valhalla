@@ -13,6 +13,7 @@ type Character struct {
 	CurrentMap    int32
 	CurrentMapPos byte
 	PreviousMap   int32
+	PortalCount   byte
 
 	Job int16
 
@@ -40,7 +41,7 @@ type Character struct {
 
 	Inventory
 
-	Skills map[int32]int32
+	Skills []Skill
 
 	MiniGameWins, MiniGameTies, MiniGameLosses int32
 }
@@ -118,6 +119,7 @@ func GetCharacterFromID(id int32) Character {
 	}
 
 	char.Inventory = GetInventoryFromCharID(char.ID)
+	char.Skills = GetSkillsFromCharID(char.ID)
 
 	char.Pos.X = nx.Maps[char.CurrentMap].Portals[char.CurrentMapPos].X
 	char.Pos.Y = nx.Maps[char.CurrentMap].Portals[char.CurrentMapPos].Y

@@ -1,31 +1,39 @@
 package channelhandlers
 
 import (
+	"fmt"
+
 	"github.com/Hucaru/Valhalla/maplepacket"
 	"github.com/Hucaru/Valhalla/types"
 )
 
 // values from WvsGlobal
 var movementType = struct {
-	normalMovement  byte
-	jump            byte
-	jumpKb          byte
-	immediate       byte
-	teleport        byte
-	normalMovement2 byte
-	flashJump       byte
-	assaulter       byte
-	falling         byte
+	normalMovement   byte
+	jump             byte
+	jumpKb           byte
+	immediate        byte
+	teleport         byte
+	normalMovement2  byte
+	flashJump        byte
+	assaulter        byte
+	falling          byte
+	equipMovement    byte
+	jumpdownMovement byte
+	normalMovement3  byte
 }{
-	normalMovement:  0,
-	jump:            1,
-	jumpKb:          2,
-	immediate:       3, // GM F1 teleport
-	teleport:        4,
-	normalMovement2: 5,
-	flashJump:       6,
-	assaulter:       7,
-	falling:         8,
+	normalMovement:   0,
+	jump:             1,
+	jumpKb:           2,
+	immediate:        3, // GM F1 teleport
+	teleport:         4,
+	normalMovement2:  5,
+	flashJump:        6,
+	assaulter:        7,
+	falling:          8,
+	equipMovement:    10,
+	jumpdownMovement: 11,
+	normalMovement3:  17,
 }
 
 func parseMovement(reader maplepacket.Reader) (types.MovementData, types.MovementFrag) {
@@ -43,7 +51,7 @@ func parseMovement(reader maplepacket.Reader) (types.MovementData, types.Movemen
 	final := types.MovementFrag{}
 
 	for i := byte(0); i < nFrags; i++ {
-		frag := types.MovementFrag{}
+		frag := types.MovementFrag{PosSet: false}
 
 		frag.MType = reader.ReadByte()
 
@@ -51,6 +59,8 @@ func parseMovement(reader maplepacket.Reader) (types.MovementData, types.Movemen
 		case movementType.normalMovement:
 			fallthrough
 		case movementType.normalMovement2:
+			fallthrough
+		case movementType.normalMovement3:
 			frag.X = reader.ReadInt16()
 			frag.Y = reader.ReadInt16()
 			frag.Vx = reader.ReadInt16()
@@ -64,6 +74,12 @@ func parseMovement(reader maplepacket.Reader) (types.MovementData, types.Movemen
 		case movementType.jumpKb:
 			fallthrough
 		case movementType.flashJump:
+			fallthrough
+		case 12:
+			fallthrough
+		case 13:
+			fallthrough
+		case 16:
 			frag.Vx = reader.ReadInt16()
 			frag.Vy = reader.ReadInt16()
 			frag.Stance = reader.ReadByte()
@@ -74,6 +90,12 @@ func parseMovement(reader maplepacket.Reader) (types.MovementData, types.Movemen
 		case movementType.teleport:
 			fallthrough
 		case movementType.assaulter:
+			fallthrough
+		// case movementType.falling:
+		// 	fallthrough
+		case 9:
+			fallthrough
+		case 14:
 			frag.X = reader.ReadInt16()
 			frag.Y = reader.ReadInt16()
 			frag.Foothold = reader.ReadInt16()
@@ -81,9 +103,10 @@ func parseMovement(reader maplepacket.Reader) (types.MovementData, types.Movemen
 			frag.Duration = reader.ReadInt16()
 
 		case movementType.falling:
-			frag.Stance = reader.ReadByte()
+			reader.ReadByte() // what is this
 
 		default:
+			fmt.Println("unkown movement fragment type: ", frag.MType)
 			frag.Stance = reader.ReadByte()
 			frag.Duration = reader.ReadInt16()
 		}
@@ -153,4 +176,16 @@ func generateMovementBytes(moveData types.MovementData) maplepacket.Packet {
 	}
 
 	return p
+}
+
+func validateCharMovement(char types.Character, moveData types.MovementData) bool {
+	// run through the movement data and make sure characters are not moving too fast (going to have to take into account gear and buffs "-_- )
+
+	return true
+}
+
+func validateMobMovement(mob types.Mob, moveData types.MovementData) bool {
+	// run through the movement data and make sure monsters are not moving too fast
+
+	return true
 }

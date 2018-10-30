@@ -3,6 +3,7 @@ package channelhandlers
 import (
 	"encoding/hex"
 	"log"
+	"strconv"
 	"strings"
 
 	"github.com/Hucaru/Valhalla/game"
@@ -45,6 +46,67 @@ func gmCommand(conn mnet.MConnChannel, msg string) {
 		}
 		log.Println("Sent packet:", hex.EncodeToString(data))
 		conn.Send(data)
+	case "map":
+		var val int
+		var err error
+		var mapName string
+
+		if len(command) == 2 {
+			val, err = strconv.Atoi(command[1])
+			mapName = command[1]
+		} else if len(command) == 3 {
+			val, err = strconv.Atoi(command[2])
+			mapName = command[2]
+		}
+
+		if err != nil {
+			// Check to see if name matches pre-recorded
+			switch mapName {
+			// Maple island
+			case "amherst":
+				val = 1010000
+			case "southperry":
+				val = 60000
+			// Victoria island
+			case "lith":
+				val = 104000000
+			case "henesys":
+				val = 100000000
+			case "kerning":
+				val = 103000000
+			case "perion":
+				val = 102000000
+			case "ellinia":
+				val = 101000000
+			case "sleepy":
+				val = 105040300
+			case "gm":
+				val = 180000000
+			// Ossyria
+			case "orbis":
+				val = 200000000
+			case "elnath":
+				val = 211000000
+			case "ludi":
+				val = 220000000
+			case "omega":
+				val = 221000000
+			case "aqua":
+				val = 230000000
+			// Misc
+			case "balrog":
+				val = 105090900
+			default:
+				return
+			}
+		}
+
+		mapID := int32(val)
+
+		player := game.GetPlayerFromConn(conn)
+		p, id := game.GetRandomSpawnPortal(mapID)
+		player.ChangeMap(mapID, p, id)
+
 	case "notice":
 		if len(command) < 2 {
 			return

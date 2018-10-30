@@ -75,7 +75,7 @@ func PlayerStatChange(byPlayer bool, stat int32, value int32) maplepacket.Packet
 	return p
 }
 
-func PlayerStatNoChange() maplepacket.Packet {
+func PlayerNoChange() maplepacket.Packet {
 	p := maplepacket.CreateWithOpcode(opcodes.Send.ChannelInventoryOperation)
 	p.WriteByte(0x01)
 	p.WriteByte(0x00)
@@ -212,9 +212,9 @@ func PlayerEnterGame(char types.Character, channelID int32) maplepacket.Packet {
 	// Skills
 	p.WriteInt16(int16(len(char.Skills))) // number of skills
 
-	for id, level := range char.Skills {
-		p.WriteInt32(id)
-		p.WriteInt32(level)
+	for _, skill := range char.Skills {
+		p.WriteInt32(skill.ID)
+		p.WriteInt32(skill.Level)
 	}
 
 	// Quests

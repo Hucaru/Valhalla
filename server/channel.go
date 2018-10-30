@@ -109,10 +109,10 @@ func (cs *channelServer) acceptNewConnections() {
 		keyRecv := [4]byte{}
 		rand.Read(keyRecv[:])
 
-		loginConn := mnet.NewLogin(conn, cs.eRecv, cs.config.PacketQueueSize, keySend, keyRecv)
+		channelConn := mnet.NewChannel(conn, cs.eRecv, cs.config.PacketQueueSize, keySend, keyRecv)
 
-		go loginConn.Reader()
-		go loginConn.Writer()
+		go channelConn.Reader()
+		go channelConn.Writer()
 
 		conn.Write(packets.ClientHandshake(consts.MapleVersion, keyRecv[:], keySend[:]))
 	}
@@ -138,8 +138,8 @@ func (cs *channelServer) processEvent() {
 					log.Println("New client from", channelConn)
 				case mnet.MEClientDisconnect:
 					log.Println("Client at", channelConn, "disconnected")
-					channelConn.Cleanup()
 					game.RemovePlayer(channelConn)
+					channelConn.Cleanup()
 				case mnet.MEClientPacket:
 					channelhandlers.HandlePacket(channelConn, maplepacket.NewReader(&e.Packet))
 				}

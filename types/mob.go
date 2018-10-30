@@ -6,9 +6,10 @@ import (
 )
 
 type Mob struct {
-	SpawnID  int32
-	Summoner mnet.MConnChannel
-	State    byte
+	SpawnID    int32
+	Summoner   mnet.MConnChannel
+	Controller mnet.MConnChannel
+	Stance     byte
 	nx.Life
 	nx.Monster
 }
@@ -16,7 +17,7 @@ type Mob struct {
 func CreateMob(spawnID int32, life nx.Life, mob nx.Monster, summoner mnet.MConnChannel) Mob {
 	return Mob{SpawnID: spawnID,
 		Summoner: summoner,
-		State:    0,
+		Stance:   0,
 		Life:     life,
 		Monster:  mob}
 }

@@ -43,6 +43,7 @@ func HandlePacket(conn mnet.MConnChannel, reader maplepacket.Reader) {
 	case opcodes.Recv.ChannelGuildReject:
 	case opcodes.Recv.ChannelAddBuddy:
 	case opcodes.Recv.ChannelMobControl:
+		mobControl(conn, reader)
 	case opcodes.Recv.ChannelNpcMovement:
 		npcMovement(conn, reader)
 	default:

@@ -43,7 +43,7 @@ func addMob(mob types.Mob, isNewSpawn bool) maplepacket.Packet {
 		bitfield = 0x02
 	}
 
-	if mob.State%2 == 1 {
+	if mob.Stance%2 == 1 {
 		bitfield |= 0x01
 	} else {
 		bitfield |= 0
@@ -53,9 +53,9 @@ func addMob(mob types.Mob, isNewSpawn bool) maplepacket.Packet {
 		bitfield |= 0x04
 	}
 
-	p.WriteByte(bitfield) // 0x08 - a summon, 0x04 - flying, 0x02 - ???, 0x01 - faces left
-	p.WriteInt16(mob.Fh)  // foothold to oscillate around
-	p.WriteInt16(mob.Fh)  // spawn foothold
+	p.WriteByte(bitfield)      // 0x08 - a summon, 0x04 - flying, 0x02 - ???, 0x01 - faces left
+	p.WriteInt16(mob.Foothold) // foothold to oscillate around
+	p.WriteInt16(mob.Foothold) // spawn foothold
 
 	if mob.Summoner != nil {
 		p.WriteByte(nx.GetMobSummonType(mob.ID))
@@ -72,7 +72,7 @@ func addMob(mob types.Mob, isNewSpawn bool) maplepacket.Packet {
 	return p
 }
 
-func MobAck(mobID int32, moveID int16, allowedToUseSkill bool, mp int16, skill byte, level byte) maplepacket.Packet {
+func MobControlAcknowledge(mobID int32, moveID int16, allowedToUseSkill bool, mp int16, skill byte, level byte) maplepacket.Packet {
 	p := maplepacket.CreateWithOpcode(opcodes.Send.ChannelControlMobAck)
 	p.WriteInt32(mobID)
 	p.WriteInt16(moveID)
@@ -84,24 +84,26 @@ func MobAck(mobID int32, moveID int16, allowedToUseSkill bool, mp int16, skill b
 	return p
 }
 
-func MobMove(mobID int32, allowedToUseSkill bool, activity, skill, level byte, option int16, buf []byte) maplepacket.Packet {
+func MobMove(mobID int32, allowedToUseSkill bool, action byte, unknownData int32, buf []byte) maplepacket.Packet {
+	// func MobMove(mobID int32, allowedToUseSkill bool, action int8, skill, level byte, option int16, buf []byte) maplepacket.Packet {
 	p := maplepacket.CreateWithOpcode(opcodes.Send.ChannelMoveMob)
 	p.WriteInt32(mobID)
 	p.WriteBool(allowedToUseSkill)
-	p.WriteByte(activity)
-	p.WriteByte(skill)
-	p.WriteByte(level)
-	p.WriteInt16(option)
+	p.WriteByte(action)
+	// p.WriteByte(skill)
+	// p.WriteByte(level)
+	// p.WriteInt16(option)
+	p.WriteInt32(unknownData)
 	p.WriteBytes(buf)
 
 	return p
 
 }
 
-func MobEndControl(mob mobInter) maplepacket.Packet {
+func MobEndControl(mob types.Mob) maplepacket.Packet {
 	p := maplepacket.CreateWithOpcode(opcodes.Send.ChannelControlMob)
 	p.WriteByte(0)
-	p.WriteInt32(mob.GetSpawnID())
+	p.WriteInt32(mob.SpawnID)
 
 	return p
 }

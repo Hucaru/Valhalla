@@ -34,6 +34,7 @@ func NewChannel(conn net.Conn, eRecv chan *Event, queueSize int, keySend, keyRec
 
 	c.eSend = make(chan maplepacket.Packet, queueSize)
 	c.eRecv = eRecv
+	c.endSend = make(chan bool, 1)
 
 	c.cryptSend = crypt.New(keySend, consts.MapleVersion)
 	c.cryptRecv = crypt.New(keyRecv, consts.MapleVersion)

@@ -47,10 +47,14 @@ func playerConnect(conn mnet.MConnChannel, reader maplepacket.Reader) {
 }
 
 func playerUsePortal(conn mnet.MConnChannel, reader maplepacket.Reader) {
-	reader.ReadByte()
-	entryType := reader.ReadInt32()
-
 	player := game.GetPlayerFromConn(conn)
+
+	if player.Char().PortalCount != reader.ReadByte() {
+		conn.Send(packets.PlayerNoChange())
+		return
+	}
+
+	entryType := reader.ReadInt32()
 
 	switch entryType {
 	case 0:
@@ -82,17 +86,22 @@ func playerEnterCashShop(conn mnet.MConnChannel, reader maplepacket.Reader) {
 }
 
 func playerMovement(conn mnet.MConnChannel, reader maplepacket.Reader) {
-	reader.ReadByte() // portal count
+	player := game.GetPlayerFromConn(conn)
+	char := player.Char()
+
+	if char.PortalCount != reader.ReadByte() {
+		return
+	}
+
 	moveData, finalData := parseMovement(reader)
 
-	// validate movementData
+	if !validateCharMovement(char, moveData) {
+		return
+	}
 
 	moveBytes := generateMovementBytes(moveData)
 
-	player := game.GetPlayerFromConn(conn)
-
 	player.UpdateMovement(finalData)
-	char := player.Char()
 
 	game.SendToMapExcept(char.CurrentMap, packets.PlayerMove(char.ID, moveBytes), conn)
 }

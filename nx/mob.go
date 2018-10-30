@@ -11,10 +11,10 @@ type Monster struct {
 	Accuracy     int16
 	Exp          int32
 	Level        byte
-	MaxHp        int32
-	Hp           int32
-	MaxMp        int32
-	Mp           int32
+	MaxHP        int32
+	HP           int32
+	MaxMP        int32
+	MP           int32
 	FlySpeed     int32
 	SummonEffect byte
 }
@@ -68,11 +68,11 @@ func getMob(options node) Monster {
 		case "level":
 			monst.Level = options.Data[0]
 		case "maxHP":
-			monst.MaxHp = dataToInt32(options.Data)
-			monst.Hp = monst.MaxHp
+			monst.MaxHP = dataToInt32(options.Data)
+			monst.HP = monst.MaxHP
 		case "maxMP":
-			monst.MaxMp = dataToInt32(options.Data)
-			monst.Mp = monst.MaxMp
+			monst.MaxMP = dataToInt32(options.Data)
+			monst.MP = monst.MaxMP
 		case "flySpeed":
 			monst.FlySpeed = dataToInt32(options.Data)
 		case "summonType":

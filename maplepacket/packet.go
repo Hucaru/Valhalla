@@ -41,6 +41,11 @@ func (p *Packet) WriteByte(data byte) {
 	*p = append(*p, data)
 }
 
+// WriteInt8 -
+func (p *Packet) WriteInt8(data int8) {
+	*p = append(*p, byte(data))
+}
+
 // WriteBool -
 func (p *Packet) WriteBool(data bool) {
 	if data {
@@ -98,6 +103,12 @@ func (p *Packet) WriteInt64(data int64) { p.WriteUint64(uint64(data)) }
 
 func (p *Packet) readByte(pos *int) byte {
 	r := byte((*p)[*pos])
+	*pos++
+	return r
+}
+
+func (p *Packet) readInt8(pos *int) int8 {
+	r := int8((*p)[*pos])
 	*pos++
 	return r
 }

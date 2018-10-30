@@ -44,6 +44,7 @@ func NewLogin(conn net.Conn, eRecv chan *Event, queueSize int, keySend, keyRecv 
 
 	l.eSend = make(chan maplepacket.Packet, queueSize)
 	l.eRecv = eRecv
+	l.endSend = make(chan bool, 1)
 
 	l.cryptSend = crypt.New(keySend, consts.MapleVersion)
 	l.cryptRecv = crypt.New(keyRecv, consts.MapleVersion)

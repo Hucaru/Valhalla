@@ -47,6 +47,7 @@ func clientReader(conn net.Conn, eRecv chan *Event, mapleVersion int16, headerSi
 
 func serverReader(conn net.Conn, eRecv chan *Event, headerSize int) {
 	eRecv <- &Event{Type: MEServerConnected, Conn: conn}
+
 	header := true
 	readSize := headerSize
 
@@ -71,9 +72,10 @@ func serverReader(conn net.Conn, eRecv chan *Event, headerSize int) {
 
 type baseConn struct {
 	net.Conn
-	eSend  chan maplepacket.Packet
-	eRecv  chan *Event
-	reader func()
+	eSend   chan maplepacket.Packet
+	eRecv   chan *Event
+	endSend chan bool
+	reader  func()
 
 	cryptSend *crypt.Maple
 	cryptRecv *crypt.Maple
@@ -101,7 +103,12 @@ func (bc *baseConn) Writer() {
 }
 
 func (bc *baseConn) Send(p maplepacket.Packet) {
-	bc.eSend <- p
+	select {
+	case bc.eSend <- p:
+	case <-bc.endSend:
+		close(bc.eSend)
+	}
+
 }
 
 func (bc *baseConn) String() string {
@@ -109,5 +116,5 @@ func (bc *baseConn) String() string {
 }
 
 func (bc *baseConn) Cleanup() {
-	close(bc.eSend)
+	bc.endSend <- true
 }

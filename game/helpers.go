@@ -5,6 +5,7 @@ import (
 
 	"github.com/Hucaru/Valhalla/maplepacket"
 	"github.com/Hucaru/Valhalla/packets"
+	"github.com/Hucaru/Valhalla/types"
 
 	"github.com/Hucaru/Valhalla/mnet"
 
@@ -14,10 +15,12 @@ import (
 func AddPlayer(player Player) {
 	players[player.MConnChannel] = player
 	player.sendMapItems()
+	maps[player.char.CurrentMap].addController(player.MConnChannel)
 }
 
 func RemovePlayer(conn mnet.MConnChannel) {
 	p := players[conn]
+	maps[p.char.CurrentMap].removeController(conn)
 
 	delete(players, conn)
 
@@ -68,4 +71,14 @@ func GetRandomSpawnPortal(mapID int32) (nx.Portal, byte) {
 
 	ind := rand.Intn(len(portals))
 	return portals[ind], byte(inds[ind])
+}
+
+func GetMobFromMapAndSpawnID(mapID, spawnID int32) *types.Mob {
+	for i, m := range maps[mapID].mobs {
+		if m.SpawnID == spawnID {
+			return &maps[mapID].mobs[i]
+		}
+	}
+
+	return nil
 }
