@@ -7,16 +7,16 @@ import (
 )
 
 type Monster struct {
-	Boss         bool
-	Accuracy     int16
-	Exp          int32
-	Level        byte
-	MaxHP        int32
-	HP           int32
-	MaxMP        int32
-	MP           int32
-	FlySpeed     int32
-	SummonEffect byte
+	Boss       bool
+	Accuracy   int16
+	Exp        int32
+	Level      byte
+	MaxHP      int32
+	HP         int32
+	MaxMP      int32
+	MP         int32
+	FlySpeed   int32
+	SummonType byte
 }
 
 var Mob = make(map[int32]Monster)
@@ -76,7 +76,7 @@ func getMob(options node) Monster {
 		case "flySpeed":
 			monst.FlySpeed = dataToInt32(options.Data)
 		case "summonType":
-			monst.SummonEffect = options.Data[0]
+			monst.SummonType = options.Data[0]
 		default:
 		}
 	}

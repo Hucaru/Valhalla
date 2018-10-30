@@ -66,3 +66,55 @@ func (p *Player) UpdateMovement(moveData types.MovementFrag) {
 	// p.char.Foothold = moveData.Foothold - makes char warp accross map to other players when going through portal
 	p.char.Stance = moveData.Stance
 }
+
+func (p *Player) Kill() {
+
+}
+
+func (p *Player) TakeDamage() {
+
+}
+
+func (p *Player) SetEXP() {
+
+}
+
+func (p *Player) GiveEXP() {
+
+}
+
+func (p *Player) SetLevel() {
+
+}
+
+func (p *Player) GiveLevel() {
+
+}
+
+func (p *Player) SetAP() {
+
+}
+
+func (p *Player) GiveAP() {
+
+}
+
+func (p *Player) SetSP() {
+
+}
+
+func (p *Player) GiveSP() {
+
+}
+
+func (p *Player) GiveMesos() {
+
+}
+
+func (p *Player) GiveItem() {
+
+}
+
+func (p *Player) TakeItem() {
+
+}
