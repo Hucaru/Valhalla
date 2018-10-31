@@ -26,7 +26,7 @@ func (r *Reader) GetRestAsBytes() []byte {
 
 // ReadByte -
 func (r *Reader) ReadByte() byte {
-	if len(*r.packet) > 0 {
+	if len(*r.packet)-r.pos > 0 {
 		return r.packet.readByte(&r.pos)
 	}
 
@@ -35,7 +35,7 @@ func (r *Reader) ReadByte() byte {
 
 // ReadInt8 -
 func (r *Reader) ReadInt8() int8 {
-	if len(*r.packet) > 0 {
+	if len(*r.packet)-r.pos > 0 {
 		return r.packet.readInt8(&r.pos)
 	}
 
@@ -44,7 +44,7 @@ func (r *Reader) ReadInt8() int8 {
 
 // ReadBytes -
 func (r *Reader) ReadBytes(size int) []byte {
-	if len(*r.packet) >= size {
+	if len(*r.packet)-r.pos >= size {
 		return r.packet.readBytes(&r.pos, size)
 	}
 
@@ -53,7 +53,7 @@ func (r *Reader) ReadBytes(size int) []byte {
 
 // ReadInt16 -
 func (r *Reader) ReadInt16() int16 {
-	if len(*r.packet) > 1 {
+	if len(*r.packet)-r.pos > 1 {
 		return r.packet.readInt16(&r.pos)
 	}
 
@@ -62,7 +62,7 @@ func (r *Reader) ReadInt16() int16 {
 
 // ReadInt32 -
 func (r *Reader) ReadInt32() int32 {
-	if len(*r.packet) > 3 {
+	if len(*r.packet)-r.pos > 3 {
 		return r.packet.readInt32(&r.pos)
 	}
 
@@ -71,7 +71,7 @@ func (r *Reader) ReadInt32() int32 {
 
 // ReadInt64 -
 func (r *Reader) ReadInt64() int64 {
-	if len(*r.packet) > 7 {
+	if len(*r.packet)-r.pos > 7 {
 		return r.packet.readInt64(&r.pos)
 	}
 
@@ -80,7 +80,7 @@ func (r *Reader) ReadInt64() int64 {
 
 // ReadUint16 -
 func (r *Reader) ReadUint16() uint16 {
-	if len(*r.packet) > 1 {
+	if len(*r.packet)-r.pos > 1 {
 		return r.packet.readUint16(&r.pos)
 	}
 
@@ -89,7 +89,7 @@ func (r *Reader) ReadUint16() uint16 {
 
 // ReadUint32 -
 func (r *Reader) ReadUint32() uint32 {
-	if len(*r.packet) > 3 {
+	if len(*r.packet)-r.pos > 3 {
 		return r.packet.readUint32(&r.pos)
 	}
 
@@ -98,7 +98,7 @@ func (r *Reader) ReadUint32() uint32 {
 
 // ReadUint64 -
 func (r *Reader) ReadUint64() uint64 {
-	if len(*r.packet) > 7 {
+	if len(*r.packet)-r.pos > 7 {
 		return r.packet.readUint64(&r.pos)
 	}
 
@@ -107,7 +107,7 @@ func (r *Reader) ReadUint64() uint64 {
 
 // ReadString -
 func (r *Reader) ReadString(size int) string {
-	if len(*r.packet) >= size {
+	if len(*r.packet)-r.pos >= size {
 		return r.packet.readString(&r.pos, size)
 	}
 

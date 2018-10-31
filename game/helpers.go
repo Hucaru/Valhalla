@@ -36,6 +36,18 @@ func GetPlayerFromConn(conn mnet.MConnChannel) Player {
 	return players[conn]
 }
 
+func GetPlayersFromMapID(id int32) []Player {
+	players := []Player{}
+
+	for _, v := range players {
+		if v.char.CurrentMap == id {
+			players = append(players, v)
+		}
+	}
+
+	return players
+}
+
 func SendToMap(mapID int32, p maplepacket.Packet) {
 	for _, player := range players {
 		if player.Char().CurrentMap == mapID {
@@ -81,4 +93,30 @@ func GetMobFromMapAndSpawnID(mapID, spawnID int32) *types.Mob {
 	}
 
 	return nil
+}
+
+func findNewControllerExcept(mapID int32, conn mnet.MConnChannel) mnet.MConnChannel {
+	for c, v := range players {
+		if v.char.CurrentMap == mapID {
+			if c == conn {
+				continue
+			}
+
+			return c
+		}
+	}
+
+	return nil
+}
+
+func MobAssignNewController(conn mnet.MConnChannel, mob *types.Mob) {
+	newController := findNewControllerExcept(players[conn].char.CurrentMap, conn)
+
+	if newController == nil {
+		return
+	}
+
+	conn.Send(packets.MobEndControl(*mob))
+	mob.Controller = newController
+	mob.Controller.Send(packets.MobControl(*mob))
 }

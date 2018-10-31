@@ -228,20 +228,20 @@ func handleNewCharacter(conn mnet.MConnLogin, reader maplepacket.Reader) {
 		}
 
 		if conn.GetAdminLevel() > 0 {
-			addCharacterItem(characterID, 1002140, -1) // Hat
-			addCharacterItem(characterID, 1032006, -4) // Earrings
-			addCharacterItem(characterID, 1042003, -5)
-			addCharacterItem(characterID, 1062007, -6)
-			addCharacterItem(characterID, 1072004, -7)
-			addCharacterItem(characterID, 1082002, -8)  // Gloves
-			addCharacterItem(characterID, 1102054, -9)  // Cape
-			addCharacterItem(characterID, 1092008, -10) // Shield
-			addCharacterItem(characterID, 1322013, -11)
+			addCharacterItem(characterID, 1002140, -1, name) // Hat
+			addCharacterItem(characterID, 1032006, -4, name) // Earrings
+			addCharacterItem(characterID, 1042003, -5, name)
+			addCharacterItem(characterID, 1062007, -6, name)
+			addCharacterItem(characterID, 1072004, -7, name)
+			addCharacterItem(characterID, 1082002, -8, name)  // Gloves
+			addCharacterItem(characterID, 1102054, -9, name)  // Cape
+			addCharacterItem(characterID, 1092008, -10, name) // Shield
+			addCharacterItem(characterID, 1322013, -11, name)
 		} else {
-			addCharacterItem(characterID, top, -5)
-			addCharacterItem(characterID, bottom, -6)
-			addCharacterItem(characterID, shoes, -7)
-			addCharacterItem(characterID, weapon, -11)
+			addCharacterItem(characterID, top, -5, "")
+			addCharacterItem(characterID, bottom, -6, "")
+			addCharacterItem(characterID, shoes, -7, "")
+			addCharacterItem(characterID, weapon, -11, "")
 		}
 
 		if err != nil {
@@ -310,8 +310,8 @@ func handleSelectCharacter(conn mnet.MConnLogin, reader maplepacket.Reader) {
 	}
 }
 
-func addCharacterItem(characterID int64, itemID int32, slot int32) {
-	_, err := database.Handle.Exec("INSERT INTO items (characterID, itemID, slotNumber, creatorName) VALUES (?, ?, ?, ?)", characterID, itemID, slot, "")
+func addCharacterItem(characterID int64, itemID int32, slot int32, creatorName string) {
+	_, err := database.Handle.Exec("INSERT INTO items (characterID, itemID, slotNumber, creatorName) VALUES (?, ?, ?, ?)", characterID, itemID, slot, creatorName)
 
 	if err != nil {
 		panic(err)

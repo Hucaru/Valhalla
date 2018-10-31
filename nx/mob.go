@@ -16,7 +16,7 @@ type Monster struct {
 	MaxMP      int32
 	MP         int32
 	FlySpeed   int32
-	SummonType byte
+	SummonType int8
 }
 
 var Mob = make(map[int32]Monster)
@@ -76,7 +76,7 @@ func getMob(options node) Monster {
 		case "flySpeed":
 			monst.FlySpeed = dataToInt32(options.Data)
 		case "summonType":
-			monst.SummonType = options.Data[0]
+			monst.SummonType = int8(options.Data[0])
 		default:
 		}
 	}

@@ -3,27 +3,26 @@ package packets
 import (
 	"github.com/Hucaru/Valhalla/consts/opcodes"
 	"github.com/Hucaru/Valhalla/maplepacket"
-	"github.com/Hucaru/Valhalla/nx"
 	"github.com/Hucaru/Valhalla/types"
 )
 
-func MobShow(mob types.Mob, isNewSpawn bool) maplepacket.Packet {
+func MobShow(mob types.Mob) maplepacket.Packet {
 	p := maplepacket.CreateWithOpcode(opcodes.Send.ChannelShowMob)
-	p.Append(addMob(mob, isNewSpawn))
+	p.Append(addMob(mob))
 
 	return p
 }
 
-func MobControl(mob types.Mob, isNewSpawn bool) maplepacket.Packet {
+func MobControl(mob types.Mob) maplepacket.Packet {
 	p := maplepacket.CreateWithOpcode(opcodes.Send.ChannelControlMob)
 	p.WriteByte(0x01) // flag for end control or not
 
-	p.Append(addMob(mob, isNewSpawn))
+	p.Append(addMob(mob))
 
 	return p
 }
 
-func addMob(mob types.Mob, isNewSpawn bool) maplepacket.Packet {
+func addMob(mob types.Mob) maplepacket.Packet {
 	p := maplepacket.NewPacket()
 
 	p.WriteInt32(mob.SpawnID)
@@ -56,18 +55,13 @@ func addMob(mob types.Mob, isNewSpawn bool) maplepacket.Packet {
 	p.WriteByte(bitfield)      // 0x08 - a summon, 0x04 - flying, 0x02 - ???, 0x01 - faces left
 	p.WriteInt16(mob.Foothold) // foothold to oscillate around
 	p.WriteInt16(mob.Foothold) // spawn foothold
+	p.WriteInt8(mob.SummonType)
 
-	if mob.Summoner != nil {
-		p.WriteByte(nx.GetMobSummonType(mob.ID))
-	} else {
-		if isNewSpawn {
-			p.WriteByte(0xFE)
-		} else {
-			p.WriteByte(0xFF)
-		}
+	if mob.SummonType == -3 || mob.SummonType >= 0 {
+		p.WriteInt32(0) // some sort of summoning options, not sure what this is
 	}
 
-	p.WriteInt32(0)
+	p.WriteInt32(0) // encode mob status
 
 	return p
 }
@@ -84,16 +78,13 @@ func MobControlAcknowledge(mobID int32, moveID int16, allowedToUseSkill bool, mp
 	return p
 }
 
-func MobMove(mobID int32, allowedToUseSkill bool, action byte, unknownData int32, buf []byte) maplepacket.Packet {
+func MobMove(mobID int32, allowedToUseSkill bool, action byte, unknownData uint32, buf []byte) maplepacket.Packet {
 	// func MobMove(mobID int32, allowedToUseSkill bool, action int8, skill, level byte, option int16, buf []byte) maplepacket.Packet {
 	p := maplepacket.CreateWithOpcode(opcodes.Send.ChannelMoveMob)
 	p.WriteInt32(mobID)
 	p.WriteBool(allowedToUseSkill)
 	p.WriteByte(action)
-	// p.WriteByte(skill)
-	// p.WriteByte(level)
-	// p.WriteInt16(option)
-	p.WriteInt32(unknownData)
+	p.WriteUint32(unknownData)
 	p.WriteBytes(buf)
 
 	return p

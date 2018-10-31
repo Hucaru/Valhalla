@@ -47,7 +47,7 @@ func (gm *gameMap) removeController(conn mnet.MConnChannel) {
 		if c != conn && p.char.CurrentMap == players[conn].char.CurrentMap {
 			for i, m := range gm.mobs {
 				gm.mobs[i].Controller = c
-				c.Send(packets.MobControl(m, false))
+				c.Send(packets.MobControl(m))
 			}
 		}
 	}
@@ -57,7 +57,7 @@ func (gm *gameMap) addController(conn mnet.MConnChannel) {
 	for i, m := range gm.mobs {
 		if m.Controller == nil {
 			gm.mobs[i].Controller = conn
-			conn.Send(packets.MobControl(m, false))
+			conn.Send(packets.MobControl(m))
 		}
 	}
 }

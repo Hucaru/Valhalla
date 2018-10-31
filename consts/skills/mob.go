@@ -43,6 +43,36 @@ type mob struct {
 	Summon              byte
 }
 
+var MobStat mobStat
+
+type mobStat struct {
+	PhysicalDamage  int32
+	PhysicalDefense int32
+	MagicDamage     int32
+	MagicDefense    int32
+	Accurrency      int32
+	Evasion         int32
+	Speed           int32
+	Stun            int32
+	Freeze          int32
+	Poison          int32
+	Seal            int32
+	Darkness        int32
+	PowerUp         int32
+	MagicUp         int32
+	PowerGuardUp    int32
+	MagicGuardUp    int32
+	Doom            int32
+	Web             int32
+	PhysicalImmune  int32
+	MagicImmune     int32
+	HardSkin        int32
+	Ambush          int32
+	Venom           int32
+	Blind           int32
+	SealSkill       int32
+}
+
 func init() {
 	Mob.WeaponAttackUp = 100
 	Mob.WeaponAttackUpAoe = 110
@@ -82,4 +112,30 @@ func init() {
 	Mob.McSpeedUp = 156
 	Mob.McSeal = 157 // Not actually used in Monster Carnival
 	Mob.Summon = 200
+
+	MobStat.PhysicalDamage = 0x1
+	MobStat.PhysicalDefense = 0x2
+	MobStat.MagicDamage = 0x4
+	MobStat.MagicDefense = 0x8
+	MobStat.Accurrency = 0x10
+	MobStat.Evasion = 0x20
+	MobStat.Speed = 0x40
+	MobStat.Stun = 0x80
+	MobStat.Freeze = 0x100
+	MobStat.Poison = 0x200
+	MobStat.Seal = 0x400
+	MobStat.Darkness = 0x800
+	MobStat.PowerUp = 0x1000
+	MobStat.MagicUp = 0x2000
+	MobStat.PowerGuardUp = 0x4000
+	MobStat.MagicGuardUp = 0x8000
+	MobStat.Doom = 0x10000
+	MobStat.Web = 0x20000
+	MobStat.PhysicalImmune = 0x4000
+	MobStat.MagicImmune = 0x80000
+	MobStat.HardSkin = 0x200000
+	MobStat.Ambush = 0x400000
+	MobStat.Venom = 0x1000000
+	MobStat.Blind = 0x2000000
+	MobStat.SealSkill = 0x4000000
 }

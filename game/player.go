@@ -44,7 +44,10 @@ func (p *Player) ChangeMap(mapID int32, portal nx.Portal, portalID byte) {
 
 func (p *Player) sendMapItems() {
 	for _, mob := range maps[p.char.CurrentMap].mobs {
-		p.Send(packets.MobShow(mob, false))
+		if mob.HP > 0 {
+			mob.SummonType = -1 // -2: fade in spawn animation, -1: no spawn animation
+			p.Send(packets.MobShow(mob))
+		}
 	}
 
 	for _, npc := range maps[p.char.CurrentMap].npcs {
@@ -88,7 +91,6 @@ func (p *Player) SetLevel() {
 }
 
 func (p *Player) GiveLevel() {
-
 }
 
 func (p *Player) SetAP() {
