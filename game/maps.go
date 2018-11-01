@@ -22,7 +22,7 @@ func InitMaps() {
 
 		for _, l := range nxMap.Life {
 			if l.IsMob {
-				mobs = append(mobs, types.CreateMob(int32(len(mobs)), l, nx.Mob[l.ID], nil))
+				mobs = append(mobs, types.CreateMob(int32(len(mobs)+1), l, nx.Mob[l.ID], nil))
 			} else {
 				npcs = append(npcs, types.CreateNPC(int32(len(npcs)), l))
 			}

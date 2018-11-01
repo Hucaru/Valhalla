@@ -18,7 +18,7 @@ type recv struct {
 	ChannelUserPortal          byte
 	ChannelEnterCashShop       byte
 	ChannelPlayerMovement      byte
-	ChannelStandardSkill       byte
+	ChannelMeleeSkill          byte
 	ChannelRangedSkill         byte
 	ChannelMagicSkill          byte
 	ChannelDmgRecv             byte
@@ -61,7 +61,7 @@ func init() {
 	Recv.ChannelUserPortal = 0x17
 	Recv.ChannelEnterCashShop = 0x19
 	Recv.ChannelPlayerMovement = 0x1A
-	Recv.ChannelStandardSkill = 0x1D
+	Recv.ChannelMeleeSkill = 0x1D
 	Recv.ChannelRangedSkill = 0x1E
 	Recv.ChannelMagicSkill = 0x1F
 	Recv.ChannelDmgRecv = 0x21

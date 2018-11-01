@@ -19,10 +19,14 @@ func HandlePacket(conn mnet.MConnChannel, reader maplepacket.Reader) {
 	case opcodes.Recv.ChannelEnterCashShop:
 	case opcodes.Recv.ChannelPlayerMovement:
 		playerMovement(conn, reader)
-	case opcodes.Recv.ChannelStandardSkill:
+	case opcodes.Recv.ChannelMeleeSkill:
+		playerMeleeSkill(conn, reader)
 	case opcodes.Recv.ChannelRangedSkill:
+		playerRangedSkill(conn, reader)
 	case opcodes.Recv.ChannelMagicSkill:
+		playerMagicSkill(conn, reader)
 	case opcodes.Recv.ChannelDmgRecv:
+		playerTakeDamage(conn, reader)
 	case opcodes.Recv.ChannelPlayerSendAllChat:
 		chatSendAll(conn, reader)
 	case opcodes.Recv.ChannelSlashCommands:

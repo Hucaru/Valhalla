@@ -74,7 +74,11 @@ func (p *Player) Kill() {
 
 }
 
-func (p *Player) TakeDamage() {
+func (p *Player) SetHP(ammount int32) {
+
+}
+
+func (p *Player) GiveHP(ammount int32) {
 
 }
 

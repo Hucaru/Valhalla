@@ -4,11 +4,12 @@ package maplepacket
 type Reader struct {
 	pos    int
 	packet *Packet
+	Time   int64
 }
 
 // NewReader -
-func NewReader(p *Packet) Reader {
-	return Reader{pos: 0, packet: p}
+func NewReader(p *Packet, time int64) Reader {
+	return Reader{pos: 0, packet: p, Time: time}
 }
 
 func (r Reader) String() string {
@@ -40,6 +41,15 @@ func (r *Reader) ReadInt8() int8 {
 	}
 
 	return 0
+}
+
+// ReadBool -
+func (r *Reader) ReadBool() bool {
+	if len(*r.packet)-r.pos > 0 {
+		return r.packet.readBool(&r.pos)
+	}
+
+	return false
 }
 
 // ReadBytes -

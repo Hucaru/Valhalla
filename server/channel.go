@@ -141,7 +141,7 @@ func (cs *channelServer) processEvent() {
 					game.RemovePlayer(channelConn)
 					channelConn.Cleanup()
 				case mnet.MEClientPacket:
-					channelhandlers.HandlePacket(channelConn, maplepacket.NewReader(&e.Packet))
+					channelhandlers.HandlePacket(channelConn, maplepacket.NewReader(&e.Packet, time.Now().Unix()))
 				}
 			} else {
 				serverConn, ok := e.Conn.(mnet.MConnServer)
@@ -151,7 +151,7 @@ func (cs *channelServer) processEvent() {
 					case mnet.MEServerDisconnect:
 						log.Println("Server at", serverConn, "disconnected")
 					case mnet.MEServerPacket:
-						worldhandlers.HandlePacket(nil, maplepacket.NewReader(&e.Packet))
+						worldhandlers.HandlePacket(nil, maplepacket.NewReader(&e.Packet, time.Now().Unix()))
 					}
 				}
 			}

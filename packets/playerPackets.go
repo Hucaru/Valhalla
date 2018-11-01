@@ -11,21 +11,29 @@ import (
 	"github.com/Hucaru/Valhalla/types"
 )
 
-func PlayerReceivedDmg(charID int32, ammount int32, dmgType byte, mobID int32, hit byte, reduction byte, stance byte) maplepacket.Packet {
+func PlayerReceivedDmg(charID int32, attack int8, initalAmmount, reducedAmmount, spawnID, mobID, healSkillID int32,
+	stance, reflectAction byte, reflected byte, reflectX, reflectY int16) maplepacket.Packet {
 	p := maplepacket.CreateWithOpcode(opcodes.Send.ChannelPlayerTakeDmg)
 	p.WriteInt32(charID)
-	p.WriteByte(dmgType)
+	p.WriteInt8(attack)
+	p.WriteInt32(initalAmmount)
 
-	if dmgType == 0xFE {
-		p.WriteInt32(ammount)
-		p.WriteInt32(ammount)
-	} else {
-		p.WriteInt32(0) // ?
-		p.WriteInt32(mobID)
-		p.WriteByte(hit)
-		p.WriteByte(stance)
-		p.WriteInt32(0)       // ?
-		p.WriteInt32(ammount) // skill id of attack?
+	p.WriteInt32(spawnID)
+	p.WriteInt32(mobID)
+	p.WriteByte(stance)
+	p.WriteByte(reflected)
+
+	if reflected > 0 {
+		p.WriteByte(reflectAction)
+		p.WriteInt16(reflectX)
+		p.WriteInt16(reflectY)
+	}
+
+	p.WriteInt32(reducedAmmount)
+
+	// Check if used
+	if reducedAmmount < 0 {
+		p.WriteInt32(healSkillID)
 	}
 
 	return p

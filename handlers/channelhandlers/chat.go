@@ -6,6 +6,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/Hucaru/Valhalla/nx"
+
 	"github.com/Hucaru/Valhalla/game"
 	"github.com/Hucaru/Valhalla/packets"
 
@@ -102,6 +104,10 @@ func gmCommand(conn mnet.MConnChannel, msg string) {
 		}
 
 		mapID := int32(val)
+
+		if _, ok := nx.Maps[mapID]; !ok {
+			return
+		}
 
 		player := game.GetPlayerFromConn(conn)
 		p, id := game.GetRandomSpawnPortal(mapID)

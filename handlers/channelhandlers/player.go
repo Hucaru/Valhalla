@@ -106,20 +106,81 @@ func playerMovement(conn mnet.MConnChannel, reader maplepacket.Reader) {
 	game.SendToMapExcept(char.CurrentMap, packets.PlayerMove(char.ID, moveBytes), conn)
 }
 
-func playerStandardSkill(conn mnet.MConnChannel, reader maplepacket.Reader) {
-
-}
-
-func playerRangedSkill(conn mnet.MConnChannel, reader maplepacket.Reader) {
-
-}
-
-func playerMagicSkill(conn mnet.MConnChannel, reader maplepacket.Reader) {
-
-}
-
 func playerTakeDamage(conn mnet.MConnChannel, reader maplepacket.Reader) {
+	mobAttack := reader.ReadInt8()
+	damage := reader.ReadInt32()
 
+	if damage < -1 {
+		return
+	}
+
+	reducedDamange := damage
+	healSkillID := int32(0)
+
+	player := game.GetPlayerFromConn(conn)
+	char := player.Char()
+
+	if char.HP == 0 {
+		return
+	}
+
+	var mob *types.Mob
+	var mobSkillID, mobSkillLevel byte = 0, 0
+
+	if mobAttack < -1 {
+		mobSkillLevel = reader.ReadByte()
+		mobSkillID = reader.ReadByte()
+	} else {
+		magicElement := int32(0)
+
+		if reader.ReadBool() {
+			magicElement = reader.ReadInt32()
+			_ = magicElement
+			// 0 = no element (Grendel the Really Old, 9001001)
+			// 1 = Ice (Celion? blue, 5120003)
+			// 2 = Lightning (Regular big Sentinel, 3000000)
+			// 3 = Fire (Fire sentinel, 5200002)
+		}
+
+		spawnID := reader.ReadInt32()
+		mobID := reader.ReadInt32()
+
+		mob = game.GetMobFromMapAndSpawnID(char.CurrentMap, spawnID)
+
+		if mob == nil || mob.ID != mobID {
+			return
+		}
+
+		stance := reader.ReadByte()
+		reflected := reader.ReadByte()
+
+		reflectAction := byte(0)
+		var reflectX, reflectY int16 = 0, 0
+
+		if reflected > 0 {
+			reflectAction = reader.ReadByte()
+			reflectX, reflectY = reader.ReadInt16(), reader.ReadInt16()
+		}
+
+		playerDamange := -damage
+
+		// Magic guard dmg absorption
+
+		// Fighter / Page power guard
+
+		// Meso guard
+
+		player.GiveHP(playerDamange)
+
+		game.SendToMap(char.CurrentMap, packets.PlayerReceivedDmg(char.ID, mobAttack, damage,
+			reducedDamange, spawnID, mobID, healSkillID, stance, reflectAction, reflected, reflectX, reflectY))
+	}
+
+	if mobSkillID != 0 && mobSkillLevel != 0 {
+		// new skill
+	} else if mob != nil {
+		// residual skill
+	}
 }
 
 func playerRequestAvatarInfoWindow(conn mnet.MConnChannel, reader maplepacket.Reader) {

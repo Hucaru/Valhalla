@@ -6,6 +6,7 @@ import (
 	"net"
 	"os"
 	"sync"
+	"time"
 
 	"github.com/Hucaru/Valhalla/handlers/loginhandlers"
 	"github.com/Hucaru/Valhalla/handlers/worldhandlers"
@@ -154,7 +155,7 @@ func (ls *loginServer) processEvent() {
 					log.Println("Client at", loginConn, "disconnected")
 					loginConn.Cleanup()
 				case mnet.MEClientPacket:
-					loginhandlers.HandlePacket(loginConn, maplepacket.NewReader(&e.Packet))
+					loginhandlers.HandlePacket(loginConn, maplepacket.NewReader(&e.Packet, time.Now().Unix()))
 				}
 			} else {
 				serverConn, ok := e.Conn.(mnet.MConnServer)
@@ -166,7 +167,7 @@ func (ls *loginServer) processEvent() {
 					case mnet.MEServerDisconnect:
 						log.Println("Server at", serverConn, "disconnected")
 					case mnet.MEServerPacket:
-						worldhandlers.HandlePacket(nil, maplepacket.NewReader(&e.Packet))
+						worldhandlers.HandlePacket(nil, maplepacket.NewReader(&e.Packet, time.Now().Unix()))
 					}
 				}
 			}

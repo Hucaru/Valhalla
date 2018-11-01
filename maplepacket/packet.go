@@ -113,6 +113,17 @@ func (p *Packet) readInt8(pos *int) int8 {
 	return r
 }
 
+func (p *Packet) readBool(pos *int) bool {
+	r := ((*p)[*pos])
+	*pos++
+
+	if r == 0 {
+		return false
+	}
+
+	return true
+}
+
 func (p *Packet) readBytes(pos *int, length int) []byte {
 	r := []byte((*p)[*pos : *pos+length])
 	*pos += length
