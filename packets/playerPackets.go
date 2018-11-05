@@ -222,7 +222,7 @@ func PlayerEnterGame(char types.Character, channelID int32) maplepacket.Packet {
 
 	for _, skill := range char.Skills {
 		p.WriteInt32(skill.ID)
-		p.WriteInt32(skill.Level)
+		p.WriteInt32(int32(skill.Level))
 	}
 
 	// Quests

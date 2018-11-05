@@ -11,7 +11,8 @@ var players = map[mnet.MConnChannel]Player{}
 
 type Player struct {
 	mnet.MConnChannel
-	char *types.Character
+	char                 *types.Character
+	LastAttackPacketTime int64
 }
 
 func NewPlayer(conn mnet.MConnChannel, char types.Character) Player {

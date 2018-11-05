@@ -40,6 +40,7 @@ func HandlePacket(conn mnet.MConnChannel, reader maplepacket.Reader) {
 	case opcodes.Recv.ChannelPassiveRegen:
 	case opcodes.Recv.ChannelSkillUpdate:
 	case opcodes.Recv.ChannelSpecialSkill:
+		playerSpecialSkill(conn, reader)
 	case opcodes.Recv.ChannelCharacterInfo:
 	case opcodes.Recv.ChannelLieDetectorResult:
 	case opcodes.Recv.ChannelPartyInfo:

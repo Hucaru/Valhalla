@@ -3,27 +3,39 @@ package packets
 import (
 	"github.com/Hucaru/Valhalla/consts/opcodes"
 	"github.com/Hucaru/Valhalla/maplepacket"
+	"github.com/Hucaru/Valhalla/types"
 )
 
-func SkillMelee(charID int32, skillID int32, targets, hits, display, animation byte, damages map[int32][]int32) maplepacket.Packet {
-	p := maplepacket.CreateWithOpcode(opcodes.Send.ChannelPlayerUseStandardSkill)
-	p.WriteInt32(charID)
-	p.WriteByte(byte(targets*0x10) + hits)
-	p.WriteBool(bool(skillID != 0))
-	if skillID != 0 {
-		p.WriteInt32(skillID)
+func SkillMelee(char types.Character, attackData types.AttackData) maplepacket.Packet {
+	p := maplepacket.CreateWithOpcode(opcodes.Send.ChannelPlayerUseMeleeSkill)
+	p.WriteInt32(char.ID)
+	p.WriteByte(attackData.Targets*0x10 + attackData.Hits)
+	p.WriteByte(attackData.SkillLevel)
+
+	if attackData.SkillLevel != 0 {
+		p.WriteInt32(attackData.SkillID)
 	}
-	p.WriteByte(display)
-	p.WriteByte(animation)
 
-	p.WriteByte(0)  // mastery
-	p.WriteInt32(0) // starID?
+	if attackData.FacesLeft {
+		p.WriteByte(attackData.Action | (1 << 7))
+	} else {
+		p.WriteByte(attackData.Action | 0)
+	}
 
-	for k, v := range damages {
-		p.WriteInt32(k)
-		p.WriteByte(0x6)
-		// if meos explosion add, another byte for something
-		for _, dmg := range v {
+	p.WriteByte(attackData.AttackType)
+
+	p.WriteByte(char.Skills[attackData.SkillID].Mastery) // mastery
+	p.WriteInt32(attackData.StarID)                      // starID
+
+	for _, info := range attackData.AttackInfo {
+		p.WriteInt32(info.SpawnID)
+		p.WriteByte(info.HitAction)
+
+		if attackData.IsMesoExplosion {
+			p.WriteByte(byte(len(info.Damages)))
+		}
+
+		for _, dmg := range info.Damages {
 			p.WriteInt32(dmg)
 		}
 	}
@@ -31,24 +43,32 @@ func SkillMelee(charID int32, skillID int32, targets, hits, display, animation b
 	return p
 }
 
-func SkillRanged(charID, skillID, objID int32, targets, hits, display, animation byte, damages map[int32][]int32) maplepacket.Packet {
+func SkillRanged(char types.Character, attackData types.AttackData) maplepacket.Packet {
 	p := maplepacket.CreateWithOpcode(opcodes.Send.ChannelPlayerUseRangedSkill)
-	p.WriteInt32(charID)
-	p.WriteByte(targets*0x10 + hits)
-	p.WriteBool(bool(skillID != 0))
-	if skillID != 0 {
-		p.WriteInt32(skillID)
+	p.WriteInt32(char.ID)
+	p.WriteByte(attackData.Targets*0x10 + attackData.Hits)
+	p.WriteByte(attackData.SkillLevel)
+
+	if attackData.SkillLevel != 0 {
+		p.WriteInt32(attackData.SkillID)
 	}
-	p.WriteByte(display)
-	p.WriteByte(animation)
 
-	p.WriteByte(0)      // mastery
-	p.WriteInt32(objID) // starID?
+	if attackData.FacesLeft {
+		p.WriteByte(attackData.Action | (1 << 7))
+	} else {
+		p.WriteByte(attackData.Action | 0)
+	}
 
-	for k, v := range damages {
-		p.WriteInt32(k)
-		p.WriteByte(0x6)
-		for _, dmg := range v {
+	p.WriteByte(attackData.AttackType)
+
+	p.WriteByte(char.Skills[attackData.SkillID].Mastery) // mastery
+	p.WriteInt32(attackData.StarID)                      // starID
+
+	for _, info := range attackData.AttackInfo {
+		p.WriteInt32(info.SpawnID)
+		p.WriteByte(info.HitAction)
+
+		for _, dmg := range info.Damages {
 			p.WriteInt32(dmg)
 		}
 	}
@@ -56,24 +76,32 @@ func SkillRanged(charID, skillID, objID int32, targets, hits, display, animation
 	return p
 }
 
-func SkillMagic(charID int32, skillID int32, targets, hits, display, animation byte, damages map[int32][]int32) maplepacket.Packet {
+func SkillMagic(char types.Character, attackData types.AttackData) maplepacket.Packet {
 	p := maplepacket.CreateWithOpcode(opcodes.Send.ChannelPlayerUseMagicSkill)
-	p.WriteInt32(charID)
-	p.WriteByte(targets*0x10 + hits)
-	p.WriteBool(bool(skillID != 0))
-	if skillID != 0 {
-		p.WriteInt32(skillID)
+	p.WriteInt32(char.ID)
+	p.WriteByte(attackData.Targets*0x10 + attackData.Hits)
+	p.WriteByte(attackData.SkillLevel)
+
+	if attackData.SkillLevel != 0 {
+		p.WriteInt32(attackData.SkillID)
 	}
-	p.WriteByte(display)
-	p.WriteByte(animation)
 
-	p.WriteByte(0)  // mastery
-	p.WriteInt32(0) // starID?
+	if attackData.FacesLeft {
+		p.WriteByte(attackData.Action | (1 << 7))
+	} else {
+		p.WriteByte(attackData.Action | 0)
+	}
 
-	for k, v := range damages {
-		p.WriteInt32(k)
-		p.WriteByte(0x6)
-		for _, dmg := range v {
+	p.WriteByte(attackData.AttackType)
+
+	p.WriteByte(char.Skills[attackData.SkillID].Mastery) // mastery
+	p.WriteInt32(attackData.StarID)                      // starID
+
+	for _, info := range attackData.AttackInfo {
+		p.WriteInt32(info.SpawnID)
+		p.WriteByte(info.HitAction)
+
+		for _, dmg := range info.Damages {
 			p.WriteInt32(dmg)
 		}
 	}

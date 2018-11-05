@@ -3,15 +3,15 @@ package types
 import "github.com/Hucaru/Valhalla/database"
 
 type Skill struct {
-	ID       int32
-	Level    int32
-	Cooldown int16
+	ID             int32
+	Level, Mastery byte
+	Cooldown       int16
 }
 
 func GetSkillsFromCharID(id int32) []Skill {
 	skills := []Skill{}
 
-	filter := "skillID, level, cooldown"
+	filter := "skillID, level, mastery, cooldown"
 
 	row, err := database.Handle.Query("SELECT "+filter+" FROM skills where characterID=?", id)
 
@@ -24,7 +24,7 @@ func GetSkillsFromCharID(id int32) []Skill {
 	for row.Next() {
 		skill := Skill{}
 
-		row.Scan(&skill.ID, &skill.Level, &skill.Cooldown)
+		row.Scan(&skill.ID, &skill.Level, &skill.Mastery, &skill.Cooldown)
 
 		skills = append(skills, skill)
 	}

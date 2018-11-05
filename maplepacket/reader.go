@@ -25,6 +25,12 @@ func (r *Reader) GetRestAsBytes() []byte {
 	return (*r.packet)[r.pos:]
 }
 
+func (r *Reader) Skip(ammount int) {
+	if len(*r.packet)-(r.pos+ammount) >= 0 {
+		r.pos += ammount
+	}
+}
+
 // ReadByte -
 func (r *Reader) ReadByte() byte {
 	if len(*r.packet)-r.pos > 0 {
