@@ -9,47 +9,46 @@ import (
 )
 
 func HandlePacket(conn mnet.MConnChannel, reader maplepacket.Reader) {
-	switch reader.ReadByte() {
-	case opcodes.Recv.Ping:
-
-	case opcodes.Recv.ChannelPlayerLoad:
+	switch maplepacket.Opcode(reader.ReadByte()) {
+	case opcodes.RecvPing:
+	case opcodes.RecvChannelPlayerLoad:
 		playerConnect(conn, reader)
-	case opcodes.Recv.ChannelUserPortal:
+	case opcodes.RecvChannelUserPortal:
 		playerUsePortal(conn, reader)
-	case opcodes.Recv.ChannelEnterCashShop:
-	case opcodes.Recv.ChannelPlayerMovement:
+	case opcodes.RecvChannelEnterCashShop:
+	case opcodes.RecvChannelPlayerMovement:
 		playerMovement(conn, reader)
-	case opcodes.Recv.ChannelMeleeSkill:
+	case opcodes.RecvChannelMeleeSkill:
 		playerMeleeSkill(conn, reader)
-	case opcodes.Recv.ChannelRangedSkill:
+	case opcodes.RecvChannelRangedSkill:
 		playerRangedSkill(conn, reader)
-	case opcodes.Recv.ChannelMagicSkill:
+	case opcodes.RecvChannelMagicSkill:
 		playerMagicSkill(conn, reader)
-	case opcodes.Recv.ChannelDmgRecv:
+	case opcodes.RecvChannelDmgRecv:
 		playerTakeDamage(conn, reader)
-	case opcodes.Recv.ChannelPlayerSendAllChat:
+	case opcodes.RecvChannelPlayerSendAllChat:
 		chatSendAll(conn, reader)
-	case opcodes.Recv.ChannelSlashCommands:
-	case opcodes.Recv.ChannelCharacterUIWindow:
-	case opcodes.Recv.ChannelEmoticon:
-	case opcodes.Recv.ChannelNpcDialogue:
-	case opcodes.Recv.ChannelNpcDialogueContinue:
-	case opcodes.Recv.ChannelNpcShop:
-	case opcodes.Recv.ChannelInvMoveItem:
-	case opcodes.Recv.ChannelChangeStat:
-	case opcodes.Recv.ChannelPassiveRegen:
-	case opcodes.Recv.ChannelSkillUpdate:
-	case opcodes.Recv.ChannelSpecialSkill:
+	case opcodes.RecvChannelSlashCommands:
+	case opcodes.RecvChannelCharacterUIWindow:
+	case opcodes.RecvChannelEmoticon:
+	case opcodes.RecvChannelNpcDialogue:
+	case opcodes.RecvChannelNpcDialogueContinue:
+	case opcodes.RecvChannelNpcShop:
+	case opcodes.RecvChannelInvMoveItem:
+	case opcodes.RecvChannelChangeStat:
+	case opcodes.RecvChannelPassiveRegen:
+	case opcodes.RecvChannelSkillUpdate:
+	case opcodes.RecvChannelSpecialSkill:
 		playerSpecialSkill(conn, reader)
-	case opcodes.Recv.ChannelCharacterInfo:
-	case opcodes.Recv.ChannelLieDetectorResult:
-	case opcodes.Recv.ChannelPartyInfo:
-	case opcodes.Recv.ChannelGuildManagement:
-	case opcodes.Recv.ChannelGuildReject:
-	case opcodes.Recv.ChannelAddBuddy:
-	case opcodes.Recv.ChannelMobControl:
+	case opcodes.RecvChannelCharacterInfo:
+	case opcodes.RecvChannelLieDetectorResult:
+	case opcodes.RecvChannelPartyInfo:
+	case opcodes.RecvChannelGuildManagement:
+	case opcodes.RecvChannelGuildReject:
+	case opcodes.RecvChannelAddBuddy:
+	case opcodes.RecvChannelMobControl:
 		mobControl(conn, reader)
-	case opcodes.Recv.ChannelNpcMovement:
+	case opcodes.RecvChannelNpcMovement:
 		npcMovement(conn, reader)
 	default:
 		log.Println("Unkown packet:", reader)

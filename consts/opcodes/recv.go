@@ -1,89 +1,46 @@
 package opcodes
 
-var Recv recv
+import "github.com/Hucaru/Valhalla/maplepacket"
 
-type recv struct {
-	LoginRequest               byte
-	LoginChannelSelect         byte
-	LoginWorldSelect           byte
-	LoginCheckLogin            byte
-	LoginCreateCharacter       byte
-	LoginSelectCharacter       byte
-	LoginNameCheck             byte
-	LoginNewCharacter          byte
-	LoginDeleteChar            byte
-	Ping                       byte
-	ReturnToLoginScreen        byte
-	ChannelPlayerLoad          byte
-	ChannelUserPortal          byte
-	ChannelEnterCashShop       byte
-	ChannelPlayerMovement      byte
-	ChannelMeleeSkill          byte
-	ChannelRangedSkill         byte
-	ChannelMagicSkill          byte
-	ChannelDmgRecv             byte
-	ChannelPlayerSendAllChat   byte
-	ChannelEmoticon            byte
-	ChannelNpcDialogue         byte
-	ChannelNpcDialogueContinue byte
-	ChannelNpcShop             byte
-	ChannelInvMoveItem         byte
-	ChannelChangeStat          byte
-	ChannelPassiveRegen        byte
-	ChannelSkillUpdate         byte
-	ChannelSpecialSkill        byte
-	ChannelCharacterInfo       byte
-	ChannelLieDetectorResult   byte
-	ChannelCharacterReport     byte
-	ChannelSlashCommands       byte
-	ChannelCharacterUIWindow   byte
-	ChannelPartyInfo           byte
-	ChannelGuildManagement     byte
-	ChannelGuildReject         byte
-	ChannelAddBuddy            byte
-	ChannelMobControl          byte
-	ChannelNpcMovement         byte
-}
-
-func init() {
-	Recv.LoginRequest = 0x01
-	Recv.LoginChannelSelect = 0x04
-	Recv.LoginWorldSelect = 0x05
-	Recv.LoginCheckLogin = 0x08
-	Recv.LoginCreateCharacter = 0x09
-	Recv.LoginSelectCharacter = 0x0B
-	Recv.LoginNameCheck = 0x0D
-	Recv.LoginNewCharacter = 0x0E
-	Recv.LoginDeleteChar = 0x0F
-	Recv.Ping = 0x12
-	Recv.ReturnToLoginScreen = 0x14
-	Recv.ChannelPlayerLoad = 0x0C
-	Recv.ChannelUserPortal = 0x17
-	Recv.ChannelEnterCashShop = 0x19
-	Recv.ChannelPlayerMovement = 0x1A
-	Recv.ChannelMeleeSkill = 0x1D
-	Recv.ChannelRangedSkill = 0x1E
-	Recv.ChannelMagicSkill = 0x1F
-	Recv.ChannelDmgRecv = 0x21
-	Recv.ChannelPlayerSendAllChat = 0x22
-	Recv.ChannelEmoticon = 0x23
-	Recv.ChannelNpcDialogue = 0x27
-	Recv.ChannelNpcDialogueContinue = 0x28
-	Recv.ChannelNpcShop = 0x29
-	Recv.ChannelInvMoveItem = 0x2D
-	Recv.ChannelChangeStat = 0x36
-	Recv.ChannelPassiveRegen = 0x37
-	Recv.ChannelSkillUpdate = 0x38
-	Recv.ChannelSpecialSkill = 0x39
-	Recv.ChannelCharacterInfo = 0x3F
-	Recv.ChannelLieDetectorResult = 0x45
-	Recv.ChannelCharacterReport = 0x49
-	Recv.ChannelSlashCommands = 0x4C
-	Recv.ChannelCharacterUIWindow = 0x4E
-	Recv.ChannelPartyInfo = 0x4F
-	Recv.ChannelGuildManagement = 0x51
-	Recv.ChannelGuildReject = 0x52
-	Recv.ChannelAddBuddy = 0x55
-	Recv.ChannelMobControl = 0x6A
-	Recv.ChannelNpcMovement = 0x6F
-}
+const (
+	RecvLoginRequest               maplepacket.Opcode = 0x01
+	RecvLoginChannelSelect         maplepacket.Opcode = 0x04
+	RecvLoginWorldSelect           maplepacket.Opcode = 0x05
+	RecvLoginCheckLogin            maplepacket.Opcode = 0x08
+	RecvLoginCreateCharacter       maplepacket.Opcode = 0x09
+	RecvLoginSelectCharacter       maplepacket.Opcode = 0x0B
+	RecvChannelPlayerLoad          maplepacket.Opcode = 0x0C
+	RecvLoginNameCheck             maplepacket.Opcode = 0x0D
+	RecvLoginNewCharacter          maplepacket.Opcode = 0x0E
+	RecvLoginDeleteChar            maplepacket.Opcode = 0x0F
+	RecvPing                       maplepacket.Opcode = 0x12
+	RecvReturnToLoginScreen        maplepacket.Opcode = 0x14
+	RecvChannelUserPortal          maplepacket.Opcode = 0x17
+	RecvChannelEnterCashShop       maplepacket.Opcode = 0x19
+	RecvChannelPlayerMovement      maplepacket.Opcode = 0x1A
+	RecvChannelMeleeSkill          maplepacket.Opcode = 0x1D
+	RecvChannelRangedSkill         maplepacket.Opcode = 0x1E
+	RecvChannelMagicSkill          maplepacket.Opcode = 0x1F
+	RecvChannelDmgRecv             maplepacket.Opcode = 0x21
+	RecvChannelPlayerSendAllChat   maplepacket.Opcode = 0x22
+	RecvChannelEmoticon            maplepacket.Opcode = 0x23
+	RecvChannelNpcDialogue         maplepacket.Opcode = 0x27
+	RecvChannelNpcDialogueContinue maplepacket.Opcode = 0x28
+	RecvChannelNpcShop             maplepacket.Opcode = 0x29
+	RecvChannelInvMoveItem         maplepacket.Opcode = 0x2D
+	RecvChannelChangeStat          maplepacket.Opcode = 0x36
+	RecvChannelPassiveRegen        maplepacket.Opcode = 0x37
+	RecvChannelSkillUpdate         maplepacket.Opcode = 0x38
+	RecvChannelSpecialSkill        maplepacket.Opcode = 0x39
+	RecvChannelCharacterInfo       maplepacket.Opcode = 0x3F
+	RecvChannelLieDetectorResult   maplepacket.Opcode = 0x45
+	RecvChannelCharacterReport     maplepacket.Opcode = 0x49
+	RecvChannelSlashCommands       maplepacket.Opcode = 0x4C
+	RecvChannelCharacterUIWindow   maplepacket.Opcode = 0x4E
+	RecvChannelPartyInfo           maplepacket.Opcode = 0x4F
+	RecvChannelGuildManagement     maplepacket.Opcode = 0x51
+	RecvChannelGuildReject         maplepacket.Opcode = 0x52
+	RecvChannelAddBuddy            maplepacket.Opcode = 0x55
+	RecvChannelMobControl          maplepacket.Opcode = 0x6A
+	RecvChannelNpcMovement         maplepacket.Opcode = 0x6F
+)

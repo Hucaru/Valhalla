@@ -7,7 +7,7 @@ import (
 )
 
 func InventoryAddItem(item types.Item, newItem bool) maplepacket.Packet {
-	p := maplepacket.CreateWithOpcode(opcodes.Send.ChannelInventoryOperation)
+	p := maplepacket.CreateWithOpcode(opcodes.SendChannelInventoryOperation)
 	p.WriteByte(0x01)     // ?
 	p.WriteByte(0x01)     // number of operations? // e.g. loop over multiple interweaved operations
 	p.WriteBool(!newItem) // operation type
@@ -24,7 +24,7 @@ func InventoryAddItem(item types.Item, newItem bool) maplepacket.Packet {
 }
 
 func InventoryChangeItemSlot(invTabID byte, origPos, newPos int16) maplepacket.Packet {
-	p := maplepacket.CreateWithOpcode(opcodes.Send.ChannelInventoryOperation)
+	p := maplepacket.CreateWithOpcode(opcodes.SendChannelInventoryOperation)
 	p.WriteByte(0x01)
 	p.WriteByte(0x01)
 	p.WriteByte(0x02)
@@ -37,7 +37,7 @@ func InventoryChangeItemSlot(invTabID byte, origPos, newPos int16) maplepacket.P
 }
 
 func InventoryRemoveItem(item types.Item) maplepacket.Packet {
-	p := maplepacket.CreateWithOpcode(opcodes.Send.ChannelInventoryOperation)
+	p := maplepacket.CreateWithOpcode(opcodes.SendChannelInventoryOperation)
 	p.WriteByte(0x01)
 	p.WriteByte(0x01)
 	p.WriteByte(0x03)
@@ -49,7 +49,7 @@ func InventoryRemoveItem(item types.Item) maplepacket.Packet {
 }
 
 func InventoryChangeEquip(char types.Character) maplepacket.Packet {
-	p := maplepacket.CreateWithOpcode(opcodes.Send.ChannelPlayerChangeAvatar)
+	p := maplepacket.CreateWithOpcode(opcodes.SendChannelPlayerChangeAvatar)
 	p.WriteInt32(char.ID)
 	p.WriteByte(1)
 	p.WriteBytes(writeDisplayCharacter(char))

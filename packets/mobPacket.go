@@ -7,14 +7,14 @@ import (
 )
 
 func MobShow(mob types.Mob) maplepacket.Packet {
-	p := maplepacket.CreateWithOpcode(opcodes.Send.ChannelShowMob)
+	p := maplepacket.CreateWithOpcode(opcodes.SendChannelShowMob)
 	p.Append(addMob(mob))
 
 	return p
 }
 
 func MobControl(mob types.Mob) maplepacket.Packet {
-	p := maplepacket.CreateWithOpcode(opcodes.Send.ChannelControlMob)
+	p := maplepacket.CreateWithOpcode(opcodes.SendChannelControlMob)
 	p.WriteByte(0x01) // flag for end control or not
 
 	p.Append(addMob(mob))
@@ -67,7 +67,7 @@ func addMob(mob types.Mob) maplepacket.Packet {
 }
 
 func MobControlAcknowledge(mobID int32, moveID int16, allowedToUseSkill bool, mp int16, skill byte, level byte) maplepacket.Packet {
-	p := maplepacket.CreateWithOpcode(opcodes.Send.ChannelControlMobAck)
+	p := maplepacket.CreateWithOpcode(opcodes.SendChannelControlMobAck)
 	p.WriteInt32(mobID)
 	p.WriteInt16(moveID)
 	p.WriteBool(allowedToUseSkill)
@@ -80,7 +80,7 @@ func MobControlAcknowledge(mobID int32, moveID int16, allowedToUseSkill bool, mp
 
 func MobMove(mobID int32, allowedToUseSkill bool, action byte, unknownData uint32, buf []byte) maplepacket.Packet {
 	// func MobMove(mobID int32, allowedToUseSkill bool, action int8, skill, level byte, option int16, buf []byte) maplepacket.Packet {
-	p := maplepacket.CreateWithOpcode(opcodes.Send.ChannelMoveMob)
+	p := maplepacket.CreateWithOpcode(opcodes.SendChannelMoveMob)
 	p.WriteInt32(mobID)
 	p.WriteBool(allowedToUseSkill)
 	p.WriteByte(action)
@@ -92,7 +92,7 @@ func MobMove(mobID int32, allowedToUseSkill bool, action byte, unknownData uint3
 }
 
 func MobEndControl(mob types.Mob) maplepacket.Packet {
-	p := maplepacket.CreateWithOpcode(opcodes.Send.ChannelControlMob)
+	p := maplepacket.CreateWithOpcode(opcodes.SendChannelControlMob)
 	p.WriteByte(0)
 	p.WriteInt32(mob.SpawnID)
 
@@ -100,7 +100,7 @@ func MobEndControl(mob types.Mob) maplepacket.Packet {
 }
 
 func MobRemove(mob mobInter, deathType byte) maplepacket.Packet {
-	p := maplepacket.CreateWithOpcode(opcodes.Send.ChannelRemoveMob)
+	p := maplepacket.CreateWithOpcode(opcodes.SendChannelRemoveMob)
 	p.WriteInt32(mob.GetSpawnID())
 	p.WriteByte(deathType)
 
@@ -108,7 +108,7 @@ func MobRemove(mob mobInter, deathType byte) maplepacket.Packet {
 }
 
 func MobShowHpChange(spawnID int32, dmg int32) maplepacket.Packet {
-	p := maplepacket.CreateWithOpcode(opcodes.Send.ChannelMobChangeHP)
+	p := maplepacket.CreateWithOpcode(opcodes.SendChannelMobChangeHP)
 	p.WriteInt32(spawnID)
 	p.WriteByte(0)
 	p.WriteInt32(dmg)

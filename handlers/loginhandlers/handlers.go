@@ -17,32 +17,32 @@ import (
 
 // HandlePacket
 func HandlePacket(conn mnet.MConnLogin, reader maplepacket.Reader) {
-	switch reader.ReadByte() {
-	case opcodes.Recv.LoginRequest:
+	switch maplepacket.Opcode(reader.ReadByte()) {
+	case opcodes.RecvLoginRequest:
 		handleLoginRequest(conn, reader)
 
-	case opcodes.Recv.LoginCheckLogin:
+	case opcodes.RecvLoginCheckLogin:
 		handleGoodLogin(conn, reader)
 
-	case opcodes.Recv.LoginWorldSelect:
+	case opcodes.RecvLoginWorldSelect:
 		handleWorldSelect(conn, reader)
 
-	case opcodes.Recv.LoginChannelSelect:
+	case opcodes.RecvLoginChannelSelect:
 		handleChannelSelect(conn, reader)
 
-	case opcodes.Recv.LoginNameCheck:
+	case opcodes.RecvLoginNameCheck:
 		handleNameCheck(conn, reader)
 
-	case opcodes.Recv.LoginNewCharacter:
+	case opcodes.RecvLoginNewCharacter:
 		handleNewCharacter(conn, reader)
 
-	case opcodes.Recv.LoginDeleteChar:
+	case opcodes.RecvLoginDeleteChar:
 		handleDeleteCharacter(conn, reader)
 
-	case opcodes.Recv.LoginSelectCharacter:
+	case opcodes.RecvLoginSelectCharacter:
 		handleSelectCharacter(conn, reader)
 
-	case opcodes.Recv.ReturnToLoginScreen:
+	case opcodes.RecvReturnToLoginScreen:
 		handleReturnToLoginScreen(conn, reader)
 
 	default:

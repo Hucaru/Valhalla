@@ -7,7 +7,7 @@ import (
 )
 
 func MapPlayerEnter(char types.Character) maplepacket.Packet {
-	p := maplepacket.CreateWithOpcode(opcodes.Send.ChannelCharacterEnterField)
+	p := maplepacket.CreateWithOpcode(opcodes.SendChannelCharacterEnterField)
 	p.WriteInt32(char.ID)    // player id
 	p.WriteString(char.Name) // char name
 	p.WriteInt32(0)          // map buffs?
@@ -33,14 +33,14 @@ func MapPlayerEnter(char types.Character) maplepacket.Packet {
 }
 
 func MapPlayerLeft(charID int32) maplepacket.Packet {
-	p := maplepacket.CreateWithOpcode(opcodes.Send.ChannelCharacterLeaveField)
+	p := maplepacket.CreateWithOpcode(opcodes.SendChannelCharacterLeaveField)
 	p.WriteInt32(charID)
 
 	return p
 }
 
 func MapChange(mapID int32, channelID int32, mapPos byte, hp int16) maplepacket.Packet {
-	p := maplepacket.CreateWithOpcode(opcodes.Send.ChannelWarpToMap)
+	p := maplepacket.CreateWithOpcode(opcodes.SendChannelWarpToMap)
 	p.WriteInt32(channelID)
 	p.WriteByte(0) // character portal counter
 	p.WriteByte(0) // Is connecting

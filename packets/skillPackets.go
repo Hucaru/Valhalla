@@ -7,7 +7,7 @@ import (
 )
 
 func SkillMelee(char types.Character, attackData types.AttackData) maplepacket.Packet {
-	p := maplepacket.CreateWithOpcode(opcodes.Send.ChannelPlayerUseMeleeSkill)
+	p := maplepacket.CreateWithOpcode(opcodes.SendChannelPlayerUseMeleeSkill)
 	p.WriteInt32(char.ID)
 	p.WriteByte(attackData.Targets*0x10 + attackData.Hits)
 	p.WriteByte(attackData.SkillLevel)
@@ -44,7 +44,7 @@ func SkillMelee(char types.Character, attackData types.AttackData) maplepacket.P
 }
 
 func SkillRanged(char types.Character, attackData types.AttackData) maplepacket.Packet {
-	p := maplepacket.CreateWithOpcode(opcodes.Send.ChannelPlayerUseRangedSkill)
+	p := maplepacket.CreateWithOpcode(opcodes.SendChannelPlayerUseRangedSkill)
 	p.WriteInt32(char.ID)
 	p.WriteByte(attackData.Targets*0x10 + attackData.Hits)
 	p.WriteByte(attackData.SkillLevel)
@@ -77,7 +77,7 @@ func SkillRanged(char types.Character, attackData types.AttackData) maplepacket.
 }
 
 func SkillMagic(char types.Character, attackData types.AttackData) maplepacket.Packet {
-	p := maplepacket.CreateWithOpcode(opcodes.Send.ChannelPlayerUseMagicSkill)
+	p := maplepacket.CreateWithOpcode(opcodes.SendChannelPlayerUseMagicSkill)
 	p.WriteInt32(char.ID)
 	p.WriteByte(attackData.Targets*0x10 + attackData.Hits)
 	p.WriteByte(attackData.SkillLevel)
@@ -110,7 +110,7 @@ func SkillMagic(char types.Character, attackData types.AttackData) maplepacket.P
 }
 
 func SkillAnimation(charID int32, skillID int32, level byte) maplepacket.Packet {
-	p := maplepacket.CreateWithOpcode(opcodes.Send.ChannelPlayerAnimation)
+	p := maplepacket.CreateWithOpcode(opcodes.SendChannelPlayerAnimation)
 	p.WriteInt32(charID)
 	p.WriteByte(0x01)
 	p.WriteInt32(skillID)
@@ -120,7 +120,7 @@ func SkillAnimation(charID int32, skillID int32, level byte) maplepacket.Packet 
 }
 
 func SkillGmHide(isHidden bool) maplepacket.Packet {
-	p := maplepacket.CreateWithOpcode(opcodes.Send.ChannelEmployee)
+	p := maplepacket.CreateWithOpcode(opcodes.SendChannelEmployee)
 	p.WriteByte(0x0F)
 	p.WriteBool(isHidden)
 

@@ -1,119 +1,61 @@
 package opcodes
 
-var Send send
+import "github.com/Hucaru/Valhalla/maplepacket"
 
-type send struct {
-	LoginResponce               byte
-	LoginWorldMeta              byte
-	LoginPinRegister            byte
-	LoginPinStuff               byte
-	LoginWorldList              byte
-	LoginRestarter              byte
-	LoginCharacterData          byte
-	LoginCharacterMigrate       byte
-	LoginNameCheckResult        byte
-	LoginNewCharacterGood       byte
-	LoginDeleteCharacter        byte
-	ChannelInventoryOperation   byte
-	ChannelStatChange           byte
-	ChannelSkillRecordUpdate    byte
-	ChannelInfoMessage          byte
-	ChannelLieDetectorTest      byte
-	ChannelAvatarInfoWindow     byte
-	ChannelPartyInfo            byte
-	ChannelBroadcastMessage     byte
-	ChannelWarpToMap            byte
-	ChannelPortalClosed         byte
-	ChannelBubblessChat         byte
-	ChannelWhisper              byte
-	ChannelEmployee             byte
-	ChannelQuizQAndA            byte
-	ChannelCharacterEnterField  byte
-	ChannelCharacterLeaveField  byte
-	ChannelAllChatMsg           byte
-	ChannelPlayerMovement       byte
-	ChannelPlayerUseMeleeSkill  byte
-	ChannelPlayerUseRangedSkill byte
-	ChannelPlayerUseMagicSkill  byte
-	ChannelPlayerTakeDmg        byte
-	ChannelPlayerEmoticon       byte
-	ChannelPlayerChangeAvatar   byte
-	ChannelPlayerAnimation      byte
-	ChannelLevelUpAnimation     byte
-	ChannelShowMob              byte
-	ChannelRemoveMob            byte
-	ChannelControlMob           byte
-	ChannelMoveMob              byte
-	ChannelControlMobAck        byte
-	ChannelMobChangeHP          byte
-	ChannelNpcShow              byte
-	ChannelNpcRemove            byte
-	ChannelNpcControl           byte
-	ChannelNpcMovement          byte
-	ChannelSpawnDoor            byte
-	ChannelRemoveDoor           byte
-	ChannelNpcDialogueBox       byte
-	ChannelNpcShop              byte
-	ChannelNpcShopResult        byte
-	ChannelNpcStorage           byte
-	ChannelRoom                 byte
-	ChannelRoomBox              byte
-}
-
-func init() {
-	Send.LoginResponce = 0x01
-	Send.LoginWorldMeta = 0x03
-	Send.LoginPinRegister = 0x07 // Add 1 byte, 1 = register a pin
-	Send.LoginPinStuff = 0x08    // Setting pin good
-	Send.LoginWorldList = 0x09
-	Send.LoginRestarter = 0x15
-	Send.LoginCharacterData = 0x0A
-	Send.LoginCharacterMigrate = 0x0B
-	Send.LoginNameCheckResult = 0x0C
-	Send.LoginNewCharacterGood = 0x0D
-	Send.LoginDeleteCharacter = 0x0E
-	Send.ChannelInventoryOperation = 0x18
-	Send.ChannelStatChange = 0x1A
-	Send.ChannelSkillRecordUpdate = 0x1D
-	Send.ChannelInfoMessage = 0x20
-	Send.ChannelLieDetectorTest = 0x23
-	Send.ChannelAvatarInfoWindow = 0x2c
-	Send.ChannelPartyInfo = 0x2D
-	Send.ChannelBroadcastMessage = 0x32
-	Send.ChannelWarpToMap = 0x36
-	Send.ChannelPortalClosed = 0x3A
-	Send.ChannelBubblessChat = 0x3D
-	Send.ChannelWhisper = 0x3E
-	Send.ChannelEmployee = 0x43
-	Send.ChannelQuizQAndA = 0x44
-	Send.ChannelCharacterEnterField = 0x4E
-	Send.ChannelCharacterLeaveField = 0x4F
-	Send.ChannelAllChatMsg = 0x51
-	Send.ChannelPlayerMovement = 0x65
-	Send.ChannelPlayerUseMeleeSkill = 0x66
-	Send.ChannelPlayerUseRangedSkill = 0x67
-	Send.ChannelPlayerUseMagicSkill = 0x68
-	Send.ChannelPlayerTakeDmg = 0x6B
-	Send.ChannelPlayerEmoticon = 0x6C
-	Send.ChannelPlayerChangeAvatar = 0x6F
-	Send.ChannelPlayerAnimation = 0x70
-	Send.ChannelLevelUpAnimation = 0x79
-	Send.ChannelShowMob = 0x86
-	Send.ChannelRemoveMob = 0x87
-	Send.ChannelControlMob = 0x88
-	Send.ChannelMoveMob = 0x8A
-	Send.ChannelControlMobAck = 0x8B
-	Send.ChannelMobChangeHP = 0x91
-	Send.ChannelNpcShow = 0x97
-	Send.ChannelNpcRemove = 0x98
-	Send.ChannelNpcControl = 0x99
-	Send.ChannelNpcMovement = 0x9B
-	Send.ChannelSpawnDoor = 0xB1
-	Send.ChannelRemoveDoor = 0xB2
-	Send.ChannelNpcDialogueBox = 0xC5
-	Send.ChannelNpcShop = 0xC8
-	Send.ChannelNpcShopResult = 0xC9
-	Send.ChannelNpcStorage = 0xCD
-	Send.ChannelRoom = 0xDC
-	Send.ChannelRoomBox = 0x52
-}
+const (
+	SendLoginResponce               maplepacket.Opcode = 0x01
+	SendLoginWorldMeta              maplepacket.Opcode = 0x03
+	SendLoginPinRegister            maplepacket.Opcode = 0x07 // Add 1 byte, 1 = register maplepacket.Opcode a pin
+	SendLoginPinStuff               maplepacket.Opcode = 0x08 // Setting maplepacket.Opcode pin good
+	SendLoginWorldList              maplepacket.Opcode = 0x09
+	SendLoginRestarter              maplepacket.Opcode = 0x15
+	SendLoginCharacterData          maplepacket.Opcode = 0x0A
+	SendLoginCharacterMigrate       maplepacket.Opcode = 0x0B
+	SendLoginNameCheckResult        maplepacket.Opcode = 0x0C
+	SendLoginNewCharacterGood       maplepacket.Opcode = 0x0D
+	SendLoginDeleteCharacter        maplepacket.Opcode = 0x0E
+	SendChannelInventoryOperation   maplepacket.Opcode = 0x18
+	SendChannelStatChange           maplepacket.Opcode = 0x1A
+	SendChannelSkillRecordUpdate    maplepacket.Opcode = 0x1D
+	SendChannelInfoMessage          maplepacket.Opcode = 0x20
+	SendChannelLieDetectorTest      maplepacket.Opcode = 0x23
+	SendChannelAvatarInfoWindow     maplepacket.Opcode = 0x2c
+	SendChannelPartyInfo            maplepacket.Opcode = 0x2D
+	SendChannelBroadcastMessage     maplepacket.Opcode = 0x32
+	SendChannelWarpToMap            maplepacket.Opcode = 0x36
+	SendChannelPortalClosed         maplepacket.Opcode = 0x3A
+	SendChannelBubblessChat         maplepacket.Opcode = 0x3D
+	SendChannelWhisper              maplepacket.Opcode = 0x3E
+	SendChannelEmployee             maplepacket.Opcode = 0x43
+	SendChannelQuizQAndA            maplepacket.Opcode = 0x44
+	SendChannelCharacterEnterField  maplepacket.Opcode = 0x4E
+	SendChannelCharacterLeaveField  maplepacket.Opcode = 0x4F
+	SendChannelAllChatMsg           maplepacket.Opcode = 0x51
+	SendChannelPlayerMovement       maplepacket.Opcode = 0x65
+	SendChannelPlayerUseMeleeSkill  maplepacket.Opcode = 0x66
+	SendChannelPlayerUseRangedSkill maplepacket.Opcode = 0x67
+	SendChannelPlayerUseMagicSkill  maplepacket.Opcode = 0x68
+	SendChannelPlayerTakeDmg        maplepacket.Opcode = 0x6B
+	SendChannelPlayerEmoticon       maplepacket.Opcode = 0x6C
+	SendChannelPlayerChangeAvatar   maplepacket.Opcode = 0x6F
+	SendChannelPlayerAnimation      maplepacket.Opcode = 0x70
+	SendChannelLevelUpAnimation     maplepacket.Opcode = 0x79
+	SendChannelShowMob              maplepacket.Opcode = 0x86
+	SendChannelRemoveMob            maplepacket.Opcode = 0x87
+	SendChannelControlMob           maplepacket.Opcode = 0x88
+	SendChannelMoveMob              maplepacket.Opcode = 0x8A
+	SendChannelControlMobAck        maplepacket.Opcode = 0x8B
+	SendChannelMobChangeHP          maplepacket.Opcode = 0x91
+	SendChannelNpcShow              maplepacket.Opcode = 0x97
+	SendChannelNpcRemove            maplepacket.Opcode = 0x98
+	SendChannelNpcControl           maplepacket.Opcode = 0x99
+	SendChannelNpcMovement          maplepacket.Opcode = 0x9B
+	SendChannelSpawnDoor            maplepacket.Opcode = 0xB1
+	SendChannelRemoveDoor           maplepacket.Opcode = 0xB2
+	SendChannelNpcDialogueBox       maplepacket.Opcode = 0xC5
+	SendChannelNpcShop              maplepacket.Opcode = 0xC8
+	SendChannelNpcShopResult        maplepacket.Opcode = 0xC9
+	SendChannelNpcStorage           maplepacket.Opcode = 0xCD
+	SendChannelRoom                 maplepacket.Opcode = 0xDC
+	SendChannelRoomBox              maplepacket.Opcode = 0x52
+)

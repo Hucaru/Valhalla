@@ -12,11 +12,13 @@ func NewPacket() Packet {
 	return make(Packet, 0)
 }
 
+type Opcode byte
+
 // CreateWithOpcode -
-func CreateWithOpcode(op byte) Packet {
+func CreateWithOpcode(op Opcode) Packet {
 	p := Packet{}
 	p.WriteInt32(0)
-	p.WriteByte(op)
+	p.WriteByte(byte(op))
 
 	return p
 }

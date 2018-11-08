@@ -10,7 +10,7 @@ import (
 )
 
 func LoginResponce(result byte, userID int32, gender byte, isAdmin bool, username string, isBanned int) maplepacket.Packet {
-	pac := maplepacket.CreateWithOpcode(opcodes.Send.LoginResponce)
+	pac := maplepacket.CreateWithOpcode(opcodes.SendLoginResponce)
 	pac.WriteByte(result)
 	pac.WriteByte(0x00)
 	pac.WriteInt32(0)
@@ -35,7 +35,7 @@ func LoginResponce(result byte, userID int32, gender byte, isAdmin bool, usernam
 }
 
 func LoginMigrateClient(ip []byte, port int16, charID int32) maplepacket.Packet {
-	pac := maplepacket.CreateWithOpcode(opcodes.Send.LoginCharacterMigrate)
+	pac := maplepacket.CreateWithOpcode(opcodes.SendLoginCharacterMigrate)
 	pac.WriteByte(0x00)
 	pac.WriteByte(0x00)
 	pac.WriteBytes(ip)
@@ -48,7 +48,7 @@ func LoginMigrateClient(ip []byte, port int16, charID int32) maplepacket.Packet 
 }
 
 func LoginSendBadMigrate() maplepacket.Packet {
-	pac := maplepacket.CreateWithOpcode(opcodes.Send.LoginCharacterMigrate)
+	pac := maplepacket.CreateWithOpcode(opcodes.SendLoginCharacterMigrate)
 	pac.WriteByte(0x00) // flipping these 2 bytes makes the character select screen do nothing it appears
 	pac.WriteByte(0x00)
 	pac.WriteBytes([]byte{0, 0, 0, 0})
@@ -61,7 +61,7 @@ func LoginSendBadMigrate() maplepacket.Packet {
 }
 
 func LoginDisplayCharacters(characters []types.Character) maplepacket.Packet {
-	pac := maplepacket.CreateWithOpcode(opcodes.Send.LoginCharacterData)
+	pac := maplepacket.CreateWithOpcode(opcodes.SendLoginCharacterData)
 	pac.WriteByte(0) // ?
 
 	if len(characters) < 4 && len(characters) > 0 {
@@ -78,7 +78,7 @@ func LoginDisplayCharacters(characters []types.Character) maplepacket.Packet {
 }
 
 func LoginNameCheck(name string, nameFound int) maplepacket.Packet {
-	pac := maplepacket.CreateWithOpcode(opcodes.Send.LoginNameCheckResult)
+	pac := maplepacket.CreateWithOpcode(opcodes.SendLoginNameCheckResult)
 	pac.WriteString(name)
 
 	if nameFound > 0 {
@@ -91,7 +91,7 @@ func LoginNameCheck(name string, nameFound int) maplepacket.Packet {
 }
 
 func LoginCreatedCharacter(success bool, character types.Character) maplepacket.Packet {
-	pac := maplepacket.CreateWithOpcode(opcodes.Send.LoginNewCharacterGood)
+	pac := maplepacket.CreateWithOpcode(opcodes.SendLoginNewCharacterGood)
 
 	if success {
 		pac.WriteByte(0x0) // if creation was sucessfull - 0 = good, 1 = bad
@@ -104,7 +104,7 @@ func LoginCreatedCharacter(success bool, character types.Character) maplepacket.
 }
 
 func LoginDeleteCharacter(charID int32, deleted bool, hacking bool) maplepacket.Packet {
-	pac := maplepacket.CreateWithOpcode(opcodes.Send.LoginDeleteCharacter)
+	pac := maplepacket.CreateWithOpcode(opcodes.SendLoginDeleteCharacter)
 	pac.WriteInt32(charID)
 
 	if deleted {
@@ -170,7 +170,7 @@ func LoginWritePlayerCharacter(pac *maplepacket.Packet, pos int32, char types.Ch
 }
 
 func LoginWorldListing(worldIndex byte) maplepacket.Packet {
-	pac := maplepacket.CreateWithOpcode(opcodes.Send.LoginWorldList)
+	pac := maplepacket.CreateWithOpcode(opcodes.SendLoginWorldList)
 	pac.WriteByte(worldIndex)                       // world id
 	pac.WriteString(consts.WORLD_NAMES[worldIndex]) // World name -
 	pac.WriteByte(3)                                // Ribbon on world - 0 = normal, 1 = event, 2 = new, 3 = hot
@@ -193,14 +193,14 @@ func LoginWorldListing(worldIndex byte) maplepacket.Packet {
 }
 
 func LoginEndWorldList() maplepacket.Packet {
-	pac := maplepacket.CreateWithOpcode(opcodes.Send.LoginWorldList)
+	pac := maplepacket.CreateWithOpcode(opcodes.SendLoginWorldList)
 	pac.WriteByte(0xFF)
 
 	return pac
 }
 
 func LoginWorldInfo(warning byte, population byte) maplepacket.Packet {
-	p := maplepacket.CreateWithOpcode(opcodes.Send.LoginWorldMeta)
+	p := maplepacket.CreateWithOpcode(opcodes.SendLoginWorldMeta)
 	p.WriteByte(warning)    // Warning - 0 = no warning, 1 - high amount of concurent users, 2 = max uesrs in world
 	p.WriteByte(population) // Population marker - 0 = No maker, 1 = Highly populated, 2 = over populated
 
@@ -208,7 +208,7 @@ func LoginWorldInfo(warning byte, population byte) maplepacket.Packet {
 }
 
 func LoginReturnFromChannel() maplepacket.Packet {
-	pac := maplepacket.CreateWithOpcode(opcodes.Send.LoginRestarter)
+	pac := maplepacket.CreateWithOpcode(opcodes.SendLoginRestarter)
 	pac.WriteByte(0x01)
 
 	return pac
