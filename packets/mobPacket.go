@@ -99,9 +99,9 @@ func MobEndControl(mob types.Mob) maplepacket.Packet {
 	return p
 }
 
-func MobRemove(mob mobInter, deathType byte) maplepacket.Packet {
+func MobRemove(mob types.Mob, deathType byte) maplepacket.Packet {
 	p := maplepacket.CreateWithOpcode(opcodes.SendChannelRemoveMob)
-	p.WriteInt32(mob.GetSpawnID())
+	p.WriteInt32(mob.SpawnID)
 	p.WriteByte(deathType)
 
 	return p

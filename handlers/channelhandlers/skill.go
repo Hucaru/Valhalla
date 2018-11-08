@@ -53,6 +53,10 @@ func playerMagicSkill(conn mnet.MConnChannel, reader maplepacket.Reader) {
 
 	game.SendToMapExcept(char.CurrentMap, packets.SkillMagic(char, data), conn)
 
+	for _, ai := range data.AttackInfo {
+		game.DamageMob(player, player.Char().CurrentMap, ai.SpawnID, ai.Damages)
+	}
+
 	switch data.SkillID {
 	default:
 		conn.Send(packets.PlayerNoChange())
