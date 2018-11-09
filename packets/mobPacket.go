@@ -58,7 +58,7 @@ func addMob(mob types.Mob) maplepacket.Packet {
 	p.WriteInt8(mob.SummonType)
 
 	if mob.SummonType == -3 || mob.SummonType >= 0 {
-		p.WriteInt32(0) // some sort of summoning options, not sure what this is
+		p.WriteInt32(mob.SummonOption) // some sort of summoning options, not sure what this is
 	}
 
 	p.WriteInt32(0) // encode mob status

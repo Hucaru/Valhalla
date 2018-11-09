@@ -21,7 +21,13 @@ func playerMeleeSkill(conn mnet.MConnChannel, reader maplepacket.Reader) {
 
 	// fix the damange values
 
+	for _, attack := range data.AttackInfo {
+		game.DamageMob(player, char.CurrentMap, attack.SpawnID, attack.Damages)
+	}
+
 	game.SendToMapExcept(char.CurrentMap, packets.SkillMelee(char, data), conn)
+
+	game.HandleDeadMobs(player, char.CurrentMap)
 }
 
 func playerRangedSkill(conn mnet.MConnChannel, reader maplepacket.Reader) {
@@ -36,7 +42,13 @@ func playerRangedSkill(conn mnet.MConnChannel, reader maplepacket.Reader) {
 
 	// fix the damange values
 
+	for _, attack := range data.AttackInfo {
+		game.DamageMob(player, player.Char().CurrentMap, attack.SpawnID, attack.Damages)
+	}
+
 	game.SendToMapExcept(char.CurrentMap, packets.SkillRanged(char, data), conn)
+
+	game.HandleDeadMobs(player, char.CurrentMap)
 }
 
 func playerMagicSkill(conn mnet.MConnChannel, reader maplepacket.Reader) {
@@ -51,11 +63,13 @@ func playerMagicSkill(conn mnet.MConnChannel, reader maplepacket.Reader) {
 
 	// fix the damange values
 
+	for _, attack := range data.AttackInfo {
+		game.DamageMob(player, player.Char().CurrentMap, attack.SpawnID, attack.Damages)
+	}
+
 	game.SendToMapExcept(char.CurrentMap, packets.SkillMagic(char, data), conn)
 
-	for _, ai := range data.AttackInfo {
-		game.DamageMob(player, player.Char().CurrentMap, ai.SpawnID, ai.Damages)
-	}
+	game.HandleDeadMobs(player, char.CurrentMap)
 
 	switch data.SkillID {
 	default:

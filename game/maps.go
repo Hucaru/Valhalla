@@ -29,8 +29,9 @@ func InitMaps() {
 		}
 
 		maps[mapID] = &gameMap{
-			npcs: npcs,
-			mobs: mobs,
+			npcs:     npcs,
+			mobs:     mobs,
+			mobQueue: mobs,
 		}
 	}
 }

@@ -17,6 +17,7 @@ type Mob struct {
 	SkillLevel       byte
 	StatBuff         int32
 	LastAttackTime   int64
+	Respawns         bool
 	nx.Life
 	nx.Monster
 }
@@ -26,6 +27,7 @@ func CreateMob(spawnID int32, life nx.Life, mob nx.Monster, summoner mnet.MConnC
 		Summoner:   summoner,
 		Stance:     0,
 		SkillTimes: make(map[byte]int64),
+		Respawns:   true,
 		Life:       life,
 		Monster:    mob}
 }
