@@ -23,6 +23,11 @@ func playerMeleeSkill(conn mnet.MConnChannel, reader maplepacket.Reader) {
 
 	for _, attack := range data.AttackInfo {
 		mob := game.GetMapFromID(char.CurrentMap).GetMobFromID(attack.SpawnID)
+
+		if mob == nil {
+			continue
+		}
+
 		mob.GiveDamage(player, attack.Damages)
 	}
 
@@ -45,6 +50,11 @@ func playerRangedSkill(conn mnet.MConnChannel, reader maplepacket.Reader) {
 
 	for _, attack := range data.AttackInfo {
 		mob := game.GetMapFromID(char.CurrentMap).GetMobFromID(attack.SpawnID)
+
+		if mob == nil {
+			continue
+		}
+
 		mob.GiveDamage(player, attack.Damages)
 	}
 
@@ -67,6 +77,11 @@ func playerMagicSkill(conn mnet.MConnChannel, reader maplepacket.Reader) {
 
 	for _, attack := range data.AttackInfo {
 		mob := game.GetMapFromID(char.CurrentMap).GetMobFromID(attack.SpawnID)
+
+		if mob == nil {
+			continue
+		}
+
 		mob.GiveDamage(player, attack.Damages)
 	}
 

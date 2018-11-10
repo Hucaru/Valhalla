@@ -11,17 +11,18 @@ var maps = make(map[int32]*GameMap)
 
 type GameMap struct {
 	npcs []types.NPC
-	mobs []mob
+	mobs []gameMob
+	id   int32
 }
 
 func InitMaps() {
 	for mapID, nxMap := range nx.Maps {
 		npcs := []types.NPC{}
-		mobs := []mob{}
+		mobs := []gameMob{}
 
 		for _, l := range nxMap.Life {
 			if l.IsMob {
-				mobs = append(mobs, mob{Mob: types.CreateMob(int32(len(mobs)+1), l, nx.Mob[l.ID], nil), mapID: mapID})
+				mobs = append(mobs, gameMob{Mob: types.CreateMob(int32(len(mobs)+1), l, nx.Mob[l.ID], nil), mapID: mapID})
 			} else {
 				npcs = append(npcs, types.CreateNPC(int32(len(npcs)), l))
 			}
@@ -30,6 +31,7 @@ func InitMaps() {
 		maps[mapID] = &GameMap{
 			npcs: npcs,
 			mobs: mobs,
+			id:   mapID,
 		}
 	}
 }
@@ -61,7 +63,7 @@ func (gm *GameMap) addController(conn mnet.MConnChannel) {
 	}
 }
 
-func (gm *GameMap) GetMobFromID(id int32) *mob {
+func (gm *GameMap) GetMobFromID(id int32) *gameMob {
 	for i, v := range gm.mobs {
 		if v.SpawnID == id {
 			return &gm.mobs[i]
@@ -71,6 +73,23 @@ func (gm *GameMap) GetMobFromID(id int32) *mob {
 	return nil
 }
 
+func (gm GameMap) generateMobSpawnID() int32 {
+	var l int32
+	for _, v := range gm.mobs {
+		if v.SpawnID > l {
+			l = v.SpawnID
+		}
+	}
+
+	l++
+
+	if l == 0 {
+		l++
+	}
+
+	return l
+}
+
 func (gm *GameMap) HandleDeadMobs() {
 	y := gm.mobs[:0]
 
@@ -78,11 +97,10 @@ func (gm *GameMap) HandleDeadMobs() {
 		if mob.HP < 1 {
 			mob.Controller.Send(packets.MobEndControl(mob.Mob))
 
-			// if len(mob.Revive) > 0 {
-			// 	for _, id := range mob.Revive {
-			// 		SpawnWithoutRespawn(mob.mapID, id, int32(len(gm.mobs)+1), mob.X, mob.Y, mob.Foothold, -3, mob.SpawnID)
-			// 	}
-			// }
+			for _, id := range mob.Revive {
+				gm.SpawnMobNoRespawn(id, gm.generateMobSpawnID(), mob.X, mob.Y, mob.Foothold, -3, mob.SpawnID, mob.FacesLeft())
+				y = append(y, gm.mobs[len(gm.mobs)-1])
+			}
 
 			SendToMap(mob.mapID, packets.MobRemove(mob.Mob, 1)) // 0 keeps it there and is no longer attackable, 1 normal death, 2 disaapear instantly
 		} else {
@@ -93,46 +111,42 @@ func (gm *GameMap) HandleDeadMobs() {
 	gm.mobs = y
 }
 
-func (gm *GameMap) SpawnMob(mobID, spawnID int32, x, y, foothold int16, summonType int8, summonOption int32, facesLeft byte) {
+func (gm *GameMap) SpawnMob(mobID, spawnID int32, x, y, foothold int16, summonType int8, summonOption int32, facesLeft bool) {
 
 }
 
-func (gm *GameMap) SpawnMobNoRespawn(mobID, spawnID int32, x, y, foothold int16, summonType int8, summonOption int32, facesLeft byte) {
+func (gm *GameMap) SpawnMobNoRespawn(mobID, spawnID int32, x, y, foothold int16, summonType int8, summonOption int32, facesLeft bool) {
+	mob := types.CreateMob(spawnID, nx.Life{}, nx.Mob[mobID], nil)
+	mob.ID = mobID
 
+	mob.X = x
+	mob.Y = y
+	mob.Foothold = foothold
+
+	mob.Respawns = false
+
+	mob.SummonType = summonType
+	mob.SummonOption = summonOption
+
+	mob.FacesLeft = facesLeft
+
+	SendToMap(gm.id, packets.MobShow(mob))
+
+	if summonType != -4 {
+		mob.SummonType = -1
+		mob.SummonOption = 0
+	}
+
+	gm.mobs = append(gm.mobs, gameMob{Mob: mob, mapID: gm.id})
+
+	findController(gm.id, &gm.mobs[len(gm.mobs)-1])
 }
 
-// func SpawnWithoutRespawn(mapID, mobID, spawnID int32, x, y, foothold int16, summonType int8, summonOption int32) {
-// 	mob := types.CreateMob(spawnID, nx.Life{}, nx.Mob[mobID], nil)
-// 	mob.ID = mobID
-// 	mob.X = x
-// 	mob.Y = y
-// 	mob.Foothold = foothold
-
-// 	mob.Respawns = false
-
-// 	mob.SummonType = summonType
-// 	mob.SummonOption = summonOption
-
-// 	maps[mapID].mobs = append(maps[mapID].mobs, mob)
-
-// 	SendToMap(mapID, packets.MobShow(mob))
-
-// 	findController(mapID, &mob)
-
-// 	if summonType != -4 {
-// 		mob.SummonType = -1
-// 		mob.SummonOption = 0
-// 	}
-// }
-
-// func findController(mapID int32, mob *types.Mob) {
-// 	for _, p := range players {
-// 		if p.char.CurrentMap == mapID {
-// 			mob.Controller = p
-
-// 			p.Send(packets.MobControl(*mob))
-
-// 			return
-// 		}
-// 	}
-// }
+func findController(mapID int32, mob *gameMob) {
+	for _, p := range players {
+		if p.char.CurrentMap == mapID {
+			mob.ChangeController(p)
+			return
+		}
+	}
+}

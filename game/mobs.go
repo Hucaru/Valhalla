@@ -6,12 +6,16 @@ import (
 	"github.com/Hucaru/Valhalla/types"
 )
 
-type mob struct {
+type gameMob struct {
 	types.Mob
 	mapID int32
 }
 
-func (m *mob) GiveDamage(player Player, damages []int32) {
+func (m gameMob) FacesLeft() bool {
+	return m.Stance%2 != 0
+}
+
+func (m *gameMob) GiveDamage(player Player, damages []int32) {
 	if m.HP > 0 && m.Controller != player {
 		m.ChangeController(player)
 	}
@@ -25,7 +29,7 @@ func (m *mob) GiveDamage(player Player, damages []int32) {
 	}
 }
 
-func (m *mob) ChangeController(newController Player) {
+func (m *gameMob) ChangeController(newController Player) {
 	if m.Controller == newController {
 		return
 	}
@@ -38,11 +42,7 @@ func (m *mob) ChangeController(newController Player) {
 	newController.Send(packets.MobControl(m.Mob))
 }
 
-func (m *mob) findNewControllerExcept(mapID int32, conn mnet.MConnChannel) mnet.MConnChannel {
-	return nil
-}
-
-func (m *mob) FindNewControllerExcept(conn mnet.MConnChannel) {
+func (m *gameMob) FindNewControllerExcept(conn mnet.MConnChannel) {
 	var newController mnet.MConnChannel
 
 	for c, v := range players {
@@ -59,7 +59,5 @@ func (m *mob) FindNewControllerExcept(conn mnet.MConnChannel) {
 		return
 	}
 
-	conn.Send(packets.MobEndControl(m.Mob))
-	m.Controller = newController
-	m.Controller.Send(packets.MobControl(m.Mob))
+	m.ChangeController(players[newController])
 }
