@@ -14,7 +14,7 @@ func NpcShow(npc types.NPC) maplepacket.Packet {
 	p.WriteInt16(npc.X)
 	p.WriteInt16(npc.Y)
 
-	p.WriteByte(1 - npc.F)
+	p.WriteBool(!npc.FacesLeft)
 
 	p.WriteInt16(npc.Foothold)
 	p.WriteInt16(npc.Rx0)

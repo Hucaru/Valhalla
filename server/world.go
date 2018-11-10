@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Hucaru/Valhalla/handlers/worldhandlers"
+	"github.com/Hucaru/Valhalla/handlers/world"
 	"github.com/Hucaru/Valhalla/maplepacket"
 	"github.com/Hucaru/Valhalla/mnet"
 )
@@ -112,7 +112,7 @@ func (ws *worldServer) processEvent() {
 			case mnet.MEServerDisconnect:
 				log.Println("Server at", serverConn, "disconnected")
 			case mnet.MEServerPacket:
-				worldhandlers.HandlePacket(ws.lconn, maplepacket.NewReader(&e.Packet, time.Now().Unix()))
+				world.HandlePacket(ws.lconn, maplepacket.NewReader(&e.Packet, time.Now().Unix()))
 			}
 		}
 

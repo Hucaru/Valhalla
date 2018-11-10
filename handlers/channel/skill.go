@@ -1,4 +1,4 @@
-package channelhandlers
+package channel
 
 import (
 	"github.com/Hucaru/Valhalla/game"
@@ -22,12 +22,13 @@ func playerMeleeSkill(conn mnet.MConnChannel, reader maplepacket.Reader) {
 	// fix the damange values
 
 	for _, attack := range data.AttackInfo {
-		game.DamageMob(player, char.CurrentMap, attack.SpawnID, attack.Damages)
+		mob := game.GetMapFromID(char.CurrentMap).GetMobFromID(attack.SpawnID)
+		mob.GiveDamage(player, attack.Damages)
 	}
 
 	game.SendToMapExcept(char.CurrentMap, packets.SkillMelee(char, data), conn)
 
-	game.HandleDeadMobs(player, char.CurrentMap)
+	game.GetMapFromID(char.CurrentMap).HandleDeadMobs()
 }
 
 func playerRangedSkill(conn mnet.MConnChannel, reader maplepacket.Reader) {
@@ -43,12 +44,13 @@ func playerRangedSkill(conn mnet.MConnChannel, reader maplepacket.Reader) {
 	// fix the damange values
 
 	for _, attack := range data.AttackInfo {
-		game.DamageMob(player, player.Char().CurrentMap, attack.SpawnID, attack.Damages)
+		mob := game.GetMapFromID(char.CurrentMap).GetMobFromID(attack.SpawnID)
+		mob.GiveDamage(player, attack.Damages)
 	}
 
-	game.SendToMapExcept(char.CurrentMap, packets.SkillRanged(char, data), conn)
+	game.SendToMapExcept(char.CurrentMap, packets.SkillMelee(char, data), conn)
 
-	game.HandleDeadMobs(player, char.CurrentMap)
+	game.GetMapFromID(char.CurrentMap).HandleDeadMobs()
 }
 
 func playerMagicSkill(conn mnet.MConnChannel, reader maplepacket.Reader) {
@@ -64,12 +66,13 @@ func playerMagicSkill(conn mnet.MConnChannel, reader maplepacket.Reader) {
 	// fix the damange values
 
 	for _, attack := range data.AttackInfo {
-		game.DamageMob(player, player.Char().CurrentMap, attack.SpawnID, attack.Damages)
+		mob := game.GetMapFromID(char.CurrentMap).GetMobFromID(attack.SpawnID)
+		mob.GiveDamage(player, attack.Damages)
 	}
 
-	game.SendToMapExcept(char.CurrentMap, packets.SkillMagic(char, data), conn)
+	game.SendToMapExcept(char.CurrentMap, packets.SkillMelee(char, data), conn)
 
-	game.HandleDeadMobs(player, char.CurrentMap)
+	game.GetMapFromID(char.CurrentMap).HandleDeadMobs()
 
 	switch data.SkillID {
 	default:
@@ -203,7 +206,7 @@ func getAttackInfo(reader maplepacket.Reader, player game.Player, attackType int
 	if data.Hits != 0 {
 		// validate dmg numbers against mob info
 		for _, dmg := range data.AttackInfo {
-			_ = game.GetMobFromMapAndSpawnID(player.Char().CurrentMap, dmg.SpawnID)
+			_ = game.GetMapFromID(player.Char().CurrentMap).GetMobFromID(dmg.SpawnID)
 		}
 
 	}

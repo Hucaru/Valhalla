@@ -1,4 +1,4 @@
-package loginhandlers
+package login
 
 import (
 	"crypto/sha512"

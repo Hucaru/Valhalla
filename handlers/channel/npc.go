@@ -1,4 +1,4 @@
-package channelhandlers
+package channel
 
 import (
 	"github.com/Hucaru/Valhalla/maplepacket"

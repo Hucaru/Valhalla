@@ -203,3 +203,11 @@ func dataToUint16(data [8]byte) uint16 {
 	return uint16(data[0]) |
 		uint16(data[1])<<8
 }
+
+func dataToBool(data byte) bool {
+	if data == 1 {
+		return true
+	}
+
+	return false
+}

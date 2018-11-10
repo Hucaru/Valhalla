@@ -1,4 +1,4 @@
-package channelhandlers
+package channel
 
 import (
 	"log"
@@ -145,7 +145,8 @@ func playerTakeDamage(conn mnet.MConnChannel, reader maplepacket.Reader) {
 		spawnID := reader.ReadInt32()
 		mobID := reader.ReadInt32()
 
-		mob = game.GetMobFromMapAndSpawnID(char.CurrentMap, spawnID)
+		mob := game.GetMapFromID(char.CurrentMap).GetMobFromID(spawnID)
+		// mob = game.GetMobFromMapAndSpawnID(char.CurrentMap, spawnID)
 
 		if mob == nil || mob.ID != mobID {
 			return

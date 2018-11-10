@@ -1,4 +1,4 @@
-package channelhandlers
+package channel
 
 import (
 	"math/rand"
@@ -29,21 +29,22 @@ func mobControl(conn mnet.MConnChannel, reader maplepacket.Reader) {
 	skillPossible := (bits & 0x0F) != 0
 
 	player := game.GetPlayerFromConn(conn)
-	mob := game.GetMobFromMapAndSpawnID(player.Char().CurrentMap, mobSpawnID)
+	char := player.Char()
+	mob := game.GetMapFromID(char.CurrentMap).GetMobFromID(mobSpawnID)
 
 	if mob == nil {
 		return
 	}
 
 	if mob.Controller != conn { // prevents hijack and reassigns controller to anyone except hijacker
-		game.MobAssignNewController(conn, mob)
+		mob.FindNewControllerExcept(conn)
 		return
 	}
 
 	// Update mob position information
 	moveData, finalData := parseMovement(reader)
 
-	if !validateMobMovement(*mob, moveData) {
+	if !validateMobMovement(mob.Mob, moveData) {
 		return
 	}
 
@@ -56,7 +57,7 @@ func mobControl(conn mnet.MConnChannel, reader maplepacket.Reader) {
 
 	// Perform the action received
 	if actualAction >= 21 && actualAction <= 25 {
-		performSkill(mob, int16(skillData>>16), byte(skillData>>8), byte(skillData))
+		performSkill(&mob.Mob, int16(skillData>>16), byte(skillData>>8), byte(skillData))
 
 	} else if actualAction > 12 && actualAction < 20 {
 		attackID := byte(actualAction - 12)
@@ -79,11 +80,11 @@ func mobControl(conn mnet.MConnChannel, reader maplepacket.Reader) {
 		// there are more reasons as to why a mob cannot use a skill
 		mob.SkillID = 0
 	} else {
-		mob.SkillID, mob.SkillLevel = chooseNextSkill(mob)
+		mob.SkillID, mob.SkillLevel = chooseNextSkill(&mob.Mob)
 	}
 
 	conn.Send(packets.MobControlAcknowledge(mobSpawnID, moveID, skillPossible, int16(mob.MP), mob.SkillID, mob.SkillLevel)) // change zeros to what is calculated as next move
-	game.SendToMapExcept(player.Char().CurrentMap, packets.MobMove(mobSpawnID, skillPossible, byte(action), skillData, moveBytes), conn)
+	game.SendToMapExcept(char.CurrentMap, packets.MobMove(mobSpawnID, skillPossible, byte(action), skillData, moveBytes), conn)
 }
 
 func chooseNextSkill(mob *types.Mob) (byte, byte) {

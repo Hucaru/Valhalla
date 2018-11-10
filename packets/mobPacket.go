@@ -42,6 +42,12 @@ func addMob(mob types.Mob) maplepacket.Packet {
 		bitfield = 0x02
 	}
 
+	if mob.FacesLeft {
+		bitfield |= 0x01
+	} else {
+		bitfield |= 0x04
+	}
+
 	if mob.Stance%2 == 1 {
 		bitfield |= 0x01
 	} else {

@@ -1,4 +1,4 @@
-package channelhandlers
+package channel
 
 import (
 	"encoding/hex"

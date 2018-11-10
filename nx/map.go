@@ -9,17 +9,17 @@ import (
 )
 
 type Life struct {
-	ID       int32
-	Cy       int64
-	F        byte
-	Foothold int16
-	Hide     bool
-	MobTime  int64
-	Rx0      int16
-	Rx1      int16
-	IsMob    bool
-	X        int16
-	Y        int16
+	ID        int32
+	Cy        int64
+	FacesLeft bool
+	Foothold  int16
+	Hide      bool
+	MobTime   int64
+	Rx0       int16
+	Rx1       int16
+	IsMob     bool
+	X         int16
+	Y         int16
 }
 
 type Portal struct {
@@ -186,7 +186,7 @@ func getLifeItem(n node) Life {
 		case "cy":
 			lifeItem.Cy = dataToInt64(lifeNode.Data)
 		case "f":
-			lifeItem.F = lifeNode.Data[0]
+			lifeItem.FacesLeft = dataToBool(lifeNode.Data[0])
 		case "fh":
 			lifeItem.Foothold = dataToInt16(lifeNode.Data)
 		case "hide":

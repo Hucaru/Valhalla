@@ -47,7 +47,7 @@ func (p *Player) sendMapItems() {
 	for _, mob := range maps[p.char.CurrentMap].mobs {
 		if mob.HP > 0 {
 			mob.SummonType = -1 // -2: fade in spawn animation, -1: no spawn animation
-			p.Send(packets.MobShow(mob))
+			p.Send(packets.MobShow(mob.Mob))
 		}
 	}
 

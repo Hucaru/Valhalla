@@ -1,4 +1,4 @@
-package worldhandlers
+package world
 
 import (
 	"log"
