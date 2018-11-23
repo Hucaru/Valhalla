@@ -249,8 +249,8 @@ func playerPassiveRegen(conn mnet.MConnChannel, reader maplepacket.Reader) {
 	}
 
 	if hp > 0 {
-		player.GiveHP(hp)
+		player.GiveHP(int32(hp))
 	} else if mp > 0 {
-		player.GiveMP(mp)
+		player.GiveMP(int32(mp))
 	}
 }

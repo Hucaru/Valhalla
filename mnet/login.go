@@ -4,8 +4,8 @@ import (
 	"net"
 
 	"github.com/Hucaru/Valhalla/consts"
-	"github.com/Hucaru/Valhalla/crypt"
 	"github.com/Hucaru/Valhalla/database"
+	"github.com/Hucaru/Valhalla/mnet/crypt"
 
 	"github.com/Hucaru/Valhalla/maplepacket"
 )

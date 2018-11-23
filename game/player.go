@@ -76,32 +76,32 @@ func (p *Player) Kill() {
 
 }
 
-func (p *Player) SetHP(ammount int16) {
-	p.char.HP = ammount
+func (p *Player) SetHP(ammount int32) {
+	p.char.HP = int16(ammount)
 
 	if p.char.HP > p.char.MaxHP {
 		p.char.HP = p.char.MaxHP
 	}
 
-	p.Send(packets.PlayerStatChange(true, consts.HP_ID, int32(p.char.HP)))
+	p.Send(packets.PlayerStatChange(true, consts.HP_ID, ammount))
 }
 
-func (p *Player) GiveHP(ammount int16) {
-	p.SetHP(p.char.HP + ammount)
+func (p *Player) GiveHP(ammount int32) {
+	p.SetHP(int32(p.char.HP) + ammount)
 }
 
-func (p *Player) SetMP(ammount int16) {
-	p.char.MP = ammount
+func (p *Player) SetMP(ammount int32) {
+	p.char.MP = int16(ammount)
 
 	if p.char.MP > p.char.MaxMP {
 		p.char.MP = p.char.MaxMP
 	}
 
-	p.Send(packets.PlayerStatChange(true, consts.MP_ID, int32(p.char.MP)))
+	p.Send(packets.PlayerStatChange(true, consts.MP_ID, ammount))
 }
 
-func (p *Player) GiveMP(ammount int16) {
-	p.SetMP(p.char.MP + ammount)
+func (p *Player) GiveMP(ammount int32) {
+	p.SetMP(int32(p.char.MP) + ammount)
 }
 
 func (p *Player) SetEXP() {
