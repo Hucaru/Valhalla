@@ -30,17 +30,20 @@ func HandlePacket(conn mnet.MConnChannel, reader maplepacket.Reader) {
 		chatSendAll(conn, reader)
 	case opcodes.RecvChannelSlashCommands:
 	case opcodes.RecvChannelCharacterUIWindow:
-	case opcodes.RecvChannelEmoticon:
+	case opcodes.RecvChannelEmote:
+		playerEmote(conn, reader)
 	case opcodes.RecvChannelNpcDialogue:
 	case opcodes.RecvChannelNpcDialogueContinue:
 	case opcodes.RecvChannelNpcShop:
 	case opcodes.RecvChannelInvMoveItem:
 	case opcodes.RecvChannelChangeStat:
 	case opcodes.RecvChannelPassiveRegen:
+		playerPassiveRegen(conn, reader)
 	case opcodes.RecvChannelSkillUpdate:
 	case opcodes.RecvChannelSpecialSkill:
 		playerSpecialSkill(conn, reader)
 	case opcodes.RecvChannelCharacterInfo:
+		playerRequestAvatarInfoWindow(conn, reader)
 	case opcodes.RecvChannelLieDetectorResult:
 	case opcodes.RecvChannelPartyInfo:
 	case opcodes.RecvChannelGuildManagement:

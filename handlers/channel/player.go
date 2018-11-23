@@ -47,9 +47,15 @@ func playerConnect(conn mnet.MConnChannel, reader maplepacket.Reader) {
 }
 
 func playerUsePortal(conn mnet.MConnChannel, reader maplepacket.Reader) {
-	player := game.GetPlayerFromConn(conn)
+	player, err := game.GetPlayerFromConn(conn)
 
-	if player.Char().PortalCount != reader.ReadByte() {
+	if err != nil {
+		return
+	}
+
+	char := player.Char()
+
+	if char.PortalCount != reader.ReadByte() {
 		conn.Send(packets.PlayerNoChange())
 		return
 	}
@@ -58,15 +64,15 @@ func playerUsePortal(conn mnet.MConnChannel, reader maplepacket.Reader) {
 
 	switch entryType {
 	case 0:
-		if player.Char().HP == 0 {
-			returnMapID := nx.Maps[player.Char().CurrentMap].ReturnMap
+		if char.HP == 0 {
+			returnMapID := nx.Maps[char.CurrentMap].ReturnMap
 			portal, id := game.GetRandomSpawnPortal(returnMapID)
 			player.ChangeMap(returnMapID, portal, id)
 		}
 	case -1:
 		portalName := reader.ReadString(int(reader.ReadInt16()))
 
-		for _, src := range nx.Maps[player.Char().CurrentMap].Portals {
+		for _, src := range nx.Maps[char.CurrentMap].Portals {
 			if src.Name == portalName {
 				for i, dest := range nx.Maps[src.Tm].Portals {
 					if dest.Name == src.Tn {
@@ -86,7 +92,12 @@ func playerEnterCashShop(conn mnet.MConnChannel, reader maplepacket.Reader) {
 }
 
 func playerMovement(conn mnet.MConnChannel, reader maplepacket.Reader) {
-	player := game.GetPlayerFromConn(conn)
+	player, err := game.GetPlayerFromConn(conn)
+
+	if err != nil {
+		return
+	}
+
 	char := player.Char()
 
 	if char.PortalCount != reader.ReadByte() {
@@ -117,7 +128,12 @@ func playerTakeDamage(conn mnet.MConnChannel, reader maplepacket.Reader) {
 	reducedDamange := damage
 	healSkillID := int32(0)
 
-	player := game.GetPlayerFromConn(conn)
+	player, err := game.GetPlayerFromConn(conn)
+
+	if err != nil {
+		return
+	}
+
 	char := player.Char()
 
 	if char.HP == 0 {
@@ -185,4 +201,56 @@ func playerTakeDamage(conn mnet.MConnChannel, reader maplepacket.Reader) {
 }
 
 func playerRequestAvatarInfoWindow(conn mnet.MConnChannel, reader maplepacket.Reader) {
+	player, err := game.GetPlayerFromID(reader.ReadInt32())
+
+	if err != nil {
+		return
+	}
+
+	char := player.Char()
+
+	conn.Send(packets.PlayerAvatarSummaryWindow(char.ID, char, char.Guild))
+}
+
+func playerEmote(conn mnet.MConnChannel, reader maplepacket.Reader) {
+	emote := reader.ReadInt32()
+
+	player, err := game.GetPlayerFromConn(conn)
+
+	if err != nil {
+		return
+	}
+
+	char := player.Char()
+
+	mapID := char.CurrentMap
+
+	game.SendToMapExcept(mapID, packets.PlayerEmoticon(char.ID, emote), conn)
+}
+
+func playerPassiveRegen(conn mnet.MConnChannel, reader maplepacket.Reader) {
+	reader.ReadBytes(4) //?
+
+	hp := reader.ReadInt16()
+	mp := reader.ReadInt16()
+
+	// validate the values
+
+	player, err := game.GetPlayerFromConn(conn)
+
+	if err != nil {
+		return
+	}
+
+	char := player.Char()
+
+	if char.HP == 0 || hp > 400 || mp > 1000 || (hp > 0 && mp > 0) {
+		return
+	}
+
+	if hp > 0 {
+		player.GiveHP(hp)
+	} else if mp > 0 {
+		player.GiveMP(mp)
+	}
 }

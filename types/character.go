@@ -32,6 +32,7 @@ type Character struct {
 	Fame  int16
 
 	Avatar
+	Guild string
 
 	EquipSlotSize byte
 	UseSlotSize   byte

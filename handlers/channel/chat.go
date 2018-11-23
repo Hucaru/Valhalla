@@ -21,7 +21,14 @@ func chatSendAll(conn mnet.MConnChannel, reader maplepacket.Reader) {
 	if strings.Index(msg, "/") == 0 && conn.GetAdminLevel() > 0 {
 		gmCommand(conn, msg)
 	} else {
-		char := game.GetPlayerFromConn(conn).Char()
+		player, err := game.GetPlayerFromConn(conn)
+
+		if err != nil {
+			return
+		}
+
+		char := player.Char()
+
 		game.SendToMap(char.CurrentMap, packets.MessageAllChat(char.ID, conn.GetAdminLevel() > 0, msg))
 	}
 }
@@ -109,7 +116,12 @@ func gmCommand(conn mnet.MConnChannel, msg string) {
 			return
 		}
 
-		player := game.GetPlayerFromConn(conn)
+		player, err := game.GetPlayerFromConn(conn)
+
+		if err != nil {
+			return
+		}
+
 		p, id := game.GetRandomSpawnPortal(mapID)
 		player.ChangeMap(mapID, p, id)
 
@@ -117,7 +129,14 @@ func gmCommand(conn mnet.MConnChannel, msg string) {
 		if len(command) < 2 {
 			return
 		}
-		char := game.GetPlayerFromConn(conn).Char()
+		player, err := game.GetPlayerFromConn(conn)
+
+		if err != nil {
+			return
+		}
+
+		char := player.Char()
+
 		game.SendToMap(char.CurrentMap, packets.MessageNotice(strings.Join(command[1:], " ")))
 	default:
 		log.Println("Unkown GM command:", msg)

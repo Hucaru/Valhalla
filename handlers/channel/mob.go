@@ -28,7 +28,12 @@ func mobControl(conn mnet.MConnChannel, reader maplepacket.Reader) {
 
 	skillPossible := (bits & 0x0F) != 0
 
-	player := game.GetPlayerFromConn(conn)
+	player, err := game.GetPlayerFromConn(conn)
+
+	if err != nil {
+		return
+	}
+
 	char := player.Char()
 	mob := game.GetMapFromID(char.CurrentMap).GetMobFromID(mobSpawnID)
 

@@ -1,6 +1,7 @@
 package game
 
 import (
+	"github.com/Hucaru/Valhalla/consts"
 	"github.com/Hucaru/Valhalla/mnet"
 	"github.com/Hucaru/Valhalla/nx"
 	"github.com/Hucaru/Valhalla/packets"
@@ -75,12 +76,32 @@ func (p *Player) Kill() {
 
 }
 
-func (p *Player) SetHP(ammount int32) {
+func (p *Player) SetHP(ammount int16) {
+	p.char.HP = ammount
 
+	if p.char.HP > p.char.MaxHP {
+		p.char.HP = p.char.MaxHP
+	}
+
+	p.Send(packets.PlayerStatChange(true, consts.HP_ID, int32(p.char.HP)))
 }
 
-func (p *Player) GiveHP(ammount int32) {
+func (p *Player) GiveHP(ammount int16) {
+	p.SetHP(p.char.HP + ammount)
+}
 
+func (p *Player) SetMP(ammount int16) {
+	p.char.MP = ammount
+
+	if p.char.MP > p.char.MaxMP {
+		p.char.MP = p.char.MaxMP
+	}
+
+	p.Send(packets.PlayerStatChange(true, consts.MP_ID, int32(p.char.MP)))
+}
+
+func (p *Player) GiveMP(ammount int16) {
+	p.SetMP(p.char.MP + ammount)
 }
 
 func (p *Player) SetEXP() {
@@ -98,19 +119,23 @@ func (p *Player) SetLevel() {
 func (p *Player) GiveLevel() {
 }
 
-func (p *Player) SetAP() {
+func (p *Player) SetAP(ammount int16) {
 
 }
 
-func (p *Player) GiveAP() {
+func (p *Player) GiveAP(ammount int16) {
+	p.SetAP(p.char.AP + ammount)
+}
+
+func (p *Player) SetSP(ammount int16) {
 
 }
 
-func (p *Player) SetSP() {
-
+func (p *Player) GiveSP(ammount int16) {
+	p.SetSP(p.char.SP + ammount)
 }
 
-func (p *Player) GiveSP() {
+func (p *Player) SetMesos() {
 
 }
 

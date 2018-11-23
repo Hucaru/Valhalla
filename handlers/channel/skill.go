@@ -10,7 +10,12 @@ import (
 )
 
 func playerMeleeSkill(conn mnet.MConnChannel, reader maplepacket.Reader) {
-	player := game.GetPlayerFromConn(conn)
+	player, err := game.GetPlayerFromConn(conn)
+
+	if err != nil {
+		return
+	}
+
 	data, valid := getAttackInfo(reader, player, attackMelee)
 
 	if !valid {
@@ -37,7 +42,12 @@ func playerMeleeSkill(conn mnet.MConnChannel, reader maplepacket.Reader) {
 }
 
 func playerRangedSkill(conn mnet.MConnChannel, reader maplepacket.Reader) {
-	player := game.GetPlayerFromConn(conn)
+	player, err := game.GetPlayerFromConn(conn)
+
+	if err != nil {
+		return
+	}
+
 	data, valid := getAttackInfo(reader, player, attackRanged)
 
 	if !valid {
@@ -64,7 +74,12 @@ func playerRangedSkill(conn mnet.MConnChannel, reader maplepacket.Reader) {
 }
 
 func playerMagicSkill(conn mnet.MConnChannel, reader maplepacket.Reader) {
-	player := game.GetPlayerFromConn(conn)
+	player, err := game.GetPlayerFromConn(conn)
+
+	if err != nil {
+		return
+	}
+
 	data, valid := getAttackInfo(reader, player, attackMagic)
 
 	if !valid {
@@ -96,7 +111,11 @@ func playerMagicSkill(conn mnet.MConnChannel, reader maplepacket.Reader) {
 }
 
 func playerSpecialSkill(conn mnet.MConnChannel, reader maplepacket.Reader) {
-	player := game.GetPlayerFromConn(conn)
+	player, err := game.GetPlayerFromConn(conn)
+
+	if err != nil {
+		return
+	}
 
 	skillID := reader.ReadInt32()
 	skillLevel := reader.ReadByte()

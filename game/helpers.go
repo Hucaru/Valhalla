@@ -1,7 +1,9 @@
 package game
 
 import (
+	"errors"
 	"math/rand"
+	"strconv"
 
 	"github.com/Hucaru/Valhalla/maplepacket"
 	"github.com/Hucaru/Valhalla/packets"
@@ -31,8 +33,22 @@ func RemovePlayer(conn mnet.MConnChannel) {
 
 }
 
-func GetPlayerFromConn(conn mnet.MConnChannel) Player {
-	return players[conn]
+func GetPlayerFromConn(conn mnet.MConnChannel) (Player, error) {
+	if val, ok := players[conn]; ok {
+		return val, nil
+	}
+
+	return Player{}, errors.New("Player from connection " + conn.String() + " not found")
+}
+
+func GetPlayerFromID(id int32) (Player, error) {
+	for _, p := range players {
+		if p.Char().ID == id {
+			return p, nil
+		}
+	}
+
+	return Player{}, errors.New("Player ID " + strconv.Itoa(int(id)) + " not found")
 }
 
 func GetPlayersFromMapID(id int32) []Player {

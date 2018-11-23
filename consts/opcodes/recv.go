@@ -23,7 +23,7 @@ const (
 	RecvChannelMagicSkill          maplepacket.Opcode = 0x1F
 	RecvChannelDmgRecv             maplepacket.Opcode = 0x21
 	RecvChannelPlayerSendAllChat   maplepacket.Opcode = 0x22
-	RecvChannelEmoticon            maplepacket.Opcode = 0x23
+	RecvChannelEmote               maplepacket.Opcode = 0x23
 	RecvChannelNpcDialogue         maplepacket.Opcode = 0x27
 	RecvChannelNpcDialogueContinue maplepacket.Opcode = 0x28
 	RecvChannelNpcShop             maplepacket.Opcode = 0x29
