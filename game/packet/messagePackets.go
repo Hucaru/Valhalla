@@ -2,27 +2,27 @@ package packet
 
 import (
 	"github.com/Hucaru/Valhalla/consts/opcodes"
-	"github.com/Hucaru/Valhalla/maplepacket"
+	"github.com/Hucaru/Valhalla/mpacket"
 )
 
-func MessageRedText(msg string) maplepacket.Packet {
-	p := maplepacket.CreateWithOpcode(opcodes.SendChannelInfoMessage)
+func MessageRedText(msg string) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcodes.SendChannelInfoMessage)
 	p.WriteByte(9)
 	p.WriteString(msg)
 
 	return p
 }
 
-func MessageGuildPointsChange(ammount int32) maplepacket.Packet {
-	p := maplepacket.CreateWithOpcode(opcodes.SendChannelInfoMessage)
+func MessageGuildPointsChange(ammount int32) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcodes.SendChannelInfoMessage)
 	p.WriteByte(6)
 	p.WriteInt32(ammount)
 
 	return p
 }
 
-func MessageFameChange(ammount int32) maplepacket.Packet {
-	p := maplepacket.CreateWithOpcode(opcodes.SendChannelInfoMessage)
+func MessageFameChange(ammount int32) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcodes.SendChannelInfoMessage)
 	p.WriteByte(4)
 	p.WriteInt32(ammount)
 
@@ -30,31 +30,31 @@ func MessageFameChange(ammount int32) maplepacket.Packet {
 }
 
 // sends the [item name] has passed its expeiration date and will be removed from your inventory
-func MessageItemExpired(itemID int32) maplepacket.Packet {
-	p := maplepacket.CreateWithOpcode(opcodes.SendChannelInfoMessage)
+func MessageItemExpired(itemID int32) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcodes.SendChannelInfoMessage)
 	p.WriteByte(2)
 	p.WriteInt32(itemID)
 	return p
 }
 
-func MessageItemExpired2(itemID int32) maplepacket.Packet {
-	p := maplepacket.CreateWithOpcode(opcodes.SendChannelInfoMessage)
+func MessageItemExpired2(itemID int32) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcodes.SendChannelInfoMessage)
 	p.WriteByte(8)
 	p.WriteByte(1)
 	p.WriteInt32(itemID)
 	return p
 }
 
-func MessageMesosChangeChat(ammount int32) maplepacket.Packet {
-	p := maplepacket.CreateWithOpcode(opcodes.SendChannelInfoMessage)
+func MessageMesosChangeChat(ammount int32) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcodes.SendChannelInfoMessage)
 	p.WriteByte(5)
 	p.WriteInt32(ammount)
 
 	return p
 }
 
-func MessageUnableToPickUp(itemNotAvailable bool) maplepacket.Packet {
-	p := maplepacket.CreateWithOpcode(opcodes.SendChannelInfoMessage)
+func MessageUnableToPickUp(itemNotAvailable bool) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcodes.SendChannelInfoMessage)
 	p.WriteByte(0)
 	if itemNotAvailable {
 		p.WriteByte(0xFE)
@@ -65,8 +65,8 @@ func MessageUnableToPickUp(itemNotAvailable bool) maplepacket.Packet {
 	return p
 }
 
-func MessageDropPickUp(isMesos bool, itemID, ammount int32) maplepacket.Packet {
-	p := maplepacket.CreateWithOpcode(opcodes.SendChannelInfoMessage)
+func MessageDropPickUp(isMesos bool, itemID, ammount int32) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcodes.SendChannelInfoMessage)
 	p.WriteByte(0)
 
 	if isMesos {
@@ -80,8 +80,8 @@ func MessageDropPickUp(isMesos bool, itemID, ammount int32) maplepacket.Packet {
 	return p
 }
 
-func MessageExpGained(whiteText, appearInChat bool, ammount int32) maplepacket.Packet {
-	p := maplepacket.CreateWithOpcode(opcodes.SendChannelInfoMessage)
+func MessageExpGained(whiteText, appearInChat bool, ammount int32) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcodes.SendChannelInfoMessage)
 	p.WriteByte(3)
 	p.WriteBool(whiteText)
 	p.WriteInt32(ammount)
@@ -90,24 +90,24 @@ func MessageExpGained(whiteText, appearInChat bool, ammount int32) maplepacket.P
 	return p
 }
 
-func MessageNotice(msg string) maplepacket.Packet {
-	p := maplepacket.CreateWithOpcode(opcodes.SendChannelBroadcastMessage)
+func MessageNotice(msg string) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcodes.SendChannelBroadcastMessage)
 	p.WriteByte(0)
 	p.WriteString(msg)
 
 	return p
 }
 
-func MessageDialogueBox(msg string) maplepacket.Packet {
-	p := maplepacket.CreateWithOpcode(opcodes.SendChannelBroadcastMessage)
+func MessageDialogueBox(msg string) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcodes.SendChannelBroadcastMessage)
 	p.WriteByte(1)
 	p.WriteString(msg)
 
 	return p
 }
 
-func MessageWhiteBar(msg string) maplepacket.Packet {
-	p := maplepacket.CreateWithOpcode(opcodes.SendChannelBroadcastMessage)
+func MessageWhiteBar(msg string) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcodes.SendChannelBroadcastMessage)
 	p.WriteByte(2)
 	p.WriteString(msg) // not sure how string is formated
 
@@ -115,8 +115,8 @@ func MessageWhiteBar(msg string) maplepacket.Packet {
 }
 
 // Need to figure out how to display the username and  atm it bastardises it.
-func MessageBroadcastChannel(senderName string, msg string, channel byte, ear bool) maplepacket.Packet {
-	p := maplepacket.CreateWithOpcode(opcodes.SendChannelBroadcastMessage)
+func MessageBroadcastChannel(senderName string, msg string, channel byte, ear bool) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcodes.SendChannelBroadcastMessage)
 	p.WriteByte(3)
 	p.WriteString(senderName)
 	p.WriteByte(channel)
@@ -129,8 +129,8 @@ func MessageBroadcastChannel(senderName string, msg string, channel byte, ear bo
 	return p
 }
 
-func MessageScrollingHeader(msg string) maplepacket.Packet {
-	p := maplepacket.CreateWithOpcode(opcodes.SendChannelBroadcastMessage)
+func MessageScrollingHeader(msg string) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcodes.SendChannelBroadcastMessage)
 	p.WriteByte(4)
 	p.WriteBool(bool(len(msg) > 0))
 	p.WriteString(msg)
@@ -138,8 +138,8 @@ func MessageScrollingHeader(msg string) maplepacket.Packet {
 	return p
 }
 
-func MessageBubblessChat(msgType byte, sender string, msg string) maplepacket.Packet {
-	p := maplepacket.CreateWithOpcode(opcodes.SendChannelBubblessChat)
+func MessageBubblessChat(msgType byte, sender string, msg string) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcodes.SendChannelBubblessChat)
 	p.WriteByte(msgType) // 0x00 buddy chat, 0x01 - party, 0x02 - guild
 	p.WriteString(sender)
 	p.WriteString(msg)
@@ -147,8 +147,8 @@ func MessageBubblessChat(msgType byte, sender string, msg string) maplepacket.Pa
 	return p
 }
 
-func MessageWhisper(sender string, message string, channel byte) maplepacket.Packet {
-	p := maplepacket.CreateWithOpcode(opcodes.SendChannelWhisper)
+func MessageWhisper(sender string, message string, channel byte) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcodes.SendChannelWhisper)
 	p.WriteByte(0x12)
 	p.WriteString(sender)
 	p.WriteByte(channel)
@@ -157,8 +157,8 @@ func MessageWhisper(sender string, message string, channel byte) maplepacket.Pac
 	return p
 }
 
-func MessageFindResult(character string, isAdmin, inCashShop, sameChannel bool, mapID int32) maplepacket.Packet {
-	p := maplepacket.CreateWithOpcode(opcodes.SendChannelWhisper)
+func MessageFindResult(character string, isAdmin, inCashShop, sameChannel bool, mapID int32) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcodes.SendChannelWhisper)
 
 	if isAdmin {
 		p.WriteByte(0x05)
@@ -190,8 +190,8 @@ func MessageFindResult(character string, isAdmin, inCashShop, sameChannel bool, 
 	return p
 }
 
-func MessageAllChat(senderID int32, isAdmin bool, msg string) maplepacket.Packet {
-	p := maplepacket.CreateWithOpcode(opcodes.SendChannelAllChatMsg)
+func MessageAllChat(senderID int32, isAdmin bool, msg string) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcodes.SendChannelAllChatMsg)
 	p.WriteInt32(senderID)
 	p.WriteBool(isAdmin)
 	p.WriteString(msg)
@@ -200,8 +200,8 @@ func MessageAllChat(senderID int32, isAdmin bool, msg string) maplepacket.Packet
 }
 
 // Implement logic for these
-func MessageGmBan(good bool) maplepacket.Packet {
-	p := maplepacket.CreateWithOpcode(opcodes.SendChannelEmployee)
+func MessageGmBan(good bool) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcodes.SendChannelEmployee)
 	if good {
 		p.WriteByte(4)
 		p.WriteByte(0)
@@ -213,16 +213,16 @@ func MessageGmBan(good bool) maplepacket.Packet {
 	return p
 }
 
-func MessageGmRemoveFromRanks() maplepacket.Packet {
-	p := maplepacket.CreateWithOpcode(opcodes.SendChannelEmployee)
+func MessageGmRemoveFromRanks() mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcodes.SendChannelEmployee)
 	p.WriteByte(6)
 	p.WriteByte(0)
 
 	return p
 }
 
-func MessageGmWarning(good bool) maplepacket.Packet {
-	p := maplepacket.CreateWithOpcode(opcodes.SendChannelEmployee)
+func MessageGmWarning(good bool) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcodes.SendChannelEmployee)
 	p.WriteByte(14)
 	if good {
 		p.WriteByte(1)
@@ -233,16 +233,16 @@ func MessageGmWarning(good bool) maplepacket.Packet {
 	return p
 }
 
-func MessageGmBlockedAccess() maplepacket.Packet {
-	p := maplepacket.CreateWithOpcode(opcodes.SendChannelEmployee)
+func MessageGmBlockedAccess() mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcodes.SendChannelEmployee)
 	p.WriteByte(4)
 	p.WriteByte(0)
 
 	return p
 }
 
-func MessageGmUnblock() maplepacket.Packet {
-	p := maplepacket.CreateWithOpcode(opcodes.SendChannelEmployee)
+func MessageGmUnblock() mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcodes.SendChannelEmployee)
 	p.WriteByte(5)
 	p.WriteByte(0)
 
@@ -250,8 +250,8 @@ func MessageGmUnblock() maplepacket.Packet {
 }
 
 // Don't know what this is used for
-func MessageGmWrongNpc() maplepacket.Packet {
-	p := maplepacket.CreateWithOpcode(opcodes.SendChannelEmployee)
+func MessageGmWrongNpc() mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcodes.SendChannelEmployee)
 	p.WriteByte(8)
 	p.WriteInt16(0)
 

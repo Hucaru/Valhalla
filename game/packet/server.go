@@ -1,11 +1,9 @@
 package packet
 
-import (
-	"github.com/Hucaru/Valhalla/maplepacket"
-)
+import "github.com/Hucaru/Valhalla/mpacket"
 
-func ServerWorldInformation(name, msg string, ribbon, expEvent, nChannels byte, population []int32, addresses [][]byte, ports []int16) maplepacket.Packet {
-	p := maplepacket.CreateWithOpcode(0x00)
+func ServerWorldInformation(name, msg string, ribbon, expEvent, nChannels byte, population []int32, addresses [][]byte, ports []int16) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(0x00)
 	p.WriteString(name)
 	p.WriteByte(ribbon)
 	p.WriteString(msg)
@@ -22,19 +20,19 @@ func ServerWorldInformation(name, msg string, ribbon, expEvent, nChannels byte, 
 	return p
 }
 
-func ServerChannelID(id byte) maplepacket.Packet {
-	p := maplepacket.CreateWithOpcode(0x01)
+func ServerChannelID(id byte) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(0x01)
 	p.WriteByte(id)
 
 	return p
 }
 
-func ServerNewPlayer() maplepacket.Packet {
-	p := maplepacket.CreateWithOpcode(0x02)
+func ServerNewPlayer() mpacket.Packet {
+	p := mpacket.CreateWithOpcode(0x02)
 	return p
 }
 
-func ServerPlayerLeave() maplepacket.Packet {
-	p := maplepacket.CreateWithOpcode(0x03)
+func ServerPlayerLeave() mpacket.Packet {
+	p := mpacket.CreateWithOpcode(0x03)
 	return p
 }

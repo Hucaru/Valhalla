@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Hucaru/Valhalla/maplepacket"
+	"github.com/Hucaru/Valhalla/mpacket"
 	"github.com/Hucaru/Valhalla/mnet"
 	"github.com/Hucaru/Valhalla/game/packet"
 )
@@ -122,7 +122,7 @@ func (m *mapleMap) RemovePlayer(player mnet.MConnChannel) {
 	m.playerLeaveMap(player)
 }
 
-func (m *mapleMap) SendPacket(packet maplepacket.Packet) {
+func (m *mapleMap) SendPacket(packet mpacket.Packet) {
 	if len(packet) > 0 {
 		m.mutex.RLock()
 		for _, player := range m.players {
@@ -132,7 +132,7 @@ func (m *mapleMap) SendPacket(packet maplepacket.Packet) {
 	}
 }
 
-func (m *mapleMap) SendPacketExcept(packet maplepacket.Packet, conn mnet.MConnChannel) {
+func (m *mapleMap) SendPacketExcept(packet mpacket.Packet, conn mnet.MConnChannel) {
 	if len(packet) > 0 {
 		m.mutex.RLock()
 		for _, player := range m.players {

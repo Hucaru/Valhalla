@@ -6,12 +6,12 @@ import (
 	"github.com/Hucaru/Valhalla/channel"
 	"github.com/Hucaru/Valhalla/consts"
 	"github.com/Hucaru/Valhalla/inventory"
-	"github.com/Hucaru/Valhalla/maplepacket"
+	"github.com/Hucaru/Valhalla/mpacket"
 	"github.com/Hucaru/Valhalla/mnet"
 	"github.com/Hucaru/Valhalla/game/packet"
 )
 
-func handleMoveInventoryItem(conn mnet.MConnChannel, reader maplepacket.Reader) {
+func handleMoveInventoryItem(conn mnet.MConnChannel, reader mpacket.Reader) {
 	invTabID := reader.ReadByte()
 	origPos := reader.ReadInt16()
 	newPos := reader.ReadInt16()

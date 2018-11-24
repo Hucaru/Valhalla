@@ -1,11 +1,9 @@
 package packet
 
-import (
-	"github.com/Hucaru/Valhalla/maplepacket"
-)
+import "github.com/Hucaru/Valhalla/mpacket"
 
-func ClientHandshake(mapleVersion int16, recv, send []byte) maplepacket.Packet {
-	p := maplepacket.NewPacket()
+func ClientHandshake(mapleVersion int16, recv, send []byte) mpacket.Packet {
+	p := mpacket.NewPacket()
 
 	p.WriteInt16(13)
 	p.WriteInt16(mapleVersion)

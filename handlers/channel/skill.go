@@ -5,11 +5,11 @@ import (
 	"github.com/Hucaru/Valhalla/game/def"
 	"github.com/Hucaru/Valhalla/game/packet"
 
-	"github.com/Hucaru/Valhalla/maplepacket"
+	"github.com/Hucaru/Valhalla/mpacket"
 	"github.com/Hucaru/Valhalla/mnet"
 )
 
-func playerMeleeSkill(conn mnet.MConnChannel, reader maplepacket.Reader) {
+func playerMeleeSkill(conn mnet.MConnChannel, reader mpacket.Reader) {
 	player, err := game.GetPlayerFromConn(conn)
 
 	if err != nil {
@@ -41,7 +41,7 @@ func playerMeleeSkill(conn mnet.MConnChannel, reader maplepacket.Reader) {
 	game.GetMapFromID(char.CurrentMap).HandleDeadMobs()
 }
 
-func playerRangedSkill(conn mnet.MConnChannel, reader maplepacket.Reader) {
+func playerRangedSkill(conn mnet.MConnChannel, reader mpacket.Reader) {
 	player, err := game.GetPlayerFromConn(conn)
 
 	if err != nil {
@@ -73,7 +73,7 @@ func playerRangedSkill(conn mnet.MConnChannel, reader maplepacket.Reader) {
 	game.GetMapFromID(char.CurrentMap).HandleDeadMobs()
 }
 
-func playerMagicSkill(conn mnet.MConnChannel, reader maplepacket.Reader) {
+func playerMagicSkill(conn mnet.MConnChannel, reader mpacket.Reader) {
 	player, err := game.GetPlayerFromConn(conn)
 
 	if err != nil {
@@ -110,7 +110,7 @@ func playerMagicSkill(conn mnet.MConnChannel, reader maplepacket.Reader) {
 	}
 }
 
-func playerSpecialSkill(conn mnet.MConnChannel, reader maplepacket.Reader) {
+func playerSpecialSkill(conn mnet.MConnChannel, reader mpacket.Reader) {
 	player, err := game.GetPlayerFromConn(conn)
 
 	if err != nil {
@@ -142,7 +142,7 @@ const (
 	attackSummon
 )
 
-func getAttackInfo(reader maplepacket.Reader, player game.Player, attackType int) (def.AttackData, bool) {
+func getAttackInfo(reader mpacket.Reader, player game.Player, attackType int) (def.AttackData, bool) {
 	data := def.AttackData{}
 
 	if player.Char().HP == 0 {

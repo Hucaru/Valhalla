@@ -3,7 +3,7 @@ package mnet
 import (
 	"net"
 
-	"github.com/Hucaru/Valhalla/maplepacket"
+	"github.com/Hucaru/Valhalla/mpacket"
 )
 
 const (
@@ -17,6 +17,6 @@ const (
 
 type Event struct {
 	Type   int
-	Packet maplepacket.Packet
+	Packet mpacket.Packet
 	Conn   net.Conn
 }

@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/Hucaru/Valhalla/game/def"
-	"github.com/Hucaru/Valhalla/maplepacket"
+	"github.com/Hucaru/Valhalla/mpacket"
 )
 
 // values from WvsGlobal
@@ -36,7 +36,7 @@ var movementType = struct {
 	normalMovement3:  17,
 }
 
-func parseMovement(reader maplepacket.Reader) (def.MovementData, def.MovementFrag) {
+func parseMovement(reader mpacket.Reader) (def.MovementData, def.MovementFrag) {
 	// http://mapleref.wikia.com/wiki/Movement
 
 	mData := def.MovementData{}
@@ -122,8 +122,8 @@ func parseMovement(reader maplepacket.Reader) (def.MovementData, def.MovementFra
 	return mData, final
 }
 
-func generateMovementBytes(moveData def.MovementData) maplepacket.Packet {
-	p := maplepacket.NewPacket()
+func generateMovementBytes(moveData def.MovementData) mpacket.Packet {
+	p := mpacket.NewPacket()
 
 	p.WriteInt16(moveData.OrigX)
 	p.WriteInt16(moveData.OrigY)

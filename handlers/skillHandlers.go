@@ -4,12 +4,12 @@ import (
 	"fmt"
 
 	"github.com/Hucaru/Valhalla/channel"
-	"github.com/Hucaru/Valhalla/maplepacket"
+	"github.com/Hucaru/Valhalla/mpacket"
 	"github.com/Hucaru/Valhalla/mnet"
 	"github.com/Hucaru/Valhalla/game/packet"
 )
 
-func handleStandardSkill(conn mnet.MConnChannel, reader maplepacket.Reader) {
+func handleStandardSkill(conn mnet.MConnChannel, reader mpacket.Reader) {
 	tByte := reader.ReadByte()
 
 	targets := tByte / 0x10
@@ -59,7 +59,7 @@ func handleStandardSkill(conn mnet.MConnChannel, reader maplepacket.Reader) {
 
 }
 
-func handleRangedSkill(conn mnet.MConnChannel, reader maplepacket.Reader) {
+func handleRangedSkill(conn mnet.MConnChannel, reader mpacket.Reader) {
 	tByte := reader.ReadByte()
 
 	targets := tByte / 0x10
@@ -103,7 +103,7 @@ func handleRangedSkill(conn mnet.MConnChannel, reader maplepacket.Reader) {
 	})
 }
 
-func handleMagicSkill(conn mnet.MConnChannel, reader maplepacket.Reader) {
+func handleMagicSkill(conn mnet.MConnChannel, reader mpacket.Reader) {
 	tByte := reader.ReadByte()
 
 	targets := tByte / 0x10
@@ -146,7 +146,7 @@ func handleMagicSkill(conn mnet.MConnChannel, reader maplepacket.Reader) {
 	})
 }
 
-func handleSpecialSkill(conn mnet.MConnChannel, reader maplepacket.Reader) {
+func handleSpecialSkill(conn mnet.MConnChannel, reader mpacket.Reader) {
 	skillID := reader.ReadInt32()
 	level := reader.ReadByte()
 

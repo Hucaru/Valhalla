@@ -5,7 +5,7 @@ import (
 
 	"github.com/Hucaru/Valhalla/consts"
 	"github.com/Hucaru/Valhalla/database"
-	"github.com/Hucaru/Valhalla/maplepacket"
+	"github.com/Hucaru/Valhalla/mpacket"
 	"github.com/Hucaru/Valhalla/mnet/crypt"
 )
 
@@ -32,7 +32,7 @@ func NewChannel(conn net.Conn, eRecv chan *Event, queueSize int, keySend, keyRec
 	c := &channel{}
 	c.Conn = conn
 
-	c.eSend = make(chan maplepacket.Packet, queueSize)
+	c.eSend = make(chan mpacket.Packet, queueSize)
 	c.eRecv = eRecv
 	c.endSend = make(chan bool, 1)
 

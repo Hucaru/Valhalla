@@ -3,18 +3,18 @@ package packet
 import (
 	"github.com/Hucaru/Valhalla/consts/opcodes"
 	"github.com/Hucaru/Valhalla/game/def"
-	"github.com/Hucaru/Valhalla/maplepacket"
+	"github.com/Hucaru/Valhalla/mpacket"
 )
 
-func MobShow(mob def.Mob) maplepacket.Packet {
-	p := maplepacket.CreateWithOpcode(opcodes.SendChannelShowMob)
+func MobShow(mob def.Mob) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcodes.SendChannelShowMob)
 	p.Append(addMob(mob))
 
 	return p
 }
 
-func MobControl(mob def.Mob) maplepacket.Packet {
-	p := maplepacket.CreateWithOpcode(opcodes.SendChannelControlMob)
+func MobControl(mob def.Mob) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcodes.SendChannelControlMob)
 	p.WriteByte(0x01) // flag for end control or not
 
 	p.Append(addMob(mob))
@@ -22,8 +22,8 @@ func MobControl(mob def.Mob) maplepacket.Packet {
 	return p
 }
 
-func addMob(mob def.Mob) maplepacket.Packet {
-	p := maplepacket.NewPacket()
+func addMob(mob def.Mob) mpacket.Packet {
+	p := mpacket.NewPacket()
 
 	p.WriteInt32(mob.SpawnID)
 	p.WriteByte(0x01) // control status?
@@ -72,8 +72,8 @@ func addMob(mob def.Mob) maplepacket.Packet {
 	return p
 }
 
-func MobControlAcknowledge(mobID int32, moveID int16, allowedToUseSkill bool, mp int16, skill byte, level byte) maplepacket.Packet {
-	p := maplepacket.CreateWithOpcode(opcodes.SendChannelControlMobAck)
+func MobControlAcknowledge(mobID int32, moveID int16, allowedToUseSkill bool, mp int16, skill byte, level byte) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcodes.SendChannelControlMobAck)
 	p.WriteInt32(mobID)
 	p.WriteInt16(moveID)
 	p.WriteBool(allowedToUseSkill)
@@ -84,9 +84,9 @@ func MobControlAcknowledge(mobID int32, moveID int16, allowedToUseSkill bool, mp
 	return p
 }
 
-func MobMove(mobID int32, allowedToUseSkill bool, action byte, unknownData uint32, buf []byte) maplepacket.Packet {
-	// func MobMove(mobID int32, allowedToUseSkill bool, action int8, skill, level byte, option int16, buf []byte) maplepacket.Packet {
-	p := maplepacket.CreateWithOpcode(opcodes.SendChannelMoveMob)
+func MobMove(mobID int32, allowedToUseSkill bool, action byte, unknownData uint32, buf []byte) mpacket.Packet {
+	// func MobMove(mobID int32, allowedToUseSkill bool, action int8, skill, level byte, option int16, buf []byte) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcodes.SendChannelMoveMob)
 	p.WriteInt32(mobID)
 	p.WriteBool(allowedToUseSkill)
 	p.WriteByte(action)
@@ -97,24 +97,24 @@ func MobMove(mobID int32, allowedToUseSkill bool, action byte, unknownData uint3
 
 }
 
-func MobEndControl(mob def.Mob) maplepacket.Packet {
-	p := maplepacket.CreateWithOpcode(opcodes.SendChannelControlMob)
+func MobEndControl(mob def.Mob) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcodes.SendChannelControlMob)
 	p.WriteByte(0)
 	p.WriteInt32(mob.SpawnID)
 
 	return p
 }
 
-func MobRemove(mob def.Mob, deathType byte) maplepacket.Packet {
-	p := maplepacket.CreateWithOpcode(opcodes.SendChannelRemoveMob)
+func MobRemove(mob def.Mob, deathType byte) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcodes.SendChannelRemoveMob)
 	p.WriteInt32(mob.SpawnID)
 	p.WriteByte(deathType)
 
 	return p
 }
 
-func MobShowHpChange(spawnID int32, dmg int32) maplepacket.Packet {
-	p := maplepacket.CreateWithOpcode(opcodes.SendChannelMobChangeHP)
+func MobShowHpChange(spawnID int32, dmg int32) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcodes.SendChannelMobChangeHP)
 	p.WriteInt32(spawnID)
 	p.WriteByte(0)
 	p.WriteInt32(dmg)

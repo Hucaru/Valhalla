@@ -6,12 +6,12 @@ import (
 	"github.com/Hucaru/Valhalla/consts"
 	"github.com/Hucaru/Valhalla/mnet/crypt"
 
-	"github.com/Hucaru/Valhalla/maplepacket"
+	"github.com/Hucaru/Valhalla/mpacket"
 )
 
 type MConn interface {
 	String() string
-	Send(maplepacket.Packet)
+	Send(mpacket.Packet)
 	Cleanup()
 }
 
@@ -72,7 +72,7 @@ func serverReader(conn net.Conn, eRecv chan *Event, headerSize int) {
 
 type baseConn struct {
 	net.Conn
-	eSend   chan maplepacket.Packet
+	eSend   chan mpacket.Packet
 	eRecv   chan *Event
 	endSend chan bool
 	reader  func()
@@ -102,7 +102,7 @@ func (bc *baseConn) Writer() {
 	}
 }
 
-func (bc *baseConn) Send(p maplepacket.Packet) {
+func (bc *baseConn) Send(p mpacket.Packet) {
 	select {
 	case bc.eSend <- p:
 	case <-bc.endSend:

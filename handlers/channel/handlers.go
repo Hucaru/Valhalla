@@ -4,12 +4,12 @@ import (
 	"log"
 
 	"github.com/Hucaru/Valhalla/consts/opcodes"
-	"github.com/Hucaru/Valhalla/maplepacket"
+	"github.com/Hucaru/Valhalla/mpacket"
 	"github.com/Hucaru/Valhalla/mnet"
 )
 
-func HandlePacket(conn mnet.MConnChannel, reader maplepacket.Reader) {
-	switch maplepacket.Opcode(reader.ReadByte()) {
+func HandlePacket(conn mnet.MConnChannel, reader mpacket.Reader) {
+	switch mpacket.Opcode(reader.ReadByte()) {
 	case opcodes.RecvPing:
 	case opcodes.RecvChannelPlayerLoad:
 		playerConnect(conn, reader)

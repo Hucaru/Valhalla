@@ -7,13 +7,13 @@ import (
 
 	"github.com/Hucaru/Valhalla/consts/opcodes"
 	"github.com/Hucaru/Valhalla/game/def"
-	"github.com/Hucaru/Valhalla/maplepacket"
+	"github.com/Hucaru/Valhalla/mpacket"
 	"github.com/Hucaru/Valhalla/nx"
 )
 
 func PlayerReceivedDmg(charID int32, attack int8, initalAmmount, reducedAmmount, spawnID, mobID, healSkillID int32,
-	stance, reflectAction byte, reflected byte, reflectX, reflectY int16) maplepacket.Packet {
-	p := maplepacket.CreateWithOpcode(opcodes.SendChannelPlayerTakeDmg)
+	stance, reflectAction byte, reflected byte, reflectX, reflectY int16) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcodes.SendChannelPlayerTakeDmg)
 	p.WriteInt32(charID)
 	p.WriteInt8(attack)
 	p.WriteInt32(initalAmmount)
@@ -39,32 +39,32 @@ func PlayerReceivedDmg(charID int32, attack int8, initalAmmount, reducedAmmount,
 	return p
 }
 
-func PlayerLevelUpAnimation(charID int32) maplepacket.Packet {
-	p := maplepacket.CreateWithOpcode(opcodes.SendChannelPlayerAnimation)
+func PlayerLevelUpAnimation(charID int32) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcodes.SendChannelPlayerAnimation)
 	p.WriteInt32(charID)
 	p.WriteByte(0x00)
 
 	return p
 }
 
-func PlayerMove(charID int32, bytes []byte) maplepacket.Packet {
-	p := maplepacket.CreateWithOpcode(opcodes.SendChannelPlayerMovement)
+func PlayerMove(charID int32, bytes []byte) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcodes.SendChannelPlayerMovement)
 	p.WriteInt32(charID)
 	p.WriteBytes(bytes)
 
 	return p
 }
 
-func PlayerEmoticon(playerID int32, emotion int32) maplepacket.Packet {
-	p := maplepacket.CreateWithOpcode(opcodes.SendChannelPlayerEmoticon)
+func PlayerEmoticon(playerID int32, emotion int32) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcodes.SendChannelPlayerEmoticon)
 	p.WriteInt32(playerID)
 	p.WriteInt32(emotion)
 
 	return p
 }
 
-func PlayerSkillBookUpdate(skillID int32, level int32) maplepacket.Packet {
-	p := maplepacket.CreateWithOpcode(opcodes.SendChannelSkillRecordUpdate)
+func PlayerSkillBookUpdate(skillID int32, level int32) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcodes.SendChannelSkillRecordUpdate)
 	p.WriteByte(0x01)  // time check?
 	p.WriteInt16(0x01) // number of skills to update
 	p.WriteInt32(skillID)
@@ -74,8 +74,8 @@ func PlayerSkillBookUpdate(skillID int32, level int32) maplepacket.Packet {
 	return p
 }
 
-func PlayerStatChange(byPlayer bool, stat int32, value int32) maplepacket.Packet {
-	p := maplepacket.CreateWithOpcode(opcodes.SendChannelStatChange)
+func PlayerStatChange(byPlayer bool, stat int32, value int32) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcodes.SendChannelStatChange)
 	p.WriteBool(byPlayer)
 	p.WriteInt32(stat)
 	p.WriteInt32(value)
@@ -83,8 +83,8 @@ func PlayerStatChange(byPlayer bool, stat int32, value int32) maplepacket.Packet
 	return p
 }
 
-func PlayerNoChange() maplepacket.Packet {
-	p := maplepacket.CreateWithOpcode(opcodes.SendChannelInventoryOperation)
+func PlayerNoChange() mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcodes.SendChannelInventoryOperation)
 	p.WriteByte(0x01)
 	p.WriteByte(0x00)
 	p.WriteByte(0x00)
@@ -92,8 +92,8 @@ func PlayerNoChange() maplepacket.Packet {
 	return p
 }
 
-func PlayerAvatarSummaryWindow(charID int32, char def.Character, guildName string) maplepacket.Packet {
-	p := maplepacket.CreateWithOpcode(opcodes.SendChannelAvatarInfoWindow)
+func PlayerAvatarSummaryWindow(charID int32, char def.Character, guildName string) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcodes.SendChannelAvatarInfoWindow)
 	p.WriteInt32(charID)
 	p.WriteByte(char.Level)
 	p.WriteInt16(char.Job)
@@ -107,8 +107,8 @@ func PlayerAvatarSummaryWindow(charID int32, char def.Character, guildName strin
 	return p
 }
 
-func PlayerEnterGame(char def.Character, channelID int32) maplepacket.Packet {
-	p := maplepacket.CreateWithOpcode(opcodes.SendChannelWarpToMap)
+func PlayerEnterGame(char def.Character, channelID int32) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcodes.SendChannelWarpToMap)
 	p.WriteInt32(channelID)
 	p.WriteByte(0) // character portal counter
 	p.WriteByte(1) // Is connecting
@@ -246,8 +246,8 @@ func PlayerEnterGame(char def.Character, channelID int32) maplepacket.Packet {
 	return p
 }
 
-func addItem(item def.Item, shortSlot bool) maplepacket.Packet {
-	p := maplepacket.NewPacket()
+func addItem(item def.Item, shortSlot bool) mpacket.Packet {
+	p := mpacket.NewPacket()
 
 	if !shortSlot {
 		if nx.IsCashItem(item.ItemID) && item.SlotID < 0 {
@@ -315,8 +315,8 @@ func addItem(item def.Item, shortSlot bool) maplepacket.Packet {
 	return p
 }
 
-func writeDisplayCharacter(char def.Character) maplepacket.Packet {
-	p := maplepacket.NewPacket()
+func writeDisplayCharacter(char def.Character) mpacket.Packet {
+	p := mpacket.NewPacket()
 	p.WriteByte(char.Gender) // gender
 	p.WriteByte(char.Skin)   // skin
 	p.WriteInt32(char.Face)  // face

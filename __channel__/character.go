@@ -7,7 +7,7 @@ import (
 	"github.com/Hucaru/Valhalla/character"
 	"github.com/Hucaru/Valhalla/consts"
 	"github.com/Hucaru/Valhalla/inventory"
-	"github.com/Hucaru/Valhalla/maplepacket"
+	"github.com/Hucaru/Valhalla/mpacket"
 	"github.com/Hucaru/Valhalla/mnet"
 	"github.com/Hucaru/Valhalla/game/packet"
 )
@@ -17,7 +17,7 @@ type MapleCharacter struct {
 	conn mnet.MConnChannel // Might be worth compositing this in?
 }
 
-func (c *MapleCharacter) SendPacket(p maplepacket.Packet) {
+func (c *MapleCharacter) SendPacket(p mpacket.Packet) {
 	if len(p) > 0 {
 		c.conn.Send(p)
 	}

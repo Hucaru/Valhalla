@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"math/rand"
 
-	"github.com/Hucaru/Valhalla/maplepacket"
+	"github.com/Hucaru/Valhalla/mpacket"
 	"github.com/Hucaru/Valhalla/game/packet"
 
 	"github.com/Hucaru/Valhalla/mnet"
@@ -80,22 +80,22 @@ func GetMapFromID(id int32) *GameMap {
 	return nil
 }
 
-func SendToMap(mapID int32, p maplepacket.Packet) {
+func SendToMap(mapID int32, p mpacket.Packet) {
 	for _, player := range players {
 		if player.Char().CurrentMap == mapID {
-			tmp := make(maplepacket.Packet, len(p))
+			tmp := make(mpacket.Packet, len(p))
 			copy(tmp, p)
 			player.Send(tmp)
 		}
 	}
 }
 
-func SendToMapExcept(mapID int32, p maplepacket.Packet, exception mnet.MConnChannel) {
+func SendToMapExcept(mapID int32, p mpacket.Packet, exception mnet.MConnChannel) {
 	for conn, player := range players {
 		if conn == exception {
 			continue
 		} else if player.Char().CurrentMap == mapID {
-			tmp := make(maplepacket.Packet, len(p))
+			tmp := make(mpacket.Packet, len(p))
 			copy(tmp, p)
 			player.Send(tmp)
 		}

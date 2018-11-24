@@ -7,7 +7,7 @@ import (
 	"github.com/Hucaru/Valhalla/database"
 	"github.com/Hucaru/Valhalla/mnet/crypt"
 
-	"github.com/Hucaru/Valhalla/maplepacket"
+	"github.com/Hucaru/Valhalla/mpacket"
 )
 
 type MConnLogin interface {
@@ -42,7 +42,7 @@ func NewLogin(conn net.Conn, eRecv chan *Event, queueSize int, keySend, keyRecv 
 	l := &login{}
 	l.Conn = conn
 
-	l.eSend = make(chan maplepacket.Packet, queueSize)
+	l.eSend = make(chan mpacket.Packet, queueSize)
 	l.eRecv = eRecv
 	l.endSend = make(chan bool, 1)
 

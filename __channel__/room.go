@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/Hucaru/Valhalla/character"
-	"github.com/Hucaru/Valhalla/maplepacket"
+	"github.com/Hucaru/Valhalla/mpacket"
 	"github.com/Hucaru/Valhalla/mnet"
 	"github.com/Hucaru/Valhalla/game/packet"
 
@@ -148,7 +148,7 @@ func CreateOmokGame(char *MapleCharacter, name, password string, boardType byte)
 	ActiveRooms.Add(newRoom)
 }
 
-func (r *Room) Broadcast(packet maplepacket.Packet) {
+func (r *Room) Broadcast(packet mpacket.Packet) {
 	r.mutex.RLock()
 	for _, p := range r.participants {
 		if p != nil {
@@ -228,7 +228,7 @@ func (r *Room) AddParticipant(char *MapleCharacter) {
 
 }
 
-func (r *Room) GetBox() (maplepacket.Packet, bool) {
+func (r *Room) GetBox() (mpacket.Packet, bool) {
 	p := []byte{}
 	valid := false
 	r.mutex.RLock()

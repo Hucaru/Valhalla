@@ -11,11 +11,11 @@ import (
 	"github.com/Hucaru/Valhalla/game"
 	"github.com/Hucaru/Valhalla/game/packet"
 
-	"github.com/Hucaru/Valhalla/maplepacket"
+	"github.com/Hucaru/Valhalla/mpacket"
 	"github.com/Hucaru/Valhalla/mnet"
 )
 
-func chatSendAll(conn mnet.MConnChannel, reader maplepacket.Reader) {
+func chatSendAll(conn mnet.MConnChannel, reader mpacket.Reader) {
 	msg := reader.ReadString(int(reader.ReadInt16()))
 
 	if strings.Index(msg, "/") == 0 && conn.GetAdminLevel() > 0 {
@@ -33,7 +33,7 @@ func chatSendAll(conn mnet.MConnChannel, reader maplepacket.Reader) {
 	}
 }
 
-func chatSlashCommand(conn mnet.MConnChannel, reader maplepacket.Reader) {
+func chatSlashCommand(conn mnet.MConnChannel, reader mpacket.Reader) {
 
 }
 

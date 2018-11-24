@@ -1,15 +1,15 @@
 package packet
 
-import "github.com/Hucaru/Valhalla/maplepacket"
+import "github.com/Hucaru/Valhalla/mpacket"
 
-func DropAdd() maplepacket.Packet {
-	p := maplepacket.NewPacket()
+func DropAdd() mpacket.Packet {
+	p := mpacket.NewPacket()
 
 	return p
 }
 
-func DropRemove() maplepacket.Packet {
-	p := maplepacket.NewPacket()
+func DropRemove() mpacket.Packet {
+	p := mpacket.NewPacket()
 
 	return p
 }

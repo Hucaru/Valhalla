@@ -15,7 +15,7 @@ import (
 
 	"github.com/Hucaru/Valhalla/consts"
 	"github.com/Hucaru/Valhalla/database"
-	"github.com/Hucaru/Valhalla/maplepacket"
+	"github.com/Hucaru/Valhalla/mpacket"
 	"github.com/Hucaru/Valhalla/mnet"
 	"github.com/Hucaru/Valhalla/game/packet"
 )
@@ -141,7 +141,7 @@ func (cs *channelServer) processEvent() {
 					game.RemovePlayer(channelConn)
 					channelConn.Cleanup()
 				case mnet.MEClientPacket:
-					channel.HandlePacket(channelConn, maplepacket.NewReader(&e.Packet, time.Now().Unix()))
+					channel.HandlePacket(channelConn, mpacket.NewReader(&e.Packet, time.Now().Unix()))
 				}
 			} else {
 				serverConn, ok := e.Conn.(mnet.MConnServer)
@@ -151,7 +151,7 @@ func (cs *channelServer) processEvent() {
 					case mnet.MEServerDisconnect:
 						log.Println("Server at", serverConn, "disconnected")
 					case mnet.MEServerPacket:
-						world.HandlePacket(nil, maplepacket.NewReader(&e.Packet, time.Now().Unix()))
+						world.HandlePacket(nil, mpacket.NewReader(&e.Packet, time.Now().Unix()))
 					}
 				}
 			}

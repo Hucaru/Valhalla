@@ -1,4 +1,4 @@
-package maplepacket
+package mpacket
 
 // Reader -
 type Reader struct {

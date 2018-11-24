@@ -10,14 +10,14 @@ import (
 
 	"github.com/Hucaru/Valhalla/consts/opcodes"
 	"github.com/Hucaru/Valhalla/database"
-	"github.com/Hucaru/Valhalla/maplepacket"
+	"github.com/Hucaru/Valhalla/mpacket"
 	"github.com/Hucaru/Valhalla/mnet"
 	"github.com/Hucaru/Valhalla/game/packet"
 )
 
 // HandlePacket
-func HandlePacket(conn mnet.MConnLogin, reader maplepacket.Reader) {
-	switch maplepacket.Opcode(reader.ReadByte()) {
+func HandlePacket(conn mnet.MConnLogin, reader mpacket.Reader) {
+	switch mpacket.Opcode(reader.ReadByte()) {
 	case opcodes.RecvLoginRequest:
 		handleLoginRequest(conn, reader)
 
@@ -51,7 +51,7 @@ func HandlePacket(conn mnet.MConnLogin, reader maplepacket.Reader) {
 
 }
 
-func handleLoginRequest(conn mnet.MConnLogin, reader maplepacket.Reader) {
+func handleLoginRequest(conn mnet.MConnLogin, reader mpacket.Reader) {
 	usernameLength := reader.ReadInt16()
 	username := reader.ReadString(int(usernameLength))
 
@@ -108,7 +108,7 @@ func handleLoginRequest(conn mnet.MConnLogin, reader maplepacket.Reader) {
 	conn.Send(packet.LoginResponce(result, accountID, gender, adminLevel > 0, username, isBanned))
 }
 
-func handleGoodLogin(conn mnet.MConnLogin, reader maplepacket.Reader) {
+func handleGoodLogin(conn mnet.MConnLogin, reader mpacket.Reader) {
 	var username, password string
 
 	accountID := conn.GetAccountID()
@@ -128,14 +128,14 @@ func handleGoodLogin(conn mnet.MConnLogin, reader maplepacket.Reader) {
 	conn.Send(packet.LoginEndWorldList())
 }
 
-func handleWorldSelect(conn mnet.MConnLogin, reader maplepacket.Reader) {
+func handleWorldSelect(conn mnet.MConnLogin, reader mpacket.Reader) {
 	conn.SetWorldID(reader.ReadByte())
 	reader.ReadByte() // ?
 
 	conn.Send(packet.LoginWorldInfo(0, 0)) // hard coded for now
 }
 
-func handleChannelSelect(conn mnet.MConnLogin, reader maplepacket.Reader) {
+func handleChannelSelect(conn mnet.MConnLogin, reader mpacket.Reader) {
 	selectedWorld := reader.ReadByte()   // world
 	conn.SetChannelID(reader.ReadByte()) // Channel
 
@@ -145,7 +145,7 @@ func handleChannelSelect(conn mnet.MConnLogin, reader maplepacket.Reader) {
 	}
 }
 
-func handleNameCheck(conn mnet.MConnLogin, reader maplepacket.Reader) {
+func handleNameCheck(conn mnet.MConnLogin, reader mpacket.Reader) {
 	nameLength := reader.ReadInt16()
 	newCharName := reader.ReadString(int(nameLength))
 
@@ -160,7 +160,7 @@ func handleNameCheck(conn mnet.MConnLogin, reader maplepacket.Reader) {
 	conn.Send(packet.LoginNameCheck(newCharName, nameFound))
 }
 
-func handleNewCharacter(conn mnet.MConnLogin, reader maplepacket.Reader) {
+func handleNewCharacter(conn mnet.MConnLogin, reader mpacket.Reader) {
 	nameLength := reader.ReadInt16()
 	name := reader.ReadString(int(nameLength))
 	face := reader.ReadInt32()
@@ -255,7 +255,7 @@ func handleNewCharacter(conn mnet.MConnLogin, reader maplepacket.Reader) {
 	conn.Send(packet.LoginCreatedCharacter(valid, newCharacter))
 }
 
-func handleDeleteCharacter(conn mnet.MConnLogin, reader maplepacket.Reader) {
+func handleDeleteCharacter(conn mnet.MConnLogin, reader mpacket.Reader) {
 	dob := reader.ReadInt32()
 	charID := reader.ReadInt32()
 
@@ -292,7 +292,7 @@ func handleDeleteCharacter(conn mnet.MConnLogin, reader maplepacket.Reader) {
 	conn.Send(packet.LoginDeleteCharacter(charID, deleted, hacking))
 }
 
-func handleSelectCharacter(conn mnet.MConnLogin, reader maplepacket.Reader) {
+func handleSelectCharacter(conn mnet.MConnLogin, reader mpacket.Reader) {
 	charID := reader.ReadInt32()
 
 	var charCount int
@@ -318,7 +318,7 @@ func addCharacterItem(characterID int64, itemID int32, slot int32, creatorName s
 	}
 }
 
-func handleReturnToLoginScreen(conn mnet.MConnLogin, reader maplepacket.Reader) {
+func handleReturnToLoginScreen(conn mnet.MConnLogin, reader mpacket.Reader) {
 	_, err := database.Handle.Exec("UPDATE accounts SET isLogedIn=0 WHERE accountID=?", conn.GetAccountID())
 
 	if err != nil {

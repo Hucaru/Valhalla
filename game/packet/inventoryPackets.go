@@ -3,11 +3,11 @@ package packet
 import (
 	"github.com/Hucaru/Valhalla/consts/opcodes"
 	"github.com/Hucaru/Valhalla/game/def"
-	"github.com/Hucaru/Valhalla/maplepacket"
+	"github.com/Hucaru/Valhalla/mpacket"
 )
 
-func InventoryAddItem(item def.Item, newItem bool) maplepacket.Packet {
-	p := maplepacket.CreateWithOpcode(opcodes.SendChannelInventoryOperation)
+func InventoryAddItem(item def.Item, newItem bool) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcodes.SendChannelInventoryOperation)
 	p.WriteByte(0x01)     // ?
 	p.WriteByte(0x01)     // number of operations? // e.g. loop over multiple interweaved operations
 	p.WriteBool(!newItem) // operation type
@@ -23,8 +23,8 @@ func InventoryAddItem(item def.Item, newItem bool) maplepacket.Packet {
 	return p
 }
 
-func InventoryChangeItemSlot(invTabID byte, origPos, newPos int16) maplepacket.Packet {
-	p := maplepacket.CreateWithOpcode(opcodes.SendChannelInventoryOperation)
+func InventoryChangeItemSlot(invTabID byte, origPos, newPos int16) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcodes.SendChannelInventoryOperation)
 	p.WriteByte(0x01)
 	p.WriteByte(0x01)
 	p.WriteByte(0x02)
@@ -36,8 +36,8 @@ func InventoryChangeItemSlot(invTabID byte, origPos, newPos int16) maplepacket.P
 	return p
 }
 
-func InventoryRemoveItem(item def.Item) maplepacket.Packet {
-	p := maplepacket.CreateWithOpcode(opcodes.SendChannelInventoryOperation)
+func InventoryRemoveItem(item def.Item) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcodes.SendChannelInventoryOperation)
 	p.WriteByte(0x01)
 	p.WriteByte(0x01)
 	p.WriteByte(0x03)
@@ -48,8 +48,8 @@ func InventoryRemoveItem(item def.Item) maplepacket.Packet {
 	return p
 }
 
-func InventoryChangeEquip(char def.Character) maplepacket.Packet {
-	p := maplepacket.CreateWithOpcode(opcodes.SendChannelPlayerChangeAvatar)
+func InventoryChangeEquip(char def.Character) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcodes.SendChannelPlayerChangeAvatar)
 	p.WriteInt32(char.ID)
 	p.WriteByte(1)
 	p.WriteBytes(writeDisplayCharacter(char))

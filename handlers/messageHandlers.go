@@ -14,10 +14,10 @@ import (
 	"github.com/Hucaru/Valhalla/game/packet"
 
 	"github.com/Hucaru/Valhalla/channel"
-	"github.com/Hucaru/Valhalla/maplepacket"
+	"github.com/Hucaru/Valhalla/mpacket"
 )
 
-func handleAllChat(conn mnet.MConnChannel, reader maplepacket.Reader) {
+func handleAllChat(conn mnet.MConnChannel, reader mpacket.Reader) {
 	channel.Players.OnCharacterFromConn(conn, func(char *channel.MapleCharacter) {
 		mapID := char.GetCurrentMap()
 
@@ -31,7 +31,7 @@ func handleAllChat(conn mnet.MConnChannel, reader maplepacket.Reader) {
 	})
 }
 
-func handleSlashCommand(conn mnet.MConnChannel, reader maplepacket.Reader) {
+func handleSlashCommand(conn mnet.MConnChannel, reader mpacket.Reader) {
 	cmdType := reader.ReadByte()
 
 	switch cmdType {

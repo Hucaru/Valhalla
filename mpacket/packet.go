@@ -1,4 +1,4 @@
-package maplepacket
+package mpacket
 
 import (
 	"fmt"

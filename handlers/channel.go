@@ -6,11 +6,11 @@ import (
 	"github.com/Hucaru/Valhalla/mnet"
 
 	"github.com/Hucaru/Valhalla/consts/opcodes"
-	"github.com/Hucaru/Valhalla/maplepacket"
+	"github.com/Hucaru/Valhalla/mpacket"
 )
 
 // HandleChannelPacket - Purpose is to send a packet to the correct handler(s), packages should aim to use this function to communicate betweeen each other
-func HandleChannelPacket(conn mnet.MConnChannel, reader maplepacket.Reader) {
+func HandleChannelPacket(conn mnet.MConnChannel, reader mpacket.Reader) {
 	switch reader.ReadByte() {
 	case opcodes.Recv.Ping:
 

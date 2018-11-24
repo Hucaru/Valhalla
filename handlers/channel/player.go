@@ -6,13 +6,13 @@ import (
 	"github.com/Hucaru/Valhalla/database"
 	"github.com/Hucaru/Valhalla/game"
 	"github.com/Hucaru/Valhalla/game/def"
-	"github.com/Hucaru/Valhalla/maplepacket"
+	"github.com/Hucaru/Valhalla/mpacket"
 	"github.com/Hucaru/Valhalla/mnet"
 	"github.com/Hucaru/Valhalla/nx"
 	"github.com/Hucaru/Valhalla/game/packet"
 )
 
-func playerConnect(conn mnet.MConnChannel, reader maplepacket.Reader) {
+func playerConnect(conn mnet.MConnChannel, reader mpacket.Reader) {
 	charID := reader.ReadInt32()
 
 	var accountID int32
@@ -46,7 +46,7 @@ func playerConnect(conn mnet.MConnChannel, reader maplepacket.Reader) {
 	game.AddPlayer(game.NewPlayer(conn, char))
 }
 
-func playerUsePortal(conn mnet.MConnChannel, reader maplepacket.Reader) {
+func playerUsePortal(conn mnet.MConnChannel, reader mpacket.Reader) {
 	player, err := game.GetPlayerFromConn(conn)
 
 	if err != nil {
@@ -87,11 +87,11 @@ func playerUsePortal(conn mnet.MConnChannel, reader maplepacket.Reader) {
 	}
 }
 
-func playerEnterCashShop(conn mnet.MConnChannel, reader maplepacket.Reader) {
+func playerEnterCashShop(conn mnet.MConnChannel, reader mpacket.Reader) {
 
 }
 
-func playerMovement(conn mnet.MConnChannel, reader maplepacket.Reader) {
+func playerMovement(conn mnet.MConnChannel, reader mpacket.Reader) {
 	player, err := game.GetPlayerFromConn(conn)
 
 	if err != nil {
@@ -117,7 +117,7 @@ func playerMovement(conn mnet.MConnChannel, reader maplepacket.Reader) {
 	game.SendToMapExcept(char.CurrentMap, packet.PlayerMove(char.ID, moveBytes), conn)
 }
 
-func playerTakeDamage(conn mnet.MConnChannel, reader maplepacket.Reader) {
+func playerTakeDamage(conn mnet.MConnChannel, reader mpacket.Reader) {
 	mobAttack := reader.ReadInt8()
 	damage := reader.ReadInt32()
 
@@ -200,7 +200,7 @@ func playerTakeDamage(conn mnet.MConnChannel, reader maplepacket.Reader) {
 	}
 }
 
-func playerRequestAvatarInfoWindow(conn mnet.MConnChannel, reader maplepacket.Reader) {
+func playerRequestAvatarInfoWindow(conn mnet.MConnChannel, reader mpacket.Reader) {
 	player, err := game.GetPlayerFromID(reader.ReadInt32())
 
 	if err != nil {
@@ -212,7 +212,7 @@ func playerRequestAvatarInfoWindow(conn mnet.MConnChannel, reader maplepacket.Re
 	conn.Send(packet.PlayerAvatarSummaryWindow(char.ID, char, char.Guild))
 }
 
-func playerEmote(conn mnet.MConnChannel, reader maplepacket.Reader) {
+func playerEmote(conn mnet.MConnChannel, reader mpacket.Reader) {
 	emote := reader.ReadInt32()
 
 	player, err := game.GetPlayerFromConn(conn)
@@ -228,7 +228,7 @@ func playerEmote(conn mnet.MConnChannel, reader maplepacket.Reader) {
 	game.SendToMapExcept(mapID, packet.PlayerEmoticon(char.ID, emote), conn)
 }
 
-func playerPassiveRegen(conn mnet.MConnChannel, reader maplepacket.Reader) {
+func playerPassiveRegen(conn mnet.MConnChannel, reader mpacket.Reader) {
 	reader.ReadBytes(4) //?
 
 	hp := reader.ReadInt16()

@@ -3,11 +3,11 @@ package packet
 import (
 	"github.com/Hucaru/Valhalla/consts/opcodes"
 	"github.com/Hucaru/Valhalla/game/def"
-	"github.com/Hucaru/Valhalla/maplepacket"
+	"github.com/Hucaru/Valhalla/mpacket"
 )
 
-func SkillMelee(char def.Character, attackData def.AttackData) maplepacket.Packet {
-	p := maplepacket.CreateWithOpcode(opcodes.SendChannelPlayerUseMeleeSkill)
+func SkillMelee(char def.Character, attackData def.AttackData) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcodes.SendChannelPlayerUseMeleeSkill)
 	p.WriteInt32(char.ID)
 	p.WriteByte(attackData.Targets*0x10 + attackData.Hits)
 	p.WriteByte(attackData.SkillLevel)
@@ -43,8 +43,8 @@ func SkillMelee(char def.Character, attackData def.AttackData) maplepacket.Packe
 	return p
 }
 
-func SkillRanged(char def.Character, attackData def.AttackData) maplepacket.Packet {
-	p := maplepacket.CreateWithOpcode(opcodes.SendChannelPlayerUseRangedSkill)
+func SkillRanged(char def.Character, attackData def.AttackData) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcodes.SendChannelPlayerUseRangedSkill)
 	p.WriteInt32(char.ID)
 	p.WriteByte(attackData.Targets*0x10 + attackData.Hits)
 	p.WriteByte(attackData.SkillLevel)
@@ -76,8 +76,8 @@ func SkillRanged(char def.Character, attackData def.AttackData) maplepacket.Pack
 	return p
 }
 
-func SkillMagic(char def.Character, attackData def.AttackData) maplepacket.Packet {
-	p := maplepacket.CreateWithOpcode(opcodes.SendChannelPlayerUseMagicSkill)
+func SkillMagic(char def.Character, attackData def.AttackData) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcodes.SendChannelPlayerUseMagicSkill)
 	p.WriteInt32(char.ID)
 	p.WriteByte(attackData.Targets*0x10 + attackData.Hits)
 	p.WriteByte(attackData.SkillLevel)
@@ -109,8 +109,8 @@ func SkillMagic(char def.Character, attackData def.AttackData) maplepacket.Packe
 	return p
 }
 
-func SkillAnimation(charID int32, skillID int32, level byte) maplepacket.Packet {
-	p := maplepacket.CreateWithOpcode(opcodes.SendChannelPlayerAnimation)
+func SkillAnimation(charID int32, skillID int32, level byte) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcodes.SendChannelPlayerAnimation)
 	p.WriteInt32(charID)
 	p.WriteByte(0x01)
 	p.WriteInt32(skillID)
@@ -119,8 +119,8 @@ func SkillAnimation(charID int32, skillID int32, level byte) maplepacket.Packet 
 	return p
 }
 
-func SkillGmHide(isHidden bool) maplepacket.Packet {
-	p := maplepacket.CreateWithOpcode(opcodes.SendChannelEmployee)
+func SkillGmHide(isHidden bool) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcodes.SendChannelEmployee)
 	p.WriteByte(0x0F)
 	p.WriteBool(isHidden)
 

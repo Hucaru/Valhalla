@@ -7,7 +7,7 @@ import (
 
 	"github.com/Hucaru/Valhalla/channel"
 	"github.com/Hucaru/Valhalla/inventory"
-	"github.com/Hucaru/Valhalla/maplepacket"
+	"github.com/Hucaru/Valhalla/mpacket"
 	"github.com/Hucaru/Valhalla/mnet"
 	"github.com/Hucaru/Valhalla/nx"
 	"github.com/Hucaru/Valhalla/game/packet"
@@ -104,39 +104,39 @@ type session struct {
 }
 
 func (s *session) register(npcID int32, char *channel.MapleCharacter) {
-	s.env.Define("SendYesNo", func(msg string) maplepacket.Packet {
+	s.env.Define("SendYesNo", func(msg string) mpacket.Packet {
 		return packet.NPCChatYesNo(npcID, msg)
 	})
 
-	s.env.Define("SendOk", func(msg string) maplepacket.Packet {
+	s.env.Define("SendOk", func(msg string) mpacket.Packet {
 		return packet.NPCChatBackNext(npcID, msg, false, false)
 	})
 
-	s.env.Define("SendNext", func(msg string) maplepacket.Packet {
+	s.env.Define("SendNext", func(msg string) mpacket.Packet {
 		return packet.NPCChatBackNext(npcID, msg, false, true)
 	})
 
-	s.env.Define("SendBackNext", func(msg string) maplepacket.Packet {
+	s.env.Define("SendBackNext", func(msg string) mpacket.Packet {
 		return packet.NPCChatBackNext(npcID, msg, true, true)
 	})
 
-	s.env.Define("SendBack", func(msg string) maplepacket.Packet {
+	s.env.Define("SendBack", func(msg string) mpacket.Packet {
 		return packet.NPCChatBackNext(npcID, msg, true, false)
 	})
 
-	s.env.Define("SendUserStringInput", func(msg, defaultInput string, minLength, maxLength int16) maplepacket.Packet {
+	s.env.Define("SendUserStringInput", func(msg, defaultInput string, minLength, maxLength int16) mpacket.Packet {
 		return packet.NPCChatUserString(npcID, msg, defaultInput, minLength, maxLength)
 	})
 
-	s.env.Define("SendUserIntInput", func(msg string, defaultInput, minLength, maxLength int32) maplepacket.Packet {
+	s.env.Define("SendUserIntInput", func(msg string, defaultInput, minLength, maxLength int32) mpacket.Packet {
 		return packet.NPCChatUserNumber(npcID, msg, defaultInput, minLength, maxLength)
 	})
 
-	s.env.Define("SendSelection", func(msg string) maplepacket.Packet {
+	s.env.Define("SendSelection", func(msg string) mpacket.Packet {
 		return packet.NPCChatSelection(npcID, msg)
 	})
 
-	s.env.Define("SendStyleWindow", func(msg string, array []interface{}) maplepacket.Packet {
+	s.env.Define("SendStyleWindow", func(msg string, array []interface{}) mpacket.Packet {
 		var styles []int32
 
 		for _, i := range array {
@@ -150,7 +150,7 @@ func (s *session) register(npcID int32, char *channel.MapleCharacter) {
 		return packet.NPCChatStyleWindow(npcID, msg, styles)
 	})
 
-	s.env.Define("SendShop", func(items []interface{}) maplepacket.Packet {
+	s.env.Define("SendShop", func(items []interface{}) mpacket.Packet {
 		tmp := make([][]int32, len(items))
 
 		for i, v := range items {
@@ -190,7 +190,7 @@ func (s *session) Run() {
 		log.Println(err)
 	}
 
-	p, ok := packet.(maplepacket.Packet)
+	p, ok := packet.(mpacket.Packet)
 
 	if ok {
 		s.conn.Send(p)
@@ -199,7 +199,7 @@ func (s *session) Run() {
 	}
 }
 
-func (s *session) Continue(msgType byte, stateChange byte, reader maplepacket.Reader) {
+func (s *session) Continue(msgType byte, stateChange byte, reader mpacket.Reader) {
 
 	if s.state == 0 {
 
@@ -263,7 +263,7 @@ func (s *session) Continue(msgType byte, stateChange byte, reader maplepacket.Re
 	}
 }
 
-func (s *session) Shop(reader maplepacket.Reader) {
+func (s *session) Shop(reader mpacket.Reader) {
 	operation := reader.ReadByte() // ?
 
 	s.state += 1
@@ -356,6 +356,6 @@ func (s *session) Shop(reader maplepacket.Reader) {
 	s.Run()
 }
 
-func (s *session) Storage(reader maplepacket.Reader) {
+func (s *session) Storage(reader mpacket.Reader) {
 
 }

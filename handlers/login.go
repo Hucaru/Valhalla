@@ -6,11 +6,11 @@ import (
 	"github.com/Hucaru/Valhalla/mnet"
 
 	"github.com/Hucaru/Valhalla/consts/opcodes"
-	"github.com/Hucaru/Valhalla/maplepacket"
+	"github.com/Hucaru/Valhalla/mpacket"
 )
 
 // HandleLoginPacket -
-func HandleLoginPacket(conn mnet.MConnLogin, reader maplepacket.Reader) {
+func HandleLoginPacket(conn mnet.MConnLogin, reader mpacket.Reader) {
 	switch reader.ReadByte() {
 	case opcodes.Recv.ReturnToLoginScreen:
 		handleReturnToLoginScreen(conn, reader)
