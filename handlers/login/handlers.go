@@ -6,7 +6,7 @@ import (
 	"log"
 	"strings"
 
-	"github.com/Hucaru/Valhalla/def"
+	"github.com/Hucaru/Valhalla/game/def"
 
 	"github.com/Hucaru/Valhalla/consts/opcodes"
 	"github.com/Hucaru/Valhalla/database"

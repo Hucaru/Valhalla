@@ -6,7 +6,7 @@ import (
 	"math"
 
 	"github.com/Hucaru/Valhalla/consts/opcodes"
-	"github.com/Hucaru/Valhalla/def"
+	"github.com/Hucaru/Valhalla/game/def"
 	"github.com/Hucaru/Valhalla/maplepacket"
 	"github.com/Hucaru/Valhalla/nx"
 )

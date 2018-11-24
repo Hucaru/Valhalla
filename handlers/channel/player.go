@@ -4,8 +4,8 @@ import (
 	"log"
 
 	"github.com/Hucaru/Valhalla/database"
-	"github.com/Hucaru/Valhalla/def"
 	"github.com/Hucaru/Valhalla/game"
+	"github.com/Hucaru/Valhalla/game/def"
 	"github.com/Hucaru/Valhalla/maplepacket"
 	"github.com/Hucaru/Valhalla/mnet"
 	"github.com/Hucaru/Valhalla/nx"

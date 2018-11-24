@@ -4,7 +4,7 @@ import (
 	"math"
 
 	"github.com/Hucaru/Valhalla/consts"
-	"github.com/Hucaru/Valhalla/def"
+	"github.com/Hucaru/Valhalla/game/def"
 	"github.com/Hucaru/Valhalla/mnet"
 	"github.com/Hucaru/Valhalla/nx"
 	"github.com/Hucaru/Valhalla/packets"

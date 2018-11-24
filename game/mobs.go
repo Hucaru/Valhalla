@@ -1,7 +1,7 @@
 package game
 
 import (
-	"github.com/Hucaru/Valhalla/def"
+	"github.com/Hucaru/Valhalla/game/def"
 	"github.com/Hucaru/Valhalla/mnet"
 	"github.com/Hucaru/Valhalla/packets"
 )

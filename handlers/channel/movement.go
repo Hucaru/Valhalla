@@ -3,7 +3,7 @@ package channel
 import (
 	"fmt"
 
-	"github.com/Hucaru/Valhalla/def"
+	"github.com/Hucaru/Valhalla/game/def"
 	"github.com/Hucaru/Valhalla/maplepacket"
 )
 

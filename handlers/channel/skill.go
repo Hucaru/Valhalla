@@ -1,8 +1,8 @@
 package channel
 
 import (
-	"github.com/Hucaru/Valhalla/def"
 	"github.com/Hucaru/Valhalla/game"
+	"github.com/Hucaru/Valhalla/game/def"
 	"github.com/Hucaru/Valhalla/packets"
 
 	"github.com/Hucaru/Valhalla/maplepacket"
