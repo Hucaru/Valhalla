@@ -1,4 +1,4 @@
-package types
+package def
 
 type Pos struct {
 	X int16

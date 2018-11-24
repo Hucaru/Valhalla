@@ -1,13 +1,13 @@
 package game
 
 import (
+	"github.com/Hucaru/Valhalla/def"
 	"github.com/Hucaru/Valhalla/mnet"
 	"github.com/Hucaru/Valhalla/packets"
-	"github.com/Hucaru/Valhalla/types"
 )
 
 type gameMob struct {
-	types.Mob
+	def.Mob
 	mapID int32
 }
 

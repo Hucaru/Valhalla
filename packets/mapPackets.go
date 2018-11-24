@@ -2,11 +2,11 @@ package packets
 
 import (
 	"github.com/Hucaru/Valhalla/consts/opcodes"
+	"github.com/Hucaru/Valhalla/def"
 	"github.com/Hucaru/Valhalla/maplepacket"
-	"github.com/Hucaru/Valhalla/types"
 )
 
-func MapPlayerEnter(char types.Character) maplepacket.Packet {
+func MapPlayerEnter(char def.Character) maplepacket.Packet {
 	p := maplepacket.CreateWithOpcode(opcodes.SendChannelCharacterEnterField)
 	p.WriteInt32(char.ID)    // player id
 	p.WriteString(char.Name) // char name

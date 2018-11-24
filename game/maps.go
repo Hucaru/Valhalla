@@ -1,30 +1,30 @@
 package game
 
 import (
+	"github.com/Hucaru/Valhalla/def"
 	"github.com/Hucaru/Valhalla/mnet"
 	"github.com/Hucaru/Valhalla/nx"
 	"github.com/Hucaru/Valhalla/packets"
-	"github.com/Hucaru/Valhalla/types"
 )
 
 var maps = make(map[int32]*GameMap)
 
 type GameMap struct {
-	npcs []types.NPC
+	npcs []def.NPC
 	mobs []gameMob
 	id   int32
 }
 
 func InitMaps() {
 	for mapID, nxMap := range nx.Maps {
-		npcs := []types.NPC{}
+		npcs := []def.NPC{}
 		mobs := []gameMob{}
 
 		for _, l := range nxMap.Life {
 			if l.IsMob {
-				mobs = append(mobs, gameMob{Mob: types.CreateMob(int32(len(mobs)+1), l, nx.Mob[l.ID], nil), mapID: mapID})
+				mobs = append(mobs, gameMob{Mob: def.CreateMob(int32(len(mobs)+1), l, nx.Mob[l.ID], nil), mapID: mapID})
 			} else {
-				npcs = append(npcs, types.CreateNPC(int32(len(npcs)), l))
+				npcs = append(npcs, def.CreateNPC(int32(len(npcs)), l))
 			}
 		}
 
@@ -116,7 +116,7 @@ func (gm *GameMap) SpawnMob(mobID, spawnID int32, x, y, foothold int16, summonTy
 }
 
 func (gm *GameMap) SpawnMobNoRespawn(mobID, spawnID int32, x, y, foothold int16, summonType int8, summonOption int32, facesLeft bool) {
-	mob := types.CreateMob(spawnID, nx.Life{}, nx.Mob[mobID], nil)
+	mob := def.CreateMob(spawnID, nx.Life{}, nx.Mob[mobID], nil)
 	mob.ID = mobID
 
 	mob.X = x

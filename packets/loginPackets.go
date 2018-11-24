@@ -5,8 +5,8 @@ import (
 
 	"github.com/Hucaru/Valhalla/consts"
 	"github.com/Hucaru/Valhalla/consts/opcodes"
+	"github.com/Hucaru/Valhalla/def"
 	"github.com/Hucaru/Valhalla/maplepacket"
-	"github.com/Hucaru/Valhalla/types"
 )
 
 func LoginResponce(result byte, userID int32, gender byte, isAdmin bool, username string, isBanned int) maplepacket.Packet {
@@ -60,7 +60,7 @@ func LoginSendBadMigrate() maplepacket.Packet {
 	return pac
 }
 
-func LoginDisplayCharacters(characters []types.Character) maplepacket.Packet {
+func LoginDisplayCharacters(characters []def.Character) maplepacket.Packet {
 	pac := maplepacket.CreateWithOpcode(opcodes.SendLoginCharacterData)
 	pac.WriteByte(0) // ?
 
@@ -90,7 +90,7 @@ func LoginNameCheck(name string, nameFound int) maplepacket.Packet {
 	return pac
 }
 
-func LoginCreatedCharacter(success bool, character types.Character) maplepacket.Packet {
+func LoginCreatedCharacter(success bool, character def.Character) maplepacket.Packet {
 	pac := maplepacket.CreateWithOpcode(opcodes.SendLoginNewCharacterGood)
 
 	if success {
@@ -118,7 +118,7 @@ func LoginDeleteCharacter(charID int32, deleted bool, hacking bool) maplepacket.
 	return pac
 }
 
-func LoginWritePlayerCharacter(pac *maplepacket.Packet, pos int32, char types.Character) {
+func LoginWritePlayerCharacter(pac *maplepacket.Packet, pos int32, char def.Character) {
 	pac.WriteInt32(pos)
 
 	name := char.Name

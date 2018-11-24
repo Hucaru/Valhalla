@@ -6,7 +6,7 @@ import (
 	"log"
 	"strings"
 
-	"github.com/Hucaru/Valhalla/types"
+	"github.com/Hucaru/Valhalla/def"
 
 	"github.com/Hucaru/Valhalla/consts/opcodes"
 	"github.com/Hucaru/Valhalla/database"
@@ -140,7 +140,7 @@ func handleChannelSelect(conn mnet.MConnLogin, reader maplepacket.Reader) {
 	conn.SetChannelID(reader.ReadByte()) // Channel
 
 	if selectedWorld == conn.GetWorldID() {
-		characters := types.GetCharactersFromAccountWorldID(conn.GetAccountID(), conn.GetWorldID())
+		characters := def.GetCharactersFromAccountWorldID(conn.GetAccountID(), conn.GetWorldID())
 		conn.Send(packets.LoginDisplayCharacters(characters))
 	}
 }
@@ -209,7 +209,7 @@ func handleNewCharacter(conn mnet.MConnLogin, reader maplepacket.Reader) {
 		inSlice(bottom, allowedBottom) && inSlice(top, allowedTop) && inSlice(shoes, allowedShoes) &&
 		inSlice(weapon, allowedWeapons) && inSlice(skin, allowedSkinColour) && (counter == 0)
 
-	newCharacter := types.Character{}
+	newCharacter := def.Character{}
 
 	if conn.GetAdminLevel() > 0 {
 		name = "[GM]" + name
@@ -248,7 +248,7 @@ func handleNewCharacter(conn mnet.MConnLogin, reader maplepacket.Reader) {
 			panic(err)
 		}
 
-		characters := types.GetCharactersFromAccountWorldID(conn.GetAccountID(), conn.GetWorldID())
+		characters := def.GetCharactersFromAccountWorldID(conn.GetAccountID(), conn.GetWorldID())
 		newCharacter = characters[len(characters)-1]
 	}
 

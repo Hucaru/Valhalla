@@ -5,12 +5,12 @@ import (
 	"time"
 
 	"github.com/Hucaru/Valhalla/consts/skills"
+	"github.com/Hucaru/Valhalla/def"
 	"github.com/Hucaru/Valhalla/game"
 	"github.com/Hucaru/Valhalla/maplepacket"
 	"github.com/Hucaru/Valhalla/mnet"
 	"github.com/Hucaru/Valhalla/nx"
 	"github.com/Hucaru/Valhalla/packets"
-	"github.com/Hucaru/Valhalla/types"
 )
 
 func mobControl(conn mnet.MConnChannel, reader maplepacket.Reader) {
@@ -92,7 +92,7 @@ func mobControl(conn mnet.MConnChannel, reader maplepacket.Reader) {
 	game.SendToMapExcept(char.CurrentMap, packets.MobMove(mobSpawnID, skillPossible, byte(action), skillData, moveBytes), conn)
 }
 
-func chooseNextSkill(mob *types.Mob) (byte, byte) {
+func chooseNextSkill(mob *def.Mob) (byte, byte) {
 	var skillID, skillLevel byte
 
 	skillsToChooseFrom := []nx.MobSkill{}
@@ -179,7 +179,7 @@ func chooseNextSkill(mob *types.Mob) (byte, byte) {
 	return skillID, skillLevel
 }
 
-func performSkill(mob *types.Mob, delay int16, skillLevel, skillID byte) {
+func performSkill(mob *def.Mob, delay int16, skillLevel, skillID byte) {
 	if skillID != mob.SkillID || (mob.StatBuff&skills.MobStat.SealSkill > 0) {
 		skillID = 0
 		return

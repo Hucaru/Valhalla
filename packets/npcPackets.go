@@ -2,12 +2,12 @@ package packets
 
 import (
 	"github.com/Hucaru/Valhalla/consts/opcodes"
+	"github.com/Hucaru/Valhalla/def"
 	"github.com/Hucaru/Valhalla/maplepacket"
 	"github.com/Hucaru/Valhalla/nx"
-	"github.com/Hucaru/Valhalla/types"
 )
 
-func NpcShow(npc types.NPC) maplepacket.Packet {
+func NpcShow(npc def.NPC) maplepacket.Packet {
 	p := maplepacket.CreateWithOpcode(opcodes.SendChannelNpcShow)
 	p.WriteInt32(npc.SpawnID)
 	p.WriteInt32(npc.ID)
@@ -162,7 +162,7 @@ func NPCShop(npcID int32, items [][]int32) maplepacket.Packet {
 			p.WriteInt32(nx.Items[currentItem[0]].Price)
 		}
 
-		if types.ItemIsRechargeable(currentItem[0]) {
+		if def.ItemIsRechargeable(currentItem[0]) {
 			p.WriteUint64(uint64(nx.Items[currentItem[0]].UnitPrice * float64(nx.Items[currentItem[0]].SlotMax)))
 		}
 
@@ -199,7 +199,7 @@ func NPCTradeError() maplepacket.Packet {
 	return nPCShopResult(0xFF)
 }
 
-func NPCStorageShow(npcID, storageMesos int32, storageSlots byte, items []types.Item) maplepacket.Packet {
+func NPCStorageShow(npcID, storageMesos int32, storageSlots byte, items []def.Item) maplepacket.Packet {
 	p := maplepacket.CreateWithOpcode(opcodes.SendChannelNpcStorage)
 	p.WriteInt32(npcID)
 	p.WriteByte(storageSlots)

@@ -1,4 +1,4 @@
-package types
+package def
 
 type Avatar struct {
 	Name     string

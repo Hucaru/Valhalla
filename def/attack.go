@@ -1,4 +1,4 @@
-package types
+package def
 
 type AttackInfo struct {
 	SpawnID                                                int32

@@ -2,11 +2,11 @@ package packets
 
 import (
 	"github.com/Hucaru/Valhalla/consts/opcodes"
+	"github.com/Hucaru/Valhalla/def"
 	"github.com/Hucaru/Valhalla/maplepacket"
-	"github.com/Hucaru/Valhalla/types"
 )
 
-func RoomShowWindow(roomType, boardType, maxPlayers, roomSlot byte, roomTitle string, chars []types.Character) maplepacket.Packet {
+func RoomShowWindow(roomType, boardType, maxPlayers, roomSlot byte, roomTitle string, chars []def.Character) maplepacket.Packet {
 	p := maplepacket.CreateWithOpcode(opcodes.SendChannelRoom)
 	p.WriteByte(0x05)
 	p.WriteByte(roomType)
@@ -44,7 +44,7 @@ func RoomShowWindow(roomType, boardType, maxPlayers, roomSlot byte, roomTitle st
 	return p
 }
 
-func RoomJoin(roomType, roomSlot byte, char types.Character) maplepacket.Packet {
+func RoomJoin(roomType, roomSlot byte, char def.Character) maplepacket.Packet {
 	p := maplepacket.CreateWithOpcode(opcodes.SendChannelRoom)
 	p.WriteByte(0x04)
 	p.WriteByte(roomSlot)
@@ -184,7 +184,7 @@ func RoomMemoryStart(ownerStart bool, boardType int32, cards []byte) maplepacket
 	return p
 }
 
-func RoomGameResult(draw bool, winningSlot byte, forfeit bool, chars []types.Character) maplepacket.Packet {
+func RoomGameResult(draw bool, winningSlot byte, forfeit bool, chars []def.Character) maplepacket.Packet {
 	p := maplepacket.CreateWithOpcode(opcodes.SendChannelRoom)
 	p.WriteByte(0x36)
 

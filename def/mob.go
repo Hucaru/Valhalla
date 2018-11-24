@@ -1,4 +1,4 @@
-package types
+package def
 
 import (
 	"github.com/Hucaru/Valhalla/mnet"

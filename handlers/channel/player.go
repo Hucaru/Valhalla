@@ -4,12 +4,12 @@ import (
 	"log"
 
 	"github.com/Hucaru/Valhalla/database"
+	"github.com/Hucaru/Valhalla/def"
 	"github.com/Hucaru/Valhalla/game"
 	"github.com/Hucaru/Valhalla/maplepacket"
 	"github.com/Hucaru/Valhalla/mnet"
 	"github.com/Hucaru/Valhalla/nx"
 	"github.com/Hucaru/Valhalla/packets"
-	"github.com/Hucaru/Valhalla/types"
 )
 
 func playerConnect(conn mnet.MConnChannel, reader maplepacket.Reader) {
@@ -29,7 +29,7 @@ func playerConnect(conn mnet.MConnChannel, reader maplepacket.Reader) {
 	// check that the world this characters belongs to is the same as the world this channel is part of
 	conn.SetLogedIn(true)
 
-	char := types.GetCharacterFromID(charID)
+	char := def.GetCharacterFromID(charID)
 
 	var adminLevel int
 	err = database.Handle.QueryRow("SELECT adminLevel FROM accounts WHERE accountID=?", conn.GetAccountID()).Scan(&adminLevel)
@@ -140,7 +140,7 @@ func playerTakeDamage(conn mnet.MConnChannel, reader maplepacket.Reader) {
 		return
 	}
 
-	var mob *types.Mob
+	var mob *def.Mob
 	var mobSkillID, mobSkillLevel byte = 0, 0
 
 	if mobAttack < -1 {

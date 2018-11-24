@@ -6,9 +6,9 @@ import (
 	"math"
 
 	"github.com/Hucaru/Valhalla/consts/opcodes"
+	"github.com/Hucaru/Valhalla/def"
 	"github.com/Hucaru/Valhalla/maplepacket"
 	"github.com/Hucaru/Valhalla/nx"
-	"github.com/Hucaru/Valhalla/types"
 )
 
 func PlayerReceivedDmg(charID int32, attack int8, initalAmmount, reducedAmmount, spawnID, mobID, healSkillID int32,
@@ -92,7 +92,7 @@ func PlayerNoChange() maplepacket.Packet {
 	return p
 }
 
-func PlayerAvatarSummaryWindow(charID int32, char types.Character, guildName string) maplepacket.Packet {
+func PlayerAvatarSummaryWindow(charID int32, char def.Character, guildName string) maplepacket.Packet {
 	p := maplepacket.CreateWithOpcode(opcodes.SendChannelAvatarInfoWindow)
 	p.WriteInt32(charID)
 	p.WriteByte(char.Level)
@@ -107,7 +107,7 @@ func PlayerAvatarSummaryWindow(charID int32, char types.Character, guildName str
 	return p
 }
 
-func PlayerEnterGame(char types.Character, channelID int32) maplepacket.Packet {
+func PlayerEnterGame(char def.Character, channelID int32) maplepacket.Packet {
 	p := maplepacket.CreateWithOpcode(opcodes.SendChannelWarpToMap)
 	p.WriteInt32(channelID)
 	p.WriteByte(0) // character portal counter
@@ -246,7 +246,7 @@ func PlayerEnterGame(char types.Character, channelID int32) maplepacket.Packet {
 	return p
 }
 
-func addItem(item types.Item, shortSlot bool) maplepacket.Packet {
+func addItem(item def.Item, shortSlot bool) maplepacket.Packet {
 	p := maplepacket.NewPacket()
 
 	if !shortSlot {
@@ -315,7 +315,7 @@ func addItem(item types.Item, shortSlot bool) maplepacket.Packet {
 	return p
 }
 
-func writeDisplayCharacter(char types.Character) maplepacket.Packet {
+func writeDisplayCharacter(char def.Character) maplepacket.Packet {
 	p := maplepacket.NewPacket()
 	p.WriteByte(char.Gender) // gender
 	p.WriteByte(char.Skin)   // skin

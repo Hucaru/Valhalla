@@ -2,18 +2,18 @@ package packets
 
 import (
 	"github.com/Hucaru/Valhalla/consts/opcodes"
+	"github.com/Hucaru/Valhalla/def"
 	"github.com/Hucaru/Valhalla/maplepacket"
-	"github.com/Hucaru/Valhalla/types"
 )
 
-func MobShow(mob types.Mob) maplepacket.Packet {
+func MobShow(mob def.Mob) maplepacket.Packet {
 	p := maplepacket.CreateWithOpcode(opcodes.SendChannelShowMob)
 	p.Append(addMob(mob))
 
 	return p
 }
 
-func MobControl(mob types.Mob) maplepacket.Packet {
+func MobControl(mob def.Mob) maplepacket.Packet {
 	p := maplepacket.CreateWithOpcode(opcodes.SendChannelControlMob)
 	p.WriteByte(0x01) // flag for end control or not
 
@@ -22,7 +22,7 @@ func MobControl(mob types.Mob) maplepacket.Packet {
 	return p
 }
 
-func addMob(mob types.Mob) maplepacket.Packet {
+func addMob(mob def.Mob) maplepacket.Packet {
 	p := maplepacket.NewPacket()
 
 	p.WriteInt32(mob.SpawnID)
@@ -97,7 +97,7 @@ func MobMove(mobID int32, allowedToUseSkill bool, action byte, unknownData uint3
 
 }
 
-func MobEndControl(mob types.Mob) maplepacket.Packet {
+func MobEndControl(mob def.Mob) maplepacket.Packet {
 	p := maplepacket.CreateWithOpcode(opcodes.SendChannelControlMob)
 	p.WriteByte(0)
 	p.WriteInt32(mob.SpawnID)
@@ -105,7 +105,7 @@ func MobEndControl(mob types.Mob) maplepacket.Packet {
 	return p
 }
 
-func MobRemove(mob types.Mob, deathType byte) maplepacket.Packet {
+func MobRemove(mob def.Mob, deathType byte) maplepacket.Packet {
 	p := maplepacket.CreateWithOpcode(opcodes.SendChannelRemoveMob)
 	p.WriteInt32(mob.SpawnID)
 	p.WriteByte(deathType)

@@ -3,8 +3,8 @@ package channel
 import (
 	"fmt"
 
+	"github.com/Hucaru/Valhalla/def"
 	"github.com/Hucaru/Valhalla/maplepacket"
-	"github.com/Hucaru/Valhalla/types"
 )
 
 // values from WvsGlobal
@@ -36,22 +36,22 @@ var movementType = struct {
 	normalMovement3:  17,
 }
 
-func parseMovement(reader maplepacket.Reader) (types.MovementData, types.MovementFrag) {
+func parseMovement(reader maplepacket.Reader) (def.MovementData, def.MovementFrag) {
 	// http://mapleref.wikia.com/wiki/Movement
 
-	mData := types.MovementData{}
+	mData := def.MovementData{}
 
 	mData.OrigX = reader.ReadInt16()
 	mData.OrigY = reader.ReadInt16()
 
 	nFrags := reader.ReadByte()
 
-	mData.Frags = make([]types.MovementFrag, nFrags)
+	mData.Frags = make([]def.MovementFrag, nFrags)
 
-	final := types.MovementFrag{}
+	final := def.MovementFrag{}
 
 	for i := byte(0); i < nFrags; i++ {
-		frag := types.MovementFrag{PosSet: false}
+		frag := def.MovementFrag{PosSet: false}
 
 		frag.MType = reader.ReadByte()
 
@@ -122,7 +122,7 @@ func parseMovement(reader maplepacket.Reader) (types.MovementData, types.Movemen
 	return mData, final
 }
 
-func generateMovementBytes(moveData types.MovementData) maplepacket.Packet {
+func generateMovementBytes(moveData def.MovementData) maplepacket.Packet {
 	p := maplepacket.NewPacket()
 
 	p.WriteInt16(moveData.OrigX)
@@ -178,13 +178,13 @@ func generateMovementBytes(moveData types.MovementData) maplepacket.Packet {
 	return p
 }
 
-func validateCharMovement(char types.Character, moveData types.MovementData) bool {
+func validateCharMovement(char def.Character, moveData def.MovementData) bool {
 	// run through the movement data and make sure characters are not moving too fast (going to have to take into account gear and buffs "-_- )
 
 	return true
 }
 
-func validateMobMovement(mob types.Mob, moveData types.MovementData) bool {
+func validateMobMovement(mob def.Mob, moveData def.MovementData) bool {
 	// run through the movement data and make sure monsters are not moving too fast
 
 	return true

@@ -4,25 +4,25 @@ import (
 	"math"
 
 	"github.com/Hucaru/Valhalla/consts"
+	"github.com/Hucaru/Valhalla/def"
 	"github.com/Hucaru/Valhalla/mnet"
 	"github.com/Hucaru/Valhalla/nx"
 	"github.com/Hucaru/Valhalla/packets"
-	"github.com/Hucaru/Valhalla/types"
 )
 
 var players = map[mnet.MConnChannel]Player{}
 
 type Player struct {
 	mnet.MConnChannel
-	char                 *types.Character
+	char                 *def.Character
 	LastAttackPacketTime int64
 }
 
-func NewPlayer(conn mnet.MConnChannel, char types.Character) Player {
+func NewPlayer(conn mnet.MConnChannel, char def.Character) Player {
 	return Player{MConnChannel: conn, char: &char}
 }
 
-func (p Player) Char() types.Character {
+func (p Player) Char() def.Character {
 	return *p.char
 }
 
@@ -67,7 +67,7 @@ func (p *Player) sendMapItems() {
 	}
 }
 
-func (p *Player) UpdateMovement(moveData types.MovementFrag) {
+func (p *Player) UpdateMovement(moveData def.MovementFrag) {
 	p.char.Pos.X = moveData.X
 	p.char.Pos.Y = moveData.Y
 	// p.char.Foothold = moveData.Foothold - makes char warp accross map to other players when going through portal

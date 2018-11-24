@@ -2,11 +2,11 @@ package packets
 
 import (
 	"github.com/Hucaru/Valhalla/consts/opcodes"
+	"github.com/Hucaru/Valhalla/def"
 	"github.com/Hucaru/Valhalla/maplepacket"
-	"github.com/Hucaru/Valhalla/types"
 )
 
-func SkillMelee(char types.Character, attackData types.AttackData) maplepacket.Packet {
+func SkillMelee(char def.Character, attackData def.AttackData) maplepacket.Packet {
 	p := maplepacket.CreateWithOpcode(opcodes.SendChannelPlayerUseMeleeSkill)
 	p.WriteInt32(char.ID)
 	p.WriteByte(attackData.Targets*0x10 + attackData.Hits)
@@ -43,7 +43,7 @@ func SkillMelee(char types.Character, attackData types.AttackData) maplepacket.P
 	return p
 }
 
-func SkillRanged(char types.Character, attackData types.AttackData) maplepacket.Packet {
+func SkillRanged(char def.Character, attackData def.AttackData) maplepacket.Packet {
 	p := maplepacket.CreateWithOpcode(opcodes.SendChannelPlayerUseRangedSkill)
 	p.WriteInt32(char.ID)
 	p.WriteByte(attackData.Targets*0x10 + attackData.Hits)
@@ -76,7 +76,7 @@ func SkillRanged(char types.Character, attackData types.AttackData) maplepacket.
 	return p
 }
 
-func SkillMagic(char types.Character, attackData types.AttackData) maplepacket.Packet {
+func SkillMagic(char def.Character, attackData def.AttackData) maplepacket.Packet {
 	p := maplepacket.CreateWithOpcode(opcodes.SendChannelPlayerUseMagicSkill)
 	p.WriteInt32(char.ID)
 	p.WriteByte(attackData.Targets*0x10 + attackData.Hits)

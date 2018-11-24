@@ -1,4 +1,4 @@
-package types
+package def
 
 type MovementFrag struct {
 	X, Y, Vx, Vy, Foothold, Duration int16

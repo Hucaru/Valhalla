@@ -1,9 +1,9 @@
 package channel
 
 import (
+	"github.com/Hucaru/Valhalla/def"
 	"github.com/Hucaru/Valhalla/game"
 	"github.com/Hucaru/Valhalla/packets"
-	"github.com/Hucaru/Valhalla/types"
 
 	"github.com/Hucaru/Valhalla/maplepacket"
 	"github.com/Hucaru/Valhalla/mnet"
@@ -142,8 +142,8 @@ const (
 	attackSummon
 )
 
-func getAttackInfo(reader maplepacket.Reader, player game.Player, attackType int) (types.AttackData, bool) {
-	data := types.AttackData{}
+func getAttackInfo(reader maplepacket.Reader, player game.Player, attackType int) (def.AttackData, bool) {
+	data := def.AttackData{}
 
 	if player.Char().HP == 0 {
 		return data, false
@@ -192,10 +192,10 @@ func getAttackInfo(reader maplepacket.Reader, player game.Player, attackType int
 
 	reader.Skip(4) // some sort of checksum?
 
-	data.AttackInfo = make([]types.AttackInfo, data.Targets)
+	data.AttackInfo = make([]def.AttackInfo, data.Targets)
 
 	for i := byte(0); i < data.Targets; i++ {
-		attack := types.AttackInfo{}
+		attack := def.AttackInfo{}
 		attack.SpawnID = reader.ReadInt32()
 		attack.HitAction = reader.ReadByte()
 

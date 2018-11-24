@@ -2,11 +2,11 @@ package packets
 
 import (
 	"github.com/Hucaru/Valhalla/consts/opcodes"
+	"github.com/Hucaru/Valhalla/def"
 	"github.com/Hucaru/Valhalla/maplepacket"
-	"github.com/Hucaru/Valhalla/types"
 )
 
-func InventoryAddItem(item types.Item, newItem bool) maplepacket.Packet {
+func InventoryAddItem(item def.Item, newItem bool) maplepacket.Packet {
 	p := maplepacket.CreateWithOpcode(opcodes.SendChannelInventoryOperation)
 	p.WriteByte(0x01)     // ?
 	p.WriteByte(0x01)     // number of operations? // e.g. loop over multiple interweaved operations
@@ -36,7 +36,7 @@ func InventoryChangeItemSlot(invTabID byte, origPos, newPos int16) maplepacket.P
 	return p
 }
 
-func InventoryRemoveItem(item types.Item) maplepacket.Packet {
+func InventoryRemoveItem(item def.Item) maplepacket.Packet {
 	p := maplepacket.CreateWithOpcode(opcodes.SendChannelInventoryOperation)
 	p.WriteByte(0x01)
 	p.WriteByte(0x01)
@@ -48,7 +48,7 @@ func InventoryRemoveItem(item types.Item) maplepacket.Packet {
 	return p
 }
 
-func InventoryChangeEquip(char types.Character) maplepacket.Packet {
+func InventoryChangeEquip(char def.Character) maplepacket.Packet {
 	p := maplepacket.CreateWithOpcode(opcodes.SendChannelPlayerChangeAvatar)
 	p.WriteInt32(char.ID)
 	p.WriteByte(1)
