@@ -3,20 +3,18 @@ package npcdialogue
 import (
 	"log"
 	"strconv"
-	"sync"
+
+	"github.com/Hucaru/Valhalla/game"
 
 	"github.com/Hucaru/Valhalla/channel"
-	"github.com/Hucaru/Valhalla/inventory"
-	"github.com/Hucaru/Valhalla/mpacket"
-	"github.com/Hucaru/Valhalla/mnet"
-	"github.com/Hucaru/Valhalla/nx"
 	"github.com/Hucaru/Valhalla/game/packet"
+	"github.com/Hucaru/Valhalla/inventory"
+	"github.com/Hucaru/Valhalla/mnet"
+	"github.com/Hucaru/Valhalla/mpacket"
+	"github.com/Hucaru/Valhalla/nx"
 	"github.com/mattn/anko/core"
 	"github.com/mattn/anko/vm"
 )
-
-var sessionsMutex = &sync.RWMutex{}
-var scriptsMutex = &sync.RWMutex{}
 
 var sessions = make(map[mnet.MConnChannel]*session)
 var scripts = make(map[int32]string)
@@ -35,18 +33,14 @@ func init() {
 	go watchFiles()
 }
 
-func NewSession(conn mnet.MConnChannel, npcID int32, char *channel.MapleCharacter) {
+func NewSession(conn mnet.MConnChannel, npcID int32, player game.Player) {
 	var script string
 
-	scriptsMutex.RLock()
 	if _, exists := scripts[npcID]; exists {
 		script = scripts[npcID]
 	} else {
 		script = "if state == 1 {return SendOk('I have not been scripted. Please report #b" + strconv.Itoa(int(npcID)) + "#k on map #b" + strconv.Itoa(int(char.GetCurrentMap())) + "')}"
 	}
-	scriptsMutex.RUnlock()
-
-	sessionsMutex.Lock()
 
 	sessions[conn] = &session{conn: conn,
 		state:       1,
@@ -57,11 +51,8 @@ func NewSession(conn mnet.MConnChannel, npcID int32, char *channel.MapleCharacte
 		script:      script,
 		env:         vm.NewEnv(),
 		npcID:       npcID}
-	sessionsMutex.Unlock()
 
-	scriptsMutex.RLock()
 	sessions[conn].register(npcID, char)
-	scriptsMutex.RUnlock()
 }
 
 func (s *session) OverrideScript(script string) {
@@ -69,15 +60,11 @@ func (s *session) OverrideScript(script string) {
 }
 
 func RemoveSession(conn mnet.MConnChannel) {
-	sessionsMutex.Lock()
 	delete(sessions, conn)
-	sessionsMutex.Unlock()
 }
 
 func GetSession(conn mnet.MConnChannel) *session {
-	scriptsMutex.RLock()
 	result := sessions[conn]
-	scriptsMutex.RUnlock()
 
 	return result
 }

@@ -16,14 +16,14 @@ Install [docker](https://docs.docker.com/install/) & [docker-compose](https://do
 Login server:
 - [x] Login user
 - [ ] Pin (might not add this)
-- [x] World selection
-- [x] Channel selection
-- [x] Migrate to channel server
-- [x] Create character
-- [x] Delete character
 - [x] Display world ribbons
 - [x] Display world messages
 - [x] Display world status (e.g. overpopulated)
+- [x] World selection
+- [x] Channel selection
+- [x] Create character
+- [x] Delete character
+- [x] Migrate to channel server
 - [ ] Show worlds, channels, world status etc from information sent from world server
 
 World server:
@@ -38,6 +38,7 @@ Channel server:
 - [x] GM commands
 - [x] Player use skills
 - [ ] Player skill logic
+- [ ] Inventory
 - [ ] NPC basic chat
 - [ ] NPC shops
 - [ ] NPC stylist
@@ -47,10 +48,14 @@ Channel server:
 - [ ] Mob skill usage effect on players
 - [ ] Mob death
 - [ ] Mob respawn
+- [ ] Mob drops
 - [ ] Trade
 - [ ] Minigames
 - [ ] Party
 - [ ] Guild
+
+## TODO:
+- Redo nx parsing before adding more features that use it
 
 ## Acknowledgements 
 - Sunnyboy for providing a [list](http://forum.ragezone.com/f921/library-idbs-versions-named-addresses-987815/) of idbs for which this project would not have started
