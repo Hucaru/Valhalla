@@ -31,6 +31,7 @@ World server:
 - [ ] Send information to login server
 - [ ] Send IP, port to channel for change channel requests
 - [ ] Forward whisphers
+- [ ] Allow gm command to actiavate exp/drop changes accross all channels
 
 Channel server:
 - [x] Players can see each other
