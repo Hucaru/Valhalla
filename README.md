@@ -39,10 +39,12 @@ Channel server:
 - [x] Player use skills
 - [ ] Player skill logic
 - [ ] Inventory
+- [x] NPC visible
+- [x] NPC movement
 - [ ] NPC basic chat
 - [ ] NPC shops
 - [ ] NPC stylist
-- [x] Mobs visible
+- [x] Mob visible
 - [x] Mob movement
 - [x] Mob use skills
 - [ ] Mob skill usage effect on players
