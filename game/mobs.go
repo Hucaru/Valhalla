@@ -3,7 +3,7 @@ package game
 import (
 	"github.com/Hucaru/Valhalla/game/def"
 	"github.com/Hucaru/Valhalla/mnet"
-	"github.com/Hucaru/Valhalla/packets"
+	"github.com/Hucaru/Valhalla/game/packet"
 )
 
 type gameMob struct {
@@ -35,11 +35,11 @@ func (m *gameMob) ChangeController(newController Player) {
 	}
 
 	if m.Controller != nil {
-		m.Controller.Send(packets.MobEndControl(m.Mob))
+		m.Controller.Send(packet.MobEndControl(m.Mob))
 	}
 
 	m.Controller = newController.MConnChannel
-	newController.Send(packets.MobControl(m.Mob))
+	newController.Send(packet.MobControl(m.Mob))
 }
 
 func (m *gameMob) FindNewControllerExcept(conn mnet.MConnChannel) {

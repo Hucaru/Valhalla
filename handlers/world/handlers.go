@@ -23,5 +23,5 @@ func channelID(reader maplepacket.Reader) {
 }
 
 func newPlayer(conn net.Conn, reader maplepacket.Reader) {
-	//conn.Send(packets.ServerWorldInformation())
+	//conn.Send(packet.ServerWorldInformation())
 }

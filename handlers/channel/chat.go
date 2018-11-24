@@ -9,7 +9,7 @@ import (
 	"github.com/Hucaru/Valhalla/nx"
 
 	"github.com/Hucaru/Valhalla/game"
-	"github.com/Hucaru/Valhalla/packets"
+	"github.com/Hucaru/Valhalla/game/packet"
 
 	"github.com/Hucaru/Valhalla/maplepacket"
 	"github.com/Hucaru/Valhalla/mnet"
@@ -29,7 +29,7 @@ func chatSendAll(conn mnet.MConnChannel, reader maplepacket.Reader) {
 
 		char := player.Char()
 
-		game.SendToMap(char.CurrentMap, packets.MessageAllChat(char.ID, conn.GetAdminLevel() > 0, msg))
+		game.SendToMap(char.CurrentMap, packet.MessageAllChat(char.ID, conn.GetAdminLevel() > 0, msg))
 	}
 }
 
@@ -119,7 +119,7 @@ func gmCommand(conn mnet.MConnChannel, msg string) {
 		player, err := game.GetPlayerFromConn(conn)
 
 		if err != nil {
-			conn.Send(packets.MessageNotice(err.Error()))
+			conn.Send(packet.MessageNotice(err.Error()))
 			return
 		}
 
@@ -133,19 +133,19 @@ func gmCommand(conn mnet.MConnChannel, msg string) {
 		player, err := game.GetPlayerFromConn(conn)
 
 		if err != nil {
-			conn.Send(packets.MessageNotice(err.Error()))
+			conn.Send(packet.MessageNotice(err.Error()))
 			return
 		}
 
 		char := player.Char()
 
-		game.SendToMap(char.CurrentMap, packets.MessageNotice(strings.Join(command[1:], " ")))
+		game.SendToMap(char.CurrentMap, packet.MessageNotice(strings.Join(command[1:], " ")))
 	case "kill":
 		if len(command) == 1 {
 			player, err := game.GetPlayerFromConn(conn)
 
 			if err != nil {
-				conn.Send(packets.MessageNotice(err.Error()))
+				conn.Send(packet.MessageNotice(err.Error()))
 				return
 			}
 
@@ -155,7 +155,7 @@ func gmCommand(conn mnet.MConnChannel, msg string) {
 				player, err := game.GetPlayerFromConn(conn)
 
 				if err != nil {
-					conn.Send(packets.MessageNotice(err.Error()))
+					conn.Send(packet.MessageNotice(err.Error()))
 					return
 				}
 
@@ -169,7 +169,7 @@ func gmCommand(conn mnet.MConnChannel, msg string) {
 			player, err := game.GetPlayerFromName(command[1])
 
 			if err != nil {
-				conn.Send(packets.MessageNotice(err.Error()))
+				conn.Send(packet.MessageNotice(err.Error()))
 				return
 			}
 
@@ -180,7 +180,7 @@ func gmCommand(conn mnet.MConnChannel, msg string) {
 			player, err := game.GetPlayerFromConn(conn)
 
 			if err != nil {
-				conn.Send(packets.MessageNotice(err.Error()))
+				conn.Send(packet.MessageNotice(err.Error()))
 				return
 			}
 
@@ -190,7 +190,7 @@ func gmCommand(conn mnet.MConnChannel, msg string) {
 				player, err := game.GetPlayerFromConn(conn)
 
 				if err != nil {
-					conn.Send(packets.MessageNotice(err.Error()))
+					conn.Send(packet.MessageNotice(err.Error()))
 					return
 				}
 
@@ -204,7 +204,7 @@ func gmCommand(conn mnet.MConnChannel, msg string) {
 			player, err := game.GetPlayerFromName(command[1])
 
 			if err != nil {
-				conn.Send(packets.MessageNotice(err.Error()))
+				conn.Send(packet.MessageNotice(err.Error()))
 				return
 			}
 
@@ -218,7 +218,7 @@ func gmCommand(conn mnet.MConnChannel, msg string) {
 		player, err := game.GetPlayerFromConn(conn)
 
 		if err != nil {
-			conn.Send(packets.MessageNotice(err.Error()))
+			conn.Send(packet.MessageNotice(err.Error()))
 			return
 		}
 
@@ -226,7 +226,7 @@ func gmCommand(conn mnet.MConnChannel, msg string) {
 			ammount, err := strconv.Atoi(command[1][1:])
 
 			if err != nil {
-				conn.Send(packets.MessageNotice(err.Error()))
+				conn.Send(packet.MessageNotice(err.Error()))
 			}
 
 			player.GiveHP(int32(ammount))
@@ -234,7 +234,7 @@ func gmCommand(conn mnet.MConnChannel, msg string) {
 			ammount, err := strconv.Atoi(command[1][1:])
 
 			if err != nil {
-				conn.Send(packets.MessageNotice(err.Error()))
+				conn.Send(packet.MessageNotice(err.Error()))
 			}
 
 			player.GiveHP(int32(-ammount))
@@ -243,7 +243,7 @@ func gmCommand(conn mnet.MConnChannel, msg string) {
 			ammount, err := strconv.Atoi(command[1])
 
 			if err != nil {
-				conn.Send(packets.MessageNotice(err.Error()))
+				conn.Send(packet.MessageNotice(err.Error()))
 			}
 
 			player.SetHP(int32(ammount))

@@ -6,7 +6,7 @@ import (
 	"github.com/Hucaru/Valhalla/channel"
 	"github.com/Hucaru/Valhalla/maplepacket"
 	"github.com/Hucaru/Valhalla/mnet"
-	"github.com/Hucaru/Valhalla/packets"
+	"github.com/Hucaru/Valhalla/game/packet"
 )
 
 func handleStandardSkill(conn mnet.MConnChannel, reader maplepacket.Reader) {
@@ -44,7 +44,7 @@ func handleStandardSkill(conn mnet.MConnChannel, reader maplepacket.Reader) {
 	}
 
 	channel.Players.OnCharacterFromConn(conn, func(char *channel.MapleCharacter) {
-		channel.Maps.GetMap(char.GetCurrentMap()).SendPacketExcept(packets.SkillMelee(char.GetCharID(), skillID, targets, hits, display, animation, damages),
+		channel.Maps.GetMap(char.GetCurrentMap()).SendPacketExcept(packet.SkillMelee(char.GetCharID(), skillID, targets, hits, display, animation, damages),
 			conn)
 
 		for mobID, dmg := range damages {
@@ -98,7 +98,7 @@ func handleRangedSkill(conn mnet.MConnChannel, reader maplepacket.Reader) {
 
 	// hard coded ilbi for now
 	channel.Players.OnCharacterFromConn(conn, func(char *channel.MapleCharacter) {
-		channel.Maps.GetMap(char.GetCurrentMap()).SendPacketExcept(packets.SkillRanged(char.GetCharID(), skillID, 2070006, targets, hits, display, animation, damages),
+		channel.Maps.GetMap(char.GetCurrentMap()).SendPacketExcept(packet.SkillRanged(char.GetCharID(), skillID, 2070006, targets, hits, display, animation, damages),
 			conn)
 	})
 }
@@ -141,7 +141,7 @@ func handleMagicSkill(conn mnet.MConnChannel, reader maplepacket.Reader) {
 	// playerY := reader.ReadInt16()
 
 	channel.Players.OnCharacterFromConn(conn, func(char *channel.MapleCharacter) {
-		channel.Maps.GetMap(char.GetCurrentMap()).SendPacketExcept(packets.SkillMagic(char.GetCharID(), skillID, targets, hits, display, animation, damages),
+		channel.Maps.GetMap(char.GetCurrentMap()).SendPacketExcept(packet.SkillMagic(char.GetCharID(), skillID, targets, hits, display, animation, damages),
 			conn)
 	})
 }
@@ -162,16 +162,16 @@ func handleSpecialSkill(conn mnet.MConnChannel, reader maplepacket.Reader) {
 	case 5101002: // gm holy symbol
 	case 5101003: // gm bless
 	case 5101004: // gm hide
-		conn.Write(packets.SkillGmHide(true))
+		conn.Write(packet.SkillGmHide(true))
 	case 5101005: // gm resurect
 	default:
 		fmt.Println("Unkown skill id:", skillID)
 	}
 
-	conn.Write(packets.PlayerStatNoChange()) // Needs a continue packet of some kind?
+	conn.Write(packet.PlayerStatNoChange()) // Needs a continue packet of some kind?
 
 	channel.Players.OnCharacterFromConn(conn, func(char *channel.MapleCharacter) {
-		channel.Maps.GetMap(char.GetCurrentMap()).SendPacketExcept(packets.SkillAnimation(char.GetCharID(), skillID, level),
+		channel.Maps.GetMap(char.GetCurrentMap()).SendPacketExcept(packet.SkillAnimation(char.GetCharID(), skillID, level),
 			conn)
 	})
 }

@@ -10,7 +10,7 @@ import (
 	"github.com/Hucaru/Valhalla/maplepacket"
 	"github.com/Hucaru/Valhalla/mnet"
 	"github.com/Hucaru/Valhalla/nx"
-	"github.com/Hucaru/Valhalla/packets"
+	"github.com/Hucaru/Valhalla/game/packet"
 )
 
 func mobControl(conn mnet.MConnChannel, reader maplepacket.Reader) {
@@ -88,8 +88,8 @@ func mobControl(conn mnet.MConnChannel, reader maplepacket.Reader) {
 		mob.SkillID, mob.SkillLevel = chooseNextSkill(&mob.Mob)
 	}
 
-	conn.Send(packets.MobControlAcknowledge(mobSpawnID, moveID, skillPossible, int16(mob.MP), mob.SkillID, mob.SkillLevel)) // change zeros to what is calculated as next move
-	game.SendToMapExcept(char.CurrentMap, packets.MobMove(mobSpawnID, skillPossible, byte(action), skillData, moveBytes), conn)
+	conn.Send(packet.MobControlAcknowledge(mobSpawnID, moveID, skillPossible, int16(mob.MP), mob.SkillID, mob.SkillLevel)) // change zeros to what is calculated as next move
+	game.SendToMapExcept(char.CurrentMap, packet.MobMove(mobSpawnID, skillPossible, byte(action), skillData, moveBytes), conn)
 }
 
 func chooseNextSkill(mob *def.Mob) (byte, byte) {

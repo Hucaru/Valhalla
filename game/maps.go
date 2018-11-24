@@ -4,7 +4,7 @@ import (
 	"github.com/Hucaru/Valhalla/game/def"
 	"github.com/Hucaru/Valhalla/mnet"
 	"github.com/Hucaru/Valhalla/nx"
-	"github.com/Hucaru/Valhalla/packets"
+	"github.com/Hucaru/Valhalla/game/packet"
 )
 
 var maps = make(map[int32]*GameMap)
@@ -40,7 +40,7 @@ func (gm *GameMap) removeController(conn mnet.MConnChannel) {
 	for i, m := range gm.mobs {
 		if m.Controller == conn {
 			gm.mobs[i].Controller = nil
-			conn.Send(packets.MobEndControl(m.Mob))
+			conn.Send(packet.MobEndControl(m.Mob))
 		}
 	}
 
@@ -48,7 +48,7 @@ func (gm *GameMap) removeController(conn mnet.MConnChannel) {
 		if c != conn && p.char.CurrentMap == players[conn].char.CurrentMap {
 			for i, m := range gm.mobs {
 				gm.mobs[i].Controller = c
-				c.Send(packets.MobControl(m.Mob))
+				c.Send(packet.MobControl(m.Mob))
 			}
 		}
 	}
@@ -58,7 +58,7 @@ func (gm *GameMap) addController(conn mnet.MConnChannel) {
 	for i, m := range gm.mobs {
 		if m.Controller == nil {
 			gm.mobs[i].Controller = conn
-			conn.Send(packets.MobControl(m.Mob))
+			conn.Send(packet.MobControl(m.Mob))
 		}
 	}
 }
@@ -95,14 +95,14 @@ func (gm *GameMap) HandleDeadMobs() {
 
 	for _, mob := range gm.mobs {
 		if mob.HP < 1 {
-			mob.Controller.Send(packets.MobEndControl(mob.Mob))
+			mob.Controller.Send(packet.MobEndControl(mob.Mob))
 
 			for _, id := range mob.Revive {
 				gm.SpawnMobNoRespawn(id, gm.generateMobSpawnID(), mob.X, mob.Y, mob.Foothold, -3, mob.SpawnID, mob.FacesLeft())
 				y = append(y, gm.mobs[len(gm.mobs)-1])
 			}
 
-			SendToMap(mob.mapID, packets.MobRemove(mob.Mob, 1)) // 0 keeps it there and is no longer attackable, 1 normal death, 2 disaapear instantly
+			SendToMap(mob.mapID, packet.MobRemove(mob.Mob, 1)) // 0 keeps it there and is no longer attackable, 1 normal death, 2 disaapear instantly
 		} else {
 			y = append(y, mob)
 		}
@@ -130,7 +130,7 @@ func (gm *GameMap) SpawnMobNoRespawn(mobID, spawnID int32, x, y, foothold int16,
 
 	mob.FacesLeft = facesLeft
 
-	SendToMap(gm.id, packets.MobShow(mob))
+	SendToMap(gm.id, packet.MobShow(mob))
 
 	if summonType != -4 {
 		mob.SummonType = -1

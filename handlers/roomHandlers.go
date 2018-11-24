@@ -6,7 +6,7 @@ import (
 	"github.com/Hucaru/Valhalla/channel"
 	"github.com/Hucaru/Valhalla/maplepacket"
 	"github.com/Hucaru/Valhalla/mnet"
-	"github.com/Hucaru/Valhalla/packets"
+	"github.com/Hucaru/Valhalla/game/packet"
 )
 
 func handleUIWindow(conn mnet.MConnChannel, reader maplepacket.Reader) {
@@ -80,7 +80,7 @@ func handleUIWindow(conn mnet.MConnChannel, reader maplepacket.Reader) {
 				}
 
 				channel.ActiveRooms.OnConn(conn, func(r *channel.Room) {
-					recipient.SendPacket(packets.RoomInvite(r.RoomType, sender.GetName(), r.ID))
+					recipient.SendPacket(packet.RoomInvite(r.RoomType, sender.GetName(), r.ID))
 				})
 			})
 		})
@@ -90,11 +90,11 @@ func handleUIWindow(conn mnet.MConnChannel, reader maplepacket.Reader) {
 
 		channel.ActiveRooms.OnID(roomID, func(r *channel.Room) {
 			channel.Players.OnCharacterFromConn(conn, func(recipient *channel.MapleCharacter) {
-				r.Broadcast(packets.RoomInviteResult(rejectCode, recipient.GetName())) // I think we can broadcast this to everyone
+				r.Broadcast(packet.RoomInviteResult(rejectCode, recipient.GetName())) // I think we can broadcast this to everyone
 
 				if r.RoomType == 0x03 {
 					// Can't remember if a reject caused the window cancel in original
-					r.Broadcast(packets.RoomLeave(0, 2))
+					r.Broadcast(packet.RoomLeave(0, 2))
 				}
 			})
 		})
@@ -115,7 +115,7 @@ func handleUIWindow(conn mnet.MConnChannel, reader maplepacket.Reader) {
 			channel.Players.OnCharacterFromConn(conn, func(recipient *channel.MapleCharacter) {
 				if hasPassword {
 					if password != r.GetPassword() {
-						recipient.SendPacket(packets.RoomIncorrectPassword())
+						recipient.SendPacket(packet.RoomIncorrectPassword())
 						return
 					}
 				}
@@ -126,7 +126,7 @@ func handleUIWindow(conn mnet.MConnChannel, reader maplepacket.Reader) {
 
 		if !activeRoom {
 			channel.Players.OnCharacterFromConn(conn, func(recipient *channel.MapleCharacter) {
-				recipient.SendPacket(packets.RoomClosed())
+				recipient.SendPacket(packet.RoomClosed())
 			})
 		}
 	case 0x06: // Chat
@@ -178,9 +178,9 @@ func handleUIWindow(conn mnet.MConnChannel, reader maplepacket.Reader) {
 		channel.ActiveRooms.OnConn(conn, func(r *channel.Room) {
 			channel.Players.OnCharacterFromConn(conn, func(char *channel.MapleCharacter) {
 				if r.GetSlotIDFromChar(char) == 0 {
-					r.GetParticipantFromSlot(1).SendPacket(packets.RoomRequestTie())
+					r.GetParticipantFromSlot(1).SendPacket(packet.RoomRequestTie())
 				} else {
-					r.GetParticipantFromSlot(0).SendPacket(packets.RoomRequestTie())
+					r.GetParticipantFromSlot(0).SendPacket(packet.RoomRequestTie())
 				}
 			})
 		})
@@ -193,9 +193,9 @@ func handleUIWindow(conn mnet.MConnChannel, reader maplepacket.Reader) {
 			channel.ActiveRooms.OnConn(conn, func(r *channel.Room) {
 				channel.Players.OnCharacterFromConn(conn, func(char *channel.MapleCharacter) {
 					if r.GetSlotIDFromChar(char) == 0 {
-						r.GetParticipantFromSlot(1).SendPacket(packets.RoomRejectTie())
+						r.GetParticipantFromSlot(1).SendPacket(packet.RoomRejectTie())
 					} else {
-						r.GetParticipantFromSlot(0).SendPacket(packets.RoomRejectTie())
+						r.GetParticipantFromSlot(0).SendPacket(packet.RoomRejectTie())
 					}
 				})
 			})
@@ -214,9 +214,9 @@ func handleUIWindow(conn mnet.MConnChannel, reader maplepacket.Reader) {
 		channel.ActiveRooms.OnConn(conn, func(r *channel.Room) {
 			channel.Players.OnCharacterFromConn(conn, func(char *channel.MapleCharacter) {
 				if r.GetSlotIDFromChar(char) == 0 {
-					r.GetParticipantFromSlot(1).SendPacket(packets.RoomRequestUndo())
+					r.GetParticipantFromSlot(1).SendPacket(packet.RoomRequestUndo())
 				} else {
-					r.GetParticipantFromSlot(0).SendPacket(packets.RoomRequestUndo())
+					r.GetParticipantFromSlot(0).SendPacket(packet.RoomRequestUndo())
 				}
 			})
 		})
@@ -231,16 +231,16 @@ func handleUIWindow(conn mnet.MConnChannel, reader maplepacket.Reader) {
 					}
 				} else {
 					if r.GetSlotIDFromChar(char) == 0 {
-						r.GetParticipantFromSlot(1).SendPacket(packets.RoomRejectUndo())
+						r.GetParticipantFromSlot(1).SendPacket(packet.RoomRejectUndo())
 					} else {
-						r.GetParticipantFromSlot(0).SendPacket(packets.RoomRejectUndo())
+						r.GetParticipantFromSlot(0).SendPacket(packet.RoomRejectUndo())
 					}
 				}
 			})
 		})
 	case 0x32: // Ready button pressed
 		channel.ActiveRooms.OnConn(conn, func(r *channel.Room) {
-			r.Broadcast(packets.RoomReady())
+			r.Broadcast(packet.RoomReady())
 		})
 	case 0x30: // Request exit during game
 		channel.ActiveRooms.OnConn(conn, func(r *channel.Room) {
@@ -250,7 +250,7 @@ func handleUIWindow(conn mnet.MConnChannel, reader maplepacket.Reader) {
 		})
 	case 0x33: // Unready
 		channel.ActiveRooms.OnConn(conn, func(r *channel.Room) {
-			r.Broadcast(packets.RoomUnReady())
+			r.Broadcast(packet.RoomUnReady())
 		})
 	case 0x34: // owner expells
 		channel.ActiveRooms.OnConn(conn, func(r *channel.Room) {
@@ -267,15 +267,15 @@ func handleUIWindow(conn mnet.MConnChannel, reader maplepacket.Reader) {
 			}
 
 			if r.RoomType == 0x01 {
-				r.Broadcast(packets.RoomOmokStart(r.P1Turn))
+				r.Broadcast(packet.RoomOmokStart(r.P1Turn))
 			} else if r.RoomType == 0x02 {
 				r.ShuffleCards()
-				r.Broadcast(packets.RoomMemoryStart(r.P1Turn, int32(r.GetBoardType()), r.GetCards()))
+				r.Broadcast(packet.RoomMemoryStart(r.P1Turn, int32(r.GetBoardType()), r.GetCards()))
 			}
 		})
 	case 0x37: // change turn
 		channel.ActiveRooms.OnConn(conn, func(r *channel.Room) {
-			r.Broadcast(packets.RoomOmokSkip(r.P1Turn))
+			r.Broadcast(packet.RoomOmokSkip(r.P1Turn))
 			r.ChangeTurn()
 		})
 	case 0x38: // place piece

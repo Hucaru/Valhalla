@@ -2,7 +2,7 @@ package channel
 
 import (
 	"github.com/Hucaru/Valhalla/mnet"
-	"github.com/Hucaru/Valhalla/packets"
+	"github.com/Hucaru/Valhalla/game/packet"
 )
 
 type mapleNpc struct {
@@ -84,11 +84,11 @@ func (n *mapleNpc) GetState() byte {
 }
 
 func (n *mapleNpc) Show(conn mnet.MConnChannel) {
-	conn.Send(packets.NpcShow(n))
-	conn.Send(packets.NPCSetController(n.GetSpawnID(), true))
+	conn.Send(packet.NpcShow(n))
+	conn.Send(packet.NPCSetController(n.GetSpawnID(), true))
 }
 
 func (n *mapleNpc) Hide(conn mnet.MConnChannel) {
-	conn.Send(packets.NPCSetController(n.GetSpawnID(), false))
-	conn.Send(packets.NPCRemove(n.GetSpawnID()))
+	conn.Send(packet.NPCSetController(n.GetSpawnID(), false))
+	conn.Send(packet.NPCRemove(n.GetSpawnID()))
 }

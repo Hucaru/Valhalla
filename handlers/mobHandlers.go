@@ -6,7 +6,7 @@ import (
 	"github.com/Hucaru/Valhalla/mnet"
 	"github.com/Hucaru/Valhalla/movement"
 	"github.com/Hucaru/Valhalla/nx"
-	"github.com/Hucaru/Valhalla/packets"
+	"github.com/Hucaru/Valhalla/game/packet"
 )
 
 func handleMobControl(conn mnet.MConnChannel, reader maplepacket.Reader) {
@@ -84,9 +84,9 @@ func handleMobControl(conn mnet.MConnChannel, reader maplepacket.Reader) {
 
 			movement.ParseFragments(nFrags, mob, reader)
 
-			conn.Write(packets.MobAck(mobID, moveID, allowedToUseSkill, int16(mob.GetMp()), mob.GetNextSkillID(), mob.GetNextSkillLevel()))
+			conn.Write(packet.MobAck(mobID, moveID, allowedToUseSkill, int16(mob.GetMp()), mob.GetNextSkillID(), mob.GetNextSkillLevel()))
 
-			channel.Maps.GetMap(char.GetCurrentMap()).SendPacketExcept(packets.MobMove(mobID, allowedToUseSkill, activity, skillID, skillLevel, option, reader.GetBuffer()[13:]), conn)
+			channel.Maps.GetMap(char.GetCurrentMap()).SendPacketExcept(packet.MobMove(mobID, allowedToUseSkill, activity, skillID, skillLevel, option, reader.GetBuffer()[13:]), conn)
 		})
 	})
 

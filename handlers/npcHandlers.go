@@ -6,15 +6,15 @@ import (
 	"github.com/Hucaru/Valhalla/npcdialogue"
 
 	"github.com/Hucaru/Valhalla/maplepacket"
-	"github.com/Hucaru/Valhalla/packets"
+	"github.com/Hucaru/Valhalla/game/packet"
 )
 
 func handleNPCMovement(conn mnet.MConnChannel, reader maplepacket.Reader) {
 	data := reader.GetRestAsBytes()
 	id := reader.ReadInt32()
 
-	conn.Write(packets.NPCMovement(data))
-	conn.Write(packets.NPCSetController(id, true))
+	conn.Write(packet.NPCMovement(data))
+	conn.Write(packet.NPCSetController(id, true))
 }
 
 func handleNPCChat(conn mnet.MConnChannel, reader maplepacket.Reader) {

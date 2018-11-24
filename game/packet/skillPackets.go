@@ -1,4 +1,4 @@
-package packets
+package packet
 
 import (
 	"github.com/Hucaru/Valhalla/consts/opcodes"

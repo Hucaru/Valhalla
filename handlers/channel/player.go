@@ -9,7 +9,7 @@ import (
 	"github.com/Hucaru/Valhalla/maplepacket"
 	"github.com/Hucaru/Valhalla/mnet"
 	"github.com/Hucaru/Valhalla/nx"
-	"github.com/Hucaru/Valhalla/packets"
+	"github.com/Hucaru/Valhalla/game/packet"
 )
 
 func playerConnect(conn mnet.MConnChannel, reader maplepacket.Reader) {
@@ -40,8 +40,8 @@ func playerConnect(conn mnet.MConnChannel, reader maplepacket.Reader) {
 
 	conn.SetAdminLevel(adminLevel)
 
-	conn.Send(packets.PlayerEnterGame(char, 0))
-	conn.Send(packets.MessageScrollingHeader("dummy header"))
+	conn.Send(packet.PlayerEnterGame(char, 0))
+	conn.Send(packet.MessageScrollingHeader("dummy header"))
 
 	game.AddPlayer(game.NewPlayer(conn, char))
 }
@@ -56,7 +56,7 @@ func playerUsePortal(conn mnet.MConnChannel, reader maplepacket.Reader) {
 	char := player.Char()
 
 	if char.PortalCount != reader.ReadByte() {
-		conn.Send(packets.PlayerNoChange())
+		conn.Send(packet.PlayerNoChange())
 		return
 	}
 
@@ -114,7 +114,7 @@ func playerMovement(conn mnet.MConnChannel, reader maplepacket.Reader) {
 
 	player.UpdateMovement(finalData)
 
-	game.SendToMapExcept(char.CurrentMap, packets.PlayerMove(char.ID, moveBytes), conn)
+	game.SendToMapExcept(char.CurrentMap, packet.PlayerMove(char.ID, moveBytes), conn)
 }
 
 func playerTakeDamage(conn mnet.MConnChannel, reader maplepacket.Reader) {
@@ -189,7 +189,7 @@ func playerTakeDamage(conn mnet.MConnChannel, reader maplepacket.Reader) {
 
 		player.GiveHP(playerDamange)
 
-		game.SendToMap(char.CurrentMap, packets.PlayerReceivedDmg(char.ID, mobAttack, damage,
+		game.SendToMap(char.CurrentMap, packet.PlayerReceivedDmg(char.ID, mobAttack, damage,
 			reducedDamange, spawnID, mobID, healSkillID, stance, reflectAction, reflected, reflectX, reflectY))
 	}
 
@@ -209,7 +209,7 @@ func playerRequestAvatarInfoWindow(conn mnet.MConnChannel, reader maplepacket.Re
 
 	char := player.Char()
 
-	conn.Send(packets.PlayerAvatarSummaryWindow(char.ID, char, char.Guild))
+	conn.Send(packet.PlayerAvatarSummaryWindow(char.ID, char, char.Guild))
 }
 
 func playerEmote(conn mnet.MConnChannel, reader maplepacket.Reader) {
@@ -225,7 +225,7 @@ func playerEmote(conn mnet.MConnChannel, reader maplepacket.Reader) {
 
 	mapID := char.CurrentMap
 
-	game.SendToMapExcept(mapID, packets.PlayerEmoticon(char.ID, emote), conn)
+	game.SendToMapExcept(mapID, packet.PlayerEmoticon(char.ID, emote), conn)
 }
 
 func playerPassiveRegen(conn mnet.MConnChannel, reader maplepacket.Reader) {

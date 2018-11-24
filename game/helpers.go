@@ -5,7 +5,7 @@ import (
 	"math/rand"
 
 	"github.com/Hucaru/Valhalla/maplepacket"
-	"github.com/Hucaru/Valhalla/packets"
+	"github.com/Hucaru/Valhalla/game/packet"
 
 	"github.com/Hucaru/Valhalla/mnet"
 
@@ -26,7 +26,7 @@ func RemovePlayer(conn mnet.MConnChannel) {
 
 	for _, player := range players {
 		if player.Char().CurrentMap == p.Char().CurrentMap {
-			player.Send(packets.MapPlayerLeft(p.Char().ID))
+			player.Send(packet.MapPlayerLeft(p.Char().ID))
 		}
 	}
 

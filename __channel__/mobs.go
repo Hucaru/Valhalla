@@ -6,7 +6,7 @@ import (
 
 	"github.com/Hucaru/Valhalla/consts"
 	"github.com/Hucaru/Valhalla/mnet"
-	"github.com/Hucaru/Valhalla/packets"
+	"github.com/Hucaru/Valhalla/game/packet"
 
 	"github.com/Hucaru/Valhalla/nx"
 )
@@ -97,7 +97,7 @@ func (m *mapleMobs) MobTakeDamage(mapID, mobID int32, damage []int32) int32 {
 				if dmg > mob.GetHp() {
 					// mob death
 					exp = mob.GetEXP()
-					Maps.GetMap(mapID).SendPacket(packets.MobRemove(mob, 1))
+					Maps.GetMap(mapID).SendPacket(packet.MobRemove(mob, 1))
 					mob.SetDeathTime(time.Now().Unix())
 					index = i
 					break
@@ -132,7 +132,7 @@ func (m *mapleMobs) SpawnMob(mapID int32, mob *MapleMob) {
 	})
 
 	m.AddMob(mapID, mob)
-	Maps.GetMap(mapID).SendPacket(packets.MobShow(mob, true))
+	Maps.GetMap(mapID).SendPacket(packet.MobShow(mob, true))
 }
 
 func (m *mapleMobs) mobRespawner(mapID int32) {

@@ -3,7 +3,7 @@ package channel
 import (
 	"github.com/Hucaru/Valhalla/game"
 	"github.com/Hucaru/Valhalla/game/def"
-	"github.com/Hucaru/Valhalla/packets"
+	"github.com/Hucaru/Valhalla/game/packet"
 
 	"github.com/Hucaru/Valhalla/maplepacket"
 	"github.com/Hucaru/Valhalla/mnet"
@@ -36,7 +36,7 @@ func playerMeleeSkill(conn mnet.MConnChannel, reader maplepacket.Reader) {
 		mob.GiveDamage(player, attack.Damages)
 	}
 
-	game.SendToMapExcept(char.CurrentMap, packets.SkillMelee(char, data), conn)
+	game.SendToMapExcept(char.CurrentMap, packet.SkillMelee(char, data), conn)
 
 	game.GetMapFromID(char.CurrentMap).HandleDeadMobs()
 }
@@ -68,7 +68,7 @@ func playerRangedSkill(conn mnet.MConnChannel, reader maplepacket.Reader) {
 		mob.GiveDamage(player, attack.Damages)
 	}
 
-	game.SendToMapExcept(char.CurrentMap, packets.SkillMelee(char, data), conn)
+	game.SendToMapExcept(char.CurrentMap, packet.SkillMelee(char, data), conn)
 
 	game.GetMapFromID(char.CurrentMap).HandleDeadMobs()
 }
@@ -100,13 +100,13 @@ func playerMagicSkill(conn mnet.MConnChannel, reader maplepacket.Reader) {
 		mob.GiveDamage(player, attack.Damages)
 	}
 
-	game.SendToMapExcept(char.CurrentMap, packets.SkillMelee(char, data), conn)
+	game.SendToMapExcept(char.CurrentMap, packet.SkillMelee(char, data), conn)
 
 	game.GetMapFromID(char.CurrentMap).HandleDeadMobs()
 
 	switch data.SkillID {
 	default:
-		conn.Send(packets.PlayerNoChange())
+		conn.Send(packet.PlayerNoChange())
 	}
 }
 
@@ -126,11 +126,11 @@ func playerSpecialSkill(conn mnet.MConnChannel, reader maplepacket.Reader) {
 		return
 	}
 
-	game.SendToMapExcept(char.CurrentMap, packets.SkillAnimation(char.ID, skillID, skillLevel), conn)
+	game.SendToMapExcept(char.CurrentMap, packet.SkillAnimation(char.ID, skillID, skillLevel), conn)
 
 	switch skillID {
 	default:
-		conn.Send(packets.PlayerNoChange())
+		conn.Send(packet.PlayerNoChange())
 	}
 }
 

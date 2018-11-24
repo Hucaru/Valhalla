@@ -7,7 +7,7 @@ import (
 	"github.com/Hucaru/Valhalla/game/def"
 	"github.com/Hucaru/Valhalla/mnet"
 	"github.com/Hucaru/Valhalla/nx"
-	"github.com/Hucaru/Valhalla/packets"
+	"github.com/Hucaru/Valhalla/game/packet"
 )
 
 var players = map[mnet.MConnChannel]Player{}
@@ -29,7 +29,7 @@ func (p Player) Char() def.Character {
 func (p *Player) ChangeMap(mapID int32, portal nx.Portal, portalID byte) {
 	for _, player := range players {
 		if player.Char().CurrentMap == p.char.CurrentMap {
-			player.Send(packets.MapPlayerLeft(p.char.ID))
+			player.Send(packet.MapPlayerLeft(p.char.ID))
 		}
 	}
 
@@ -40,7 +40,7 @@ func (p *Player) ChangeMap(mapID int32, portal nx.Portal, portalID byte) {
 	p.char.CurrentMapPos = portalID
 	p.char.CurrentMap = mapID
 
-	p.Send(packets.MapChange(mapID, 0, portalID, p.char.HP)) // get current channel
+	p.Send(packet.MapChange(mapID, 0, portalID, p.char.HP)) // get current channel
 	p.sendMapItems()
 
 	maps[p.char.CurrentMap].addController(p.MConnChannel)
@@ -50,19 +50,19 @@ func (p *Player) sendMapItems() {
 	for _, mob := range maps[p.char.CurrentMap].mobs {
 		if mob.HP > 0 {
 			mob.SummonType = -1 // -2: fade in spawn animation, -1: no spawn animation
-			p.Send(packets.MobShow(mob.Mob))
+			p.Send(packet.MobShow(mob.Mob))
 		}
 	}
 
 	for _, npc := range maps[p.char.CurrentMap].npcs {
-		p.Send(packets.NpcShow(npc))
-		p.Send(packets.NPCSetController(npc.SpawnID, true))
+		p.Send(packet.NpcShow(npc))
+		p.Send(packet.NPCSetController(npc.SpawnID, true))
 	}
 
 	for _, player := range players {
 		if player.Char().CurrentMap == p.char.CurrentMap {
-			player.Send(packets.MapPlayerEnter(p.Char()))
-			p.Send(packets.MapPlayerEnter(player.Char()))
+			player.Send(packet.MapPlayerEnter(p.Char()))
+			p.Send(packet.MapPlayerEnter(player.Char()))
 		}
 	}
 }
@@ -88,7 +88,7 @@ func (p *Player) SetMaxHP(ammount int32) {
 	}
 
 	p.char.MaxHP = int16(ammount)
-	p.Send(packets.PlayerStatChange(true, consts.MAX_HP_ID, ammount))
+	p.Send(packet.PlayerStatChange(true, consts.MAX_HP_ID, ammount))
 }
 
 func (p *Player) SetHP(ammount int32) {
@@ -102,7 +102,7 @@ func (p *Player) SetHP(ammount int32) {
 		p.char.HP = 0
 	}
 
-	p.Send(packets.PlayerStatChange(true, consts.HP_ID, ammount))
+	p.Send(packet.PlayerStatChange(true, consts.HP_ID, ammount))
 }
 
 func (p *Player) GiveHP(ammount int32) {
@@ -115,7 +115,7 @@ func (p *Player) SetMaxMP(ammount int32) {
 	}
 
 	p.char.MaxMP = int16(ammount)
-	p.Send(packets.PlayerStatChange(true, consts.MAX_MP_ID, ammount))
+	p.Send(packet.PlayerStatChange(true, consts.MAX_MP_ID, ammount))
 }
 
 func (p *Player) SetMP(ammount int32) {
@@ -129,7 +129,7 @@ func (p *Player) SetMP(ammount int32) {
 		p.char.MP = 0
 	}
 
-	p.Send(packets.PlayerStatChange(true, consts.MP_ID, ammount))
+	p.Send(packet.PlayerStatChange(true, consts.MP_ID, ammount))
 }
 
 func (p *Player) GiveMP(ammount int32) {

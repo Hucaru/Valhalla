@@ -1,4 +1,4 @@
-package packets
+package packet
 
 import (
 	"crypto/rand"

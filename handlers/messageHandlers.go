@@ -11,7 +11,7 @@ import (
 	"github.com/Hucaru/Valhalla/mnet"
 	"github.com/Hucaru/Valhalla/npcdialogue"
 	"github.com/Hucaru/Valhalla/nx"
-	"github.com/Hucaru/Valhalla/packets"
+	"github.com/Hucaru/Valhalla/game/packet"
 
 	"github.com/Hucaru/Valhalla/channel"
 	"github.com/Hucaru/Valhalla/maplepacket"
@@ -26,7 +26,7 @@ func handleAllChat(conn mnet.MConnChannel, reader maplepacket.Reader) {
 		if strings.Index(msg, "/") == 0 && conn.IsAdmin() {
 			handleGmCommand(conn, msg)
 		} else {
-			channel.Maps.GetMap(mapID).SendPacket(packets.MessageAllChat(char.GetCharID(), conn.IsAdmin(), msg))
+			channel.Maps.GetMap(mapID).SendPacket(packet.MessageAllChat(char.GetCharID(), conn.IsAdmin(), msg))
 		}
 	})
 }
@@ -43,7 +43,7 @@ func handleSlashCommand(conn mnet.MConnChannel, reader maplepacket.Reader) {
 
 		channel.Players.OnCharacterFromName(name, func(char *channel.MapleCharacter) {
 			found = true
-			conn.Write(packets.MessageFindResult(name, char.IsAdmin(), false, true, char.GetCurrentMap()))
+			conn.Write(packet.MessageFindResult(name, char.IsAdmin(), false, true, char.GetCurrentMap()))
 		})
 
 		if !found {
@@ -215,7 +215,7 @@ func handleGmCommand(conn mnet.MConnChannel, msg string) {
 		msg := strings.Join(command[1:], " ")
 
 		channel.Players.OnCharacterFromConn(conn, func(char *channel.MapleCharacter) {
-			channel.Maps.GetMap(char.GetCurrentMap()).SendPacket(packets.MessageNotice(msg))
+			channel.Maps.GetMap(char.GetCurrentMap()).SendPacket(packet.MessageNotice(msg))
 		})
 	case "dialogue":
 		if len(command) < 2 {
@@ -225,7 +225,7 @@ func handleGmCommand(conn mnet.MConnChannel, msg string) {
 		msg := strings.Join(command[1:], " ")
 
 		channel.Players.OnCharacterFromConn(conn, func(char *channel.MapleCharacter) {
-			channel.Maps.GetMap(char.GetCurrentMap()).SendPacket(packets.MessageDialogueBox(msg))
+			channel.Maps.GetMap(char.GetCurrentMap()).SendPacket(packet.MessageDialogueBox(msg))
 		})
 	case "mobrate":
 		val, err := strconv.Atoi(command[1])
@@ -236,7 +236,7 @@ func handleGmCommand(conn mnet.MConnChannel, msg string) {
 		if 0 < val && val < 6 {
 			channel.SetRate(channel.MobRate, int32(val))
 		} else {
-			conn.Write(packets.MessageDialogueBox("Enter a value between 1 and 5"))
+			conn.Write(packet.MessageDialogueBox("Enter a value between 1 and 5"))
 		}
 	case "exprate":
 		val, err := strconv.Atoi(command[1])
@@ -271,12 +271,12 @@ func handleGmCommand(conn mnet.MConnChannel, msg string) {
 		channel.SetHeader(msg)
 
 		channel.Players.OnCharacters(func(char *channel.MapleCharacter) {
-			char.SendPacket(packets.MessageScrollingHeader(msg))
+			char.SendPacket(packet.MessageScrollingHeader(msg))
 		})
 	case "map":
 		if len(command) < 2 {
 			channel.Players.OnCharacters(func(char *channel.MapleCharacter) {
-				char.SendPacket(packets.MessageNotice("Your current map is: " + strconv.Itoa(int(char.GetCurrentMap()))))
+				char.SendPacket(packet.MessageNotice("Your current map is: " + strconv.Itoa(int(char.GetCurrentMap()))))
 			})
 		} else {
 			var mapID int32
@@ -316,7 +316,7 @@ func handleGmCommand(conn mnet.MConnChannel, msg string) {
 			}
 
 			channel.Players.OnCharacters(func(char *channel.MapleCharacter) {
-				char.SendPacket(packets.MessageNotice(info))
+				char.SendPacket(packet.MessageNotice(info))
 			})
 		}
 
@@ -417,7 +417,7 @@ func handleGmCommand(conn mnet.MConnChannel, msg string) {
 
 		channel.Players.OnCharacterFromConn(conn, func(char *channel.MapleCharacter) {
 			channel.ActiveRooms.OnRoom(func(r *channel.Room) {
-				r.Broadcast(packets.RoomChat(char.GetName(), msg, 0x0)) // simulates trade request sender
+				r.Broadcast(packet.RoomChat(char.GetName(), msg, 0x0)) // simulates trade request sender
 			})
 		})
 
@@ -435,7 +435,7 @@ func handleGmCommand(conn mnet.MConnChannel, msg string) {
 		channel.Players.OnCharacterFromName(name, func(recipient *channel.MapleCharacter) {
 			channel.Players.OnCharacterFromConn(conn, func(sender *channel.MapleCharacter) {
 				channel.ActiveRooms.OnConn(conn, func(r *channel.Room) {
-					recipient.SendPacket(packets.RoomInvite(r.RoomType, sender.GetName(), r.ID))
+					recipient.SendPacket(packet.RoomInvite(r.RoomType, sender.GetName(), r.ID))
 				})
 			})
 		})

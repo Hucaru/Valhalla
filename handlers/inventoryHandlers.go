@@ -8,7 +8,7 @@ import (
 	"github.com/Hucaru/Valhalla/inventory"
 	"github.com/Hucaru/Valhalla/maplepacket"
 	"github.com/Hucaru/Valhalla/mnet"
-	"github.com/Hucaru/Valhalla/packets"
+	"github.com/Hucaru/Valhalla/game/packet"
 )
 
 func handleMoveInventoryItem(conn mnet.MConnChannel, reader maplepacket.Reader) {
@@ -19,7 +19,7 @@ func handleMoveInventoryItem(conn mnet.MConnChannel, reader maplepacket.Reader) 
 	amount := reader.ReadInt16() // amount?
 
 	if invTabID < 0 || invTabID > 5 || origPos == 0 {
-		conn.Write(packets.PlayerStatNoChange()) // bad packet, hacker?
+		conn.Write(packet.PlayerStatNoChange()) // bad packet, hacker?
 	}
 
 	items := make([]inventory.Item, 1)
@@ -43,7 +43,7 @@ func handleMoveInventoryItem(conn mnet.MConnChannel, reader maplepacket.Reader) 
 
 			if origPos < 0 || newPos < 0 && isEquipable(items[0]) {
 				// unequip/equip
-				channel.Maps.GetMap(char.GetCurrentMap()).SendPacketExcept(packets.InventoryChangeEquip(char.Character), conn)
+				channel.Maps.GetMap(char.GetCurrentMap()).SendPacketExcept(packet.InventoryChangeEquip(char.Character), conn)
 			}
 
 		} else if len(items) == 1 && newPos == 0 {
@@ -86,14 +86,14 @@ func handleMoveInventoryItem(conn mnet.MConnChannel, reader maplepacket.Reader) 
 
 				if origPos < 0 || newPos < 0 && isEquipable(items[0]) && isEquipable(items[1]) {
 					// unequip/equip
-					channel.Maps.GetMap(char.GetCurrentMap()).SendPacketExcept(packets.InventoryChangeEquip(char.Character), conn)
+					channel.Maps.GetMap(char.GetCurrentMap()).SendPacketExcept(packet.InventoryChangeEquip(char.Character), conn)
 				}
 
 			}
 
 		} else {
 			// Shouldn't be able to get here, but handle just in case
-			conn.Write(packets.PlayerStatNoChange())
+			conn.Write(packet.PlayerStatNoChange())
 		}
 
 	})

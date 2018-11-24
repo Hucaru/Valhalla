@@ -8,7 +8,7 @@ import (
 	"github.com/Hucaru/Valhalla/consts/skills"
 	"github.com/Hucaru/Valhalla/mnet"
 	"github.com/Hucaru/Valhalla/nx"
-	"github.com/Hucaru/Valhalla/packets"
+	"github.com/Hucaru/Valhalla/game/packet"
 )
 
 type MapleMob struct {
@@ -71,24 +71,24 @@ func (m *MapleMob) GetController() mnet.MConnChannel { return m.controller }
 
 func (m *MapleMob) SetController(controller mnet.MConnChannel, isSpawn bool) {
 	m.controller = controller
-	m.controller.Send(packets.MobControl(m, isSpawn))
+	m.controller.Send(packet.MobControl(m, isSpawn))
 }
 
 func (m *MapleMob) RemoveController() {
-	m.controller.Send(packets.MobEndControl(m))
+	m.controller.Send(packet.MobEndControl(m))
 	m.controller = nil
 }
 
 func (m *MapleMob) Spawn(conn mnet.MConnChannel) {
-	conn.Send(packets.MobShow(m, true))
+	conn.Send(packet.MobShow(m, true))
 }
 
 func (m *MapleMob) Show(conn mnet.MConnChannel) {
-	conn.Send(packets.MobShow(m, false))
+	conn.Send(packet.MobShow(m, false))
 }
 
 func (m *MapleMob) Hide(conn mnet.MConnChannel) {
-	conn.Send(packets.MobRemove(m, 0))
+	conn.Send(packet.MobRemove(m, 0))
 }
 
 func (m *MapleMob) CanCastSkills() bool {

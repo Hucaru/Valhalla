@@ -12,7 +12,7 @@ import (
 	"github.com/Hucaru/Valhalla/mnet"
 	"github.com/Hucaru/Valhalla/movement"
 	"github.com/Hucaru/Valhalla/npcdialogue"
-	"github.com/Hucaru/Valhalla/packets"
+	"github.com/Hucaru/Valhalla/game/packet"
 )
 
 func handlePlayerConnect(conn mnet.MConnChannel, reader maplepacket.Reader) {
@@ -68,7 +68,7 @@ func handlePlayerConnect(conn mnet.MConnChannel, reader maplepacket.Reader) {
 		channel.Players.RemovePlayer(conn)
 	})
 
-	conn.Write(packets.PlayerEnterGame(char, channelID))
+	conn.Write(packet.PlayerEnterGame(char, channelID))
 
 	portal := channel.Maps.GetMap(char.GetCurrentMap()).GetPortals()[char.GetCurrentMapPos()]
 
@@ -77,7 +77,7 @@ func handlePlayerConnect(conn mnet.MConnChannel, reader maplepacket.Reader) {
 
 	channel.Maps.GetMap(char.GetCurrentMap()).AddPlayer(conn)
 
-	conn.Write(packets.MessageScrollingHeader(channel.GetHeader()))
+	conn.Write(packet.MessageScrollingHeader(channel.GetHeader()))
 
 	// Send party info
 
@@ -107,7 +107,7 @@ func handleTakeDamage(conn mnet.MConnChannel, reader maplepacket.Reader) {
 	channel.Players.OnCharacterFromConn(conn, func(char *channel.MapleCharacter) {
 		char.TakeDamage(ammount)
 
-		channel.Maps.GetMap(char.GetCurrentMap()).SendPacketExcept(packets.PlayerReceivedDmg(char.GetCharID(),
+		channel.Maps.GetMap(char.GetCurrentMap()).SendPacketExcept(packet.PlayerReceivedDmg(char.GetCharID(),
 			ammount, dmgType, mobID, hit, reduction, stance),
 			conn)
 	})
@@ -117,7 +117,7 @@ func handleRequestAvatarInfoWindow(conn mnet.MConnChannel, reader maplepacket.Re
 	charID := reader.ReadInt32()
 
 	channel.Players.OnCharacterFromID(charID, func(char *channel.MapleCharacter) {
-		conn.Write(packets.PlayerAvatarSummaryWindow(charID, char.Character, "Admins"))
+		conn.Write(packet.PlayerAvatarSummaryWindow(charID, char.Character, "Admins"))
 	})
 }
 
@@ -196,13 +196,13 @@ func handlePlayerMovement(conn mnet.MConnChannel, reader maplepacket.Reader) {
 
 	channel.Players.OnCharacterFromConn(conn, func(char *channel.MapleCharacter) {
 		movement.ParseFragments(nFrags, char, reader)
-		channel.Maps.GetMap(char.GetCurrentMap()).SendPacketExcept(packets.PlayerMove(char.GetCharID(), reader.GetBuffer()[2:]), conn)
+		channel.Maps.GetMap(char.GetCurrentMap()).SendPacketExcept(packet.PlayerMove(char.GetCharID(), reader.GetBuffer()[2:]), conn)
 	})
 }
 
 func handlePlayerEmoticon(conn mnet.MConnChannel, reader maplepacket.Reader) {
 	emoticon := reader.ReadInt32()
 	channel.Players.OnCharacterFromConn(conn, func(char *channel.MapleCharacter) {
-		channel.Maps.GetMap(char.GetCurrentMap()).SendPacketExcept(packets.PlayerEmoticon(char.GetCharID(), emoticon), conn)
+		channel.Maps.GetMap(char.GetCurrentMap()).SendPacketExcept(packet.PlayerEmoticon(char.GetCharID(), emoticon), conn)
 	})
 }

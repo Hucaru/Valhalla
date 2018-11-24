@@ -8,7 +8,7 @@ import (
 
 	"github.com/Hucaru/Valhalla/maplepacket"
 	"github.com/Hucaru/Valhalla/mnet"
-	"github.com/Hucaru/Valhalla/packets"
+	"github.com/Hucaru/Valhalla/game/packet"
 )
 
 type mapleMap struct {
@@ -161,11 +161,11 @@ func (m *mapleMap) playerEnterMap(conn mnet.MConnChannel) {
 	m.OnPlayers(func(other mnet.MConnChannel) bool {
 
 		Players.OnCharacterFromConn(conn, func(char *MapleCharacter) {
-			other.Send(packets.MapPlayerEnter(char.Character))
+			other.Send(packet.MapPlayerEnter(char.Character))
 		})
 
 		Players.OnCharacterFromConn(other, func(char *MapleCharacter) {
-			conn.Send(packets.MapPlayerEnter(char.Character))
+			conn.Send(packet.MapPlayerEnter(char.Character))
 		})
 
 		return false
@@ -215,7 +215,7 @@ func (m *mapleMap) playerLeaveMap(conn mnet.MConnChannel) {
 	})
 
 	Players.OnCharacterFromConn(conn, func(char *MapleCharacter) {
-		m.SendPacket(packets.MapPlayerLeft(char.GetCharID()))
+		m.SendPacket(packet.MapPlayerLeft(char.GetCharID()))
 	})
 
 }

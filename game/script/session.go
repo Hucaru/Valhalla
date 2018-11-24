@@ -10,7 +10,7 @@ import (
 	"github.com/Hucaru/Valhalla/maplepacket"
 	"github.com/Hucaru/Valhalla/mnet"
 	"github.com/Hucaru/Valhalla/nx"
-	"github.com/Hucaru/Valhalla/packets"
+	"github.com/Hucaru/Valhalla/game/packet"
 	"github.com/mattn/anko/core"
 	"github.com/mattn/anko/vm"
 )
@@ -105,35 +105,35 @@ type session struct {
 
 func (s *session) register(npcID int32, char *channel.MapleCharacter) {
 	s.env.Define("SendYesNo", func(msg string) maplepacket.Packet {
-		return packets.NPCChatYesNo(npcID, msg)
+		return packet.NPCChatYesNo(npcID, msg)
 	})
 
 	s.env.Define("SendOk", func(msg string) maplepacket.Packet {
-		return packets.NPCChatBackNext(npcID, msg, false, false)
+		return packet.NPCChatBackNext(npcID, msg, false, false)
 	})
 
 	s.env.Define("SendNext", func(msg string) maplepacket.Packet {
-		return packets.NPCChatBackNext(npcID, msg, false, true)
+		return packet.NPCChatBackNext(npcID, msg, false, true)
 	})
 
 	s.env.Define("SendBackNext", func(msg string) maplepacket.Packet {
-		return packets.NPCChatBackNext(npcID, msg, true, true)
+		return packet.NPCChatBackNext(npcID, msg, true, true)
 	})
 
 	s.env.Define("SendBack", func(msg string) maplepacket.Packet {
-		return packets.NPCChatBackNext(npcID, msg, true, false)
+		return packet.NPCChatBackNext(npcID, msg, true, false)
 	})
 
 	s.env.Define("SendUserStringInput", func(msg, defaultInput string, minLength, maxLength int16) maplepacket.Packet {
-		return packets.NPCChatUserString(npcID, msg, defaultInput, minLength, maxLength)
+		return packet.NPCChatUserString(npcID, msg, defaultInput, minLength, maxLength)
 	})
 
 	s.env.Define("SendUserIntInput", func(msg string, defaultInput, minLength, maxLength int32) maplepacket.Packet {
-		return packets.NPCChatUserNumber(npcID, msg, defaultInput, minLength, maxLength)
+		return packet.NPCChatUserNumber(npcID, msg, defaultInput, minLength, maxLength)
 	})
 
 	s.env.Define("SendSelection", func(msg string) maplepacket.Packet {
-		return packets.NPCChatSelection(npcID, msg)
+		return packet.NPCChatSelection(npcID, msg)
 	})
 
 	s.env.Define("SendStyleWindow", func(msg string, array []interface{}) maplepacket.Packet {
@@ -147,7 +147,7 @@ func (s *session) register(npcID int32, char *channel.MapleCharacter) {
 			}
 		}
 
-		return packets.NPCChatStyleWindow(npcID, msg, styles)
+		return packet.NPCChatStyleWindow(npcID, msg, styles)
 	})
 
 	s.env.Define("SendShop", func(items []interface{}) maplepacket.Packet {
@@ -162,7 +162,7 @@ func (s *session) register(npcID int32, char *channel.MapleCharacter) {
 		}
 		s.shopItems = tmp
 
-		return packets.NPCShop(npcID, tmp)
+		return packet.NPCShop(npcID, tmp)
 	})
 
 	s.env.Define("SendPacketToMap", channel.Maps.GetMap(char.GetCurrentMap()).SendPacket)
@@ -292,16 +292,16 @@ func (s *session) Shop(reader maplepacket.Reader) {
 					}
 
 					if price > char.GetMesos() {
-						s.conn.Send(packets.NPCShopNotEnoughMesos())
+						s.conn.Send(packet.NPCShopNotEnoughMesos())
 					} else {
 						newItem, _ := inventory.CreateFromID(info[0], false)
 						newItem.Amount = s.shopItemAmmount
 
 						if char.GiveItem(newItem) {
 							char.TakeMesos(price)
-							s.conn.Send(packets.NPCShopContinue())
+							s.conn.Send(packet.NPCShopContinue())
 						} else {
-							s.conn.Send(packets.NPCShopNotEnoughStock())
+							s.conn.Send(packet.NPCShopNotEnoughStock())
 						}
 					}
 				})
@@ -323,7 +323,7 @@ func (s *session) Shop(reader maplepacket.Reader) {
 						char.GiveMesos(nx.Items[itemID].Price * int32(ammount))
 					}
 
-					s.conn.Send(packets.NPCShopContinue())
+					s.conn.Send(packet.NPCShopContinue())
 					break
 				}
 			}
@@ -337,12 +337,12 @@ func (s *session) Shop(reader maplepacket.Reader) {
 					price := int32(nx.Items[curItem.ItemID].UnitPrice * float64(nx.Items[curItem.ItemID].SlotMax))
 
 					if price > char.GetMesos() {
-						s.conn.Send(packets.NPCShopNotEnoughMesos())
+						s.conn.Send(packet.NPCShopNotEnoughMesos())
 					} else {
 						curItem.Amount = int16(nx.Items[curItem.ItemID].SlotMax)
 						char.UpdateItem(curItem)
 						char.TakeMesos(price)
-						s.conn.Send(packets.NPCShopContinue())
+						s.conn.Send(packet.NPCShopContinue())
 					}
 				}
 			}

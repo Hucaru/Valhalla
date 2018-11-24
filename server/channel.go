@@ -17,7 +17,7 @@ import (
 	"github.com/Hucaru/Valhalla/database"
 	"github.com/Hucaru/Valhalla/maplepacket"
 	"github.com/Hucaru/Valhalla/mnet"
-	"github.com/Hucaru/Valhalla/packets"
+	"github.com/Hucaru/Valhalla/game/packet"
 )
 
 type channelServer struct {
@@ -114,7 +114,7 @@ func (cs *channelServer) acceptNewConnections() {
 		go channelConn.Reader()
 		go channelConn.Writer()
 
-		conn.Write(packets.ClientHandshake(consts.MapleVersion, keyRecv[:], keySend[:]))
+		conn.Write(packet.ClientHandshake(consts.MapleVersion, keyRecv[:], keySend[:]))
 	}
 }
 
