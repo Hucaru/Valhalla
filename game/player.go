@@ -1,6 +1,8 @@
 package game
 
 import (
+	"math"
+
 	"github.com/Hucaru/Valhalla/consts"
 	"github.com/Hucaru/Valhalla/mnet"
 	"github.com/Hucaru/Valhalla/nx"
@@ -73,7 +75,20 @@ func (p *Player) UpdateMovement(moveData types.MovementFrag) {
 }
 
 func (p *Player) Kill() {
+	p.SetHP(0)
+}
 
+func (p *Player) Revive() {
+	p.SetHP(int32(p.char.MaxHP))
+}
+
+func (p *Player) SetMaxHP(ammount int32) {
+	if ammount > math.MaxInt16 {
+		ammount = math.MaxInt16
+	}
+
+	p.char.MaxHP = int16(ammount)
+	p.Send(packets.PlayerStatChange(true, consts.MAX_HP_ID, ammount))
 }
 
 func (p *Player) SetHP(ammount int32) {
@@ -83,6 +98,10 @@ func (p *Player) SetHP(ammount int32) {
 		p.char.HP = p.char.MaxHP
 	}
 
+	if p.char.HP < 0 {
+		p.char.HP = 0
+	}
+
 	p.Send(packets.PlayerStatChange(true, consts.HP_ID, ammount))
 }
 
@@ -90,11 +109,24 @@ func (p *Player) GiveHP(ammount int32) {
 	p.SetHP(int32(p.char.HP) + ammount)
 }
 
+func (p *Player) SetMaxMP(ammount int32) {
+	if ammount > math.MaxInt16 {
+		ammount = math.MaxInt16
+	}
+
+	p.char.MaxMP = int16(ammount)
+	p.Send(packets.PlayerStatChange(true, consts.MAX_MP_ID, ammount))
+}
+
 func (p *Player) SetMP(ammount int32) {
 	p.char.MP = int16(ammount)
 
 	if p.char.MP > p.char.MaxMP {
 		p.char.MP = p.char.MaxMP
+	}
+
+	if p.char.MP < 0 {
+		p.char.MP = 0
 	}
 
 	p.Send(packets.PlayerStatChange(true, consts.MP_ID, ammount))
@@ -133,6 +165,38 @@ func (p *Player) SetSP(ammount int16) {
 
 func (p *Player) GiveSP(ammount int16) {
 	p.SetSP(p.char.SP + ammount)
+}
+
+func (p *Player) SetStr(ammount int16) {
+
+}
+
+func (p *Player) GiveStr(ammount int16) {
+	p.SetStr(p.char.Str + ammount)
+}
+
+func (p *Player) SetDex(ammount int16) {
+
+}
+
+func (p *Player) GiveDex(ammount int16) {
+	p.SetDex(p.char.Dex + ammount)
+}
+
+func (p *Player) SetInt(ammount int16) {
+
+}
+
+func (p *Player) GiveInt(ammount int16) {
+	p.SetInt(p.char.Int + ammount)
+}
+
+func (p *Player) SetLuk(ammount int16) {
+
+}
+
+func (p *Player) GiveLuk(ammount int16) {
+	p.SetLuk(p.char.Luk + ammount)
 }
 
 func (p *Player) SetMesos() {

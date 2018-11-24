@@ -119,6 +119,7 @@ func gmCommand(conn mnet.MConnChannel, msg string) {
 		player, err := game.GetPlayerFromConn(conn)
 
 		if err != nil {
+			conn.Send(packets.MessageNotice(err.Error()))
 			return
 		}
 
@@ -132,12 +133,122 @@ func gmCommand(conn mnet.MConnChannel, msg string) {
 		player, err := game.GetPlayerFromConn(conn)
 
 		if err != nil {
+			conn.Send(packets.MessageNotice(err.Error()))
 			return
 		}
 
 		char := player.Char()
 
 		game.SendToMap(char.CurrentMap, packets.MessageNotice(strings.Join(command[1:], " ")))
+	case "kill":
+		if len(command) == 1 {
+			player, err := game.GetPlayerFromConn(conn)
+
+			if err != nil {
+				conn.Send(packets.MessageNotice(err.Error()))
+				return
+			}
+
+			player.Kill()
+		} else {
+			if command[1] == "<map>" {
+				player, err := game.GetPlayerFromConn(conn)
+
+				if err != nil {
+					conn.Send(packets.MessageNotice(err.Error()))
+					return
+				}
+
+				for _, p := range game.GetPlayersFromMapID(player.Char().CurrentMap) {
+					p.Kill()
+				}
+
+				return
+			}
+
+			player, err := game.GetPlayerFromName(command[1])
+
+			if err != nil {
+				conn.Send(packets.MessageNotice(err.Error()))
+				return
+			}
+
+			player.Kill()
+		}
+	case "revive":
+		if len(command) == 1 {
+			player, err := game.GetPlayerFromConn(conn)
+
+			if err != nil {
+				conn.Send(packets.MessageNotice(err.Error()))
+				return
+			}
+
+			player.Revive()
+		} else {
+			if command[1] == "<map>" {
+				player, err := game.GetPlayerFromConn(conn)
+
+				if err != nil {
+					conn.Send(packets.MessageNotice(err.Error()))
+					return
+				}
+
+				for _, p := range game.GetPlayersFromMapID(player.Char().CurrentMap) {
+					p.Revive()
+				}
+
+				return
+			}
+
+			player, err := game.GetPlayerFromName(command[1])
+
+			if err != nil {
+				conn.Send(packets.MessageNotice(err.Error()))
+				return
+			}
+
+			player.Revive()
+		}
+	case "hp":
+		if len(command) < 2 {
+			return
+		}
+
+		player, err := game.GetPlayerFromConn(conn)
+
+		if err != nil {
+			conn.Send(packets.MessageNotice(err.Error()))
+			return
+		}
+
+		if command[1][0] == '+' {
+			ammount, err := strconv.Atoi(command[1][1:])
+
+			if err != nil {
+				conn.Send(packets.MessageNotice(err.Error()))
+			}
+
+			player.GiveHP(int32(ammount))
+		} else if command[1][0] == '-' {
+			ammount, err := strconv.Atoi(command[1][1:])
+
+			if err != nil {
+				conn.Send(packets.MessageNotice(err.Error()))
+			}
+
+			player.GiveHP(int32(-ammount))
+
+		} else {
+			ammount, err := strconv.Atoi(command[1])
+
+			if err != nil {
+				conn.Send(packets.MessageNotice(err.Error()))
+			}
+
+			player.SetHP(int32(ammount))
+		}
+	case "mp":
 	default:
 		log.Println("Unkown GM command:", msg)
 	}

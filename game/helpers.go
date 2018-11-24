@@ -1,9 +1,8 @@
 package game
 
 import (
-	"errors"
+	"fmt"
 	"math/rand"
-	"strconv"
 
 	"github.com/Hucaru/Valhalla/maplepacket"
 	"github.com/Hucaru/Valhalla/packets"
@@ -38,7 +37,7 @@ func GetPlayerFromConn(conn mnet.MConnChannel) (Player, error) {
 		return val, nil
 	}
 
-	return Player{}, errors.New("Player from connection " + conn.String() + " not found")
+	return Player{}, fmt.Errorf("Player from connection %s not found", conn)
 }
 
 func GetPlayerFromID(id int32) (Player, error) {
@@ -48,19 +47,29 @@ func GetPlayerFromID(id int32) (Player, error) {
 		}
 	}
 
-	return Player{}, errors.New("Player ID " + strconv.Itoa(int(id)) + " not found")
+	return Player{}, fmt.Errorf("Player ID %i not found", id)
 }
 
-func GetPlayersFromMapID(id int32) []Player {
-	players := []Player{}
-
-	for _, v := range players {
-		if v.char.CurrentMap == id {
-			players = append(players, v)
+func GetPlayerFromName(name string) (Player, error) {
+	for _, p := range players {
+		if p.Char().Name == name {
+			return p, nil
 		}
 	}
 
-	return players
+	return Player{}, fmt.Errorf("Player name %s not found", name)
+}
+
+func GetPlayersFromMapID(id int32) []Player {
+	playerList := []Player{}
+
+	for _, v := range players {
+		if v.char.CurrentMap == id {
+			playerList = append(playerList, v)
+		}
+	}
+
+	return playerList
 }
 
 func GetMapFromID(id int32) *GameMap {
