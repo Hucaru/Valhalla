@@ -5,9 +5,9 @@ import (
 
 	"github.com/Hucaru/Valhalla/consts"
 	"github.com/Hucaru/Valhalla/game/def"
+	"github.com/Hucaru/Valhalla/game/packet"
 	"github.com/Hucaru/Valhalla/mnet"
 	"github.com/Hucaru/Valhalla/nx"
-	"github.com/Hucaru/Valhalla/game/packet"
 )
 
 var players = map[mnet.MConnChannel]Player{}
@@ -28,39 +28,39 @@ func (p Player) Char() def.Character {
 
 func (p *Player) ChangeMap(mapID int32, portal nx.Portal, portalID byte) {
 	for _, player := range players {
-		if player.Char().CurrentMap == p.char.CurrentMap {
+		if player.Char().MapID == p.char.MapID {
 			player.Send(packet.MapPlayerLeft(p.char.ID))
 		}
 	}
 
-	maps[p.char.CurrentMap].removeController(p.MConnChannel)
+	maps[p.char.MapID].removeController(p.MConnChannel)
 
 	p.char.Pos.X = portal.X
 	p.char.Pos.Y = portal.Y
-	p.char.CurrentMapPos = portalID
-	p.char.CurrentMap = mapID
+	p.char.MapPos = portalID
+	p.char.MapID = mapID
 
 	p.Send(packet.MapChange(mapID, 0, portalID, p.char.HP)) // get current channel
 	p.sendMapItems()
 
-	maps[p.char.CurrentMap].addController(p.MConnChannel)
+	maps[p.char.MapID].addController(p.MConnChannel)
 }
 
 func (p *Player) sendMapItems() {
-	for _, mob := range maps[p.char.CurrentMap].mobs {
+	for _, mob := range maps[p.char.MapID].mobs {
 		if mob.HP > 0 {
 			mob.SummonType = -1 // -2: fade in spawn animation, -1: no spawn animation
 			p.Send(packet.MobShow(mob.Mob))
 		}
 	}
 
-	for _, npc := range maps[p.char.CurrentMap].npcs {
+	for _, npc := range maps[p.char.MapID].npcs {
 		p.Send(packet.NpcShow(npc))
 		p.Send(packet.NPCSetController(npc.SpawnID, true))
 	}
 
 	for _, player := range players {
-		if player.Char().CurrentMap == p.char.CurrentMap {
+		if player.Char().MapID == p.char.MapID {
 			player.Send(packet.MapPlayerEnter(p.Char()))
 			p.Send(packet.MapPlayerEnter(player.Char()))
 		}

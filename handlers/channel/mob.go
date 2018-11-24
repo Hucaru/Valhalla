@@ -7,10 +7,10 @@ import (
 	"github.com/Hucaru/Valhalla/consts/skills"
 	"github.com/Hucaru/Valhalla/game"
 	"github.com/Hucaru/Valhalla/game/def"
-	"github.com/Hucaru/Valhalla/mpacket"
-	"github.com/Hucaru/Valhalla/mnet"
-	"github.com/Hucaru/Valhalla/nx"
 	"github.com/Hucaru/Valhalla/game/packet"
+	"github.com/Hucaru/Valhalla/mnet"
+	"github.com/Hucaru/Valhalla/mpacket"
+	"github.com/Hucaru/Valhalla/nx"
 )
 
 func mobControl(conn mnet.MConnChannel, reader mpacket.Reader) {
@@ -35,7 +35,7 @@ func mobControl(conn mnet.MConnChannel, reader mpacket.Reader) {
 	}
 
 	char := player.Char()
-	mob := game.GetMapFromID(char.CurrentMap).GetMobFromID(mobSpawnID)
+	mob := game.GetMapFromID(char.MapID).GetMobFromID(mobSpawnID)
 
 	if mob == nil {
 		return
@@ -89,7 +89,7 @@ func mobControl(conn mnet.MConnChannel, reader mpacket.Reader) {
 	}
 
 	conn.Send(packet.MobControlAcknowledge(mobSpawnID, moveID, skillPossible, int16(mob.MP), mob.SkillID, mob.SkillLevel)) // change zeros to what is calculated as next move
-	game.SendToMapExcept(char.CurrentMap, packet.MobMove(mobSpawnID, skillPossible, byte(action), skillData, moveBytes), conn)
+	game.SendToMapExcept(char.MapID, packet.MobMove(mobSpawnID, skillPossible, byte(action), skillData, moveBytes), conn)
 }
 
 func chooseNextSkill(mob *def.Mob) (byte, byte) {

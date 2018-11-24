@@ -2,8 +2,8 @@ package game
 
 import (
 	"github.com/Hucaru/Valhalla/game/def"
-	"github.com/Hucaru/Valhalla/mnet"
 	"github.com/Hucaru/Valhalla/game/packet"
+	"github.com/Hucaru/Valhalla/mnet"
 )
 
 type gameMob struct {
@@ -46,7 +46,7 @@ func (m *gameMob) FindNewControllerExcept(conn mnet.MConnChannel) {
 	var newController mnet.MConnChannel
 
 	for c, v := range players {
-		if v.char.CurrentMap == m.mapID {
+		if v.char.MapID == m.mapID {
 			if c == conn {
 				continue
 			} else {

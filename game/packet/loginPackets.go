@@ -156,8 +156,8 @@ func LoginWritePlayerCharacter(pac *mpacket.Packet, pos int32, char def.Characte
 	pac.WriteInt32(char.EXP)   // exp
 	pac.WriteInt16(char.Fame)  // fame
 
-	pac.WriteInt32(char.CurrentMap)   // map id
-	pac.WriteByte(char.CurrentMapPos) // map
+	pac.WriteInt32(char.MapID) // map id
+	pac.WriteByte(char.MapPos) // map
 
 	pac.WriteBytes(writeDisplayCharacter(char))
 

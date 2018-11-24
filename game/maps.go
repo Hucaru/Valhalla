@@ -2,9 +2,9 @@ package game
 
 import (
 	"github.com/Hucaru/Valhalla/game/def"
+	"github.com/Hucaru/Valhalla/game/packet"
 	"github.com/Hucaru/Valhalla/mnet"
 	"github.com/Hucaru/Valhalla/nx"
-	"github.com/Hucaru/Valhalla/game/packet"
 )
 
 var maps = make(map[int32]*GameMap)
@@ -45,7 +45,7 @@ func (gm *GameMap) removeController(conn mnet.MConnChannel) {
 	}
 
 	for c, p := range players {
-		if c != conn && p.char.CurrentMap == players[conn].char.CurrentMap {
+		if c != conn && p.char.MapID == players[conn].char.MapID {
 			for i, m := range gm.mobs {
 				gm.mobs[i].Controller = c
 				c.Send(packet.MobControl(m.Mob))
@@ -144,7 +144,7 @@ func (gm *GameMap) SpawnMobNoRespawn(mobID, spawnID int32, x, y, foothold int16,
 
 func findController(mapID int32, mob *gameMob) {
 	for _, p := range players {
-		if p.char.CurrentMap == mapID {
+		if p.char.MapID == mapID {
 			mob.ChangeController(p)
 			return
 		}

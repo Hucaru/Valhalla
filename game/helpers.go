@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"math/rand"
 
-	"github.com/Hucaru/Valhalla/mpacket"
 	"github.com/Hucaru/Valhalla/game/packet"
+	"github.com/Hucaru/Valhalla/mpacket"
 
 	"github.com/Hucaru/Valhalla/mnet"
 
@@ -15,17 +15,19 @@ import (
 func AddPlayer(player Player) {
 	players[player.MConnChannel] = player
 	player.sendMapItems()
-	maps[player.char.CurrentMap].addController(player.MConnChannel)
+	maps[player.char.MapID].addController(player.MConnChannel)
 }
 
 func RemovePlayer(conn mnet.MConnChannel) {
 	p := players[conn]
-	maps[p.char.CurrentMap].removeController(conn)
+	maps[p.char.MapID].removeController(conn)
+
+	p.Char().Save()
 
 	delete(players, conn)
 
 	for _, player := range players {
-		if player.Char().CurrentMap == p.Char().CurrentMap {
+		if player.Char().MapID == p.Char().MapID {
 			player.Send(packet.MapPlayerLeft(p.Char().ID))
 		}
 	}
@@ -64,7 +66,7 @@ func GetPlayersFromMapID(id int32) []Player {
 	playerList := []Player{}
 
 	for _, v := range players {
-		if v.char.CurrentMap == id {
+		if v.char.MapID == id {
 			playerList = append(playerList, v)
 		}
 	}
@@ -82,7 +84,7 @@ func GetMapFromID(id int32) *GameMap {
 
 func SendToMap(mapID int32, p mpacket.Packet) {
 	for _, player := range players {
-		if player.Char().CurrentMap == mapID {
+		if player.Char().MapID == mapID {
 			tmp := make(mpacket.Packet, len(p))
 			copy(tmp, p)
 			player.Send(tmp)
@@ -94,7 +96,7 @@ func SendToMapExcept(mapID int32, p mpacket.Packet, exception mnet.MConnChannel)
 	for conn, player := range players {
 		if conn == exception {
 			continue
-		} else if player.Char().CurrentMap == mapID {
+		} else if player.Char().MapID == mapID {
 			tmp := make(mpacket.Packet, len(p))
 			copy(tmp, p)
 			player.Send(tmp)

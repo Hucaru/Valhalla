@@ -147,8 +147,8 @@ func PlayerEnterGame(char def.Character, channelID int32) mpacket.Packet {
 	p.WriteInt32(char.EXP)
 	p.WriteInt16(char.Fame)
 
-	p.WriteInt32(char.CurrentMap)
-	p.WriteByte(char.CurrentMapPos)
+	p.WriteInt32(char.MapID)
+	p.WriteByte(char.MapPos)
 
 	p.WriteByte(20) // budy list size
 	p.WriteInt32(char.Mesos)

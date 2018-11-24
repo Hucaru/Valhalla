@@ -5,8 +5,8 @@ import (
 	"github.com/Hucaru/Valhalla/game/def"
 	"github.com/Hucaru/Valhalla/game/packet"
 
-	"github.com/Hucaru/Valhalla/mpacket"
 	"github.com/Hucaru/Valhalla/mnet"
+	"github.com/Hucaru/Valhalla/mpacket"
 )
 
 func playerMeleeSkill(conn mnet.MConnChannel, reader mpacket.Reader) {
@@ -27,7 +27,7 @@ func playerMeleeSkill(conn mnet.MConnChannel, reader mpacket.Reader) {
 	// fix the damange values
 
 	for _, attack := range data.AttackInfo {
-		mob := game.GetMapFromID(char.CurrentMap).GetMobFromID(attack.SpawnID)
+		mob := game.GetMapFromID(char.MapID).GetMobFromID(attack.SpawnID)
 
 		if mob == nil {
 			continue
@@ -36,9 +36,9 @@ func playerMeleeSkill(conn mnet.MConnChannel, reader mpacket.Reader) {
 		mob.GiveDamage(player, attack.Damages)
 	}
 
-	game.SendToMapExcept(char.CurrentMap, packet.SkillMelee(char, data), conn)
+	game.SendToMapExcept(char.MapID, packet.SkillMelee(char, data), conn)
 
-	game.GetMapFromID(char.CurrentMap).HandleDeadMobs()
+	game.GetMapFromID(char.MapID).HandleDeadMobs()
 }
 
 func playerRangedSkill(conn mnet.MConnChannel, reader mpacket.Reader) {
@@ -59,7 +59,7 @@ func playerRangedSkill(conn mnet.MConnChannel, reader mpacket.Reader) {
 	// fix the damange values
 
 	for _, attack := range data.AttackInfo {
-		mob := game.GetMapFromID(char.CurrentMap).GetMobFromID(attack.SpawnID)
+		mob := game.GetMapFromID(char.MapID).GetMobFromID(attack.SpawnID)
 
 		if mob == nil {
 			continue
@@ -68,9 +68,9 @@ func playerRangedSkill(conn mnet.MConnChannel, reader mpacket.Reader) {
 		mob.GiveDamage(player, attack.Damages)
 	}
 
-	game.SendToMapExcept(char.CurrentMap, packet.SkillMelee(char, data), conn)
+	game.SendToMapExcept(char.MapID, packet.SkillMelee(char, data), conn)
 
-	game.GetMapFromID(char.CurrentMap).HandleDeadMobs()
+	game.GetMapFromID(char.MapID).HandleDeadMobs()
 }
 
 func playerMagicSkill(conn mnet.MConnChannel, reader mpacket.Reader) {
@@ -91,7 +91,7 @@ func playerMagicSkill(conn mnet.MConnChannel, reader mpacket.Reader) {
 	// fix the damange values
 
 	for _, attack := range data.AttackInfo {
-		mob := game.GetMapFromID(char.CurrentMap).GetMobFromID(attack.SpawnID)
+		mob := game.GetMapFromID(char.MapID).GetMobFromID(attack.SpawnID)
 
 		if mob == nil {
 			continue
@@ -100,9 +100,9 @@ func playerMagicSkill(conn mnet.MConnChannel, reader mpacket.Reader) {
 		mob.GiveDamage(player, attack.Damages)
 	}
 
-	game.SendToMapExcept(char.CurrentMap, packet.SkillMelee(char, data), conn)
+	game.SendToMapExcept(char.MapID, packet.SkillMelee(char, data), conn)
 
-	game.GetMapFromID(char.CurrentMap).HandleDeadMobs()
+	game.GetMapFromID(char.MapID).HandleDeadMobs()
 
 	switch data.SkillID {
 	default:
@@ -126,7 +126,7 @@ func playerSpecialSkill(conn mnet.MConnChannel, reader mpacket.Reader) {
 		return
 	}
 
-	game.SendToMapExcept(char.CurrentMap, packet.SkillAnimation(char.ID, skillID, skillLevel), conn)
+	game.SendToMapExcept(char.MapID, packet.SkillAnimation(char.ID, skillID, skillLevel), conn)
 
 	switch skillID {
 	default:
@@ -240,7 +240,7 @@ func getAttackInfo(reader mpacket.Reader, player game.Player, attackType int) (d
 	if data.Hits != 0 {
 		// validate dmg numbers against mob info
 		for _, dmg := range data.AttackInfo {
-			_ = game.GetMapFromID(player.Char().CurrentMap).GetMobFromID(dmg.SpawnID)
+			_ = game.GetMapFromID(player.Char().MapID).GetMobFromID(dmg.SpawnID)
 		}
 
 	}

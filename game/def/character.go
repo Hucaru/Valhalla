@@ -10,10 +10,10 @@ type Character struct {
 	AccountID int32
 	WorldID   byte
 
-	CurrentMap    int32
-	CurrentMapPos byte
-	PreviousMap   int32
-	PortalCount   byte
+	MapID       int32
+	MapPos      byte
+	PreviousMap int32
+	PortalCount byte
 
 	Job int16
 
@@ -56,7 +56,7 @@ func (c Character) Save() error {
 
 	records, err := database.Handle.Query(query,
 		c.Skin, c.Hair, c.Face, c.Level, c.Job, c.Str, c.Dex, c.Int, c.Luk, c.HP, c.MaxHP, c.MP,
-		c.MaxMP, c.AP, c.SP, c.EXP, c.Fame, c.CurrentMap, c.Mesos, c.ID)
+		c.MaxMP, c.AP, c.SP, c.EXP, c.Fame, c.MapID, c.Mesos, c.ID)
 
 	defer records.Close()
 
@@ -85,7 +85,7 @@ func GetCharactersFromAccountWorldID(accountID int32, worldID byte) []Character 
 
 		err = chars.Scan(&char.ID, &char.AccountID, &char.WorldID, &char.Name, &char.Gender, &char.Skin, &char.Hair,
 			&char.Face, &char.Level, &char.Job, &char.Str, &char.Dex, &char.Int, &char.Luk, &char.HP, &char.MaxHP,
-			&char.MP, &char.MaxMP, &char.AP, &char.SP, &char.EXP, &char.Fame, &char.CurrentMap, &char.CurrentMapPos,
+			&char.MP, &char.MaxMP, &char.AP, &char.SP, &char.EXP, &char.Fame, &char.MapID, &char.MapPos,
 			&char.PreviousMap, &char.Mesos, &char.EquipSlotSize, &char.UseSlotSize, &char.SetupSlotSize,
 			&char.EtcSlotSize, &char.CashSlotSize)
 
@@ -111,7 +111,7 @@ func GetCharacterFromID(id int32) Character {
 	err := database.Handle.QueryRow("SELECT "+filter+" FROM characters where id=?", id).Scan(&char.ID,
 		&char.AccountID, &char.WorldID, &char.Name, &char.Gender, &char.Skin, &char.Hair, &char.Face,
 		&char.Level, &char.Job, &char.Str, &char.Dex, &char.Int, &char.Luk, &char.HP, &char.MaxHP, &char.MP,
-		&char.MaxMP, &char.AP, &char.SP, &char.EXP, &char.Fame, &char.CurrentMap, &char.CurrentMapPos,
+		&char.MaxMP, &char.AP, &char.SP, &char.EXP, &char.Fame, &char.MapID, &char.MapPos,
 		&char.PreviousMap, &char.Mesos, &char.EquipSlotSize, &char.UseSlotSize, &char.SetupSlotSize,
 		&char.EtcSlotSize, &char.CashSlotSize)
 
@@ -127,8 +127,8 @@ func GetCharacterFromID(id int32) Character {
 		char.Skills[s.ID] = s
 	}
 
-	char.Pos.X = nx.Maps[char.CurrentMap].Portals[char.CurrentMapPos].X
-	char.Pos.Y = nx.Maps[char.CurrentMap].Portals[char.CurrentMapPos].Y
+	char.Pos.X = nx.Maps[char.MapID].Portals[char.MapPos].X
+	char.Pos.Y = nx.Maps[char.MapID].Portals[char.MapPos].Y
 
 	return char
 }

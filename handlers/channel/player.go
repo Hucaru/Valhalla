@@ -6,10 +6,10 @@ import (
 	"github.com/Hucaru/Valhalla/database"
 	"github.com/Hucaru/Valhalla/game"
 	"github.com/Hucaru/Valhalla/game/def"
-	"github.com/Hucaru/Valhalla/mpacket"
-	"github.com/Hucaru/Valhalla/mnet"
-	"github.com/Hucaru/Valhalla/nx"
 	"github.com/Hucaru/Valhalla/game/packet"
+	"github.com/Hucaru/Valhalla/mnet"
+	"github.com/Hucaru/Valhalla/mpacket"
+	"github.com/Hucaru/Valhalla/nx"
 )
 
 func playerConnect(conn mnet.MConnChannel, reader mpacket.Reader) {
@@ -65,14 +65,14 @@ func playerUsePortal(conn mnet.MConnChannel, reader mpacket.Reader) {
 	switch entryType {
 	case 0:
 		if char.HP == 0 {
-			returnMapID := nx.Maps[char.CurrentMap].ReturnMap
+			returnMapID := nx.Maps[char.MapID].ReturnMap
 			portal, id := game.GetRandomSpawnPortal(returnMapID)
 			player.ChangeMap(returnMapID, portal, id)
 		}
 	case -1:
 		portalName := reader.ReadString(int(reader.ReadInt16()))
 
-		for _, src := range nx.Maps[char.CurrentMap].Portals {
+		for _, src := range nx.Maps[char.MapID].Portals {
 			if src.Name == portalName {
 				for i, dest := range nx.Maps[src.Tm].Portals {
 					if dest.Name == src.Tn {
@@ -114,7 +114,7 @@ func playerMovement(conn mnet.MConnChannel, reader mpacket.Reader) {
 
 	player.UpdateMovement(finalData)
 
-	game.SendToMapExcept(char.CurrentMap, packet.PlayerMove(char.ID, moveBytes), conn)
+	game.SendToMapExcept(char.MapID, packet.PlayerMove(char.ID, moveBytes), conn)
 }
 
 func playerTakeDamage(conn mnet.MConnChannel, reader mpacket.Reader) {
@@ -161,7 +161,7 @@ func playerTakeDamage(conn mnet.MConnChannel, reader mpacket.Reader) {
 		spawnID := reader.ReadInt32()
 		mobID := reader.ReadInt32()
 
-		mob := game.GetMapFromID(char.CurrentMap).GetMobFromID(spawnID)
+		mob := game.GetMapFromID(char.MapID).GetMobFromID(spawnID)
 		// mob = game.GetMobFromMapAndSpawnID(char.CurrentMap, spawnID)
 
 		if mob == nil || mob.ID != mobID {
@@ -189,7 +189,7 @@ func playerTakeDamage(conn mnet.MConnChannel, reader mpacket.Reader) {
 
 		player.GiveHP(playerDamange)
 
-		game.SendToMap(char.CurrentMap, packet.PlayerReceivedDmg(char.ID, mobAttack, damage,
+		game.SendToMap(char.MapID, packet.PlayerReceivedDmg(char.ID, mobAttack, damage,
 			reducedDamange, spawnID, mobID, healSkillID, stance, reflectAction, reflected, reflectX, reflectY))
 	}
 
@@ -223,7 +223,7 @@ func playerEmote(conn mnet.MConnChannel, reader mpacket.Reader) {
 
 	char := player.Char()
 
-	mapID := char.CurrentMap
+	mapID := char.MapID
 
 	game.SendToMapExcept(mapID, packet.PlayerEmoticon(char.ID, emote), conn)
 }

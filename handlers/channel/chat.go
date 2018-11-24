@@ -11,8 +11,8 @@ import (
 	"github.com/Hucaru/Valhalla/game"
 	"github.com/Hucaru/Valhalla/game/packet"
 
-	"github.com/Hucaru/Valhalla/mpacket"
 	"github.com/Hucaru/Valhalla/mnet"
+	"github.com/Hucaru/Valhalla/mpacket"
 )
 
 func chatSendAll(conn mnet.MConnChannel, reader mpacket.Reader) {
@@ -29,7 +29,7 @@ func chatSendAll(conn mnet.MConnChannel, reader mpacket.Reader) {
 
 		char := player.Char()
 
-		game.SendToMap(char.CurrentMap, packet.MessageAllChat(char.ID, conn.GetAdminLevel() > 0, msg))
+		game.SendToMap(char.MapID, packet.MessageAllChat(char.ID, conn.GetAdminLevel() > 0, msg))
 	}
 }
 
@@ -139,7 +139,7 @@ func gmCommand(conn mnet.MConnChannel, msg string) {
 
 		char := player.Char()
 
-		game.SendToMap(char.CurrentMap, packet.MessageNotice(strings.Join(command[1:], " ")))
+		game.SendToMap(char.MapID, packet.MessageNotice(strings.Join(command[1:], " ")))
 	case "kill":
 		if len(command) == 1 {
 			player, err := game.GetPlayerFromConn(conn)
@@ -159,7 +159,7 @@ func gmCommand(conn mnet.MConnChannel, msg string) {
 					return
 				}
 
-				for _, p := range game.GetPlayersFromMapID(player.Char().CurrentMap) {
+				for _, p := range game.GetPlayersFromMapID(player.Char().MapID) {
 					p.Kill()
 				}
 
@@ -194,7 +194,7 @@ func gmCommand(conn mnet.MConnChannel, msg string) {
 					return
 				}
 
-				for _, p := range game.GetPlayersFromMapID(player.Char().CurrentMap) {
+				for _, p := range game.GetPlayersFromMapID(player.Char().MapID) {
 					p.Revive()
 				}
 
