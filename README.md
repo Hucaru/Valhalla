@@ -38,7 +38,9 @@ Channel server:
 - [x] GM commands
 - [x] Player use skills
 - [ ] Player skill logic
-- [ ] Inventory
+- [ ] Player inventory
+- [ ] Player pets
+- [ ] Player pet items
 - [x] NPC visible
 - [x] NPC movement
 - [ ] NPC basic chat
@@ -55,6 +57,7 @@ Channel server:
 - [ ] Minigames
 - [ ] Party
 - [ ] Guild
+- [ ] Party quests
 
 ## TODO:
 - Redo nx parsing before adding more features that use it
