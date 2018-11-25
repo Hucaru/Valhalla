@@ -56,10 +56,15 @@ Channel server:
 - [ ] Mob drops
 - [ ] Trade
 - [ ] Minigames
+- [ ] Communication Window
 - [ ] Party
 - [ ] Guild
 - [ ] Quests
+- [ ] Friends list
 - [ ] Party quests
+- [ ] Whisphers
+
+Cashshop server:
 
 ## TODO:
 - Redo nx parsing before adding more features that use it
