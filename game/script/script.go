@@ -1,11 +1,11 @@
 package script
 
 import (
-	"fmt"
 	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/fsnotify/fsnotify"
 )
@@ -27,8 +27,9 @@ func collector() {
 		script := <-fileChan
 
 		if script.remove {
+			loadedScripts.remove(strings.TrimSuffix(script.name, filepath.Ext(script.name)))
 		} else {
-			fmt.Println(script)
+			loadedScripts.add(script)
 		}
 	}
 }
@@ -76,19 +77,40 @@ func WatchScriptDirectory(directory string) {
 
 	defer watcher.Close()
 
-	for {
-		select {
-		case event := <-watcher.Events:
-			if event.Op&fsnotify.Write == fsnotify.Write || event.Op&fsnotify.Create == fsnotify.Create {
-				script := readScript(event.Name)
-				fileChan <- script
-			} else if event.Op&fsnotify.Remove == fsnotify.Remove {
-				script := scriptFile{name: event.Name, remove: true}
-				fileChan <- script
-			}
+	done := make(chan bool)
 
-		case err := <-watcher.Errors:
-			log.Fatal(err)
+	go func() {
+		for {
+			select {
+			case event, ok := <-watcher.Events:
+				if !ok {
+					done <- true
+					return
+				}
+
+				if event.Op&fsnotify.Write == fsnotify.Write || event.Op&fsnotify.Create == fsnotify.Create {
+					script := readScript(event.Name)
+					fileChan <- script
+				} else if event.Op&fsnotify.Remove == fsnotify.Remove {
+					script := scriptFile{name: event.Name, remove: true}
+					fileChan <- script
+				}
+			case err, ok := <-watcher.Errors:
+				if !ok {
+					done <- true
+					return
+				}
+
+				log.Fatal(err)
+			}
 		}
+	}()
+
+	err = watcher.Add(directory)
+
+	if err != nil {
+		log.Fatal(err)
 	}
+
+	<-done
 }

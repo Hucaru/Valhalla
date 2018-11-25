@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/Hucaru/Valhalla/game"
+	"github.com/Hucaru/Valhalla/game/npcChat"
 	"github.com/Hucaru/Valhalla/handlers/channel"
 	"github.com/Hucaru/Valhalla/handlers/world"
 	"github.com/Hucaru/Valhalla/nx"
@@ -141,6 +142,7 @@ func (cs *channelServer) processEvent() {
 					log.Println("New client from", channelConn)
 				case mnet.MEClientDisconnect:
 					log.Println("Client at", channelConn, "disconnected")
+					npcChat.RemoveSession(channelConn)
 					game.RemovePlayer(channelConn)
 					channelConn.Cleanup()
 				case mnet.MEClientPacket:
