@@ -15,9 +15,10 @@ import (
 
 	"github.com/Hucaru/Valhalla/consts"
 	"github.com/Hucaru/Valhalla/database"
-	"github.com/Hucaru/Valhalla/mpacket"
-	"github.com/Hucaru/Valhalla/mnet"
 	"github.com/Hucaru/Valhalla/game/packet"
+	"github.com/Hucaru/Valhalla/game/script"
+	"github.com/Hucaru/Valhalla/mnet"
+	"github.com/Hucaru/Valhalla/mpacket"
 )
 
 type channelServer struct {
@@ -45,6 +46,7 @@ func (cs *channelServer) Run() {
 	log.Println("Channel Server")
 
 	cs.establishDatabaseConnection()
+	cs.connectToWorld()
 
 	start := time.Now()
 	nx.Parse("Data.nx")
@@ -54,7 +56,8 @@ func (cs *channelServer) Run() {
 
 	game.InitMaps()
 
-	cs.connectToWorld()
+	go script.WatchScriptDirectory("scripts/npc/")
+	go script.WatchScriptDirectory("scripts/event/")
 
 	cs.wg.Add(1)
 	go cs.acceptNewConnections()

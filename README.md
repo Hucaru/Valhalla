@@ -58,6 +58,7 @@ Channel server:
 - [ ] Minigames
 - [ ] Party
 - [ ] Guild
+- [ ] Quests
 - [ ] Party quests
 
 ## TODO:
