@@ -33,7 +33,9 @@ func HandlePacket(conn mnet.MConnChannel, reader mpacket.Reader) {
 	case opcodes.RecvChannelEmote:
 		playerEmote(conn, reader)
 	case opcodes.RecvChannelNpcDialogue:
+		npcChatStart(conn, reader)
 	case opcodes.RecvChannelNpcDialogueContinue:
+		npcChatContinue(conn, reader)
 	case opcodes.RecvChannelNpcShop:
 	case opcodes.RecvChannelInvMoveItem:
 	case opcodes.RecvChannelChangeStat:

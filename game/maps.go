@@ -73,6 +73,16 @@ func (gm *GameMap) GetMobFromID(id int32) *gameMob {
 	return nil
 }
 
+func (gm *GameMap) GetNPCFromID(id int32) *def.NPC {
+	for i, v := range gm.npcs {
+		if v.SpawnID == id {
+			return &gm.npcs[i]
+		}
+	}
+
+	return nil
+}
+
 func (gm GameMap) generateMobSpawnID() int32 {
 	var l int32
 	for _, v := range gm.mobs {

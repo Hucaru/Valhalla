@@ -1,0 +1,180 @@
+package npcchat
+
+import (
+	"fmt"
+	"github.com/Hucaru/Valhalla/game"
+	"github.com/Hucaru/Valhalla/mpacket"
+	"log"
+	"github.com/mattn/anko/core"
+	"strconv"
+
+	"github.com/Hucaru/Valhalla/game/script"
+	"github.com/Hucaru/Valhalla/mnet"
+	"github.com/mattn/anko/vm"
+)
+
+type session struct {
+	npcID  int32
+	script string
+
+	state       int
+	isYes       bool
+	selection   int
+	stringInput string
+	intInput    int
+	style       int
+
+	shopItemIndex   int16
+	shopItemID      int32
+	shopItemAmmount int16
+	shopItems       [][]int32
+
+	env *vm.Env
+}
+
+var sessions = make(map[mnet.MConnChannel]*session)
+
+func NewSession(conn mnet.MConnChannel, npcID int32) {
+	player, err := game.GetPlayerFromConn(conn)
+
+	if err != nil {
+		return
+	}
+
+	contents, err := script.Get(strconv.Itoa(int(npcID)))
+	
+	if err != nil {
+		contents =
+			`if state == 1 {
+				return SendOk("I have not been scripted. Please report #b` + strconv.Itoa(int(npcID)) + `#k on map #b` + strconv.Itoa(int(player.Char().MapID)) + `")
+			}`
+
+		fmt.Println(err)
+	}
+
+	sessions[conn] = &session{
+		npcID:  npcID,
+		script: contents,
+
+		env: vm.NewEnv(),
+
+		// NPC init state
+		state:       1,
+		isYes:       false,
+		selection:   0,
+		stringInput: "",
+		intInput:    0,
+	}
+
+	sessions[conn].register()
+}
+
+func NewSessionWithOverride(conn mnet.MConnChannel, script string) {
+	sessions[conn] = &session{
+		npcID:  9200000,
+		script: script,
+
+		env: vm.NewEnv(),
+
+		// NPC init state
+		state:       1,
+		isYes:       false,
+		selection:   0,
+		stringInput: "",
+		intInput:    0,
+	}
+
+	sessions[conn].register()
+}
+
+func RemoveSession(conn mnet.MConnChannel) {
+	delete(sessions, conn)
+}
+
+func Run(conn mnet.MConnChannel) {
+	core.Import(sessions[conn].env)
+	packet, err := sessions[conn].env.Execute(sessions[conn].script)
+
+	if err != nil {
+		log.Println(err)
+	}
+
+	p, ok := packet.(mpacket.Packet)
+
+	if ok {
+		conn.Send(p)
+	} else {
+		RemoveSession(conn)
+	}
+}
+
+func Continue(conn mnet.MConnChannel, msgType, stateChange byte, reader mpacket.Reader) {
+	if sessions[conn].state == 0 {
+
+	} else {
+
+		switch msgType {
+		case 0:
+			if stateChange == 1 {
+				sessions[conn].state += 1
+			} else if stateChange == 0xFF {
+				sessions[conn].state = 0
+			} else {
+				sessions[conn].state -= 1
+			}
+
+		case 1:
+			sessions[conn].state += 1
+			if stateChange == 0 {
+				sessions[conn].isYes = false
+			} else {
+				sessions[conn].isYes = true
+			}
+
+		case 2:
+			sessions[conn].state += 1
+
+			if len(reader.GetRestAsBytes()) > 0 {
+				sessions[conn].stringInput = string(reader.GetRestAsBytes())
+			} else {
+				sessions[conn].state = 0
+			}
+
+		case 3:
+			sessions[conn].state += 1
+
+			if len(reader.GetRestAsBytes()) > 0 {
+				sessions[conn].intInput = int(reader.ReadUint32())
+			} else {
+				sessions[conn].state = 0
+			}
+
+		case 4:
+			sessions[conn].state += 1
+
+			if len(reader.GetRestAsBytes()) > 3 {
+				sessions[conn].selection = int(reader.ReadUint32())
+			} else {
+				sessions[conn].state = 0
+			}
+
+		case 5:
+			sessions[conn].state += 1
+
+			// need to do
+
+		default:
+			log.Println("Unkown npc msg type:", msgType)
+		}
+
+		Run(conn)
+	}
+}
+
+func Shop(conn mnet.MConnChannel, reader mpacket.Reader) {
+
+}
+
+func Storage(conn mnet.MConnChannel, reader mpacket.Reader) {
+
+}

@@ -22,8 +22,11 @@ func Get(name string) (string, error) {
 }
 
 func (ss *scriptStore) add(s scriptFile) {
+	name := filepath.Base(s.name)
+	name = strings.TrimSuffix(name, filepath.Ext(name))
+
 	ss.mutex.Lock()
-	ss.scripts[strings.TrimSuffix(s.name, filepath.Ext(s.name))] = s
+	ss.scripts[name] = s
 	ss.mutex.Unlock()
 }
 
@@ -36,6 +39,7 @@ func (ss *scriptStore) remove(name string) {
 func (ss *scriptStore) get(name string) (string, error) {
 	s := ""
 	var err error
+
 	ss.mutex.RLock()
 	if v, ok := ss.scripts[name]; ok {
 		s = v.contents
