@@ -44,9 +44,10 @@ Channel server:
 - [ ] Player pet items
 - [x] NPC visible
 - [x] NPC movement
-- [ ] NPC basic chat
+- [x] NPC basic chat
 - [ ] NPC shops
 - [ ] NPC stylist
+- [ ] NPC storage
 - [x] Mob visible
 - [x] Mob movement
 - [x] Mob use skills
