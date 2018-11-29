@@ -4,8 +4,8 @@ import (
 	"log"
 
 	"github.com/Hucaru/Valhalla/consts/opcodes"
-	"github.com/Hucaru/Valhalla/mpacket"
 	"github.com/Hucaru/Valhalla/mnet"
+	"github.com/Hucaru/Valhalla/mpacket"
 )
 
 func HandlePacket(conn mnet.MConnChannel, reader mpacket.Reader) {
@@ -29,7 +29,9 @@ func HandlePacket(conn mnet.MConnChannel, reader mpacket.Reader) {
 	case opcodes.RecvChannelPlayerSendAllChat:
 		chatSendAll(conn, reader)
 	case opcodes.RecvChannelSlashCommands:
+		chatSlashCommand(conn, reader)
 	case opcodes.RecvChannelCharacterUIWindow:
+		handleUIWindow(conn, reader)
 	case opcodes.RecvChannelEmote:
 		playerEmote(conn, reader)
 	case opcodes.RecvChannelNpcDialogue:
@@ -38,10 +40,13 @@ func HandlePacket(conn mnet.MConnChannel, reader mpacket.Reader) {
 		npcChatContinue(conn, reader)
 	case opcodes.RecvChannelNpcShop:
 	case opcodes.RecvChannelInvMoveItem:
-	case opcodes.RecvChannelChangeStat:
+		playerMoveInventoryItem(conn, reader)
+	case opcodes.RecvChannelAddStatPoint:
+		playerAddStatPoint(conn, reader)
 	case opcodes.RecvChannelPassiveRegen:
 		playerPassiveRegen(conn, reader)
-	case opcodes.RecvChannelSkillUpdate:
+	case opcodes.RecvChannelAddSkillPoint:
+		playerAddSkillPoint(conn, reader)
 	case opcodes.RecvChannelSpecialSkill:
 		playerSpecialSkill(conn, reader)
 	case opcodes.RecvChannelCharacterInfo:

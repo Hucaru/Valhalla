@@ -254,3 +254,23 @@ func playerPassiveRegen(conn mnet.MConnChannel, reader mpacket.Reader) {
 		player.GiveMP(int32(mp))
 	}
 }
+
+func playerAddStatPoint(conn mnet.MConnChannel, reader mpacket.Reader) {
+	// statID := reader.ReadInt32()
+}
+
+func playerAddSkillPoint(conn mnet.MConnChannel, reader mpacket.Reader) {
+	// skillID := reader.ReadInt32()
+}
+
+func playerGiveFame(conn mnet.MConnChannel, reader mpacket.Reader) {
+
+}
+
+func playerMoveInventoryItem(conn mnet.MConnChannel, reader mpacket.Reader) {
+	// invTabID := reader.ReadByte()
+	// origPos := reader.ReadInt16()
+	// newPos := reader.ReadInt16()
+
+	// amount := reader.ReadInt16() // amount?
+}

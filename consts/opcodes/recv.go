@@ -28,9 +28,9 @@ const (
 	RecvChannelNpcDialogueContinue mpacket.Opcode = 0x28
 	RecvChannelNpcShop             mpacket.Opcode = 0x29
 	RecvChannelInvMoveItem         mpacket.Opcode = 0x2D
-	RecvChannelChangeStat          mpacket.Opcode = 0x36
+	RecvChannelAddStatPoint        mpacket.Opcode = 0x36
 	RecvChannelPassiveRegen        mpacket.Opcode = 0x37
-	RecvChannelSkillUpdate         mpacket.Opcode = 0x38
+	RecvChannelAddSkillPoint       mpacket.Opcode = 0x38
 	RecvChannelSpecialSkill        mpacket.Opcode = 0x39
 	RecvChannelCharacterInfo       mpacket.Opcode = 0x3F
 	RecvChannelLieDetectorResult   mpacket.Opcode = 0x45

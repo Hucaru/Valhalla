@@ -1,6 +1,7 @@
 package channel
 
 import (
+	"github.com/Hucaru/Valhalla/game/npcchat"
 	"encoding/hex"
 	"log"
 	"strconv"
@@ -34,7 +35,13 @@ func chatSendAll(conn mnet.MConnChannel, reader mpacket.Reader) {
 }
 
 func chatSlashCommand(conn mnet.MConnChannel, reader mpacket.Reader) {
+	cmdType := reader.ReadByte()
 
+	switch cmdType {
+	case 5: // FIND
+		// length := reader.ReadInt16()
+		// name := reader.ReadString(int(length))
+	}
 }
 
 func gmCommand(conn mnet.MConnChannel, msg string) {
@@ -248,7 +255,43 @@ func gmCommand(conn mnet.MConnChannel, msg string) {
 
 			player.SetHP(int32(ammount))
 		}
-	case "mp":
+	case "cody":
+		if len(command) < 2 {
+			return
+		}
+
+		npcchat.NewSessionWithOverride(conn, strings.Join(command[1:], " "), 9200000)
+		npcchat.Run(conn)
+
+	case "options":
+		script := `if state == 1 {
+			options = "The following options are available to you:\r\n"
+			options += "#dRemember all GM activity is logged\r\n"
+			options += "#L0##bSuspicious players#l\r\n"
+			options += "#L1#Current map info#l\r\n"			
+			options += "#L2#Start an event#l\r\n"
+			options += "#L3#Spawn mob#l\r\n"
+
+			return SendSelection(options)
+		} else if state == 2 {
+			if selection == 0 {
+				return SendBack("Suspicious player info is not yet recorded")
+			} else if selection == 1 {
+				return SendBack("Current map info is not yet plumbed")
+			} else if selection == 2 {
+				return SendBack("Events not coded")
+			} else if selection == 3 {
+				return SendBack("Why are you trying this?")
+			} else {
+				return SendBack("Unkown selection")
+			}			
+		}`
+
+		npcchat.NewSessionWithOverride(conn, script, 9010000)
+		npcchat.Run(conn)
+
+	case "shop":
+		
 	default:
 		log.Println("Unkown GM command:", msg)
 	}

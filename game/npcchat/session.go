@@ -69,9 +69,9 @@ func NewSession(conn mnet.MConnChannel, npcID int32) {
 	sessions[conn].register()
 }
 
-func NewSessionWithOverride(conn mnet.MConnChannel, script string) {
+func NewSessionWithOverride(conn mnet.MConnChannel, script string, npcID int32) {
 	sessions[conn] = &session{
-		npcID:  9200000,
+		npcID:  npcID,
 		script: script,
 
 		env: vm.NewEnv(),
@@ -110,17 +110,17 @@ func Run(conn mnet.MConnChannel) {
 
 func Continue(conn mnet.MConnChannel, msgType, stateChange byte, reader mpacket.Reader) {
 	if sessions[conn].state == 0 {
-
+		RemoveSession(conn) // If we get here then remove the session
 	} else {
 
 		switch msgType {
 		case 0:
 			if stateChange == 1 {
-				sessions[conn].state += 1
+				sessions[conn].state++
 			} else if stateChange == 0xFF {
 				sessions[conn].state = 0
 			} else {
-				sessions[conn].state -= 1
+				sessions[conn].state--
 			}
 
 		case 1:
@@ -162,11 +162,12 @@ func Continue(conn mnet.MConnChannel, msgType, stateChange byte, reader mpacket.
 			sessions[conn].state += 1
 
 			// need to do
+			fmt.Println("Finish this msg type: 5")
 
 		default:
 			log.Println("Unkown npc msg type:", msgType)
 		}
-
+		
 		Run(conn)
 	}
 }

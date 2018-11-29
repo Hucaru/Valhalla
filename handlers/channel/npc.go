@@ -35,7 +35,7 @@ func npcChatStart(conn mnet.MConnChannel, reader mpacket.Reader) {
 			`if state == 1 {
 				return SendOk("NPC ID does not exist either on this map or in the game.")
 			}`
-		npcchat.NewSessionWithOverride(conn, script)
+		npcchat.NewSessionWithOverride(conn, script, 9010000)
 	}
 
 	npcchat.Run(conn)
@@ -46,4 +46,12 @@ func npcChatContinue(conn mnet.MConnChannel, reader mpacket.Reader) {
 	stateChange := reader.ReadByte()
 
 	npcchat.Continue(conn, msgType, stateChange, reader)
+}
+
+func npcShop(conn mnet.MConnChannel, reader mpacket.Reader) {
+
+}
+
+func npcStorage(conn mnet.MConnChannel, reader mpacket.Reader) {
+
 }
