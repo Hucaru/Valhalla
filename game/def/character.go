@@ -127,8 +127,14 @@ func GetCharacterFromID(id int32) Character {
 		char.Skills[s.ID] = s
 	}
 
-	char.Pos.X = nx.Maps[char.MapID].Portals[char.MapPos].X
-	char.Pos.Y = nx.Maps[char.MapID].Portals[char.MapPos].Y
+	nxMap, err := nx.GetMap(char.MapID)
+
+	if err != nil {
+		panic(err)
+	}
+
+	char.Pos.X = nxMap.Portals[char.MapPos].X
+	char.Pos.Y = nxMap.Portals[char.MapPos].Y
 
 	return char
 }

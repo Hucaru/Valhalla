@@ -1,184 +1,305 @@
 package nx
 
 import (
-	"encoding/binary"
-	"math"
+	"log"
+	"path/filepath"
 	"strconv"
 	"strings"
-	"sync"
+
+	"github.com/Hucaru/gonx"
 )
 
+// Item data from nx
 type Item struct {
-	Price   int32
-	SlotMax int16
-	Cash    bool
-
-	AttackSpeed   int16
-	Accuracy      int16
-	Evasion       int16
-	WeaponAttack  int16
-	MagicAttack   int16
-	MagicDefence  int16
-	WeaponDefence int16
-
-	Str int16
-	Dex int16
-	Int int16
-	Luk int16
-
-	ReqStr   int16
-	ReqDex   int16
-	ReqInt   int16
-	ReqLuk   int16
-	ReqJob   int16
-	ReqLevel byte
-
-	Upgrades  byte
-	UnitPrice float64
+	InvTabID                                                       byte
+	Cash, Only, TradeBlock, ExpireOnLogout, Quest, TimeLimited     int64
+	ReqLevel                                                       byte
+	Tuc                                                            byte // Total upgrade count?
+	SlotMax                                                        int64
+	ReqJob                                                         int64
+	ReqSTR, ReqDEX, ReqINT, ReqLUK, IncSTR, IncDEX, IncINT, IncLUK int16
+	IncACC, IncEVA, IncMDD, IncPDD, IncMAD, IncPAD, IncMHP, IncMMP int16
+	AttackSpeed, Attack, IncJump, IncSpeed, RecoveryHP             int64
+	Price                                                          int64
+	NotSale                                                        int64
+	UnitPrice                                                      float64
+	Life, Hungry                                                   int64
+	PickupItem, PickupAll, SweepForDrop                            int64
+	ConsumeHP, LongRange                                           int64
+	Recovery                                                       float64
+	ReqPOP                                                         int64 // ?
+	NameTag                                                        int64
+	Pachinko                                                       int64
+	VSlot, ISlot                                                   string
+	Type                                                           int64
+	Success                                                        int64 // Scroll type
+	Cursed                                                         int64
+	Add                                                            int64 // ?
+	DropSweep                                                      int64
+	Rate                                                           int64
+	Meso                                                           int64
+	Path                                                           string
+	FloatType                                                      int64
+	NoFlip                                                         string
+	StateChangeItem                                                int64
+	BigSize                                                        int64
+	Sfx                                                            string
+	Walk                                                           int64
+	AfterImage                                                     string
+	Stand                                                          int64
+	Knockback                                                      int64
+	Fs                                                             int64
+	ChatBalloon                                                    int64
 }
 
-var Items = make(map[int32]Item)
+func extractItems(nodes []gonx.Node, textLookup []string) map[int32]Item {
+	items := make(map[int32]Item)
 
-func getItemInfo(wg *sync.WaitGroup) {
-	defer wg.Done()
+	searches := []string{"/Character/Accessory", "/Character/Cap", "/Character/Cape", "/Character/Coat",
+		"/Character/Face", "/Character/Glove", "/Character/Hair", "/Character/Longcoat", "/Character/Pants",
+		"/Character/PetEquip", "/Character/Ring", "/Character/Shield", "/Character/Shoes", "/Character/Weapon",
+		"Item/Pet"}
 
-	base := "Item/"
-	commonPaths := []string{"Cash", "Consume", "Etc", "Install", "Special"}
+	for _, search := range searches {
+		valid := gonx.FindNode(search, nodes, textLookup, func(node *gonx.Node) {
+			for i := uint32(0); i < uint32(node.ChildCount); i++ {
+				itemNode := nodes[node.ChildID+i]
+				name := textLookup[itemNode.NameID]
+				subSearch := search + "/" + name + "/info"
 
-	for _, path := range commonPaths {
-		result := searchNode(base+path, func(cursor *node) {
-			for i := uint32(0); i < uint32(cursor.ChildCount); i++ {
-				n := nodes[cursor.ChildID+i]
+				var item Item
 
-				for j := uint32(0); j < uint32(n.ChildCount); j++ {
-					itemIDNode := nodes[n.ChildID+j]
+				valid := gonx.FindNode(subSearch, nodes, textLookup, func(node *gonx.Node) {
+					item = getItem(node, nodes, textLookup)
+				})
 
-					itemID, err := strconv.Atoi(strLookup[itemIDNode.NameID])
-
-					if err != nil {
-						panic(err)
-					}
-
-					Items[int32(itemID)] = getItem(itemIDNode)
+				if !valid {
+					log.Println("Invalid node search:", subSearch)
 				}
-			}
-		})
 
-		if !result {
-			panic("Bad Search")
-		}
-	}
-
-	result := searchNode(base+"Pet", func(cursor *node) {
-		for i := uint32(0); i < uint32(cursor.ChildCount); i++ {
-			itemIDNode := nodes[cursor.ChildID+i]
-
-			itemID, err := strconv.Atoi(strings.Split(strLookup[itemIDNode.NameID], ".")[0])
-
-			if err != nil {
-				panic(err)
-			}
-
-			Items[int32(itemID)] = getItem(itemIDNode)
-		}
-	})
-
-	if !result {
-		panic("Bad Search")
-	}
-
-	base = "Character/"
-	commonPaths = []string{"Accessory", "Cap", "Cape", "Coat", "Face",
-		"Glove", "Hair", "Longcoat", "Pants", "PetEquip", "Ring", "Shield", "Shoes", "Weapon"}
-
-	for _, path := range commonPaths {
-		result := searchNode(base+path, func(cursor *node) {
-			for i := uint32(0); i < uint32(cursor.ChildCount); i++ {
-				itemIDNode := nodes[cursor.ChildID+i]
-
-				itemID, err := strconv.Atoi(strings.Split(strLookup[itemIDNode.NameID], ".")[0])
+				name = strings.TrimSuffix(name, filepath.Ext(name))
+				itemID, err := strconv.Atoi(name)
 
 				if err != nil {
-					panic(err)
+					log.Println(err)
+					continue
 				}
 
-				Items[int32(itemID)] = getItem(itemIDNode)
-
+				item.InvTabID = byte(itemID / 1e6)
+				items[int32(itemID)] = item
 			}
 		})
 
-		if !result {
-			panic("Bad Search")
+		if !valid {
+			log.Println("Invalid node search:", search)
 		}
 	}
-}
 
-func getItem(node node) Item {
-	item := Item{}
-	for i := uint32(0); i < uint32(node.ChildCount); i++ {
-		options := nodes[node.ChildID+i]
+	searches = []string{"/Item/Cash", "/Item/Consume", "/Item/Etc", "/Item/Install"}
 
-		switch strLookup[options.NameID] {
-		case "info":
-			for l := uint32(0); l < uint32(options.ChildCount); l++ {
-				property := nodes[options.ChildID+l]
+	for _, search := range searches {
+		valid := gonx.FindNode(search, nodes, textLookup, func(node *gonx.Node) {
+			for i := uint32(0); i < uint32(node.ChildCount); i++ {
+				itemGroupNode := nodes[node.ChildID+i]
+				groupName := textLookup[itemGroupNode.NameID]
 
-				switch strLookup[property.NameID] {
-				case "cash":
-					item.Cash = bool(dataToInt64(property.Data) == 1)
-				case "slotMax":
-					item.SlotMax = dataToInt16(property.Data)
-				case "price":
-					item.Price = dataToInt32(property.Data)
-				case "attackSpeed":
-					item.AttackSpeed = dataToInt16(property.Data)
-				case "incAcc":
-					item.Accuracy = dataToInt16(property.Data)
-				case "incEVA":
-					item.Evasion = dataToInt16(property.Data)
-				case "incPAD":
-					item.WeaponAttack = dataToInt16(property.Data)
-				case "incMAD":
-					item.MagicAttack = dataToInt16(property.Data)
-				case "incMDD":
-					item.MagicDefence = dataToInt16(property.Data)
-				case "incPDD":
-					item.WeaponDefence = dataToInt16(property.Data)
-				case "incSTR":
-					item.Str = dataToInt16(property.Data)
-				case "incDEX":
-					item.Dex = dataToInt16(property.Data)
-				case "incINT":
-					item.Int = dataToInt16(property.Data)
-				case "incLUK":
-					item.Luk = dataToInt16(property.Data)
-				case "reqSTR":
-					item.ReqStr = dataToInt16(property.Data)
-				case "reqDEX":
-					item.ReqDex = dataToInt16(property.Data)
-				case "reqINT":
-					item.ReqInt = dataToInt16(property.Data)
-				case "reqLUK":
-					item.ReqLuk = dataToInt16(property.Data)
-				case "reqJob":
-					item.ReqJob = dataToInt16(property.Data)
-				case "reqLevel":
-					item.ReqLevel = property.Data[0]
-				case "tuc":
-					item.Upgrades = property.Data[0]
-				case "unitPrice":
-					bits := binary.LittleEndian.Uint64([]byte(property.Data[:]))
-					item.UnitPrice = math.Float64frombits(bits)
-				case "icon":
-				case "iconRaw":
-				case "vslot":
-				case "islot":
-				default:
-					//fmt.Println(strLookup[property.NameID])
+				for j := uint32(0); j < uint32(itemGroupNode.ChildCount); j++ {
+					itemNode := nodes[itemGroupNode.ChildID+j]
+					name := textLookup[itemNode.NameID]
+
+					subSearch := search + "/" + groupName + "/" + name + "/info"
+
+					var item Item
+
+					valid := gonx.FindNode(subSearch, nodes, textLookup, func(node *gonx.Node) {
+						item = getItem(node, nodes, textLookup)
+					})
+
+					if !valid {
+						log.Println("Invalid node search:", subSearch)
+					}
+
+					name = strings.TrimSuffix(name, filepath.Ext(name))
+					itemID, err := strconv.Atoi(name)
+
+					if err != nil {
+						log.Println(err)
+						continue
+					}
+
+					item.InvTabID = byte(itemID / 1e6)
+					items[int32(itemID)] = item
 				}
 			}
-		default:
+		})
+
+		if !valid {
+			log.Println("Invalid node search:", search)
 		}
 	}
+
+	return items
+}
+
+func getItem(node *gonx.Node, nodes []gonx.Node, textLookup []string) Item {
+	item := Item{}
+
+	for i := uint32(0); i < uint32(node.ChildCount); i++ {
+		option := nodes[node.ChildID+i]
+		optionName := textLookup[option.NameID]
+
+		switch optionName {
+		case "cash":
+			item.Cash = gonx.DataToInt64(option.Data)
+		case "reqSTR":
+			item.ReqSTR = gonx.DataToInt16(option.Data)
+		case "reqDEX":
+			item.ReqDEX = gonx.DataToInt16(option.Data)
+		case "reqINT":
+			item.ReqINT = gonx.DataToInt16(option.Data)
+		case "reqLUK":
+			item.ReqLUK = gonx.DataToInt16(option.Data)
+		case "reqJob":
+			item.ReqJob = gonx.DataToInt64(option.Data)
+		case "reqLevel":
+			item.ReqLevel = option.Data[0]
+		case "price":
+			item.Price = gonx.DataToInt64(option.Data)
+		case "incSTR":
+			item.IncSTR = gonx.DataToInt16(option.Data)
+		case "incDEX":
+			item.IncDEX = gonx.DataToInt16(option.Data)
+		case "incINT":
+			item.IncINT = gonx.DataToInt16(option.Data)
+		case "incLUK": // typo?
+			fallthrough
+		case "incLUk":
+			item.IncLUK = gonx.DataToInt16(option.Data)
+		case "incMMD": // typo?
+			fallthrough
+		case "incMDD":
+			item.IncMDD = gonx.DataToInt16(option.Data)
+		case "incPDD":
+			item.IncPDD = gonx.DataToInt16(option.Data)
+		case "incMAD":
+			item.IncMAD = gonx.DataToInt16(option.Data)
+		case "incPAD":
+			item.IncPAD = gonx.DataToInt16(option.Data)
+		case "incEVA":
+			item.IncEVA = gonx.DataToInt16(option.Data)
+		case "incACC":
+			item.IncACC = gonx.DataToInt16(option.Data)
+		case "incMHP":
+			item.IncMHP = gonx.DataToInt16(option.Data)
+		case "recoveryHP":
+			item.RecoveryHP = gonx.DataToInt64(option.Data)
+		case "incMMP":
+			item.IncMMP = gonx.DataToInt16(option.Data)
+		case "only":
+			item.Only = gonx.DataToInt64(option.Data)
+		case "attackSpeed":
+			item.AttackSpeed = gonx.DataToInt64(option.Data)
+		case "attack":
+			item.Attack = gonx.DataToInt64(option.Data)
+		case "incSpeed":
+			item.IncSpeed = gonx.DataToInt64(option.Data)
+		case "incJump":
+			item.IncJump = gonx.DataToInt64(option.Data)
+		case "tuc": // total upgrade count?
+			item.Tuc = option.Data[0]
+		case "notSale":
+			item.NotSale = gonx.DataToInt64(option.Data)
+		case "tradeBlock":
+			item.TradeBlock = gonx.DataToInt64(option.Data)
+		case "expireOnLogout":
+			item.ExpireOnLogout = gonx.DataToInt64(option.Data)
+		case "slotMax":
+			item.SlotMax = gonx.DataToInt64(option.Data)
+		case "quest":
+			item.Quest = gonx.DataToInt64(option.Data)
+		case "life":
+			item.Life = gonx.DataToInt64(option.Data)
+		case "hungry":
+			item.Hungry = gonx.DataToInt64(option.Data)
+		case "pickupItem":
+			item.PickupItem = gonx.DataToInt64(option.Data)
+		case "pickupAll":
+			item.PickupAll = gonx.DataToInt64(option.Data)
+		case "sweepForDrop":
+			item.SweepForDrop = gonx.DataToInt64(option.Data)
+		case "longRange":
+			item.LongRange = gonx.DataToInt64(option.Data)
+		case "consumeHP":
+			item.ConsumeHP = gonx.DataToInt64(option.Data)
+		case "unitPrice":
+			item.UnitPrice = gonx.DataToFloat64(option.Data)
+		case "timeLimited":
+			item.TimeLimited = gonx.DataToInt64(option.Data)
+		case "recovery":
+			item.Recovery = gonx.DataToFloat64(option.Data)
+		case "regPOP":
+			fallthrough
+		case "reqPOP":
+			item.ReqPOP = gonx.DataToInt64(option.Data)
+		case "nameTag":
+			item.NameTag = gonx.DataToInt64(option.Data)
+		case "pachinko":
+			item.Pachinko = gonx.DataToInt64(option.Data)
+		case "vslot":
+			item.VSlot = textLookup[gonx.DataToUint32(option.Data)]
+		case "islot":
+			item.ISlot = textLookup[gonx.DataToUint32(option.Data)]
+		case "type":
+			item.Type = gonx.DataToInt64(option.Data)
+		case "success":
+			item.Success = gonx.DataToInt64(option.Data)
+		case "cursed":
+			item.Cursed = gonx.DataToInt64(option.Data)
+		case "add":
+			item.Add = gonx.DataToInt64(option.Data)
+		case "dropSweep":
+			item.DropSweep = gonx.DataToInt64(option.Data)
+		case "time":
+		case "rate":
+			item.Rate = gonx.DataToInt64(option.Data)
+		case "meso":
+			item.Meso = gonx.DataToInt64(option.Data)
+		case "path":
+			idLookup := gonx.DataToUint32(option.Data)
+			item.Path = textLookup[idLookup]
+		case "floatType":
+			item.FloatType = gonx.DataToInt64(option.Data)
+		case "noFlip":
+			item.NoFlip = textLookup[gonx.DataToUint32(option.Data)]
+		case "stateChangeItem":
+			item.StateChangeItem = gonx.DataToInt64(option.Data)
+		case "bigSize":
+			item.BigSize = gonx.DataToInt64(option.Data)
+		case "icon":
+		case "iconRaw":
+		case "sfx":
+			item.Sfx = textLookup[gonx.DataToUint32(option.Data)]
+		case "walk":
+			item.Walk = gonx.DataToInt64(option.Data)
+		case "afterImage":
+			item.AfterImage = textLookup[gonx.DataToUint32(option.Data)]
+		case "stand":
+			item.Stand = gonx.DataToInt64(option.Data)
+		case "knockback":
+			item.Knockback = gonx.DataToInt64(option.Data)
+		case "fs":
+			item.Fs = gonx.DataToInt64(option.Data)
+		case "chatBalloon":
+			item.ChatBalloon = gonx.DataToInt64(option.Data)
+		case "sample":
+		case "iconD":
+		case "iconRawD":
+		case "iconReward":
+		default:
+			log.Println("Unsupported NX item option:", optionName, "->", option.Data)
+		}
+
+	}
+
 	return item
 }

@@ -50,7 +50,7 @@ func (cs *channelServer) Run() {
 	cs.connectToWorld()
 
 	start := time.Now()
-	nx.Parse("Data.nx")
+	nx.LoadFile("Data.nx")
 	elapsed := time.Since(start)
 
 	log.Println("Loaded and parsed Wizet data (NX) in", elapsed)

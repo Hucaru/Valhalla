@@ -1,6 +1,7 @@
 package def
 
 import (
+	"fmt"
 	"log"
 	"math"
 
@@ -65,30 +66,31 @@ func ItemIsStackable(itemID int32, ammount int16) bool {
 func CreateFromID(id int32) (Item, bool) {
 	newItem := Item{}
 
-	if _, ok := nx.Items[id]; !ok {
+	nxInfo, err := nx.GetItem(id)
+
+	if err != nil {
+		fmt.Println("Unable to generate item of id:", id)
 		return Item{}, false
 	}
-
-	nxInfo := nx.Items[id]
 
 	newItem.UUID = uuid.Must(uuid.NewRandom())
 	newItem.InvID = byte(id / 1e6)
 	newItem.ItemID = id
-	newItem.Accuracy = nxInfo.Accuracy
-	newItem.Avoid = nxInfo.Evasion
+	newItem.Accuracy = nxInfo.IncACC
+	newItem.Avoid = nxInfo.IncEVA
 
-	newItem.Matk = nxInfo.MagicAttack
-	newItem.Mdef = nxInfo.MagicDefence
-	newItem.Watk = nxInfo.WeaponAttack
-	newItem.Wdef = nxInfo.WeaponDefence
+	newItem.Matk = nxInfo.IncMAD
+	newItem.Mdef = nxInfo.IncMDD
+	newItem.Watk = nxInfo.IncPAD
+	newItem.Wdef = nxInfo.IncPDD
 
-	newItem.Str = nxInfo.Str
-	newItem.Dex = nxInfo.Dex
-	newItem.Int = nxInfo.Int
-	newItem.Luk = nxInfo.Luk
+	newItem.Str = nxInfo.IncSTR
+	newItem.Dex = nxInfo.IncDEX
+	newItem.Int = nxInfo.IncINT
+	newItem.Luk = nxInfo.IncLUK
 
 	newItem.ReqLevel = nxInfo.ReqLevel
-	newItem.UpgradeSlots = nxInfo.Upgrades
+	newItem.UpgradeSlots = nxInfo.Tuc
 
 	newItem.Amount = 1
 

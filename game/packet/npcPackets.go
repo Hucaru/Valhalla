@@ -14,7 +14,7 @@ func NpcShow(npc def.NPC) mpacket.Packet {
 	p.WriteInt16(npc.X)
 	p.WriteInt16(npc.Y)
 
-	p.WriteBool(!npc.FacesLeft)
+	p.WriteBool(!npc.FaceLeft)
 
 	p.WriteInt16(npc.Foothold)
 	p.WriteInt16(npc.Rx0)

@@ -19,15 +19,15 @@ type Mob struct {
 	LastAttackTime   int64
 	Respawns         bool
 	nx.Life
-	nx.Monster
+	nx.Mob
 }
 
-func CreateMob(spawnID int32, life nx.Life, mob nx.Monster, summoner mnet.MConnChannel) Mob {
+func CreateMob(spawnID int32, life nx.Life, mob nx.Mob, summoner mnet.MConnChannel) Mob {
 	return Mob{SpawnID: spawnID,
 		Summoner:   summoner,
 		Stance:     0,
 		SkillTimes: make(map[byte]int64),
 		Respawns:   true,
 		Life:       life,
-		Monster:    mob}
+		Mob:        mob}
 }

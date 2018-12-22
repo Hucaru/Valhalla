@@ -42,7 +42,7 @@ func addMob(mob def.Mob) mpacket.Packet {
 		bitfield = 0x02
 	}
 
-	if mob.FacesLeft {
+	if mob.FaceLeft {
 		bitfield |= 0x01
 	} else {
 		bitfield |= 0x04
