@@ -10,7 +10,7 @@ var items map[int32]Item
 var maps map[int32]Map
 var mobs map[int32]Mob
 var playerSkills map[int32][]PlayerSkill
-var mobSkills map[int32][]MobSkill
+var mobSkills map[byte][]MobSkill
 
 // LoadFile into useable types
 func LoadFile(fname string) {
@@ -68,7 +68,7 @@ func GetPlayerSkill(id int32) ([]PlayerSkill, error) {
 }
 
 // GetMobSkill from loaded nx
-func GetMobSkill(id int32) ([]MobSkill, error) {
+func GetMobSkill(id byte) ([]MobSkill, error) {
 	if _, ok := mobSkills[id]; !ok {
 		return []MobSkill{}, fmt.Errorf("Invalid mob skill id: %v", id)
 	}

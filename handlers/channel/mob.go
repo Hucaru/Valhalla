@@ -63,16 +63,25 @@ func mobControl(conn mnet.MConnChannel, reader mpacket.Reader) {
 	// Perform the action received
 	if actualAction >= 21 && actualAction <= 25 {
 		performSkill(&mob.Mob, int16(skillData>>16), byte(skillData>>8), byte(skillData))
-
 	} else if actualAction > 12 && actualAction < 20 {
 		attackID := byte(actualAction - 12)
 
 		// check mob can use attack
-		if attack, valid := nx.GetMobAttack(mob.ID, attackID); valid {
-			mob.MP = mob.MP - attack.MPCon
-			if mob.MP < 0 {
-				mob.MP = 0
+		if level, valid := mob.Skills[attackID]; valid {
+			levels, err := nx.GetMobSkill(attackID)
+
+			if err != nil {
+				return
 			}
+
+			if int(level) < len(levels) {
+				skill := levels[level]
+				mob.MP = mob.MP - skill.MpCon
+				if mob.MP < 0 {
+					mob.MP = 0
+				}
+			}
+
 		}
 
 		mob.LastAttackTime = time.Now().Unix()
@@ -95,32 +104,43 @@ func mobControl(conn mnet.MConnChannel, reader mpacket.Reader) {
 func chooseNextSkill(mob *def.Mob) (byte, byte) {
 	var skillID, skillLevel byte
 
-	skillsToChooseFrom := []nx.MobSkill{}
+	skillsToChooseFrom := []byte{}
 
-	for _, skill := range nx.GetMobSkills(mob.ID) {
+	for id, level := range mob.Skills {
+		levels, err := nx.GetMobSkill(level)
+
+		if err != nil {
+			continue
+		}
+
+		if int(skillLevel) >= len(levels) {
+			continue
+		}
+
+		skillData := levels[skillLevel]
 
 		// Skill HP check
-		if (mob.HP * 100 / mob.MaxHP) < skill.HP {
+		if (mob.HP * 100 / mob.MaxHP) < skillData.Hp {
 			continue
 		}
 
 		// Skill cooldown check
-		if val, ok := mob.SkillTimes[skill.ID]; ok {
-			if (val + skill.Cooldown) > time.Now().Unix() { // Is cooldown in seconds?
+		if val, ok := mob.SkillTimes[id]; ok {
+			if (val + skillData.Interval) > time.Now().Unix() { // Is cooldown in seconds?
 				continue
 			}
 		}
 
 		// Check summon limit
-		if skill.ID == skills.Mob.Summon {
+		// if skillData.Limit {
 
-		}
+		// }
 
 		// Determine if stats can be buffed
 		if mob.StatBuff > 0 {
 			alreadySet := false
 
-			switch skill.ID {
+			switch id {
 			case skills.Mob.WeaponAttackUp:
 				fallthrough
 			case skills.Mob.WeaponAttackUpAoe:
@@ -163,13 +183,19 @@ func chooseNextSkill(mob *def.Mob) (byte, byte) {
 
 		}
 
-		skillsToChooseFrom = append(skillsToChooseFrom, skill)
+		skillsToChooseFrom = append(skillsToChooseFrom, id)
 	}
 
 	if len(skillsToChooseFrom) > 0 {
-		skill := skillsToChooseFrom[rand.Intn(len(skillsToChooseFrom))]
-		skillID = skill.ID
-		skillLevel = skill.Level
+		nextID := skillsToChooseFrom[rand.Intn(len(skillsToChooseFrom))]
+
+		skillID = nextID
+
+		for id, level := range mob.Skills {
+			if id == nextID {
+				skillLevel = level
+			}
+		}
 	}
 
 	if skillLevel == 0 {
@@ -185,20 +211,21 @@ func performSkill(mob *def.Mob, delay int16, skillLevel, skillID byte) {
 		return
 	}
 
-	var skill *nx.MobSkill
+	levels, err := nx.GetMobSkill(skillID)
 
-	for _, itSkill := range nx.GetMobSkills(mob.ID) {
-		if itSkill.ID == skillID && itSkill.Level == skillLevel {
-			skill = &itSkill
-		}
-	}
-
-	if skill == nil {
+	if err != nil {
 		mob.SkillID = 0
 		return
 	}
 
-	mob.MP = mob.MP - skill.MPCon
+	var skillData nx.MobSkill
+	for i, v := range levels {
+		if i == int(skillLevel) {
+			skillData = v
+		}
+	}
+
+	mob.MP = mob.MP - skillData.MpCon
 	if mob.MP < 0 {
 		mob.MP = 0
 	}
@@ -209,7 +236,7 @@ func performSkill(mob *def.Mob, delay int16, skillLevel, skillID byte) {
 	mob.LastSkillUseTime = currentTime
 
 	// Handle all the different skills!
-	switch skill.ID {
+	switch skillID {
 
 	}
 }

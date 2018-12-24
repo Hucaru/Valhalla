@@ -35,14 +35,17 @@ type PlayerSkill struct {
 
 // MobSkill data from nx
 type MobSkill struct {
-	HP              int64
+	Hp              int32
+	MpCon           int32
 	Limit, Interval int64
 	MobID           []int64
+	SummonEffect    int64
+	Time            int64
 }
 
-func extractSkills(nodes []gonx.Node, textLookup []string) (map[int32][]PlayerSkill, map[int32][]MobSkill) {
+func extractSkills(nodes []gonx.Node, textLookup []string) (map[int32][]PlayerSkill, map[byte][]MobSkill) {
 	playerSkills := make(map[int32][]PlayerSkill)
-	mobSkills := make(map[int32][]MobSkill)
+	mobSkills := make(map[byte][]MobSkill)
 
 	search := "/Skill"
 
@@ -70,7 +73,7 @@ func extractSkills(nodes []gonx.Node, textLookup []string) (map[int32][]PlayerSk
 							return
 						}
 
-						mobSkills[int32(skillID)] = make([]MobSkill, node.ChildCount)
+						mobSkills[byte(skillID)] = make([]MobSkill, node.ChildCount)
 
 						for j := uint32(0); j < uint32(node.ChildCount); j++ {
 							skillNode := nodes[node.ChildID+j]
@@ -78,7 +81,7 @@ func extractSkills(nodes []gonx.Node, textLookup []string) (map[int32][]PlayerSk
 							level, err := strconv.Atoi(skillLevel)
 
 							if err == nil {
-								mobSkills[int32(skillID)][level-1] = getMobSkill(&skillNode, nodes, textLookup)
+								mobSkills[byte(skillID)][level-1] = getMobSkill(&skillNode, nodes, textLookup)
 							}
 						}
 					})
@@ -227,11 +230,17 @@ func getMobSkill(node *gonx.Node, nodes []gonx.Node, textLookup []string) MobSki
 
 		switch optionName {
 		case "hp":
+			skill.Hp = gonx.DataToInt32(option.Data)
 		case "interval":
+			skill.Interval = gonx.DataToInt64(option.Data)
 		case "limit":
+			skill.Limit = gonx.DataToInt64(option.Data)
 		case "summonEffect":
+			skill.SummonEffect = gonx.DataToInt64(option.Data)
 		case "time":
+			skill.Time = gonx.DataToInt64(option.Data)
 		case "mpCon":
+			skill.MpCon = gonx.DataToInt32(option.Data)
 
 		// ?
 		case "0":

@@ -30,7 +30,7 @@ type Mob struct {
 	Invincible         int64
 	SelfDestruction    int64
 	ExplosiveReward    int64
-	Skills             map[int64]int64
+	Skills             map[byte]byte
 	Revives            []int32
 	Fs                 float64
 	Pushed             int64
@@ -178,14 +178,15 @@ func getMob(node *gonx.Node, nodes []gonx.Node, textLookup []string) Mob {
 	return mob
 }
 
-func getSkills(node *gonx.Node, nodes []gonx.Node, textLookup []string) map[int64]int64 {
-	skills := make(map[int64]int64)
+func getSkills(node *gonx.Node, nodes []gonx.Node, textLookup []string) map[byte]byte {
+	skills := make(map[byte]byte)
 
 	// need to subnode the children of the children to node
 	for i := uint32(0); i < uint32(node.ChildCount); i++ {
 		skillDir := nodes[node.ChildID+i]
 
-		var id, level int64
+		var id byte
+		var level byte
 
 		for j := uint32(0); j < uint32(skillDir.ChildCount); j++ {
 			option := nodes[skillDir.ChildID+j]
@@ -193,9 +194,9 @@ func getSkills(node *gonx.Node, nodes []gonx.Node, textLookup []string) map[int6
 
 			switch optionName {
 			case "level":
-				level = gonx.DataToInt64(option.Data)
+				level = option.Data[0]
 			case "skill":
-				id = gonx.DataToInt64(option.Data)
+				id = option.Data[0]
 			case "action":
 			case "effectAfter":
 			default:
