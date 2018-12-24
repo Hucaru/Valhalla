@@ -108,8 +108,10 @@ func GetRandomSpawnPortal(mapID int32) (nx.Portal, byte) {
 	portals := []nx.Portal{}
 	inds := []int{}
 
-	for i, p := range nx.Maps[mapID].Portals {
-		if p.IsSpawn {
+	nxMap, _ := nx.GetMap(mapID)
+
+	for i, p := range nxMap.Portals {
+		if p.Pn == "sp" {
 			portals = append(portals, p)
 			inds = append(inds, i)
 		}

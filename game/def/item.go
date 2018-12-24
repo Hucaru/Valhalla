@@ -12,6 +12,7 @@ import (
 
 type Item struct {
 	UUID         uuid.UUID
+	Cash         bool
 	InvID        byte
 	SlotID       int16
 	ItemID       int32
@@ -74,6 +75,7 @@ func CreateFromID(id int32) (Item, bool) {
 	}
 
 	newItem.UUID = uuid.Must(uuid.NewRandom())
+	newItem.Cash = nxInfo.Cash
 	newItem.InvID = byte(id / 1e6)
 	newItem.ItemID = id
 	newItem.Accuracy = nxInfo.IncACC

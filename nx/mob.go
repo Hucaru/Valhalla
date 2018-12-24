@@ -12,8 +12,9 @@ import (
 
 // Mob data from nx
 type Mob struct {
-	MaxHP, HPRecovery  int64
-	MaxMP, MPRecovery  int64
+	HP, MP             int32 // Not in nx
+	MaxHP, HPRecovery  int32
+	MaxMP, MPRecovery  int32
 	Level              int64
 	Exp                int64
 	MADamage, MDDamage int64
@@ -30,7 +31,7 @@ type Mob struct {
 	SelfDestruction    int64
 	ExplosiveReward    int64
 	Skills             map[int64]int64
-	Revives            []int64
+	Revives            []int32
 	Fs                 float64
 	Pushed             int64
 	BodyAttack         int64
@@ -92,13 +93,15 @@ func getMob(node *gonx.Node, nodes []gonx.Node, textLookup []string) Mob {
 
 		switch optionName {
 		case "maxHP":
-			mob.MaxHP = gonx.DataToInt64(option.Data)
+			mob.MaxHP = gonx.DataToInt32(option.Data)
+			mob.HP = mob.MaxHP
 		case "hpRecovery":
-			mob.HPRecovery = gonx.DataToInt64(option.Data)
+			mob.HPRecovery = gonx.DataToInt32(option.Data)
 		case "maxMP":
-			mob.MaxMP = gonx.DataToInt64(option.Data)
+			mob.MaxMP = gonx.DataToInt32(option.Data)
+			mob.MP = mob.MaxMP
 		case "mpRecovery":
-			mob.MPRecovery = gonx.DataToInt64(option.Data)
+			mob.MPRecovery = gonx.DataToInt32(option.Data)
 		case "level":
 			mob.Level = gonx.DataToInt64(option.Data)
 		case "exp":
@@ -206,12 +209,12 @@ func getSkills(node *gonx.Node, nodes []gonx.Node, textLookup []string) map[int6
 	return skills
 }
 
-func getRevives(node *gonx.Node, nodes []gonx.Node) []int64 {
-	revives := make([]int64, node.ChildCount)
+func getRevives(node *gonx.Node, nodes []gonx.Node) []int32 {
+	revives := make([]int32, node.ChildCount)
 
 	for i := uint32(0); i < uint32(node.ChildCount); i++ {
 		mobID := nodes[node.ChildID+i]
-		revives[i] = gonx.DataToInt64(mobID.Data)
+		revives[i] = gonx.DataToInt32(mobID.Data)
 	}
 
 	return revives

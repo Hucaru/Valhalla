@@ -1,11 +1,12 @@
 package channel
 
 import (
-	"github.com/Hucaru/Valhalla/game/npcchat"
 	"encoding/hex"
 	"log"
 	"strconv"
 	"strings"
+
+	"github.com/Hucaru/Valhalla/game/npcchat"
 
 	"github.com/Hucaru/Valhalla/nx"
 
@@ -119,7 +120,7 @@ func gmCommand(conn mnet.MConnChannel, msg string) {
 
 		mapID := int32(val)
 
-		if _, ok := nx.Maps[mapID]; !ok {
+		if _, err := nx.GetMap(mapID); err != nil {
 			return
 		}
 
@@ -291,7 +292,7 @@ func gmCommand(conn mnet.MConnChannel, msg string) {
 		npcchat.Run(conn)
 
 	case "shop":
-		
+
 	default:
 		log.Println("Unkown GM command:", msg)
 	}

@@ -16,16 +16,22 @@ type GameMap struct {
 }
 
 func InitMaps() {
-	for mapID, nxMap := range nx.Maps {
+	for mapID, nxMap := range nx.GetMaps() {
 		npcs := []def.NPC{}
 		mobs := []gameMob{}
 
-		for _, l := range nxMap.Life {
-			if l.IsMob {
-				mobs = append(mobs, gameMob{Mob: def.CreateMob(int32(len(mobs)+1), l, nx.Mob[l.ID], nil), mapID: mapID})
-			} else {
-				npcs = append(npcs, def.CreateNPC(int32(len(npcs)), l))
+		for _, l := range nxMap.Mobs {
+			nxMob, err := nx.GetMob(l.ID)
+
+			if err != nil {
+				continue
 			}
+
+			mobs = append(mobs, gameMob{Mob: def.CreateMob(int32(len(mobs)+1), l, nxMob, nil), mapID: mapID})
+		}
+
+		for _, l := range nxMap.NPCs {
+			npcs = append(npcs, def.CreateNPC(int32(len(npcs)), l))
 		}
 
 		maps[mapID] = &GameMap{
@@ -107,7 +113,7 @@ func (gm *GameMap) HandleDeadMobs() {
 		if mob.HP < 1 {
 			mob.Controller.Send(packet.MobEndControl(mob.Mob))
 
-			for _, id := range mob.Revive {
+			for _, id := range mob.Revives {
 				gm.SpawnMobNoRespawn(id, gm.generateMobSpawnID(), mob.X, mob.Y, mob.Foothold, -3, mob.SpawnID, mob.FacesLeft())
 				y = append(y, gm.mobs[len(gm.mobs)-1])
 			}
@@ -126,7 +132,13 @@ func (gm *GameMap) SpawnMob(mobID, spawnID int32, x, y, foothold int16, summonTy
 }
 
 func (gm *GameMap) SpawnMobNoRespawn(mobID, spawnID int32, x, y, foothold int16, summonType int8, summonOption int32, facesLeft bool) {
-	mob := def.CreateMob(spawnID, nx.Life{}, nx.Mob[mobID], nil)
+	m, err := nx.GetMob(mobID)
+
+	if err != nil {
+		return
+	}
+
+	mob := def.CreateMob(spawnID, nx.Life{}, m, nil)
 	mob.ID = mobID
 
 	mob.X = x
@@ -138,7 +150,7 @@ func (gm *GameMap) SpawnMobNoRespawn(mobID, spawnID int32, x, y, foothold int16,
 	mob.SummonType = summonType
 	mob.SummonOption = summonOption
 
-	mob.FacesLeft = facesLeft
+	mob.FaceLeft = facesLeft
 
 	SendToMap(gm.id, packet.MobShow(mob))
 

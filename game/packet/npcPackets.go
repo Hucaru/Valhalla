@@ -1,6 +1,8 @@
 package packet
 
 import (
+	"math"
+
 	"github.com/Hucaru/Valhalla/consts/opcodes"
 	"github.com/Hucaru/Valhalla/game/def"
 	"github.com/Hucaru/Valhalla/mpacket"
@@ -155,21 +157,27 @@ func NPCShop(npcID int32, items [][]int32) mpacket.Packet {
 	for _, currentItem := range items {
 		p.WriteInt32(currentItem[0])
 
+		item, err := nx.GetItem(currentItem[0])
+
 		if len(currentItem) == 2 {
 			p.WriteInt32(currentItem[1])
 
 		} else {
-			p.WriteInt32(nx.Items[currentItem[0]].Price)
+			if err != nil {
+				p.WriteInt32(math.MaxInt32)
+			} else {
+				p.WriteInt32(item.Price)
+			}
 		}
 
 		if def.ItemIsRechargeable(currentItem[0]) {
-			p.WriteUint64(uint64(nx.Items[currentItem[0]].UnitPrice * float64(nx.Items[currentItem[0]].SlotMax)))
+			p.WriteUint64(uint64(item.UnitPrice * float64(item.SlotMax)))
 		}
 
-		if nx.Items[currentItem[0]].SlotMax == 0 {
+		if item.SlotMax == 0 {
 			p.WriteInt16(100)
 		} else {
-			p.WriteInt16(nx.Items[currentItem[0]].SlotMax)
+			p.WriteInt16(item.SlotMax)
 		}
 	}
 

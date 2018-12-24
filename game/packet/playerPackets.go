@@ -8,7 +8,6 @@ import (
 	"github.com/Hucaru/Valhalla/consts/opcodes"
 	"github.com/Hucaru/Valhalla/game/def"
 	"github.com/Hucaru/Valhalla/mpacket"
-	"github.com/Hucaru/Valhalla/nx"
 )
 
 func PlayerReceivedDmg(charID int32, attack int8, initalAmmount, reducedAmmount, spawnID, mobID, healSkillID int32,
@@ -160,7 +159,7 @@ func PlayerEnterGame(char def.Character, channelID int32) mpacket.Packet {
 	p.WriteByte(char.CashSlotSize)
 
 	for _, v := range char.Equip {
-		if v.SlotID < 0 && v.InvID == 1 && !nx.IsCashItem(v.ItemID) {
+		if v.SlotID < 0 && v.InvID == 1 && !v.Cash {
 			p.WriteBytes(addItem(v, false))
 		}
 	}
@@ -169,7 +168,7 @@ func PlayerEnterGame(char def.Character, channelID int32) mpacket.Packet {
 
 	// Equips
 	for _, v := range char.Equip {
-		if v.SlotID < 0 && v.InvID == 1 && nx.IsCashItem(v.ItemID) {
+		if v.SlotID < 0 && v.InvID == 1 && v.Cash {
 			p.WriteBytes(addItem(v, false))
 		}
 	}
@@ -250,7 +249,7 @@ func addItem(item def.Item, shortSlot bool) mpacket.Packet {
 	p := mpacket.NewPacket()
 
 	if !shortSlot {
-		if nx.IsCashItem(item.ItemID) && item.SlotID < 0 {
+		if item.Cash && item.SlotID < 0 {
 			p.WriteByte(byte(math.Abs(float64(item.SlotID + 100))))
 		} else {
 			p.WriteByte(byte(math.Abs(float64(item.SlotID))))
@@ -268,7 +267,7 @@ func addItem(item def.Item, shortSlot bool) mpacket.Packet {
 
 	p.WriteInt32(item.ItemID)
 
-	if nx.IsCashItem(item.ItemID) {
+	if item.Cash {
 		p.WriteByte(1)
 		p.WriteUint64(uint64(item.ItemID))
 	} else {

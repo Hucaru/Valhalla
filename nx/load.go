@@ -44,6 +44,11 @@ func GetMap(id int32) (Map, error) {
 	return maps[id], nil
 }
 
+// GetMaps from loaded nx
+func GetMaps() map[int32]Map {
+	return maps
+}
+
 // GetMob from loaded nx
 func GetMob(id int32) (Mob, error) {
 	if _, ok := mobs[id]; !ok {

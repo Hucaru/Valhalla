@@ -12,15 +12,16 @@ import (
 // Item data from nx
 type Item struct {
 	InvTabID                                                       byte
-	Cash, Only, TradeBlock, ExpireOnLogout, Quest, TimeLimited     int64
+	Cash                                                           bool
+	Only, TradeBlock, ExpireOnLogout, Quest, TimeLimited           int64
 	ReqLevel                                                       byte
 	Tuc                                                            byte // Total upgrade count?
-	SlotMax                                                        int64
+	SlotMax                                                        int16
 	ReqJob                                                         int64
 	ReqSTR, ReqDEX, ReqINT, ReqLUK, IncSTR, IncDEX, IncINT, IncLUK int16
 	IncACC, IncEVA, IncMDD, IncPDD, IncMAD, IncPAD, IncMHP, IncMMP int16
 	AttackSpeed, Attack, IncJump, IncSpeed, RecoveryHP             int64
-	Price                                                          int64
+	Price                                                          int32
 	NotSale                                                        int64
 	UnitPrice                                                      float64
 	Life, Hungry                                                   int64
@@ -150,7 +151,7 @@ func getItem(node *gonx.Node, nodes []gonx.Node, textLookup []string) Item {
 
 		switch optionName {
 		case "cash":
-			item.Cash = gonx.DataToInt64(option.Data)
+			item.Cash = gonx.DataToBool(option.Data[0])
 		case "reqSTR":
 			item.ReqSTR = gonx.DataToInt16(option.Data)
 		case "reqDEX":
@@ -164,7 +165,7 @@ func getItem(node *gonx.Node, nodes []gonx.Node, textLookup []string) Item {
 		case "reqLevel":
 			item.ReqLevel = option.Data[0]
 		case "price":
-			item.Price = gonx.DataToInt64(option.Data)
+			item.Price = gonx.DataToInt32(option.Data)
 		case "incSTR":
 			item.IncSTR = gonx.DataToInt16(option.Data)
 		case "incDEX":
@@ -214,7 +215,7 @@ func getItem(node *gonx.Node, nodes []gonx.Node, textLookup []string) Item {
 		case "expireOnLogout":
 			item.ExpireOnLogout = gonx.DataToInt64(option.Data)
 		case "slotMax":
-			item.SlotMax = gonx.DataToInt64(option.Data)
+			item.SlotMax = gonx.DataToInt16(option.Data)
 		case "quest":
 			item.Quest = gonx.DataToInt64(option.Data)
 		case "life":
