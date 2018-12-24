@@ -14,7 +14,7 @@ import (
 type Portal struct {
 	ID     int64
 	Pn     string
-	Tm     int64
+	Tm     int32
 	Tn     string
 	Pt     int64
 	X, Y   int16
@@ -48,7 +48,7 @@ type Reactor struct {
 type Map struct {
 	Town         int64
 	ForcedReturn int64
-	ReturnMap    int64
+	ReturnMap    int32
 	MobRate      float64
 
 	Swim, PersonalShop, EntrustedShop, ScrollDisable int64
@@ -171,7 +171,7 @@ func getMapInfo(node *gonx.Node, nodes []gonx.Node, textLookup []string) Map {
 		case "recovery": // float64
 			m.Recovery = gonx.DataToFloat64(option.Data)
 		case "returnMap":
-			m.ReturnMap = gonx.DataToInt64(option.Data)
+			m.ReturnMap = gonx.DataToInt32(option.Data)
 		case "version":
 			m.Version = gonx.DataToInt64(option.Data)
 		case "bgm":
@@ -237,7 +237,7 @@ func getMapPortals(node *gonx.Node, nodes []gonx.Node, textLookup []string) []Po
 			case "pn":
 				portal.Pn = textLookup[gonx.DataToUint32(option.Data)]
 			case "tm":
-				portal.Tm = gonx.DataToInt64(option.Data)
+				portal.Tm = gonx.DataToInt32(option.Data)
 			case "tn":
 				portal.Tn = textLookup[gonx.DataToUint32(option.Data)]
 			case "x":

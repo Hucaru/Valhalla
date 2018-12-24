@@ -62,20 +62,32 @@ func playerUsePortal(conn mnet.MConnChannel, reader mpacket.Reader) {
 
 	entryType := reader.ReadInt32()
 
+	currentMap, err := nx.GetMap(char.MapID)
+
+	if err != nil {
+		return
+	}
+
 	switch entryType {
 	case 0:
 		if char.HP == 0 {
-			returnMapID := nx.Maps[char.MapID].ReturnMap
+			returnMapID := currentMap.ReturnMap
 			portal, id := game.GetRandomSpawnPortal(returnMapID)
 			player.ChangeMap(returnMapID, portal, id)
 		}
 	case -1:
 		portalName := reader.ReadString(int(reader.ReadInt16()))
 
-		for _, src := range nx.Maps[char.MapID].Portals {
-			if src.Name == portalName {
-				for i, dest := range nx.Maps[src.Tm].Portals {
-					if dest.Name == src.Tn {
+		for _, src := range currentMap.Portals {
+			if src.Pn == portalName {
+				destMap, err := nx.GetMap(char.MapID)
+
+				if err != nil {
+					return
+				}
+
+				for i, dest := range destMap.Portals {
+					if dest.Pn == src.Tn {
 						player.ChangeMap(src.Tm, dest, byte(i))
 					}
 				}
