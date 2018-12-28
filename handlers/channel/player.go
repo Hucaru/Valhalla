@@ -97,6 +97,7 @@ func playerUsePortal(conn mnet.MConnChannel, reader mpacket.Reader) {
 	default:
 		log.Println("Unknown portal entry type, packet:", reader)
 	}
+
 }
 
 func playerEnterCashShop(conn mnet.MConnChannel, reader mpacket.Reader) {

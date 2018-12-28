@@ -213,7 +213,7 @@ func getMapInfo(node *gonx.Node, nodes []gonx.Node, textLookup []string) Map {
 }
 
 func getMapPortals(node *gonx.Node, nodes []gonx.Node, textLookup []string) []Portal {
-	portal := make([]Portal, node.ChildCount)
+	portals := make([]Portal, node.ChildCount)
 
 	for i := uint32(0); i < uint32(node.ChildCount); i++ {
 		portalObj := nodes[node.ChildID+i]
@@ -250,9 +250,11 @@ func getMapPortals(node *gonx.Node, nodes []gonx.Node, textLookup []string) []Po
 				fmt.Println("Unsupported NX portal option:", optionName, "->", option.Data)
 			}
 		}
+
+		portals = append(portals, portal)
 	}
 
-	return portal
+	return portals
 }
 
 func getMapLifes(node *gonx.Node, nodes []gonx.Node, textLookup []string) ([]Life, []Life) {
@@ -270,7 +272,15 @@ func getMapLifes(node *gonx.Node, nodes []gonx.Node, textLookup []string) ([]Lif
 
 			switch optionName {
 			case "id":
-				life.ID = gonx.DataToInt32(option.Data)
+				id := textLookup[gonx.DataToUint32(option.Data)]
+
+				tmpID, err := strconv.Atoi(id)
+
+				if err != nil {
+					continue
+				}
+
+				life.ID = int32(tmpID)
 			case "type":
 				life.Type = textLookup[gonx.DataToUint32(option.Data)]
 			case "fh":
