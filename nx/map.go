@@ -12,7 +12,7 @@ import (
 
 // Portal object in a map
 type Portal struct {
-	ID     int64
+	ID     byte
 	Pn     string
 	Tm     int32
 	Tn     string
@@ -225,7 +225,7 @@ func getMapPortals(node *gonx.Node, nodes []gonx.Node, textLookup []string) []Po
 			continue
 		}
 
-		portal := Portal{ID: int64(portalNumber)}
+		portal := Portal{ID: byte(portalNumber)}
 
 		for j := uint32(0); j < uint32(portalObj.ChildCount); j++ {
 			option := nodes[portalObj.ChildID+j]
@@ -251,7 +251,7 @@ func getMapPortals(node *gonx.Node, nodes []gonx.Node, textLookup []string) []Po
 			}
 		}
 
-		portals = append(portals, portal)
+		portals[i] = portal
 	}
 
 	return portals

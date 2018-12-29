@@ -80,7 +80,7 @@ func playerUsePortal(conn mnet.MConnChannel, reader mpacket.Reader) {
 
 		for _, src := range currentMap.Portals {
 			if src.Pn == portalName {
-				destMap, err := nx.GetMap(char.MapID)
+				destMap, err := nx.GetMap(src.Tm)
 
 				if err != nil {
 					return
