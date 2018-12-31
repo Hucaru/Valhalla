@@ -12,7 +12,7 @@ import (
 	"github.com/Hucaru/Valhalla/handlers/world"
 	"github.com/Hucaru/Valhalla/mpacket"
 
-	"github.com/Hucaru/Valhalla/consts"
+	"github.com/Hucaru/Valhalla/constant"
 	"github.com/Hucaru/Valhalla/database"
 	"github.com/Hucaru/Valhalla/mnet"
 	"github.com/Hucaru/Valhalla/game/packet"
@@ -129,7 +129,7 @@ func (ls *loginServer) acceptNewClientConnections() {
 		go loginConn.Reader()
 		go loginConn.Writer()
 
-		conn.Write(packet.ClientHandshake(consts.MapleVersion, keyRecv[:], keySend[:]))
+		conn.Write(packet.ClientHandshake(constant.MapleVersion, keyRecv[:], keySend[:]))
 	}
 }
 

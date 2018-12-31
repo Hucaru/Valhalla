@@ -14,7 +14,7 @@ import (
 	"github.com/Hucaru/Valhalla/handlers/world"
 	"github.com/Hucaru/Valhalla/nx"
 
-	"github.com/Hucaru/Valhalla/consts"
+	"github.com/Hucaru/Valhalla/constant"
 	"github.com/Hucaru/Valhalla/database"
 	"github.com/Hucaru/Valhalla/game/packet"
 	"github.com/Hucaru/Valhalla/game/script"
@@ -118,7 +118,7 @@ func (cs *channelServer) acceptNewConnections() {
 		go channelConn.Reader()
 		go channelConn.Writer()
 
-		conn.Write(packet.ClientHandshake(consts.MapleVersion, keyRecv[:], keySend[:]))
+		conn.Write(packet.ClientHandshake(constant.MapleVersion, keyRecv[:], keySend[:]))
 	}
 }
 

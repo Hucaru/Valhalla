@@ -1,7 +1,7 @@
 package packet
 
 import (
-	"github.com/Hucaru/Valhalla/consts/opcodes"
+	"github.com/Hucaru/Valhalla/constant/opcode"
 	"github.com/Hucaru/Valhalla/mpacket"
 )
 

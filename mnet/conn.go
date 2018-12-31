@@ -3,7 +3,7 @@ package mnet
 import (
 	"net"
 
-	"github.com/Hucaru/Valhalla/consts"
+	"github.com/Hucaru/Valhalla/constant"
 	"github.com/Hucaru/Valhalla/mnet/crypt"
 
 	"github.com/Hucaru/Valhalla/mpacket"
@@ -32,7 +32,7 @@ func clientReader(conn net.Conn, eRecv chan *Event, mapleVersion int16, headerSi
 		if header {
 			readSize = crypt.GetPacketLength(buffer)
 		} else {
-			readSize = consts.ClientHeaderSize
+			readSize = constant.ClientHeaderSize
 
 			if cryptRecv != nil {
 				cryptRecv.Decrypt(buffer, true, false)
@@ -62,7 +62,7 @@ func serverReader(conn net.Conn, eRecv chan *Event, headerSize int) {
 		if header {
 			readSize = crypt.GetPacketLength(buffer)
 		} else {
-			readSize = consts.ClientHeaderSize
+			readSize = constant.ClientHeaderSize
 			eRecv <- &Event{Type: MEClientPacket, Conn: conn, Packet: buffer}
 		}
 

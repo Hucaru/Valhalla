@@ -3,7 +3,7 @@ package mnet
 import (
 	"net"
 
-	"github.com/Hucaru/Valhalla/consts"
+	"github.com/Hucaru/Valhalla/constant"
 	"github.com/Hucaru/Valhalla/database"
 	"github.com/Hucaru/Valhalla/mnet/crypt"
 
@@ -46,11 +46,11 @@ func NewLogin(conn net.Conn, eRecv chan *Event, queueSize int, keySend, keyRecv 
 	l.eRecv = eRecv
 	l.endSend = make(chan bool, 1)
 
-	l.cryptSend = crypt.New(keySend, consts.MapleVersion)
-	l.cryptRecv = crypt.New(keyRecv, consts.MapleVersion)
+	l.cryptSend = crypt.New(keySend, constant.MapleVersion)
+	l.cryptRecv = crypt.New(keyRecv, constant.MapleVersion)
 
 	l.reader = func() {
-		clientReader(l, l.eRecv, consts.MapleVersion, consts.ClientHeaderSize, l.cryptRecv)
+		clientReader(l, l.eRecv, constant.MapleVersion, constant.ClientHeaderSize, l.cryptRecv)
 	}
 
 	return l

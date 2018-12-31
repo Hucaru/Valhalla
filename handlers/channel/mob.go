@@ -4,7 +4,7 @@ import (
 	"math/rand"
 	"time"
 
-	"github.com/Hucaru/Valhalla/consts/skills"
+	"github.com/Hucaru/Valhalla/constant/skill"
 	"github.com/Hucaru/Valhalla/game"
 	"github.com/Hucaru/Valhalla/game/def"
 	"github.com/Hucaru/Valhalla/game/packet"

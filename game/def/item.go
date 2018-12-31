@@ -5,7 +5,7 @@ import (
 	"log"
 	"math"
 
-	"github.com/Hucaru/Valhalla/consts"
+	"github.com/Hucaru/Valhalla/constant"
 	"github.com/Hucaru/Valhalla/nx"
 	"github.com/google/uuid"
 )
@@ -55,7 +55,7 @@ func ItemIsStackable(itemID int32, ammount int16) bool {
 	if invID != 5 && // pet item
 		invID != 1.0 && // equip
 		bullet != 207 && // star/arrow etc
-		ammount <= consts.MAX_ITEM_STACK {
+		ammount <= constant.MAX_ITEM_STACK {
 
 		return true
 	}

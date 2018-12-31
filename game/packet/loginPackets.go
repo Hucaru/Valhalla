@@ -3,8 +3,8 @@ package packet
 import (
 	"strconv"
 
-	"github.com/Hucaru/Valhalla/consts"
-	"github.com/Hucaru/Valhalla/consts/opcodes"
+	"github.com/Hucaru/Valhalla/constant"
+	"github.com/Hucaru/Valhalla/constant/opcode"
 	"github.com/Hucaru/Valhalla/game/def"
 	"github.com/Hucaru/Valhalla/mpacket"
 )
@@ -172,7 +172,7 @@ func LoginWritePlayerCharacter(pac *mpacket.Packet, pos int32, char def.Characte
 func LoginWorldListing(worldIndex byte) mpacket.Packet {
 	pac := mpacket.CreateWithOpcode(opcodes.SendLoginWorldList)
 	pac.WriteByte(worldIndex)                       // world id
-	pac.WriteString(consts.WORLD_NAMES[worldIndex]) // World name -
+	pac.WriteString(constant.WORLD_NAMES[worldIndex]) // World name -
 	pac.WriteByte(3)                                // Ribbon on world - 0 = normal, 1 = event, 2 = new, 3 = hot
 	pac.WriteString("test")
 	pac.WriteByte(0)  // ? exp event notification?
@@ -182,7 +182,7 @@ func LoginWorldListing(worldIndex byte) mpacket.Packet {
 	population := 50
 
 	for j := 1; j < 21; j++ {
-		pac.WriteString(consts.WORLD_NAMES[worldIndex] + "-" + strconv.Itoa(j))        // channel name
+		pac.WriteString(constant.WORLD_NAMES[worldIndex] + "-" + strconv.Itoa(j))        // channel name
 		pac.WriteInt32(int32(1200.0 * (float64(population) / float64(maxPopulation)))) // Population
 		pac.WriteByte(worldIndex)                                                      // world id
 		pac.WriteByte(byte(j))                                                         // channel id

@@ -3,7 +3,7 @@ package game
 import (
 	"math"
 
-	"github.com/Hucaru/Valhalla/consts"
+	"github.com/Hucaru/Valhalla/constant"
 	"github.com/Hucaru/Valhalla/game/def"
 	"github.com/Hucaru/Valhalla/game/packet"
 	"github.com/Hucaru/Valhalla/mnet"
@@ -88,7 +88,7 @@ func (p *Player) SetMaxHP(ammount int32) {
 	}
 
 	p.char.MaxHP = int16(ammount)
-	p.Send(packet.PlayerStatChange(true, consts.MAX_HP_ID, ammount))
+	p.Send(packet.PlayerStatChange(true, constant.MAX_HP_ID, ammount))
 }
 
 func (p *Player) SetHP(ammount int32) {
@@ -102,7 +102,7 @@ func (p *Player) SetHP(ammount int32) {
 		p.char.HP = 0
 	}
 
-	p.Send(packet.PlayerStatChange(true, consts.HP_ID, ammount))
+	p.Send(packet.PlayerStatChange(true, constant.HP_ID, ammount))
 }
 
 func (p *Player) GiveHP(ammount int32) {
@@ -115,7 +115,7 @@ func (p *Player) SetMaxMP(ammount int32) {
 	}
 
 	p.char.MaxMP = int16(ammount)
-	p.Send(packet.PlayerStatChange(true, consts.MAX_MP_ID, ammount))
+	p.Send(packet.PlayerStatChange(true, constant.MAX_MP_ID, ammount))
 }
 
 func (p *Player) SetMP(ammount int32) {
@@ -129,7 +129,7 @@ func (p *Player) SetMP(ammount int32) {
 		p.char.MP = 0
 	}
 
-	p.Send(packet.PlayerStatChange(true, consts.MP_ID, ammount))
+	p.Send(packet.PlayerStatChange(true, constant.MP_ID, ammount))
 }
 
 func (p *Player) GiveMP(ammount int32) {
