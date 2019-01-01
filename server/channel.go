@@ -143,7 +143,12 @@ func (cs *channelServer) processEvent() {
 				case mnet.MEClientDisconnect:
 					log.Println("Client at", channelConn, "disconnected")
 					npcchat.RemoveSession(channelConn)
-					game.RemovePlayer(channelConn)
+
+					// Order is important
+					game.Maps[game.Players[channelConn].Char().MapID].RemovePlayer(channelConn)
+					npcchat.RemoveSession(channelConn)
+					delete(game.Players, channelConn)
+
 					channelConn.Cleanup()
 				case mnet.MEClientPacket:
 					channel.HandlePacket(channelConn, mpacket.NewReader(&e.Packet, time.Now().Unix()))

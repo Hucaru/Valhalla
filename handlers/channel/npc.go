@@ -19,16 +19,21 @@ func npcMovement(conn mnet.MConnChannel, reader mpacket.Reader) {
 func npcChatStart(conn mnet.MConnChannel, reader mpacket.Reader) {
 	npcSpawnID := reader.ReadInt32()
 
-	player, err := game.GetPlayerFromConn(conn)
+	player, ok := game.Players[conn]
 
-	if err != nil {
+	if !ok {
 		return
 	}
 
-	m := game.GetMapFromID(player.Char().MapID)
+	m := game.Maps[player.Char().MapID]
 
 	if m != nil {
-		npc := m.GetNPCFromID(npcSpawnID)
+		npc, err := m.GetNpcFromSpawnID(npcSpawnID, player.InstanceID)
+
+		if err != nil {
+			return
+		}
+
 		npcchat.NewSession(conn, npc.ID)
 	} else {
 		script :=

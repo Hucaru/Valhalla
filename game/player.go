@@ -1,6 +1,7 @@
 package game
 
 import (
+	"fmt"
 	"math"
 
 	"github.com/Hucaru/Valhalla/constant"
@@ -10,7 +11,7 @@ import (
 	"github.com/Hucaru/Valhalla/nx"
 )
 
-var Players = map[mnet.MConnChannel]Player{}
+var Players = map[mnet.MConnChannel]*Player{}
 
 type Player struct {
 	mnet.MConnChannel
@@ -19,8 +20,28 @@ type Player struct {
 	InstanceID           int
 }
 
-func NewPlayer(conn mnet.MConnChannel, char def.Character) Player {
-	return Player{MConnChannel: conn, char: &char}
+func GetPlayerFromName(name string) (*Player, error) {
+	for i, v := range Players {
+		if v.char.Name == name {
+			return Players[i], nil
+		}
+	}
+
+	return &Player{}, fmt.Errorf("Unable to get player")
+}
+
+func GetPlayerFromID(id int32) (*Player, error) {
+	for i, v := range Players {
+		if v.char.ID == id {
+			return Players[i], nil
+		}
+	}
+
+	return &Player{}, fmt.Errorf("Unable to get player")
+}
+
+func NewPlayer(conn mnet.MConnChannel, char def.Character) *Player {
+	return &Player{MConnChannel: conn, char: &char, InstanceID: 0}
 }
 
 func (p Player) Char() def.Character {
@@ -37,7 +58,7 @@ func (p *Player) ChangeMap(mapID int32, portal nx.Portal, portalID byte) {
 
 	p.Send(packet.MapChange(mapID, 0, portalID, p.char.HP)) // get current channel
 
-	Maps[p.char.MapID].AddPlayer(p.MConnChannel)
+	Maps[p.char.MapID].AddPlayer(p.MConnChannel, p.InstanceID)
 }
 
 func (p *Player) UpdateMovement(moveData def.MovementFrag) {

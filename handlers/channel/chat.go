@@ -31,7 +31,7 @@ func chatSendAll(conn mnet.MConnChannel, reader mpacket.Reader) {
 		}
 
 		char := player.Char()
-		game.Maps[char.MapID].Send(packet.MessageAllChat(char.ID, conn.GetAdminLevel() > 0, msg))
+		game.Maps[char.MapID].Send(packet.MessageAllChat(char.ID, conn.GetAdminLevel() > 0, msg), player.InstanceID)
 	}
 }
 
@@ -126,49 +126,56 @@ func gmCommand(conn mnet.MConnChannel, msg string) {
 			return
 		}
 
-		player, err := game.GetPlayerFromConn(conn)
+		player, ok := game.Players[conn]
 
-		if err != nil {
+		if !ok {
 			conn.Send(packet.MessageNotice(err.Error()))
 			return
 		}
 
-		p, id := game.GetRandomSpawnPortal(mapID)
+		p, id := game.Maps[player.Char().MapID].GetRandomSpawnPortal()
 		player.ChangeMap(mapID, p, id)
 
 	case "notice":
 		if len(command) < 2 {
 			return
 		}
-		player, err := game.GetPlayerFromConn(conn)
+		player, ok := game.Players[conn]
 
-		if err != nil {
-			conn.Send(packet.MessageNotice(err.Error()))
+		if !ok {
+			conn.Send(packet.MessageNotice("Error in sending notice msg"))
 			return
 		}
 
 		char := player.Char()
-		game.Maps[char.MapID].Send(packet.MessageNotice(strings.Join(command[1:], " ")))
+		game.Maps[char.MapID].Send(packet.MessageNotice(strings.Join(command[1:], " ")), player.InstanceID)
 	case "kill":
 		if len(command) == 1 {
-			player, err := game.GetPlayerFromConn(conn)
+			player, ok := game.Players[conn]
 
-			if err != nil {
-				conn.Send(packet.MessageNotice(err.Error()))
+			if !ok {
+				conn.Send(packet.MessageNotice("Error in killing player"))
 				return
 			}
 
 			player.Kill()
 		} else {
 			if command[1] == "<map>" {
-				player, err := game.GetPlayerFromConn(conn)
+				player, ok := game.Players[conn]
 
-				if err != nil {
-					conn.Send(packet.MessageNotice(err.Error()))
+				if !ok {
+					conn.Send(packet.MessageNotice("Error in killing players on map"))
 					return
 				}
 
-				for _, p := range game.GetPlayersFromMapID(player.Char().MapID) {
+				players, err := game.Maps[player.Char().MapID].GetPlayers(player.InstanceID)
+
+				if err != nil {
+					return
+				}
+
+				for _, v := range players {
+					p := game.Players[v]
 					p.Kill()
 				}
 
@@ -186,24 +193,31 @@ func gmCommand(conn mnet.MConnChannel, msg string) {
 		}
 	case "revive":
 		if len(command) == 1 {
-			player, err := game.GetPlayerFromConn(conn)
+			player, ok := game.Players[conn]
 
-			if err != nil {
-				conn.Send(packet.MessageNotice(err.Error()))
+			if !ok {
+				conn.Send(packet.MessageNotice("Error in getting player"))
 				return
 			}
 
 			player.Revive()
 		} else {
 			if command[1] == "<map>" {
-				player, err := game.GetPlayerFromConn(conn)
+				player, ok := game.Players[conn]
 
-				if err != nil {
-					conn.Send(packet.MessageNotice(err.Error()))
+				if !ok {
+					conn.Send(packet.MessageNotice("Error in getting player"))
 					return
 				}
 
-				for _, p := range game.GetPlayersFromMapID(player.Char().MapID) {
+				players, err := game.Maps[player.Char().MapID].GetPlayers(player.InstanceID)
+
+				if err != nil {
+					return
+				}
+
+				for _, v := range players {
+					p := game.Players[v]
 					p.Revive()
 				}
 
@@ -224,10 +238,10 @@ func gmCommand(conn mnet.MConnChannel, msg string) {
 			return
 		}
 
-		player, err := game.GetPlayerFromConn(conn)
+		player, ok := game.Players[conn]
 
-		if err != nil {
-			conn.Send(packet.MessageNotice(err.Error()))
+		if !ok {
+			conn.Send(packet.MessageNotice("Error in getting player"))
 			return
 		}
 

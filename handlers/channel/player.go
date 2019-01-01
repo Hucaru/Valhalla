@@ -44,7 +44,7 @@ func playerConnect(conn mnet.MConnChannel, reader mpacket.Reader) {
 	conn.Send(packet.MessageScrollingHeader("dummy header"))
 
 	game.Players[conn] = game.NewPlayer(conn, char)
-	err = game.Maps[char.MapID].AddPlayer(conn)
+	err = game.Maps[char.MapID].AddPlayer(conn, 0)
 
 	if err != nil {
 		log.Println(err)
@@ -52,9 +52,9 @@ func playerConnect(conn mnet.MConnChannel, reader mpacket.Reader) {
 }
 
 func playerUsePortal(conn mnet.MConnChannel, reader mpacket.Reader) {
-	player, err := game.GetPlayerFromConn(conn)
+	player, ok := game.Players[conn]
 
-	if err != nil {
+	if !ok {
 		return
 	}
 
@@ -77,7 +77,7 @@ func playerUsePortal(conn mnet.MConnChannel, reader mpacket.Reader) {
 	case 0:
 		if char.HP == 0 {
 			returnMapID := currentMap.ReturnMap
-			portal, id := game.GetRandomSpawnPortal(returnMapID)
+			portal, id := game.Maps[returnMapID].GetRandomSpawnPortal()
 			player.ChangeMap(returnMapID, portal, id)
 		}
 	case -1:
@@ -110,9 +110,9 @@ func playerEnterCashShop(conn mnet.MConnChannel, reader mpacket.Reader) {
 }
 
 func playerMovement(conn mnet.MConnChannel, reader mpacket.Reader) {
-	player, err := game.GetPlayerFromConn(conn)
+	player, ok := game.Players[conn]
 
-	if err != nil {
+	if !ok {
 		return
 	}
 
@@ -132,7 +132,7 @@ func playerMovement(conn mnet.MConnChannel, reader mpacket.Reader) {
 
 	player.UpdateMovement(finalData)
 
-	game.SendToMapExcept(char.MapID, packet.PlayerMove(char.ID, moveBytes), conn)
+	game.Maps[char.MapID].SendExcept(packet.PlayerMove(char.ID, moveBytes), conn, player.InstanceID)
 }
 
 func playerTakeDamage(conn mnet.MConnChannel, reader mpacket.Reader) {
@@ -146,9 +146,9 @@ func playerTakeDamage(conn mnet.MConnChannel, reader mpacket.Reader) {
 	reducedDamange := damage
 	healSkillID := int32(0)
 
-	player, err := game.GetPlayerFromConn(conn)
+	player, ok := game.Players[conn]
 
-	if err != nil {
+	if !ok {
 		return
 	}
 
@@ -179,8 +179,11 @@ func playerTakeDamage(conn mnet.MConnChannel, reader mpacket.Reader) {
 		spawnID := reader.ReadInt32()
 		mobID := reader.ReadInt32()
 
-		mob := game.GetMapFromID(char.MapID).GetMobFromID(spawnID)
-		// mob = game.GetMobFromMapAndSpawnID(char.CurrentMap, spawnID)
+		mob, err := game.Maps[char.MapID].GetMobFromSpawnID(spawnID, player.InstanceID)
+
+		if err != nil {
+			return
+		}
 
 		if mob == nil || mob.ID != mobID {
 			return
@@ -207,8 +210,8 @@ func playerTakeDamage(conn mnet.MConnChannel, reader mpacket.Reader) {
 
 		player.GiveHP(playerDamange)
 
-		game.SendToMap(char.MapID, packet.PlayerReceivedDmg(char.ID, mobAttack, damage,
-			reducedDamange, spawnID, mobID, healSkillID, stance, reflectAction, reflected, reflectX, reflectY))
+		game.Maps[char.MapID].Send(packet.PlayerReceivedDmg(char.ID, mobAttack, damage, reducedDamange, spawnID, mobID,
+			healSkillID, stance, reflectAction, reflected, reflectX, reflectY), player.InstanceID)
 	}
 
 	if mobSkillID != 0 && mobSkillLevel != 0 {
@@ -233,17 +236,15 @@ func playerRequestAvatarInfoWindow(conn mnet.MConnChannel, reader mpacket.Reader
 func playerEmote(conn mnet.MConnChannel, reader mpacket.Reader) {
 	emote := reader.ReadInt32()
 
-	player, err := game.GetPlayerFromConn(conn)
+	player, ok := game.Players[conn]
 
-	if err != nil {
+	if !ok {
 		return
 	}
 
 	char := player.Char()
 
-	mapID := char.MapID
-
-	game.SendToMapExcept(mapID, packet.PlayerEmoticon(char.ID, emote), conn)
+	game.Maps[char.MapID].SendExcept(packet.PlayerEmoticon(char.ID, emote), conn, player.InstanceID)
 }
 
 func playerPassiveRegen(conn mnet.MConnChannel, reader mpacket.Reader) {
@@ -254,9 +255,9 @@ func playerPassiveRegen(conn mnet.MConnChannel, reader mpacket.Reader) {
 
 	// validate the values
 
-	player, err := game.GetPlayerFromConn(conn)
+	player, ok := game.Players[conn]
 
-	if err != nil {
+	if !ok {
 		return
 	}
 

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math/rand"
 
+	"github.com/Hucaru/Valhalla/game/def"
 	"github.com/Hucaru/Valhalla/mnet"
 	"github.com/Hucaru/Valhalla/mpacket"
 	"github.com/Hucaru/Valhalla/nx"
@@ -35,9 +36,9 @@ func (gm *GameMap) CreateNewInstance() {
 	gm.instances = append(gm.instances, inst)
 }
 
-func (gm *GameMap) AddPlayer(conn mnet.MConnChannel) error {
-	if len(gm.instances) > 0 {
-		gm.instances[0].addPlayer(conn)
+func (gm *GameMap) AddPlayer(conn mnet.MConnChannel, instance int) error {
+	if len(gm.instances) > 0 && instance < len(gm.instances) {
+		gm.instances[instance].addPlayer(conn)
 		return nil
 	}
 
@@ -65,14 +66,60 @@ func (gm *GameMap) GetRandomSpawnPortal() (nx.Portal, byte) {
 	return portals[ind], byte(inds[ind])
 }
 
-func (gm *GameMap) Send(p mpacket.Packet) { // Assumes instance 0
-	if len(gm.instances) > 0 {
-		gm.instances[0].send(p)
+func (gm *GameMap) GetPlayers(instance int) ([]mnet.MConnChannel, error) {
+	if len(gm.instances) > 0 && instance < len(gm.instances) {
+		return gm.instances[instance].players, nil
+	}
+
+	return []mnet.MConnChannel{}, fmt.Errorf("Unable to get players")
+}
+
+func (gm *GameMap) GetMobs(instance int) ([]gameMob, error) {
+	if len(gm.instances) > 0 && instance < len(gm.instances) {
+		return gm.instances[instance].mobs, nil
+	}
+
+	return []gameMob{}, fmt.Errorf("Unable to get mobs")
+}
+
+func (gm *GameMap) GetMobFromSpawnID(spawnID int32, instance int) (*gameMob, error) {
+	if len(gm.instances) > 0 && instance < len(gm.instances) {
+		for i, v := range gm.instances[instance].mobs {
+			if v.SpawnID == spawnID {
+				return &gm.instances[instance].mobs[i], nil
+			}
+		}
+	}
+
+	return &gameMob{}, fmt.Errorf("Unable to get mob")
+}
+
+func (gm *GameMap) GetNpcFromSpawnID(spawnID int32, instance int) (*def.NPC, error) {
+	if len(gm.instances) > 0 && instance < len(gm.instances) {
+		for i, v := range gm.instances[instance].npcs {
+			if v.SpawnID == spawnID {
+				return &gm.instances[instance].npcs[i], nil
+			}
+		}
+	}
+
+	return &def.NPC{}, fmt.Errorf("Unable to get npc")
+}
+
+func (gm *GameMap) HandleDeadMobs(instance int) {
+	if len(gm.instances) > 0 && instance < len(gm.instances) {
+		gm.instances[instance].handleDeadMobs()
 	}
 }
 
-func (gm *GameMap) SendExcept(p mpacket.Packet, exception mnet.MConnChannel) { // Assumes instance 0
-	if len(gm.instances) > 0 {
-		gm.instances[0].sendExcept(p, exception)
+func (gm *GameMap) Send(p mpacket.Packet, instance int) {
+	if len(gm.instances) > 0 && instance < len(gm.instances) {
+		gm.instances[instance].send(p)
+	}
+}
+
+func (gm *GameMap) SendExcept(p mpacket.Packet, exception mnet.MConnChannel, instance int) {
+	if len(gm.instances) > 0 && instance < len(gm.instances) {
+		gm.instances[instance].sendExcept(p, exception)
 	}
 }

@@ -144,7 +144,7 @@ func (inst *Instance) generateMobSpawnID() int32 {
 	return l
 }
 
-func (inst *Instance) HandleDeadMobs() {
+func (inst *Instance) handleDeadMobs() {
 	y := inst.mobs[:0]
 
 	for _, mob := range inst.mobs {

@@ -1,6 +1,7 @@
 package mnet
 
 import (
+	"log"
 	"net"
 
 	"github.com/Hucaru/Valhalla/constant"
@@ -86,6 +87,12 @@ func (bc *baseConn) Reader() {
 }
 
 func (bc *baseConn) Writer() {
+	defer func() {
+		if err := recover(); err != nil {
+			log.Println("Recovered panic in sending to closed connection")
+		}
+	}()
+
 	for {
 		select {
 		case p, ok := <-bc.eSend:
@@ -93,11 +100,14 @@ func (bc *baseConn) Writer() {
 				return
 			}
 
+			tmp := make(mpacket.Packet, len(p))
+			copy(tmp, p)
+
 			if bc.cryptSend != nil {
-				bc.cryptSend.Encrypt(p, true, false)
+				bc.cryptSend.Encrypt(tmp, true, false)
 			}
 
-			bc.Conn.Write(p)
+			bc.Conn.Write(tmp)
 		}
 	}
 }
