@@ -341,6 +341,8 @@ func gmCommand(conn mnet.MConnChannel, msg string) {
 		if err != nil {
 			conn.Send(packet.MessageNotice(err.Error()))
 		}
+
+		conn.Send(packet.MessageNotice("Instance deleted"))
 	default:
 		log.Println("Unkown GM command:", msg)
 	}

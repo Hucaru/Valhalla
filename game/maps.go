@@ -44,6 +44,10 @@ func (gm *GameMap) DeleteInstance(instance int) error {
 		}
 
 		if instance < len(gm.instances) {
+			if len(gm.instances[instance].players) > 0 {
+				return fmt.Errorf("Cannot delete instance whilst players are present in it")
+			}
+
 			gm.instances = append(gm.instances[:instance], gm.instances[instance+1:]...)
 			return nil
 		}
