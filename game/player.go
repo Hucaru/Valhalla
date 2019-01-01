@@ -70,7 +70,7 @@ func (p *Player) ChangeInstance(newInstID int) {
 
 	p.InstanceID = newInstID
 
-	portal, portalID := Maps[p.char.MapID].GetRandomSpawnPortal()
+	portal, portalID, _ := Maps[p.char.MapID].GetRandomSpawnPortal()
 	p.char.Pos.X = portal.X
 	p.char.Pos.Y = portal.Y
 	p.char.MapPos = portalID

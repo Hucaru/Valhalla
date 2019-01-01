@@ -77,7 +77,7 @@ func playerUsePortal(conn mnet.MConnChannel, reader mpacket.Reader) {
 	case 0:
 		if char.HP == 0 {
 			returnMapID := currentMap.ReturnMap
-			portal, id := game.Maps[returnMapID].GetRandomSpawnPortal()
+			portal, id, _ := game.Maps[returnMapID].GetRandomSpawnPortal()
 			player.ChangeMap(returnMapID, portal, id)
 			player.GiveHP(50)
 		}

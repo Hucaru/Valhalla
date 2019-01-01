@@ -67,7 +67,7 @@ func NewSession(conn mnet.MConnChannel, npcID int32) {
 		intInput:    0,
 	}
 
-	sessions[conn].register()
+	sessions[conn].register(conn)
 }
 
 func NewSessionWithOverride(conn mnet.MConnChannel, script string, npcID int32) {
@@ -85,7 +85,7 @@ func NewSessionWithOverride(conn mnet.MConnChannel, script string, npcID int32) 
 		intInput:    0,
 	}
 
-	sessions[conn].register()
+	sessions[conn].register(conn)
 }
 
 func RemoveSession(conn mnet.MConnChannel) {

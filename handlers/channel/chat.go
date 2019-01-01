@@ -134,7 +134,7 @@ func gmCommand(conn mnet.MConnChannel, msg string) {
 			return
 		}
 
-		p, id := game.Maps[player.Char().MapID].GetRandomSpawnPortal()
+		p, id, _ := game.Maps[player.Char().MapID].GetRandomSpawnPortal()
 		player.ChangeMap(mapID, p, id)
 
 	case "notice":

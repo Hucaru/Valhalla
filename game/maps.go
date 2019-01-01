@@ -75,11 +75,15 @@ func (gm *GameMap) RemovePlayer(conn mnet.MConnChannel) {
 	gm.instances[Players[conn].InstanceID].removePlayer(conn)
 }
 
-func (gm *GameMap) GetRandomSpawnPortal() (nx.Portal, byte) {
+func (gm *GameMap) GetRandomSpawnPortal() (nx.Portal, byte, error) {
 	portals := []nx.Portal{}
 	inds := []int{}
 
-	nxMap, _ := nx.GetMap(gm.id)
+	nxMap, err := nx.GetMap(gm.id)
+
+	if err != nil {
+		return nx.Portal{}, 0, fmt.Errorf("Invalid map id")
+	}
 
 	for i, p := range nxMap.Portals {
 		if p.Pn == "sp" {
@@ -89,7 +93,7 @@ func (gm *GameMap) GetRandomSpawnPortal() (nx.Portal, byte) {
 	}
 
 	ind := rand.Intn(len(portals))
-	return portals[ind], byte(inds[ind])
+	return portals[ind], byte(inds[ind]), nil
 }
 
 func (gm *GameMap) GetPlayers(instance int) ([]mnet.MConnChannel, error) {

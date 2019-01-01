@@ -11,8 +11,6 @@ type Inventory struct {
 	SetUp []Item
 	Etc   []Item
 	Cash  []Item
-
-	Mesos int32
 }
 
 func (i Inventory) Save(id int32) {

@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"math"
 
-	"github.com/Hucaru/Valhalla/constant/opcode"
+	opcodes "github.com/Hucaru/Valhalla/constant/opcode"
 	"github.com/Hucaru/Valhalla/game/def"
 	"github.com/Hucaru/Valhalla/mpacket"
 )
@@ -121,7 +121,11 @@ func PlayerEnterGame(char def.Character, channelID int32) mpacket.Packet {
 	p.WriteBytes(randomBytes)
 	p.WriteBytes(randomBytes)
 	p.WriteBytes(randomBytes)
-	p.WriteBytes([]byte{0xFF, 0xFF}) // seperators? For what?
+
+	// Are active buffs encoded in here?
+	p.WriteByte(0xFF)
+	p.WriteByte(0xFF)
+
 	p.WriteInt32(char.ID)
 	p.WritePaddedString(char.Name, 13)
 	p.WriteByte(char.Gender)
@@ -227,20 +231,21 @@ func PlayerEnterGame(char def.Character, channelID int32) mpacket.Packet {
 	// Quests
 	p.WriteInt16(0) // # of quests?
 
-	// What are these for? Minigame record and some other things?
+	// What are these for?
 	p.WriteInt16(0)
 	p.WriteInt32(0)
 	p.WriteInt32(0)
-	p.WriteInt32(0)
-	p.WriteInt32(0)
-	p.WriteInt32(0)
+	// Setting these appears to do nothing
+	p.WriteInt32(1)
+	p.WriteInt32(1)
+	p.WriteInt32(1)
 
-	p.WriteUint64(0)
-	p.WriteUint64(0)
-	p.WriteUint64(0)
-	p.WriteUint64(0)
-	p.WriteUint64(0)
-	p.WriteInt64(0)
+	p.WriteUint64(1)
+	p.WriteUint64(1)
+	p.WriteUint64(1)
+	p.WriteUint64(1)
+	p.WriteUint64(1)
+	p.WriteInt64(1)
 
 	return p
 }

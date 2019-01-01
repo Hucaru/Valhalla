@@ -41,6 +41,7 @@ type Character struct {
 	CashSlotSize  byte
 
 	Inventory
+	Mesos int32
 
 	Skills map[int32]Skill
 

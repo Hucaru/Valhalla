@@ -1,11 +1,13 @@
 package npcchat
 
 import (
+	"github.com/Hucaru/Valhalla/game"
 	"github.com/Hucaru/Valhalla/game/packet"
+	"github.com/Hucaru/Valhalla/mnet"
 	"github.com/Hucaru/Valhalla/mpacket"
 )
 
-func (s *session) register() {
+func (s *session) register(conn mnet.MConnChannel) {
 	s.env.Define("state", &s.state)
 	s.env.Define("isYes", &s.isYes)
 	s.env.Define("selection", &s.selection)
@@ -76,4 +78,10 @@ func (s *session) register() {
 
 		return packet.NPCShop(s.npcID, tmp)
 	})
+
+	// Internal game logic
+	s.env.Define("int32", func(i int64) int32 { return int32(i) })
+	s.env.Define("player", game.Players[conn])
+	s.env.Define("Maps", game.Maps)
+	s.env.Define("Players", game.Players)
 }
