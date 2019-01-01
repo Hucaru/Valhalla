@@ -1,7 +1,6 @@
 package mnet
 
 import (
-	"log"
 	"net"
 
 	"github.com/Hucaru/Valhalla/constant"
@@ -87,11 +86,12 @@ func (bc *baseConn) Reader() {
 }
 
 func (bc *baseConn) Writer() {
-	defer func() {
-		if err := recover(); err != nil {
-			log.Println("Recovered panic in sending to closed connection")
-		}
-	}()
+	// defer func() {
+	// 	if err := recover(); err != nil {
+	// 		log.Println("Recovered panic in sending to closed connection")
+
+	// 	}
+	// }()
 
 	for {
 		select {

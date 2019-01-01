@@ -122,7 +122,7 @@ func PlayerEnterGame(char def.Character, channelID int32) mpacket.Packet {
 	p.WriteBytes(randomBytes)
 	p.WriteBytes(randomBytes)
 
-	// Are active buffs encoded in here?
+	// Are active buffs name encoded in here?
 	p.WriteByte(0xFF)
 	p.WriteByte(0xFF)
 

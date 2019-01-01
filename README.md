@@ -45,7 +45,7 @@ Channel server:
 - [x] NPC visible
 - [x] NPC movement
 - [x] NPC basic chat
-- [ ] NPC shops
+- [x] NPC shops
 - [ ] NPC stylist
 - [ ] NPC storage
 - [x] Mob visible

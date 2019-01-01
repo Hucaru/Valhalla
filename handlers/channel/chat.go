@@ -65,6 +65,7 @@ func gmCommand(conn mnet.MConnChannel, msg string) {
 			break
 		}
 		log.Println("Sent packet:", hex.EncodeToString(data))
+		data = append(make([]byte, 4), data...)
 		conn.Send(data)
 	case "map":
 		var val int
