@@ -59,6 +59,7 @@ func (cs *channelServer) Run() {
 
 	go script.WatchScriptDirectory("scripts/npc/")
 	go script.WatchScriptDirectory("scripts/event/")
+	go script.WatchScriptDirectory("scripts/admin/")
 
 	cs.wg.Add(1)
 	go cs.acceptNewConnections()

@@ -281,28 +281,6 @@ func gmCommand(conn mnet.MConnChannel, msg string) {
 		npcchat.Run(conn)
 
 	case "options":
-		// script := `if state == 1 {
-		// 	options = "The following options are available to you:\r\n"
-		// 	options += "#dRemember all GM activity is logged\r\n"
-		// 	options += "#L0##bSuspicious players#l\r\n"
-		// 	options += "#L1#Current map info#l\r\n"
-		// 	options += "#L2#Start an event#l\r\n"
-		// 	options += "#L3#Spawn mob#l\r\n"
-
-		// 	return SendSelection(options)
-		// } else if state == 2 {
-		// 	if selection == 0 {
-		// 		return SendBack("Suspicious player info is not yet recorded")
-		// 	} else if selection == 1 {
-		// 		return SendBack("Current map info is not yet plumbed")
-		// 	} else if selection == 2 {
-		// 		return SendBack("Events not coded")
-		// 	} else if selection == 3 {
-		// 		return SendBack("Why are you trying this?")
-		// 	} else {
-		// 		return SendBack("Unkown selection")
-		// 	}
-		// }`
 		script, err := script.Get("options")
 
 		if err != nil {
@@ -315,7 +293,54 @@ func gmCommand(conn mnet.MConnChannel, msg string) {
 	case "shop":
 
 	case "createInstance":
+		player, ok := game.Players[conn]
+
+		if !ok {
+			return
+		}
+
+		instID := game.Maps[player.Char().MapID].CreateNewInstance()
+		conn.Send(packet.MessageNotice(fmt.Sprintln("New instance created with id:", instID)))
 	case "changeInstance":
+		if len(command) < 2 {
+			return
+		}
+
+		newInstID, err := strconv.Atoi(command[1])
+
+		if err != nil {
+			conn.Send(packet.MessageNotice("Not a valid instance ID"))
+		}
+
+		player, ok := game.Players[conn]
+
+		if !ok {
+			return
+		}
+
+		player.ChangeInstance(newInstID)
+	case "deleteInstance":
+		if len(command) < 2 {
+			return
+		}
+
+		instID, err := strconv.Atoi(command[1])
+
+		if err != nil {
+			conn.Send(packet.MessageNotice("Not a valid instance ID"))
+		}
+
+		player, ok := game.Players[conn]
+
+		if !ok {
+			return
+		}
+
+		err = game.Maps[player.Char().MapID].DeleteInstance(instID)
+
+		if err != nil {
+			conn.Send(packet.MessageNotice(err.Error()))
+		}
 	default:
 		log.Println("Unkown GM command:", msg)
 	}

@@ -61,6 +61,25 @@ func (p *Player) ChangeMap(mapID int32, portal nx.Portal, portalID byte) {
 	Maps[p.char.MapID].AddPlayer(p.MConnChannel, p.InstanceID)
 }
 
+func (p *Player) ChangeInstance(newInstID int) {
+	if newInstID >= len(Maps[p.char.MapID].instances) {
+		return
+	}
+
+	Maps[p.char.MapID].RemovePlayer(p.MConnChannel)
+
+	p.InstanceID = newInstID
+
+	portal, portalID := Maps[p.char.MapID].GetRandomSpawnPortal()
+	p.char.Pos.X = portal.X
+	p.char.Pos.Y = portal.Y
+	p.char.MapPos = portalID
+
+	p.Send(packet.MapChange(p.char.MapID, 0, portalID, p.char.HP)) // get current channel
+
+	Maps[p.char.MapID].AddPlayer(p.MConnChannel, p.InstanceID)
+}
+
 func (p *Player) UpdateMovement(moveData def.MovementFrag) {
 	p.char.Pos.X = moveData.X
 	p.char.Pos.Y = moveData.Y

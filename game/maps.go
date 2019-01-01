@@ -31,15 +31,36 @@ func InitMaps() {
 	}
 }
 
-func (gm *GameMap) CreateNewInstance() {
+func (gm *GameMap) CreateNewInstance() int {
 	inst := createInstanceFromMapData(gm.mapData, gm.id)
 	gm.instances = append(gm.instances, inst)
+	return len(gm.instances) - 1
+}
+
+func (gm *GameMap) DeleteInstance(instance int) error {
+	if len(gm.instances) > 0 {
+		if instance == 0 {
+			return fmt.Errorf("Not allowed to delete instance zero")
+		}
+
+		if instance < len(gm.instances) {
+			gm.instances = append(gm.instances[:instance], gm.instances[instance+1:]...)
+			return nil
+		}
+	}
+
+	return fmt.Errorf("Unable to delete instance")
 }
 
 func (gm *GameMap) AddPlayer(conn mnet.MConnChannel, instance int) error {
-	if len(gm.instances) > 0 && instance < len(gm.instances) {
-		gm.instances[instance].addPlayer(conn)
-		return nil
+	if len(gm.instances) > 0 {
+		if instance < len(gm.instances) {
+			gm.instances[instance].addPlayer(conn)
+			return nil
+		} else {
+			gm.instances[0].addPlayer(conn)
+			return nil
+		}
 	}
 
 	return fmt.Errorf("Unable to add player to map as there are no instances")
