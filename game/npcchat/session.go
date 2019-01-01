@@ -2,11 +2,12 @@ package npcchat
 
 import (
 	"fmt"
+	"log"
+	"strconv"
+
 	"github.com/Hucaru/Valhalla/game"
 	"github.com/Hucaru/Valhalla/mpacket"
-	"log"
 	"github.com/mattn/anko/core"
-	"strconv"
 
 	"github.com/Hucaru/Valhalla/game/script"
 	"github.com/Hucaru/Valhalla/mnet"
@@ -35,14 +36,14 @@ type session struct {
 var sessions = make(map[mnet.MConnChannel]*session)
 
 func NewSession(conn mnet.MConnChannel, npcID int32) {
-	player, err := game.GetPlayerFromConn(conn)
+	player, ok := game.Players[conn]
 
-	if err != nil {
+	if !ok {
 		return
 	}
 
 	contents, err := script.Get(strconv.Itoa(int(npcID)))
-	
+
 	if err != nil {
 		contents =
 			`if state == 1 {
@@ -167,7 +168,7 @@ func Continue(conn mnet.MConnChannel, msgType, stateChange byte, reader mpacket.
 		default:
 			log.Println("Unkown npc msg type:", msgType)
 		}
-		
+
 		Run(conn)
 	}
 }

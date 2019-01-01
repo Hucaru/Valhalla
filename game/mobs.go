@@ -29,7 +29,7 @@ func (m *gameMob) GiveDamage(player Player, damages []int32) {
 	}
 }
 
-func (m *gameMob) ChangeController(newController Player) {
+func (m *gameMob) ChangeController(newController mnet.MConnChannel) {
 	if m.Controller == newController {
 		return
 	}
@@ -38,14 +38,14 @@ func (m *gameMob) ChangeController(newController Player) {
 		m.Controller.Send(packet.MobEndControl(m.Mob))
 	}
 
-	m.Controller = newController.MConnChannel
+	m.Controller = newController
 	newController.Send(packet.MobControl(m.Mob))
 }
 
 func (m *gameMob) FindNewControllerExcept(conn mnet.MConnChannel) {
 	var newController mnet.MConnChannel
 
-	for c, v := range players {
+	for c, v := range Players {
 		if v.char.MapID == m.mapID {
 			if c == conn {
 				continue
@@ -59,5 +59,5 @@ func (m *gameMob) FindNewControllerExcept(conn mnet.MConnChannel) {
 		return
 	}
 
-	m.ChangeController(players[newController])
+	m.ChangeController(Players[newController])
 }

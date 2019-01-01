@@ -19,7 +19,7 @@ func playerConnect(conn mnet.MConnChannel, reader mpacket.Reader) {
 	err := database.Handle.QueryRow("SELECT accountID FROM characters WHERE id=?", charID).Scan(&accountID)
 
 	if err != nil {
-		panic(err)
+		log.Println(err)
 	}
 
 	// check migration, channel status
@@ -35,7 +35,7 @@ func playerConnect(conn mnet.MConnChannel, reader mpacket.Reader) {
 	err = database.Handle.QueryRow("SELECT adminLevel FROM accounts WHERE accountID=?", conn.GetAccountID()).Scan(&adminLevel)
 
 	if err != nil {
-		panic(err)
+		log.Println(err)
 	}
 
 	conn.SetAdminLevel(adminLevel)
@@ -43,7 +43,12 @@ func playerConnect(conn mnet.MConnChannel, reader mpacket.Reader) {
 	conn.Send(packet.PlayerEnterGame(char, 0))
 	conn.Send(packet.MessageScrollingHeader("dummy header"))
 
-	game.AddPlayer(game.NewPlayer(conn, char))
+	game.Players[conn] = game.NewPlayer(conn, char)
+	err = game.Maps[char.MapID].AddPlayer(conn)
+
+	if err != nil {
+		log.Println(err)
+	}
 }
 
 func playerUsePortal(conn mnet.MConnChannel, reader mpacket.Reader) {

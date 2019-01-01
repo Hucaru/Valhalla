@@ -1,122 +1,39 @@
 package game
 
-import (
-	"fmt"
-	"math/rand"
+// func AddPlayer(player Player) {
+// 	players[player.MConnChannel] = player
+// 	player.sendMapItems()
+// 	maps[player.char.MapID].addController(player.MConnChannel)
+// }
 
-	"github.com/Hucaru/Valhalla/game/packet"
-	"github.com/Hucaru/Valhalla/mpacket"
+// func GetPlayerFromID(id int32) (Player, error) {
+// 	for _, p := range players {
+// 		if p.Char().ID == id {
+// 			return p, nil
+// 		}
+// 	}
 
-	"github.com/Hucaru/Valhalla/mnet"
+// 	return Player{}, fmt.Errorf("Player ID %i not found", id)
+// }
 
-	"github.com/Hucaru/Valhalla/nx"
-)
+// func GetPlayerFromName(name string) (Player, error) {
+// 	for _, p := range players {
+// 		if p.Char().Name == name {
+// 			return p, nil
+// 		}
+// 	}
 
-func AddPlayer(player Player) {
-	players[player.MConnChannel] = player
-	player.sendMapItems()
-	maps[player.char.MapID].addController(player.MConnChannel)
-}
+// 	return Player{}, fmt.Errorf("Player name %s not found", name)
+// }
 
-func RemovePlayer(conn mnet.MConnChannel) {
-	p := players[conn]
-	maps[p.char.MapID].removeController(conn)
+// func GetPlayersFromMapID(id int32) []Player {
+// 	playerList := []Player{}
 
-	p.Char().Save()
+// 	for _, v := range players {
+// 		if v.char.MapID == id {
+// 			playerList = append(playerList, v)
+// 		}
+// 	}
 
-	delete(players, conn)
-
-	for _, player := range players {
-		if player.Char().MapID == p.Char().MapID {
-			player.Send(packet.MapPlayerLeft(p.Char().ID))
-		}
-	}
-
-}
-
-func GetPlayerFromConn(conn mnet.MConnChannel) (Player, error) {
-	if val, ok := players[conn]; ok {
-		return val, nil
-	}
-
-	return Player{}, fmt.Errorf("Player from connection %s not found", conn)
-}
-
-func GetPlayerFromID(id int32) (Player, error) {
-	for _, p := range players {
-		if p.Char().ID == id {
-			return p, nil
-		}
-	}
-
-	return Player{}, fmt.Errorf("Player ID %i not found", id)
-}
-
-func GetPlayerFromName(name string) (Player, error) {
-	for _, p := range players {
-		if p.Char().Name == name {
-			return p, nil
-		}
-	}
-
-	return Player{}, fmt.Errorf("Player name %s not found", name)
-}
-
-func GetPlayersFromMapID(id int32) []Player {
-	playerList := []Player{}
-
-	for _, v := range players {
-		if v.char.MapID == id {
-			playerList = append(playerList, v)
-		}
-	}
-
-	return playerList
-}
-
-func GetMapFromID(id int32) *GameMap {
-	if _, ok := maps[id]; ok {
-		return maps[id]
-	}
-
-	return nil
-}
-
-func SendToMap(mapID int32, p mpacket.Packet) {
-	for _, player := range players {
-		if player.Char().MapID == mapID {
-			tmp := make(mpacket.Packet, len(p))
-			copy(tmp, p)
-			player.Send(tmp)
-		}
-	}
-}
-
-func SendToMapExcept(mapID int32, p mpacket.Packet, exception mnet.MConnChannel) {
-	for conn, player := range players {
-		if conn == exception {
-			continue
-		} else if player.Char().MapID == mapID {
-			tmp := make(mpacket.Packet, len(p))
-			copy(tmp, p)
-			player.Send(tmp)
-		}
-	}
-}
-
-func GetRandomSpawnPortal(mapID int32) (nx.Portal, byte) {
-	portals := []nx.Portal{}
-	inds := []int{}
-
-	nxMap, _ := nx.GetMap(mapID)
-
-	for i, p := range nxMap.Portals {
-		if p.Pn == "sp" {
-			portals = append(portals, p)
-			inds = append(inds, i)
-		}
-	}
-
-	ind := rand.Intn(len(portals))
-	return portals[ind], byte(inds[ind])
-}
+// 	return playerList
+// }

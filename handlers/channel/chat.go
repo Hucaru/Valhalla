@@ -2,6 +2,7 @@ package channel
 
 import (
 	"encoding/hex"
+	"fmt"
 	"log"
 	"strconv"
 	"strings"
@@ -23,15 +24,14 @@ func chatSendAll(conn mnet.MConnChannel, reader mpacket.Reader) {
 	if strings.Index(msg, "/") == 0 && conn.GetAdminLevel() > 0 {
 		gmCommand(conn, msg)
 	} else {
-		player, err := game.GetPlayerFromConn(conn)
+		player, ok := game.Players[conn]
 
-		if err != nil {
+		if !ok {
 			return
 		}
 
 		char := player.Char()
-
-		game.SendToMap(char.MapID, packet.MessageAllChat(char.ID, conn.GetAdminLevel() > 0, msg))
+		game.Maps[char.MapID].Send(packet.MessageAllChat(char.ID, conn.GetAdminLevel() > 0, msg))
 	}
 }
 
@@ -42,6 +42,8 @@ func chatSlashCommand(conn mnet.MConnChannel, reader mpacket.Reader) {
 	case 5: // FIND
 		// length := reader.ReadInt16()
 		// name := reader.ReadString(int(length))
+	default:
+		fmt.Println("Chat command type of", cmdType)
 	}
 }
 
@@ -146,8 +148,7 @@ func gmCommand(conn mnet.MConnChannel, msg string) {
 		}
 
 		char := player.Char()
-
-		game.SendToMap(char.MapID, packet.MessageNotice(strings.Join(command[1:], " ")))
+		game.Maps[char.MapID].Send(packet.MessageNotice(strings.Join(command[1:], " ")))
 	case "kill":
 		if len(command) == 1 {
 			player, err := game.GetPlayerFromConn(conn)
