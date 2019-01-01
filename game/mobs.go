@@ -30,6 +30,11 @@ func (m *gameMob) GiveDamage(player Player, damages []int32) {
 }
 
 func (m *gameMob) ChangeController(newController mnet.MConnChannel) {
+	if newController == nil {
+		m.Controller = nil
+		return
+	}
+
 	if m.Controller == newController {
 		return
 	}

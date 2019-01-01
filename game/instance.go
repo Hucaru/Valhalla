@@ -92,13 +92,13 @@ func (inst *Instance) removePlayer(conn mnet.MConnChannel) {
 		return // This should not be possible
 	}
 
+	inst.players = append(inst.players[:ind], inst.players[ind+1:]...)
+
 	for i, v := range inst.mobs {
 		if v.Controller == conn {
-			inst.mobs[i].Controller = inst.findController()
+			inst.mobs[i].ChangeController(inst.findController())
 		}
 	}
-
-	inst.players = append(inst.players[:ind], inst.players[ind+1:]...)
 
 	player := Players[conn]
 

@@ -61,10 +61,11 @@ func (gm *GameMap) AddPlayer(conn mnet.MConnChannel, instance int) error {
 		if instance < len(gm.instances) {
 			gm.instances[instance].addPlayer(conn)
 			return nil
-		} else {
-			gm.instances[0].addPlayer(conn)
-			return nil
 		}
+
+		Players[conn].InstanceID = 0
+		gm.instances[0].addPlayer(conn)
+		return nil
 	}
 
 	return fmt.Errorf("Unable to add player to map as there are no instances")
