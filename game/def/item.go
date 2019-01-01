@@ -2,7 +2,6 @@ package def
 
 import (
 	"fmt"
-	"log"
 	"math"
 
 	"github.com/Hucaru/Valhalla/constant"
@@ -64,14 +63,13 @@ func ItemIsStackable(itemID int32, ammount int16) bool {
 }
 
 // TODO: Fill the rest out, for now this can be used to check functionality
-func CreateFromID(id int32) (Item, bool) {
+func CreateFromID(id int32) (Item, error) {
 	newItem := Item{}
 
 	nxInfo, err := nx.GetItem(id)
 
 	if err != nil {
-		fmt.Println("Unable to generate item of id:", id)
-		return Item{}, false
+		return Item{}, fmt.Errorf("Unable to generate item of id:", id)
 	}
 
 	newItem.UUID = uuid.Must(uuid.NewRandom())
@@ -96,7 +94,5 @@ func CreateFromID(id int32) (Item, bool) {
 
 	newItem.Amount = 1
 
-	log.Println("Finish create item from ID function", newItem)
-
-	return newItem, true
+	return newItem, nil
 }

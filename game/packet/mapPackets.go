@@ -1,7 +1,7 @@
 package packet
 
 import (
-	"github.com/Hucaru/Valhalla/constant/opcode"
+	opcodes "github.com/Hucaru/Valhalla/constant/opcode"
 	"github.com/Hucaru/Valhalla/game/def"
 	"github.com/Hucaru/Valhalla/mpacket"
 )
@@ -10,10 +10,21 @@ func MapPlayerEnter(char def.Character) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcodes.SendChannelCharacterEnterField)
 	p.WriteInt32(char.ID)    // player id
 	p.WriteString(char.Name) // char name
-	p.WriteInt32(0)          // map buffs?
-	p.WriteInt32(0)          // map buffs?
-	p.WriteInt32(0)          // map buffs?
-	p.WriteInt32(0)          // map buffs?
+
+	if true {
+		p.WriteString("test")
+		p.WriteInt16(0)
+		p.WriteByte(0)
+		p.WriteByte(0)
+		p.WriteInt16(0)
+		p.WriteInt32(0)
+		p.WriteInt32(0)
+	} else {
+		p.WriteInt32(0)
+		p.WriteInt32(0)
+		p.WriteInt32(0)
+		p.WriteInt32(0)
+	}
 
 	p.WriteBytes(writeDisplayCharacter(char))
 
