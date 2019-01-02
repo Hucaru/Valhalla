@@ -42,6 +42,39 @@ func handleUIWindow(conn mnet.MConnChannel, reader mpacket.Reader) {
 		if player.RoomID > 0 {
 			return
 		}
+
+		roomType := reader.ReadByte()
+
+		switch roomType {
+		case game.OmokRoom:
+			name := reader.ReadString(int(reader.ReadInt16()))
+
+			var password string
+			if reader.ReadBool() {
+				password = reader.ReadString(int(reader.ReadInt16()))
+			}
+
+			boardType := reader.ReadByte()
+
+			player.RoomID = game.Rooms.CreateOmokRoom(name, password, boardType)
+			game.Rooms[player.RoomID].AddPlayer(conn)
+		case game.MemoryRoom:
+			name := reader.ReadString(int(reader.ReadInt16()))
+
+			var password string
+			if reader.ReadBool() {
+				password = reader.ReadString(int(reader.ReadInt16()))
+			}
+
+			boardType := reader.ReadByte()
+
+			player.RoomID = game.Rooms.CreateMemoryRoom(name, password, boardType)
+			game.Rooms[player.RoomID].AddPlayer(conn)
+		case game.TradeRoom:
+		case game.PersonalShop:
+		default:
+			fmt.Println("Unkown room type", roomType)
+		}
 	case roomSendInvite:
 	case roomReject:
 	case roomAccept:

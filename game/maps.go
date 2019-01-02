@@ -56,6 +56,10 @@ func (gm *GameMap) DeleteInstance(instance int) error {
 	return fmt.Errorf("Unable to delete instance")
 }
 
+func (gm *GameMap) GetNumberOfInstances() int {
+	return len(gm.instances)
+}
+
 func (gm *GameMap) AddPlayer(conn mnet.MConnChannel, instance int) error {
 	if len(gm.instances) > 0 {
 		if instance < len(gm.instances) {

@@ -5,6 +5,8 @@ import (
 	"log"
 	"strconv"
 
+	"github.com/mattn/anko/packages"
+
 	"github.com/Hucaru/Valhalla/game"
 	"github.com/Hucaru/Valhalla/mpacket"
 	"github.com/mattn/anko/core"
@@ -67,6 +69,8 @@ func NewSession(conn mnet.MConnChannel, npcID int32) {
 		intInput:    0,
 	}
 
+	packages.DefineImport(sessions[conn].env)
+
 	sessions[conn].register(conn)
 }
 
@@ -84,6 +88,8 @@ func NewSessionWithOverride(conn mnet.MConnChannel, script string, npcID int32) 
 		stringInput: "",
 		intInput:    0,
 	}
+
+	packages.DefineImport(sessions[conn].env)
 
 	sessions[conn].register(conn)
 }

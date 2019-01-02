@@ -7,13 +7,15 @@ import (
 	"github.com/Hucaru/Valhalla/mpacket"
 )
 
-var Rooms = make(map[int32]*Room)
+type roomContainer map[int32]*Room
+
+var Rooms = make(roomContainer)
 
 const (
-	omokRoom     = 0x01
-	memoryRoom   = 0x02
-	tradeRoom    = 0x03
-	personalShop = 0x04
+	OmokRoom     = 0x01
+	MemoryRoom   = 0x02
+	TradeRoom    = 0x03
+	PersonalShop = 0x04
 )
 
 type Room struct {
@@ -32,16 +34,37 @@ type Room struct {
 	mesos    [2]int32
 }
 
-func CreateMemoryRoom() *Room {
-	return &Room{RoomType: memoryRoom}
+var roomCounter = int32(0)
+
+func (rc *roomContainer) getNewRoomID() int32 {
+	roomCounter++
+
+	if roomCounter == 0 {
+		roomCounter = 1
+	}
+
+	return roomCounter
 }
 
-func CreateOmokRoom() *Room {
-	return &Room{RoomType: omokRoom}
+func (rc *roomContainer) CreateMemoryRoom(name, password string, boardType byte) int32 {
+	r := &Room{RoomType: MemoryRoom, Name: name, Password: password, BoardType: boardType}
+	id := rc.getNewRoomID()
+	Rooms[id] = r
+	return id
 }
 
-func CreateTradeRoom() *Room {
-	return &Room{RoomType: tradeRoom}
+func (rc *roomContainer) CreateOmokRoom(name, password string, boardType byte) int32 {
+	r := &Room{RoomType: OmokRoom, Name: name, Password: password, BoardType: boardType}
+	id := rc.getNewRoomID()
+	Rooms[id] = r
+	return id
+}
+
+func (rc *roomContainer) CreateTradeRoom() int32 {
+	r := &Room{RoomType: TradeRoom}
+	id := rc.getNewRoomID()
+	Rooms[id] = r
+	return id
 }
 
 func (r *Room) Broadcast(p mpacket.Packet) {
@@ -57,7 +80,7 @@ func (r *Room) GetGameBox() {
 func (r *Room) AddPlayer(conn mnet.MConnChannel) {
 	maxPlayers := 2
 
-	if r.RoomType == omokRoom || r.RoomType == memoryRoom {
+	if r.RoomType == OmokRoom || r.RoomType == MemoryRoom {
 		maxPlayers = 4
 	}
 

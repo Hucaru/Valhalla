@@ -18,7 +18,7 @@ type Player struct {
 	char                 *def.Character
 	LastAttackPacketTime int64
 	InstanceID           int
-	RoomID               int
+	RoomID               int32
 }
 
 func GetPlayerFromName(name string) (*Player, error) {
