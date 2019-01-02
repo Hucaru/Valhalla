@@ -73,8 +73,22 @@ func (inst *Instance) addPlayer(conn mnet.MConnChannel) {
 
 	for _, other := range inst.players {
 		otherPlayer := Players[other]
-		player.Send(packet.MapPlayerEnter(otherPlayer.Char()))
 		otherPlayer.Send(packet.MapPlayerEnter(player.Char()))
+
+		player.Send(packet.MapPlayerEnter(otherPlayer.Char()))
+
+		if otherPlayer.RoomID > 0 {
+			r := Rooms[otherPlayer.RoomID]
+
+			if r.IsOwner(other) {
+				switch r.RoomType {
+				case MemoryRoom:
+					fallthrough
+				case OmokRoom:
+					player.Send(packet.MapShowGameBox(otherPlayer.Char().ID, r.ID, r.RoomType, r.BoardType, r.Name, bool(len(r.Password) > 0), r.inProgress, 0x01))
+				}
+			}
+		}
 	}
 
 	inst.players = append(inst.players, conn)

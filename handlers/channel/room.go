@@ -14,7 +14,7 @@ const (
 	roomReject                = 3
 	roomAccept                = 4
 	roomChat                  = 6
-	roomCloseWindwow          = 10
+	roomCloseWindow           = 10
 	roomInsertItem            = 13
 	roomMesos                 = 14
 	roomAcceptTrade           = 16
@@ -79,7 +79,11 @@ func handleUIWindow(conn mnet.MConnChannel, reader mpacket.Reader) {
 	case roomReject:
 	case roomAccept:
 	case roomChat:
-	case roomCloseWindwow:
+	case roomCloseWindow:
+		if game.Rooms[player.RoomID].RemovePlayer(conn, 0) {
+			delete(game.Rooms, player.RoomID)
+			player.RoomID = 0
+		}
 	case roomInsertItem:
 	case roomMesos:
 	case roomAcceptTrade:
