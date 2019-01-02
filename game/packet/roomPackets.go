@@ -155,7 +155,7 @@ func RoomReady() mpacket.Packet {
 	return p
 }
 
-func RoomUnReady() mpacket.Packet {
+func RoomUnready() mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcodes.SendChannelRoom)
 	p.WriteByte(0x33)
 

@@ -148,6 +148,14 @@ func (cs *channelServer) processEvent() {
 					// Order is important
 					game.Maps[game.Players[channelConn].Char().MapID].RemovePlayer(channelConn)
 					npcchat.RemoveSession(channelConn)
+
+					if game.Players[channelConn].RoomID != 0 {
+						roomID := game.Players[channelConn].RoomID
+						if game.Rooms[roomID].RemovePlayer(channelConn, 0) {
+							delete(game.Rooms, roomID)
+						}
+					}
+
 					game.Players[channelConn].Char().Save()
 					delete(game.Players, channelConn)
 

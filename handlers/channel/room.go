@@ -104,8 +104,9 @@ func handleUIWindow(conn mnet.MConnChannel, reader mpacket.Reader) {
 
 		game.Rooms[player.RoomID].SendMessage(player.Char().Name, message)
 	case roomCloseWindow:
+		roomID := player.RoomID
 		if game.Rooms[player.RoomID].RemovePlayer(conn, 0) {
-			delete(game.Rooms, player.RoomID)
+			delete(game.Rooms, roomID)
 		}
 	case roomInsertItem:
 	case roomMesos:
@@ -117,8 +118,23 @@ func handleUIWindow(conn mnet.MConnChannel, reader mpacket.Reader) {
 	case roomRequestUndoResult:
 	case roomRequestExitDuringGame:
 	case roomReadyButtonPressed:
+		if _, ok := game.Rooms[player.RoomID]; !ok {
+			return
+		}
+
+		game.Rooms[player.RoomID].Broadcast(packet.RoomReady())
 	case roomUnready:
+		if _, ok := game.Rooms[player.RoomID]; !ok {
+			return
+		}
+
+		game.Rooms[player.RoomID].Broadcast(packet.RoomUnready())
 	case roomOwnerExpells:
+		if _, ok := game.Rooms[player.RoomID]; !ok {
+			return
+		}
+
+		game.Rooms[player.RoomID].Expel()
 	case roomGameStart:
 	case roomChangeTurn:
 	case roomPlacePiece:

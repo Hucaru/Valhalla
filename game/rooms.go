@@ -142,8 +142,6 @@ func (r *Room) RemovePlayer(conn mnet.MConnChannel, msgCode byte) bool {
 		return false
 	}
 
-	r.players = append(r.players[:roomSlot], r.players[roomSlot+1:]...)
-
 	player := Players[conn]
 	player.RoomID = 0
 
@@ -166,6 +164,7 @@ func (r *Room) RemovePlayer(conn mnet.MConnChannel, msgCode byte) bool {
 
 			for i, v := range r.players {
 				v.Send(packet.RoomLeave(byte(i), 0))
+				Players[v].RoomID = 0
 			}
 		} else {
 			conn.Send(packet.RoomLeave(byte(roomSlot), msgCode))
@@ -176,6 +175,8 @@ func (r *Room) RemovePlayer(conn mnet.MConnChannel, msgCode byte) bool {
 				r.Broadcast(packet.RoomYellowChat(0, player.Char().Name))
 			}
 
+			r.players = append(r.players[:roomSlot], r.players[roomSlot+1:]...)
+
 			for i := roomSlot; i < len(r.players)-1; i++ {
 				// Update player positions from index roomSlot onwards (not + 1 as we have removed the gone player)
 			}
@@ -185,4 +186,10 @@ func (r *Room) RemovePlayer(conn mnet.MConnChannel, msgCode byte) bool {
 	}
 
 	return closeRoom
+}
+
+func (r *Room) Expel() {
+	if len(r.players) > 1 {
+		r.RemovePlayer(r.players[1], 5)
+	}
 }
