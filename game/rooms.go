@@ -89,6 +89,15 @@ func (r *Room) Broadcast(p mpacket.Packet) {
 	}
 }
 
+func (r *Room) SendMessage(name, msg string) {
+	for roomSlot, v := range r.players {
+		if Players[v].Char().Name == name {
+			r.Broadcast(packet.RoomChat(name, msg, byte(roomSlot)))
+			break
+		}
+	}
+}
+
 func (r *Room) AddPlayer(conn mnet.MConnChannel) {
 	if len(r.players) == r.maxPlayers {
 		conn.Send(packet.RoomFull())
@@ -113,12 +122,9 @@ func (r *Room) AddPlayer(conn mnet.MConnChannel) {
 
 	if len(displayInfo) > 0 {
 		conn.Send(packet.RoomShowWindow(r.RoomType, r.BoardType, byte(r.maxPlayers), roomPos, r.Name, displayInfo))
-		// update box on map
 	}
-}
 
-func (r *Room) closeRoom() {
-
+	Players[conn].RoomID = r.ID
 }
 
 func (r *Room) RemovePlayer(conn mnet.MConnChannel, msgCode byte) bool {
@@ -138,6 +144,9 @@ func (r *Room) RemovePlayer(conn mnet.MConnChannel, msgCode byte) bool {
 
 	r.players = append(r.players[:roomSlot], r.players[roomSlot+1:]...)
 
+	player := Players[conn]
+	player.RoomID = 0
+
 	switch r.RoomType {
 	case TradeRoom:
 		if r.accepted > 0 {
@@ -150,8 +159,6 @@ func (r *Room) RemovePlayer(conn mnet.MConnChannel, msgCode byte) bool {
 	case MemoryRoom:
 		fallthrough
 	case OmokRoom:
-		player := Players[conn]
-
 		if roomSlot == 0 {
 			closeRoom = true
 
@@ -169,7 +176,9 @@ func (r *Room) RemovePlayer(conn mnet.MConnChannel, msgCode byte) bool {
 				r.Broadcast(packet.RoomYellowChat(0, player.Char().Name))
 			}
 
-			// Update player positions from index roomSlot onwards (not + 1 as we have removed the gone player)
+			for i := roomSlot; i < len(r.players)-1; i++ {
+				// Update player positions from index roomSlot onwards (not + 1 as we have removed the gone player)
+			}
 		}
 	default:
 		fmt.Println("have not implemented remove player for room type", r.RoomType)

@@ -235,30 +235,6 @@ func RoomOmokInvalidPlaceMsg() mpacket.Packet {
 	return p
 }
 
-// func RoomShowMapBox(charID, roomID int32, roomType, boardType byte, name string, hasPassword, koreanText bool, ammount byte) mpacket.Packet {
-// 	p := mpacket.CreateWithOpcode(opcodes.SendChannelRoomBox)
-// 	p.WriteInt32(charID)
-// 	p.WriteByte(roomType)
-// 	p.WriteInt32(roomID)
-// 	p.WriteString(name)
-// 	p.WriteBool(hasPassword)
-// 	p.WriteByte(boardType)
-// 	// win loss record since room opened?
-// 	p.WriteByte(ammount)
-// 	p.WriteByte(2)
-// 	p.WriteBool(koreanText)
-
-// 	return p
-// }
-
-// func RoomRemoveBox(charID int32) mpacket.Packet {
-// 	p := mpacket.CreateWithOpcode(opcodes.SendChannelRoomBox)
-// 	p.WriteInt32(charID)
-// 	p.WriteInt32(0)
-
-// 	return p
-// }
-
 func roomEnterErrorMsg(errorCode byte) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcodes.SendChannelRoom)
 	p.WriteByte(0x05)

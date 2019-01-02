@@ -3,6 +3,8 @@ package channel
 import (
 	"fmt"
 
+	"github.com/Hucaru/Valhalla/game/packet"
+
 	"github.com/Hucaru/Valhalla/game"
 	"github.com/Hucaru/Valhalla/mnet"
 	"github.com/Hucaru/Valhalla/mpacket"
@@ -68,8 +70,8 @@ func handleUIWindow(conn mnet.MConnChannel, reader mpacket.Reader) {
 
 			boardType := reader.ReadByte()
 
-			player.RoomID = game.Rooms.CreateMemoryRoom(name, password, boardType)
-			game.Rooms[player.RoomID].AddPlayer(conn)
+			roomID := game.Rooms.CreateMemoryRoom(name, password, boardType)
+			game.Rooms[roomID].AddPlayer(conn)
 		case game.TradeRoom:
 		case game.PersonalShop:
 		default:
@@ -78,11 +80,32 @@ func handleUIWindow(conn mnet.MConnChannel, reader mpacket.Reader) {
 	case roomSendInvite:
 	case roomReject:
 	case roomAccept:
+		roomID := reader.ReadInt32()
+
+		if _, ok := game.Rooms[roomID]; !ok {
+			return
+		}
+
+		if reader.ReadBool() {
+			password := reader.ReadString(int(reader.ReadInt16()))
+			if game.Rooms[roomID].Password != password {
+				conn.Send(packet.RoomIncorrectPassword())
+				return
+			}
+		}
+
+		game.Rooms[roomID].AddPlayer(conn)
 	case roomChat:
+		message := reader.ReadString(int(reader.ReadInt16()))
+
+		if _, ok := game.Rooms[player.RoomID]; !ok {
+			return
+		}
+
+		game.Rooms[player.RoomID].SendMessage(player.Char().Name, message)
 	case roomCloseWindow:
 		if game.Rooms[player.RoomID].RemovePlayer(conn, 0) {
 			delete(game.Rooms, player.RoomID)
-			player.RoomID = 0
 		}
 	case roomInsertItem:
 	case roomMesos:
