@@ -233,6 +233,7 @@ func (r *Room) Start() {
 	}
 
 	r.inProgress = true
+
 	player := Players[r.players[0]]
 	Maps[player.Char().MapID].Send(packet.MapShowGameBox(player.Char().ID, r.ID, r.RoomType, r.BoardType, r.Name, bool(len(r.Password) > 0), r.inProgress, 0x01), player.InstanceID)
 
@@ -245,4 +246,31 @@ func (r *Room) Start() {
 	default:
 		fmt.Println("Cannot start a non game room")
 	}
+}
+
+func (r *Room) ChangeTurn() {
+	r.Broadcast(packet.RoomGameSkip(r.p1Turn))
+	r.p1Turn = !r.p1Turn
+}
+
+func (r *Room) PlacePiece(x, y int32, piece byte) {
+	if r.board[x][y] != 0 {
+		if r.p1Turn {
+			r.players[0].Send(packet.RoomOmokInvalidPlaceMsg())
+		} else {
+			r.players[1].Send(packet.RoomOmokInvalidPlaceMsg())
+		}
+
+		return
+	}
+
+	r.board[x][y] = piece
+
+	if r.p1Turn {
+
+	} else {
+
+	}
+
+	r.Broadcast(packet.RoomPlaceOmokPiece(x, y, piece))
 }

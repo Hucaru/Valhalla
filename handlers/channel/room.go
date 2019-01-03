@@ -134,7 +134,19 @@ func handleUIWindow(conn mnet.MConnChannel, reader mpacket.Reader) {
 			game.Rooms[player.RoomID].Start()
 		}
 	case roomChangeTurn:
+		if _, ok := game.Rooms[player.RoomID]; ok {
+			game.Rooms[player.RoomID].ChangeTurn()
+		}
 	case roomPlacePiece:
+		if _, ok := game.Rooms[player.RoomID]; !ok {
+			return
+		}
+
+		x := reader.ReadInt32()
+		y := reader.ReadInt32()
+		piece := reader.ReadByte()
+
+		game.Rooms[player.RoomID].PlacePiece(x, y, piece)
 	default:
 		fmt.Println("Unknown room operation", operation)
 	}

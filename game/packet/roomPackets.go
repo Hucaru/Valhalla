@@ -209,7 +209,7 @@ func RoomGameResult(draw bool, winningSlot byte, forfeit bool, chars []def.Chara
 	return p
 }
 
-func RoomOmokSkip(isOwner bool) mpacket.Packet {
+func RoomGameSkip(isOwner bool) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcodes.SendChannelRoom)
 	p.WriteByte(0x37)
 	p.WriteBool(isOwner)
