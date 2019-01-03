@@ -2,6 +2,8 @@ package game
 
 import (
 	"fmt"
+	"math/rand"
+	"time"
 
 	"github.com/Hucaru/Valhalla/game/def"
 	"github.com/Hucaru/Valhalla/game/packet"
@@ -34,6 +36,7 @@ type Room struct {
 	cards          []byte
 	BoardType      byte
 	leaveAfterGame [2]bool
+	p1Turn         bool
 
 	accepted int
 	items    [2][9]Item
@@ -56,14 +59,14 @@ func (rc *roomContainer) getNewRoomID() int32 {
 
 func (rc *roomContainer) CreateMemoryRoom(name, password string, boardType byte) int32 {
 	id := rc.getNewRoomID()
-	r := &Room{ID: id, RoomType: MemoryRoom, Name: name, Password: password, BoardType: boardType, maxPlayers: memoryMaxPlayers}
+	r := &Room{ID: id, RoomType: MemoryRoom, Name: name, Password: password, BoardType: boardType, maxPlayers: memoryMaxPlayers, p1Turn: true}
 	Rooms[id] = r
 	return id
 }
 
 func (rc *roomContainer) CreateOmokRoom(name, password string, boardType byte) int32 {
 	id := rc.getNewRoomID()
-	r := &Room{ID: id, RoomType: OmokRoom, Name: name, Password: password, BoardType: boardType, maxPlayers: omokMaxPlayers}
+	r := &Room{ID: id, RoomType: OmokRoom, Name: name, Password: password, BoardType: boardType, maxPlayers: omokMaxPlayers, p1Turn: true}
 	Rooms[id] = r
 	return id
 }
@@ -191,5 +194,55 @@ func (r *Room) RemovePlayer(conn mnet.MConnChannel, msgCode byte) bool {
 func (r *Room) Expel() {
 	if len(r.players) > 1 {
 		r.RemovePlayer(r.players[1], 5)
+	}
+}
+
+func (r *Room) shuffleCards() {
+	loopCounter := byte(0)
+	switch r.BoardType {
+	case 0:
+		loopCounter = 6
+	case 1:
+		loopCounter = 10
+	case 2:
+		loopCounter = 15
+	default:
+		fmt.Println("Cannot shuffle unkown card type")
+	}
+
+	for i := byte(0); i < loopCounter; i++ {
+		r.cards = append(r.cards, i, i)
+	}
+
+	shuffle := func(vals []byte) {
+		r := rand.New(rand.NewSource(time.Now().Unix()))
+		for len(vals) > 0 {
+			n := len(vals)
+			randIndex := r.Intn(n)
+			vals[n-1], vals[randIndex] = vals[randIndex], vals[n-1]
+			vals = vals[:n-1]
+		}
+	}
+
+	shuffle(r.cards)
+}
+
+func (r *Room) Start() {
+	if len(r.players) == 0 {
+		return
+	}
+
+	r.inProgress = true
+	player := Players[r.players[0]]
+	Maps[player.Char().MapID].Send(packet.MapShowGameBox(player.Char().ID, r.ID, r.RoomType, r.BoardType, r.Name, bool(len(r.Password) > 0), r.inProgress, 0x01), player.InstanceID)
+
+	switch r.RoomType {
+	case OmokRoom:
+		r.Broadcast(packet.RoomOmokStart(r.p1Turn))
+	case MemoryRoom:
+		r.shuffleCards()
+		r.Broadcast(packet.RoomMemoryStart(r.p1Turn, int32(r.BoardType), r.cards))
+	default:
+		fmt.Println("Cannot start a non game room")
 	}
 }

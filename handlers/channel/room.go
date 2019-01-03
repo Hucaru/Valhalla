@@ -118,24 +118,21 @@ func handleUIWindow(conn mnet.MConnChannel, reader mpacket.Reader) {
 	case roomRequestUndoResult:
 	case roomRequestExitDuringGame:
 	case roomReadyButtonPressed:
-		if _, ok := game.Rooms[player.RoomID]; !ok {
-			return
+		if _, ok := game.Rooms[player.RoomID]; ok {
+			game.Rooms[player.RoomID].Broadcast(packet.RoomReady())
 		}
-
-		game.Rooms[player.RoomID].Broadcast(packet.RoomReady())
 	case roomUnready:
-		if _, ok := game.Rooms[player.RoomID]; !ok {
-			return
+		if _, ok := game.Rooms[player.RoomID]; ok {
+			game.Rooms[player.RoomID].Broadcast(packet.RoomUnready())
 		}
-
-		game.Rooms[player.RoomID].Broadcast(packet.RoomUnready())
 	case roomOwnerExpells:
-		if _, ok := game.Rooms[player.RoomID]; !ok {
-			return
+		if _, ok := game.Rooms[player.RoomID]; ok {
+			game.Rooms[player.RoomID].Expel()
 		}
-
-		game.Rooms[player.RoomID].Expel()
 	case roomGameStart:
+		if _, ok := game.Rooms[player.RoomID]; ok {
+			game.Rooms[player.RoomID].Start()
+		}
 	case roomChangeTurn:
 	case roomPlacePiece:
 	default:

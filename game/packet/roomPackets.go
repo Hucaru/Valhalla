@@ -174,11 +174,11 @@ func RoomMemoryStart(ownerStart bool, boardType int32, cards []byte) mpacket.Pac
 	p := mpacket.CreateWithOpcode(opcodes.SendChannelRoom)
 	p.WriteByte(0x35)
 	p.WriteBool(ownerStart)
-	p.WriteByte(0x0C)
+	p.WriteByte(byte(len(cards)))
 	p.WriteInt32(boardType)
 
 	for i := 0; i < len(cards); i++ {
-		p.WriteInt32(int32(cards[i])) // figure out what needs to be done to shuffle the cards
+		p.WriteInt32(int32(cards[i]))
 	}
 
 	return p
