@@ -228,3 +228,15 @@ func (p *Player) GiveItem() {
 func (p *Player) TakeItem() {
 
 }
+
+func (p *Player) SetMinigameWins(v int32) {
+	p.char.MiniGameWins = v
+}
+
+func (p *Player) SetMinigameLoss(v int32) {
+	p.char.MiniGameLoss = v
+}
+
+func (p *Player) SetMinigameDraw(v int32) {
+	p.char.MiniGameDraw = v
+}

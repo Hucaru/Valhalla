@@ -31,8 +31,8 @@ func RoomShowWindow(roomType, boardType, maxPlayers, roomSlot byte, roomTitle st
 
 		p.WriteInt32(0) // not sure what this is!?
 		p.WriteInt32(c.MiniGameWins)
-		p.WriteInt32(c.MiniGameTies)
-		p.WriteInt32(c.MiniGameLosses)
+		p.WriteInt32(c.MiniGameDraw)
+		p.WriteInt32(c.MiniGameLoss)
 		p.WriteInt32(2000) // Points in the ui. What does it represent?
 	}
 
@@ -58,8 +58,8 @@ func RoomJoin(roomType, roomSlot byte, char def.Character) mpacket.Packet {
 
 	p.WriteInt32(1) // not sure what this is!?
 	p.WriteInt32(char.MiniGameWins)
-	p.WriteInt32(char.MiniGameTies)
-	p.WriteInt32(char.MiniGameLosses)
+	p.WriteInt32(char.MiniGameDraw)
+	p.WriteInt32(char.MiniGameLoss)
 	p.WriteInt32(2000) // Points in the ui. What does it represent?
 
 	return p
@@ -201,8 +201,8 @@ func RoomGameResult(draw bool, winningSlot byte, forfeit bool, chars []def.Chara
 	for _, char := range chars {
 		p.WriteInt32(1) // ?
 		p.WriteInt32(char.MiniGameWins)
-		p.WriteInt32(char.MiniGameTies)
-		p.WriteInt32(char.MiniGameLosses)
+		p.WriteInt32(char.MiniGameDraw)
+		p.WriteInt32(char.MiniGameLoss)
 		p.WriteInt32(2000)
 	}
 

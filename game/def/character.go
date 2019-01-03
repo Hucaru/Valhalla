@@ -45,7 +45,7 @@ type Character struct {
 
 	Skills map[int32]Skill
 
-	MiniGameWins, MiniGameTies, MiniGameLosses int32
+	MiniGameWins, MiniGameDraw, MiniGameLoss int32
 }
 
 func (c Character) Save() error {

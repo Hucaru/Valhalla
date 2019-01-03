@@ -37,6 +37,7 @@ type Room struct {
 	BoardType      byte
 	leaveAfterGame [2]bool
 	p1Turn         bool
+	previousTurn   [2][2]int32
 
 	accepted int
 	items    [2][9]Item
@@ -66,7 +67,7 @@ func (rc *roomContainer) CreateMemoryRoom(name, password string, boardType byte)
 
 func (rc *roomContainer) CreateOmokRoom(name, password string, boardType byte) int32 {
 	id := rc.getNewRoomID()
-	r := &Room{ID: id, RoomType: OmokRoom, Name: name, Password: password, BoardType: boardType, maxPlayers: omokMaxPlayers, p1Turn: true}
+	r := &Room{ID: id, RoomType: OmokRoom, Name: name, Password: password, BoardType: boardType, maxPlayers: omokMaxPlayers, p1Turn: true, previousTurn: [2][2]int32{}}
 	Rooms[id] = r
 	return id
 }
@@ -267,10 +268,139 @@ func (r *Room) PlacePiece(x, y int32, piece byte) {
 	r.board[x][y] = piece
 
 	if r.p1Turn {
-
+		r.previousTurn[0][0] = x
+		r.previousTurn[0][1] = y
 	} else {
-
+		r.previousTurn[1][0] = x
+		r.previousTurn[1][1] = y
 	}
 
 	r.Broadcast(packet.RoomPlaceOmokPiece(x, y, piece))
+
+	win := checkOmokWin(r.board, piece)
+	draw := checkOmokDraw(r.board)
+
+	forfeit := false
+
+	if win || draw {
+		r.gameEnd(draw, forfeit)
+	}
+
+	r.ChangeTurn()
+}
+
+func (r *Room) gameEnd(draw, forfeit bool) {
+	// Update box on map
+	r.inProgress = false
+	player := Players[r.players[0]]
+	Maps[player.Char().MapID].Send(packet.MapShowGameBox(player.Char().ID, r.ID, r.RoomType, r.BoardType, r.Name, bool(len(r.Password) > 0), r.inProgress, 0x01), player.InstanceID)
+
+	// Update player records
+	slotID := byte(0)
+	if !r.p1Turn {
+		slotID = 1
+	}
+
+	if forfeit {
+		if slotID == 1 { // for forfeits slot id is inversed
+			Players[r.players[0]].SetMinigameLoss(Players[r.players[0]].Char().MiniGameLoss + 1)
+			Players[r.players[1]].SetMinigameWins(Players[r.players[1]].Char().MiniGameWins + 1)
+		} else {
+			Players[r.players[1]].SetMinigameLoss(Players[r.players[1]].Char().MiniGameLoss + 1)
+			Players[r.players[0]].SetMinigameWins(Players[r.players[0]].Char().MiniGameWins + 1)
+		}
+
+	} else if draw {
+		Players[r.players[0]].SetMinigameDraw(Players[r.players[0]].Char().MiniGameDraw + 1)
+		Players[r.players[1]].SetMinigameDraw(Players[r.players[1]].Char().MiniGameDraw + 1)
+	} else {
+		Players[r.players[slotID]].SetMinigameWins(Players[r.players[slotID]].Char().MiniGameWins + 1)
+
+		if slotID == 1 {
+			Players[r.players[0]].SetMinigameLoss(Players[r.players[0]].Char().MiniGameLoss + 1)
+		} else {
+			Players[r.players[1]].SetMinigameLoss(Players[r.players[1]].Char().MiniGameLoss + 1)
+		}
+
+	}
+
+	displayInfo := []def.Character{}
+
+	for _, v := range r.players {
+		displayInfo = append(displayInfo, Players[v].Char())
+	}
+
+	r.Broadcast(packet.RoomGameResult(draw, slotID, forfeit, displayInfo))
+
+	r.board = [15][15]byte{}
+
+	// kick players who have registered to leave
+}
+
+func checkOmokDraw(board [15][15]byte) bool {
+	for i := 0; i < 15; i++ {
+		for j := 0; j < 15; j++ {
+			if board[i][j] > 0 {
+				return false
+			}
+		}
+	}
+
+	return true
+}
+
+func checkOmokWin(board [15][15]byte, piece byte) bool {
+	// Check horizontal
+	for i := 0; i < 15; i++ {
+		for j := 0; j < 11; j++ {
+			if board[j][i] == piece &&
+				board[j+1][i] == piece &&
+				board[j+2][i] == piece &&
+				board[j+3][i] == piece &&
+				board[j+4][i] == piece {
+				return true
+			}
+		}
+	}
+
+	// Check vertical
+	for i := 0; i < 11; i++ {
+		for j := 0; j < 15; j++ {
+			if board[j][i] == piece &&
+				board[j][i+1] == piece &&
+				board[j][i+2] == piece &&
+				board[j][i+3] == piece &&
+				board[j][i+4] == piece {
+				return true
+			}
+		}
+	}
+
+	// Check diagonal 1
+	for i := 4; i < 15; i++ {
+		for j := 0; j < 11; j++ {
+			if board[j][i] == piece &&
+				board[j+1][i-1] == piece &&
+				board[j+2][i-2] == piece &&
+				board[j+3][i-3] == piece &&
+				board[j+4][i-4] == piece {
+				return true
+			}
+		}
+	}
+
+	// Check diagonal 2
+	for i := 0; i < 11; i++ {
+		for j := 0; j < 11; j++ {
+			if board[j][i] == piece &&
+				board[j+1][i+1] == piece &&
+				board[j+2][i+2] == piece &&
+				board[j+3][i+3] == piece &&
+				board[j+4][i+4] == piece {
+				return true
+			}
+		}
+	}
+
+	return false
 }
