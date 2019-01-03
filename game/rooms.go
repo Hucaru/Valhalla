@@ -117,6 +117,16 @@ func (r *Room) Broadcast(p mpacket.Packet) {
 	}
 }
 
+func (r *Room) BroadcastExcept(p mpacket.Packet, conn mnet.MConnChannel) {
+	for _, v := range r.players {
+		if v == conn {
+			continue
+		}
+
+		v.Send(p)
+	}
+}
+
 func (r *Room) SendMessage(name, msg string) {
 	for roomSlot, v := range r.players {
 		if Players[v].Char().Name == name {
@@ -276,7 +286,6 @@ func (r *Room) Start() {
 func (r *Room) ChangeTurn() {
 	r.Broadcast(packet.RoomGameSkip(r.p1Turn))
 	r.p1Turn = !r.p1Turn
-	r.matches = 0
 }
 
 func (r *Room) PlacePiece(x, y int32, piece byte) {
@@ -318,14 +327,14 @@ func (r *Room) PlacePiece(x, y int32, piece byte) {
 	r.ChangeTurn()
 }
 
-func (r *Room) SelectCard(firstPick bool, cardID byte) {
+func (r *Room) SelectCard(firstPick bool, cardID byte, conn mnet.MConnChannel) {
 	if int(cardID) >= len(r.cards) {
 		return
 	}
 
 	if firstPick {
 		r.firstCardPick = cardID
-		r.Broadcast(packet.RoomSelectCard(firstPick, cardID, r.firstCardPick, 1))
+		r.BroadcastExcept(packet.RoomSelectCard(firstPick, cardID, r.firstCardPick, 1), conn)
 	} else if r.cards[r.firstCardPick] == r.cards[cardID] {
 		if r.p1Turn {
 			r.Broadcast(packet.RoomSelectCard(firstPick, cardID, r.firstCardPick, 2))
