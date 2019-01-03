@@ -41,7 +41,7 @@ func playerConnect(conn mnet.MConnChannel, reader mpacket.Reader) {
 	conn.SetAdminLevel(adminLevel)
 
 	conn.Send(packet.PlayerEnterGame(char, 0))
-	conn.Send(packet.MessageScrollingHeader("dummy header"))
+	conn.Send(packet.MessageScrollingHeader("Valhalla Archival Project"))
 
 	game.Players[conn] = game.NewPlayer(conn, char)
 	err = game.Maps[char.MapID].AddPlayer(conn, 0)

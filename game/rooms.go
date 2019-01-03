@@ -25,6 +25,26 @@ const (
 	tradeMaxPlayers  = 2
 )
 
+// type Room interface {
+// 	Broadcast(p mpacket.Packet)
+// 	SendMessage(name, msg string)
+// 	AddPlayer(conn mnet.MConnChannel)
+// 	RemovePlayer(conn mnet.MConnChannel, msgCode byte)
+// }
+
+// type TradeRoom struct {
+// 	ID       int32
+// 	players  []mnet.MConnChannel
+// 	RoomType byte
+
+// 	accepted int
+// 	items    [2][9]Item
+// 	mesos    [2]int32
+// }
+
+// type GameRoom struct {
+// }
+
 type Room struct {
 	ID       int32
 	RoomType byte
@@ -32,12 +52,16 @@ type Room struct {
 
 	Name, Password string
 	inProgress     bool
-	board          [15][15]byte
-	cards          []byte
 	BoardType      byte
 	leaveAfterGame [2]bool
 	p1Turn         bool
-	previousTurn   [2][2]int32
+
+	board        [15][15]byte
+	previousTurn [2][2]int32
+
+	cards         []byte
+	firstCardPick byte
+	matches       int
 
 	accepted int
 	items    [2][9]Item
@@ -252,9 +276,14 @@ func (r *Room) Start() {
 func (r *Room) ChangeTurn() {
 	r.Broadcast(packet.RoomGameSkip(r.p1Turn))
 	r.p1Turn = !r.p1Turn
+	r.matches = 0
 }
 
 func (r *Room) PlacePiece(x, y int32, piece byte) {
+	if x > 14 || y > 14 || x < 0 || y < 0 {
+		return
+	}
+
 	if r.board[x][y] != 0 {
 		if r.p1Turn {
 			r.players[0].Send(packet.RoomOmokInvalidPlaceMsg())
@@ -287,6 +316,29 @@ func (r *Room) PlacePiece(x, y int32, piece byte) {
 	}
 
 	r.ChangeTurn()
+}
+
+func (r *Room) SelectCard(firstPick bool, cardID byte) {
+	if int(cardID) >= len(r.cards) {
+		return
+	}
+
+	if firstPick {
+		r.firstCardPick = cardID
+		r.Broadcast(packet.RoomSelectCard(firstPick, cardID, r.firstCardPick, 1))
+	} else if r.cards[r.firstCardPick] == r.cards[cardID] {
+		if r.p1Turn {
+			r.Broadcast(packet.RoomSelectCard(firstPick, cardID, r.firstCardPick, 2))
+			// set owner points
+		} else {
+			r.Broadcast(packet.RoomSelectCard(firstPick, cardID, r.firstCardPick, 3))
+			// set p1 points
+		}
+	} else if r.p1Turn {
+		r.Broadcast(packet.RoomSelectCard(firstPick, cardID, r.firstCardPick, 0))
+	} else {
+		r.Broadcast(packet.RoomSelectCard(firstPick, cardID, r.firstCardPick, 1))
+	}
 }
 
 func (r *Room) gameEnd(draw, forfeit bool) {

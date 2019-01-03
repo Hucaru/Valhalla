@@ -153,7 +153,10 @@ func handleUIWindow(conn mnet.MConnChannel, reader mpacket.Reader) {
 			return
 		}
 
-		fmt.Println(reader)
+		firstPick := reader.ReadBool()
+		cardID := reader.ReadByte()
+
+		game.Rooms[player.RoomID].SelectCard(firstPick, cardID)
 	default:
 		fmt.Println("Unknown room operation", operation)
 	}

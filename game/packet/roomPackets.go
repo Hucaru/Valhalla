@@ -174,8 +174,7 @@ func RoomMemoryStart(ownerStart bool, boardType int32, cards []byte) mpacket.Pac
 	p := mpacket.CreateWithOpcode(opcodes.SendChannelRoom)
 	p.WriteByte(0x35)
 	p.WriteBool(ownerStart)
-	p.WriteByte(byte(len(cards)))
-	p.WriteInt32(boardType)
+	p.WriteByte(0x0C)
 
 	for i := 0; i < len(cards); i++ {
 		p.WriteInt32(int32(cards[i]))
@@ -231,6 +230,22 @@ func RoomOmokInvalidPlaceMsg() mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcodes.SendChannelRoom)
 	p.WriteByte(0x39)
 	p.WriteByte(0x0)
+
+	return p
+}
+
+func RoomSelectCard(firstPick bool, cardID, firstCardPick byte, result byte) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcodes.SendChannelRoom)
+	p.WriteByte(0x3c)
+	p.WriteBool(firstPick)
+
+	if firstPick {
+		p.WriteByte(cardID)
+	} else {
+		p.WriteByte(cardID)
+		p.WriteByte(firstCardPick)
+		p.WriteByte(result)
+	}
 
 	return p
 }
