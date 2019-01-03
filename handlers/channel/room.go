@@ -32,6 +32,7 @@ const (
 	roomGameStart             = 53
 	roomChangeTurn            = 55
 	roomPlacePiece            = 56
+	roomSelectCard            = 60
 )
 
 func handleUIWindow(conn mnet.MConnChannel, reader mpacket.Reader) {
@@ -147,6 +148,12 @@ func handleUIWindow(conn mnet.MConnChannel, reader mpacket.Reader) {
 		piece := reader.ReadByte()
 
 		game.Rooms[player.RoomID].PlacePiece(x, y, piece)
+	case roomSelectCard:
+		if _, ok := game.Rooms[player.RoomID]; !ok {
+			return
+		}
+
+		fmt.Println(reader)
 	default:
 		fmt.Println("Unknown room operation", operation)
 	}
