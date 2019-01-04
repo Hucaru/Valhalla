@@ -3,7 +3,6 @@ package game
 import (
 	"fmt"
 	"math/rand"
-	"time"
 
 	"github.com/Hucaru/Valhalla/game/def"
 	"github.com/Hucaru/Valhalla/game/packet"
@@ -46,22 +45,22 @@ const (
 // }
 
 type Room struct {
-	ID       int32
-	RoomType byte
-	players  []mnet.MConnChannel
-
+	ID             int32
+	RoomType       byte
+	players        []mnet.MConnChannel
 	Name, Password string
 	inProgress     bool
-	BoardType      byte
+
 	leaveAfterGame [2]bool
 	p1Turn         bool
 
 	board        [15][15]byte
 	previousTurn [2][2]int32
 
+	BoardType     byte
 	cards         []byte
 	firstCardPick byte
-	matches       int
+	matches       [2]int
 
 	accepted int
 	items    [2][9]Item
@@ -245,21 +244,15 @@ func (r *Room) shuffleCards() {
 		fmt.Println("Cannot shuffle unkown card type")
 	}
 
+	r.cards = make([]byte, 0)
+
 	for i := byte(0); i < loopCounter; i++ {
 		r.cards = append(r.cards, i, i)
 	}
 
-	shuffle := func(vals []byte) {
-		r := rand.New(rand.NewSource(time.Now().Unix()))
-		for len(vals) > 0 {
-			n := len(vals)
-			randIndex := r.Intn(n)
-			vals[n-1], vals[randIndex] = vals[randIndex], vals[n-1]
-			vals = vals[:n-1]
-		}
-	}
-
-	shuffle(r.cards)
+	rand.Shuffle(len(r.cards), func(i, j int) {
+		r.cards[i], r.cards[j] = r.cards[j], r.cards[i]
+	})
 }
 
 func (r *Room) Start() {
@@ -322,31 +315,76 @@ func (r *Room) PlacePiece(x, y int32, piece byte) {
 
 	if win || draw {
 		r.gameEnd(draw, forfeit)
+		r.board = [15][15]byte{}
 	}
 
 	r.ChangeTurn()
 }
 
-func (r *Room) SelectCard(firstPick bool, cardID byte, conn mnet.MConnChannel) {
+func (r *Room) SelectCard(turn, cardID byte, conn mnet.MConnChannel) {
 	if int(cardID) >= len(r.cards) {
 		return
 	}
 
-	if firstPick {
+	if turn == 1 {
 		r.firstCardPick = cardID
-		r.BroadcastExcept(packet.RoomSelectCard(firstPick, cardID, r.firstCardPick, 1), conn)
+		r.BroadcastExcept(packet.RoomSelectCard(turn, cardID, r.firstCardPick, turn), conn)
 	} else if r.cards[r.firstCardPick] == r.cards[cardID] {
 		if r.p1Turn {
-			r.Broadcast(packet.RoomSelectCard(firstPick, cardID, r.firstCardPick, 2))
+			r.matches[0]++
+			r.Broadcast(packet.RoomSelectCard(turn, cardID, r.firstCardPick, 0xFF))
 			// set owner points
+			r.checkCardWin()
 		} else {
-			r.Broadcast(packet.RoomSelectCard(firstPick, cardID, r.firstCardPick, 3))
+			r.matches[1]++
+			r.Broadcast(packet.RoomSelectCard(turn, cardID, r.firstCardPick, 0xFF))
 			// set p1 points
+			r.checkCardWin()
 		}
 	} else if r.p1Turn {
-		r.Broadcast(packet.RoomSelectCard(firstPick, cardID, r.firstCardPick, 0))
+		r.Broadcast(packet.RoomSelectCard(turn, cardID, r.firstCardPick, 0))
+		r.p1Turn = !r.p1Turn
 	} else {
-		r.Broadcast(packet.RoomSelectCard(firstPick, cardID, r.firstCardPick, 1))
+		r.Broadcast(packet.RoomSelectCard(turn, cardID, r.firstCardPick, 1))
+		r.p1Turn = !r.p1Turn
+	}
+}
+
+func (r *Room) checkCardWin() {
+	totalMatches := r.matches[0] + r.matches[1]
+
+	win, draw := false, false
+
+	switch r.BoardType {
+	case 0:
+		if totalMatches == 6 {
+			if r.matches[0] == r.matches[1] {
+				draw = true
+			} else { // current player must have won
+				win = true
+			}
+		}
+	case 1:
+		if totalMatches == 10 {
+			if r.matches[0] == r.matches[1] {
+				draw = true
+			} else {
+				win = true
+			}
+		}
+	case 2:
+		if totalMatches == 15 {
+			if r.matches[0] == r.matches[1] {
+				draw = true
+			} else {
+				win = true
+			}
+		}
+	}
+
+	if win || draw {
+		r.gameEnd(draw, false)
+		r.matches[0], r.matches[1] = 0, 0
 	}
 }
 
@@ -392,8 +430,6 @@ func (r *Room) gameEnd(draw, forfeit bool) {
 	}
 
 	r.Broadcast(packet.RoomGameResult(draw, slotID, forfeit, displayInfo))
-
-	r.board = [15][15]byte{}
 
 	// kick players who have registered to leave
 }

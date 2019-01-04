@@ -234,14 +234,14 @@ func RoomOmokInvalidPlaceMsg() mpacket.Packet {
 	return p
 }
 
-func RoomSelectCard(firstPick bool, cardID, firstCardPick byte, result byte) mpacket.Packet {
+func RoomSelectCard(turn, cardID, firstCardPick byte, result byte) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcodes.SendChannelRoom)
 	p.WriteByte(0x3c)
-	p.WriteBool(firstPick)
+	p.WriteByte(turn)
 
-	if firstPick {
+	if turn == 1 {
 		p.WriteByte(cardID)
-	} else {
+	} else if turn == 0 {
 		p.WriteByte(cardID)
 		p.WriteByte(firstCardPick)
 		p.WriteByte(result)
