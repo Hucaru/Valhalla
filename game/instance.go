@@ -80,12 +80,17 @@ func (inst *Instance) addPlayer(conn mnet.MConnChannel) {
 		if otherPlayer.RoomID > 0 {
 			r := Rooms[otherPlayer.RoomID]
 
-			if r.IsOwner(other) {
-				switch r.RoomType {
-				case MemoryRoom:
-					fallthrough
-				case OmokRoom:
-					player.Send(packet.MapShowGameBox(otherPlayer.Char().ID, r.ID, r.RoomType, r.BoardType, r.Name, bool(len(r.Password) > 0), r.inProgress, 0x01))
+			switch r.(type) {
+			case *OmokRoom:
+				omokRoom := r.(*OmokRoom)
+
+				if omokRoom.IsOwner(other) {
+					player.Send(packet.MapShowGameBox(otherPlayer.Char().ID, omokRoom.ID, byte(omokRoom.RoomType), omokRoom.BoardType, omokRoom.Name, bool(len(omokRoom.Password) > 0), omokRoom.InProgress, 0x01))
+				}
+			case *MemoryRoom:
+				memoryRoom := r.(*MemoryRoom)
+				if memoryRoom.IsOwner(other) {
+					player.Send(packet.MapShowGameBox(otherPlayer.Char().ID, memoryRoom.ID, byte(memoryRoom.RoomType), memoryRoom.BoardType, memoryRoom.Name, bool(len(memoryRoom.Password) > 0), memoryRoom.InProgress, 0x01))
 				}
 			}
 		}

@@ -56,7 +56,7 @@ Channel server:
 - [ ] Mob respawn
 - [ ] Mob drops
 - [ ] Trade
-- [ ] Minigames
+- [x] Minigames
 - [ ] Communication Window
 - [ ] Party
 - [ ] Guild
@@ -66,9 +66,6 @@ Channel server:
 - [ ] Whisphers
 
 Cashshop server:
-
-## TODO:
-- Redo nx parsing before adding more features that use it
 
 ## Acknowledgements 
 - Sunnyboy for providing a [list](http://forum.ragezone.com/f921/library-idbs-versions-named-addresses-987815/) of idbs for which this project would not have started

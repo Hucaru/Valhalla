@@ -48,8 +48,8 @@ func handleUIWindow(conn mnet.MConnChannel, reader mpacket.Reader) {
 
 		roomType := reader.ReadByte()
 
-		switch roomType {
-		case game.OmokRoom:
+		switch game.RoomType(roomType) {
+		case game.RoomTypeOmok:
 			name := reader.ReadString(int(reader.ReadInt16()))
 
 			var password string
@@ -61,7 +61,7 @@ func handleUIWindow(conn mnet.MConnChannel, reader mpacket.Reader) {
 
 			player.RoomID = game.Rooms.CreateOmokRoom(name, password, boardType)
 			game.Rooms[player.RoomID].AddPlayer(conn)
-		case game.MemoryRoom:
+		case game.RoomTypeMemory:
 			name := reader.ReadString(int(reader.ReadInt16()))
 
 			var password string
@@ -73,13 +73,54 @@ func handleUIWindow(conn mnet.MConnChannel, reader mpacket.Reader) {
 
 			roomID := game.Rooms.CreateMemoryRoom(name, password, boardType)
 			game.Rooms[roomID].AddPlayer(conn)
-		case game.TradeRoom:
-		case game.PersonalShop:
+		case game.RoomTypeTrade:
+			roomID := game.Rooms.CreateTradeRoom()
+			game.Rooms[roomID].AddPlayer(conn)
+		case game.RoomTypePersonalShop:
 		default:
 			fmt.Println("Unkown room type", roomType)
 		}
 	case roomSendInvite:
+		if _, ok := game.Rooms[player.RoomID]; !ok {
+			return
+		}
+
+		charID := reader.ReadInt32()
+
+		for _, v := range game.Players {
+			if v.Char().ID == charID {
+				if player.Char().MapID != v.Char().MapID {
+					return
+				}
+
+				room, ok := game.Rooms[player.RoomID].(*game.TradeRoom)
+
+				if !ok {
+					return
+				}
+
+				v.Send(packet.RoomInvite(byte(room.RoomType), player.Char().Name, player.RoomID))
+			}
+		}
 	case roomReject:
+		roomID := reader.ReadInt32()
+		rejectCode := reader.ReadByte()
+
+		if _, ok := game.Rooms[roomID]; !ok {
+			return
+		}
+
+		game.Rooms[roomID].Broadcast(packet.RoomInviteResult(rejectCode, player.Char().Name))
+
+		room, ok := game.Rooms[player.RoomID].(*game.TradeRoom)
+
+		if !ok {
+			return
+		}
+
+		room.Close() // Does a reject cause the inviter to leave as well?
+
+		delete(game.Rooms, roomID)
 	case roomAccept:
 		roomID := reader.ReadInt32()
 
@@ -87,15 +128,21 @@ func handleUIWindow(conn mnet.MConnChannel, reader mpacket.Reader) {
 			return
 		}
 
+		room, ok := game.Rooms[roomID].(*game.GameRoom)
+
+		if !ok {
+			return
+		}
+
 		if reader.ReadBool() {
 			password := reader.ReadString(int(reader.ReadInt16()))
-			if game.Rooms[roomID].Password != password {
+			if room.Password != password {
 				conn.Send(packet.RoomIncorrectPassword())
 				return
 			}
 		}
 
-		game.Rooms[roomID].AddPlayer(conn)
+		room.AddPlayer(conn)
 	case roomChat:
 		message := reader.ReadString(int(reader.ReadInt16()))
 
@@ -127,17 +174,41 @@ func handleUIWindow(conn mnet.MConnChannel, reader mpacket.Reader) {
 			game.Rooms[player.RoomID].Broadcast(packet.RoomUnready())
 		}
 	case roomOwnerExpells:
-		if _, ok := game.Rooms[player.RoomID]; ok {
-			game.Rooms[player.RoomID].Expel()
+		if _, ok := game.Rooms[player.RoomID]; !ok {
+			return
 		}
+
+		room, ok := game.Rooms[player.RoomID].(*game.GameRoom)
+
+		if !ok {
+			return
+		}
+
+		room.Expel()
 	case roomGameStart:
-		if _, ok := game.Rooms[player.RoomID]; ok {
-			game.Rooms[player.RoomID].Start()
+		if _, ok := game.Rooms[player.RoomID]; !ok {
+			return
 		}
+
+		room, ok := game.Rooms[player.RoomID].(*game.GameRoom)
+
+		if !ok {
+			return
+		}
+
+		room.Start()
 	case roomChangeTurn:
-		if _, ok := game.Rooms[player.RoomID]; ok {
-			game.Rooms[player.RoomID].ChangeTurn()
+		if _, ok := game.Rooms[player.RoomID]; !ok {
+			return
 		}
+
+		room, ok := game.Rooms[player.RoomID].(*game.OmokRoom)
+
+		if !ok {
+			return
+		}
+
+		room.ChangeTurn()
 	case roomPlacePiece:
 		if _, ok := game.Rooms[player.RoomID]; !ok {
 			return
@@ -147,7 +218,13 @@ func handleUIWindow(conn mnet.MConnChannel, reader mpacket.Reader) {
 		y := reader.ReadInt32()
 		piece := reader.ReadByte()
 
-		game.Rooms[player.RoomID].PlacePiece(x, y, piece)
+		room, ok := game.Rooms[player.RoomID].(*game.OmokRoom)
+
+		if !ok {
+			return
+		}
+
+		room.PlacePiece(x, y, piece)
 	case roomSelectCard:
 		if _, ok := game.Rooms[player.RoomID]; !ok {
 			return
@@ -156,7 +233,13 @@ func handleUIWindow(conn mnet.MConnChannel, reader mpacket.Reader) {
 		turn := reader.ReadByte()
 		cardID := reader.ReadByte()
 
-		game.Rooms[player.RoomID].SelectCard(turn, cardID, conn)
+		room, ok := game.Rooms[player.RoomID].(*game.MemoryRoom)
+
+		if !ok {
+			return
+		}
+
+		room.SelectCard(turn, cardID, conn)
 	default:
 		fmt.Println("Unknown room operation", operation)
 	}
