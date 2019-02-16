@@ -223,7 +223,7 @@ func playerTakeDamage(conn mnet.MConnChannel, reader mpacket.Reader) {
 }
 
 func playerRequestAvatarInfoWindow(conn mnet.MConnChannel, reader mpacket.Reader) {
-	player, err := game.GetPlayerFromID(reader.ReadInt32())
+	player, err := game.Players.GetFromID(reader.ReadInt32())
 
 	if err != nil {
 		return

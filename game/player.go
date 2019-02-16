@@ -11,7 +11,39 @@ import (
 	"github.com/Hucaru/Valhalla/nx"
 )
 
-var Players = map[mnet.MConnChannel]*Player{}
+type playersList map[mnet.MConnChannel]*Player
+
+var Players = playersList{}
+
+func (p playersList) GetFromName(name string) (*Player, error) {
+	for i, v := range p {
+		if v.char.Name == name {
+			return p[i], nil
+		}
+	}
+
+	return &Player{}, fmt.Errorf("Unable to get player")
+}
+
+func (p playersList) GetFromConn(conn mnet.MConnChannel) (*Player, error) {
+	for i := range p {
+		if i == conn {
+			return p[i], nil
+		}
+	}
+
+	return &Player{}, fmt.Errorf("Unable to get player")
+}
+
+func (p playersList) GetFromID(id int32) (*Player, error) {
+	for i, v := range p {
+		if v.char.ID == id {
+			return p[i], nil
+		}
+	}
+
+	return &Player{}, fmt.Errorf("Unable to get player")
+}
 
 type Player struct {
 	mnet.MConnChannel
@@ -21,25 +53,35 @@ type Player struct {
 	RoomID               int32
 }
 
-func GetPlayerFromName(name string) (*Player, error) {
-	for i, v := range Players {
-		if v.char.Name == name {
-			return Players[i], nil
-		}
-	}
+// func GetPlayerFromName(name string) (*Player, error) {
+// 	for i, v := range Players {
+// 		if v.char.Name == name {
+// 			return Players[i], nil
+// 		}
+// 	}
 
-	return &Player{}, fmt.Errorf("Unable to get player")
-}
+// 	return &Player{}, fmt.Errorf("Unable to get player")
+// }
 
-func GetPlayerFromID(id int32) (*Player, error) {
-	for i, v := range Players {
-		if v.char.ID == id {
-			return Players[i], nil
-		}
-	}
+// func GetPlayerFromConn(conn mnet.MConnChannel) (*Player, error) {
+// 	for i := range Players {
+// 		if i == conn {
+// 			return Players[i], nil
+// 		}
+// 	}
 
-	return &Player{}, fmt.Errorf("Unable to get player")
-}
+// 	return &Player{}, fmt.Errorf("Unable to get player")
+// }
+
+// func GetPlayerFromID(id int32) (*Player, error) {
+// 	for i, v := range Players {
+// 		if v.char.ID == id {
+// 			return Players[i], nil
+// 		}
+// 	}
+
+// 	return &Player{}, fmt.Errorf("Unable to get player")
+// }
 
 func NewPlayer(conn mnet.MConnChannel, char def.Character) *Player {
 	return &Player{MConnChannel: conn, char: &char, InstanceID: 0}

@@ -10,6 +10,12 @@ import (
 	"github.com/Hucaru/Valhalla/mpacket"
 )
 
+type GameRoomAsserter interface {
+	Expel()
+	Start()
+	GetPassword() string
+}
+
 type GameRoom struct {
 	*baseRoom
 	Name, Password string
@@ -53,6 +59,10 @@ func (rc *roomContainer) CreateOmokRoom(name, password string, boardType byte) i
 
 	Rooms[id] = r
 	return id
+}
+
+func (r *GameRoom) GetPassword() string {
+	return r.Password
 }
 
 func (r *GameRoom) IsOwner(conn mnet.MConnChannel) bool {

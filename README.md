@@ -5,14 +5,17 @@ www.designevo.com/" title="Free Online Logo Maker">DesignEvo</a>
 </p>
 
 ## What is this?
+
 This project exists to preserve and archive an early version of the game
 
 ## Compiling Instructions
+
 Install [docker](https://docs.docker.com/install/) & [docker-compose](https://docs.docker.com/compose/install/). Thats it! 
 
 ## Starting the Server
 
 ## Features
+
 Login server:
 - [x] Login user
 - [ ] Pin (might not add this)
@@ -27,13 +30,17 @@ Login server:
 - [ ] Show worlds, channels, world status etc from information sent from world server
 
 World server:
+
 - [ ] Keep track of characters in world
 - [ ] Send information to login server
 - [ ] Send IP, port to channel for change channel requests
 - [ ] Forward whisphers
 - [ ] Allow gm command to actiavate exp/drop changes accross all channels
 
+Cashshop server:
+
 Channel server:
+
 - [x] Players can see each other
 - [x] Player chat
 - [x] GM commands
@@ -65,9 +72,8 @@ Channel server:
 - [ ] Party quests
 - [ ] Whisphers
 
-Cashshop server:
+## Acknowledgements
 
-## Acknowledgements 
 - Sunnyboy for providing a [list](http://forum.ragezone.com/f921/library-idbs-versions-named-addresses-987815/) of idbs for which this project would not have started
 - [Vana](https://github.com/retep998/Vana)
 - [WvsGlobal](https://github.com/diamondo25/WvsGlobal)
@@ -77,6 +83,7 @@ Cashshop server:
 NPCs are scripted in [anko](https://github.com/mattn/anko)
 
 Taken from [here](http://forum.ragezone.com/f428/add-learning-npcs-start-finish-643364/)
+
 - #b = Blue text.
 - #c[itemid]# Shows how many [itemid] the player has in their inventory.
 - #d = Purple text.
@@ -106,7 +113,5 @@ Taken from [here](http://forum.ragezone.com/f428/add-learning-npcs-start-finish-
 - \n = New Line
 - \t = Tab (4 spaces)
 - \b = Backwards
-
-
 
 ## Screenshots

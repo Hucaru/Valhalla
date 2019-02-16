@@ -1,6 +1,7 @@
 package game
 
 import (
+	"github.com/Hucaru/Valhalla/game/def"
 	"github.com/Hucaru/Valhalla/game/packet"
 	"github.com/Hucaru/Valhalla/mnet"
 )
@@ -24,7 +25,18 @@ func (rc *roomContainer) CreateTradeRoom() int32 {
 }
 
 func (r *TradeRoom) AddPlayer(conn mnet.MConnChannel) {
-	_, _ = r.baseRoom.AddPlayer(conn)
+	pos, ok := r.baseRoom.AddPlayer(conn)
+
+	if !ok {
+		return
+	}
+	displayInfo := []def.Character{}
+
+	for _, v := range r.players {
+		displayInfo = append(displayInfo, Players[v].Char())
+	}
+
+	conn.Send(packet.RoomShowWindow(byte(RoomTypeTrade), 0, 2, pos, "", displayInfo))
 }
 
 func (r *TradeRoom) RemovePlayer(conn mnet.MConnChannel, msgCode byte) bool {
@@ -35,12 +47,18 @@ func (r *TradeRoom) RemovePlayer(conn mnet.MConnChannel, msgCode byte) bool {
 			r.Broadcast(packet.RoomLeave(byte(roomSlot), 2))
 		}
 
+		for _, v := range r.players {
+			player, err := Players.GetFromConn(v)
+
+			if err != nil {
+				continue
+			}
+
+			player.RoomID = 0
+		}
+
 		return true
 	}
 
 	return false
-}
-
-func (r *TradeRoom) Close() {
-
 }

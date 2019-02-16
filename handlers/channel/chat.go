@@ -184,7 +184,7 @@ func gmCommand(conn mnet.MConnChannel, msg string) {
 				return
 			}
 
-			player, err := game.GetPlayerFromName(command[1])
+			player, err := game.Players.GetFromName(command[1])
 
 			if err != nil {
 				conn.Send(packet.MessageNotice(err.Error()))
@@ -226,7 +226,7 @@ func gmCommand(conn mnet.MConnChannel, msg string) {
 				return
 			}
 
-			player, err := game.GetPlayerFromName(command[1])
+			player, err := game.Players.GetFromName(command[1])
 
 			if err != nil {
 				conn.Send(packet.MessageNotice(err.Error()))

@@ -87,6 +87,16 @@ func handleUIWindow(conn mnet.MConnChannel, reader mpacket.Reader) {
 
 		charID := reader.ReadInt32()
 
+		recepient, err := game.Players.GetFromID(charID)
+
+		if err != nil {
+			return
+		}
+
+		if _, ok := game.Rooms[recepient.RoomID]; ok {
+			conn.Send(packet.MessageRedText("Cannot send invite to player"))
+		}
+
 		for _, v := range game.Players {
 			if v.Char().ID == charID {
 				if player.Char().MapID != v.Char().MapID {
@@ -111,16 +121,6 @@ func handleUIWindow(conn mnet.MConnChannel, reader mpacket.Reader) {
 		}
 
 		game.Rooms[roomID].Broadcast(packet.RoomInviteResult(rejectCode, player.Char().Name))
-
-		room, ok := game.Rooms[player.RoomID].(*game.TradeRoom)
-
-		if !ok {
-			return
-		}
-
-		room.Close() // Does a reject cause the inviter to leave as well?
-
-		delete(game.Rooms, roomID)
 	case roomAccept:
 		roomID := reader.ReadInt32()
 
@@ -128,21 +128,19 @@ func handleUIWindow(conn mnet.MConnChannel, reader mpacket.Reader) {
 			return
 		}
 
-		room, ok := game.Rooms[roomID].(*game.GameRoom)
+		room, ok := game.Rooms[roomID].(game.GameRoomAsserter)
 
-		if !ok {
-			return
-		}
-
-		if reader.ReadBool() {
-			password := reader.ReadString(int(reader.ReadInt16()))
-			if room.Password != password {
-				conn.Send(packet.RoomIncorrectPassword())
-				return
+		if ok {
+			if reader.ReadBool() {
+				password := reader.ReadString(int(reader.ReadInt16()))
+				if room.GetPassword() != password {
+					conn.Send(packet.RoomIncorrectPassword())
+					return
+				}
 			}
 		}
 
-		room.AddPlayer(conn)
+		game.Rooms[roomID].AddPlayer(conn)
 	case roomChat:
 		message := reader.ReadString(int(reader.ReadInt16()))
 
@@ -178,7 +176,7 @@ func handleUIWindow(conn mnet.MConnChannel, reader mpacket.Reader) {
 			return
 		}
 
-		room, ok := game.Rooms[player.RoomID].(*game.GameRoom)
+		room, ok := game.Rooms[player.RoomID].(game.GameRoomAsserter)
 
 		if !ok {
 			return
@@ -190,7 +188,7 @@ func handleUIWindow(conn mnet.MConnChannel, reader mpacket.Reader) {
 			return
 		}
 
-		room, ok := game.Rooms[player.RoomID].(*game.GameRoom)
+		room, ok := game.Rooms[player.RoomID].(game.GameRoomAsserter)
 
 		if !ok {
 			return
