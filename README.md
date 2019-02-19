@@ -47,6 +47,7 @@ Channel server:
 - [x] Player use skills
 - [ ] Player skill logic
 - [ ] Player inventory
+- [ ] Player drop items
 - [ ] Player pets
 - [ ] Player pet items
 - [x] NPC visible
@@ -71,6 +72,8 @@ Channel server:
 - [ ] Friends list
 - [ ] Party quests
 - [ ] Whisphers
+- [ ] Buddy chat
+- [ ] Chat commands (/find etc.)
 
 ## Acknowledgements
 
