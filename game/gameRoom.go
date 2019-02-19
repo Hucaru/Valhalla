@@ -326,6 +326,7 @@ func checkOmokWin(board [15][15]byte, piece byte) bool {
 
 func (r *OmokRoom) Start() {
 	r.GameRoom.Start()
+	r.board = [15][15]byte{}
 	r.Broadcast(packet.RoomOmokStart(r.p1Turn))
 }
 
@@ -376,6 +377,7 @@ func (r *OmokRoom) UndoTurn(conn mnet.MConnChannel) {
 		if v != conn {
 			r.board[r.previousTurn[i][0]][r.previousTurn[i][1]] = 0
 			r.Broadcast(packet.RoomUndo(r.previousTurn[i][0], r.previousTurn[i][1], r.p1Turn))
+			r.p1Turn = !r.p1Turn
 			return
 		}
 	}

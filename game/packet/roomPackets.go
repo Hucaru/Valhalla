@@ -153,6 +153,7 @@ func RoomUndo(x, y int32, p1 bool) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcodes.SendChannelRoom)
 	p.WriteByte(0x2f)
 	p.WriteByte(0x01)
+	// the following bugs out of p1, p2, p1 and p2 requests undo. This will undo p1 move and set the board into a buged out state
 	p.WriteByte(0x01)
 	p.WriteBool(p1)
 
