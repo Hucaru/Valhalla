@@ -26,6 +26,7 @@ const (
 	roomRequestUndo           = 46
 	roomRequestUndoResult     = 47
 	roomRequestExitDuringGame = 48
+	roomUndoRequestExit       = 49
 	roomReadyButtonPressed    = 50
 	roomUnready               = 51
 	roomOwnerExpells          = 52
@@ -243,6 +244,18 @@ func handleUIWindow(conn mnet.MConnChannel, reader mpacket.Reader) {
 		}
 
 		room.LeaveAfterGame(conn)
+	case roomUndoRequestExit:
+		if _, ok := game.Rooms[player.RoomID]; !ok {
+			return
+		}
+
+		room, ok := game.Rooms[player.RoomID].(game.GameRoomAsserter)
+
+		if !ok {
+			return
+		}
+
+		room.UndoLeaveAfterGame(conn)
 	case roomReadyButtonPressed:
 		if _, ok := game.Rooms[player.RoomID]; ok {
 			game.Rooms[player.RoomID].Broadcast(packet.RoomReady())

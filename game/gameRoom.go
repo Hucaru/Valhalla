@@ -18,6 +18,7 @@ type GameRoomAsserter interface {
 	Tie() bool
 	GiveUp(conn mnet.MConnChannel) bool
 	LeaveAfterGame(conn mnet.MConnChannel)
+	UndoLeaveAfterGame(conn mnet.MConnChannel)
 	ChangeTurn()
 }
 
@@ -247,6 +248,34 @@ func (r *GameRoom) LeaveAfterGame(conn mnet.MConnChannel) {
 	for i, v := range r.players[0:2] {
 		if v == conn {
 			r.leaveAfterGame[i] = true
+
+			player, err := Players.GetFromConn(conn)
+
+			if err != nil {
+				return
+			}
+
+			r.Broadcast(packet.RoomYellowChat(0x05, player.Char().Name))
+
+			return
+		}
+	}
+}
+
+func (r *GameRoom) UndoLeaveAfterGame(conn mnet.MConnChannel) {
+	for i, v := range r.players[0:2] {
+		if v == conn {
+			r.leaveAfterGame[i] = false
+
+			player, err := Players.GetFromConn(conn)
+
+			if err != nil {
+				return
+			}
+
+			r.Broadcast(packet.RoomYellowChat(0x06, player.Char().Name))
+
+			return
 		}
 	}
 }
@@ -422,6 +451,12 @@ func (r *MemoryRoom) SelectCard(turn, cardID byte, conn mnet.MConnChannel) bool 
 		r.firstCardPick = cardID
 		r.BroadcastExcept(packet.RoomSelectCard(turn, cardID, r.firstCardPick, turn), conn)
 	} else if r.cards[r.firstCardPick] == r.cards[cardID] {
+		player, err := Players.GetFromConn(conn)
+
+		if err != nil {
+			return false
+		}
+
 		if r.p1Turn {
 			r.matches[0]++
 			r.Broadcast(packet.RoomSelectCard(turn, cardID, r.firstCardPick, 0xFF))
@@ -431,6 +466,8 @@ func (r *MemoryRoom) SelectCard(turn, cardID byte, conn mnet.MConnChannel) bool 
 			r.Broadcast(packet.RoomSelectCard(turn, cardID, r.firstCardPick, 0xFF))
 			// increment player matched card number
 		}
+
+		r.Broadcast(packet.RoomYellowChat(0x09, player.Char().Name))
 
 		return r.checkCardWin()
 	} else if r.p1Turn {

@@ -17,8 +17,8 @@ const (
 	RoomTypeMemory       RoomType = 0x02
 	RoomTypeTrade        RoomType = 0x03
 	RoomTypePersonalShop RoomType = 0x04
-	omokMaxPlayers                = 4
-	memoryMaxPlayers              = 4
+	omokMaxPlayers                = 2 // can these rooms also have two observers in a queue?
+	memoryMaxPlayers              = 2 // can these rooms also have two observers in a queue?
 	tradeMaxPlayers               = 2
 )
 

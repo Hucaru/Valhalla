@@ -88,7 +88,10 @@ func RoomYellowChat(msgType byte, name string) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcodes.SendChannelRoom)
 	p.WriteByte(0x06)
 	p.WriteByte(7)
-	p.WriteByte(msgType) // expelled: 0, x's turn: 1, forfeit: 2, handicap request: 3, left: 4
+	// expelled: 0, x's turn: 1, forfeit: 2, handicap request: 3, left: 4,
+	// called to leave: 5, cancelled leave: 6, entered: 7, can't start lack of mesos:8
+	// has matched cards: 9
+	p.WriteByte(msgType)
 	p.WriteString(name)
 
 	return p
@@ -209,13 +212,24 @@ func RoomGameResult(draw bool, winningSlot byte, forfeit bool, chars []def.Chara
 
 	p.WriteByte(winningSlot)
 
-	for _, char := range chars {
+	// Why is there a difference between the two?
+	if draw {
+		p.WriteByte(0)
+		p.WriteByte(0)
+		p.WriteByte(0)
+	} else {
 		p.WriteInt32(1) // ?
-		p.WriteInt32(char.MiniGameWins)
-		p.WriteInt32(char.MiniGameDraw)
-		p.WriteInt32(char.MiniGameLoss)
-		p.WriteInt32(2000)
 	}
+
+	p.WriteInt32(chars[0].MiniGameWins)
+	p.WriteInt32(chars[0].MiniGameDraw)
+	p.WriteInt32(chars[0].MiniGameLoss)
+	p.WriteInt32(2000)
+	p.WriteInt32(1)
+	p.WriteInt32(chars[1].MiniGameWins)
+	p.WriteInt32(chars[1].MiniGameDraw)
+	p.WriteInt32(chars[1].MiniGameLoss)
+	p.WriteInt32(2000)
 
 	return p
 }
