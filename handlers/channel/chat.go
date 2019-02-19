@@ -235,44 +235,6 @@ func gmCommand(conn mnet.MConnChannel, msg string) {
 
 			player.Revive()
 		}
-	case "hp":
-		if len(command) < 2 {
-			return
-		}
-
-		player, ok := game.Players[conn]
-
-		if !ok {
-			conn.Send(packet.MessageNotice("Error in getting player"))
-			return
-		}
-
-		if command[1][0] == '+' {
-			ammount, err := strconv.Atoi(command[1][1:])
-
-			if err != nil {
-				conn.Send(packet.MessageNotice(err.Error()))
-			}
-
-			player.GiveHP(int32(ammount))
-		} else if command[1][0] == '-' {
-			ammount, err := strconv.Atoi(command[1][1:])
-
-			if err != nil {
-				conn.Send(packet.MessageNotice(err.Error()))
-			}
-
-			player.GiveHP(int32(-ammount))
-
-		} else {
-			ammount, err := strconv.Atoi(command[1])
-
-			if err != nil {
-				conn.Send(packet.MessageNotice(err.Error()))
-			}
-
-			player.SetHP(int32(ammount))
-		}
 	case "cody":
 		if len(command) < 2 {
 			return
@@ -344,6 +306,120 @@ func gmCommand(conn mnet.MConnChannel, msg string) {
 		}
 
 		conn.Send(packet.MessageNotice("Instance deleted"))
+	case "hp":
+		if len(command) < 2 {
+			return
+		}
+
+		player, ok := game.Players[conn]
+
+		if !ok {
+			conn.Send(packet.MessageNotice("Error in getting player"))
+			return
+		}
+
+		if command[1][0] == '+' {
+			ammount, err := strconv.Atoi(command[1][1:])
+
+			if err != nil {
+				conn.Send(packet.MessageNotice(err.Error()))
+			}
+
+			player.GiveHP(int32(ammount))
+		} else if command[1][0] == '-' {
+			ammount, err := strconv.Atoi(command[1][1:])
+
+			if err != nil {
+				conn.Send(packet.MessageNotice(err.Error()))
+			}
+
+			player.GiveHP(int32(-ammount))
+
+		} else {
+			ammount, err := strconv.Atoi(command[1])
+
+			if err != nil {
+				conn.Send(packet.MessageNotice(err.Error()))
+			}
+
+			player.SetMaxHP(int32(ammount))
+		}
+	case "mp":
+		if len(command) < 2 {
+			return
+		}
+
+		player, ok := game.Players[conn]
+
+		if !ok {
+			conn.Send(packet.MessageNotice("Error in getting player"))
+			return
+		}
+
+		if command[1][0] == '+' {
+			ammount, err := strconv.Atoi(command[1][1:])
+
+			if err != nil {
+				conn.Send(packet.MessageNotice(err.Error()))
+			}
+
+			player.GiveMP(int32(ammount))
+		} else if command[1][0] == '-' {
+			ammount, err := strconv.Atoi(command[1][1:])
+
+			if err != nil {
+				conn.Send(packet.MessageNotice(err.Error()))
+			}
+
+			player.GiveMP(int32(-ammount))
+
+		} else {
+			ammount, err := strconv.Atoi(command[1])
+
+			if err != nil {
+				conn.Send(packet.MessageNotice(err.Error()))
+			}
+
+			player.SetMaxMP(int32(ammount))
+		}
+	case "exp":
+		if len(command) < 2 {
+			return
+		}
+
+		player, ok := game.Players[conn]
+
+		if !ok {
+			conn.Send(packet.MessageNotice("Error in getting player"))
+			return
+		}
+
+		if command[1][0] == '+' {
+			ammount, err := strconv.Atoi(command[1][1:])
+
+			if err != nil {
+				conn.Send(packet.MessageNotice(err.Error()))
+			}
+
+			player.GiveEXP(int32(ammount))
+		} else if command[1][0] == '-' {
+			ammount, err := strconv.Atoi(command[1][1:])
+
+			if err != nil {
+				conn.Send(packet.MessageNotice(err.Error()))
+			}
+
+			player.GiveEXP(int32(-ammount))
+
+		} else {
+			ammount, err := strconv.Atoi(command[1])
+
+			if err != nil {
+				conn.Send(packet.MessageNotice(err.Error()))
+			}
+
+			player.SetEXP(int32(ammount))
+		}
 	default:
 		log.Println("Unkown GM command:", msg)
 	}

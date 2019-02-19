@@ -1,8 +1,10 @@
 package channel
 
 import (
+	"fmt"
 	"log"
 
+	"github.com/Hucaru/Valhalla/constant"
 	"github.com/Hucaru/Valhalla/database"
 	"github.com/Hucaru/Valhalla/game"
 	"github.com/Hucaru/Valhalla/game/def"
@@ -27,7 +29,7 @@ func playerConnect(conn mnet.MConnChannel, reader mpacket.Reader) {
 	conn.SetAccountID(accountID)
 
 	// check that the world this characters belongs to is the same as the world this channel is part of
-	conn.SetLogedIn(true)
+	conn.SetLogedIn(true) // this seems redundant
 
 	char := def.GetCharacterFromID(charID)
 
@@ -276,11 +278,66 @@ func playerPassiveRegen(conn mnet.MConnChannel, reader mpacket.Reader) {
 }
 
 func playerAddStatPoint(conn mnet.MConnChannel, reader mpacket.Reader) {
-	// statID := reader.ReadInt32()
+	player, ok := game.Players[conn]
+
+	if !ok {
+		return
+	}
+
+	if player.Char().AP > 0 {
+		player.GiveAP(-1)
+	}
+
+	statID := reader.ReadInt32()
+
+	switch statID {
+	case constant.StrId:
+		player.GiveStr(1)
+	case constant.DexId:
+		player.GiveDex(1)
+	case constant.IntId:
+		player.GiveInt(1)
+	case constant.LukId:
+		player.GiveLuk(1)
+	default:
+		fmt.Println("unknown stat id:", statID)
+	}
 }
 
 func playerAddSkillPoint(conn mnet.MConnChannel, reader mpacket.Reader) {
-	// skillID := reader.ReadInt32()
+	player, ok := game.Players[conn]
+
+	if !ok {
+		return
+	}
+
+	skillID := reader.ReadInt32()
+
+	nxSkill, err := nx.GetPlayerSkill(skillID)
+
+	if err != nil {
+		return
+	}
+
+	skill, ok := player.Char().Skills[skillID]
+
+	if ok {
+		// check against max level
+		if int(skill.Level) >= len(nxSkill) {
+			return
+		}
+
+		// increment skill level
+	} else {
+		// check if class can have skill
+
+		// give new skill
+	}
+
+	if player.Char().SP > 0 {
+		player.GiveAP(-1)
+	}
+
 }
 
 func playerGiveFame(conn mnet.MConnChannel, reader mpacket.Reader) {

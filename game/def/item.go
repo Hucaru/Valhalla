@@ -54,7 +54,7 @@ func ItemIsStackable(itemID int32, ammount int16) bool {
 	if invID != 5 && // pet item
 		invID != 1.0 && // equip
 		bullet != 207 && // star/arrow etc
-		ammount <= constant.MAX_ITEM_STACK {
+		ammount <= constant.MaxItemStack {
 
 		return true
 	}
@@ -69,7 +69,7 @@ func CreateFromID(id int32) (Item, error) {
 	nxInfo, err := nx.GetItem(id)
 
 	if err != nil {
-		return Item{}, fmt.Errorf("Unable to generate item of id:", id)
+		return Item{}, fmt.Errorf("Unable to generate item of id: %v", id)
 	}
 
 	newItem.UUID = uuid.Must(uuid.NewRandom())

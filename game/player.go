@@ -3,6 +3,7 @@ package game
 import (
 	"fmt"
 	"math"
+	"math/rand"
 
 	"github.com/Hucaru/Valhalla/constant"
 	"github.com/Hucaru/Valhalla/game/def"
@@ -52,36 +53,6 @@ type Player struct {
 	InstanceID           int
 	RoomID               int32
 }
-
-// func GetPlayerFromName(name string) (*Player, error) {
-// 	for i, v := range Players {
-// 		if v.char.Name == name {
-// 			return Players[i], nil
-// 		}
-// 	}
-
-// 	return &Player{}, fmt.Errorf("Unable to get player")
-// }
-
-// func GetPlayerFromConn(conn mnet.MConnChannel) (*Player, error) {
-// 	for i := range Players {
-// 		if i == conn {
-// 			return Players[i], nil
-// 		}
-// 	}
-
-// 	return &Player{}, fmt.Errorf("Unable to get player")
-// }
-
-// func GetPlayerFromID(id int32) (*Player, error) {
-// 	for i, v := range Players {
-// 		if v.char.ID == id {
-// 			return Players[i], nil
-// 		}
-// 	}
-
-// 	return &Player{}, fmt.Errorf("Unable to get player")
-// }
 
 func NewPlayer(conn mnet.MConnChannel, char def.Character) *Player {
 	return &Player{MConnChannel: conn, char: &char, InstanceID: 0}
@@ -144,7 +115,7 @@ func (p *Player) SetMaxHP(ammount int32) {
 	}
 
 	p.char.MaxHP = int16(ammount)
-	p.Send(packet.PlayerStatChange(true, constant.MAX_HP_ID, ammount))
+	p.Send(packet.PlayerStatChange(true, constant.MaxHpId, ammount))
 }
 
 func (p *Player) SetHP(ammount int32) {
@@ -158,7 +129,7 @@ func (p *Player) SetHP(ammount int32) {
 		p.char.HP = 0
 	}
 
-	p.Send(packet.PlayerStatChange(true, constant.HP_ID, ammount))
+	p.Send(packet.PlayerStatChange(true, constant.HpId, ammount))
 }
 
 func (p *Player) GiveHP(ammount int32) {
@@ -171,7 +142,7 @@ func (p *Player) SetMaxMP(ammount int32) {
 	}
 
 	p.char.MaxMP = int16(ammount)
-	p.Send(packet.PlayerStatChange(true, constant.MAX_MP_ID, ammount))
+	p.Send(packet.PlayerStatChange(true, constant.MaxMpId, ammount))
 }
 
 func (p *Player) SetMP(ammount int32) {
@@ -185,30 +156,88 @@ func (p *Player) SetMP(ammount int32) {
 		p.char.MP = 0
 	}
 
-	p.Send(packet.PlayerStatChange(true, constant.MP_ID, ammount))
+	p.Send(packet.PlayerStatChange(true, constant.MpId, ammount))
 }
 
 func (p *Player) GiveMP(ammount int32) {
 	p.SetMP(int32(p.char.MP) + ammount)
 }
 
-func (p *Player) SetEXP() {
+func (p *Player) levelUp() {
+	p.GiveAP(5)
+	p.GiveSP(3)
 
+	levelUpHp := func(classIncrease int16, bonus int16) int16 {
+		return int16(rand.Intn(3)+1) + classIncrease + bonus // deterministic rand, maybe seed with time?
+	}
+
+	levelUpMp := func(classIncrease int16, bonus int16) int16 {
+		return int16(rand.Intn(1)+1) + classIncrease + bonus // deterministic rand, maybe seed with time?
+	}
+
+	switch p.char.Job / 100 { // add effects from skills e.g. improve max mp
+	case 0:
+		p.char.MaxHP += levelUpHp(constant.BeginnerHpAdd, 0)
+		p.char.MaxMP += levelUpMp(constant.BeginnerMpAdd, p.char.Int)
+	case 1:
+		p.char.MaxHP += levelUpHp(constant.WarriorHpAdd, 0)
+		p.char.MaxMP += levelUpMp(constant.WarriorMpAdd, p.char.Int)
+	case 2:
+		p.char.MaxHP += levelUpHp(constant.MagicianHpAdd, 0)
+		p.char.MaxMP += levelUpMp(constant.MagicianMpAdd, 2*p.char.Int)
+	case 3:
+		p.char.MaxHP += levelUpHp(constant.BowmanHpAdd, 0)
+		p.char.MaxMP += levelUpMp(constant.BowmanMpAdd, p.char.Int)
+	case 4:
+		p.char.MaxHP += levelUpHp(constant.ThiefHpAdd, 0)
+		p.char.MaxMP += levelUpMp(constant.ThiefMpAdd, p.char.Int)
+	case 5:
+		p.char.MaxHP += constant.AdminHpAdd
+		p.char.MaxMP += constant.AdminMpAdd
+	default:
+		fmt.Println("Unkown job", p.char.Job)
+	}
+
+	p.char.HP = p.char.MaxHP
+	p.char.MP = p.char.MaxMP
+
+	p.SetHP(int32(p.char.HP))
+	p.SetMaxHP(int32(p.char.HP))
+
+	p.SetMP(int32(p.char.MP))
+	p.SetMaxMP(int32(p.char.MP))
+
+	p.GiveLevel(1)
 }
 
-func (p *Player) GiveEXP() {
-
+func (p *Player) SetEXP(ammount int32) {
+	remainder := ammount - constant.ExpTable[p.char.Level-1]
+	if remainder >= 0 {
+		p.levelUp()
+		p.SetEXP(remainder)
+	} else {
+		p.char.EXP = ammount
+		p.Send(packet.PlayerStatChange(false, constant.ExpId, int32(ammount)))
+	}
 }
 
-func (p *Player) SetLevel() {
-
+func (p *Player) GiveEXP(ammount int32) {
+	p.SetEXP(p.char.EXP + ammount)
 }
 
-func (p *Player) GiveLevel() {
+func (p *Player) SetLevel(level byte) {
+	p.char.Level += 1
+	p.Send(packet.PlayerStatChange(false, constant.LevelId, int32(level)))
+	Maps[p.char.MapID].Send(packet.PlayerLevelUpAnimation(p.char.ID), p.InstanceID)
+}
+
+func (p *Player) GiveLevel(ammount byte) {
+	p.SetLevel(p.char.Level + ammount)
 }
 
 func (p *Player) SetAP(ammount int16) {
-
+	p.char.AP = ammount
+	p.Send(packet.PlayerStatChange(false, constant.ApId, int32(ammount)))
 }
 
 func (p *Player) GiveAP(ammount int16) {
@@ -216,7 +245,8 @@ func (p *Player) GiveAP(ammount int16) {
 }
 
 func (p *Player) SetSP(ammount int16) {
-
+	p.char.SP = ammount
+	p.Send(packet.PlayerStatChange(false, constant.SpId, int32(ammount)))
 }
 
 func (p *Player) GiveSP(ammount int16) {
@@ -224,7 +254,8 @@ func (p *Player) GiveSP(ammount int16) {
 }
 
 func (p *Player) SetStr(ammount int16) {
-
+	p.char.Str = ammount
+	p.Send(packet.PlayerStatChange(true, constant.StrId, int32(ammount)))
 }
 
 func (p *Player) GiveStr(ammount int16) {
@@ -232,7 +263,8 @@ func (p *Player) GiveStr(ammount int16) {
 }
 
 func (p *Player) SetDex(ammount int16) {
-
+	p.char.Dex = ammount
+	p.Send(packet.PlayerStatChange(true, constant.DexId, int32(ammount)))
 }
 
 func (p *Player) GiveDex(ammount int16) {
@@ -240,7 +272,8 @@ func (p *Player) GiveDex(ammount int16) {
 }
 
 func (p *Player) SetInt(ammount int16) {
-
+	p.char.Int = ammount
+	p.Send(packet.PlayerStatChange(true, constant.IntId, int32(ammount)))
 }
 
 func (p *Player) GiveInt(ammount int16) {
@@ -248,19 +281,21 @@ func (p *Player) GiveInt(ammount int16) {
 }
 
 func (p *Player) SetLuk(ammount int16) {
-
+	p.char.Luk = ammount
+	p.Send(packet.PlayerStatChange(true, constant.LukId, int32(ammount)))
 }
 
 func (p *Player) GiveLuk(ammount int16) {
 	p.SetLuk(p.char.Luk + ammount)
 }
 
-func (p *Player) SetMesos() {
-
+func (p *Player) SetMesos(ammount int32) {
+	p.char.Mesos = ammount
+	p.Send(packet.PlayerStatChange(false, constant.MesosId, ammount))
 }
 
-func (p *Player) GiveMesos() {
-
+func (p *Player) GiveMesos(ammount int32) {
+	p.SetMesos(p.char.Mesos + ammount)
 }
 
 func (p *Player) GiveItem() {
