@@ -143,7 +143,18 @@ func RoomRequestUndo() mpacket.Packet {
 
 func RoomRejectUndo() mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcodes.SendChannelRoom)
-	p.WriteByte(0x2e)
+	p.WriteByte(0x2f)
+	p.WriteByte(0x00)
+
+	return p
+}
+
+func RoomUndo(x, y int32, p1 bool) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcodes.SendChannelRoom)
+	p.WriteByte(0x2f)
+	p.WriteByte(0x01)
+	p.WriteByte(0x01)
+	p.WriteBool(p1)
 
 	return p
 }

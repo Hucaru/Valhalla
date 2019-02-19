@@ -155,14 +155,94 @@ func handleUIWindow(conn mnet.MConnChannel, reader mpacket.Reader) {
 			delete(game.Rooms, roomID)
 		}
 	case roomInsertItem:
+		// invTab := reader.ReadByte()
+		// itemSlot := reader.ReadInt16()
+		// quantity := reader.ReadInt16()
+		// tradeWindowSlot := reader.ReadByte()
 	case roomMesos:
+		// amount := reader.ReadInt32()
 	case roomAcceptTrade:
 	case roomRequestTie:
+		if _, ok := game.Rooms[player.RoomID]; !ok {
+			return
+		}
+
+		room, ok := game.Rooms[player.RoomID].(game.GameRoomAsserter)
+
+		if !ok {
+			return
+		}
+
+		room.SendOpponent(conn, packet.RoomRequestTie())
 	case roomRequestTieResult:
+		if _, ok := game.Rooms[player.RoomID]; !ok {
+			return
+		}
+
+		room, ok := game.Rooms[player.RoomID].(game.GameRoomAsserter)
+
+		if !ok {
+			return
+		}
+
+		if reader.ReadByte() == 1 {
+			if room.Tie() {
+				delete(game.Rooms, player.RoomID)
+			}
+		} else {
+			room.SendOpponent(conn, packet.RoomRejectTie())
+		}
 	case roomRequestGiveUp:
+		if _, ok := game.Rooms[player.RoomID]; !ok {
+			return
+		}
+
+		room, ok := game.Rooms[player.RoomID].(game.GameRoomAsserter)
+
+		if !ok {
+			return
+		}
+
+		room.GiveUp(conn)
 	case roomRequestUndo:
+		if _, ok := game.Rooms[player.RoomID]; !ok {
+			return
+		}
+
+		room, ok := game.Rooms[player.RoomID].(game.GameRoomAsserter)
+
+		if !ok {
+			return
+		}
+
+		room.SendOpponent(conn, packet.RoomRequestUndo())
 	case roomRequestUndoResult:
+		if _, ok := game.Rooms[player.RoomID]; !ok {
+			return
+		}
+
+		room, ok := game.Rooms[player.RoomID].(*game.OmokRoom)
+
+		if !ok {
+			return
+		}
+		if reader.ReadByte() == 1 {
+			room.UndoTurn(conn)
+		} else {
+			room.SendOpponent(conn, packet.RoomRejectUndo())
+		}
 	case roomRequestExitDuringGame:
+		if _, ok := game.Rooms[player.RoomID]; !ok {
+			return
+		}
+
+		room, ok := game.Rooms[player.RoomID].(game.GameRoomAsserter)
+
+		if !ok {
+			return
+		}
+
+		room.LeaveAfterGame(conn)
 	case roomReadyButtonPressed:
 		if _, ok := game.Rooms[player.RoomID]; ok {
 			game.Rooms[player.RoomID].Broadcast(packet.RoomReady())
@@ -200,7 +280,7 @@ func handleUIWindow(conn mnet.MConnChannel, reader mpacket.Reader) {
 			return
 		}
 
-		room, ok := game.Rooms[player.RoomID].(*game.OmokRoom)
+		room, ok := game.Rooms[player.RoomID].(game.GameRoomAsserter)
 
 		if !ok {
 			return
@@ -222,7 +302,9 @@ func handleUIWindow(conn mnet.MConnChannel, reader mpacket.Reader) {
 			return
 		}
 
-		room.PlacePiece(x, y, piece)
+		if room.PlacePiece(x, y, piece) {
+			delete(game.Rooms, player.RoomID)
+		}
 	case roomSelectCard:
 		if _, ok := game.Rooms[player.RoomID]; !ok {
 			return
@@ -237,7 +319,9 @@ func handleUIWindow(conn mnet.MConnChannel, reader mpacket.Reader) {
 			return
 		}
 
-		room.SelectCard(turn, cardID, conn)
+		if room.SelectCard(turn, cardID, conn) {
+			delete(game.Rooms, player.RoomID)
+		}
 	default:
 		fmt.Println("Unknown room operation", operation)
 	}
