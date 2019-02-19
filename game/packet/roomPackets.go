@@ -97,13 +97,6 @@ func RoomYellowChat(msgType byte, name string) mpacket.Packet {
 	return p
 }
 
-func RoomShowAccept() mpacket.Packet {
-	p := mpacket.CreateWithOpcode(opcodes.SendChannelRoom)
-	p.WriteByte(0x0F)
-
-	return p
-}
-
 func RoomInvite(roomType byte, name string, roomID int32) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcodes.SendChannelRoom)
 	p.WriteByte(0x02)
@@ -119,6 +112,13 @@ func RoomInviteResult(resultCode byte, name string) mpacket.Packet {
 	p.WriteByte(0x03)
 	p.WriteByte(resultCode)
 	p.WriteString(name)
+
+	return p
+}
+
+func RoomShowAccept() mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcodes.SendChannelRoom)
+	p.WriteByte(0x0F)
 
 	return p
 }

@@ -78,6 +78,7 @@ func handleUIWindow(conn mnet.MConnChannel, reader mpacket.Reader) {
 			roomID := game.Rooms.CreateTradeRoom()
 			game.Rooms[roomID].AddPlayer(conn)
 		case game.RoomTypePersonalShop:
+			fmt.Println("personal shop creation")
 		default:
 			fmt.Println("Unkown room type", roomType)
 		}

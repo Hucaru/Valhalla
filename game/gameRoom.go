@@ -457,16 +457,16 @@ func (r *MemoryRoom) SelectCard(turn, cardID byte, conn mnet.MConnChannel) bool 
 			return false
 		}
 
+		var points byte = 2
+
 		if r.p1Turn {
 			r.matches[0]++
-			r.Broadcast(packet.RoomSelectCard(turn, cardID, r.firstCardPick, 0xFF))
-			// increment player matched card number
 		} else {
 			r.matches[1]++
-			r.Broadcast(packet.RoomSelectCard(turn, cardID, r.firstCardPick, 0xFF))
-			// increment player matched card number
+			points = 3
 		}
 
+		r.Broadcast(packet.RoomSelectCard(turn, cardID, r.firstCardPick, points))
 		r.Broadcast(packet.RoomYellowChat(0x09, player.Char().Name))
 
 		return r.checkCardWin()
