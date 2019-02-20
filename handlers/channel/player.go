@@ -313,28 +313,38 @@ func playerAddSkillPoint(conn mnet.MConnChannel, reader mpacket.Reader) {
 
 	skillID := reader.ReadInt32()
 
-	nxSkill, err := nx.GetPlayerSkill(skillID)
+	nxSkills, err := nx.GetPlayerSkill(skillID)
 
 	if err != nil {
+		fmt.Println("error")
 		return
 	}
 
-	skill, ok := player.Char().Skills[skillID]
+	char := player.Char()
+
+	skill, ok := char.Skills[skillID]
 
 	if ok {
-		// check against max level
-		if int(skill.Level) >= len(nxSkill) {
+		// check that increasing skill level won't go above max
+		if int(skill.Level) >= len(nxSkills) {
 			return
 		}
 
-		// increment skill level
+		player.UpdateSkill(def.CreateSkillFromData(skillID, skill.Level+1, nxSkills[skill.Level]))
 	} else {
 		// check if class can have skill
+		baseSkillID := skillID / 10000
+
+		if !validateSkillWithJob(char.Job, baseSkillID) {
+			conn.Send(packet.PlayerNoChange())
+			fmt.Println("Unknown skill learn:", char.Job, baseSkillID)
+		}
 
 		// give new skill
+		player.UpdateSkill(def.CreateSkillFromData(skillID, 1, nxSkills[skill.Level+1]))
 	}
 
-	if player.Char().SP > 0 {
+	if char.SP > 0 {
 		player.GiveAP(-1)
 	}
 
@@ -350,4 +360,109 @@ func playerMoveInventoryItem(conn mnet.MConnChannel, reader mpacket.Reader) {
 	// newPos := reader.ReadInt16()
 
 	// amount := reader.ReadInt16() // amount?
+}
+
+func validateSkillWithJob(jobID int16, baseSkillID int32) bool {
+	switch jobID {
+	case constant.WarriorJobID:
+		if baseSkillID != constant.WarriorJobID {
+			return false
+		}
+	case constant.FighterJobID:
+		if baseSkillID != constant.WarriorJobID && baseSkillID != constant.FighterJobID {
+			return false
+		}
+	case constant.CrusaderJobID:
+		if baseSkillID != constant.WarriorJobID && baseSkillID != constant.FighterJobID && baseSkillID != constant.CrusaderJobID {
+			return false
+		}
+	case constant.PageJobID:
+		if baseSkillID != constant.WarriorJobID && baseSkillID != constant.PageJobID {
+			return false
+		}
+	case constant.WhiteKnightJobID:
+		if baseSkillID != constant.WarriorJobID && baseSkillID != constant.PageJobID && baseSkillID != constant.WhiteKnightJobID {
+			return false
+		}
+	case constant.SpearmanJobID:
+		if baseSkillID != constant.WarriorJobID && baseSkillID != constant.SpearmanJobID {
+			return false
+		}
+	case constant.DragonKnightJobID:
+		if baseSkillID != constant.WarriorJobID && baseSkillID != constant.SpearmanJobID && baseSkillID != constant.DragonKnightJobID {
+			return false
+		}
+	case constant.MagicianJobID:
+		if baseSkillID != constant.MagicianJobID {
+			return false
+		}
+	case constant.FirePoisonWizardJobID:
+		if baseSkillID != constant.MagicianJobID && baseSkillID != constant.FirePoisonWizardJobID {
+			return false
+		}
+	case constant.FirePoisonMageJobID:
+		if baseSkillID != constant.MagicianJobID && baseSkillID != constant.FirePoisonWizardJobID && baseSkillID != constant.FirePoisonMageJobID {
+			return false
+		}
+	case constant.IceLightWizardJobID:
+		if baseSkillID != constant.MagicianJobID && baseSkillID != constant.IceLightWizardJobID {
+			return false
+		}
+	case constant.IceLightMageJobID:
+		if baseSkillID != constant.MagicianJobID && baseSkillID != constant.IceLightWizardJobID && baseSkillID != constant.IceLightMageJobID {
+			return false
+		}
+	case constant.ClericJobID:
+		if baseSkillID != constant.MagicianJobID && baseSkillID != constant.ClericJobID {
+			return false
+		}
+	case constant.PriestJobID:
+		if baseSkillID != constant.MagicianJobID && baseSkillID != constant.ClericJobID && baseSkillID != constant.PriestJobID {
+			return false
+		}
+	case constant.BowmanJobID:
+		if baseSkillID != constant.MagicianJobID {
+			return false
+		}
+	case constant.HunterJobID:
+		if baseSkillID != constant.MagicianJobID && baseSkillID != constant.HunterJobID {
+			return false
+		}
+	case constant.RangerJobID:
+		if baseSkillID != constant.MagicianJobID && baseSkillID != constant.HunterJobID && baseSkillID != constant.RangerJobID {
+			return false
+		}
+	case constant.CrossbowmanJobID:
+		if baseSkillID != constant.MagicianJobID && baseSkillID != constant.CrossbowmanJobID {
+			return false
+		}
+	case constant.SniperJobID:
+		if baseSkillID != constant.MagicianJobID && baseSkillID != constant.CrossbowmanJobID && baseSkillID != constant.SniperJobID {
+			return false
+		}
+	case constant.ThiefJobID:
+		if baseSkillID != constant.ThiefJobID {
+			return false
+		}
+	case constant.AssassinJobID:
+		if baseSkillID != constant.ThiefJobID && baseSkillID != constant.AssassinJobID {
+			return false
+		}
+	case constant.HermitJobID:
+		if baseSkillID != constant.ThiefJobID && baseSkillID != constant.AssassinJobID && baseSkillID != constant.HermitJobID {
+			return false
+		}
+	case constant.BanditJobID:
+		if baseSkillID != constant.ThiefJobID && baseSkillID != constant.BanditJobID {
+			return false
+		}
+	case constant.ChiefBanditJobID:
+		if baseSkillID != constant.ThiefJobID && baseSkillID != constant.BanditJobID && baseSkillID != constant.ChiefBanditJobID {
+			return false
+		}
+	default:
+		return false
+	}
+
+	return true
 }

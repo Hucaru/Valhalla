@@ -50,6 +50,36 @@ const (
 
 	AdminHpAdd = 150
 	AdminMpAdd = 150
+
+	BeginnerJobID = 0
+
+	WarriorJobID      = 100
+	FighterJobID      = 110
+	CrusaderJobID     = 111
+	PageJobID         = 120
+	WhiteKnightJobID  = 121
+	SpearmanJobID     = 130
+	DragonKnightJobID = 131
+
+	MagicianJobID         = 200
+	FirePoisonWizardJobID = 210
+	FirePoisonMageJobID   = 211
+	IceLightWizardJobID   = 220
+	IceLightMageJobID     = 221
+	ClericJobID           = 230
+	PriestJobID           = 231
+
+	BowmanJobID      = 300
+	HunterJobID      = 310
+	RangerJobID      = 311
+	CrossbowmanJobID = 320
+	SniperJobID      = 321
+
+	ThiefJobID       = 400
+	AssassinJobID    = 410
+	HermitJobID      = 411
+	BanditJobID      = 420
+	ChiefBanditJobID = 421
 )
 
 var ExpTable = [...]int32{15, 34, 57, 92, 135, 372, 560, 840, 1242, 1144, // Beginner

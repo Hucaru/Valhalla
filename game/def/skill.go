@@ -1,11 +1,21 @@
 package def
 
-import "github.com/Hucaru/Valhalla/database"
+import (
+	"github.com/Hucaru/Valhalla/database"
+	"github.com/Hucaru/Valhalla/nx"
+)
 
 type Skill struct {
 	ID             int32
 	Level, Mastery byte
 	Cooldown       int16
+}
+
+func CreateSkillFromData(ID int32, level byte, skill nx.PlayerSkill) Skill {
+	return Skill{ID: ID,
+		Level:    level,
+		Mastery:  byte(skill.Mastery),
+		Cooldown: int16(skill.Time)}
 }
 
 func GetSkillsFromCharID(id int32) []Skill {

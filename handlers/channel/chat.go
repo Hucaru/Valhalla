@@ -420,6 +420,44 @@ func gmCommand(conn mnet.MConnChannel, msg string) {
 
 			player.SetEXP(int32(ammount))
 		}
+	case "level":
+		if len(command) < 2 {
+			return
+		}
+
+		player, ok := game.Players[conn]
+
+		if !ok {
+			conn.Send(packet.MessageNotice("Error in getting player"))
+			return
+		}
+
+		if command[1][0] == '+' {
+			ammount, err := strconv.Atoi(command[1][1:])
+
+			if err != nil {
+				conn.Send(packet.MessageNotice(err.Error()))
+			}
+
+			player.GiveLevel(int8(ammount))
+		} else if command[1][0] == '-' {
+			ammount, err := strconv.Atoi(command[1][1:])
+
+			if err != nil {
+				conn.Send(packet.MessageNotice(err.Error()))
+			}
+
+			player.GiveLevel(int8(-ammount))
+
+		} else {
+			ammount, err := strconv.Atoi(command[1])
+
+			if err != nil {
+				conn.Send(packet.MessageNotice(err.Error()))
+			}
+
+			player.SetLevel(byte(ammount))
+		}
 	default:
 		log.Println("Unkown GM command:", msg)
 	}

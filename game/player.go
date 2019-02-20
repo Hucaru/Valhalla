@@ -226,13 +226,13 @@ func (p *Player) GiveEXP(ammount int32) {
 }
 
 func (p *Player) SetLevel(level byte) {
-	p.char.Level += 1
+	p.char.Level = level
 	p.Send(packet.PlayerStatChange(false, constant.LevelId, int32(level)))
 	Maps[p.char.MapID].Send(packet.PlayerLevelUpAnimation(p.char.ID), p.InstanceID)
 }
 
-func (p *Player) GiveLevel(ammount byte) {
-	p.SetLevel(p.char.Level + ammount)
+func (p *Player) GiveLevel(ammount int8) {
+	p.SetLevel(byte(int8(p.char.Level) + ammount))
 }
 
 func (p *Player) SetAP(ammount int16) {
@@ -316,4 +316,9 @@ func (p *Player) SetMinigameLoss(v int32) {
 
 func (p *Player) SetMinigameDraw(v int32) {
 	p.char.MiniGameDraw = v
+}
+
+func (p *Player) UpdateSkill(skill def.Skill) {
+	p.char.Skills[skill.ID] = skill
+	p.Send(packet.PlayerSkillBookUpdate(skill.ID, int32(skill.Level)))
 }
