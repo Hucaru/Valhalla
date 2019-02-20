@@ -523,7 +523,10 @@ func gmCommand(conn mnet.MConnChannel, msg string) {
 				val = 420
 			case "ChiefBandit":
 				val = 421
-
+			case "Gm":
+				val = 500
+			case "SuperGm":
+				val = 510
 			default:
 				return
 			}
