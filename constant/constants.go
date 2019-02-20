@@ -13,25 +13,25 @@ const (
 const (
 	MaxItemStack = 200
 
-	HpId    = 0x400
-	MaxHpId = 0x800
-	MpId    = 0x1000
-	MaxMpId = 0x2000
+	HpID    = 0x400
+	MaxHpID = 0x800
+	MpID    = 0x1000
+	MaxMpID = 0x2000
 
-	StrId = 0x40
-	DexId = 0x80
-	IntId = 0x100
-	LukId = 0x200
+	StrID = 0x40
+	DexID = 0x80
+	IntID = 0x100
+	LukID = 0x200
 
-	LevelId = 0x10
-	JobId   = 0x20
-	ExpId   = 0x10000
+	LevelID = 0x10
+	JobID   = 0x20
+	ExpID   = 0x10000
 
-	ApId = 0x4000
-	SpId = 0x8000
+	ApID = 0x4000
+	SpID = 0x8000
 
-	FameId  = 0x20000
-	MesosId = 0x40000
+	FameID  = 0x20000
+	MesosID = 0x40000
 
 	BeginnerHpAdd = int16(12)
 	BeginnerMpAdd = int16(10)

@@ -291,13 +291,13 @@ func playerAddStatPoint(conn mnet.MConnChannel, reader mpacket.Reader) {
 	statID := reader.ReadInt32()
 
 	switch statID {
-	case constant.StrId:
+	case constant.StrID:
 		player.GiveStr(1)
-	case constant.DexId:
+	case constant.DexID:
 		player.GiveDex(1)
-	case constant.IntId:
+	case constant.IntID:
 		player.GiveInt(1)
-	case constant.LukId:
+	case constant.LukID:
 		player.GiveLuk(1)
 	default:
 		fmt.Println("unknown stat id:", statID)

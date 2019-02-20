@@ -115,7 +115,7 @@ func (p *Player) SetMaxHP(ammount int32) {
 	}
 
 	p.char.MaxHP = int16(ammount)
-	p.Send(packet.PlayerStatChange(true, constant.MaxHpId, ammount))
+	p.Send(packet.PlayerStatChange(true, constant.MaxHpID, ammount))
 }
 
 func (p *Player) SetHP(ammount int32) {
@@ -129,7 +129,7 @@ func (p *Player) SetHP(ammount int32) {
 		p.char.HP = 0
 	}
 
-	p.Send(packet.PlayerStatChange(true, constant.HpId, ammount))
+	p.Send(packet.PlayerStatChange(true, constant.HpID, ammount))
 }
 
 func (p *Player) GiveHP(ammount int32) {
@@ -142,7 +142,7 @@ func (p *Player) SetMaxMP(ammount int32) {
 	}
 
 	p.char.MaxMP = int16(ammount)
-	p.Send(packet.PlayerStatChange(true, constant.MaxMpId, ammount))
+	p.Send(packet.PlayerStatChange(true, constant.MaxMpID, ammount))
 }
 
 func (p *Player) SetMP(ammount int32) {
@@ -156,11 +156,16 @@ func (p *Player) SetMP(ammount int32) {
 		p.char.MP = 0
 	}
 
-	p.Send(packet.PlayerStatChange(true, constant.MpId, ammount))
+	p.Send(packet.PlayerStatChange(true, constant.MpID, ammount))
 }
 
 func (p *Player) GiveMP(ammount int32) {
 	p.SetMP(int32(p.char.MP) + ammount)
+}
+
+func (p *Player) SetJob(jobID int16) {
+	p.char.Job = jobID
+	p.Send(packet.PlayerStatChange(true, constant.JobID, int32(jobID)))
 }
 
 func (p *Player) levelUp() {
@@ -217,7 +222,7 @@ func (p *Player) SetEXP(ammount int32) {
 		p.SetEXP(remainder)
 	} else {
 		p.char.EXP = ammount
-		p.Send(packet.PlayerStatChange(false, constant.ExpId, int32(ammount)))
+		p.Send(packet.PlayerStatChange(false, constant.ExpID, int32(ammount)))
 	}
 }
 
@@ -227,7 +232,7 @@ func (p *Player) GiveEXP(ammount int32) {
 
 func (p *Player) SetLevel(level byte) {
 	p.char.Level = level
-	p.Send(packet.PlayerStatChange(false, constant.LevelId, int32(level)))
+	p.Send(packet.PlayerStatChange(false, constant.LevelID, int32(level)))
 	Maps[p.char.MapID].Send(packet.PlayerLevelUpAnimation(p.char.ID), p.InstanceID)
 }
 
@@ -237,7 +242,7 @@ func (p *Player) GiveLevel(ammount int8) {
 
 func (p *Player) SetAP(ammount int16) {
 	p.char.AP = ammount
-	p.Send(packet.PlayerStatChange(false, constant.ApId, int32(ammount)))
+	p.Send(packet.PlayerStatChange(false, constant.ApID, int32(ammount)))
 }
 
 func (p *Player) GiveAP(ammount int16) {
@@ -246,7 +251,7 @@ func (p *Player) GiveAP(ammount int16) {
 
 func (p *Player) SetSP(ammount int16) {
 	p.char.SP = ammount
-	p.Send(packet.PlayerStatChange(false, constant.SpId, int32(ammount)))
+	p.Send(packet.PlayerStatChange(false, constant.SpID, int32(ammount)))
 }
 
 func (p *Player) GiveSP(ammount int16) {
@@ -255,7 +260,7 @@ func (p *Player) GiveSP(ammount int16) {
 
 func (p *Player) SetStr(ammount int16) {
 	p.char.Str = ammount
-	p.Send(packet.PlayerStatChange(true, constant.StrId, int32(ammount)))
+	p.Send(packet.PlayerStatChange(true, constant.StrID, int32(ammount)))
 }
 
 func (p *Player) GiveStr(ammount int16) {
@@ -264,7 +269,7 @@ func (p *Player) GiveStr(ammount int16) {
 
 func (p *Player) SetDex(ammount int16) {
 	p.char.Dex = ammount
-	p.Send(packet.PlayerStatChange(true, constant.DexId, int32(ammount)))
+	p.Send(packet.PlayerStatChange(true, constant.DexID, int32(ammount)))
 }
 
 func (p *Player) GiveDex(ammount int16) {
@@ -273,7 +278,7 @@ func (p *Player) GiveDex(ammount int16) {
 
 func (p *Player) SetInt(ammount int16) {
 	p.char.Int = ammount
-	p.Send(packet.PlayerStatChange(true, constant.IntId, int32(ammount)))
+	p.Send(packet.PlayerStatChange(true, constant.IntID, int32(ammount)))
 }
 
 func (p *Player) GiveInt(ammount int16) {
@@ -282,7 +287,7 @@ func (p *Player) GiveInt(ammount int16) {
 
 func (p *Player) SetLuk(ammount int16) {
 	p.char.Luk = ammount
-	p.Send(packet.PlayerStatChange(true, constant.LukId, int32(ammount)))
+	p.Send(packet.PlayerStatChange(true, constant.LukID, int32(ammount)))
 }
 
 func (p *Player) GiveLuk(ammount int16) {
@@ -291,7 +296,7 @@ func (p *Player) GiveLuk(ammount int16) {
 
 func (p *Player) SetMesos(ammount int32) {
 	p.char.Mesos = ammount
-	p.Send(packet.PlayerStatChange(false, constant.MesosId, ammount))
+	p.Send(packet.PlayerStatChange(false, constant.MesosID, ammount))
 }
 
 func (p *Player) GiveMesos(ammount int32) {

@@ -137,7 +137,6 @@ func gmCommand(conn mnet.MConnChannel, msg string) {
 
 		p, id, _ := game.Maps[player.Char().MapID].GetRandomSpawnPortal()
 		player.ChangeMap(mapID, p, id)
-
 	case "notice":
 		if len(command) < 2 {
 			return
@@ -458,6 +457,88 @@ func gmCommand(conn mnet.MConnChannel, msg string) {
 
 			player.SetLevel(byte(ammount))
 		}
+	case "job":
+		var val int
+		var err error
+		var jobName string
+
+		if len(command) == 2 {
+			val, err = strconv.Atoi(command[1])
+			jobName = command[1]
+		} else if len(command) == 3 {
+			val, err = strconv.Atoi(command[2])
+			jobName = command[2]
+		}
+
+		if err != nil {
+			// Check to see if name matches pre-recorded
+			switch jobName {
+			case "Beginner":
+				val = 0
+			case "Warrior":
+				val = 100
+			case "Fighter":
+				val = 110
+			case "Crusader":
+				val = 111
+			case "Page":
+				val = 120
+			case "WhiteKnight":
+				val = 121
+			case "Spearman":
+				val = 130
+			case "DragonKnight":
+				val = 131
+			case "Magician":
+				val = 200
+			case "FirePoisonWizard":
+				val = 210
+			case "FirePoisonMage":
+				val = 211
+			case "IceLightWizard":
+				val = 220
+			case "IceLightMage":
+				val = 221
+			case "Cleric":
+				val = 230
+			case "Priest":
+				val = 231
+			case "Bowman":
+				val = 300
+			case "Hunter":
+				val = 310
+			case "Ranger":
+				val = 311
+			case "Crossbowman":
+				val = 320
+			case "Sniper":
+				val = 321
+			case "Thief":
+				val = 400
+			case "Assassin":
+				val = 410
+			case "Hermit":
+				val = 411
+			case "Bandit":
+				val = 420
+			case "ChiefBandit":
+				val = 421
+
+			default:
+				return
+			}
+		}
+
+		jobID := int16(val)
+
+		player, ok := game.Players[conn]
+
+		if !ok {
+			conn.Send(packet.MessageNotice(err.Error()))
+			return
+		}
+
+		player.SetJob(jobID)
 	default:
 		log.Println("Unkown GM command:", msg)
 	}
