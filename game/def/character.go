@@ -55,13 +55,22 @@ func (c Character) Save() error {
 
 	// need to calculate nearest spawn point for mapPos
 
-	records, err := database.Handle.Query(query,
+	_, err := database.Handle.Exec(query,
 		c.Skin, c.Hair, c.Face, c.Level, c.Job, c.Str, c.Dex, c.Int, c.Luk, c.HP, c.MaxHP, c.MP,
 		c.MaxMP, c.AP, c.SP, c.EXP, c.Fame, c.MapID, c.Mesos, c.ID)
 
-	defer records.Close()
-
 	c.Inventory.Save(c.ID)
+
+	// There has to be a better way of doing this in mysql
+	for skillID, skill := range c.Skills {
+		query = `UPDATE skills SET level=?, mastery=?, cooldown=? WHERE skillID=? AND characterID=?`
+		result, err := database.Handle.Exec(query, skill.Level, skill.Mastery, skill.Cooldown, skillID, c.ID)
+
+		if rows, _ := result.RowsAffected(); rows < 1 || err != nil {
+			query = `INSERT INTO skills (characterID, skillID, level, mastery, cooldown) VALUES (?, ?, ?, ?, ?)`
+			_, err = database.Handle.Exec(query, c.ID, skillID, skill.Level, skill.Mastery, skill.Cooldown)
+		}
+	}
 
 	return err
 }

@@ -45,6 +45,8 @@ Channel server:
 - [x] Player chat
 - [x] GM commands
 - [x] Player use skills
+- [x] Player exp
+- [x] Player level up
 - [ ] Player skill logic
 - [ ] Player inventory
 - [ ] Player drop items
