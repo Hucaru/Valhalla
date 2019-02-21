@@ -356,11 +356,63 @@ func playerGiveFame(conn mnet.MConnChannel, reader mpacket.Reader) {
 }
 
 func playerMoveInventoryItem(conn mnet.MConnChannel, reader mpacket.Reader) {
-	// invTabID := reader.ReadByte()
-	// origPos := reader.ReadInt16()
-	// newPos := reader.ReadInt16()
+	invTabID := reader.ReadByte()
+	origPos := reader.ReadInt16()
+	newPos := reader.ReadInt16()
 
 	// amount := reader.ReadInt16() // amount?
+
+	if invTabID > 5 || origPos == 0 {
+		conn.Send(packet.PlayerNoChange()) // bad packet, hacker?
+	}
+
+	player, ok := game.Players[conn]
+
+	if !ok {
+		return
+	}
+
+	var items []def.Item
+
+	switch invTabID {
+	case 1:
+		items = player.Char().Inventory.Equip
+	case 2:
+		items = player.Char().Inventory.Use
+	case 3:
+		items = player.Char().Inventory.SetUp
+	case 4:
+		items = player.Char().Inventory.Etc
+	case 5:
+		items = player.Char().Inventory.Cash
+	}
+
+	if newPos == 0 { // drop
+
+	} else { // move
+		var foundItems []def.Item
+
+		for _, item := range items {
+			if item.SlotID == origPos {
+				foundItems = append(foundItems, item)
+			} else if item.SlotID == newPos {
+				foundItems = append(foundItems, item)
+			}
+		}
+
+		if len(foundItems) == 1 {
+			if foundItems[0].SlotID == origPos {
+				player.MoveItem(foundItems[0], newPos)
+			} else {
+				return
+			}
+
+		} else if len(foundItems) == 2 {
+			player.SwapItems(foundItems[0], foundItems[1])
+		} else {
+			return
+		}
+	}
 }
 
 func validateSkillWithJob(jobID int16, baseSkillID int32) bool {
