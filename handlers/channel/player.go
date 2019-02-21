@@ -400,17 +400,10 @@ func playerMoveInventoryItem(conn mnet.MConnChannel, reader mpacket.Reader) {
 			}
 		}
 
-		if len(foundItems) == 1 {
-			if foundItems[0].SlotID == origPos {
-				player.MoveItem(foundItems[0], newPos)
-			} else {
-				return
-			}
-
+		if len(foundItems) == 1 && foundItems[0].SlotID == origPos {
+			player.MoveItem(foundItems[0], newPos)
 		} else if len(foundItems) == 2 {
 			player.SwapItems(foundItems[0], foundItems[1])
-		} else {
-			return
 		}
 	}
 }
