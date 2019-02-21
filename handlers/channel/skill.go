@@ -67,7 +67,7 @@ func playerRangedSkill(conn mnet.MConnChannel, reader mpacket.Reader) {
 		mob.GiveDamage(*player, attack.Damages)
 	}
 
-	game.Maps[char.MapID].SendExcept(packet.SkillMelee(char, data), conn, player.InstanceID)
+	game.Maps[char.MapID].SendExcept(packet.SkillRanged(char, data), conn, player.InstanceID)
 	game.Maps[char.MapID].HandleDeadMobs(player.InstanceID)
 }
 
@@ -98,7 +98,7 @@ func playerMagicSkill(conn mnet.MConnChannel, reader mpacket.Reader) {
 		mob.GiveDamage(*player, attack.Damages)
 	}
 
-	game.Maps[char.MapID].SendExcept(packet.SkillMelee(char, data), conn, player.InstanceID)
+	game.Maps[char.MapID].SendExcept(packet.SkillMagic(char, data), conn, player.InstanceID)
 	game.Maps[char.MapID].HandleDeadMobs(player.InstanceID)
 
 	switch data.SkillID {
