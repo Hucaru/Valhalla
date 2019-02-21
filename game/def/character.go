@@ -68,7 +68,7 @@ func (c Character) Save() error {
 
 		if rows, _ := result.RowsAffected(); rows < 1 || err != nil {
 			query = `INSERT INTO skills (characterID, skillID, level, mastery, cooldown) VALUES (?, ?, ?, ?, ?)`
-			_, err = database.Handle.Exec(query, c.ID, skillID, skill.Level, skill.Mastery, skill.Cooldown)
+			_, err = database.Handle.Exec(query, c.ID, skillID, skill.Level, skill.Mastery, 0)
 		}
 	}
 
