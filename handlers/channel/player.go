@@ -338,14 +338,15 @@ func playerAddSkillPoint(conn mnet.MConnChannel, reader mpacket.Reader) {
 		if !validateSkillWithJob(char.Job, baseSkillID) {
 			conn.Send(packet.PlayerNoChange())
 			fmt.Println("Unknown skill learn:", char.Job, baseSkillID)
+			return
 		}
 
 		// give new skill
-		player.UpdateSkill(def.CreateSkillFromData(skillID, 1, nxSkills[skill.Level+1]))
+		player.UpdateSkill(def.CreateSkillFromData(skillID, 1, nxSkills[0]))
 	}
 
 	if char.SP > 0 {
-		player.GiveAP(-1)
+		player.GiveSP(-1)
 	}
 
 }
@@ -458,6 +459,14 @@ func validateSkillWithJob(jobID int16, baseSkillID int32) bool {
 		}
 	case constant.ChiefBanditJobID:
 		if baseSkillID != constant.ThiefJobID && baseSkillID != constant.BanditJobID && baseSkillID != constant.ChiefBanditJobID {
+			return false
+		}
+	case constant.GmJobID:
+		if baseSkillID != constant.GmJobID {
+			return false
+		}
+	case constant.SuperGmJobID:
+		if baseSkillID != constant.GmJobID && baseSkillID != constant.SuperGmJobID {
 			return false
 		}
 	default:

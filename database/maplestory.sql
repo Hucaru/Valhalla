@@ -100,12 +100,12 @@ CREATE TABLE `skills` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `characterID` int(11) NOT NULL,
   `skillID` int(11) NOT NULL DEFAULT '0',
-  `level` tinyint(4) NOT NULL DEFAULT '0',
-  `cooldown` int(11) NOT NULL,
+  `level` tinyint(4) NOT NULL DEFAULT '1',
+  `cooldown` int(11) NOT NULL DEFAULT '0',
   PRIMARY KEY (`id`),
   KEY `characterID` (`characterID`),
   CONSTRAINT `skills_ibfk_2` FOREIGN KEY (`characterID`) REFERENCES `characters` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 
 
--- 2018-10-17 21:29:30
+-- 2019-02-21 00:49:09

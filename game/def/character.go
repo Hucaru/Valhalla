@@ -63,12 +63,12 @@ func (c Character) Save() error {
 
 	// There has to be a better way of doing this in mysql
 	for skillID, skill := range c.Skills {
-		query = `UPDATE skills SET level=?, mastery=?, cooldown=? WHERE skillID=? AND characterID=?`
-		result, err := database.Handle.Exec(query, skill.Level, skill.Mastery, skill.Cooldown, skillID, c.ID)
+		query = `UPDATE skills SET level=?, cooldown=? WHERE skillID=? AND characterID=?`
+		result, err := database.Handle.Exec(query, skill.Level, skill.Cooldown, skillID, c.ID)
 
 		if rows, _ := result.RowsAffected(); rows < 1 || err != nil {
-			query = `INSERT INTO skills (characterID, skillID, level, mastery, cooldown) VALUES (?, ?, ?, ?, ?)`
-			_, err = database.Handle.Exec(query, c.ID, skillID, skill.Level, skill.Mastery, 0)
+			query = `INSERT INTO skills (characterID, skillID, level, cooldown) VALUES (?, ?, ?, ?)`
+			_, err = database.Handle.Exec(query, c.ID, skillID, skill.Level, 0)
 		}
 	}
 

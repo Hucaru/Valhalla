@@ -23,7 +23,7 @@ func CreateSkillFromData(ID int32, level byte, skill nx.PlayerSkill) Skill {
 func GetSkillsFromCharID(id int32) []Skill {
 	skills := []Skill{}
 
-	filter := "skillID, level, mastery, cooldown"
+	filter := "skillID, level, cooldown"
 
 	row, err := database.Handle.Query("SELECT "+filter+" FROM skills where characterID=?", id)
 
@@ -36,7 +36,7 @@ func GetSkillsFromCharID(id int32) []Skill {
 	for row.Next() {
 		skill := Skill{}
 
-		row.Scan(&skill.ID, &skill.Level, &skill.Mastery, &skill.Cooldown)
+		row.Scan(&skill.ID, &skill.Level, &skill.Cooldown)
 
 		skills = append(skills, skill)
 	}
