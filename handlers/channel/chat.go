@@ -143,15 +143,29 @@ func gmCommand(conn mnet.MConnChannel, msg string) {
 		if len(command) < 2 {
 			return
 		}
-		player, ok := game.Players[conn]
 
-		if !ok {
-			conn.Send(packet.MessageNotice("Error in sending notice msg"))
+		for c := range game.Players {
+			c.Send(packet.MessageNotice(strings.Join(command[1:], " ")))
+		}
+	case "msgBox":
+		if len(command) < 2 {
 			return
 		}
 
-		char := player.Char()
-		game.Maps[char.MapID].Send(packet.MessageNotice(strings.Join(command[1:], " ")), player.InstanceID)
+		for c := range game.Players {
+			c.Send(packet.MessageDialogueBox(strings.Join(command[1:], " ")))
+		}
+	case "scrollHeader":
+		if len(command) < 2 {
+			for c := range game.Players {
+				c.Send(packet.MessageScrollingHeader(""))
+			}
+			return
+		}
+
+		for c := range game.Players {
+			c.Send(packet.MessageScrollingHeader(strings.Join(command[1:], " ")))
+		}
 	case "kill":
 		if len(command) == 1 {
 			player, ok := game.Players[conn]

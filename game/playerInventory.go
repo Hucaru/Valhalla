@@ -179,7 +179,7 @@ func (p *Player) GiveItem(a def.Item) {
 		filledSlots[item.SlotID-1] = true
 	}
 
-	var availableSlot int16 = 0
+	var availableSlot int16
 	for i, slot := range filledSlots {
 		if slot == false {
 			availableSlot = int16(i + 1)
