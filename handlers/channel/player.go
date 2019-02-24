@@ -394,9 +394,18 @@ func playerMoveInventoryItem(conn mnet.MConnChannel, reader mpacket.Reader) {
 
 		for _, item := range items {
 			if item.SlotID == origPos {
-				foundItems = append(foundItems, item)
+				if len(foundItems) == 0 {
+					foundItems = append(foundItems, item)
+				} else {
+					foundItems[0] = item
+				}
 			} else if item.SlotID == newPos {
-				foundItems = append(foundItems, item)
+				if len(foundItems) == 0 {
+					foundItems = make([]def.Item, 2)
+					foundItems[1] = item
+				} else {
+					foundItems = append(foundItems, item)
+				}
 			}
 		}
 
@@ -405,6 +414,18 @@ func playerMoveInventoryItem(conn mnet.MConnChannel, reader mpacket.Reader) {
 		} else if len(foundItems) == 2 {
 			player.SwapItems(foundItems[0], foundItems[1])
 		}
+	}
+}
+
+func playerUseChair(conn mnet.MConnChannel, reader mpacket.Reader) {
+	// chairID := reader.ReadInt32()
+}
+
+func playerStand(conn mnet.MConnChannel, reader mpacket.Reader) {
+	if reader.ReadInt16() == -1 {
+
+	} else {
+		fmt.Println("player stand", reader)
 	}
 }
 

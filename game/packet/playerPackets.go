@@ -54,9 +54,9 @@ func PlayerMove(charID int32, bytes []byte) mpacket.Packet {
 	return p
 }
 
-func PlayerEmoticon(playerID int32, emotion int32) mpacket.Packet {
+func PlayerEmoticon(charID int32, emotion int32) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcodes.SendChannelPlayerEmoticon)
-	p.WriteInt32(playerID)
+	p.WriteInt32(charID)
 	p.WriteInt32(emotion)
 
 	return p
@@ -73,9 +73,9 @@ func PlayerSkillBookUpdate(skillID int32, level int32) mpacket.Packet {
 	return p
 }
 
-func PlayerStatChange(byPlayer bool, stat int32, value int32) mpacket.Packet {
+func PlayerStatChange(unknown bool, stat int32, value int32) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcodes.SendChannelStatChange)
-	p.WriteBool(byPlayer)
+	p.WriteBool(unknown)
 	p.WriteInt32(stat)
 	p.WriteInt32(value)
 

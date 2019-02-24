@@ -7,6 +7,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/Hucaru/Valhalla/game/def"
+
 	"github.com/Hucaru/Valhalla/game/npcchat"
 	"github.com/Hucaru/Valhalla/game/script"
 
@@ -318,30 +320,30 @@ func gmCommand(conn mnet.MConnChannel, msg string) {
 		}
 
 		if command[1][0] == '+' {
-			ammount, err := strconv.Atoi(command[1][1:])
+			amount, err := strconv.Atoi(command[1][1:])
 
 			if err != nil {
 				conn.Send(packet.MessageNotice(err.Error()))
 			}
 
-			player.GiveHP(int32(ammount))
+			player.GiveHP(int32(amount))
 		} else if command[1][0] == '-' {
-			ammount, err := strconv.Atoi(command[1][1:])
+			amount, err := strconv.Atoi(command[1][1:])
 
 			if err != nil {
 				conn.Send(packet.MessageNotice(err.Error()))
 			}
 
-			player.GiveHP(int32(-ammount))
+			player.GiveHP(int32(-amount))
 
 		} else {
-			ammount, err := strconv.Atoi(command[1])
+			amount, err := strconv.Atoi(command[1])
 
 			if err != nil {
 				conn.Send(packet.MessageNotice(err.Error()))
 			}
 
-			player.SetMaxHP(int32(ammount))
+			player.SetMaxHP(int32(amount))
 		}
 	case "mp":
 		if len(command) < 2 {
@@ -356,30 +358,30 @@ func gmCommand(conn mnet.MConnChannel, msg string) {
 		}
 
 		if command[1][0] == '+' {
-			ammount, err := strconv.Atoi(command[1][1:])
+			amount, err := strconv.Atoi(command[1][1:])
 
 			if err != nil {
 				conn.Send(packet.MessageNotice(err.Error()))
 			}
 
-			player.GiveMP(int32(ammount))
+			player.GiveMP(int32(amount))
 		} else if command[1][0] == '-' {
-			ammount, err := strconv.Atoi(command[1][1:])
+			amount, err := strconv.Atoi(command[1][1:])
 
 			if err != nil {
 				conn.Send(packet.MessageNotice(err.Error()))
 			}
 
-			player.GiveMP(int32(-ammount))
+			player.GiveMP(int32(-amount))
 
 		} else {
-			ammount, err := strconv.Atoi(command[1])
+			amount, err := strconv.Atoi(command[1])
 
 			if err != nil {
 				conn.Send(packet.MessageNotice(err.Error()))
 			}
 
-			player.SetMaxMP(int32(ammount))
+			player.SetMaxMP(int32(amount))
 		}
 	case "exp":
 		if len(command) < 2 {
@@ -394,30 +396,30 @@ func gmCommand(conn mnet.MConnChannel, msg string) {
 		}
 
 		if command[1][0] == '+' {
-			ammount, err := strconv.Atoi(command[1][1:])
+			amount, err := strconv.Atoi(command[1][1:])
 
 			if err != nil {
 				conn.Send(packet.MessageNotice(err.Error()))
 			}
 
-			player.GiveEXP(int32(ammount))
+			player.GiveEXP(int32(amount))
 		} else if command[1][0] == '-' {
-			ammount, err := strconv.Atoi(command[1][1:])
+			amount, err := strconv.Atoi(command[1][1:])
 
 			if err != nil {
 				conn.Send(packet.MessageNotice(err.Error()))
 			}
 
-			player.GiveEXP(int32(-ammount))
+			player.GiveEXP(int32(-amount))
 
 		} else {
-			ammount, err := strconv.Atoi(command[1])
+			amount, err := strconv.Atoi(command[1])
 
 			if err != nil {
 				conn.Send(packet.MessageNotice(err.Error()))
 			}
 
-			player.SetEXP(int32(ammount))
+			player.SetEXP(int32(amount))
 		}
 	case "level":
 		if len(command) < 2 {
@@ -432,30 +434,30 @@ func gmCommand(conn mnet.MConnChannel, msg string) {
 		}
 
 		if command[1][0] == '+' {
-			ammount, err := strconv.Atoi(command[1][1:])
+			amount, err := strconv.Atoi(command[1][1:])
 
 			if err != nil {
 				conn.Send(packet.MessageNotice(err.Error()))
 			}
 
-			player.GiveLevel(int8(ammount))
+			player.GiveLevel(int8(amount))
 		} else if command[1][0] == '-' {
-			ammount, err := strconv.Atoi(command[1][1:])
+			amount, err := strconv.Atoi(command[1][1:])
 
 			if err != nil {
 				conn.Send(packet.MessageNotice(err.Error()))
 			}
 
-			player.GiveLevel(int8(-ammount))
+			player.GiveLevel(int8(-amount))
 
 		} else {
-			ammount, err := strconv.Atoi(command[1])
+			amount, err := strconv.Atoi(command[1])
 
 			if err != nil {
 				conn.Send(packet.MessageNotice(err.Error()))
 			}
 
-			player.SetLevel(byte(ammount))
+			player.SetLevel(byte(amount))
 		}
 	case "job":
 		var val int
@@ -542,6 +544,42 @@ func gmCommand(conn mnet.MConnChannel, msg string) {
 		}
 
 		player.SetJob(jobID)
+	case "item":
+		if len(command) < 2 {
+			return
+		}
+
+		itemID, err := strconv.Atoi(command[1])
+
+		if err != nil {
+			conn.Send(packet.MessageNotice(err.Error()))
+		}
+
+		player, ok := game.Players[conn]
+
+		if !ok {
+			conn.Send(packet.MessageNotice("Error in getting player"))
+			return
+		}
+
+		item, err := def.CreateItemFromID(int32(itemID))
+
+		if err != nil {
+			conn.Send(packet.MessageNotice(err.Error()))
+			return
+		}
+
+		if len(command) > 2 {
+			amount, err := strconv.Atoi(command[1])
+
+			if err != nil {
+				conn.Send(packet.MessageNotice(err.Error()))
+			}
+
+			item.Amount = int16(amount)
+		}
+
+		player.GiveItem(item)
 	default:
 		log.Println("Unkown GM command:", msg)
 	}

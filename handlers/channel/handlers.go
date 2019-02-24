@@ -3,7 +3,7 @@ package channel
 import (
 	"log"
 
-	"github.com/Hucaru/Valhalla/constant/opcode"
+	opcodes "github.com/Hucaru/Valhalla/constant/opcode"
 	"github.com/Hucaru/Valhalla/mnet"
 	"github.com/Hucaru/Valhalla/mpacket"
 )
@@ -18,6 +18,10 @@ func HandlePacket(conn mnet.MConnChannel, reader mpacket.Reader) {
 	case opcodes.RecvChannelEnterCashShop:
 	case opcodes.RecvChannelPlayerMovement:
 		playerMovement(conn, reader)
+	case opcodes.RecvChannelPlayerStand:
+		playerStand(conn, reader)
+	case opcodes.RecvChannelPlayerUserChair:
+		playerUseChair(conn, reader)
 	case opcodes.RecvChannelMeleeSkill:
 		playerMeleeSkill(conn, reader)
 	case opcodes.RecvChannelRangedSkill:

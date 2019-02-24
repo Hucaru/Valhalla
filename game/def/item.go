@@ -63,7 +63,7 @@ func ItemIsStackable(itemID int32, ammount int16) bool {
 }
 
 // TODO: Fill the rest out, for now this can be used to check functionality
-func CreateFromID(id int32) (Item, error) {
+func CreateItemFromID(id int32) (Item, error) {
 	newItem := Item{}
 
 	nxInfo, err := nx.GetItem(id)

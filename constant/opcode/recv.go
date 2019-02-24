@@ -18,6 +18,8 @@ const (
 	RecvChannelUserPortal          mpacket.Opcode = 0x17
 	RecvChannelEnterCashShop       mpacket.Opcode = 0x19
 	RecvChannelPlayerMovement      mpacket.Opcode = 0x1A
+	RecvChannelPlayerStand         mpacket.Opcode = 0x1B
+	RecvChannelPlayerUserChair     mpacket.Opcode = 0x1C
 	RecvChannelMeleeSkill          mpacket.Opcode = 0x1D
 	RecvChannelRangedSkill         mpacket.Opcode = 0x1E
 	RecvChannelMagicSkill          mpacket.Opcode = 0x1F
