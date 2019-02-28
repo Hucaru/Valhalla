@@ -8,12 +8,6 @@ www.designevo.com/" title="Free Online Logo Maker">DesignEvo</a>
 
 This project exists to preserve and archive an early version of the game
 
-## Compiling Instructions
-
-Install [docker](https://docs.docker.com/install/) & [docker-compose](https://docs.docker.com/compose/install/). Thats it! 
-
-## Starting the Server
-
 ## Features
 
 Login server:
@@ -118,5 +112,8 @@ Taken from [here](http://forum.ragezone.com/f428/add-learning-npcs-start-finish-
 - \n = New Line
 - \t = Tab (4 spaces)
 - \b = Backwards
+
+## Client modifications
+00663007 - change to jmp for multiclient
 
 ## Screenshots
