@@ -116,5 +116,7 @@ Taken from [here](http://forum.ragezone.com/f428/add-learning-npcs-start-finish-
 ## Client modifications
 00663007 - change to jmp for multiclient
 0041BD17 - fill with nop to remove internet explorer iframe add after client close
+0066520B - push to stack resolution in y
+00665211 - push to stack resolution in x
 
 ## Screenshots
