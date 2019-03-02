@@ -1,12 +1,15 @@
-<p align="center">
-  <img src="https://i.imgur.com/mo4tfJF.png"/>
-  <br/>Valhalla Logo made with <a href="https://
-www.designevo.com/" title="Free Online Logo Maker">DesignEvo</a>
-</p>
+# Valhalla
 
 ## What is this?
 
 This project exists to preserve and archive an early version of the game
+
+## Client modifications
+
+- 00663007 - change to jmp for multiclient
+- 0041BD17 - fill with nop to remove internet explorer iframe add after client close
+- 0066520B - push to stack resolution in y
+- 00665211 - push to stack resolution in x
 
 ## Features
 
@@ -112,12 +115,5 @@ Taken from [here](http://forum.ragezone.com/f428/add-learning-npcs-start-finish-
 - \n = New Line
 - \t = Tab (4 spaces)
 - \b = Backwards
-
-## Client modifications
-
-- 00663007 - change to jmp for multiclient
-- 0041BD17 - fill with nop to remove internet explorer iframe add after client close
-- 0066520B - push to stack resolution in y
-- 00665211 - push to stack resolution in x
 
 ## Screenshots
