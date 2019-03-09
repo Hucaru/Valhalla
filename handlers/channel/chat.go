@@ -416,7 +416,7 @@ func gmCommand(conn mnet.MConnChannel, msg string) {
 				conn.Send(packet.MessageNotice(err.Error()))
 			}
 
-			player.GiveEXP(int32(amount))
+			player.GiveEXP(int32(amount), false, false)
 		} else if command[1][0] == '-' {
 			amount, err := strconv.Atoi(command[1][1:])
 
@@ -424,7 +424,7 @@ func gmCommand(conn mnet.MConnChannel, msg string) {
 				conn.Send(packet.MessageNotice(err.Error()))
 			}
 
-			player.GiveEXP(int32(-amount))
+			player.GiveEXP(int32(-amount), false, false)
 
 		} else {
 			amount, err := strconv.Atoi(command[1])

@@ -26,7 +26,7 @@ func createInstanceFromMapData(mapData nx.Map, mapID int32) Instance {
 			continue
 		}
 
-		mobs = append(mobs, gameMob{Mob: def.CreateMob(int32(len(mobs)+1), l, nxMob, nil), mapID: mapID})
+		mobs = append(mobs, createNewMob(int32(len(mobs)+1), mapID, l, nxMob))
 	}
 
 	for _, l := range mapData.NPCs {
@@ -173,6 +173,20 @@ func (inst *Instance) handleDeadMobs() {
 			for _, id := range mob.Revives {
 				inst.SpawnMobNoRespawn(id, inst.generateMobSpawnID(), mob.X, mob.Y, mob.Foothold, -3, mob.SpawnID, mob.FacesLeft())
 				y = append(y, inst.mobs[len(inst.mobs)-1])
+			}
+
+			if mob.Exp > 0 {
+				for player, _ := range mob.dmgTaken {
+					p, err := Players.GetFromConn(player)
+
+					if err != nil {
+						continue
+					}
+
+					// perform exp calculation
+
+					p.GiveEXP(int32(mob.Exp), true, false)
+				}
 			}
 
 			inst.send(packet.MobRemove(mob.Mob, 1)) // 0 keeps it there and is no longer attackable, 1 normal death, 2 disaapear instantly

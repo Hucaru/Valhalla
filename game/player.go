@@ -109,17 +109,17 @@ func (p *Player) Revive() {
 	p.SetHP(int32(p.char.MaxHP))
 }
 
-func (p *Player) SetMaxHP(ammount int32) {
-	if ammount > math.MaxInt16 {
-		ammount = math.MaxInt16
+func (p *Player) SetMaxHP(amount int32) {
+	if amount > math.MaxInt16 {
+		amount = math.MaxInt16
 	}
 
-	p.char.MaxHP = int16(ammount)
-	p.Send(packet.PlayerStatChange(true, constant.MaxHpID, ammount))
+	p.char.MaxHP = int16(amount)
+	p.Send(packet.PlayerStatChange(true, constant.MaxHpID, amount))
 }
 
-func (p *Player) SetHP(ammount int32) {
-	p.char.HP = int16(ammount)
+func (p *Player) SetHP(amount int32) {
+	p.char.HP = int16(amount)
 
 	if p.char.HP > p.char.MaxHP {
 		p.char.HP = p.char.MaxHP
@@ -129,24 +129,24 @@ func (p *Player) SetHP(ammount int32) {
 		p.char.HP = 0
 	}
 
-	p.Send(packet.PlayerStatChange(true, constant.HpID, ammount))
+	p.Send(packet.PlayerStatChange(true, constant.HpID, amount))
 }
 
-func (p *Player) GiveHP(ammount int32) {
-	p.SetHP(int32(p.char.HP) + ammount)
+func (p *Player) GiveHP(amount int32) {
+	p.SetHP(int32(p.char.HP) + amount)
 }
 
-func (p *Player) SetMaxMP(ammount int32) {
-	if ammount > math.MaxInt16 {
-		ammount = math.MaxInt16
+func (p *Player) SetMaxMP(amount int32) {
+	if amount > math.MaxInt16 {
+		amount = math.MaxInt16
 	}
 
-	p.char.MaxMP = int16(ammount)
-	p.Send(packet.PlayerStatChange(true, constant.MaxMpID, ammount))
+	p.char.MaxMP = int16(amount)
+	p.Send(packet.PlayerStatChange(true, constant.MaxMpID, amount))
 }
 
-func (p *Player) SetMP(ammount int32) {
-	p.char.MP = int16(ammount)
+func (p *Player) SetMP(amount int32) {
+	p.char.MP = int16(amount)
 
 	if p.char.MP > p.char.MaxMP {
 		p.char.MP = p.char.MaxMP
@@ -156,11 +156,11 @@ func (p *Player) SetMP(ammount int32) {
 		p.char.MP = 0
 	}
 
-	p.Send(packet.PlayerStatChange(true, constant.MpID, ammount))
+	p.Send(packet.PlayerStatChange(true, constant.MpID, amount))
 }
 
-func (p *Player) GiveMP(ammount int32) {
-	p.SetMP(int32(p.char.MP) + ammount)
+func (p *Player) GiveMP(amount int32) {
+	p.SetMP(int32(p.char.MP) + amount)
 }
 
 func (p *Player) SetJob(jobID int16) {
@@ -215,19 +215,29 @@ func (p *Player) levelUp() {
 	p.GiveLevel(1)
 }
 
-func (p *Player) SetEXP(ammount int32) {
-	remainder := ammount - constant.ExpTable[p.char.Level-1]
+func (p *Player) SetEXP(amount int32) {
+	if p.char.Level > 199 {
+		return
+	}
+
+	remainder := amount - constant.ExpTable[p.char.Level-1]
 	if remainder >= 0 {
 		p.levelUp()
 		p.SetEXP(remainder)
 	} else {
-		p.char.EXP = ammount
-		p.Send(packet.PlayerStatChange(false, constant.ExpID, int32(ammount)))
+		p.char.EXP = amount
+		p.Send(packet.PlayerStatChange(false, constant.ExpID, int32(amount)))
 	}
 }
 
-func (p *Player) GiveEXP(ammount int32) {
-	p.SetEXP(p.char.EXP + ammount)
+func (p *Player) GiveEXP(amount int32, fromMob, fromParty bool) {
+	if fromMob {
+		p.Send(packet.MessageExpGained(!fromParty, false, amount))
+	} else {
+		p.Send(packet.MessageExpGained(true, true, amount))
+	}
+
+	p.SetEXP(p.char.EXP + amount)
 }
 
 func (p *Player) SetLevel(level byte) {
@@ -236,71 +246,71 @@ func (p *Player) SetLevel(level byte) {
 	Maps[p.char.MapID].Send(packet.PlayerLevelUpAnimation(p.char.ID), p.InstanceID)
 }
 
-func (p *Player) GiveLevel(ammount int8) {
-	p.SetLevel(byte(int8(p.char.Level) + ammount))
+func (p *Player) GiveLevel(amount int8) {
+	p.SetLevel(byte(int8(p.char.Level) + amount))
 }
 
-func (p *Player) SetAP(ammount int16) {
-	p.char.AP = ammount
-	p.Send(packet.PlayerStatChange(false, constant.ApID, int32(ammount)))
+func (p *Player) SetAP(amount int16) {
+	p.char.AP = amount
+	p.Send(packet.PlayerStatChange(false, constant.ApID, int32(amount)))
 }
 
-func (p *Player) GiveAP(ammount int16) {
-	p.SetAP(p.char.AP + ammount)
+func (p *Player) GiveAP(amount int16) {
+	p.SetAP(p.char.AP + amount)
 }
 
-func (p *Player) SetSP(ammount int16) {
-	p.char.SP = ammount
-	p.Send(packet.PlayerStatChange(false, constant.SpID, int32(ammount)))
+func (p *Player) SetSP(amount int16) {
+	p.char.SP = amount
+	p.Send(packet.PlayerStatChange(false, constant.SpID, int32(amount)))
 }
 
-func (p *Player) GiveSP(ammount int16) {
-	p.SetSP(p.char.SP + ammount)
+func (p *Player) GiveSP(amount int16) {
+	p.SetSP(p.char.SP + amount)
 }
 
-func (p *Player) SetStr(ammount int16) {
-	p.char.Str = ammount
-	p.Send(packet.PlayerStatChange(true, constant.StrID, int32(ammount)))
+func (p *Player) SetStr(amount int16) {
+	p.char.Str = amount
+	p.Send(packet.PlayerStatChange(true, constant.StrID, int32(amount)))
 }
 
-func (p *Player) GiveStr(ammount int16) {
-	p.SetStr(p.char.Str + ammount)
+func (p *Player) GiveStr(amount int16) {
+	p.SetStr(p.char.Str + amount)
 }
 
-func (p *Player) SetDex(ammount int16) {
-	p.char.Dex = ammount
-	p.Send(packet.PlayerStatChange(true, constant.DexID, int32(ammount)))
+func (p *Player) SetDex(amount int16) {
+	p.char.Dex = amount
+	p.Send(packet.PlayerStatChange(true, constant.DexID, int32(amount)))
 }
 
-func (p *Player) GiveDex(ammount int16) {
-	p.SetDex(p.char.Dex + ammount)
+func (p *Player) GiveDex(amount int16) {
+	p.SetDex(p.char.Dex + amount)
 }
 
-func (p *Player) SetInt(ammount int16) {
-	p.char.Int = ammount
-	p.Send(packet.PlayerStatChange(true, constant.IntID, int32(ammount)))
+func (p *Player) SetInt(amount int16) {
+	p.char.Int = amount
+	p.Send(packet.PlayerStatChange(true, constant.IntID, int32(amount)))
 }
 
-func (p *Player) GiveInt(ammount int16) {
-	p.SetInt(p.char.Int + ammount)
+func (p *Player) GiveInt(amount int16) {
+	p.SetInt(p.char.Int + amount)
 }
 
-func (p *Player) SetLuk(ammount int16) {
-	p.char.Luk = ammount
-	p.Send(packet.PlayerStatChange(true, constant.LukID, int32(ammount)))
+func (p *Player) SetLuk(amount int16) {
+	p.char.Luk = amount
+	p.Send(packet.PlayerStatChange(true, constant.LukID, int32(amount)))
 }
 
-func (p *Player) GiveLuk(ammount int16) {
-	p.SetLuk(p.char.Luk + ammount)
+func (p *Player) GiveLuk(amount int16) {
+	p.SetLuk(p.char.Luk + amount)
 }
 
-func (p *Player) SetMesos(ammount int32) {
-	p.char.Mesos = ammount
-	p.Send(packet.PlayerStatChange(false, constant.MesosID, ammount))
+func (p *Player) SetMesos(amount int32) {
+	p.char.Mesos = amount
+	p.Send(packet.PlayerStatChange(false, constant.MesosID, amount))
 }
 
-func (p *Player) GiveMesos(ammount int32) {
-	p.SetMesos(p.char.Mesos + ammount)
+func (p *Player) GiveMesos(amount int32) {
+	p.SetMesos(p.char.Mesos + amount)
 }
 
 func (p *Player) SetMinigameWins(v int32) {
