@@ -54,7 +54,7 @@ func (m *gameMob) ChangeController(newController mnet.MConnChannel) {
 	}
 
 	m.Controller = newController
-	newController.Send(packet.MobControl(m.Mob))
+	newController.Send(packet.MobControl(m.Mob, false))
 }
 
 func (m *gameMob) FindNewControllerExcept(conn mnet.MConnChannel) {

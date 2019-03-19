@@ -1,6 +1,9 @@
 package game
 
 import (
+	"strconv"
+	"time"
+
 	"github.com/Hucaru/Valhalla/game/def"
 	"github.com/Hucaru/Valhalla/game/packet"
 	"github.com/Hucaru/Valhalla/mnet"
@@ -9,13 +12,14 @@ import (
 )
 
 type Instance struct {
-	mapID   int32
-	npcs    []def.NPC
-	mobs    []gameMob
-	players []mnet.MConnChannel
+	mapID        int32
+	npcs         []def.NPC
+	mobs         []gameMob
+	players      []mnet.MConnChannel
+	workDispatch chan func()
 }
 
-func createInstanceFromMapData(mapData nx.Map, mapID int32) Instance {
+func createInstanceFromMapData(mapData nx.Map, mapID int32, dispatcher chan func()) *Instance {
 	npcs := []def.NPC{}
 	mobs := []gameMob{}
 
@@ -33,7 +37,31 @@ func createInstanceFromMapData(mapData nx.Map, mapID int32) Instance {
 		npcs = append(npcs, def.CreateNPC(int32(len(npcs)), l))
 	}
 
-	return Instance{mapID: mapID, npcs: npcs, mobs: mobs}
+	inst := &Instance{mapID: mapID, npcs: npcs, mobs: mobs, workDispatch: dispatcher}
+
+	// Periodic map work
+	go func(inst *Instance) {
+		timer := time.NewTicker(5 * time.Second)
+		quit := make(chan bool)
+
+		for {
+			select {
+			case <-timer.C:
+				inst.workDispatch <- func() {
+					if inst == nil {
+						quit <- true
+					} else {
+						inst.send(packet.MessageDialogueBox(strconv.Itoa(int(mapID))))
+					}
+				}
+			case <-quit:
+				return
+			}
+		}
+
+	}(inst)
+
+	return inst
 }
 
 func (inst *Instance) send(p mpacket.Packet) {

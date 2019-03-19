@@ -1,7 +1,7 @@
 package packet
 
 import (
-	"github.com/Hucaru/Valhalla/constant/opcode"
+	opcodes "github.com/Hucaru/Valhalla/constant/opcode"
 	"github.com/Hucaru/Valhalla/game/def"
 	"github.com/Hucaru/Valhalla/mpacket"
 )
@@ -13,9 +13,13 @@ func MobShow(mob def.Mob) mpacket.Packet {
 	return p
 }
 
-func MobControl(mob def.Mob) mpacket.Packet {
+func MobControl(mob def.Mob, chase bool) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcodes.SendChannelControlMob)
-	p.WriteByte(0x01) // flag for end control or not
+	if chase {
+		p.WriteByte(0x02) // 2 chase, 1 no chase, 0 no control
+	} else {
+		p.WriteByte(0x01)
+	}
 
 	p.Append(addMob(mob))
 
@@ -26,7 +30,7 @@ func addMob(mob def.Mob) mpacket.Packet {
 	p := mpacket.NewPacket()
 
 	p.WriteInt32(mob.SpawnID)
-	p.WriteByte(0x01) // control status?
+	p.WriteByte(0x00) // control status?
 	p.WriteInt32(mob.ID)
 
 	p.WriteInt32(0) // some kind of status?
@@ -85,7 +89,6 @@ func MobControlAcknowledge(mobID int32, moveID int16, allowedToUseSkill bool, mp
 }
 
 func MobMove(mobID int32, allowedToUseSkill bool, action byte, unknownData uint32, buf []byte) mpacket.Packet {
-	// func MobMove(mobID int32, allowedToUseSkill bool, action int8, skill, level byte, option int16, buf []byte) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcodes.SendChannelMoveMob)
 	p.WriteInt32(mobID)
 	p.WriteBool(allowedToUseSkill)

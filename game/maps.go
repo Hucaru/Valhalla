@@ -13,26 +13,28 @@ import (
 var Maps = make(map[int32]*GameMap)
 
 type GameMap struct {
-	id        int32
-	instances []Instance
-	mapData   nx.Map
+	id           int32
+	instances    []*Instance
+	mapData      nx.Map
+	workDispatch chan func()
 }
 
-func InitMaps() {
+func InitMaps(dispatcher chan func()) {
 	for mapID, nxMap := range nx.GetMaps() {
-		inst := make([]Instance, 1)
-		inst[0] = createInstanceFromMapData(nxMap, mapID)
+		inst := make([]*Instance, 1)
+		inst[0] = createInstanceFromMapData(nxMap, mapID, dispatcher)
 
 		Maps[mapID] = &GameMap{
-			id:        mapID,
-			instances: inst,
-			mapData:   nxMap,
+			id:           mapID,
+			instances:    inst,
+			mapData:      nxMap,
+			workDispatch: dispatcher,
 		}
 	}
 }
 
 func (gm *GameMap) CreateNewInstance() int {
-	inst := createInstanceFromMapData(gm.mapData, gm.id)
+	inst := createInstanceFromMapData(gm.mapData, gm.id, gm.workDispatch)
 	gm.instances = append(gm.instances, inst)
 	return len(gm.instances) - 1
 }

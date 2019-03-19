@@ -26,6 +26,7 @@ type channelServer struct {
 	config   channelConfig
 	dbConfig dbConfig
 	eRecv    chan *mnet.Event
+	wRecv    chan func()
 	wg       *sync.WaitGroup
 	wconn    net.Conn
 }
@@ -35,6 +36,7 @@ func NewChannelServer(configFile string) *channelServer {
 
 	cs := &channelServer{
 		eRecv:    make(chan *mnet.Event),
+		wRecv:    make(chan func()),
 		config:   config,
 		dbConfig: dbConfig,
 		wg:       &sync.WaitGroup{},
@@ -55,7 +57,7 @@ func (cs *channelServer) Run() {
 
 	log.Println("Loaded and parsed Wizet data (NX) in", elapsed)
 
-	game.InitMaps()
+	game.InitMaps(cs.wRecv)
 
 	go script.WatchScriptDirectory("scripts/npc/")
 	go script.WatchScriptDirectory("scripts/event/")
@@ -175,7 +177,10 @@ func (cs *channelServer) processEvent() {
 					}
 				}
 			}
-
+		case work, ok := <-cs.wRecv:
+			if ok {
+				work()
+			}
 		}
 	}
 }
