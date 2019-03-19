@@ -1,7 +1,6 @@
 package game
 
 import (
-	"strconv"
 	"time"
 
 	"github.com/Hucaru/Valhalla/game/def"
@@ -17,6 +16,7 @@ type Instance struct {
 	mobs         []gameMob
 	players      []mnet.MConnChannel
 	workDispatch chan func()
+	mobSpawnTime int64
 }
 
 func createInstanceFromMapData(mapData nx.Map, mapID int32, dispatcher chan func()) *Instance {
@@ -41,7 +41,7 @@ func createInstanceFromMapData(mapData nx.Map, mapID int32, dispatcher chan func
 
 	// Periodic map work
 	go func(inst *Instance) {
-		timer := time.NewTicker(5 * time.Second)
+		timer := time.NewTicker(1000 * time.Millisecond)
 		quit := make(chan bool)
 
 		for {
@@ -51,7 +51,7 @@ func createInstanceFromMapData(mapData nx.Map, mapID int32, dispatcher chan func
 					if inst == nil {
 						quit <- true
 					} else {
-						inst.send(packet.MessageDialogueBox(strconv.Itoa(int(mapID))))
+						inst.periodicWork()
 					}
 				}
 			case <-quit:
@@ -191,41 +191,6 @@ func (inst *Instance) generateMobSpawnID() int32 {
 	return l
 }
 
-func (inst *Instance) handleDeadMobs() {
-	y := inst.mobs[:0]
-
-	for _, mob := range inst.mobs {
-		if mob.HP < 1 {
-			mob.Controller.Send(packet.MobEndControl(mob.Mob))
-
-			for _, id := range mob.Revives {
-				inst.SpawnMobNoRespawn(id, inst.generateMobSpawnID(), mob.X, mob.Y, mob.Foothold, -3, mob.SpawnID, mob.FacesLeft())
-				y = append(y, inst.mobs[len(inst.mobs)-1])
-			}
-
-			if mob.Exp > 0 {
-				for player, _ := range mob.dmgTaken {
-					p, err := Players.GetFromConn(player)
-
-					if err != nil {
-						continue
-					}
-
-					// perform exp calculation
-
-					p.GiveEXP(int32(mob.Exp), true, false)
-				}
-			}
-
-			inst.send(packet.MobRemove(mob.Mob, 1)) // 0 keeps it there and is no longer attackable, 1 normal death, 2 disaapear instantly
-		} else {
-			y = append(y, mob)
-		}
-	}
-
-	inst.mobs = y
-}
-
 func (inst *Instance) SpawnMob(mobID, spawnID int32, x, y, foothold int16, summonType int8, summonOption int32, facesLeft bool) {
 
 }
@@ -261,4 +226,78 @@ func (inst *Instance) SpawnMobNoRespawn(mobID, spawnID int32, x, y, foothold int
 	inst.mobs = append(inst.mobs, gameMob{Mob: mob, mapID: inst.mapID})
 
 	inst.mobs[len(inst.mobs)-1].Controller = inst.findController()
+}
+
+func (inst *Instance) handleDeadMobs() {
+	y := inst.mobs[:0]
+
+	for _, mob := range inst.mobs {
+		if mob.HP < 1 {
+			mob.Controller.Send(packet.MobEndControl(mob.Mob))
+
+			for _, id := range mob.Revives {
+				inst.SpawnMobNoRespawn(id, inst.generateMobSpawnID(), mob.X, mob.Y, mob.Foothold, -3, mob.SpawnID, mob.FacesLeft())
+				y = append(y, inst.mobs[len(inst.mobs)-1])
+			}
+
+			if mob.Exp > 0 {
+				for player, _ := range mob.dmgTaken {
+					p, err := Players.GetFromConn(player)
+
+					if err != nil {
+						continue
+					}
+
+					// perform exp calculation
+
+					p.GiveEXP(int32(mob.Exp), true, false)
+				}
+			}
+
+			inst.send(packet.MobRemove(mob.Mob, 1)) // 0 keeps it there and is no longer attackable, 1 normal death, 2 disaapear instantly
+		} else {
+			y = append(y, mob)
+		}
+	}
+
+	inst.mobs = y
+}
+
+func (inst *Instance) calculateCapacity() int {
+	return len(inst.mobs)
+}
+
+func (inst *Instance) handleMobRespawns(currentTime int64) {
+	if currentTime-inst.mobSpawnTime < 7000 {
+		return
+	}
+
+	inst.mobSpawnTime = currentTime
+
+	capacity := inst.calculateCapacity()
+	if capacity < 0 {
+		return
+	}
+
+	amountCanSpawn := capacity - len(inst.mobs)
+
+	if amountCanSpawn < 1 {
+		return
+	}
+}
+
+func (inst *Instance) periodicWork() {
+	currentTime := time.Now().UnixNano() / int64(time.Millisecond)
+	// update mystic doors
+	// Update drops
+	// Update mist
+
+	if len(inst.players) > 0 {
+		inst.handleMobRespawns(currentTime)
+		// check vac hack
+
+		// for each character
+		// tick for map dmg e.g. drowning
+		// if pet present perform duties
+	}
 }
