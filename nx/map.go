@@ -55,7 +55,7 @@ type Rectangle struct {
 	left, top, right, bottom int
 }
 
-func (r Rectangle) Empty() bool {
+func (r Rectangle) empty() bool {
 	if (r.left | r.top | r.right | r.bottom) == 0 {
 		return true
 	}
@@ -63,7 +63,7 @@ func (r Rectangle) Empty() bool {
 	return false
 }
 
-func (r *Rectangle) Inflate(x, y int) {
+func (r *Rectangle) inflate(x, y int) {
 	r.left -= x
 	r.top += y
 	r.right += x
@@ -214,7 +214,7 @@ func (m *Map) calculateMapLimits() {
 
 	m.VRLimit = Rectangle{int(m.VRLeft), int(m.VRTop), int(m.VRRight), int(m.VRBottom)}
 
-	if m.VRLimit.Empty() {
+	if m.VRLimit.empty() {
 		m.VRLimit.left, m.VRLimit.top, m.VRLimit.right, m.VRLimit.bottom = left, top-300, right, bottom+75
 	}
 
@@ -223,7 +223,7 @@ func (m *Map) calculateMapLimits() {
 	right -= 30
 	bottom += 10
 
-	if !m.VRLimit.Empty() {
+	if !m.VRLimit.empty() {
 		if m.VRLimit.left+20 < left {
 			left = m.VRLimit.left + 20
 		}
@@ -242,9 +242,9 @@ func (m *Map) calculateMapLimits() {
 	}
 
 	m.MBR.left, m.MBR.top, m.MBR.right, m.MBR.bottom = left+10, top-375, right-10, bottom+60
-	m.MBR.Inflate(10, 10)
+	m.MBR.inflate(10, 10)
 	m.OMBR = m.MBR
-	m.OMBR.Inflate(60, 60)
+	m.OMBR.inflate(60, 60)
 
 	mobX, mobY := 800, 600
 
