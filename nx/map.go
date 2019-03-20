@@ -303,7 +303,7 @@ func getMapInfo(node *gonx.Node, nodes []gonx.Node, textLookup []string) Map {
 			m.VRLeft = gonx.DataToInt64(option.Data)
 		case "VRBottom":
 			m.VRBottom = gonx.DataToInt64(option.Data)
-		// case "VRLimit":
+		case "VRLimit":
 		// 	m.VRLimit = gonx.DataToInt64(option.Data)
 		case "recovery": // float64
 			m.Recovery = gonx.DataToFloat64(option.Data)
