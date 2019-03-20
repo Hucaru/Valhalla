@@ -178,7 +178,7 @@ func (m *Map) calculateMapLimits() {
 	left, top := math.MaxInt32, math.MaxInt32
 	right, bottom := math.MinInt32, math.MinInt32
 
-	for _, fh := range m.Footholds {
+	for _, fh := range m.Footholds { //edge adjustments
 		if fh.x1 < left {
 			left = fh.x1
 		}
@@ -493,5 +493,40 @@ func getMapReactors(node *gonx.Node, nodes []gonx.Node, textLookup []string) []R
 
 func getMapFootholds(node *gonx.Node, nodes []gonx.Node, textLookup []string) []Foothold {
 	footholds := []Foothold{}
+
+	for i := uint32(0); i < uint32(node.ChildCount); i++ {
+		out := nodes[node.ChildID+i]
+		for j := uint32(0); j < uint32(out.ChildCount); j++ {
+			inner := nodes[out.ChildID+j]
+			for k := uint32(0); k < uint32(inner.ChildCount); k++ {
+				fh := nodes[inner.ChildID+k]
+
+				foothold := Foothold{}
+
+				for u := uint32(0); u < uint32(fh.ChildCount); u++ {
+					option := nodes[fh.ChildID+u]
+					optionName := textLookup[option.NameID]
+					switch optionName {
+					case "x1":
+						foothold.x1 = int(gonx.DataToInt64(option.Data))
+					case "x2":
+						foothold.x2 = int(gonx.DataToInt64(option.Data))
+					case "y1":
+						foothold.y1 = int(gonx.DataToInt64(option.Data))
+					case "y2":
+						foothold.y2 = int(gonx.DataToInt64(option.Data))
+					case "next":
+					case "prev":
+					case "force":
+					default:
+						fmt.Println("Unsupported NX foothold option:", optionName, "->", option.Data)
+					}
+				}
+
+				footholds = append(footholds, foothold)
+			}
+		}
+	}
+
 	return footholds
 }
