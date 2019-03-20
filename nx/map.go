@@ -3,6 +3,7 @@ package nx
 import (
 	"fmt"
 	"log"
+	"math"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -44,6 +45,39 @@ type Reactor struct {
 	Name        string
 }
 
+// Foothold in map
+type Foothold struct {
+	x1, x2, y1, y2 int
+}
+
+// Rectangle type for MBR
+type Rectangle struct {
+	left, top, right, bottom int
+}
+
+func (r Rectangle) Empty() bool {
+	if (r.left | r.top | r.right | r.bottom) == 0 {
+		return true
+	}
+
+	return false
+}
+
+func (r *Rectangle) Inflate(x, y int) {
+	r.left -= x
+	r.top += y
+	r.right += x
+	r.bottom -= y
+}
+
+func (r Rectangle) Width() int {
+	return r.right - r.left
+}
+
+func (r Rectangle) Height() int {
+	return r.top - r.bottom
+}
+
 // Map data from nx
 type Map struct {
 	Town         int64
@@ -56,12 +90,13 @@ type Map struct {
 	MoveLimit int64
 	DecHP     int64
 
-	NPCs     []Life
-	Mobs     []Life
-	Portals  []Portal
-	Reactors []Reactor
+	NPCs      []Life
+	Mobs      []Life
+	Portals   []Portal
+	Reactors  []Reactor
+	Footholds []Foothold
 
-	FieldLimit, VRLimit              int64
+	FieldLimit                       int64
 	VRRight, VRTop, VRLeft, VRBottom int64
 
 	Recovery                  float64
@@ -74,6 +109,9 @@ type Map struct {
 	FieldType                 int64
 	Everlast, Snow, Rain      int64
 	MapName, StreetName, Help string
+
+	VRLimit, MBR, OMBR             Rectangle
+	MobCapacityMin, MobCapacityMax int
 }
 
 func extractMaps(nodes []gonx.Node, textLookup []string) map[int32]Map {
@@ -109,6 +147,10 @@ func extractMaps(nodes []gonx.Node, textLookup []string) map[int32]Map {
 					mapItem.Reactors = getMapReactors(node, nodes, textLookup)
 				})
 
+				gonx.FindNode(search+"/"+name+"/foothold", nodes, textLookup, func(node *gonx.Node) {
+					mapItem.Footholds = getMapFootholds(node, nodes, textLookup)
+				})
+
 				name = strings.TrimSuffix(name, filepath.Ext(name))
 				mapID, err := strconv.Atoi(name)
 
@@ -116,6 +158,8 @@ func extractMaps(nodes []gonx.Node, textLookup []string) map[int32]Map {
 					log.Println(err)
 					continue
 				}
+
+				mapItem.calculateMapLimits()
 
 				maps[int32(mapID)] = mapItem
 			}
@@ -128,6 +172,99 @@ func extractMaps(nodes []gonx.Node, textLookup []string) map[int32]Map {
 	}
 
 	return maps
+}
+
+func (m *Map) calculateMapLimits() {
+	left, top := math.MaxInt32, math.MaxInt32
+	right, bottom := math.MinInt32, math.MinInt32
+
+	for _, fh := range m.Footholds {
+		if fh.x1 < left {
+			left = fh.x1
+		}
+
+		if fh.y1 < top {
+			top = fh.y1
+		}
+
+		if fh.x2 < left {
+			left = fh.x2
+		}
+
+		if fh.y2 < top {
+			top = fh.y2
+		}
+
+		if fh.x1 > right {
+			right = fh.x1
+		}
+
+		if fh.y1 > bottom {
+			bottom = fh.y1
+		}
+
+		if fh.x2 > right {
+			right = fh.x2
+		}
+
+		if fh.y2 > bottom {
+			bottom = fh.y2
+		}
+	}
+
+	m.VRLimit = Rectangle{int(m.VRLeft), int(m.VRTop), int(m.VRRight), int(m.VRBottom)}
+
+	if m.VRLimit.Empty() {
+		m.VRLimit.left, m.VRLimit.top, m.VRLimit.right, m.VRLimit.bottom = left, top-300, right, bottom+75
+	}
+
+	left += 30
+	top -= 300
+	right -= 30
+	bottom += 10
+
+	if !m.VRLimit.Empty() {
+		if m.VRLimit.left+20 < left {
+			left = m.VRLimit.left + 20
+		}
+
+		if m.VRLimit.top+65 < top {
+			top = m.VRLimit.top + 65
+		}
+
+		if m.VRLimit.right-5 > right {
+			right = m.VRLimit.right - 5
+		}
+
+		if m.VRLimit.bottom > bottom {
+			bottom = m.VRLimit.bottom
+		}
+	}
+
+	m.MBR.left, m.MBR.top, m.MBR.right, m.MBR.bottom = left+10, top-375, right-10, bottom+60
+	m.MBR.Inflate(10, 10)
+	m.OMBR = m.MBR
+	m.OMBR.Inflate(60, 60)
+
+	mobX, mobY := 800, 600
+
+	if m.MBR.Width() > 800 {
+		mobX = m.MBR.Width()
+	}
+
+	if m.MBR.Height() > 800 {
+		mobY = m.MBR.Height()
+	}
+
+	m.MobCapacityMin = int((float64(mobX*mobY) * m.MobRate) * 0.0000078125)
+
+	if m.MobCapacityMin < 1 {
+		m.MobCapacityMin = 1
+	} else if m.MobCapacityMin > 40 {
+		m.MobCapacityMin = 40
+	}
+
+	m.MobCapacityMax = m.MobCapacityMin * 2
 }
 
 func getMapInfo(node *gonx.Node, nodes []gonx.Node, textLookup []string) Map {
@@ -166,8 +303,8 @@ func getMapInfo(node *gonx.Node, nodes []gonx.Node, textLookup []string) Map {
 			m.VRLeft = gonx.DataToInt64(option.Data)
 		case "VRBottom":
 			m.VRBottom = gonx.DataToInt64(option.Data)
-		case "VRLimit":
-			m.VRLimit = gonx.DataToInt64(option.Data)
+		// case "VRLimit":
+		// 	m.VRLimit = gonx.DataToInt64(option.Data)
 		case "recovery": // float64
 			m.Recovery = gonx.DataToFloat64(option.Data)
 		case "returnMap":
@@ -352,4 +489,9 @@ func getMapReactors(node *gonx.Node, nodes []gonx.Node, textLookup []string) []R
 	}
 
 	return reactors
+}
+
+func getMapFootholds(node *gonx.Node, nodes []gonx.Node, textLookup []string) []Foothold {
+	footholds := []Foothold{}
+	return footholds
 }
