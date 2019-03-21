@@ -52,11 +52,11 @@ type Foothold struct {
 
 // Rectangle type for MBR
 type Rectangle struct {
-	left, top, right, bottom int
+	Left, Top, Right, Bottom int
 }
 
 func (r Rectangle) empty() bool {
-	if (r.left | r.top | r.right | r.bottom) == 0 {
+	if (r.Left | r.Top | r.Right | r.Bottom) == 0 {
 		return true
 	}
 
@@ -64,18 +64,38 @@ func (r Rectangle) empty() bool {
 }
 
 func (r *Rectangle) inflate(x, y int) {
-	r.left -= x
-	r.top += y
-	r.right += x
-	r.bottom -= y
+	r.Left -= x
+	r.Top += y
+	r.Right += x
+	r.Bottom -= y
 }
 
-func (r Rectangle) Width() int {
-	return r.right - r.left
+func (r Rectangle) width() int {
+	return r.Right - r.Left
 }
 
-func (r Rectangle) Height() int {
-	return r.top - r.bottom
+func (r Rectangle) height() int {
+	return r.Top - r.Bottom
+}
+
+func (r Rectangle) Contains(x, y int) bool {
+	if r.Left > x {
+		return false
+	}
+
+	if r.Top < y {
+		return false
+	}
+
+	if r.Right < x {
+		return false
+	}
+
+	if r.Bottom > y {
+		return false
+	}
+
+	return true
 }
 
 // Map data from nx
@@ -215,7 +235,7 @@ func (m *Map) calculateMapLimits() {
 	m.VRLimit = Rectangle{int(m.VRLeft), int(m.VRTop), int(m.VRRight), int(m.VRBottom)}
 
 	if m.VRLimit.empty() {
-		m.VRLimit.left, m.VRLimit.top, m.VRLimit.right, m.VRLimit.bottom = left, top-300, right, bottom+75
+		m.VRLimit.Left, m.VRLimit.Top, m.VRLimit.Right, m.VRLimit.Bottom = left, top-300, right, bottom+75
 	}
 
 	left += 30
@@ -224,36 +244,36 @@ func (m *Map) calculateMapLimits() {
 	bottom += 10
 
 	if !m.VRLimit.empty() {
-		if m.VRLimit.left+20 < left {
-			left = m.VRLimit.left + 20
+		if m.VRLimit.Left+20 < left {
+			left = m.VRLimit.Left + 20
 		}
 
-		if m.VRLimit.top+65 < top {
-			top = m.VRLimit.top + 65
+		if m.VRLimit.Top+65 < top {
+			top = m.VRLimit.Top + 65
 		}
 
-		if m.VRLimit.right-5 > right {
-			right = m.VRLimit.right - 5
+		if m.VRLimit.Right-5 > right {
+			right = m.VRLimit.Right - 5
 		}
 
-		if m.VRLimit.bottom > bottom {
-			bottom = m.VRLimit.bottom
+		if m.VRLimit.Bottom > bottom {
+			bottom = m.VRLimit.Bottom
 		}
 	}
 
-	m.MBR.left, m.MBR.top, m.MBR.right, m.MBR.bottom = left+10, top-375, right-10, bottom+60
+	m.MBR.Left, m.MBR.Top, m.MBR.Right, m.MBR.Bottom = left+10, top-375, right-10, bottom+60
 	m.MBR.inflate(10, 10)
 	m.OMBR = m.MBR
 	m.OMBR.inflate(60, 60)
 
 	mobX, mobY := 800, 600
 
-	if m.MBR.Width() > 800 {
-		mobX = m.MBR.Width()
+	if m.MBR.width() > 800 {
+		mobX = m.MBR.width()
 	}
 
-	if m.MBR.Height() > 800 {
-		mobY = m.MBR.Height()
+	if m.MBR.height() > 800 {
+		mobY = m.MBR.height()
 	}
 
 	m.MobCapacityMin = int((float64(mobX*mobY) * m.MobRate) * 0.0000078125)
@@ -429,7 +449,7 @@ func getMapLifes(node *gonx.Node, nodes []gonx.Node, textLookup []string) ([]Lif
 			case "y":
 				life.Y = gonx.DataToInt16(option.Data)
 			case "mobTime":
-				life.MobTime = gonx.DataToInt64(option.Data)
+				life.MobTime = gonx.DataToInt64(option.Data) * 1000
 			case "hide":
 				life.Hide = gonx.DataToInt64(option.Data)
 			case "rx0":
