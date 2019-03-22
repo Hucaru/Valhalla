@@ -7,7 +7,6 @@ import (
 	skills "github.com/Hucaru/Valhalla/constant/skill"
 	"github.com/Hucaru/Valhalla/game"
 	"github.com/Hucaru/Valhalla/game/mob"
-	"github.com/Hucaru/Valhalla/game/packet"
 	"github.com/Hucaru/Valhalla/mnet"
 	"github.com/Hucaru/Valhalla/mpacket"
 	"github.com/Hucaru/Valhalla/nx"
@@ -36,15 +35,15 @@ func mobControl(conn mnet.MConnChannel, reader mpacket.Reader) {
 
 	char := player.Char()
 	game.Maps[char.MapID].GetMobFromSpawnID(mobSpawnID, player.InstanceID)
-	mob, err := game.Maps[char.MapID].GetMobFromSpawnID(mobSpawnID, player.InstanceID)
+	sMob, err := game.Maps[char.MapID].GetMobFromSpawnID(mobSpawnID, player.InstanceID)
 
 	if err != nil {
 		return
 	}
 
-	if mob.Controller != conn { // prevents hijack and reassigns controller to anyone except hijacker
+	if sMob.Controller != conn { // prevents hijack and reassigns controller to anyone except hijacker
 		if newController := game.Maps[char.MapID].FindControllerExcept(conn, player.InstanceID); newController != nil {
-			mob.ChangeController(newController)
+			sMob.ChangeController(newController)
 		}
 
 		return
@@ -53,25 +52,25 @@ func mobControl(conn mnet.MConnChannel, reader mpacket.Reader) {
 	// Update mob position information
 	moveData, finalData := parseMovement(reader)
 
-	if !validateMobMovement(*mob, moveData) {
+	if !validateMobMovement(*sMob, moveData) {
 		return
 	}
 
-	mob.X = finalData.X
-	mob.Y = finalData.Y
-	mob.Foothold = finalData.Foothold
-	mob.Stance = finalData.Stance
+	sMob.X = finalData.X
+	sMob.Y = finalData.Y
+	sMob.Foothold = finalData.Foothold
+	sMob.Stance = finalData.Stance
 
 	moveBytes := generateMovementBytes(moveData)
 
 	// Perform the action received
 	if actualAction >= 21 && actualAction <= 25 {
-		performSkill(mob, int16(skillData>>16), byte(skillData>>8), byte(skillData))
+		performSkill(sMob, int16(skillData>>16), byte(skillData>>8), byte(skillData))
 	} else if actualAction > 12 && actualAction < 20 {
 		attackID := byte(actualAction - 12)
 
 		// check mob can use attack
-		if level, valid := mob.Skills[attackID]; valid {
+		if level, valid := sMob.Skills[attackID]; valid {
 			levels, err := nx.GetMobSkill(attackID)
 
 			if err != nil {
@@ -80,29 +79,29 @@ func mobControl(conn mnet.MConnChannel, reader mpacket.Reader) {
 
 			if int(level) < len(levels) {
 				skill := levels[level]
-				mob.MP = mob.MP - skill.MpCon
-				if mob.MP < 0 {
-					mob.MP = 0
+				sMob.MP = sMob.MP - skill.MpCon
+				if sMob.MP < 0 {
+					sMob.MP = 0
 				}
 			}
 
 		}
 
-		mob.LastAttackTime = time.Now().Unix()
+		sMob.LastAttackTime = time.Now().Unix()
 	}
 
 	// Calculate the next action
-	mob.CanUseSkill = skillPossible
+	sMob.CanUseSkill = skillPossible
 
-	if !mob.CanUseSkill || (mob.StatBuff&skills.MobStat.SealSkill > 0) || (time.Now().Unix()-mob.LastSkillUseTime) < 3 {
+	if !sMob.CanUseSkill || (sMob.StatBuff&skills.MobStat.SealSkill > 0) || (time.Now().Unix()-sMob.LastSkillUseTime) < 3 {
 		// there are more reasons as to why a mob cannot use a skill
-		mob.SkillID = 0
+		sMob.SkillID = 0
 	} else {
-		mob.SkillID, mob.SkillLevel = chooseNextSkill(mob)
+		sMob.SkillID, sMob.SkillLevel = chooseNextSkill(sMob)
 	}
 
-	conn.Send(packet.MobControlAcknowledge(mobSpawnID, moveID, skillPossible, int16(mob.MP), mob.SkillID, mob.SkillLevel)) // change zeros to what is calculated as next move
-	game.Maps[char.MapID].SendExcept(packet.MobMove(mobSpawnID, skillPossible, byte(action), skillData, moveBytes), conn, player.InstanceID)
+	sMob.Acknowledge(moveID, skillPossible, sMob.SkillID, sMob.SkillLevel)
+	game.Maps[char.MapID].SendExcept(mob.PacketMove(mobSpawnID, skillPossible, byte(action), skillData, moveBytes), conn, player.InstanceID)
 }
 
 func chooseNextSkill(mob *mob.Mob) (byte, byte) {
