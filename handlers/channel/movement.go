@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/Hucaru/Valhalla/game/def"
+	"github.com/Hucaru/Valhalla/game/mob"
 	"github.com/Hucaru/Valhalla/mpacket"
 )
 
@@ -184,7 +185,7 @@ func validateCharMovement(char def.Character, moveData def.MovementData) bool {
 	return true
 }
 
-func validateMobMovement(mob def.Mob, moveData def.MovementData) bool {
+func validateMobMovement(mob mob.Mob, moveData def.MovementData) bool {
 	// run through the movement data and make sure monsters are not moving too fast
 
 	return true

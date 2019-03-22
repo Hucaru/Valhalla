@@ -23,7 +23,7 @@ func (p playersList) GetFromName(name string) (*Player, error) {
 		}
 	}
 
-	return &Player{}, fmt.Errorf("Unable to get player")
+	return nil, fmt.Errorf("Unable to get player")
 }
 
 func (p playersList) GetFromConn(conn mnet.MConnChannel) (*Player, error) {
@@ -33,7 +33,7 @@ func (p playersList) GetFromConn(conn mnet.MConnChannel) (*Player, error) {
 		}
 	}
 
-	return &Player{}, fmt.Errorf("Unable to get player")
+	return nil, fmt.Errorf("Unable to get player")
 }
 
 func (p playersList) GetFromID(id int32) (*Player, error) {
@@ -43,7 +43,7 @@ func (p playersList) GetFromID(id int32) (*Player, error) {
 		}
 	}
 
-	return &Player{}, fmt.Errorf("Unable to get player")
+	return nil, fmt.Errorf("Unable to get player")
 }
 
 type Player struct {
@@ -134,6 +134,9 @@ func (p *Player) SetHP(amount int32) {
 
 func (p *Player) GiveHP(amount int32) {
 	p.SetHP(int32(p.char.HP) + amount)
+	if p.char.HP < 1 {
+		p.Kill()
+	}
 }
 
 func (p *Player) SetMaxMP(amount int32) {

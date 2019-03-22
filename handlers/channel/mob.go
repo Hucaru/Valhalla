@@ -6,7 +6,7 @@ import (
 
 	skills "github.com/Hucaru/Valhalla/constant/skill"
 	"github.com/Hucaru/Valhalla/game"
-	"github.com/Hucaru/Valhalla/game/def"
+	"github.com/Hucaru/Valhalla/game/mob"
 	"github.com/Hucaru/Valhalla/game/packet"
 	"github.com/Hucaru/Valhalla/mnet"
 	"github.com/Hucaru/Valhalla/mpacket"
@@ -43,14 +43,17 @@ func mobControl(conn mnet.MConnChannel, reader mpacket.Reader) {
 	}
 
 	if mob.Controller != conn { // prevents hijack and reassigns controller to anyone except hijacker
-		mob.FindNewControllerExcept(conn)
+		if newController := game.Maps[char.MapID].FindControllerExcept(conn, player.InstanceID); newController != nil {
+			mob.ChangeController(newController)
+		}
+
 		return
 	}
 
 	// Update mob position information
 	moveData, finalData := parseMovement(reader)
 
-	if !validateMobMovement(mob.Mob, moveData) {
+	if !validateMobMovement(*mob, moveData) {
 		return
 	}
 
@@ -63,7 +66,7 @@ func mobControl(conn mnet.MConnChannel, reader mpacket.Reader) {
 
 	// Perform the action received
 	if actualAction >= 21 && actualAction <= 25 {
-		performSkill(&mob.Mob, int16(skillData>>16), byte(skillData>>8), byte(skillData))
+		performSkill(mob, int16(skillData>>16), byte(skillData>>8), byte(skillData))
 	} else if actualAction > 12 && actualAction < 20 {
 		attackID := byte(actualAction - 12)
 
@@ -95,14 +98,14 @@ func mobControl(conn mnet.MConnChannel, reader mpacket.Reader) {
 		// there are more reasons as to why a mob cannot use a skill
 		mob.SkillID = 0
 	} else {
-		mob.SkillID, mob.SkillLevel = chooseNextSkill(&mob.Mob)
+		mob.SkillID, mob.SkillLevel = chooseNextSkill(mob)
 	}
 
 	conn.Send(packet.MobControlAcknowledge(mobSpawnID, moveID, skillPossible, int16(mob.MP), mob.SkillID, mob.SkillLevel)) // change zeros to what is calculated as next move
 	game.Maps[char.MapID].SendExcept(packet.MobMove(mobSpawnID, skillPossible, byte(action), skillData, moveBytes), conn, player.InstanceID)
 }
 
-func chooseNextSkill(mob *def.Mob) (byte, byte) {
+func chooseNextSkill(mob *mob.Mob) (byte, byte) {
 	var skillID, skillLevel byte
 
 	skillsToChooseFrom := []byte{}
@@ -206,7 +209,7 @@ func chooseNextSkill(mob *def.Mob) (byte, byte) {
 	return skillID, skillLevel
 }
 
-func performSkill(mob *def.Mob, delay int16, skillLevel, skillID byte) {
+func performSkill(mob *mob.Mob, delay int16, skillLevel, skillID byte) {
 	if skillID != mob.SkillID || (mob.StatBuff&skills.MobStat.SealSkill > 0) {
 		skillID = 0
 		return

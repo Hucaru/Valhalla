@@ -5,6 +5,7 @@ import (
 	"math/rand"
 
 	"github.com/Hucaru/Valhalla/game/def"
+	"github.com/Hucaru/Valhalla/game/mob"
 	"github.com/Hucaru/Valhalla/mnet"
 	"github.com/Hucaru/Valhalla/mpacket"
 	"github.com/Hucaru/Valhalla/nx"
@@ -110,15 +111,15 @@ func (gm *GameMap) GetPlayers(instance int) ([]mnet.MConnChannel, error) {
 	return []mnet.MConnChannel{}, fmt.Errorf("Unable to get players")
 }
 
-func (gm *GameMap) GetMobs(instance int) ([]gameMob, error) {
+func (gm *GameMap) GetMobs(instance int) ([]mob.Mob, error) {
 	if len(gm.instances) > 0 && instance < len(gm.instances) {
 		return gm.instances[instance].mobs, nil
 	}
 
-	return []gameMob{}, fmt.Errorf("Unable to get mobs")
+	return nil, fmt.Errorf("Unable to get mobs")
 }
 
-func (gm *GameMap) GetMobFromSpawnID(spawnID int32, instance int) (*gameMob, error) {
+func (gm *GameMap) GetMobFromSpawnID(spawnID int32, instance int) (*mob.Mob, error) {
 	if len(gm.instances) > 0 && instance < len(gm.instances) {
 		for i, v := range gm.instances[instance].mobs {
 			if v.SpawnID == spawnID {
@@ -127,7 +128,7 @@ func (gm *GameMap) GetMobFromSpawnID(spawnID int32, instance int) (*gameMob, err
 		}
 	}
 
-	return &gameMob{}, fmt.Errorf("Unable to get mob")
+	return nil, fmt.Errorf("Unable to get mob")
 }
 
 func (gm *GameMap) GetNpcFromSpawnID(spawnID int32, instance int) (*def.NPC, error) {
@@ -146,6 +147,14 @@ func (gm *GameMap) HandleDeadMobs(instance int) {
 	if len(gm.instances) > 0 && instance < len(gm.instances) {
 		gm.instances[instance].handleDeadMobs()
 	}
+}
+
+func (gm *GameMap) FindControllerExcept(conn mnet.MConnChannel, instance int) mnet.MConnChannel {
+	if len(gm.instances) > 0 && instance < len(gm.instances) {
+		return gm.instances[instance].findControllerExcept(conn)
+	}
+
+	return nil
 }
 
 func (gm *GameMap) Send(p mpacket.Packet, instance int) {
