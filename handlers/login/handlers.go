@@ -8,9 +8,9 @@ import (
 
 	"github.com/Hucaru/Valhalla/game/def"
 
-	"github.com/Hucaru/Valhalla/constant/opcode"
+	opcodes "github.com/Hucaru/Valhalla/constant/opcode"
 	"github.com/Hucaru/Valhalla/database"
-	"github.com/Hucaru/Valhalla/game/packet"
+	"github.com/Hucaru/Valhalla/game"
 	"github.com/Hucaru/Valhalla/mnet"
 	"github.com/Hucaru/Valhalla/mpacket"
 )
@@ -105,7 +105,7 @@ func handleLoginRequest(conn mnet.MConnLogin, reader mpacket.Reader) {
 		}
 	}
 
-	conn.Send(packet.LoginResponce(result, accountID, gender, adminLevel > 0, username, isBanned))
+	conn.Send(game.PacketLoginResponce(result, accountID, gender, adminLevel > 0, username, isBanned))
 }
 
 func handleGoodLogin(conn mnet.MConnLogin, reader mpacket.Reader) {
@@ -123,16 +123,16 @@ func handleGoodLogin(conn mnet.MConnLogin, reader mpacket.Reader) {
 	const maxNumberOfWorlds = 14
 
 	for i := maxNumberOfWorlds; i > -1; i-- {
-		conn.Send(packet.LoginWorldListing(byte(i))) // hard coded for now
+		conn.Send(game.PacketLoginWorldListing(byte(i))) // hard coded for now
 	}
-	conn.Send(packet.LoginEndWorldList())
+	conn.Send(game.PacketLoginEndWorldList())
 }
 
 func handleWorldSelect(conn mnet.MConnLogin, reader mpacket.Reader) {
 	conn.SetWorldID(reader.ReadByte())
 	reader.ReadByte() // ?
 
-	conn.Send(packet.LoginWorldInfo(0, 0)) // hard coded for now
+	conn.Send(game.PacketLoginWorldInfo(0, 0)) // hard coded for now
 }
 
 func handleChannelSelect(conn mnet.MConnLogin, reader mpacket.Reader) {
@@ -141,7 +141,7 @@ func handleChannelSelect(conn mnet.MConnLogin, reader mpacket.Reader) {
 
 	if selectedWorld == conn.GetWorldID() {
 		characters := def.GetCharactersFromAccountWorldID(conn.GetAccountID(), conn.GetWorldID())
-		conn.Send(packet.LoginDisplayCharacters(characters))
+		conn.Send(game.PacketLoginDisplayCharacters(characters))
 	}
 }
 
@@ -157,7 +157,7 @@ func handleNameCheck(conn mnet.MConnLogin, reader mpacket.Reader) {
 		panic(err)
 	}
 
-	conn.Send(packet.LoginNameCheck(newCharName, nameFound))
+	conn.Send(game.PacketLoginNameCheck(newCharName, nameFound))
 }
 
 func handleNewCharacter(conn mnet.MConnLogin, reader mpacket.Reader) {
@@ -252,7 +252,7 @@ func handleNewCharacter(conn mnet.MConnLogin, reader mpacket.Reader) {
 		newCharacter = characters[len(characters)-1]
 	}
 
-	conn.Send(packet.LoginCreatedCharacter(valid, newCharacter))
+	conn.Send(game.PacketLoginCreatedCharacter(valid, newCharacter))
 }
 
 func handleDeleteCharacter(conn mnet.MConnLogin, reader mpacket.Reader) {
@@ -289,7 +289,7 @@ func handleDeleteCharacter(conn mnet.MConnLogin, reader mpacket.Reader) {
 		deleted = true
 	}
 
-	conn.Send(packet.LoginDeleteCharacter(charID, deleted, hacking))
+	conn.Send(game.PacketLoginDeleteCharacter(charID, deleted, hacking))
 }
 
 func handleSelectCharacter(conn mnet.MConnLogin, reader mpacket.Reader) {
@@ -306,7 +306,7 @@ func handleSelectCharacter(conn mnet.MConnLogin, reader mpacket.Reader) {
 	if charCount == 1 {
 		ip := []byte{192, 168, 1, 240}
 		port := int16(8684)
-		conn.Send(packet.LoginMigrateClient(ip, port, charID))
+		conn.Send(game.PacketLoginMigrateClient(ip, port, charID))
 	}
 }
 
@@ -325,5 +325,5 @@ func handleReturnToLoginScreen(conn mnet.MConnLogin, reader mpacket.Reader) {
 		panic(err)
 	}
 
-	conn.Send(packet.LoginReturnFromChannel())
+	conn.Send(game.PacketLoginReturnFromChannel())
 }

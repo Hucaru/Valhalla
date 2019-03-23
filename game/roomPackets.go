@@ -1,4 +1,4 @@
-package packet
+package game
 
 import (
 	opcodes "github.com/Hucaru/Valhalla/constant/opcode"
@@ -6,7 +6,7 @@ import (
 	"github.com/Hucaru/Valhalla/mpacket"
 )
 
-func RoomShowWindow(roomType, boardType, maxPlayers, roomSlot byte, roomTitle string, chars []def.Character) mpacket.Packet {
+func PacketRoomShowWindow(roomType, boardType, maxPlayers, roomSlot byte, roomTitle string, chars []def.Character) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcodes.SendChannelRoom)
 	p.WriteByte(0x05)
 	p.WriteByte(roomType)
@@ -44,7 +44,7 @@ func RoomShowWindow(roomType, boardType, maxPlayers, roomSlot byte, roomTitle st
 	return p
 }
 
-func RoomJoin(roomType, roomSlot byte, char def.Character) mpacket.Packet {
+func PacketRoomJoin(roomType, roomSlot byte, char def.Character) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcodes.SendChannelRoom)
 	p.WriteByte(0x04)
 	p.WriteByte(roomSlot)
@@ -65,7 +65,7 @@ func RoomJoin(roomType, roomSlot byte, char def.Character) mpacket.Packet {
 	return p
 }
 
-func RoomLeave(roomSlot byte, leaveCode byte) mpacket.Packet {
+func PacketRoomLeave(roomSlot byte, leaveCode byte) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcodes.SendChannelRoom)
 	p.WriteByte(0x0A)
 	p.WriteByte(roomSlot)
@@ -74,7 +74,7 @@ func RoomLeave(roomSlot byte, leaveCode byte) mpacket.Packet {
 	return p
 }
 
-func RoomChat(sender, message string, roomSlot byte) mpacket.Packet {
+func PacketRoomChat(sender, message string, roomSlot byte) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcodes.SendChannelRoom)
 	p.WriteByte(0x06)
 	p.WriteByte(8)        // msg type
@@ -84,7 +84,7 @@ func RoomChat(sender, message string, roomSlot byte) mpacket.Packet {
 	return p
 }
 
-func RoomYellowChat(msgType byte, name string) mpacket.Packet {
+func PacketRoomYellowChat(msgType byte, name string) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcodes.SendChannelRoom)
 	p.WriteByte(0x06)
 	p.WriteByte(7)
@@ -97,7 +97,7 @@ func RoomYellowChat(msgType byte, name string) mpacket.Packet {
 	return p
 }
 
-func RoomInvite(roomType byte, name string, roomID int32) mpacket.Packet {
+func PacketRoomInvite(roomType byte, name string, roomID int32) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcodes.SendChannelRoom)
 	p.WriteByte(0x02)
 	p.WriteByte(roomType)
@@ -107,7 +107,7 @@ func RoomInvite(roomType byte, name string, roomID int32) mpacket.Packet {
 	return p
 }
 
-func RoomInviteResult(resultCode byte, name string) mpacket.Packet {
+func PacketRoomInviteResult(resultCode byte, name string) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcodes.SendChannelRoom)
 	p.WriteByte(0x03)
 	p.WriteByte(resultCode)
@@ -116,35 +116,35 @@ func RoomInviteResult(resultCode byte, name string) mpacket.Packet {
 	return p
 }
 
-func RoomShowAccept() mpacket.Packet {
+func PacketRoomShowAccept() mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcodes.SendChannelRoom)
 	p.WriteByte(0x0F)
 
 	return p
 }
 
-func RoomRequestTie() mpacket.Packet {
+func PacketRoomRequestTie() mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcodes.SendChannelRoom)
 	p.WriteByte(0x2a)
 
 	return p
 }
 
-func RoomRejectTie() mpacket.Packet {
+func PacketRoomRejectTie() mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcodes.SendChannelRoom)
 	p.WriteByte(0x2b)
 
 	return p
 }
 
-func RoomRequestUndo() mpacket.Packet {
+func PacketRoomRequestUndo() mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcodes.SendChannelRoom)
 	p.WriteByte(0x2e)
 
 	return p
 }
 
-func RoomRejectUndo() mpacket.Packet {
+func PacketRoomRejectUndo() mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcodes.SendChannelRoom)
 	p.WriteByte(0x2f)
 	p.WriteByte(0x00)
@@ -152,7 +152,7 @@ func RoomRejectUndo() mpacket.Packet {
 	return p
 }
 
-func RoomUndo(x, y int32, p1 bool) mpacket.Packet {
+func PacketRoomUndo(x, y int32, p1 bool) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcodes.SendChannelRoom)
 	p.WriteByte(0x2f)
 	p.WriteByte(0x01)
@@ -163,21 +163,21 @@ func RoomUndo(x, y int32, p1 bool) mpacket.Packet {
 	return p
 }
 
-func RoomReady() mpacket.Packet {
+func PacketRoomReady() mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcodes.SendChannelRoom)
 	p.WriteByte(0x32)
 
 	return p
 }
 
-func RoomUnready() mpacket.Packet {
+func PacketRoomUnready() mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcodes.SendChannelRoom)
 	p.WriteByte(0x33)
 
 	return p
 }
 
-func RoomOmokStart(ownerStart bool) mpacket.Packet {
+func PacketRoomOmokStart(ownerStart bool) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcodes.SendChannelRoom)
 	p.WriteByte(0x35)
 	p.WriteBool(ownerStart)
@@ -185,7 +185,7 @@ func RoomOmokStart(ownerStart bool) mpacket.Packet {
 	return p
 }
 
-func RoomMemoryStart(ownerStart bool, boardType int32, cards []byte) mpacket.Packet {
+func PacketRoomMemoryStart(ownerStart bool, boardType int32, cards []byte) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcodes.SendChannelRoom)
 	p.WriteByte(0x35)
 	p.WriteBool(ownerStart)
@@ -198,7 +198,7 @@ func RoomMemoryStart(ownerStart bool, boardType int32, cards []byte) mpacket.Pac
 	return p
 }
 
-func RoomGameResult(draw bool, winningSlot byte, forfeit bool, chars []def.Character) mpacket.Packet {
+func PacketRoomGameResult(draw bool, winningSlot byte, forfeit bool, chars []def.Character) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcodes.SendChannelRoom)
 	p.WriteByte(0x36)
 
@@ -234,7 +234,7 @@ func RoomGameResult(draw bool, winningSlot byte, forfeit bool, chars []def.Chara
 	return p
 }
 
-func RoomGameSkip(isOwner bool) mpacket.Packet {
+func PacketRoomGameSkip(isOwner bool) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcodes.SendChannelRoom)
 	p.WriteByte(0x37)
 	p.WriteBool(isOwner)
@@ -242,7 +242,7 @@ func RoomGameSkip(isOwner bool) mpacket.Packet {
 	return p
 }
 
-func RoomPlaceOmokPiece(x, y int32, piece byte) mpacket.Packet {
+func PacketRoomPlaceOmokPiece(x, y int32, piece byte) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcodes.SendChannelRoom)
 	p.WriteByte(0x38)
 	p.WriteInt32(x)
@@ -252,7 +252,7 @@ func RoomPlaceOmokPiece(x, y int32, piece byte) mpacket.Packet {
 	return p
 }
 
-func RoomOmokInvalidPlaceMsg() mpacket.Packet {
+func PacketRoomOmokInvalidPlaceMsg() mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcodes.SendChannelRoom)
 	p.WriteByte(0x39)
 	p.WriteByte(0x0)
@@ -260,7 +260,7 @@ func RoomOmokInvalidPlaceMsg() mpacket.Packet {
 	return p
 }
 
-func RoomSelectCard(turn, cardID, firstCardPick byte, result byte) mpacket.Packet {
+func PacketRoomSelectCard(turn, cardID, firstCardPick byte, result byte) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcodes.SendChannelRoom)
 	p.WriteByte(0x3c)
 	p.WriteByte(turn)
@@ -276,7 +276,7 @@ func RoomSelectCard(turn, cardID, firstCardPick byte, result byte) mpacket.Packe
 	return p
 }
 
-func roomEnterErrorMsg(errorCode byte) mpacket.Packet {
+func PacketRoomEnterErrorMsg(errorCode byte) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcodes.SendChannelRoom)
 	p.WriteByte(0x05)
 	p.WriteByte(0x00)
@@ -285,77 +285,77 @@ func roomEnterErrorMsg(errorCode byte) mpacket.Packet {
 	return p
 }
 
-func RoomClosed() mpacket.Packet {
-	return roomEnterErrorMsg(0x01)
+func PacketRoomClosed() mpacket.Packet {
+	return PacketRoomEnterErrorMsg(0x01)
 }
 
-func RoomFull() mpacket.Packet {
-	return roomEnterErrorMsg(0x02)
+func PacketRoomFull() mpacket.Packet {
+	return PacketRoomEnterErrorMsg(0x02)
 }
 
-func RoomBusy() mpacket.Packet {
-	return roomEnterErrorMsg(0x03)
+func PacketRoomBusy() mpacket.Packet {
+	return PacketRoomEnterErrorMsg(0x03)
 }
 
-func RoomNotAllowedWhenDead() mpacket.Packet {
-	return roomEnterErrorMsg(0x04)
+func PacketRoomNotAllowedWhenDead() mpacket.Packet {
+	return PacketRoomEnterErrorMsg(0x04)
 }
 
-func RoomNotAllowedDuringEvent() mpacket.Packet {
-	return roomEnterErrorMsg(0x05)
+func PacketRoomNotAllowedDuringEvent() mpacket.Packet {
+	return PacketRoomEnterErrorMsg(0x05)
 }
 
-func RoomThisCharacterNotAllowed() mpacket.Packet {
-	return roomEnterErrorMsg(0x06)
+func PacketRoomThisCharacterNotAllowed() mpacket.Packet {
+	return PacketRoomEnterErrorMsg(0x06)
 }
 
-func RoomNoTradeAtm() mpacket.Packet {
-	return roomEnterErrorMsg(0x07)
+func PacketRoomNoTradeAtm() mpacket.Packet {
+	return PacketRoomEnterErrorMsg(0x07)
 }
 
-func RoomMiniRoomNotHere() mpacket.Packet {
-	return roomEnterErrorMsg(0x08)
+func PacketRoomMiniRoomNotHere() mpacket.Packet {
+	return PacketRoomEnterErrorMsg(0x08)
 }
 
-func RoomTradeRequireSameMap() mpacket.Packet {
-	return roomEnterErrorMsg(0x09)
+func PacketRoomTradeRequireSameMap() mpacket.Packet {
+	return PacketRoomEnterErrorMsg(0x09)
 }
 
-func RoomcannotCreateMiniroomHere() mpacket.Packet {
-	return roomEnterErrorMsg(0x0a)
+func PacketRoomcannotCreateMiniroomHere() mpacket.Packet {
+	return PacketRoomEnterErrorMsg(0x0a)
 }
 
-func RoomCannotStartGameHere() mpacket.Packet {
-	return roomEnterErrorMsg(0x0b)
+func PacketRoomCannotStartGameHere() mpacket.Packet {
+	return PacketRoomEnterErrorMsg(0x0b)
 }
 
-func RoomPersonalStoreFMOnly() mpacket.Packet {
-	return roomEnterErrorMsg(0x0c)
+func PacketRoomPersonalStoreFMOnly() mpacket.Packet {
+	return PacketRoomEnterErrorMsg(0x0c)
 }
-func RoomGarbageMsgAboutFloorInFm() mpacket.Packet {
-	return roomEnterErrorMsg(0x0d)
-}
-
-func RoomMayNotEnterStore() mpacket.Packet {
-	return roomEnterErrorMsg(0x0e)
+func PacketRoomGarbageMsgAboutFloorInFm() mpacket.Packet {
+	return PacketRoomEnterErrorMsg(0x0d)
 }
 
-func RoomStoreMaintenance() mpacket.Packet {
-	return roomEnterErrorMsg(0x0F)
+func PacketRoomMayNotEnterStore() mpacket.Packet {
+	return PacketRoomEnterErrorMsg(0x0e)
 }
 
-func RoomCannotEnterTournament() mpacket.Packet {
-	return roomEnterErrorMsg(0x10)
+func PacketRoomStoreMaintenance() mpacket.Packet {
+	return PacketRoomEnterErrorMsg(0x0F)
 }
 
-func RoomGarbageTradeMsg() mpacket.Packet {
-	return roomEnterErrorMsg(0x11)
+func PacketRoomCannotEnterTournament() mpacket.Packet {
+	return PacketRoomEnterErrorMsg(0x10)
 }
 
-func RoomNotEnoughMesos() mpacket.Packet {
-	return roomEnterErrorMsg(0x12)
+func PacketRoomGarbageTradeMsg() mpacket.Packet {
+	return PacketRoomEnterErrorMsg(0x11)
 }
 
-func RoomIncorrectPassword() mpacket.Packet {
-	return roomEnterErrorMsg(0x13)
+func PacketRoomNotEnoughMesos() mpacket.Packet {
+	return PacketRoomEnterErrorMsg(0x12)
+}
+
+func PacketRoomIncorrectPassword() mpacket.Packet {
+	return PacketRoomEnterErrorMsg(0x13)
 }

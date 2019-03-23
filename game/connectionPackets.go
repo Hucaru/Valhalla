@@ -1,8 +1,8 @@
-package packet
+package game
 
 import "github.com/Hucaru/Valhalla/mpacket"
 
-func ClientHandshake(mapleVersion int16, recv, send []byte) mpacket.Packet {
+func PacketClientHandshake(mapleVersion int16, recv, send []byte) mpacket.Packet {
 	p := mpacket.NewPacket()
 
 	p.WriteInt16(13)

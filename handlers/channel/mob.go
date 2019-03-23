@@ -6,7 +6,6 @@ import (
 
 	skills "github.com/Hucaru/Valhalla/constant/skill"
 	"github.com/Hucaru/Valhalla/game"
-	"github.com/Hucaru/Valhalla/game/mob"
 	"github.com/Hucaru/Valhalla/mnet"
 	"github.com/Hucaru/Valhalla/mpacket"
 	"github.com/Hucaru/Valhalla/nx"
@@ -35,15 +34,15 @@ func mobControl(conn mnet.MConnChannel, reader mpacket.Reader) {
 
 	char := player.Char()
 	game.Maps[char.MapID].GetMobFromSpawnID(mobSpawnID, player.InstanceID)
-	sMob, err := game.Maps[char.MapID].GetMobFromSpawnID(mobSpawnID, player.InstanceID)
+	mob, err := game.Maps[char.MapID].GetMobFromSpawnID(mobSpawnID, player.InstanceID)
 
 	if err != nil {
 		return
 	}
 
-	if sMob.Controller != conn { // prevents hijack and reassigns controller to anyone except hijacker
+	if mob.Controller != conn { // prevents hijack and reassigns controller to anyone except hijacker
 		if newController := game.Maps[char.MapID].FindControllerExcept(conn, player.InstanceID); newController != nil {
-			sMob.ChangeController(newController)
+			mob.ChangeController(newController)
 		}
 
 		return
@@ -52,25 +51,25 @@ func mobControl(conn mnet.MConnChannel, reader mpacket.Reader) {
 	// Update mob position information
 	moveData, finalData := parseMovement(reader)
 
-	if !validateMobMovement(*sMob, moveData) {
+	if !validateMobMovement(*mob, moveData) {
 		return
 	}
 
-	sMob.X = finalData.X
-	sMob.Y = finalData.Y
-	sMob.Foothold = finalData.Foothold
-	sMob.Stance = finalData.Stance
+	mob.X = finalData.X
+	mob.Y = finalData.Y
+	mob.Foothold = finalData.Foothold
+	mob.Stance = finalData.Stance
 
 	moveBytes := generateMovementBytes(moveData)
 
 	// Perform the action received
 	if actualAction >= 21 && actualAction <= 25 {
-		performSkill(sMob, int16(skillData>>16), byte(skillData>>8), byte(skillData))
+		performSkill(mob, int16(skillData>>16), byte(skillData>>8), byte(skillData))
 	} else if actualAction > 12 && actualAction < 20 {
 		attackID := byte(actualAction - 12)
 
 		// check mob can use attack
-		if level, valid := sMob.Skills[attackID]; valid {
+		if level, valid := mob.Skills[attackID]; valid {
 			levels, err := nx.GetMobSkill(attackID)
 
 			if err != nil {
@@ -79,32 +78,32 @@ func mobControl(conn mnet.MConnChannel, reader mpacket.Reader) {
 
 			if int(level) < len(levels) {
 				skill := levels[level]
-				sMob.MP = sMob.MP - skill.MpCon
-				if sMob.MP < 0 {
-					sMob.MP = 0
+				mob.MP = mob.MP - skill.MpCon
+				if mob.MP < 0 {
+					mob.MP = 0
 				}
 			}
 
 		}
 
-		sMob.LastAttackTime = time.Now().Unix()
+		mob.LastAttackTime = time.Now().Unix()
 	}
 
 	// Calculate the next action
-	sMob.CanUseSkill = skillPossible
+	mob.CanUseSkill = skillPossible
 
-	if !sMob.CanUseSkill || (sMob.StatBuff&skills.MobStat.SealSkill > 0) || (time.Now().Unix()-sMob.LastSkillUseTime) < 3 {
+	if !mob.CanUseSkill || (mob.StatBuff&skills.MobStat.SealSkill > 0) || (time.Now().Unix()-mob.LastSkillUseTime) < 3 {
 		// there are more reasons as to why a mob cannot use a skill
-		sMob.SkillID = 0
+		mob.SkillID = 0
 	} else {
-		sMob.SkillID, sMob.SkillLevel = chooseNextSkill(sMob)
+		mob.SkillID, mob.SkillLevel = chooseNextSkill(mob)
 	}
 
-	sMob.Acknowledge(moveID, skillPossible, sMob.SkillID, sMob.SkillLevel)
-	game.Maps[char.MapID].SendExcept(mob.PacketMove(mobSpawnID, skillPossible, byte(action), skillData, moveBytes), conn, player.InstanceID)
+	mob.Acknowledge(moveID, skillPossible, mob.SkillID, mob.SkillLevel)
+	game.Maps[char.MapID].SendExcept(game.PacketMobMove(mobSpawnID, skillPossible, byte(action), skillData, moveBytes), conn, player.InstanceID)
 }
 
-func chooseNextSkill(mob *mob.Mob) (byte, byte) {
+func chooseNextSkill(mob *game.Mob) (byte, byte) {
 	var skillID, skillLevel byte
 
 	skillsToChooseFrom := []byte{}
@@ -208,7 +207,7 @@ func chooseNextSkill(mob *mob.Mob) (byte, byte) {
 	return skillID, skillLevel
 }
 
-func performSkill(mob *mob.Mob, delay int16, skillLevel, skillID byte) {
+func performSkill(mob *game.Mob, delay int16, skillLevel, skillID byte) {
 	if skillID != mob.SkillID || (mob.StatBuff&skills.MobStat.SealSkill > 0) {
 		skillID = 0
 		return

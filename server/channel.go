@@ -9,14 +9,12 @@ import (
 	"time"
 
 	"github.com/Hucaru/Valhalla/game"
-	"github.com/Hucaru/Valhalla/game/npcchat"
 	"github.com/Hucaru/Valhalla/handlers/channel"
 	"github.com/Hucaru/Valhalla/handlers/world"
 	"github.com/Hucaru/Valhalla/nx"
 
 	"github.com/Hucaru/Valhalla/constant"
 	"github.com/Hucaru/Valhalla/database"
-	"github.com/Hucaru/Valhalla/game/packet"
 	"github.com/Hucaru/Valhalla/game/script"
 	"github.com/Hucaru/Valhalla/mnet"
 	"github.com/Hucaru/Valhalla/mpacket"
@@ -121,7 +119,7 @@ func (cs *channelServer) acceptNewConnections() {
 		go channelConn.Reader()
 		go channelConn.Writer()
 
-		conn.Write(packet.ClientHandshake(constant.MapleVersion, keyRecv[:], keySend[:]))
+		conn.Write(game.PacketClientHandshake(constant.MapleVersion, keyRecv[:], keySend[:]))
 	}
 }
 
@@ -145,11 +143,11 @@ func (cs *channelServer) processEvent() {
 					log.Println("New client from", channelConn)
 				case mnet.MEClientDisconnect:
 					log.Println("Client at", channelConn, "disconnected")
-					npcchat.RemoveSession(channelConn)
+					game.RemoveNpcChatSession(channelConn)
 
 					// Order is important
 					game.Maps[game.Players[channelConn].Char().MapID].RemovePlayer(channelConn)
-					npcchat.RemoveSession(channelConn)
+					game.RemoveNpcChatSession(channelConn)
 
 					if game.Players[channelConn].RoomID != 0 {
 						roomID := game.Players[channelConn].RoomID

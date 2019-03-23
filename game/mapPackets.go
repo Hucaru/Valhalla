@@ -1,4 +1,4 @@
-package packet
+package game
 
 import (
 	opcodes "github.com/Hucaru/Valhalla/constant/opcode"
@@ -6,7 +6,7 @@ import (
 	"github.com/Hucaru/Valhalla/mpacket"
 )
 
-func MapPlayerEnter(char def.Character) mpacket.Packet {
+func PacketMapPlayerEnter(char def.Character) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcodes.SendChannelCharacterEnterField)
 	p.WriteInt32(char.ID)    // player id
 	p.WriteString(char.Name) // char name
@@ -43,14 +43,14 @@ func MapPlayerEnter(char def.Character) mpacket.Packet {
 	return p
 }
 
-func MapPlayerLeft(charID int32) mpacket.Packet {
+func PacketMapPlayerLeft(charID int32) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcodes.SendChannelCharacterLeaveField)
 	p.WriteInt32(charID)
 
 	return p
 }
 
-func MapChange(mapID int32, channelID int32, mapPos byte, hp int16) mpacket.Packet {
+func PacketMapChange(mapID int32, channelID int32, mapPos byte, hp int16) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcodes.SendChannelWarpToMap)
 	p.WriteInt32(channelID)
 	p.WriteByte(0) // character portal counter
@@ -63,7 +63,7 @@ func MapChange(mapID int32, channelID int32, mapPos byte, hp int16) mpacket.Pack
 	return p
 }
 
-func MapShowGameBox(charID, roomID int32, roomType, boardType byte, name string, hasPassword, koreanText bool, ammount byte) mpacket.Packet {
+func PacketMapShowGameBox(charID, roomID int32, roomType, boardType byte, name string, hasPassword, koreanText bool, ammount byte) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcodes.SendChannelRoomBox)
 	p.WriteInt32(charID)
 	p.WriteByte(roomType)
@@ -79,7 +79,7 @@ func MapShowGameBox(charID, roomID int32, roomType, boardType byte, name string,
 	return p
 }
 
-func MapRemoveGameBox(charID int32) mpacket.Packet {
+func PacketMapRemoveGameBox(charID int32) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcodes.SendChannelRoomBox)
 	p.WriteInt32(charID)
 	p.WriteInt32(0)

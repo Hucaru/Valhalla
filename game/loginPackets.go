@@ -1,15 +1,15 @@
-package packet
+package game
 
 import (
 	"strconv"
 
 	"github.com/Hucaru/Valhalla/constant"
-	"github.com/Hucaru/Valhalla/constant/opcode"
+	opcodes "github.com/Hucaru/Valhalla/constant/opcode"
 	"github.com/Hucaru/Valhalla/game/def"
 	"github.com/Hucaru/Valhalla/mpacket"
 )
 
-func LoginResponce(result byte, userID int32, gender byte, isAdmin bool, username string, isBanned int) mpacket.Packet {
+func PacketLoginResponce(result byte, userID int32, gender byte, isAdmin bool, username string, isBanned int) mpacket.Packet {
 	pac := mpacket.CreateWithOpcode(opcodes.SendLoginResponce)
 	pac.WriteByte(result)
 	pac.WriteByte(0x00)
@@ -34,7 +34,7 @@ func LoginResponce(result byte, userID int32, gender byte, isAdmin bool, usernam
 	return pac
 }
 
-func LoginMigrateClient(ip []byte, port int16, charID int32) mpacket.Packet {
+func PacketLoginMigrateClient(ip []byte, port int16, charID int32) mpacket.Packet {
 	pac := mpacket.CreateWithOpcode(opcodes.SendLoginCharacterMigrate)
 	pac.WriteByte(0x00)
 	pac.WriteByte(0x00)
@@ -47,7 +47,7 @@ func LoginMigrateClient(ip []byte, port int16, charID int32) mpacket.Packet {
 	return pac
 }
 
-func LoginSendBadMigrate() mpacket.Packet {
+func PacketLoginSendBadMigrate() mpacket.Packet {
 	pac := mpacket.CreateWithOpcode(opcodes.SendLoginCharacterMigrate)
 	pac.WriteByte(0x00) // flipping these 2 bytes makes the character select screen do nothing it appears
 	pac.WriteByte(0x00)
@@ -60,7 +60,7 @@ func LoginSendBadMigrate() mpacket.Packet {
 	return pac
 }
 
-func LoginDisplayCharacters(characters []def.Character) mpacket.Packet {
+func PacketLoginDisplayCharacters(characters []def.Character) mpacket.Packet {
 	pac := mpacket.CreateWithOpcode(opcodes.SendLoginCharacterData)
 	pac.WriteByte(0) // ?
 
@@ -68,7 +68,7 @@ func LoginDisplayCharacters(characters []def.Character) mpacket.Packet {
 		pac.WriteByte(byte(len(characters)))
 
 		for _, c := range characters {
-			LoginWritePlayerCharacter(&pac, c.ID, c)
+			loginWritePlayerCharacter(&pac, c.ID, c)
 		}
 	} else {
 		pac.WriteByte(0)
@@ -77,7 +77,7 @@ func LoginDisplayCharacters(characters []def.Character) mpacket.Packet {
 	return pac
 }
 
-func LoginNameCheck(name string, nameFound int) mpacket.Packet {
+func PacketLoginNameCheck(name string, nameFound int) mpacket.Packet {
 	pac := mpacket.CreateWithOpcode(opcodes.SendLoginNameCheckResult)
 	pac.WriteString(name)
 
@@ -90,12 +90,12 @@ func LoginNameCheck(name string, nameFound int) mpacket.Packet {
 	return pac
 }
 
-func LoginCreatedCharacter(success bool, character def.Character) mpacket.Packet {
+func PacketLoginCreatedCharacter(success bool, character def.Character) mpacket.Packet {
 	pac := mpacket.CreateWithOpcode(opcodes.SendLoginNewCharacterGood)
 
 	if success {
 		pac.WriteByte(0x0) // if creation was sucessfull - 0 = good, 1 = bad
-		LoginWritePlayerCharacter(&pac, character.ID, character)
+		loginWritePlayerCharacter(&pac, character.ID, character)
 	} else {
 		pac.WriteByte(0x1)
 	}
@@ -103,7 +103,7 @@ func LoginCreatedCharacter(success bool, character def.Character) mpacket.Packet
 	return pac
 }
 
-func LoginDeleteCharacter(charID int32, deleted bool, hacking bool) mpacket.Packet {
+func PacketLoginDeleteCharacter(charID int32, deleted bool, hacking bool) mpacket.Packet {
 	pac := mpacket.CreateWithOpcode(opcodes.SendLoginDeleteCharacter)
 	pac.WriteInt32(charID)
 
@@ -118,7 +118,7 @@ func LoginDeleteCharacter(charID int32, deleted bool, hacking bool) mpacket.Pack
 	return pac
 }
 
-func LoginWritePlayerCharacter(pac *mpacket.Packet, pos int32, char def.Character) {
+func loginWritePlayerCharacter(pac *mpacket.Packet, pos int32, char def.Character) {
 	pac.WriteInt32(pos)
 
 	name := char.Name
@@ -169,11 +169,11 @@ func LoginWritePlayerCharacter(pac *mpacket.Packet, pos int32, char def.Characte
 	pac.WriteInt32(4) // increase / decrease amount
 }
 
-func LoginWorldListing(worldIndex byte) mpacket.Packet {
+func PacketLoginWorldListing(worldIndex byte) mpacket.Packet {
 	pac := mpacket.CreateWithOpcode(opcodes.SendLoginWorldList)
-	pac.WriteByte(worldIndex)                       // world id
+	pac.WriteByte(worldIndex)                         // world id
 	pac.WriteString(constant.WORLD_NAMES[worldIndex]) // World name -
-	pac.WriteByte(3)                                // Ribbon on world - 0 = normal, 1 = event, 2 = new, 3 = hot
+	pac.WriteByte(3)                                  // Ribbon on world - 0 = normal, 1 = event, 2 = new, 3 = hot
 	pac.WriteString("test")
 	pac.WriteByte(0)  // ? exp event notification?
 	pac.WriteByte(20) // number of channels
@@ -182,7 +182,7 @@ func LoginWorldListing(worldIndex byte) mpacket.Packet {
 	population := 50
 
 	for j := 1; j < 21; j++ {
-		pac.WriteString(constant.WORLD_NAMES[worldIndex] + "-" + strconv.Itoa(j))        // channel name
+		pac.WriteString(constant.WORLD_NAMES[worldIndex] + "-" + strconv.Itoa(j))      // channel name
 		pac.WriteInt32(int32(1200.0 * (float64(population) / float64(maxPopulation)))) // Population
 		pac.WriteByte(worldIndex)                                                      // world id
 		pac.WriteByte(byte(j))                                                         // channel id
@@ -192,14 +192,14 @@ func LoginWorldListing(worldIndex byte) mpacket.Packet {
 	return pac
 }
 
-func LoginEndWorldList() mpacket.Packet {
+func PacketLoginEndWorldList() mpacket.Packet {
 	pac := mpacket.CreateWithOpcode(opcodes.SendLoginWorldList)
 	pac.WriteByte(0xFF)
 
 	return pac
 }
 
-func LoginWorldInfo(warning byte, population byte) mpacket.Packet {
+func PacketLoginWorldInfo(warning byte, population byte) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcodes.SendLoginWorldMeta)
 	p.WriteByte(warning)    // Warning - 0 = no warning, 1 - high amount of concurent users, 2 = max uesrs in world
 	p.WriteByte(population) // Population marker - 0 = No maker, 1 = Highly populated, 2 = over populated
@@ -207,7 +207,7 @@ func LoginWorldInfo(warning byte, population byte) mpacket.Packet {
 	return p
 }
 
-func LoginReturnFromChannel() mpacket.Packet {
+func PacketLoginReturnFromChannel() mpacket.Packet {
 	pac := mpacket.CreateWithOpcode(opcodes.SendLoginRestarter)
 	pac.WriteByte(0x01)
 

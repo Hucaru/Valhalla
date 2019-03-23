@@ -1,18 +1,18 @@
-package mob
+package game
 
 import (
 	"github.com/Hucaru/Valhalla/mnet"
 	"github.com/Hucaru/Valhalla/nx"
 )
 
-type SpawnInfo struct {
+type MobSI struct {
 	Mob          Mob
 	Count        int
 	TimeCanSpawn int64
 }
 
-func CreateSpawnInfo(mob Mob) SpawnInfo {
-	return SpawnInfo{
+func CreateMobSpawnInfo(mob Mob) MobSI {
+	return MobSI{
 		Mob:          mob,
 		Count:        0,
 		TimeCanSpawn: 0}
@@ -38,7 +38,7 @@ type Mob struct {
 	DmgTaken map[mnet.MConnChannel]int32
 }
 
-func Create(spawnID int32, life nx.Life, mob nx.Mob, summoner mnet.MConnChannel, mapID int32) Mob {
+func CreateMob(spawnID int32, life nx.Life, mob nx.Mob, summoner mnet.MConnChannel, mapID int32) Mob {
 	return Mob{SpawnID: spawnID,
 		Summoner:   summoner,
 		Stance:     0,
@@ -80,45 +80,30 @@ func (m *Mob) ChangeController(newController mnet.MConnChannel) {
 	}
 
 	if m.Controller != nil {
-		m.Controller.Send(packetEndControl(*m))
+		m.Controller.Send(PacketMobEndControl(*m))
 	}
 
 	m.Controller = newController
-	newController.Send(packetControl(*m, false))
+	newController.Send(PacketMobControl(*m, false))
 }
 
 func (m *Mob) ShowTo(conn mnet.MConnChannel) {
-	conn.Send(packetShow(*m))
+	conn.Send(PacketMobShow(*m))
 }
 
 func (m *Mob) RemoveFrom(conn mnet.MConnChannel, method byte) {
-	conn.Send(packetRemove(*m, method)) // 0 keeps it there and is no longer attackable, 1 normal death, 2 disaapear instantly
+	conn.Send(PacketMobRemove(*m, method)) // 0 keeps it there and is no longer attackable, 1 normal death, 2 disaapear instantly
 }
 
 func (m *Mob) RemoveController() {
-	m.Controller.Send(packetEndControl(*m))
+	m.Controller.Send(PacketMobEndControl(*m))
 }
 
 func (m *Mob) Acknowledge(moveID int16, allowedToUseSkill bool, skill byte, level byte) {
-	m.Controller.Send(packetControlAcknowledge(m.SpawnID, moveID, allowedToUseSkill, int16(m.MP), skill, level))
+	m.Controller.Send(PacketMobControlAcknowledge(m.SpawnID, moveID, allowedToUseSkill, int16(m.MP), skill, level))
 }
 
-// func (m *gameMob) FindNewControllerExcept(conn mnet.MConnChannel) {
-// 	var newController mnet.MConnChannel
-
-// 	for c, v := range Players {
-// 		if v.char.MapID == m.mapID {
-// 			if c == conn {
-// 				continue
-// 			} else {
-// 				newController = c
-// 			}
-// 		}
-// 	}
-
-// 	if newController == nil {
-// 		return
-// 	}
-
-// 	m.ChangeController(Players[newController])
-// }
+func (m *Mob) ResetAggro() {
+	m.Controller.Send(PacketMobEndControl(*m))
+	m.Controller.Send(PacketMobControl(*m, false))
+}

@@ -3,8 +3,6 @@ package channel
 import (
 	"fmt"
 
-	"github.com/Hucaru/Valhalla/game/packet"
-
 	"github.com/Hucaru/Valhalla/game"
 	"github.com/Hucaru/Valhalla/mnet"
 	"github.com/Hucaru/Valhalla/mpacket"
@@ -96,7 +94,7 @@ func handleUIWindow(conn mnet.MConnChannel, reader mpacket.Reader) {
 		}
 
 		if _, ok := game.Rooms[recepient.RoomID]; ok {
-			conn.Send(packet.MessageRedText("Cannot send invite to player"))
+			conn.Send(game.PacketMessageRedText("Cannot send invite to player"))
 		}
 
 		for _, v := range game.Players {
@@ -111,7 +109,7 @@ func handleUIWindow(conn mnet.MConnChannel, reader mpacket.Reader) {
 					return
 				}
 
-				v.Send(packet.RoomInvite(byte(room.RoomType), player.Char().Name, player.RoomID))
+				v.Send(game.PacketRoomInvite(byte(room.RoomType), player.Char().Name, player.RoomID))
 			}
 		}
 	case roomReject:
@@ -122,7 +120,7 @@ func handleUIWindow(conn mnet.MConnChannel, reader mpacket.Reader) {
 			return
 		}
 
-		game.Rooms[roomID].Broadcast(packet.RoomInviteResult(rejectCode, player.Char().Name))
+		game.Rooms[roomID].Broadcast(game.PacketRoomInviteResult(rejectCode, player.Char().Name))
 	case roomAccept:
 		roomID := reader.ReadInt32()
 
@@ -136,7 +134,7 @@ func handleUIWindow(conn mnet.MConnChannel, reader mpacket.Reader) {
 			if reader.ReadBool() {
 				password := reader.ReadString(int(reader.ReadInt16()))
 				if room.GetPassword() != password {
-					conn.Send(packet.RoomIncorrectPassword())
+					conn.Send(game.PacketRoomIncorrectPassword())
 					return
 				}
 			}
@@ -175,7 +173,7 @@ func handleUIWindow(conn mnet.MConnChannel, reader mpacket.Reader) {
 			return
 		}
 
-		room.SendOpponent(conn, packet.RoomRequestTie())
+		room.SendOpponent(conn, game.PacketRoomRequestTie())
 	case roomRequestTieResult:
 		if _, ok := game.Rooms[player.RoomID]; !ok {
 			return
@@ -192,7 +190,7 @@ func handleUIWindow(conn mnet.MConnChannel, reader mpacket.Reader) {
 				delete(game.Rooms, player.RoomID)
 			}
 		} else {
-			room.SendOpponent(conn, packet.RoomRejectTie())
+			room.SendOpponent(conn, game.PacketRoomRejectTie())
 		}
 	case roomRequestGiveUp:
 		if _, ok := game.Rooms[player.RoomID]; !ok {
@@ -217,7 +215,7 @@ func handleUIWindow(conn mnet.MConnChannel, reader mpacket.Reader) {
 			return
 		}
 
-		room.SendOpponent(conn, packet.RoomRequestUndo())
+		room.SendOpponent(conn, game.PacketRoomRequestUndo())
 	case roomRequestUndoResult:
 		if _, ok := game.Rooms[player.RoomID]; !ok {
 			return
@@ -231,7 +229,7 @@ func handleUIWindow(conn mnet.MConnChannel, reader mpacket.Reader) {
 		if reader.ReadByte() == 1 {
 			room.UndoTurn(conn)
 		} else {
-			room.SendOpponent(conn, packet.RoomRejectUndo())
+			room.SendOpponent(conn, game.PacketRoomRejectUndo())
 		}
 	case roomRequestExitDuringGame:
 		if _, ok := game.Rooms[player.RoomID]; !ok {
@@ -259,11 +257,11 @@ func handleUIWindow(conn mnet.MConnChannel, reader mpacket.Reader) {
 		room.UndoLeaveAfterGame(conn)
 	case roomReadyButtonPressed:
 		if _, ok := game.Rooms[player.RoomID]; ok {
-			game.Rooms[player.RoomID].Broadcast(packet.RoomReady())
+			game.Rooms[player.RoomID].Broadcast(game.PacketRoomReady())
 		}
 	case roomUnready:
 		if _, ok := game.Rooms[player.RoomID]; ok {
-			game.Rooms[player.RoomID].Broadcast(packet.RoomUnready())
+			game.Rooms[player.RoomID].Broadcast(game.PacketRoomUnready())
 		}
 	case roomOwnerExpells:
 		if _, ok := game.Rooms[player.RoomID]; !ok {

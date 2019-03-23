@@ -3,7 +3,6 @@ package game
 import (
 	"github.com/Hucaru/Valhalla/constant"
 	"github.com/Hucaru/Valhalla/game/def"
-	"github.com/Hucaru/Valhalla/game/packet"
 )
 
 func (p *Player) MoveItem(a def.Item, newPos int16) {
@@ -15,10 +14,10 @@ func (p *Player) MoveItem(a def.Item, newPos int16) {
 			}
 		}
 
-		p.Send(packet.InventoryChangeItemSlot(a.InvID, a.SlotID, newPos))
+		p.Send(PacketInventoryChangeItemSlot(a.InvID, a.SlotID, newPos))
 
 		if newPos < 0 || a.SlotID < 0 {
-			Maps[p.char.MapID].SendExcept(packet.InventoryChangeEquip(*p.char), p.MConnChannel, p.InstanceID)
+			Maps[p.char.MapID].SendExcept(PacketInventoryChangeEquip(*p.char), p.MConnChannel, p.InstanceID)
 		}
 	case 2:
 		for i, item := range p.char.Inventory.Use {
@@ -27,7 +26,7 @@ func (p *Player) MoveItem(a def.Item, newPos int16) {
 			}
 		}
 
-		p.Send(packet.InventoryChangeItemSlot(a.InvID, a.SlotID, newPos))
+		p.Send(PacketInventoryChangeItemSlot(a.InvID, a.SlotID, newPos))
 	case 3:
 		for i, item := range p.char.Inventory.SetUp {
 			if item.SlotID == a.SlotID {
@@ -35,7 +34,7 @@ func (p *Player) MoveItem(a def.Item, newPos int16) {
 			}
 		}
 
-		p.Send(packet.InventoryChangeItemSlot(a.InvID, a.SlotID, newPos))
+		p.Send(PacketInventoryChangeItemSlot(a.InvID, a.SlotID, newPos))
 	case 4:
 		for i, item := range p.char.Inventory.Etc {
 			if item.SlotID == a.SlotID {
@@ -43,7 +42,7 @@ func (p *Player) MoveItem(a def.Item, newPos int16) {
 			}
 		}
 
-		p.Send(packet.InventoryChangeItemSlot(a.InvID, a.SlotID, newPos))
+		p.Send(PacketInventoryChangeItemSlot(a.InvID, a.SlotID, newPos))
 	case 5:
 		for i, item := range p.char.Inventory.Cash {
 			if item.SlotID == a.SlotID {
@@ -51,7 +50,7 @@ func (p *Player) MoveItem(a def.Item, newPos int16) {
 			}
 		}
 
-		p.Send(packet.InventoryChangeItemSlot(a.InvID, a.SlotID, newPos))
+		p.Send(PacketInventoryChangeItemSlot(a.InvID, a.SlotID, newPos))
 	}
 }
 
@@ -70,23 +69,23 @@ func (p *Player) SwapItems(a, b def.Item) {
 			}
 		}
 
-		p.Send(packet.InventoryChangeItemSlot(a.InvID, a.SlotID, b.SlotID))
+		p.Send(PacketInventoryChangeItemSlot(a.InvID, a.SlotID, b.SlotID))
 
 		if a.SlotID < 0 || b.SlotID < 0 {
-			Maps[p.char.MapID].SendExcept(packet.InventoryChangeEquip(*p.char), p.MConnChannel, p.InstanceID)
+			Maps[p.char.MapID].SendExcept(PacketInventoryChangeEquip(*p.char), p.MConnChannel, p.InstanceID)
 		}
 	case 2:
 		// determine if items can be stacked together
 		if a.ItemID == b.ItemID && a.ItemID/1e4 != 207 && b.Amount < constant.MaxItemStack {
 			if a.Amount+b.Amount <= constant.MaxItemStack {
 				b.Amount += a.Amount
-				p.Send(packet.InventoryAddItem(b, false))
+				p.Send(PacketInventoryAddItem(b, false))
 
 				for i, item := range p.char.Inventory.Use {
 					if item.SlotID == a.SlotID {
 						p.char.Inventory.Use[i] = p.char.Inventory.Use[len(p.char.Inventory.Use)-1]
 						p.char.Inventory.Use = p.char.Inventory.Use[:len(p.char.Inventory.Use)-1]
-						p.Send(packet.InventoryRemoveItem(a))
+						p.Send(PacketInventoryRemoveItem(a))
 						break
 					}
 				}
@@ -97,10 +96,10 @@ func (p *Player) SwapItems(a, b def.Item) {
 				for i, item := range p.char.Inventory.Use {
 					if item.SlotID == a.SlotID {
 						p.char.Inventory.Use[i].Amount = a.Amount
-						p.Send(packet.InventoryAddItem(a, false))
+						p.Send(PacketInventoryAddItem(a, false))
 					} else if item.SlotID == b.SlotID {
 						p.char.Inventory.Use[i].Amount = b.Amount
-						p.Send(packet.InventoryAddItem(b, false))
+						p.Send(PacketInventoryAddItem(b, false))
 					}
 				}
 			}
@@ -113,7 +112,7 @@ func (p *Player) SwapItems(a, b def.Item) {
 				}
 			}
 
-			p.Send(packet.InventoryChangeItemSlot(a.InvID, a.SlotID, b.SlotID))
+			p.Send(PacketInventoryChangeItemSlot(a.InvID, a.SlotID, b.SlotID))
 		}
 	case 3:
 		for i, item := range p.char.Inventory.SetUp {
@@ -124,7 +123,7 @@ func (p *Player) SwapItems(a, b def.Item) {
 			}
 		}
 
-		p.Send(packet.InventoryChangeItemSlot(a.InvID, a.SlotID, b.SlotID))
+		p.Send(PacketInventoryChangeItemSlot(a.InvID, a.SlotID, b.SlotID))
 	case 4:
 		for i, item := range p.char.Inventory.Etc {
 			if item.SlotID == a.SlotID {
@@ -134,7 +133,7 @@ func (p *Player) SwapItems(a, b def.Item) {
 			}
 		}
 
-		p.Send(packet.InventoryChangeItemSlot(a.InvID, a.SlotID, b.SlotID))
+		p.Send(PacketInventoryChangeItemSlot(a.InvID, a.SlotID, b.SlotID))
 	case 5:
 		for i, item := range p.char.Inventory.Cash {
 			if item.SlotID == a.SlotID {
@@ -144,7 +143,7 @@ func (p *Player) SwapItems(a, b def.Item) {
 			}
 		}
 
-		p.Send(packet.InventoryChangeItemSlot(a.InvID, a.SlotID, b.SlotID))
+		p.Send(PacketInventoryChangeItemSlot(a.InvID, a.SlotID, b.SlotID))
 	}
 
 }
@@ -188,7 +187,7 @@ func (p *Player) GiveItem(a def.Item) {
 	}
 
 	if availableSlot == 0 {
-		p.Send(packet.MessageRedText("Not enough inventory space"))
+		p.Send(PacketMessageRedText("Not enough inventory space"))
 	}
 
 	a.SlotID = availableSlot
@@ -204,7 +203,7 @@ func (p *Player) GiveItem(a def.Item) {
 		p.char.Inventory.Cash = append(p.char.Inventory.Cash, a)
 	}
 
-	p.Send(packet.InventoryAddItem(a, true))
+	p.Send(PacketInventoryAddItem(a, true))
 
 }
 

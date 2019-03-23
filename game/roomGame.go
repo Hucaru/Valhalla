@@ -5,7 +5,6 @@ import (
 	"math/rand"
 
 	"github.com/Hucaru/Valhalla/game/def"
-	"github.com/Hucaru/Valhalla/game/packet"
 	"github.com/Hucaru/Valhalla/mnet"
 	"github.com/Hucaru/Valhalla/mpacket"
 )
@@ -93,7 +92,7 @@ func (r *GameRoom) AddPlayer(conn mnet.MConnChannel) {
 	if roomPos, ok := r.baseRoom.AddPlayer(conn); ok {
 		player := Players[conn]
 		if roomPos == 0 {
-			Maps[player.Char().MapID].Send(packet.MapShowGameBox(player.Char().ID, r.ID, byte(r.RoomType), r.BoardType, r.Name, bool(len(r.Password) > 0), r.InProgress, 0x01), player.InstanceID)
+			Maps[player.Char().MapID].Send(PacketMapShowGameBox(player.Char().ID, r.ID, byte(r.RoomType), r.BoardType, r.Name, bool(len(r.Password) > 0), r.InProgress, 0x01), player.InstanceID)
 		}
 
 		displayInfo := []def.Character{}
@@ -103,7 +102,7 @@ func (r *GameRoom) AddPlayer(conn mnet.MConnChannel) {
 		}
 
 		if len(displayInfo) > 0 {
-			conn.Send(packet.RoomShowWindow(byte(r.RoomType), r.BoardType, byte(r.maxPlayers), roomPos, r.Name, displayInfo))
+			conn.Send(PacketRoomShowWindow(byte(r.RoomType), r.BoardType, byte(r.maxPlayers), roomPos, r.Name, displayInfo))
 		}
 	}
 }
@@ -115,21 +114,21 @@ func (r *GameRoom) RemovePlayer(conn mnet.MConnChannel, msgCode byte) bool {
 		player := Players[conn]
 
 		if roomSlot == 0 {
-			Maps[player.Char().MapID].Send(packet.MapRemoveGameBox(player.Char().ID), player.InstanceID)
+			Maps[player.Char().MapID].Send(PacketMapRemoveGameBox(player.Char().ID), player.InstanceID)
 
 			closeRoom = true
 
 			for i, v := range r.players {
-				v.Send(packet.RoomLeave(byte(i), 0))
+				v.Send(PacketRoomLeave(byte(i), 0))
 				Players[v].RoomID = 0
 			}
 		} else {
-			conn.Send(packet.RoomLeave(byte(roomSlot), msgCode))
-			r.Broadcast(packet.RoomLeave(byte(roomSlot), msgCode))
+			conn.Send(PacketRoomLeave(byte(roomSlot), msgCode))
+			r.Broadcast(PacketRoomLeave(byte(roomSlot), msgCode))
 
 			if msgCode == 5 {
 
-				r.Broadcast(packet.RoomYellowChat(0, player.Char().Name))
+				r.Broadcast(PacketRoomYellowChat(0, player.Char().Name))
 			}
 
 			r.players = append(r.players[:roomSlot], r.players[roomSlot+1:]...)
@@ -153,7 +152,7 @@ func (r *GameRoom) Start() {
 	r.InProgress = true
 
 	player := Players[r.players[0]]
-	Maps[player.Char().MapID].Send(packet.MapShowGameBox(player.Char().ID, r.ID, byte(r.RoomType), r.BoardType, r.Name, bool(len(r.Password) > 0), r.InProgress, 0x01), player.InstanceID)
+	Maps[player.Char().MapID].Send(PacketMapShowGameBox(player.Char().ID, r.ID, byte(r.RoomType), r.BoardType, r.Name, bool(len(r.Password) > 0), r.InProgress, 0x01), player.InstanceID)
 }
 
 func (r *GameRoom) Expel() {
@@ -166,7 +165,7 @@ func (r *GameRoom) gameEnd(draw, forfeit bool, conn mnet.MConnChannel) bool {
 	// Update box on map
 	r.InProgress = false
 	player := Players[r.players[0]]
-	Maps[player.Char().MapID].Send(packet.MapShowGameBox(player.Char().ID, r.ID, byte(r.RoomType), r.BoardType, r.Name, bool(len(r.Password) > 0), r.InProgress, 0x01), player.InstanceID)
+	Maps[player.Char().MapID].Send(PacketMapShowGameBox(player.Char().ID, r.ID, byte(r.RoomType), r.BoardType, r.Name, bool(len(r.Password) > 0), r.InProgress, 0x01), player.InstanceID)
 
 	var slotID byte = 0x00
 	if !r.p1Turn {
@@ -211,7 +210,7 @@ func (r *GameRoom) gameEnd(draw, forfeit bool, conn mnet.MConnChannel) bool {
 		displayInfo = append(displayInfo, Players[v].Char())
 	}
 
-	r.Broadcast(packet.RoomGameResult(draw, slotID, forfeit, displayInfo))
+	r.Broadcast(PacketRoomGameResult(draw, slotID, forfeit, displayInfo))
 
 	for i, v := range r.leaveAfterGame {
 		if v {
@@ -255,7 +254,7 @@ func (r *GameRoom) LeaveAfterGame(conn mnet.MConnChannel) {
 				return
 			}
 
-			r.Broadcast(packet.RoomYellowChat(0x05, player.Char().Name))
+			r.Broadcast(PacketRoomYellowChat(0x05, player.Char().Name))
 
 			return
 		}
@@ -273,7 +272,7 @@ func (r *GameRoom) UndoLeaveAfterGame(conn mnet.MConnChannel) {
 				return
 			}
 
-			r.Broadcast(packet.RoomYellowChat(0x06, player.Char().Name))
+			r.Broadcast(PacketRoomYellowChat(0x06, player.Char().Name))
 
 			return
 		}
@@ -281,7 +280,7 @@ func (r *GameRoom) UndoLeaveAfterGame(conn mnet.MConnChannel) {
 }
 
 func (r *GameRoom) ChangeTurn() {
-	r.Broadcast(packet.RoomGameSkip(r.p1Turn))
+	r.Broadcast(PacketRoomGameSkip(r.p1Turn))
 	r.p1Turn = !r.p1Turn
 }
 
@@ -356,7 +355,7 @@ func checkOmokWin(board [15][15]byte, piece byte) bool {
 func (r *OmokRoom) Start() {
 	r.GameRoom.Start()
 	r.board = [15][15]byte{}
-	r.Broadcast(packet.RoomOmokStart(r.p1Turn))
+	r.Broadcast(PacketRoomOmokStart(r.p1Turn))
 }
 
 func (r *OmokRoom) PlacePiece(x, y int32, piece byte) bool {
@@ -366,9 +365,9 @@ func (r *OmokRoom) PlacePiece(x, y int32, piece byte) bool {
 
 	if r.board[x][y] != 0 {
 		if r.p1Turn {
-			r.players[0].Send(packet.RoomOmokInvalidPlaceMsg())
+			r.players[0].Send(PacketRoomOmokInvalidPlaceMsg())
 		} else {
-			r.players[1].Send(packet.RoomOmokInvalidPlaceMsg())
+			r.players[1].Send(PacketRoomOmokInvalidPlaceMsg())
 		}
 
 		return false
@@ -384,7 +383,7 @@ func (r *OmokRoom) PlacePiece(x, y int32, piece byte) bool {
 		r.previousTurn[1][1] = y
 	}
 
-	r.Broadcast(packet.RoomPlaceOmokPiece(x, y, piece))
+	r.Broadcast(PacketRoomPlaceOmokPiece(x, y, piece))
 
 	win := checkOmokWin(r.board, piece)
 	draw := checkOmokDraw(r.board)
@@ -405,7 +404,7 @@ func (r *OmokRoom) UndoTurn(conn mnet.MConnChannel) {
 	for i, v := range r.players[0:2] {
 		if v != conn {
 			r.board[r.previousTurn[i][0]][r.previousTurn[i][1]] = 0
-			r.Broadcast(packet.RoomUndo(r.previousTurn[i][0], r.previousTurn[i][1], r.p1Turn))
+			r.Broadcast(PacketRoomUndo(r.previousTurn[i][0], r.previousTurn[i][1], r.p1Turn))
 			r.p1Turn = !r.p1Turn
 			return
 		}
@@ -415,7 +414,7 @@ func (r *OmokRoom) UndoTurn(conn mnet.MConnChannel) {
 func (r *MemoryRoom) Start() {
 	r.GameRoom.Start()
 	r.shuffleCards()
-	r.Broadcast(packet.RoomMemoryStart(r.p1Turn, int32(r.BoardType), r.cards))
+	r.Broadcast(PacketRoomMemoryStart(r.p1Turn, int32(r.BoardType), r.cards))
 }
 
 func (r *MemoryRoom) shuffleCards() {
@@ -449,7 +448,7 @@ func (r *MemoryRoom) SelectCard(turn, cardID byte, conn mnet.MConnChannel) bool 
 
 	if turn == 1 {
 		r.firstCardPick = cardID
-		r.BroadcastExcept(packet.RoomSelectCard(turn, cardID, r.firstCardPick, turn), conn)
+		r.BroadcastExcept(PacketRoomSelectCard(turn, cardID, r.firstCardPick, turn), conn)
 	} else if r.cards[r.firstCardPick] == r.cards[cardID] {
 		player, err := Players.GetFromConn(conn)
 
@@ -466,15 +465,15 @@ func (r *MemoryRoom) SelectCard(turn, cardID byte, conn mnet.MConnChannel) bool 
 			points = 3
 		}
 
-		r.Broadcast(packet.RoomSelectCard(turn, cardID, r.firstCardPick, points))
-		r.Broadcast(packet.RoomYellowChat(0x09, player.Char().Name))
+		r.Broadcast(PacketRoomSelectCard(turn, cardID, r.firstCardPick, points))
+		r.Broadcast(PacketRoomYellowChat(0x09, player.Char().Name))
 
 		return r.checkCardWin()
 	} else if r.p1Turn {
-		r.Broadcast(packet.RoomSelectCard(turn, cardID, r.firstCardPick, 0))
+		r.Broadcast(PacketRoomSelectCard(turn, cardID, r.firstCardPick, 0))
 		r.p1Turn = !r.p1Turn
 	} else {
-		r.Broadcast(packet.RoomSelectCard(turn, cardID, r.firstCardPick, 1))
+		r.Broadcast(PacketRoomSelectCard(turn, cardID, r.firstCardPick, 1))
 		r.p1Turn = !r.p1Turn
 	}
 

@@ -1,7 +1,6 @@
 package game
 
 import (
-	"github.com/Hucaru/Valhalla/game/packet"
 	"github.com/Hucaru/Valhalla/mnet"
 	"github.com/Hucaru/Valhalla/mpacket"
 )
@@ -57,7 +56,7 @@ func (r *baseRoom) Broadcast(p mpacket.Packet) {
 func (r *baseRoom) SendMessage(name, msg string) {
 	for roomSlot, v := range r.players {
 		if Players[v].Char().Name == name {
-			r.Broadcast(packet.RoomChat(name, msg, byte(roomSlot)))
+			r.Broadcast(PacketRoomChat(name, msg, byte(roomSlot)))
 			break
 		}
 	}
@@ -65,7 +64,7 @@ func (r *baseRoom) SendMessage(name, msg string) {
 
 func (r *baseRoom) AddPlayer(conn mnet.MConnChannel) (byte, bool) {
 	if len(r.players) == r.maxPlayers {
-		conn.Send(packet.RoomFull())
+		conn.Send(PacketRoomFull())
 		return 0, false
 	}
 
@@ -74,7 +73,7 @@ func (r *baseRoom) AddPlayer(conn mnet.MConnChannel) (byte, bool) {
 	player := Players[conn]
 	roomPos := byte(len(r.players)) - 1
 
-	r.Broadcast(packet.RoomJoin(byte(r.RoomType), roomPos, player.Char()))
+	r.Broadcast(PacketRoomJoin(byte(r.RoomType), roomPos, player.Char()))
 
 	Players[conn].RoomID = r.ID
 

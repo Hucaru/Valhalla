@@ -7,7 +7,6 @@ import (
 
 	"github.com/Hucaru/Valhalla/constant"
 	"github.com/Hucaru/Valhalla/game/def"
-	"github.com/Hucaru/Valhalla/game/packet"
 	"github.com/Hucaru/Valhalla/mnet"
 	"github.com/Hucaru/Valhalla/nx"
 )
@@ -70,7 +69,7 @@ func (p *Player) ChangeMap(mapID int32, portal nx.Portal, portalID byte) {
 	p.char.MapPos = portalID
 	p.char.MapID = mapID
 
-	p.Send(packet.MapChange(mapID, 0, portalID, p.char.HP)) // get current channel
+	p.Send(PacketMapChange(mapID, 0, portalID, p.char.HP)) // get current channel
 
 	Maps[p.char.MapID].AddPlayer(p.MConnChannel, p.InstanceID)
 }
@@ -89,7 +88,7 @@ func (p *Player) ChangeInstance(newInstID int) {
 	p.char.Pos.Y = portal.Y
 	p.char.MapPos = portalID
 
-	p.Send(packet.MapChange(p.char.MapID, 0, portalID, p.char.HP)) // get current channel
+	p.Send(PacketMapChange(p.char.MapID, 0, portalID, p.char.HP)) // get current channel
 
 	Maps[p.char.MapID].AddPlayer(p.MConnChannel, p.InstanceID)
 }
@@ -115,7 +114,7 @@ func (p *Player) SetMaxHP(amount int32) {
 	}
 
 	p.char.MaxHP = int16(amount)
-	p.Send(packet.PlayerStatChange(true, constant.MaxHpID, amount))
+	p.Send(PacketPlayerStatChange(true, constant.MaxHpID, amount))
 }
 
 func (p *Player) SetHP(amount int32) {
@@ -129,7 +128,7 @@ func (p *Player) SetHP(amount int32) {
 		p.char.HP = 0
 	}
 
-	p.Send(packet.PlayerStatChange(true, constant.HpID, amount))
+	p.Send(PacketPlayerStatChange(true, constant.HpID, amount))
 }
 
 func (p *Player) GiveHP(amount int32) {
@@ -145,7 +144,7 @@ func (p *Player) SetMaxMP(amount int32) {
 	}
 
 	p.char.MaxMP = int16(amount)
-	p.Send(packet.PlayerStatChange(true, constant.MaxMpID, amount))
+	p.Send(PacketPlayerStatChange(true, constant.MaxMpID, amount))
 }
 
 func (p *Player) SetMP(amount int32) {
@@ -159,7 +158,7 @@ func (p *Player) SetMP(amount int32) {
 		p.char.MP = 0
 	}
 
-	p.Send(packet.PlayerStatChange(true, constant.MpID, amount))
+	p.Send(PacketPlayerStatChange(true, constant.MpID, amount))
 }
 
 func (p *Player) GiveMP(amount int32) {
@@ -168,7 +167,7 @@ func (p *Player) GiveMP(amount int32) {
 
 func (p *Player) SetJob(jobID int16) {
 	p.char.Job = jobID
-	p.Send(packet.PlayerStatChange(true, constant.JobID, int32(jobID)))
+	p.Send(PacketPlayerStatChange(true, constant.JobID, int32(jobID)))
 }
 
 func (p *Player) levelUp() {
@@ -229,15 +228,15 @@ func (p *Player) SetEXP(amount int32) {
 		p.SetEXP(remainder)
 	} else {
 		p.char.EXP = amount
-		p.Send(packet.PlayerStatChange(false, constant.ExpID, int32(amount)))
+		p.Send(PacketPlayerStatChange(false, constant.ExpID, int32(amount)))
 	}
 }
 
 func (p *Player) GiveEXP(amount int32, fromMob, fromParty bool) {
 	if fromMob {
-		p.Send(packet.MessageExpGained(!fromParty, false, amount))
+		p.Send(PacketMessageExpGained(!fromParty, false, amount))
 	} else {
-		p.Send(packet.MessageExpGained(true, true, amount))
+		p.Send(PacketMessageExpGained(true, true, amount))
 	}
 
 	p.SetEXP(p.char.EXP + amount)
@@ -245,8 +244,8 @@ func (p *Player) GiveEXP(amount int32, fromMob, fromParty bool) {
 
 func (p *Player) SetLevel(level byte) {
 	p.char.Level = level
-	p.Send(packet.PlayerStatChange(false, constant.LevelID, int32(level)))
-	Maps[p.char.MapID].Send(packet.PlayerLevelUpAnimation(p.char.ID), p.InstanceID)
+	p.Send(PacketPlayerStatChange(false, constant.LevelID, int32(level)))
+	Maps[p.char.MapID].Send(PacketPlayerLevelUpAnimation(p.char.ID), p.InstanceID)
 }
 
 func (p *Player) GiveLevel(amount int8) {
@@ -255,7 +254,7 @@ func (p *Player) GiveLevel(amount int8) {
 
 func (p *Player) SetAP(amount int16) {
 	p.char.AP = amount
-	p.Send(packet.PlayerStatChange(false, constant.ApID, int32(amount)))
+	p.Send(PacketPlayerStatChange(false, constant.ApID, int32(amount)))
 }
 
 func (p *Player) GiveAP(amount int16) {
@@ -264,7 +263,7 @@ func (p *Player) GiveAP(amount int16) {
 
 func (p *Player) SetSP(amount int16) {
 	p.char.SP = amount
-	p.Send(packet.PlayerStatChange(false, constant.SpID, int32(amount)))
+	p.Send(PacketPlayerStatChange(false, constant.SpID, int32(amount)))
 }
 
 func (p *Player) GiveSP(amount int16) {
@@ -273,7 +272,7 @@ func (p *Player) GiveSP(amount int16) {
 
 func (p *Player) SetStr(amount int16) {
 	p.char.Str = amount
-	p.Send(packet.PlayerStatChange(true, constant.StrID, int32(amount)))
+	p.Send(PacketPlayerStatChange(true, constant.StrID, int32(amount)))
 }
 
 func (p *Player) GiveStr(amount int16) {
@@ -282,7 +281,7 @@ func (p *Player) GiveStr(amount int16) {
 
 func (p *Player) SetDex(amount int16) {
 	p.char.Dex = amount
-	p.Send(packet.PlayerStatChange(true, constant.DexID, int32(amount)))
+	p.Send(PacketPlayerStatChange(true, constant.DexID, int32(amount)))
 }
 
 func (p *Player) GiveDex(amount int16) {
@@ -291,7 +290,7 @@ func (p *Player) GiveDex(amount int16) {
 
 func (p *Player) SetInt(amount int16) {
 	p.char.Int = amount
-	p.Send(packet.PlayerStatChange(true, constant.IntID, int32(amount)))
+	p.Send(PacketPlayerStatChange(true, constant.IntID, int32(amount)))
 }
 
 func (p *Player) GiveInt(amount int16) {
@@ -300,7 +299,7 @@ func (p *Player) GiveInt(amount int16) {
 
 func (p *Player) SetLuk(amount int16) {
 	p.char.Luk = amount
-	p.Send(packet.PlayerStatChange(true, constant.LukID, int32(amount)))
+	p.Send(PacketPlayerStatChange(true, constant.LukID, int32(amount)))
 }
 
 func (p *Player) GiveLuk(amount int16) {
@@ -309,7 +308,7 @@ func (p *Player) GiveLuk(amount int16) {
 
 func (p *Player) SetMesos(amount int32) {
 	p.char.Mesos = amount
-	p.Send(packet.PlayerStatChange(false, constant.MesosID, amount))
+	p.Send(PacketPlayerStatChange(false, constant.MesosID, amount))
 }
 
 func (p *Player) GiveMesos(amount int32) {
@@ -330,5 +329,5 @@ func (p *Player) SetMinigameDraw(v int32) {
 
 func (p *Player) UpdateSkill(skill def.Skill) {
 	p.char.Skills[skill.ID] = skill
-	p.Send(packet.PlayerSkillBookUpdate(skill.ID, int32(skill.Level)))
+	p.Send(PacketPlayerSkillBookUpdate(skill.ID, int32(skill.Level)))
 }

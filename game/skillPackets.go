@@ -1,4 +1,4 @@
-package packet
+package game
 
 import (
 	"github.com/Hucaru/Valhalla/constant/opcode"
@@ -6,7 +6,7 @@ import (
 	"github.com/Hucaru/Valhalla/mpacket"
 )
 
-func SkillMelee(char def.Character, attackData def.AttackData) mpacket.Packet {
+func PacketSkillMelee(char def.Character, attackData def.AttackData) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcodes.SendChannelPlayerUseMeleeSkill)
 	p.WriteInt32(char.ID)
 	p.WriteByte(attackData.Targets*0x10 + attackData.Hits)
@@ -43,7 +43,7 @@ func SkillMelee(char def.Character, attackData def.AttackData) mpacket.Packet {
 	return p
 }
 
-func SkillRanged(char def.Character, attackData def.AttackData) mpacket.Packet {
+func PacketSkillRanged(char def.Character, attackData def.AttackData) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcodes.SendChannelPlayerUseRangedSkill)
 	p.WriteInt32(char.ID)
 	p.WriteByte(attackData.Targets*0x10 + attackData.Hits)
@@ -76,7 +76,7 @@ func SkillRanged(char def.Character, attackData def.AttackData) mpacket.Packet {
 	return p
 }
 
-func SkillMagic(char def.Character, attackData def.AttackData) mpacket.Packet {
+func PacketSkillMagic(char def.Character, attackData def.AttackData) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcodes.SendChannelPlayerUseMagicSkill)
 	p.WriteInt32(char.ID)
 	p.WriteByte(attackData.Targets*0x10 + attackData.Hits)
@@ -109,7 +109,7 @@ func SkillMagic(char def.Character, attackData def.AttackData) mpacket.Packet {
 	return p
 }
 
-func SkillAnimation(charID int32, skillID int32, level byte) mpacket.Packet {
+func PacketSkillAnimation(charID int32, skillID int32, level byte) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcodes.SendChannelPlayerAnimation)
 	p.WriteInt32(charID)
 	p.WriteByte(0x01)
@@ -119,7 +119,7 @@ func SkillAnimation(charID int32, skillID int32, level byte) mpacket.Packet {
 	return p
 }
 
-func SkillGmHide(isHidden bool) mpacket.Packet {
+func PacketSkillGmHide(isHidden bool) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcodes.SendChannelEmployee)
 	p.WriteByte(0x0F)
 	p.WriteBool(isHidden)

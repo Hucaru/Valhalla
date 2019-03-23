@@ -5,10 +5,7 @@ import (
 	"math/rand"
 	"time"
 
-	"github.com/Hucaru/Valhalla/game/mob"
-
 	"github.com/Hucaru/Valhalla/game/def"
-	"github.com/Hucaru/Valhalla/game/packet"
 	"github.com/Hucaru/Valhalla/mnet"
 	"github.com/Hucaru/Valhalla/mpacket"
 	"github.com/Hucaru/Valhalla/nx"
@@ -17,8 +14,8 @@ import (
 type Instance struct {
 	mapID                int32
 	npcs                 []def.NPC
-	mobs                 []mob.Mob
-	spawnableMobs        []*mob.SpawnInfo
+	mobs                 []Mob
+	spawnableMobs        []*MobSI
 	players              []mnet.MConnChannel
 	workDispatch         chan func()
 	previousMobSpawnTime int64
@@ -27,8 +24,8 @@ type Instance struct {
 
 func createInstanceFromMapData(mapData nx.Map, mapID int32, dispatcher chan func()) *Instance {
 	npcs := []def.NPC{}
-	mobs := []mob.Mob{}
-	spawnableMobs := []*mob.SpawnInfo{}
+	mobs := []Mob{}
+	spawnableMobs := []*MobSI{}
 
 	for _, l := range mapData.Mobs {
 		nxMob, err := nx.GetMob(l.ID)
@@ -37,8 +34,8 @@ func createInstanceFromMapData(mapData nx.Map, mapID int32, dispatcher chan func
 			continue
 		}
 
-		newMob := mob.Create(int32(len(mobs)+1), l, nxMob, nil, mapID)
-		mobSpawn := mob.CreateSpawnInfo(newMob)
+		newMob := CreateMob(int32(len(mobs)+1), l, nxMob, nil, mapID)
+		mobSpawn := CreateMobSpawnInfo(newMob)
 		mobSpawn.Count++
 
 		mobs = append(mobs, mobSpawn.Mob)
@@ -110,17 +107,17 @@ func (inst *Instance) addPlayer(conn mnet.MConnChannel) {
 	}
 
 	for _, npc := range inst.npcs {
-		conn.Send(packet.NpcShow(npc))
-		conn.Send(packet.NPCSetController(npc.SpawnID, true))
+		conn.Send(PacketNpcShow(npc))
+		conn.Send(PacketNpcSetController(npc.SpawnID, true))
 	}
 
 	player := Players[conn]
 
 	for _, other := range inst.players {
 		otherPlayer := Players[other]
-		otherPlayer.Send(packet.MapPlayerEnter(player.Char()))
+		otherPlayer.Send(PacketMapPlayerEnter(player.Char()))
 
-		player.Send(packet.MapPlayerEnter(otherPlayer.Char()))
+		player.Send(PacketMapPlayerEnter(otherPlayer.Char()))
 
 		if otherPlayer.RoomID > 0 {
 			r := Rooms[otherPlayer.RoomID]
@@ -130,12 +127,12 @@ func (inst *Instance) addPlayer(conn mnet.MConnChannel) {
 				omokRoom := r.(*OmokRoom)
 
 				if omokRoom.IsOwner(other) {
-					player.Send(packet.MapShowGameBox(otherPlayer.Char().ID, omokRoom.ID, byte(omokRoom.RoomType), omokRoom.BoardType, omokRoom.Name, bool(len(omokRoom.Password) > 0), omokRoom.InProgress, 0x01))
+					player.Send(PacketMapShowGameBox(otherPlayer.Char().ID, omokRoom.ID, byte(omokRoom.RoomType), omokRoom.BoardType, omokRoom.Name, bool(len(omokRoom.Password) > 0), omokRoom.InProgress, 0x01))
 				}
 			case *MemoryRoom:
 				memoryRoom := r.(*MemoryRoom)
 				if memoryRoom.IsOwner(other) {
-					player.Send(packet.MapShowGameBox(otherPlayer.Char().ID, memoryRoom.ID, byte(memoryRoom.RoomType), memoryRoom.BoardType, memoryRoom.Name, bool(len(memoryRoom.Password) > 0), memoryRoom.InProgress, 0x01))
+					player.Send(PacketMapShowGameBox(otherPlayer.Char().ID, memoryRoom.ID, byte(memoryRoom.RoomType), memoryRoom.BoardType, memoryRoom.Name, bool(len(memoryRoom.Password) > 0), memoryRoom.InProgress, 0x01))
 				}
 			}
 		}
@@ -167,7 +164,7 @@ func (inst *Instance) removePlayer(conn mnet.MConnChannel) {
 	player := Players[conn]
 
 	for _, other := range inst.players {
-		other.Send(packet.MapPlayerLeft(player.Char().ID))
+		other.Send(PacketMapPlayerLeft(player.Char().ID))
 	}
 }
 
@@ -215,7 +212,7 @@ func (inst *Instance) SpawnMob(mobID, spawnID int32, x, y, foothold int16, summo
 		return
 	}
 
-	mob := mob.Create(spawnID, nx.Life{}, m, nil, inst.mapID)
+	mob := CreateMob(spawnID, nx.Life{}, m, nil, inst.mapID)
 	mob.ID = mobID
 
 	mob.X = x
@@ -318,7 +315,7 @@ func (inst *Instance) handleMobRespawns(currentTime int64) {
 		return
 	}
 
-	mobsToSpawn := []*mob.SpawnInfo{}
+	mobsToSpawn := []*MobSI{}
 
 	for _, spm := range inst.spawnableMobs {
 		addInfront := true
@@ -351,7 +348,7 @@ func (inst *Instance) handleMobRespawns(currentTime int64) {
 		}
 
 		if addInfront {
-			mobsToSpawn = append([]*mob.SpawnInfo{spm}, mobsToSpawn...)
+			mobsToSpawn = append([]*MobSI{spm}, mobsToSpawn...)
 		} else {
 			mobsToSpawn = append(mobsToSpawn, spm)
 		}

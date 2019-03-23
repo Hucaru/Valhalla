@@ -1,14 +1,14 @@
-package packet
+package game
 
 import "github.com/Hucaru/Valhalla/mpacket"
 
-func DropAdd() mpacket.Packet {
+func PacketDropAdd() mpacket.Packet {
 	p := mpacket.NewPacket()
 
 	return p
 }
 
-func DropRemove() mpacket.Packet {
+func PacketDropRemove() mpacket.Packet {
 	p := mpacket.NewPacket()
 
 	return p

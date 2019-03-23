@@ -1,11 +1,11 @@
-package packet
+package game
 
 import (
 	"github.com/Hucaru/Valhalla/constant/opcode"
 	"github.com/Hucaru/Valhalla/mpacket"
 )
 
-func MessageRedText(msg string) mpacket.Packet {
+func PacketMessageRedText(msg string) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcodes.SendChannelInfoMessage)
 	p.WriteByte(9)
 	p.WriteString(msg)
@@ -13,7 +13,7 @@ func MessageRedText(msg string) mpacket.Packet {
 	return p
 }
 
-func MessageGuildPointsChange(ammount int32) mpacket.Packet {
+func PacketMessageGuildPointsChange(ammount int32) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcodes.SendChannelInfoMessage)
 	p.WriteByte(6)
 	p.WriteInt32(ammount)
@@ -21,7 +21,7 @@ func MessageGuildPointsChange(ammount int32) mpacket.Packet {
 	return p
 }
 
-func MessageFameChange(ammount int32) mpacket.Packet {
+func PacketMessageFameChange(ammount int32) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcodes.SendChannelInfoMessage)
 	p.WriteByte(4)
 	p.WriteInt32(ammount)
@@ -30,14 +30,14 @@ func MessageFameChange(ammount int32) mpacket.Packet {
 }
 
 // sends the [item name] has passed its expeiration date and will be removed from your inventory
-func MessageItemExpired(itemID int32) mpacket.Packet {
+func PacketMessageItemExpired(itemID int32) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcodes.SendChannelInfoMessage)
 	p.WriteByte(2)
 	p.WriteInt32(itemID)
 	return p
 }
 
-func MessageItemExpired2(itemID int32) mpacket.Packet {
+func PacketMessageItemExpired2(itemID int32) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcodes.SendChannelInfoMessage)
 	p.WriteByte(8)
 	p.WriteByte(1)
@@ -45,7 +45,7 @@ func MessageItemExpired2(itemID int32) mpacket.Packet {
 	return p
 }
 
-func MessageMesosChangeChat(ammount int32) mpacket.Packet {
+func PacketMessageMesosChangeChat(ammount int32) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcodes.SendChannelInfoMessage)
 	p.WriteByte(5)
 	p.WriteInt32(ammount)
@@ -53,7 +53,7 @@ func MessageMesosChangeChat(ammount int32) mpacket.Packet {
 	return p
 }
 
-func MessageUnableToPickUp(itemNotAvailable bool) mpacket.Packet {
+func PacketMessageUnableToPickUp(itemNotAvailable bool) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcodes.SendChannelInfoMessage)
 	p.WriteByte(0)
 	if itemNotAvailable {
@@ -65,7 +65,7 @@ func MessageUnableToPickUp(itemNotAvailable bool) mpacket.Packet {
 	return p
 }
 
-func MessageDropPickUp(isMesos bool, itemID, ammount int32) mpacket.Packet {
+func PacketMessageDropPickUp(isMesos bool, itemID, ammount int32) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcodes.SendChannelInfoMessage)
 	p.WriteByte(0)
 
@@ -80,7 +80,7 @@ func MessageDropPickUp(isMesos bool, itemID, ammount int32) mpacket.Packet {
 	return p
 }
 
-func MessageExpGained(whiteText, appearInChat bool, ammount int32) mpacket.Packet {
+func PacketMessageExpGained(whiteText, appearInChat bool, ammount int32) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcodes.SendChannelInfoMessage)
 	p.WriteByte(3)
 	p.WriteBool(whiteText)
@@ -90,7 +90,7 @@ func MessageExpGained(whiteText, appearInChat bool, ammount int32) mpacket.Packe
 	return p
 }
 
-func MessageNotice(msg string) mpacket.Packet {
+func PacketMessageNotice(msg string) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcodes.SendChannelBroadcastMessage)
 	p.WriteByte(0)
 	p.WriteString(msg)
@@ -98,7 +98,7 @@ func MessageNotice(msg string) mpacket.Packet {
 	return p
 }
 
-func MessageDialogueBox(msg string) mpacket.Packet {
+func PacketMessageDialogueBox(msg string) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcodes.SendChannelBroadcastMessage)
 	p.WriteByte(1)
 	p.WriteString(msg)
@@ -106,7 +106,7 @@ func MessageDialogueBox(msg string) mpacket.Packet {
 	return p
 }
 
-func MessageWhiteBar(msg string) mpacket.Packet {
+func PacketMessageWhiteBar(msg string) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcodes.SendChannelBroadcastMessage)
 	p.WriteByte(2)
 	p.WriteString(msg) // not sure how string is formated
@@ -115,7 +115,7 @@ func MessageWhiteBar(msg string) mpacket.Packet {
 }
 
 // Need to figure out how to display the username and  atm it bastardises it.
-func MessageBroadcastChannel(senderName string, msg string, channel byte, ear bool) mpacket.Packet {
+func PacketMessageBroadcastChannel(senderName string, msg string, channel byte, ear bool) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcodes.SendChannelBroadcastMessage)
 	p.WriteByte(3)
 	p.WriteString(senderName)
@@ -129,7 +129,7 @@ func MessageBroadcastChannel(senderName string, msg string, channel byte, ear bo
 	return p
 }
 
-func MessageScrollingHeader(msg string) mpacket.Packet {
+func PacketMessageScrollingHeader(msg string) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcodes.SendChannelBroadcastMessage)
 	p.WriteByte(4)
 	p.WriteBool(bool(len(msg) > 0))
@@ -138,7 +138,7 @@ func MessageScrollingHeader(msg string) mpacket.Packet {
 	return p
 }
 
-func MessageBubblessChat(msgType byte, sender string, msg string) mpacket.Packet {
+func PacketMessageBubblessChat(msgType byte, sender string, msg string) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcodes.SendChannelBubblessChat)
 	p.WriteByte(msgType) // 0x00 buddy chat, 0x01 - party, 0x02 - guild
 	p.WriteString(sender)
@@ -147,7 +147,7 @@ func MessageBubblessChat(msgType byte, sender string, msg string) mpacket.Packet
 	return p
 }
 
-func MessageWhisper(sender string, message string, channel byte) mpacket.Packet {
+func PacketMessageWhisper(sender string, message string, channel byte) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcodes.SendChannelWhisper)
 	p.WriteByte(0x12)
 	p.WriteString(sender)
@@ -157,7 +157,7 @@ func MessageWhisper(sender string, message string, channel byte) mpacket.Packet 
 	return p
 }
 
-func MessageFindResult(character string, isAdmin, inCashShop, sameChannel bool, mapID int32) mpacket.Packet {
+func PacketMessageFindResult(character string, isAdmin, inCashShop, sameChannel bool, mapID int32) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcodes.SendChannelWhisper)
 
 	if isAdmin {
@@ -190,7 +190,7 @@ func MessageFindResult(character string, isAdmin, inCashShop, sameChannel bool, 
 	return p
 }
 
-func MessageAllChat(senderID int32, isAdmin bool, msg string) mpacket.Packet {
+func PacketMessageAllChat(senderID int32, isAdmin bool, msg string) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcodes.SendChannelAllChatMsg)
 	p.WriteInt32(senderID)
 	p.WriteBool(isAdmin)
@@ -200,7 +200,7 @@ func MessageAllChat(senderID int32, isAdmin bool, msg string) mpacket.Packet {
 }
 
 // Implement logic for these
-func MessageGmBan(good bool) mpacket.Packet {
+func PacketMessageGmBan(good bool) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcodes.SendChannelEmployee)
 	if good {
 		p.WriteByte(4)
@@ -213,7 +213,7 @@ func MessageGmBan(good bool) mpacket.Packet {
 	return p
 }
 
-func MessageGmRemoveFromRanks() mpacket.Packet {
+func PacketMessageGmRemoveFromRanks() mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcodes.SendChannelEmployee)
 	p.WriteByte(6)
 	p.WriteByte(0)
@@ -221,7 +221,7 @@ func MessageGmRemoveFromRanks() mpacket.Packet {
 	return p
 }
 
-func MessageGmWarning(good bool) mpacket.Packet {
+func PacketMessageGmWarning(good bool) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcodes.SendChannelEmployee)
 	p.WriteByte(14)
 	if good {
@@ -233,7 +233,7 @@ func MessageGmWarning(good bool) mpacket.Packet {
 	return p
 }
 
-func MessageGmBlockedAccess() mpacket.Packet {
+func PacketMessageGmBlockedAccess() mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcodes.SendChannelEmployee)
 	p.WriteByte(4)
 	p.WriteByte(0)
@@ -241,7 +241,7 @@ func MessageGmBlockedAccess() mpacket.Packet {
 	return p
 }
 
-func MessageGmUnblock() mpacket.Packet {
+func PacketMessageGmUnblock() mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcodes.SendChannelEmployee)
 	p.WriteByte(5)
 	p.WriteByte(0)
@@ -250,7 +250,7 @@ func MessageGmUnblock() mpacket.Packet {
 }
 
 // Don't know what this is used for
-func MessageGmWrongNpc() mpacket.Packet {
+func PacketMessageGmWrongNpc() mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcodes.SendChannelEmployee)
 	p.WriteByte(8)
 	p.WriteInt16(0)

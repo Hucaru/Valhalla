@@ -1,8 +1,8 @@
-package packet
+package game
 
 import "github.com/Hucaru/Valhalla/mpacket"
 
-func ServerWorldInformation(name, msg string, ribbon, expEvent, nChannels byte, population []int32, addresses [][]byte, ports []int16) mpacket.Packet {
+func PacketServerWorldInformation(name, msg string, ribbon, expEvent, nChannels byte, population []int32, addresses [][]byte, ports []int16) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(0x00)
 	p.WriteString(name)
 	p.WriteByte(ribbon)
@@ -20,19 +20,19 @@ func ServerWorldInformation(name, msg string, ribbon, expEvent, nChannels byte, 
 	return p
 }
 
-func ServerChannelID(id byte) mpacket.Packet {
+func PacketServerChannelID(id byte) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(0x01)
 	p.WriteByte(id)
 
 	return p
 }
 
-func ServerNewPlayer() mpacket.Packet {
+func PacketServerNewPlayer() mpacket.Packet {
 	p := mpacket.CreateWithOpcode(0x02)
 	return p
 }
 
-func ServerPlayerLeave() mpacket.Packet {
+func PacketServerPlayerLeave() mpacket.Packet {
 	p := mpacket.CreateWithOpcode(0x03)
 	return p
 }

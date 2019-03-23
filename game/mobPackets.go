@@ -1,18 +1,18 @@
-package mob
+package game
 
 import (
 	opcodes "github.com/Hucaru/Valhalla/constant/opcode"
 	"github.com/Hucaru/Valhalla/mpacket"
 )
 
-func packetShow(mob Mob) mpacket.Packet {
+func PacketMobShow(mob Mob) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcodes.SendChannelShowMob)
 	p.Append(addMob(mob))
 
 	return p
 }
 
-func packetControl(mob Mob, chase bool) mpacket.Packet {
+func PacketMobControl(mob Mob, chase bool) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcodes.SendChannelControlMob)
 	if chase {
 		p.WriteByte(0x02) // 2 chase, 1 no chase, 0 no control
@@ -75,7 +75,7 @@ func addMob(mob Mob) mpacket.Packet {
 	return p
 }
 
-func packetControlAcknowledge(mobID int32, moveID int16, allowedToUseSkill bool, mp int16, skill byte, level byte) mpacket.Packet {
+func PacketMobControlAcknowledge(mobID int32, moveID int16, allowedToUseSkill bool, mp int16, skill byte, level byte) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcodes.SendChannelControlMobAck)
 	p.WriteInt32(mobID)
 	p.WriteInt16(moveID)
@@ -87,7 +87,7 @@ func packetControlAcknowledge(mobID int32, moveID int16, allowedToUseSkill bool,
 	return p
 }
 
-func PacketMove(mobID int32, allowedToUseSkill bool, action byte, unknownData uint32, buf []byte) mpacket.Packet {
+func PacketMobMove(mobID int32, allowedToUseSkill bool, action byte, unknownData uint32, buf []byte) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcodes.SendChannelMoveMob)
 	p.WriteInt32(mobID)
 	p.WriteBool(allowedToUseSkill)
@@ -99,7 +99,7 @@ func PacketMove(mobID int32, allowedToUseSkill bool, action byte, unknownData ui
 
 }
 
-func packetEndControl(mob Mob) mpacket.Packet {
+func PacketMobEndControl(mob Mob) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcodes.SendChannelControlMob)
 	p.WriteByte(0)
 	p.WriteInt32(mob.SpawnID)
@@ -107,7 +107,7 @@ func packetEndControl(mob Mob) mpacket.Packet {
 	return p
 }
 
-func packetRemove(mob Mob, deathType byte) mpacket.Packet {
+func PacketMobRemove(mob Mob, deathType byte) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcodes.SendChannelRemoveMob)
 	p.WriteInt32(mob.SpawnID)
 	p.WriteByte(deathType)
@@ -115,7 +115,7 @@ func packetRemove(mob Mob, deathType byte) mpacket.Packet {
 	return p
 }
 
-func packetShowHpChange(spawnID int32, dmg int32) mpacket.Packet {
+func PacketMobShowHpChange(spawnID int32, dmg int32) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcodes.SendChannelMobChangeHP)
 	p.WriteInt32(spawnID)
 	p.WriteByte(0)

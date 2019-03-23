@@ -9,13 +9,11 @@ import (
 
 	"github.com/Hucaru/Valhalla/game/def"
 
-	"github.com/Hucaru/Valhalla/game/npcchat"
 	"github.com/Hucaru/Valhalla/game/script"
 
 	"github.com/Hucaru/Valhalla/nx"
 
 	"github.com/Hucaru/Valhalla/game"
-	"github.com/Hucaru/Valhalla/game/packet"
 
 	"github.com/Hucaru/Valhalla/mnet"
 	"github.com/Hucaru/Valhalla/mpacket"
@@ -34,7 +32,7 @@ func chatSendAll(conn mnet.MConnChannel, reader mpacket.Reader) {
 		}
 
 		char := player.Char()
-		game.Maps[char.MapID].Send(packet.MessageAllChat(char.ID, conn.GetAdminLevel() > 0, msg), player.InstanceID)
+		game.Maps[char.MapID].Send(game.PacketMessageAllChat(char.ID, conn.GetAdminLevel() > 0, msg), player.InstanceID)
 	}
 }
 
@@ -133,7 +131,7 @@ func gmCommand(conn mnet.MConnChannel, msg string) {
 		player, ok := game.Players[conn]
 
 		if !ok {
-			conn.Send(packet.MessageNotice(err.Error()))
+			conn.Send(game.PacketMessageNotice(err.Error()))
 			return
 		}
 
@@ -145,7 +143,7 @@ func gmCommand(conn mnet.MConnChannel, msg string) {
 		}
 
 		for c := range game.Players {
-			c.Send(packet.MessageNotice(strings.Join(command[1:], " ")))
+			c.Send(game.PacketMessageNotice(strings.Join(command[1:], " ")))
 		}
 	case "msgBox":
 		if len(command) < 2 {
@@ -153,25 +151,25 @@ func gmCommand(conn mnet.MConnChannel, msg string) {
 		}
 
 		for c := range game.Players {
-			c.Send(packet.MessageDialogueBox(strings.Join(command[1:], " ")))
+			c.Send(game.PacketMessageDialogueBox(strings.Join(command[1:], " ")))
 		}
 	case "scrollHeader":
 		if len(command) < 2 {
 			for c := range game.Players {
-				c.Send(packet.MessageScrollingHeader(""))
+				c.Send(game.PacketMessageScrollingHeader(""))
 			}
 			return
 		}
 
 		for c := range game.Players {
-			c.Send(packet.MessageScrollingHeader(strings.Join(command[1:], " ")))
+			c.Send(game.PacketMessageScrollingHeader(strings.Join(command[1:], " ")))
 		}
 	case "kill":
 		if len(command) == 1 {
 			player, ok := game.Players[conn]
 
 			if !ok {
-				conn.Send(packet.MessageNotice("Error in killing player"))
+				conn.Send(game.PacketMessageNotice("Error in killing player"))
 				return
 			}
 
@@ -181,7 +179,7 @@ func gmCommand(conn mnet.MConnChannel, msg string) {
 				player, ok := game.Players[conn]
 
 				if !ok {
-					conn.Send(packet.MessageNotice("Error in killing players on map"))
+					conn.Send(game.PacketMessageNotice("Error in killing players on map"))
 					return
 				}
 
@@ -202,7 +200,7 @@ func gmCommand(conn mnet.MConnChannel, msg string) {
 			player, err := game.Players.GetFromName(command[1])
 
 			if err != nil {
-				conn.Send(packet.MessageNotice(err.Error()))
+				conn.Send(game.PacketMessageNotice(err.Error()))
 				return
 			}
 
@@ -213,7 +211,7 @@ func gmCommand(conn mnet.MConnChannel, msg string) {
 			player, ok := game.Players[conn]
 
 			if !ok {
-				conn.Send(packet.MessageNotice("Error in getting player"))
+				conn.Send(game.PacketMessageNotice("Error in getting player"))
 				return
 			}
 
@@ -223,7 +221,7 @@ func gmCommand(conn mnet.MConnChannel, msg string) {
 				player, ok := game.Players[conn]
 
 				if !ok {
-					conn.Send(packet.MessageNotice("Error in getting player"))
+					conn.Send(game.PacketMessageNotice("Error in getting player"))
 					return
 				}
 
@@ -244,7 +242,7 @@ func gmCommand(conn mnet.MConnChannel, msg string) {
 			player, err := game.Players.GetFromName(command[1])
 
 			if err != nil {
-				conn.Send(packet.MessageNotice(err.Error()))
+				conn.Send(game.PacketMessageNotice(err.Error()))
 				return
 			}
 
@@ -255,8 +253,8 @@ func gmCommand(conn mnet.MConnChannel, msg string) {
 			return
 		}
 
-		npcchat.NewSessionWithOverride(conn, strings.Join(command[1:], " "), 9200000)
-		npcchat.Run(conn)
+		game.NewNpcChatSessionWithOverride(conn, strings.Join(command[1:], " "), 9200000)
+		game.NpcChatRun(conn)
 
 	case "options":
 		script, err := script.Get("options")
@@ -265,8 +263,8 @@ func gmCommand(conn mnet.MConnChannel, msg string) {
 			return
 		}
 
-		npcchat.NewSessionWithOverride(conn, script, 9010000)
-		npcchat.Run(conn)
+		game.NewNpcChatSessionWithOverride(conn, script, 9010000)
+		game.NpcChatRun(conn)
 
 	case "shop":
 
@@ -278,7 +276,7 @@ func gmCommand(conn mnet.MConnChannel, msg string) {
 		}
 
 		instID := game.Maps[player.Char().MapID].CreateNewInstance()
-		conn.Send(packet.MessageNotice(fmt.Sprintln("New instance created with id:", instID)))
+		conn.Send(game.PacketMessageNotice(fmt.Sprintln("New instance created with id:", instID)))
 	case "changeInstance":
 		if len(command) < 2 {
 			return
@@ -287,7 +285,7 @@ func gmCommand(conn mnet.MConnChannel, msg string) {
 		newInstID, err := strconv.Atoi(command[1])
 
 		if err != nil {
-			conn.Send(packet.MessageNotice("Not a valid instance ID"))
+			conn.Send(game.PacketMessageNotice("Not a valid instance ID"))
 		}
 
 		player, ok := game.Players[conn]
@@ -305,7 +303,7 @@ func gmCommand(conn mnet.MConnChannel, msg string) {
 		instID, err := strconv.Atoi(command[1])
 
 		if err != nil {
-			conn.Send(packet.MessageNotice("Not a valid instance ID"))
+			conn.Send(game.PacketMessageNotice("Not a valid instance ID"))
 		}
 
 		player, ok := game.Players[conn]
@@ -317,10 +315,10 @@ func gmCommand(conn mnet.MConnChannel, msg string) {
 		err = game.Maps[player.Char().MapID].DeleteInstance(instID)
 
 		if err != nil {
-			conn.Send(packet.MessageNotice(err.Error()))
+			conn.Send(game.PacketMessageNotice(err.Error()))
 		}
 
-		conn.Send(packet.MessageNotice("Instance deleted"))
+		conn.Send(game.PacketMessageNotice("Instance deleted"))
 	case "hp":
 		if len(command) < 2 {
 			return
@@ -329,7 +327,7 @@ func gmCommand(conn mnet.MConnChannel, msg string) {
 		player, ok := game.Players[conn]
 
 		if !ok {
-			conn.Send(packet.MessageNotice("Error in getting player"))
+			conn.Send(game.PacketMessageNotice("Error in getting player"))
 			return
 		}
 
@@ -337,7 +335,7 @@ func gmCommand(conn mnet.MConnChannel, msg string) {
 			amount, err := strconv.Atoi(command[1][1:])
 
 			if err != nil {
-				conn.Send(packet.MessageNotice(err.Error()))
+				conn.Send(game.PacketMessageNotice(err.Error()))
 			}
 
 			player.GiveHP(int32(amount))
@@ -345,7 +343,7 @@ func gmCommand(conn mnet.MConnChannel, msg string) {
 			amount, err := strconv.Atoi(command[1][1:])
 
 			if err != nil {
-				conn.Send(packet.MessageNotice(err.Error()))
+				conn.Send(game.PacketMessageNotice(err.Error()))
 			}
 
 			player.GiveHP(int32(-amount))
@@ -354,7 +352,7 @@ func gmCommand(conn mnet.MConnChannel, msg string) {
 			amount, err := strconv.Atoi(command[1])
 
 			if err != nil {
-				conn.Send(packet.MessageNotice(err.Error()))
+				conn.Send(game.PacketMessageNotice(err.Error()))
 			}
 
 			player.SetMaxHP(int32(amount))
@@ -367,7 +365,7 @@ func gmCommand(conn mnet.MConnChannel, msg string) {
 		player, ok := game.Players[conn]
 
 		if !ok {
-			conn.Send(packet.MessageNotice("Error in getting player"))
+			conn.Send(game.PacketMessageNotice("Error in getting player"))
 			return
 		}
 
@@ -375,7 +373,7 @@ func gmCommand(conn mnet.MConnChannel, msg string) {
 			amount, err := strconv.Atoi(command[1][1:])
 
 			if err != nil {
-				conn.Send(packet.MessageNotice(err.Error()))
+				conn.Send(game.PacketMessageNotice(err.Error()))
 			}
 
 			player.GiveMP(int32(amount))
@@ -383,7 +381,7 @@ func gmCommand(conn mnet.MConnChannel, msg string) {
 			amount, err := strconv.Atoi(command[1][1:])
 
 			if err != nil {
-				conn.Send(packet.MessageNotice(err.Error()))
+				conn.Send(game.PacketMessageNotice(err.Error()))
 			}
 
 			player.GiveMP(int32(-amount))
@@ -392,7 +390,7 @@ func gmCommand(conn mnet.MConnChannel, msg string) {
 			amount, err := strconv.Atoi(command[1])
 
 			if err != nil {
-				conn.Send(packet.MessageNotice(err.Error()))
+				conn.Send(game.PacketMessageNotice(err.Error()))
 			}
 
 			player.SetMaxMP(int32(amount))
@@ -405,7 +403,7 @@ func gmCommand(conn mnet.MConnChannel, msg string) {
 		player, ok := game.Players[conn]
 
 		if !ok {
-			conn.Send(packet.MessageNotice("Error in getting player"))
+			conn.Send(game.PacketMessageNotice("Error in getting player"))
 			return
 		}
 
@@ -413,7 +411,7 @@ func gmCommand(conn mnet.MConnChannel, msg string) {
 			amount, err := strconv.Atoi(command[1][1:])
 
 			if err != nil {
-				conn.Send(packet.MessageNotice(err.Error()))
+				conn.Send(game.PacketMessageNotice(err.Error()))
 			}
 
 			player.GiveEXP(int32(amount), false, false)
@@ -421,7 +419,7 @@ func gmCommand(conn mnet.MConnChannel, msg string) {
 			amount, err := strconv.Atoi(command[1][1:])
 
 			if err != nil {
-				conn.Send(packet.MessageNotice(err.Error()))
+				conn.Send(game.PacketMessageNotice(err.Error()))
 			}
 
 			player.GiveEXP(int32(-amount), false, false)
@@ -430,7 +428,7 @@ func gmCommand(conn mnet.MConnChannel, msg string) {
 			amount, err := strconv.Atoi(command[1])
 
 			if err != nil {
-				conn.Send(packet.MessageNotice(err.Error()))
+				conn.Send(game.PacketMessageNotice(err.Error()))
 			}
 
 			player.SetEXP(int32(amount))
@@ -443,7 +441,7 @@ func gmCommand(conn mnet.MConnChannel, msg string) {
 		player, ok := game.Players[conn]
 
 		if !ok {
-			conn.Send(packet.MessageNotice("Error in getting player"))
+			conn.Send(game.PacketMessageNotice("Error in getting player"))
 			return
 		}
 
@@ -451,7 +449,7 @@ func gmCommand(conn mnet.MConnChannel, msg string) {
 			amount, err := strconv.Atoi(command[1][1:])
 
 			if err != nil {
-				conn.Send(packet.MessageNotice(err.Error()))
+				conn.Send(game.PacketMessageNotice(err.Error()))
 			}
 
 			player.GiveLevel(int8(amount))
@@ -459,7 +457,7 @@ func gmCommand(conn mnet.MConnChannel, msg string) {
 			amount, err := strconv.Atoi(command[1][1:])
 
 			if err != nil {
-				conn.Send(packet.MessageNotice(err.Error()))
+				conn.Send(game.PacketMessageNotice(err.Error()))
 			}
 
 			player.GiveLevel(int8(-amount))
@@ -468,7 +466,7 @@ func gmCommand(conn mnet.MConnChannel, msg string) {
 			amount, err := strconv.Atoi(command[1])
 
 			if err != nil {
-				conn.Send(packet.MessageNotice(err.Error()))
+				conn.Send(game.PacketMessageNotice(err.Error()))
 			}
 
 			player.SetLevel(byte(amount))
@@ -553,7 +551,7 @@ func gmCommand(conn mnet.MConnChannel, msg string) {
 		player, ok := game.Players[conn]
 
 		if !ok {
-			conn.Send(packet.MessageNotice(err.Error()))
+			conn.Send(game.PacketMessageNotice(err.Error()))
 			return
 		}
 
@@ -566,20 +564,20 @@ func gmCommand(conn mnet.MConnChannel, msg string) {
 		itemID, err := strconv.Atoi(command[1])
 
 		if err != nil {
-			conn.Send(packet.MessageNotice(err.Error()))
+			conn.Send(game.PacketMessageNotice(err.Error()))
 		}
 
 		player, ok := game.Players[conn]
 
 		if !ok {
-			conn.Send(packet.MessageNotice("Error in getting player"))
+			conn.Send(game.PacketMessageNotice("Error in getting player"))
 			return
 		}
 
 		item, err := def.CreateItemFromID(int32(itemID))
 
 		if err != nil {
-			conn.Send(packet.MessageNotice(err.Error()))
+			conn.Send(game.PacketMessageNotice(err.Error()))
 			return
 		}
 
@@ -587,7 +585,7 @@ func gmCommand(conn mnet.MConnChannel, msg string) {
 			amount, err := strconv.Atoi(command[1])
 
 			if err != nil {
-				conn.Send(packet.MessageNotice(err.Error()))
+				conn.Send(game.PacketMessageNotice(err.Error()))
 			}
 
 			item.Amount = int16(amount)

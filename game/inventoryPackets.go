@@ -1,4 +1,4 @@
-package packet
+package game
 
 import (
 	"github.com/Hucaru/Valhalla/constant/opcode"
@@ -6,7 +6,7 @@ import (
 	"github.com/Hucaru/Valhalla/mpacket"
 )
 
-func InventoryAddItem(item def.Item, newItem bool) mpacket.Packet {
+func PacketInventoryAddItem(item def.Item, newItem bool) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcodes.SendChannelInventoryOperation)
 	p.WriteByte(0x01)     // ?
 	p.WriteByte(0x01)     // number of operations? // e.g. loop over multiple interweaved operations
@@ -23,7 +23,7 @@ func InventoryAddItem(item def.Item, newItem bool) mpacket.Packet {
 	return p
 }
 
-func InventoryChangeItemSlot(invTabID byte, origPos, newPos int16) mpacket.Packet {
+func PacketInventoryChangeItemSlot(invTabID byte, origPos, newPos int16) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcodes.SendChannelInventoryOperation)
 	p.WriteByte(0x01)
 	p.WriteByte(0x01)
@@ -36,7 +36,7 @@ func InventoryChangeItemSlot(invTabID byte, origPos, newPos int16) mpacket.Packe
 	return p
 }
 
-func InventoryRemoveItem(item def.Item) mpacket.Packet {
+func PacketInventoryRemoveItem(item def.Item) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcodes.SendChannelInventoryOperation)
 	p.WriteByte(0x01)
 	p.WriteByte(0x01)
@@ -48,7 +48,7 @@ func InventoryRemoveItem(item def.Item) mpacket.Packet {
 	return p
 }
 
-func InventoryChangeEquip(char def.Character) mpacket.Packet {
+func PacketInventoryChangeEquip(char def.Character) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcodes.SendChannelPlayerChangeAvatar)
 	p.WriteInt32(char.ID)
 	p.WriteByte(1)

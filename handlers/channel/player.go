@@ -8,7 +8,6 @@ import (
 	"github.com/Hucaru/Valhalla/database"
 	"github.com/Hucaru/Valhalla/game"
 	"github.com/Hucaru/Valhalla/game/def"
-	"github.com/Hucaru/Valhalla/game/packet"
 	"github.com/Hucaru/Valhalla/mnet"
 	"github.com/Hucaru/Valhalla/mpacket"
 	"github.com/Hucaru/Valhalla/nx"
@@ -42,8 +41,8 @@ func playerConnect(conn mnet.MConnChannel, reader mpacket.Reader) {
 
 	conn.SetAdminLevel(adminLevel)
 
-	conn.Send(packet.PlayerEnterGame(char, 0))
-	conn.Send(packet.MessageScrollingHeader("Valhalla Archival Project"))
+	conn.Send(game.PacketPlayerEnterGame(char, 0))
+	conn.Send(game.PacketMessageScrollingHeader("Valhalla Archival Project"))
 
 	game.Players[conn] = game.NewPlayer(conn, char)
 	err = game.Maps[char.MapID].AddPlayer(conn, 0)
@@ -63,7 +62,7 @@ func playerUsePortal(conn mnet.MConnChannel, reader mpacket.Reader) {
 	char := player.Char()
 
 	if char.PortalCount != reader.ReadByte() {
-		conn.Send(packet.PlayerNoChange())
+		conn.Send(game.PacketPlayerNoChange())
 		return
 	}
 
@@ -135,7 +134,7 @@ func playerMovement(conn mnet.MConnChannel, reader mpacket.Reader) {
 
 	player.UpdateMovement(finalData)
 
-	game.Maps[char.MapID].SendExcept(packet.PlayerMove(char.ID, moveBytes), conn, player.InstanceID)
+	game.Maps[char.MapID].SendExcept(game.PacketPlayerMove(char.ID, moveBytes), conn, player.InstanceID)
 }
 
 func playerTakeDamage(conn mnet.MConnChannel, reader mpacket.Reader) {
@@ -213,8 +212,12 @@ func playerTakeDamage(conn mnet.MConnChannel, reader mpacket.Reader) {
 
 		player.GiveHP(playerDamange)
 
-		game.Maps[char.MapID].Send(packet.PlayerReceivedDmg(char.ID, mobAttack, damage, reducedDamange, spawnID, mobID,
+		game.Maps[char.MapID].Send(game.PacketPlayerReceivedDmg(char.ID, mobAttack, damage, reducedDamange, spawnID, mobID,
 			healSkillID, stance, reflectAction, reflected, reflectX, reflectY), player.InstanceID)
+
+		if player.Char().HP == 0 && mob.Controller == player.MConnChannel {
+			mob.ResetAggro()
+		}
 	}
 
 	if mobSkillID != 0 && mobSkillLevel != 0 {
@@ -233,7 +236,7 @@ func playerRequestAvatarInfoWindow(conn mnet.MConnChannel, reader mpacket.Reader
 
 	char := player.Char()
 
-	conn.Send(packet.PlayerAvatarSummaryWindow(char.ID, char, char.Guild))
+	conn.Send(game.PacketPlayerAvatarSummaryWindow(char.ID, char, char.Guild))
 }
 
 func playerEmote(conn mnet.MConnChannel, reader mpacket.Reader) {
@@ -247,7 +250,7 @@ func playerEmote(conn mnet.MConnChannel, reader mpacket.Reader) {
 
 	char := player.Char()
 
-	game.Maps[char.MapID].SendExcept(packet.PlayerEmoticon(char.ID, emote), conn, player.InstanceID)
+	game.Maps[char.MapID].SendExcept(game.PacketPlayerEmoticon(char.ID, emote), conn, player.InstanceID)
 }
 
 func playerPassiveRegen(conn mnet.MConnChannel, reader mpacket.Reader) {
@@ -336,7 +339,7 @@ func playerAddSkillPoint(conn mnet.MConnChannel, reader mpacket.Reader) {
 		baseSkillID := skillID / 10000
 
 		if !validateSkillWithJob(char.Job, baseSkillID) {
-			conn.Send(packet.PlayerNoChange())
+			conn.Send(game.PacketPlayerNoChange())
 			fmt.Println("Unknown skill learn:", char.Job, baseSkillID)
 			return
 		}
@@ -363,7 +366,7 @@ func playerMoveInventoryItem(conn mnet.MConnChannel, reader mpacket.Reader) {
 	// amount := reader.ReadInt16() // amount?
 
 	if invTabID > 5 || origPos == 0 {
-		conn.Send(packet.PlayerNoChange()) // bad packet, hacker?
+		conn.Send(game.PacketPlayerNoChange()) // bad packet, hacker?
 	}
 
 	player, ok := game.Players[conn]

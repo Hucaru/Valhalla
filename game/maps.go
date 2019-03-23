@@ -5,7 +5,6 @@ import (
 	"math/rand"
 
 	"github.com/Hucaru/Valhalla/game/def"
-	"github.com/Hucaru/Valhalla/game/mob"
 	"github.com/Hucaru/Valhalla/mnet"
 	"github.com/Hucaru/Valhalla/mpacket"
 	"github.com/Hucaru/Valhalla/nx"
@@ -111,7 +110,7 @@ func (gm *GameMap) GetPlayers(instance int) ([]mnet.MConnChannel, error) {
 	return []mnet.MConnChannel{}, fmt.Errorf("Unable to get players")
 }
 
-func (gm *GameMap) GetMobs(instance int) ([]mob.Mob, error) {
+func (gm *GameMap) GetMobs(instance int) ([]Mob, error) {
 	if len(gm.instances) > 0 && instance < len(gm.instances) {
 		return gm.instances[instance].mobs, nil
 	}
@@ -119,7 +118,7 @@ func (gm *GameMap) GetMobs(instance int) ([]mob.Mob, error) {
 	return nil, fmt.Errorf("Unable to get mobs")
 }
 
-func (gm *GameMap) GetMobFromSpawnID(spawnID int32, instance int) (*mob.Mob, error) {
+func (gm *GameMap) GetMobFromSpawnID(spawnID int32, instance int) (*Mob, error) {
 	if len(gm.instances) > 0 && instance < len(gm.instances) {
 		for i, v := range gm.instances[instance].mobs {
 			if v.SpawnID == spawnID {
