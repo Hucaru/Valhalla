@@ -98,7 +98,7 @@ func (inst *Instance) addPlayer(conn mnet.MConnChannel) {
 	for i, mob := range inst.mobs {
 		if mob.HP > 0 {
 			mob.SummonType = -1 // -2: fade in spawn animation, -1: no spawn animation
-			mob.ShowTo(conn)
+			conn.Send(PacketMobShow(mob))
 
 			if mob.Controller == nil {
 				inst.mobs[i].ChangeController(conn)
@@ -224,9 +224,7 @@ func (inst *Instance) SpawnMob(mobID, spawnID int32, x, y, foothold int16, summo
 
 	mob.FaceLeft = facesLeft
 
-	for _, v := range inst.players {
-		mob.ShowTo(v)
-	}
+	inst.send(PacketMobShow(mob))
 
 	if summonType != -4 {
 		mob.SummonType = -1
