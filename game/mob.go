@@ -87,12 +87,9 @@ func (m *Mob) ChangeController(newController mnet.MConnChannel) {
 	newController.Send(PacketMobControl(*m, false))
 }
 
-func (m *Mob) RemoveFrom(conn mnet.MConnChannel, method byte) {
-	conn.Send(PacketMobRemove(*m, method)) // 0 keeps it there and is no longer attackable, 1 normal death, 2 disaapear instantly
-}
-
 func (m *Mob) RemoveController() {
 	m.Controller.Send(PacketMobEndControl(*m))
+	m.Controller = nil
 }
 
 func (m *Mob) Acknowledge(moveID int16, allowedToUseSkill bool, skill byte, level byte) {

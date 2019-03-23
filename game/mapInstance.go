@@ -262,9 +262,7 @@ func (inst *Instance) handleDeadMobs() {
 				}
 			}
 
-			for _, v := range inst.players {
-				mob.RemoveFrom(v, 1)
-			}
+			inst.send(PacketMobRemove(mob, 1)) // 0 keeps it there and is no longer attackable, 1 normal death, 2 disaapear instantly
 
 			for _, spm := range inst.spawnableMobs {
 				if spm.Mob.ID == mob.ID && spm.Count > 0 {

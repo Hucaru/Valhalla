@@ -57,10 +57,10 @@ Channel server:
 - [ ] NPC storage
 - [x] Mob visible
 - [x] Mob movement
-- [x] Mob use skills
-- [ ] Mob skill usage effect on players
-- [ ] Mob death
-- [ ] Mob respawn
+- [x] Mob attack
+- [ ] Mob skills that cause stat changes
+- [x] Mob death
+- [x] Mob respawn
 - [ ] Mob drops
 - [ ] Trade
 - [x] Minigames
