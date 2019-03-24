@@ -2,6 +2,7 @@ package game
 
 import (
 	"fmt"
+	"math"
 	"math/rand"
 
 	"github.com/Hucaru/Valhalla/mnet"
@@ -13,27 +14,30 @@ var Maps = make(map[int32]*GameMap)
 
 type GameMap struct {
 	id           int32
-	instances    []*Instance
+	instances    []*MapInstance
 	mapData      nx.Map
 	workDispatch chan func()
+
+	vrlimit, mbr, ombr             mapRectangle
+	mobCapacityMin, mobCapacityMax int
 }
 
 func InitMaps(dispatcher chan func()) {
 	for mapID, nxMap := range nx.GetMaps() {
-		inst := make([]*Instance, 1)
-		inst[0] = createInstanceFromMapData(nxMap, mapID, dispatcher)
 
 		Maps[mapID] = &GameMap{
 			id:           mapID,
-			instances:    inst,
 			mapData:      nxMap,
 			workDispatch: dispatcher,
 		}
+
+		Maps[mapID].calculateMapLimits()
+		Maps[mapID].CreateNewInstance()
 	}
 }
 
 func (gm *GameMap) CreateNewInstance() int {
-	inst := createInstanceFromMapData(gm.mapData, gm.id, gm.workDispatch)
+	inst := createInstanceFromMapData(gm.mapData, gm.id, gm.workDispatch, gm.mobCapacityMin, gm.mobCapacityMax)
 	gm.instances = append(gm.instances, inst)
 	return len(gm.instances) - 1
 }
@@ -165,4 +169,144 @@ func (gm *GameMap) SendExcept(p mpacket.Packet, exception mnet.MConnChannel, ins
 	if len(gm.instances) > 0 && instance < len(gm.instances) {
 		gm.instances[instance].sendExcept(p, exception)
 	}
+}
+
+type mapRectangle struct {
+	left, top, right, bottom int
+}
+
+func (r mapRectangle) empty() bool {
+	if (r.left | r.top | r.right | r.bottom) == 0 {
+		return true
+	}
+
+	return false
+}
+
+func (r *mapRectangle) inflate(x, y int) {
+	r.left -= x
+	r.top += y
+	r.right += x
+	r.bottom -= y
+}
+
+func (r mapRectangle) width() int {
+	return r.right - r.left
+}
+
+func (r mapRectangle) height() int {
+	return r.top - r.bottom
+}
+
+func (r mapRectangle) contains(x, y int) bool {
+	if r.left > x {
+		return false
+	}
+
+	if r.top < y {
+		return false
+	}
+
+	if r.right < x {
+		return false
+	}
+
+	if r.bottom > y {
+		return false
+	}
+
+	return true
+}
+
+func (gm *GameMap) calculateMapLimits() {
+	left, top := math.MaxInt32, math.MaxInt32
+	right, bottom := math.MinInt32, math.MinInt32
+
+	for _, fh := range gm.mapData.Footholds { //edge adjustments
+		if fh.X1 < left {
+			left = fh.X1
+		}
+
+		if fh.Y1 < top {
+			top = fh.Y1
+		}
+
+		if fh.X2 < left {
+			left = fh.X2
+		}
+
+		if fh.Y2 < top {
+			top = fh.Y2
+		}
+
+		if fh.X1 > right {
+			right = fh.X1
+		}
+
+		if fh.Y1 > bottom {
+			bottom = fh.Y1
+		}
+
+		if fh.X2 > right {
+			right = fh.X2
+		}
+
+		if fh.Y2 > bottom {
+			bottom = fh.Y2
+		}
+	}
+
+	gm.vrlimit = mapRectangle{int(gm.mapData.VRLeft), int(gm.mapData.VRTop), int(gm.mapData.VRRight), int(gm.mapData.VRBottom)}
+
+	if gm.vrlimit.empty() {
+		gm.vrlimit.left, gm.vrlimit.top, gm.vrlimit.right, gm.vrlimit.bottom = left, top-300, right, bottom+75
+	}
+
+	left += 30
+	top -= 300
+	right -= 30
+	bottom += 10
+
+	if !gm.vrlimit.empty() {
+		if gm.vrlimit.left+20 < left {
+			left = gm.vrlimit.left + 20
+		}
+
+		if gm.vrlimit.top+65 < top {
+			top = gm.vrlimit.top + 65
+		}
+
+		if gm.vrlimit.right-5 > right {
+			right = gm.vrlimit.right - 5
+		}
+
+		if gm.vrlimit.bottom > bottom {
+			bottom = gm.vrlimit.bottom
+		}
+	}
+
+	gm.mbr.left, gm.mbr.top, gm.mbr.right, gm.mbr.bottom = left+10, top-375, right-10, bottom+60
+	gm.mbr.inflate(10, 10)
+	gm.ombr = gm.mbr
+	gm.ombr.inflate(60, 60)
+
+	mobX, mobY := 800, 600
+
+	if gm.mbr.width() > 800 {
+		mobX = gm.mbr.width()
+	}
+
+	if gm.mbr.height() > 800 {
+		mobY = gm.mbr.height()
+	}
+
+	gm.mobCapacityMin = int((float64(mobX*mobY) * gm.mapData.MobRate) * 0.0000078125)
+
+	if gm.mobCapacityMin < 1 {
+		gm.mobCapacityMin = 1
+	} else if gm.mobCapacityMin > 40 {
+		gm.mobCapacityMin = 40
+	}
+
+	gm.mobCapacityMax = gm.mobCapacityMin * 2
 }

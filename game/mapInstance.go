@@ -10,18 +10,19 @@ import (
 	"github.com/Hucaru/Valhalla/nx"
 )
 
-type Instance struct {
-	mapID                int32
-	npcs                 []Npc
-	mobs                 []Mob
-	spawnableMobs        []*MobSI
-	players              []mnet.MConnChannel
-	workDispatch         chan func()
-	previousMobSpawnTime int64
-	mapData              nx.Map
+type MapInstance struct {
+	mapID                          int32
+	npcs                           []Npc
+	mobs                           []Mob
+	spawnableMobs                  []*MobSI
+	players                        []mnet.MConnChannel
+	workDispatch                   chan func()
+	previousMobSpawnTime           int64
+	mapData                        nx.Map
+	mobCapacityMin, mobCapacityMax int
 }
 
-func createInstanceFromMapData(mapData nx.Map, mapID int32, dispatcher chan func()) *Instance {
+func createInstanceFromMapData(mapData nx.Map, mapID int32, dispatcher chan func(), mobCapacityMin, mobCapacityMax int) *MapInstance {
 	npcs := []Npc{}
 	mobs := []Mob{}
 	spawnableMobs := []*MobSI{}
@@ -45,15 +46,17 @@ func createInstanceFromMapData(mapData nx.Map, mapID int32, dispatcher chan func
 		npcs = append(npcs, CreateNpc(int32(len(npcs)), l))
 	}
 
-	inst := &Instance{mapID: mapID,
-		npcs:          npcs,
-		mobs:          mobs,
-		spawnableMobs: spawnableMobs,
-		workDispatch:  dispatcher,
-		mapData:       mapData}
+	inst := &MapInstance{mapID: mapID,
+		npcs:           npcs,
+		mobs:           mobs,
+		spawnableMobs:  spawnableMobs,
+		workDispatch:   dispatcher,
+		mapData:        mapData,
+		mobCapacityMin: mobCapacityMin,
+		mobCapacityMax: mobCapacityMax}
 
 	// Periodic map work
-	go func(inst *Instance) {
+	go func(inst *MapInstance) {
 		timer := time.NewTicker(1000 * time.Millisecond)
 		quit := make(chan bool)
 
@@ -77,13 +80,13 @@ func createInstanceFromMapData(mapData nx.Map, mapID int32, dispatcher chan func
 	return inst
 }
 
-func (inst *Instance) send(p mpacket.Packet) {
+func (inst *MapInstance) send(p mpacket.Packet) {
 	for _, v := range inst.players {
 		v.Send(p)
 	}
 }
 
-func (inst *Instance) sendExcept(p mpacket.Packet, exception mnet.MConnChannel) {
+func (inst *MapInstance) sendExcept(p mpacket.Packet, exception mnet.MConnChannel) {
 	for _, v := range inst.players {
 		if v == exception {
 			continue
@@ -93,7 +96,7 @@ func (inst *Instance) sendExcept(p mpacket.Packet, exception mnet.MConnChannel) 
 	}
 }
 
-func (inst *Instance) addPlayer(conn mnet.MConnChannel) {
+func (inst *MapInstance) addPlayer(conn mnet.MConnChannel) {
 	for i, mob := range inst.mobs {
 		if mob.HP > 0 {
 			mob.SummonType = -1 // -2: fade in spawn animation, -1: no spawn animation
@@ -140,7 +143,7 @@ func (inst *Instance) addPlayer(conn mnet.MConnChannel) {
 	inst.players = append(inst.players, conn)
 }
 
-func (inst *Instance) removePlayer(conn mnet.MConnChannel) {
+func (inst *MapInstance) removePlayer(conn mnet.MConnChannel) {
 	ind := -1
 	for i, v := range inst.players {
 		if v == conn {
@@ -167,7 +170,7 @@ func (inst *Instance) removePlayer(conn mnet.MConnChannel) {
 	}
 }
 
-func (inst *Instance) findController() mnet.MConnChannel {
+func (inst *MapInstance) findController() mnet.MConnChannel {
 	for _, p := range inst.players {
 		return p
 	}
@@ -175,7 +178,7 @@ func (inst *Instance) findController() mnet.MConnChannel {
 	return nil
 }
 
-func (inst *Instance) findControllerExcept(conn mnet.MConnChannel) mnet.MConnChannel {
+func (inst *MapInstance) findControllerExcept(conn mnet.MConnChannel) mnet.MConnChannel {
 	for _, p := range inst.players {
 		if p == conn {
 			continue
@@ -187,7 +190,7 @@ func (inst *Instance) findControllerExcept(conn mnet.MConnChannel) mnet.MConnCha
 	return nil
 }
 
-func (inst *Instance) generateMobSpawnID() int32 {
+func (inst *MapInstance) generateMobSpawnID() int32 {
 	var l int32
 	for _, v := range inst.mobs {
 		if v.SpawnID > l {
@@ -204,7 +207,7 @@ func (inst *Instance) generateMobSpawnID() int32 {
 	return l
 }
 
-func (inst *Instance) SpawnMob(mobID, spawnID int32, x, y, foothold int16, summonType int8, summonOption int32, facesLeft bool) {
+func (inst *MapInstance) SpawnMob(mobID, spawnID int32, x, y, foothold int16, summonType int8, summonOption int32, facesLeft bool) {
 	m, err := nx.GetMob(mobID)
 
 	if err != nil {
@@ -235,7 +238,7 @@ func (inst *Instance) SpawnMob(mobID, spawnID int32, x, y, foothold int16, summo
 	inst.mobs[len(inst.mobs)-1].ChangeController(inst.findController())
 }
 
-func (inst *Instance) handleDeadMobs() {
+func (inst *MapInstance) handleDeadMobs() {
 	y := inst.mobs[:0]
 
 	for _, mob := range inst.mobs {
@@ -261,7 +264,7 @@ func (inst *Instance) handleDeadMobs() {
 				}
 			}
 
-			inst.send(PacketMobRemove(mob, 1)) // 0 keeps it there and is no longer attackable, 1 normal death, 2 disaapear instantly
+			inst.send(PacketMobRemove(mob, 1))
 
 			for _, spm := range inst.spawnableMobs {
 				if spm.Mob.ID == mob.ID && spm.Count > 0 {
@@ -277,21 +280,21 @@ func (inst *Instance) handleDeadMobs() {
 	inst.mobs = y
 }
 
-func (inst *Instance) capacity() int {
+func (inst *MapInstance) capacity() int {
 	// if no mob capacity limit flag present return current mob count
 
-	if len(inst.players) > (inst.mapData.MobCapacityMin / 2) {
-		if len(inst.players) < (inst.mapData.MobCapacityMin * 2) {
-			return inst.mapData.MobCapacityMin + (inst.mapData.MobCapacityMax-inst.mapData.MobCapacityMin)*(2*len(inst.players)-inst.mapData.MobCapacityMin)/(3*inst.mapData.MobCapacityMin)
+	if len(inst.players) > (inst.mobCapacityMin / 2) {
+		if len(inst.players) < (inst.mobCapacityMin * 2) {
+			return inst.mobCapacityMin + (inst.mobCapacityMax-inst.mobCapacityMin)*(2*len(inst.players)-inst.mobCapacityMin)/(3*inst.mobCapacityMin)
 		}
 
-		return inst.mapData.MobCapacityMax
+		return inst.mobCapacityMax
 	}
 
-	return inst.mapData.MobCapacityMin
+	return inst.mobCapacityMin
 }
 
-func (inst *Instance) handleMobRespawns(currentTime int64) {
+func (inst *MapInstance) handleMobRespawns(currentTime int64) {
 	if currentTime-inst.previousMobSpawnTime < 7000 {
 		return
 	}
@@ -320,9 +323,9 @@ func (inst *Instance) handleMobRespawns(currentTime int64) {
 			anyMobSpawned := len(inst.mobs) != 0
 
 			if anyMobSpawned {
-				rect := nx.Rectangle{int(spm.Mob.X - 100), int(spm.Mob.Y - 100), int(spm.Mob.X + 100), int(spm.Mob.Y + 100)}
+				rect := mapRectangle{int(spm.Mob.X - 100), int(spm.Mob.Y - 100), int(spm.Mob.X + 100), int(spm.Mob.Y + 100)}
 				for _, currentMob := range inst.mobs {
-					if !rect.Contains(int(currentMob.X), int(currentMob.Y)) {
+					if !rect.contains(int(currentMob.X), int(currentMob.Y)) {
 						continue
 					}
 				}
@@ -366,7 +369,7 @@ func (inst *Instance) handleMobRespawns(currentTime int64) {
 	}
 }
 
-func (inst *Instance) periodicWork() {
+func (inst *MapInstance) periodicWork() {
 	currentTime := time.Now().UnixNano() / int64(time.Millisecond)
 	// Update drops
 	// Update mist

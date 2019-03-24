@@ -46,6 +46,7 @@ Channel server:
 - [x] Player level up
 - [ ] Player skill logic (haste etc)
 - [ ] Player inventory
+- [ ] Player use item (scrolls, potions etc)
 - [ ] Player pets
 - [x] NPC visible
 - [x] NPC movement
@@ -60,6 +61,7 @@ Channel server:
 - [ ] Mob skills that cause stat changes
 - [x] Mob death
 - [x] Mob respawn
+- [ ] Mob spawns mob(s) on death
 - [ ] Mob drops
 - [ ] Trade
 - [x] Minigames
