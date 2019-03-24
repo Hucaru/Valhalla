@@ -1,6 +1,8 @@
 package channel
 
 import (
+	"fmt"
+
 	"github.com/Hucaru/Valhalla/game"
 
 	"github.com/Hucaru/Valhalla/mnet"
@@ -22,7 +24,7 @@ func playerMeleeSkill(conn mnet.MConnChannel, reader mpacket.Reader) {
 
 	char := player.Char()
 
-	// fix the damange values
+	// fix the damage values
 
 	for _, attack := range data.AttackInfo {
 		mob, err := game.Maps[char.MapID].GetMobFromSpawnID(attack.SpawnID, player.InstanceID)
@@ -53,13 +55,13 @@ func playerRangedSkill(conn mnet.MConnChannel, reader mpacket.Reader) {
 
 	char := player.Char()
 
-	// fix the damange values
+	// fix the damage values
 
 	for _, attack := range data.AttackInfo {
 		mob, err := game.Maps[char.MapID].GetMobFromSpawnID(attack.SpawnID, player.InstanceID)
 
 		if err != nil || mob == nil {
-			continue
+			return
 		}
 
 		mob.GiveDamage(player.MConnChannel, attack.Damages)
@@ -90,7 +92,7 @@ func playerMagicSkill(conn mnet.MConnChannel, reader mpacket.Reader) {
 		mob, err := game.Maps[char.MapID].GetMobFromSpawnID(attack.SpawnID, player.InstanceID)
 
 		if err != nil || mob == nil {
-			continue
+			return
 		}
 
 		mob.GiveDamage(player.MConnChannel, attack.Damages)
@@ -181,11 +183,25 @@ func getAttackInfo(reader mpacket.Reader, player game.Player, attackType int) (g
 		data.Hits = 1
 	}
 
+	reader.Skip(4) //checksum info?
+
 	if attackType == attackRanged {
 
-	}
+		projectileSlot := reader.ReadInt16() // star/arrow slot
+		fmt.Println(projectileSlot, reader)
+		if projectileSlot == 0 {
+			// if soul arrow is not set check for hacks
+		} else {
+			data.ProjectileID = -1
+			for _, item := range player.Char().Inventory.Use {
+				if item.SlotID == projectileSlot {
+					data.ProjectileID = item.ItemID
+				}
+			}
 
-	reader.Skip(4) // some sort of checksum?
+		}
+		reader.ReadByte() //shoot range
+	}
 
 	data.AttackInfo = make([]game.AttackInfo, data.Targets)
 
@@ -231,18 +247,6 @@ func getAttackInfo(reader mpacket.Reader, player game.Player, attackType int) (g
 
 	data.PlayerPos.X = reader.ReadInt16()
 	data.PlayerPos.Y = reader.ReadInt16()
-
-	if data.Hits != 0 {
-		// validate dmg numbers against mob info
-		for _, dmg := range data.AttackInfo {
-			mob, err := game.Maps[player.Char().MapID].GetMobFromSpawnID(dmg.SpawnID, player.InstanceID)
-
-			if err != nil || mob == nil {
-				continue
-			}
-		}
-
-	}
 
 	return data, true
 }

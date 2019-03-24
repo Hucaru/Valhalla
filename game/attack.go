@@ -15,10 +15,10 @@ type AttackInfo struct {
 }
 
 type AttackData struct {
-	SkillID, SummonType, TotalDamage, StarID int32
-	IsMesoExplosion, FacesLeft               bool
-	Option, Action, AttackType               byte
-	Targets, Hits, SkillLevel                byte
+	SkillID, SummonType, TotalDamage, ProjectileID int32
+	IsMesoExplosion, FacesLeft                     bool
+	Option, Action, AttackType                     byte
+	Targets, Hits, SkillLevel                      byte
 
 	AttackInfo []AttackInfo
 	PlayerPos  Pos

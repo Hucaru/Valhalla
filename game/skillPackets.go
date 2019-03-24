@@ -23,8 +23,8 @@ func PacketSkillMelee(char Character, attackData AttackData) mpacket.Packet {
 
 	p.WriteByte(attackData.AttackType)
 
-	p.WriteByte(char.Skills[attackData.SkillID].Mastery) // mastery
-	p.WriteInt32(attackData.StarID)                      // starID
+	p.WriteByte(char.Skills[attackData.SkillID].Mastery)
+	p.WriteInt32(attackData.ProjectileID)
 
 	for _, info := range attackData.AttackInfo {
 		p.WriteInt32(info.SpawnID)
@@ -60,8 +60,8 @@ func PacketSkillRanged(char Character, attackData AttackData) mpacket.Packet {
 
 	p.WriteByte(attackData.AttackType)
 
-	p.WriteByte(char.Skills[attackData.SkillID].Mastery) // mastery
-	p.WriteInt32(attackData.StarID)                      // starID
+	p.WriteByte(char.Skills[attackData.SkillID].Mastery)
+	p.WriteInt32(attackData.ProjectileID)
 
 	for _, info := range attackData.AttackInfo {
 		p.WriteInt32(info.SpawnID)
@@ -93,8 +93,8 @@ func PacketSkillMagic(char Character, attackData AttackData) mpacket.Packet {
 
 	p.WriteByte(attackData.AttackType)
 
-	p.WriteByte(char.Skills[attackData.SkillID].Mastery) // mastery
-	p.WriteInt32(attackData.StarID)                      // starID
+	p.WriteByte(char.Skills[attackData.SkillID].Mastery)
+	p.WriteInt32(attackData.ProjectileID)
 
 	for _, info := range attackData.AttackInfo {
 		p.WriteInt32(info.SpawnID)

@@ -133,6 +133,14 @@ func (gm *GameMap) GetMobFromSpawnID(spawnID int32, instance int) (*Mob, error) 
 	return nil, fmt.Errorf("Unable to get mob")
 }
 
+func (gm *GameMap) SpawnMob(mobID int32, pos Pos, fh int16, facesLeft bool, instance int) {
+	if len(gm.instances) > 0 && instance < len(gm.instances) {
+		inst := gm.instances[instance]
+
+		inst.SpawnMob(mobID, inst.generateMobSpawnID(), pos.X, pos.Y, fh, -2, 0, facesLeft)
+	}
+}
+
 func (gm *GameMap) GetNpcFromSpawnID(spawnID int32, instance int) (*Npc, error) {
 	if len(gm.instances) > 0 && instance < len(gm.instances) {
 		for i, v := range gm.instances[instance].npcs {

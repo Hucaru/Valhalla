@@ -490,23 +490,23 @@ func validateSkillWithJob(jobID int16, baseSkillID int32) bool {
 			return false
 		}
 	case constant.BowmanJobID:
-		if baseSkillID != constant.MagicianJobID {
+		if baseSkillID != constant.BowmanJobID {
 			return false
 		}
 	case constant.HunterJobID:
-		if baseSkillID != constant.MagicianJobID && baseSkillID != constant.HunterJobID {
+		if baseSkillID != constant.BowmanJobID && baseSkillID != constant.HunterJobID {
 			return false
 		}
 	case constant.RangerJobID:
-		if baseSkillID != constant.MagicianJobID && baseSkillID != constant.HunterJobID && baseSkillID != constant.RangerJobID {
+		if baseSkillID != constant.BowmanJobID && baseSkillID != constant.HunterJobID && baseSkillID != constant.RangerJobID {
 			return false
 		}
 	case constant.CrossbowmanJobID:
-		if baseSkillID != constant.MagicianJobID && baseSkillID != constant.CrossbowmanJobID {
+		if baseSkillID != constant.BowmanJobID && baseSkillID != constant.CrossbowmanJobID {
 			return false
 		}
 	case constant.SniperJobID:
-		if baseSkillID != constant.MagicianJobID && baseSkillID != constant.CrossbowmanJobID && baseSkillID != constant.SniperJobID {
+		if baseSkillID != constant.BowmanJobID && baseSkillID != constant.CrossbowmanJobID && baseSkillID != constant.SniperJobID {
 			return false
 		}
 	case constant.ThiefJobID:

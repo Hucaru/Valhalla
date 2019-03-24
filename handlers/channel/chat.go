@@ -590,6 +590,37 @@ func gmCommand(conn mnet.MConnChannel, msg string) {
 		}
 
 		player.GiveItem(item)
+	case "spawn":
+		if len(command) < 2 {
+			return
+		}
+
+		mobID, err := strconv.Atoi(command[1])
+
+		if err != nil {
+			conn.Send(game.PacketMessageNotice(err.Error()))
+		}
+
+		player, ok := game.Players[conn]
+
+		if !ok {
+			conn.Send(game.PacketMessageNotice("Error in getting player"))
+			return
+		}
+
+		amount := 1
+
+		if len(command) > 2 {
+			amount, err = strconv.Atoi(command[2])
+
+			if err != nil {
+				conn.Send(game.PacketMessageNotice(err.Error()))
+			}
+		}
+
+		for i := 0; i < amount; i++ {
+			game.Maps[player.Char().MapID].SpawnMob(int32(mobID), player.Char().Pos, player.Char().Foothold, player.Char().Stance%2 != 0, player.InstanceID)
+		}
 	default:
 		log.Println("Unkown GM command:", msg)
 	}
