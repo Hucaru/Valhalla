@@ -1,4 +1,4 @@
-package def
+package game
 
 import (
 	"github.com/Hucaru/Valhalla/database"

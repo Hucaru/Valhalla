@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"math/rand"
 
-	"github.com/Hucaru/Valhalla/game/def"
 	"github.com/Hucaru/Valhalla/mnet"
 	"github.com/Hucaru/Valhalla/mpacket"
 )
@@ -95,7 +94,7 @@ func (r *GameRoom) AddPlayer(conn mnet.MConnChannel) {
 			Maps[player.Char().MapID].Send(PacketMapShowGameBox(player.Char().ID, r.ID, byte(r.RoomType), r.BoardType, r.Name, bool(len(r.Password) > 0), r.InProgress, 0x01), player.InstanceID)
 		}
 
-		displayInfo := []def.Character{}
+		displayInfo := []Character{}
 
 		for _, v := range r.players {
 			displayInfo = append(displayInfo, Players[v].Char())
@@ -204,7 +203,7 @@ func (r *GameRoom) gameEnd(draw, forfeit bool, conn mnet.MConnChannel) bool {
 
 	}
 
-	displayInfo := []def.Character{}
+	displayInfo := []Character{}
 
 	for _, v := range r.players {
 		displayInfo = append(displayInfo, Players[v].Char())

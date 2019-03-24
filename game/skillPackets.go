@@ -1,12 +1,11 @@
 package game
 
 import (
-	"github.com/Hucaru/Valhalla/constant/opcode"
-	"github.com/Hucaru/Valhalla/game/def"
+	opcodes "github.com/Hucaru/Valhalla/constant/opcode"
 	"github.com/Hucaru/Valhalla/mpacket"
 )
 
-func PacketSkillMelee(char def.Character, attackData def.AttackData) mpacket.Packet {
+func PacketSkillMelee(char Character, attackData AttackData) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcodes.SendChannelPlayerUseMeleeSkill)
 	p.WriteInt32(char.ID)
 	p.WriteByte(attackData.Targets*0x10 + attackData.Hits)
@@ -43,7 +42,7 @@ func PacketSkillMelee(char def.Character, attackData def.AttackData) mpacket.Pac
 	return p
 }
 
-func PacketSkillRanged(char def.Character, attackData def.AttackData) mpacket.Packet {
+func PacketSkillRanged(char Character, attackData AttackData) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcodes.SendChannelPlayerUseRangedSkill)
 	p.WriteInt32(char.ID)
 	p.WriteByte(attackData.Targets*0x10 + attackData.Hits)
@@ -76,7 +75,7 @@ func PacketSkillRanged(char def.Character, attackData def.AttackData) mpacket.Pa
 	return p
 }
 
-func PacketSkillMagic(char def.Character, attackData def.AttackData) mpacket.Packet {
+func PacketSkillMagic(char Character, attackData AttackData) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcodes.SendChannelPlayerUseMagicSkill)
 	p.WriteInt32(char.ID)
 	p.WriteByte(attackData.Targets*0x10 + attackData.Hits)

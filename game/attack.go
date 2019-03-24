@@ -1,4 +1,9 @@
-package def
+package game
+
+type Pos struct {
+	X int16
+	Y int16
+}
 
 type AttackInfo struct {
 	SpawnID                                                int32

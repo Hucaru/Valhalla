@@ -70,7 +70,7 @@ func NewNpcChatSession(conn mnet.MConnChannel, npcID int32) {
 
 	packages.DefineImport(npcChatSessions[conn].env)
 
-	npcChatSessions[conn].npcChatregister(conn)
+	npcChatSessions[conn].npcChatRegister(conn)
 }
 
 func NewNpcChatSessionWithOverride(conn mnet.MConnChannel, script string, npcID int32) {
@@ -90,7 +90,7 @@ func NewNpcChatSessionWithOverride(conn mnet.MConnChannel, script string, npcID 
 
 	packages.DefineImport(npcChatSessions[conn].env)
 
-	npcChatSessions[conn].npcChatregister(conn)
+	npcChatSessions[conn].npcChatRegister(conn)
 }
 
 func RemoveNpcChatSession(conn mnet.MConnChannel) {
@@ -118,7 +118,6 @@ func NpcChatContinue(conn mnet.MConnChannel, msgType, stateChange byte, reader m
 	if npcChatSessions[conn].state == 0 {
 		RemoveNpcChatSession(conn) // If we get here then remove the session
 	} else {
-
 		switch msgType {
 		case 0:
 			if stateChange == 1 {
@@ -130,7 +129,7 @@ func NpcChatContinue(conn mnet.MConnChannel, msgType, stateChange byte, reader m
 			}
 
 		case 1:
-			npcChatSessions[conn].state += 1
+			npcChatSessions[conn].state++
 			if stateChange == 0 {
 				npcChatSessions[conn].isYes = false
 			} else {
@@ -138,7 +137,7 @@ func NpcChatContinue(conn mnet.MConnChannel, msgType, stateChange byte, reader m
 			}
 
 		case 2:
-			npcChatSessions[conn].state += 1
+			npcChatSessions[conn].state++
 
 			if len(reader.GetRestAsBytes()) > 0 {
 				npcChatSessions[conn].stringInput = string(reader.GetRestAsBytes())
@@ -147,7 +146,7 @@ func NpcChatContinue(conn mnet.MConnChannel, msgType, stateChange byte, reader m
 			}
 
 		case 3:
-			npcChatSessions[conn].state += 1
+			npcChatSessions[conn].state++
 
 			if len(reader.GetRestAsBytes()) > 0 {
 				npcChatSessions[conn].intInput = int(reader.ReadUint32())
@@ -156,7 +155,7 @@ func NpcChatContinue(conn mnet.MConnChannel, msgType, stateChange byte, reader m
 			}
 
 		case 4:
-			npcChatSessions[conn].state += 1
+			npcChatSessions[conn].state++
 
 			if len(reader.GetRestAsBytes()) > 3 {
 				npcChatSessions[conn].selection = int(reader.ReadUint32())
@@ -165,7 +164,7 @@ func NpcChatContinue(conn mnet.MConnChannel, msgType, stateChange byte, reader m
 			}
 
 		case 5:
-			npcChatSessions[conn].state += 1
+			npcChatSessions[conn].state++
 
 			// need to do
 			fmt.Println("Finish this msg type: 5")
@@ -186,7 +185,7 @@ func NpcChatStorage(conn mnet.MConnChannel, reader mpacket.Reader) {
 
 }
 
-func (s *npcChatSession) npcChatregister(conn mnet.MConnChannel) {
+func (s *npcChatSession) npcChatRegister(conn mnet.MConnChannel) {
 	s.env.Define("state", &s.state)
 	s.env.Define("isYes", &s.isYes)
 	s.env.Define("selection", &s.selection)

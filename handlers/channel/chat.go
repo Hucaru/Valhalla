@@ -7,8 +7,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/Hucaru/Valhalla/game/def"
-
 	"github.com/Hucaru/Valhalla/game/script"
 
 	"github.com/Hucaru/Valhalla/nx"
@@ -316,9 +314,9 @@ func gmCommand(conn mnet.MConnChannel, msg string) {
 
 		if err != nil {
 			conn.Send(game.PacketMessageNotice(err.Error()))
+		} else {
+			conn.Send(game.PacketMessageNotice("Instance deleted"))
 		}
-
-		conn.Send(game.PacketMessageNotice("Instance deleted"))
 	case "hp":
 		if len(command) < 2 {
 			return
@@ -574,7 +572,7 @@ func gmCommand(conn mnet.MConnChannel, msg string) {
 			return
 		}
 
-		item, err := def.CreateItemFromID(int32(itemID))
+		item, err := game.CreateItemFromID(int32(itemID))
 
 		if err != nil {
 			conn.Send(game.PacketMessageNotice(err.Error()))

@@ -2,11 +2,10 @@ package game
 
 import (
 	opcodes "github.com/Hucaru/Valhalla/constant/opcode"
-	"github.com/Hucaru/Valhalla/game/def"
 	"github.com/Hucaru/Valhalla/mpacket"
 )
 
-func PacketMapPlayerEnter(char def.Character) mpacket.Packet {
+func PacketMapPlayerEnter(char Character) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcodes.SendChannelCharacterEnterField)
 	p.WriteInt32(char.ID)    // player id
 	p.WriteString(char.Name) // char name

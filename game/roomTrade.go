@@ -1,7 +1,6 @@
 package game
 
 import (
-	"github.com/Hucaru/Valhalla/game/def"
 	"github.com/Hucaru/Valhalla/mnet"
 )
 
@@ -29,7 +28,7 @@ func (r *TradeRoom) AddPlayer(conn mnet.MConnChannel) {
 	if !ok {
 		return
 	}
-	displayInfo := []def.Character{}
+	displayInfo := []Character{}
 
 	for _, v := range r.players {
 		displayInfo = append(displayInfo, Players[v].Char())

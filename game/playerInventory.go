@@ -2,10 +2,9 @@ package game
 
 import (
 	"github.com/Hucaru/Valhalla/constant"
-	"github.com/Hucaru/Valhalla/game/def"
 )
 
-func (p *Player) MoveItem(a def.Item, newPos int16) {
+func (p *Player) MoveItem(a Item, newPos int16) {
 	switch a.InvID {
 	case 1:
 		for i, item := range p.char.Inventory.Equip {
@@ -54,7 +53,7 @@ func (p *Player) MoveItem(a def.Item, newPos int16) {
 	}
 }
 
-func (p *Player) SwapItems(a, b def.Item) {
+func (p *Player) SwapItems(a, b Item) {
 	if a.InvID != b.InvID {
 		return
 	}
@@ -148,8 +147,8 @@ func (p *Player) SwapItems(a, b def.Item) {
 
 }
 
-func (p *Player) GiveItem(a def.Item) {
-	var items []def.Item
+func (p *Player) GiveItem(a Item) {
+	var items []Item
 	var maxInvSize byte
 
 	switch a.InvID {

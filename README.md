@@ -44,17 +44,16 @@ Channel server:
 - [x] Player use skills
 - [x] Player exp
 - [x] Player level up
-- [ ] Player skill logic
+- [ ] Player skill logic (haste etc)
 - [ ] Player inventory
-- [ ] Player drop items
 - [ ] Player pets
-- [ ] Player pet items
 - [x] NPC visible
 - [x] NPC movement
 - [x] NPC basic chat
-- [x] NPC shops
+- [ ] NPC shops
 - [ ] NPC stylist
 - [ ] NPC storage
+- [x] Map instancing
 - [x] Mob visible
 - [x] Mob movement
 - [x] Mob attack
@@ -69,7 +68,7 @@ Channel server:
 - [ ] Guild
 - [ ] Quests
 - [ ] Friends list
-- [ ] Party quests
+- [ ] Reactors
 - [ ] Whisphers
 - [ ] Buddy chat
 - [ ] Chat commands (/find etc.)

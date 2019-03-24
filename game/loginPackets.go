@@ -5,7 +5,6 @@ import (
 
 	"github.com/Hucaru/Valhalla/constant"
 	opcodes "github.com/Hucaru/Valhalla/constant/opcode"
-	"github.com/Hucaru/Valhalla/game/def"
 	"github.com/Hucaru/Valhalla/mpacket"
 )
 
@@ -60,7 +59,7 @@ func PacketLoginSendBadMigrate() mpacket.Packet {
 	return pac
 }
 
-func PacketLoginDisplayCharacters(characters []def.Character) mpacket.Packet {
+func PacketLoginDisplayCharacters(characters []Character) mpacket.Packet {
 	pac := mpacket.CreateWithOpcode(opcodes.SendLoginCharacterData)
 	pac.WriteByte(0) // ?
 
@@ -90,7 +89,7 @@ func PacketLoginNameCheck(name string, nameFound int) mpacket.Packet {
 	return pac
 }
 
-func PacketLoginCreatedCharacter(success bool, character def.Character) mpacket.Packet {
+func PacketLoginCreatedCharacter(success bool, character Character) mpacket.Packet {
 	pac := mpacket.CreateWithOpcode(opcodes.SendLoginNewCharacterGood)
 
 	if success {
@@ -118,7 +117,7 @@ func PacketLoginDeleteCharacter(charID int32, deleted bool, hacking bool) mpacke
 	return pac
 }
 
-func loginWritePlayerCharacter(pac *mpacket.Packet, pos int32, char def.Character) {
+func loginWritePlayerCharacter(pac *mpacket.Packet, pos int32, char Character) {
 	pac.WriteInt32(pos)
 
 	name := char.Name

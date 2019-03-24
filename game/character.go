@@ -1,4 +1,4 @@
-package def
+package game
 
 import (
 	"github.com/Hucaru/Valhalla/database"
@@ -31,8 +31,16 @@ type Character struct {
 	EXP   int32
 	Fame  int16
 
-	Avatar
-	Guild string
+	Name     string
+	Gender   byte
+	Skin     byte
+	Face     int32
+	Hair     int32
+	ChairID  int32
+	Stance   byte
+	Pos      Pos
+	Foothold int16
+	Guild    string
 
 	EquipSlotSize byte
 	UseSlotSize   byte

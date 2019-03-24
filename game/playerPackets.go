@@ -6,7 +6,6 @@ import (
 	"math"
 
 	opcodes "github.com/Hucaru/Valhalla/constant/opcode"
-	"github.com/Hucaru/Valhalla/game/def"
 	"github.com/Hucaru/Valhalla/mpacket"
 )
 
@@ -91,7 +90,7 @@ func PacketPlayerNoChange() mpacket.Packet {
 	return p
 }
 
-func PacketPlayerAvatarSummaryWindow(charID int32, char def.Character, guildName string) mpacket.Packet {
+func PacketPlayerAvatarSummaryWindow(charID int32, char Character, guildName string) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcodes.SendChannelAvatarInfoWindow)
 	p.WriteInt32(charID)
 	p.WriteByte(char.Level)
@@ -106,7 +105,7 @@ func PacketPlayerAvatarSummaryWindow(charID int32, char def.Character, guildName
 	return p
 }
 
-func PacketPlayerEnterGame(char def.Character, channelID int32) mpacket.Packet {
+func PacketPlayerEnterGame(char Character, channelID int32) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcodes.SendChannelWarpToMap)
 	p.WriteInt32(channelID)
 	p.WriteByte(0) // character portal counter
@@ -250,7 +249,7 @@ func PacketPlayerEnterGame(char def.Character, channelID int32) mpacket.Packet {
 	return p
 }
 
-func addItem(item def.Item, shortSlot bool) mpacket.Packet {
+func addItem(item Item, shortSlot bool) mpacket.Packet {
 	p := mpacket.NewPacket()
 
 	if !shortSlot {
@@ -319,7 +318,7 @@ func addItem(item def.Item, shortSlot bool) mpacket.Packet {
 	return p
 }
 
-func writeDisplayCharacter(char def.Character) mpacket.Packet {
+func writeDisplayCharacter(char Character) mpacket.Packet {
 	p := mpacket.NewPacket()
 	p.WriteByte(char.Gender) // gender
 	p.WriteByte(char.Skin)   // skin

@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"math/rand"
 
-	"github.com/Hucaru/Valhalla/game/def"
 	"github.com/Hucaru/Valhalla/mnet"
 	"github.com/Hucaru/Valhalla/mpacket"
 	"github.com/Hucaru/Valhalla/nx"
@@ -130,7 +129,7 @@ func (gm *GameMap) GetMobFromSpawnID(spawnID int32, instance int) (*Mob, error) 
 	return nil, fmt.Errorf("Unable to get mob")
 }
 
-func (gm *GameMap) GetNpcFromSpawnID(spawnID int32, instance int) (*def.NPC, error) {
+func (gm *GameMap) GetNpcFromSpawnID(spawnID int32, instance int) (*Npc, error) {
 	if len(gm.instances) > 0 && instance < len(gm.instances) {
 		for i, v := range gm.instances[instance].npcs {
 			if v.SpawnID == spawnID {
@@ -139,7 +138,7 @@ func (gm *GameMap) GetNpcFromSpawnID(spawnID int32, instance int) (*def.NPC, err
 		}
 	}
 
-	return &def.NPC{}, fmt.Errorf("Unable to get npc")
+	return nil, fmt.Errorf("Unable to get npc")
 }
 
 func (gm *GameMap) HandleDeadMobs(instance int) {

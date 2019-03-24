@@ -7,7 +7,6 @@ import (
 	"github.com/Hucaru/Valhalla/constant"
 	"github.com/Hucaru/Valhalla/database"
 	"github.com/Hucaru/Valhalla/game"
-	"github.com/Hucaru/Valhalla/game/def"
 	"github.com/Hucaru/Valhalla/mnet"
 	"github.com/Hucaru/Valhalla/mpacket"
 	"github.com/Hucaru/Valhalla/nx"
@@ -30,7 +29,7 @@ func playerConnect(conn mnet.MConnChannel, reader mpacket.Reader) {
 	// check that the world this characters belongs to is the same as the world this channel is part of
 	conn.SetLogedIn(true) // this seems redundant
 
-	char := def.GetCharacterFromID(charID)
+	char := game.GetCharacterFromID(charID)
 
 	var adminLevel int
 	err = database.Handle.QueryRow("SELECT adminLevel FROM accounts WHERE accountID=?", conn.GetAccountID()).Scan(&adminLevel)
@@ -160,7 +159,7 @@ func playerTakeDamage(conn mnet.MConnChannel, reader mpacket.Reader) {
 		return
 	}
 
-	var mob *def.Mob
+	var mob *game.Mob
 	var mobSkillID, mobSkillLevel byte = 0, 0
 
 	if mobAttack < -1 {
@@ -333,7 +332,7 @@ func playerAddSkillPoint(conn mnet.MConnChannel, reader mpacket.Reader) {
 			return
 		}
 
-		player.UpdateSkill(def.CreateSkillFromData(skillID, skill.Level+1, nxSkills[skill.Level]))
+		player.UpdateSkill(game.CreateSkillFromData(skillID, skill.Level+1, nxSkills[skill.Level]))
 	} else {
 		// check if class can have skill
 		baseSkillID := skillID / 10000
@@ -345,7 +344,7 @@ func playerAddSkillPoint(conn mnet.MConnChannel, reader mpacket.Reader) {
 		}
 
 		// give new skill
-		player.UpdateSkill(def.CreateSkillFromData(skillID, 1, nxSkills[0]))
+		player.UpdateSkill(game.CreateSkillFromData(skillID, 1, nxSkills[0]))
 	}
 
 	if char.SP > 0 {
@@ -375,7 +374,7 @@ func playerMoveInventoryItem(conn mnet.MConnChannel, reader mpacket.Reader) {
 		return
 	}
 
-	var items []def.Item
+	var items []game.Item
 
 	switch invTabID {
 	case 1:
@@ -393,7 +392,7 @@ func playerMoveInventoryItem(conn mnet.MConnChannel, reader mpacket.Reader) {
 	if newPos == 0 { // drop
 
 	} else { // move
-		var foundItems []def.Item
+		var foundItems []game.Item
 
 		for _, item := range items {
 			if item.SlotID == origPos {
@@ -404,7 +403,7 @@ func playerMoveInventoryItem(conn mnet.MConnChannel, reader mpacket.Reader) {
 				}
 			} else if item.SlotID == newPos {
 				if len(foundItems) == 0 {
-					foundItems = make([]def.Item, 2)
+					foundItems = make([]game.Item, 2)
 					foundItems[1] = item
 				} else {
 					foundItems = append(foundItems, item)

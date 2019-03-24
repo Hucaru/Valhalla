@@ -4,12 +4,11 @@ import (
 	"math"
 
 	opcodes "github.com/Hucaru/Valhalla/constant/opcode"
-	"github.com/Hucaru/Valhalla/game/def"
 	"github.com/Hucaru/Valhalla/mpacket"
 	"github.com/Hucaru/Valhalla/nx"
 )
 
-func PacketNpcShow(npc def.NPC) mpacket.Packet {
+func PacketNpcShow(npc Npc) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcodes.SendChannelNpcShow)
 	p.WriteInt32(npc.SpawnID)
 	p.WriteInt32(npc.ID)
@@ -170,7 +169,7 @@ func PacketNpcShop(npcID int32, items [][]int32) mpacket.Packet {
 			}
 		}
 
-		if def.ItemIsRechargeable(currentItem[0]) {
+		if ItemIsRechargeable(currentItem[0]) {
 			p.WriteUint64(uint64(item.UnitPrice * float64(item.SlotMax)))
 		}
 
@@ -207,7 +206,7 @@ func PacketNpcTradeError() mpacket.Packet {
 	return PacketNpcShopResult(0xFF)
 }
 
-func PacketNpcStorageShow(npcID, storageMesos int32, storageSlots byte, items []def.Item) mpacket.Packet {
+func PacketNpcStorageShow(npcID, storageMesos int32, storageSlots byte, items []Item) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcodes.SendChannelNpcStorage)
 	p.WriteInt32(npcID)
 	p.WriteByte(storageSlots)

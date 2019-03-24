@@ -2,7 +2,6 @@ package channel
 
 import (
 	"github.com/Hucaru/Valhalla/game"
-	"github.com/Hucaru/Valhalla/game/def"
 
 	"github.com/Hucaru/Valhalla/mnet"
 	"github.com/Hucaru/Valhalla/mpacket"
@@ -138,8 +137,8 @@ const (
 	attackSummon
 )
 
-func getAttackInfo(reader mpacket.Reader, player game.Player, attackType int) (def.AttackData, bool) {
-	data := def.AttackData{}
+func getAttackInfo(reader mpacket.Reader, player game.Player, attackType int) (game.AttackData, bool) {
+	data := game.AttackData{}
 
 	if player.Char().HP == 0 {
 		return data, false
@@ -188,10 +187,10 @@ func getAttackInfo(reader mpacket.Reader, player game.Player, attackType int) (d
 
 	reader.Skip(4) // some sort of checksum?
 
-	data.AttackInfo = make([]def.AttackInfo, data.Targets)
+	data.AttackInfo = make([]game.AttackInfo, data.Targets)
 
 	for i := byte(0); i < data.Targets; i++ {
-		attack := def.AttackInfo{}
+		attack := game.AttackInfo{}
 		attack.SpawnID = reader.ReadInt32()
 		attack.HitAction = reader.ReadByte()
 

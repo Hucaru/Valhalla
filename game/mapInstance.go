@@ -5,7 +5,6 @@ import (
 	"math/rand"
 	"time"
 
-	"github.com/Hucaru/Valhalla/game/def"
 	"github.com/Hucaru/Valhalla/mnet"
 	"github.com/Hucaru/Valhalla/mpacket"
 	"github.com/Hucaru/Valhalla/nx"
@@ -13,7 +12,7 @@ import (
 
 type Instance struct {
 	mapID                int32
-	npcs                 []def.NPC
+	npcs                 []Npc
 	mobs                 []Mob
 	spawnableMobs        []*MobSI
 	players              []mnet.MConnChannel
@@ -23,7 +22,7 @@ type Instance struct {
 }
 
 func createInstanceFromMapData(mapData nx.Map, mapID int32, dispatcher chan func()) *Instance {
-	npcs := []def.NPC{}
+	npcs := []Npc{}
 	mobs := []Mob{}
 	spawnableMobs := []*MobSI{}
 
@@ -43,7 +42,7 @@ func createInstanceFromMapData(mapData nx.Map, mapID int32, dispatcher chan func
 	}
 
 	for _, l := range mapData.NPCs {
-		npcs = append(npcs, def.CreateNPC(int32(len(npcs)), l))
+		npcs = append(npcs, CreateNpc(int32(len(npcs)), l))
 	}
 
 	inst := &Instance{mapID: mapID,

@@ -1,4 +1,4 @@
-package def
+package game
 
 type MovementFrag struct {
 	X, Y, Vx, Vy, Foothold, Duration int16

@@ -6,7 +6,6 @@ import (
 	"math/rand"
 
 	"github.com/Hucaru/Valhalla/constant"
-	"github.com/Hucaru/Valhalla/game/def"
 	"github.com/Hucaru/Valhalla/mnet"
 	"github.com/Hucaru/Valhalla/nx"
 )
@@ -47,17 +46,17 @@ func (p playersList) GetFromID(id int32) (*Player, error) {
 
 type Player struct {
 	mnet.MConnChannel
-	char                 *def.Character
+	char                 *Character
 	LastAttackPacketTime int64
 	InstanceID           int
 	RoomID               int32
 }
 
-func NewPlayer(conn mnet.MConnChannel, char def.Character) *Player {
+func NewPlayer(conn mnet.MConnChannel, char Character) *Player {
 	return &Player{MConnChannel: conn, char: &char, InstanceID: 0}
 }
 
-func (p Player) Char() def.Character {
+func (p Player) Char() Character {
 	return *p.char
 }
 
@@ -93,7 +92,7 @@ func (p *Player) ChangeInstance(newInstID int) {
 	Maps[p.char.MapID].AddPlayer(p.MConnChannel, p.InstanceID)
 }
 
-func (p *Player) UpdateMovement(moveData def.MovementFrag) {
+func (p *Player) UpdateMovement(moveData MovementFrag) {
 	p.char.Pos.X = moveData.X
 	p.char.Pos.Y = moveData.Y
 	// p.char.Foothold = moveData.Foothold - makes char warp accross map to other players when going through portal
@@ -327,7 +326,7 @@ func (p *Player) SetMinigameDraw(v int32) {
 	p.char.MiniGameDraw = v
 }
 
-func (p *Player) UpdateSkill(skill def.Skill) {
+func (p *Player) UpdateSkill(skill Skill) {
 	p.char.Skills[skill.ID] = skill
 	p.Send(PacketPlayerSkillBookUpdate(skill.ID, int32(skill.Level)))
 }
