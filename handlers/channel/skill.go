@@ -1,8 +1,6 @@
 package channel
 
 import (
-	"fmt"
-
 	"github.com/Hucaru/Valhalla/game"
 
 	"github.com/Hucaru/Valhalla/mnet"
@@ -167,6 +165,8 @@ func getAttackInfo(reader mpacket.Reader, player game.Player, attackType int) (g
 			data.SkillLevel = player.Char().Skills[skillID].Level
 		}
 
+		// if meso explosion data.IsMesoExplosion = true
+
 		data.Targets = tByte / 0x10
 		data.Hits = tByte % 0x10
 		data.Option = reader.ReadByte()
@@ -186,9 +186,7 @@ func getAttackInfo(reader mpacket.Reader, player game.Player, attackType int) (g
 	reader.Skip(4) //checksum info?
 
 	if attackType == attackRanged {
-
 		projectileSlot := reader.ReadInt16() // star/arrow slot
-		fmt.Println(projectileSlot, reader)
 		if projectileSlot == 0 {
 			// if soul arrow is not set check for hacks
 		} else {
@@ -200,7 +198,9 @@ func getAttackInfo(reader mpacket.Reader, player game.Player, attackType int) (g
 			}
 
 		}
-		reader.ReadByte() //shoot range
+		reader.ReadByte() // ?
+		reader.ReadByte() // ?
+		reader.ReadByte() // ?
 	}
 
 	data.AttackInfo = make([]game.AttackInfo, data.Targets)
