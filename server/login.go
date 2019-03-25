@@ -124,7 +124,7 @@ func (ls *loginServer) acceptNewClientConnections() {
 		keyRecv := [4]byte{}
 		rand.Read(keyRecv[:])
 
-		loginConn := mnet.NewLogin(conn, ls.eRecv, ls.config.PacketQueueSize, keySend, keyRecv)
+		loginConn := mnet.NewClient(conn, ls.eRecv, ls.config.PacketQueueSize, keySend, keyRecv)
 
 		go loginConn.Reader()
 		go loginConn.Writer()
@@ -145,7 +145,7 @@ func (ls *loginServer) processEvent() {
 				return
 			}
 
-			loginConn, ok := e.Conn.(mnet.MConnLogin)
+			loginConn, ok := e.Conn.(mnet.Client)
 
 			if ok {
 				switch e.Type {

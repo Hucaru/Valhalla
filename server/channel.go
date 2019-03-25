@@ -114,7 +114,7 @@ func (cs *channelServer) acceptNewConnections() {
 		keyRecv := [4]byte{}
 		rand.Read(keyRecv[:])
 
-		channelConn := mnet.NewChannel(conn, cs.eRecv, cs.config.PacketQueueSize, keySend, keyRecv)
+		channelConn := mnet.NewClient(conn, cs.eRecv, cs.config.PacketQueueSize, keySend, keyRecv)
 
 		go channelConn.Reader()
 		go channelConn.Writer()
@@ -135,7 +135,7 @@ func (cs *channelServer) processEvent() {
 				return
 			}
 
-			channelConn, ok := e.Conn.(mnet.MConnChannel)
+			channelConn, ok := e.Conn.(mnet.Client)
 
 			if ok {
 				switch e.Type {

@@ -86,13 +86,6 @@ func (bc *baseConn) Reader() {
 }
 
 func (bc *baseConn) Writer() {
-	// defer func() {
-	// 	if err := recover(); err != nil {
-	// 		log.Println("Recovered panic in sending to closed connection")
-
-	// 	}
-	// }()
-
 	for {
 		select {
 		case p, ok := <-bc.eSend:

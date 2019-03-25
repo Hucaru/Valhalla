@@ -6,7 +6,7 @@ import (
 	"github.com/Hucaru/Valhalla/mpacket"
 )
 
-func npcMovement(conn mnet.MConnChannel, reader mpacket.Reader) {
+func npcMovement(conn mnet.Client, reader mpacket.Reader) {
 	data := reader.GetRestAsBytes()
 	id := reader.ReadInt32()
 
@@ -14,7 +14,7 @@ func npcMovement(conn mnet.MConnChannel, reader mpacket.Reader) {
 	conn.Send(game.PacketNpcSetController(id, true))
 }
 
-func npcChatStart(conn mnet.MConnChannel, reader mpacket.Reader) {
+func npcChatStart(conn mnet.Client, reader mpacket.Reader) {
 	npcSpawnID := reader.ReadInt32()
 
 	player, ok := game.Players[conn]
@@ -44,17 +44,17 @@ func npcChatStart(conn mnet.MConnChannel, reader mpacket.Reader) {
 	game.NpcChatRun(conn)
 }
 
-func npcChatContinue(conn mnet.MConnChannel, reader mpacket.Reader) {
+func npcChatContinue(conn mnet.Client, reader mpacket.Reader) {
 	msgType := reader.ReadByte()
 	stateChange := reader.ReadByte()
 
 	game.NpcChatContinue(conn, msgType, stateChange, reader)
 }
 
-func npcShop(conn mnet.MConnChannel, reader mpacket.Reader) {
+func npcShop(conn mnet.Client, reader mpacket.Reader) {
 
 }
 
-func npcStorage(conn mnet.MConnChannel, reader mpacket.Reader) {
+func npcStorage(conn mnet.Client, reader mpacket.Reader) {
 
 }

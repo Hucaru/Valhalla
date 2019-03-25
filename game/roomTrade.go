@@ -22,7 +22,7 @@ func (rc *roomContainer) CreateTradeRoom() int32 {
 	return id
 }
 
-func (r *TradeRoom) AddPlayer(conn mnet.MConnChannel) {
+func (r *TradeRoom) AddPlayer(conn mnet.Client) {
 	pos, ok := r.baseRoom.AddPlayer(conn)
 
 	if !ok {
@@ -37,7 +37,7 @@ func (r *TradeRoom) AddPlayer(conn mnet.MConnChannel) {
 	conn.Send(PacketRoomShowWindow(byte(RoomTypeTrade), 0, 2, pos, "", displayInfo))
 }
 
-func (r *TradeRoom) RemovePlayer(conn mnet.MConnChannel, msgCode byte) bool {
+func (r *TradeRoom) RemovePlayer(conn mnet.Client, msgCode byte) bool {
 	if roomSlot := r.baseRoom.RemovePlayer(conn); roomSlot > -1 {
 		if r.accepted > 0 {
 			r.Broadcast(PacketRoomLeave(byte(roomSlot), 7))

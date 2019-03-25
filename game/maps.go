@@ -65,7 +65,7 @@ func (gm *GameMap) GetNumberOfInstances() int {
 	return len(gm.instances)
 }
 
-func (gm *GameMap) AddPlayer(conn mnet.MConnChannel, instance int) error {
+func (gm *GameMap) AddPlayer(conn mnet.Client, instance int) error {
 	if len(gm.instances) > 0 {
 		if instance < len(gm.instances) {
 			gm.instances[instance].addPlayer(conn)
@@ -80,7 +80,7 @@ func (gm *GameMap) AddPlayer(conn mnet.MConnChannel, instance int) error {
 	return fmt.Errorf("Unable to add player to map as there are no instances")
 }
 
-func (gm *GameMap) RemovePlayer(conn mnet.MConnChannel) {
+func (gm *GameMap) RemovePlayer(conn mnet.Client) {
 	gm.instances[Players[conn].InstanceID].removePlayer(conn)
 }
 
@@ -105,12 +105,12 @@ func (gm *GameMap) GetRandomSpawnPortal() (nx.Portal, byte, error) {
 	return portals[ind], byte(inds[ind]), nil
 }
 
-func (gm *GameMap) GetPlayers(instance int) ([]mnet.MConnChannel, error) {
+func (gm *GameMap) GetPlayers(instance int) ([]mnet.Client, error) {
 	if len(gm.instances) > 0 && instance < len(gm.instances) {
 		return gm.instances[instance].players, nil
 	}
 
-	return []mnet.MConnChannel{}, fmt.Errorf("Unable to get players")
+	return []mnet.Client{}, fmt.Errorf("Unable to get players")
 }
 
 func (gm *GameMap) GetMobs(instance int) ([]Mob, error) {
@@ -159,7 +159,7 @@ func (gm *GameMap) HandleDeadMobs(instance int) {
 	}
 }
 
-func (gm *GameMap) FindControllerExcept(conn mnet.MConnChannel, instance int) mnet.MConnChannel {
+func (gm *GameMap) FindControllerExcept(conn mnet.Client, instance int) mnet.Client {
 	if len(gm.instances) > 0 && instance < len(gm.instances) {
 		return gm.instances[instance].findControllerExcept(conn)
 	}
@@ -173,7 +173,7 @@ func (gm *GameMap) Send(p mpacket.Packet, instance int) {
 	}
 }
 
-func (gm *GameMap) SendExcept(p mpacket.Packet, exception mnet.MConnChannel, instance int) {
+func (gm *GameMap) SendExcept(p mpacket.Packet, exception mnet.Client, instance int) {
 	if len(gm.instances) > 0 && instance < len(gm.instances) {
 		gm.instances[instance].sendExcept(p, exception)
 	}

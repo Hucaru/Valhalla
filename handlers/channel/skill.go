@@ -7,7 +7,7 @@ import (
 	"github.com/Hucaru/Valhalla/mpacket"
 )
 
-func playerMeleeSkill(conn mnet.MConnChannel, reader mpacket.Reader) {
+func playerMeleeSkill(conn mnet.Client, reader mpacket.Reader) {
 	player, ok := game.Players[conn]
 
 	if !ok {
@@ -31,14 +31,14 @@ func playerMeleeSkill(conn mnet.MConnChannel, reader mpacket.Reader) {
 			return
 		}
 
-		mob.GiveDamage(player.MConnChannel, attack.Damages)
+		mob.GiveDamage(player.Client, attack.Damages)
 	}
 
 	game.Maps[char.MapID].SendExcept(game.PacketSkillMelee(char, data), conn, player.InstanceID)
 	game.Maps[char.MapID].HandleDeadMobs(player.InstanceID)
 }
 
-func playerRangedSkill(conn mnet.MConnChannel, reader mpacket.Reader) {
+func playerRangedSkill(conn mnet.Client, reader mpacket.Reader) {
 	player, ok := game.Players[conn]
 
 	if !ok {
@@ -62,14 +62,14 @@ func playerRangedSkill(conn mnet.MConnChannel, reader mpacket.Reader) {
 			return
 		}
 
-		mob.GiveDamage(player.MConnChannel, attack.Damages)
+		mob.GiveDamage(player.Client, attack.Damages)
 	}
 
 	game.Maps[char.MapID].SendExcept(game.PacketSkillRanged(char, data), conn, player.InstanceID)
 	game.Maps[char.MapID].HandleDeadMobs(player.InstanceID)
 }
 
-func playerMagicSkill(conn mnet.MConnChannel, reader mpacket.Reader) {
+func playerMagicSkill(conn mnet.Client, reader mpacket.Reader) {
 	player, ok := game.Players[conn]
 
 	if !ok {
@@ -93,7 +93,7 @@ func playerMagicSkill(conn mnet.MConnChannel, reader mpacket.Reader) {
 			return
 		}
 
-		mob.GiveDamage(player.MConnChannel, attack.Damages)
+		mob.GiveDamage(player.Client, attack.Damages)
 	}
 
 	game.Maps[char.MapID].SendExcept(game.PacketSkillMagic(char, data), conn, player.InstanceID)
@@ -105,7 +105,7 @@ func playerMagicSkill(conn mnet.MConnChannel, reader mpacket.Reader) {
 	}
 }
 
-func playerSpecialSkill(conn mnet.MConnChannel, reader mpacket.Reader) {
+func playerSpecialSkill(conn mnet.Client, reader mpacket.Reader) {
 	player, ok := game.Players[conn]
 
 	if !ok {

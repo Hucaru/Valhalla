@@ -24,13 +24,13 @@ const (
 type Room interface {
 	Broadcast(p mpacket.Packet)
 	SendMessage(name, msg string)
-	AddPlayer(conn mnet.MConnChannel)
-	RemovePlayer(conn mnet.MConnChannel, msgCode byte) bool
+	AddPlayer(conn mnet.Client)
+	RemovePlayer(conn mnet.Client, msgCode byte) bool
 }
 
 type baseRoom struct {
 	ID         int32
-	players    []mnet.MConnChannel
+	players    []mnet.Client
 	RoomType   RoomType
 	maxPlayers int
 }
@@ -62,7 +62,7 @@ func (r *baseRoom) SendMessage(name, msg string) {
 	}
 }
 
-func (r *baseRoom) AddPlayer(conn mnet.MConnChannel) (byte, bool) {
+func (r *baseRoom) AddPlayer(conn mnet.Client) (byte, bool) {
 	if len(r.players) == r.maxPlayers {
 		conn.Send(PacketRoomFull())
 		return 0, false
@@ -80,7 +80,7 @@ func (r *baseRoom) AddPlayer(conn mnet.MConnChannel) (byte, bool) {
 	return roomPos, true
 }
 
-func (r *baseRoom) RemovePlayer(conn mnet.MConnChannel) int {
+func (r *baseRoom) RemovePlayer(conn mnet.Client) int {
 	roomSlot := -1
 
 	for i, v := range r.players {

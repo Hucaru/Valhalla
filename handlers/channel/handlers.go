@@ -8,7 +8,7 @@ import (
 	"github.com/Hucaru/Valhalla/mpacket"
 )
 
-func HandlePacket(conn mnet.MConnChannel, reader mpacket.Reader) {
+func HandlePacket(conn mnet.Client, reader mpacket.Reader) {
 	switch mpacket.Opcode(reader.ReadByte()) {
 	case opcodes.RecvPing:
 	case opcodes.RecvChannelPlayerLoad:

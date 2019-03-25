@@ -11,7 +11,7 @@ import (
 	"github.com/Hucaru/Valhalla/nx"
 )
 
-func mobControl(conn mnet.MConnChannel, reader mpacket.Reader) {
+func mobControl(conn mnet.Client, reader mpacket.Reader) {
 	mobSpawnID := reader.ReadInt32()
 	moveID := reader.ReadInt16()
 	bits := reader.ReadByte()

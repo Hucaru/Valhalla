@@ -16,7 +16,7 @@ func (p *Player) MoveItem(a Item, newPos int16) {
 		p.Send(PacketInventoryChangeItemSlot(a.InvID, a.SlotID, newPos))
 
 		if newPos < 0 || a.SlotID < 0 {
-			Maps[p.char.MapID].SendExcept(PacketInventoryChangeEquip(*p.char), p.MConnChannel, p.InstanceID)
+			Maps[p.char.MapID].SendExcept(PacketInventoryChangeEquip(*p.char), p.Client, p.InstanceID)
 		}
 	case 2:
 		for i, item := range p.char.Inventory.Use {
@@ -71,7 +71,7 @@ func (p *Player) SwapItems(a, b Item) {
 		p.Send(PacketInventoryChangeItemSlot(a.InvID, a.SlotID, b.SlotID))
 
 		if a.SlotID < 0 || b.SlotID < 0 {
-			Maps[p.char.MapID].SendExcept(PacketInventoryChangeEquip(*p.char), p.MConnChannel, p.InstanceID)
+			Maps[p.char.MapID].SendExcept(PacketInventoryChangeEquip(*p.char), p.Client, p.InstanceID)
 		}
 	case 2:
 		// determine if items can be stacked together

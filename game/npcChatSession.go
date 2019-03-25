@@ -34,9 +34,9 @@ type npcChatSession struct {
 	env *vm.Env
 }
 
-var npcChatSessions = make(map[mnet.MConnChannel]*npcChatSession)
+var npcChatSessions = make(map[mnet.Client]*npcChatSession)
 
-func NewNpcChatSession(conn mnet.MConnChannel, npcID int32) {
+func NewNpcChatSession(conn mnet.Client, npcID int32) {
 	player, ok := Players[conn]
 
 	if !ok {
@@ -73,7 +73,7 @@ func NewNpcChatSession(conn mnet.MConnChannel, npcID int32) {
 	npcChatSessions[conn].npcChatRegister(conn)
 }
 
-func NewNpcChatSessionWithOverride(conn mnet.MConnChannel, script string, npcID int32) {
+func NewNpcChatSessionWithOverride(conn mnet.Client, script string, npcID int32) {
 	npcChatSessions[conn] = &npcChatSession{
 		npcID:  npcID,
 		script: script,
@@ -93,11 +93,11 @@ func NewNpcChatSessionWithOverride(conn mnet.MConnChannel, script string, npcID 
 	npcChatSessions[conn].npcChatRegister(conn)
 }
 
-func RemoveNpcChatSession(conn mnet.MConnChannel) {
+func RemoveNpcChatSession(conn mnet.Client) {
 	delete(npcChatSessions, conn)
 }
 
-func NpcChatRun(conn mnet.MConnChannel) {
+func NpcChatRun(conn mnet.Client) {
 	core.Import(npcChatSessions[conn].env)
 	packet, err := npcChatSessions[conn].env.Execute(npcChatSessions[conn].script)
 
@@ -114,7 +114,7 @@ func NpcChatRun(conn mnet.MConnChannel) {
 	}
 }
 
-func NpcChatContinue(conn mnet.MConnChannel, msgType, stateChange byte, reader mpacket.Reader) {
+func NpcChatContinue(conn mnet.Client, msgType, stateChange byte, reader mpacket.Reader) {
 	if npcChatSessions[conn].state == 0 {
 		RemoveNpcChatSession(conn) // If we get here then remove the session
 	} else {
@@ -177,15 +177,15 @@ func NpcChatContinue(conn mnet.MConnChannel, msgType, stateChange byte, reader m
 	}
 }
 
-func NpcChatShop(conn mnet.MConnChannel, reader mpacket.Reader) {
+func NpcChatShop(conn mnet.Client, reader mpacket.Reader) {
 
 }
 
-func NpcChatStorage(conn mnet.MConnChannel, reader mpacket.Reader) {
+func NpcChatStorage(conn mnet.Client, reader mpacket.Reader) {
 
 }
 
-func (s *npcChatSession) npcChatRegister(conn mnet.MConnChannel) {
+func (s *npcChatSession) npcChatRegister(conn mnet.Client) {
 	s.env.Define("state", &s.state)
 	s.env.Define("isYes", &s.isYes)
 	s.env.Define("selection", &s.selection)

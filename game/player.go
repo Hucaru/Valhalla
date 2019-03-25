@@ -10,7 +10,7 @@ import (
 	"github.com/Hucaru/Valhalla/nx"
 )
 
-type playersList map[mnet.MConnChannel]*Player
+type playersList map[mnet.Client]*Player
 
 var Players = playersList{}
 
@@ -24,7 +24,7 @@ func (p playersList) GetFromName(name string) (*Player, error) {
 	return nil, fmt.Errorf("Unable to get player")
 }
 
-func (p playersList) GetFromConn(conn mnet.MConnChannel) (*Player, error) {
+func (p playersList) GetFromConn(conn mnet.Client) (*Player, error) {
 	for i := range p {
 		if i == conn {
 			return p[i], nil
@@ -45,15 +45,15 @@ func (p playersList) GetFromID(id int32) (*Player, error) {
 }
 
 type Player struct {
-	mnet.MConnChannel
+	mnet.Client
 	char                 *Character
 	LastAttackPacketTime int64
 	InstanceID           int
 	RoomID               int32
 }
 
-func NewPlayer(conn mnet.MConnChannel, char Character) *Player {
-	return &Player{MConnChannel: conn, char: &char, InstanceID: 0}
+func NewPlayer(conn mnet.Client, char Character) *Player {
+	return &Player{Client: conn, char: &char, InstanceID: 0}
 }
 
 func (p Player) Char() Character {
@@ -61,7 +61,7 @@ func (p Player) Char() Character {
 }
 
 func (p *Player) ChangeMap(mapID int32, portal nx.Portal, portalID byte) {
-	Maps[p.char.MapID].RemovePlayer(p.MConnChannel)
+	Maps[p.char.MapID].RemovePlayer(p.Client)
 
 	p.char.Pos.X = portal.X
 	p.char.Pos.Y = portal.Y
@@ -70,7 +70,7 @@ func (p *Player) ChangeMap(mapID int32, portal nx.Portal, portalID byte) {
 
 	p.Send(PacketMapChange(mapID, 0, portalID, p.char.HP)) // get current channel
 
-	Maps[p.char.MapID].AddPlayer(p.MConnChannel, p.InstanceID)
+	Maps[p.char.MapID].AddPlayer(p.Client, p.InstanceID)
 }
 
 func (p *Player) ChangeInstance(newInstID int) {
@@ -78,7 +78,7 @@ func (p *Player) ChangeInstance(newInstID int) {
 		return
 	}
 
-	Maps[p.char.MapID].RemovePlayer(p.MConnChannel)
+	Maps[p.char.MapID].RemovePlayer(p.Client)
 
 	p.InstanceID = newInstID
 
@@ -89,7 +89,7 @@ func (p *Player) ChangeInstance(newInstID int) {
 
 	p.Send(PacketMapChange(p.char.MapID, 0, portalID, p.char.HP)) // get current channel
 
-	Maps[p.char.MapID].AddPlayer(p.MConnChannel, p.InstanceID)
+	Maps[p.char.MapID].AddPlayer(p.Client, p.InstanceID)
 }
 
 func (p *Player) UpdateMovement(moveData MovementFrag) {

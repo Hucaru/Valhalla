@@ -12,11 +12,11 @@ type GameRoomAsserter interface {
 	Expel()
 	Start()
 	GetPassword() string
-	SendOpponent(conn mnet.MConnChannel, p mpacket.Packet)
+	SendOpponent(conn mnet.Client, p mpacket.Packet)
 	Tie() bool
-	GiveUp(conn mnet.MConnChannel) bool
-	LeaveAfterGame(conn mnet.MConnChannel)
-	UndoLeaveAfterGame(conn mnet.MConnChannel)
+	GiveUp(conn mnet.Client) bool
+	LeaveAfterGame(conn mnet.Client)
+	UndoLeaveAfterGame(conn mnet.Client)
 	ChangeTurn()
 }
 
@@ -69,7 +69,7 @@ func (r *GameRoom) GetPassword() string {
 	return r.Password
 }
 
-func (r *GameRoom) IsOwner(conn mnet.MConnChannel) bool {
+func (r *GameRoom) IsOwner(conn mnet.Client) bool {
 	if len(r.players) > 0 && r.players[0] != nil && r.players[0] == conn {
 		return true
 	}
@@ -77,7 +77,7 @@ func (r *GameRoom) IsOwner(conn mnet.MConnChannel) bool {
 	return false
 }
 
-func (r *GameRoom) BroadcastExcept(p mpacket.Packet, conn mnet.MConnChannel) {
+func (r *GameRoom) BroadcastExcept(p mpacket.Packet, conn mnet.Client) {
 	for _, v := range r.players {
 		if v == conn {
 			continue
@@ -87,7 +87,7 @@ func (r *GameRoom) BroadcastExcept(p mpacket.Packet, conn mnet.MConnChannel) {
 	}
 }
 
-func (r *GameRoom) AddPlayer(conn mnet.MConnChannel) {
+func (r *GameRoom) AddPlayer(conn mnet.Client) {
 	if roomPos, ok := r.baseRoom.AddPlayer(conn); ok {
 		player := Players[conn]
 		if roomPos == 0 {
@@ -106,7 +106,7 @@ func (r *GameRoom) AddPlayer(conn mnet.MConnChannel) {
 	}
 }
 
-func (r *GameRoom) RemovePlayer(conn mnet.MConnChannel, msgCode byte) bool {
+func (r *GameRoom) RemovePlayer(conn mnet.Client, msgCode byte) bool {
 	var closeRoom bool
 
 	if roomSlot := r.baseRoom.RemovePlayer(conn); roomSlot > -1 {
@@ -160,7 +160,7 @@ func (r *GameRoom) Expel() {
 	}
 }
 
-func (r *GameRoom) gameEnd(draw, forfeit bool, conn mnet.MConnChannel) bool {
+func (r *GameRoom) gameEnd(draw, forfeit bool, conn mnet.Client) bool {
 	// Update box on map
 	r.InProgress = false
 	player := Players[r.players[0]]
@@ -220,7 +220,7 @@ func (r *GameRoom) gameEnd(draw, forfeit bool, conn mnet.MConnChannel) bool {
 	return false
 }
 
-func (r *GameRoom) SendOpponent(conn mnet.MConnChannel, p mpacket.Packet) {
+func (r *GameRoom) SendOpponent(conn mnet.Client, p mpacket.Packet) {
 	for i, v := range r.players[0:2] {
 		if v == conn {
 			if i == 0 && r.players[1] != nil {
@@ -238,11 +238,11 @@ func (r *GameRoom) Tie() bool {
 	return r.gameEnd(true, false, nil)
 }
 
-func (r *GameRoom) GiveUp(conn mnet.MConnChannel) bool {
+func (r *GameRoom) GiveUp(conn mnet.Client) bool {
 	return r.gameEnd(false, true, conn)
 }
 
-func (r *GameRoom) LeaveAfterGame(conn mnet.MConnChannel) {
+func (r *GameRoom) LeaveAfterGame(conn mnet.Client) {
 	for i, v := range r.players[0:2] {
 		if v == conn {
 			r.leaveAfterGame[i] = true
@@ -260,7 +260,7 @@ func (r *GameRoom) LeaveAfterGame(conn mnet.MConnChannel) {
 	}
 }
 
-func (r *GameRoom) UndoLeaveAfterGame(conn mnet.MConnChannel) {
+func (r *GameRoom) UndoLeaveAfterGame(conn mnet.Client) {
 	for i, v := range r.players[0:2] {
 		if v == conn {
 			r.leaveAfterGame[i] = false
@@ -399,7 +399,7 @@ func (r *OmokRoom) PlacePiece(x, y int32, piece byte) bool {
 	return false
 }
 
-func (r *OmokRoom) UndoTurn(conn mnet.MConnChannel) {
+func (r *OmokRoom) UndoTurn(conn mnet.Client) {
 	for i, v := range r.players[0:2] {
 		if v != conn {
 			r.board[r.previousTurn[i][0]][r.previousTurn[i][1]] = 0
@@ -440,7 +440,7 @@ func (r *MemoryRoom) shuffleCards() {
 	})
 }
 
-func (r *MemoryRoom) SelectCard(turn, cardID byte, conn mnet.MConnChannel) bool {
+func (r *MemoryRoom) SelectCard(turn, cardID byte, conn mnet.Client) bool {
 	if int(cardID) >= len(r.cards) {
 		return false
 	}

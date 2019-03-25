@@ -15,7 +15,7 @@ type MapInstance struct {
 	npcs                           []Npc
 	mobs                           []Mob
 	spawnableMobs                  []*MobSI
-	players                        []mnet.MConnChannel
+	players                        []mnet.Client
 	workDispatch                   chan func()
 	previousMobSpawnTime           int64
 	mapData                        nx.Map
@@ -86,7 +86,7 @@ func (inst *MapInstance) send(p mpacket.Packet) {
 	}
 }
 
-func (inst *MapInstance) sendExcept(p mpacket.Packet, exception mnet.MConnChannel) {
+func (inst *MapInstance) sendExcept(p mpacket.Packet, exception mnet.Client) {
 	for _, v := range inst.players {
 		if v == exception {
 			continue
@@ -96,7 +96,7 @@ func (inst *MapInstance) sendExcept(p mpacket.Packet, exception mnet.MConnChanne
 	}
 }
 
-func (inst *MapInstance) addPlayer(conn mnet.MConnChannel) {
+func (inst *MapInstance) addPlayer(conn mnet.Client) {
 	for i, mob := range inst.mobs {
 		if mob.HP > 0 {
 			mob.SummonType = -1 // -2: fade in spawn animation, -1: no spawn animation
@@ -143,7 +143,7 @@ func (inst *MapInstance) addPlayer(conn mnet.MConnChannel) {
 	inst.players = append(inst.players, conn)
 }
 
-func (inst *MapInstance) removePlayer(conn mnet.MConnChannel) {
+func (inst *MapInstance) removePlayer(conn mnet.Client) {
 	ind := -1
 	for i, v := range inst.players {
 		if v == conn {
@@ -170,7 +170,7 @@ func (inst *MapInstance) removePlayer(conn mnet.MConnChannel) {
 	}
 }
 
-func (inst *MapInstance) findController() mnet.MConnChannel {
+func (inst *MapInstance) findController() mnet.Client {
 	for _, p := range inst.players {
 		return p
 	}
@@ -178,7 +178,7 @@ func (inst *MapInstance) findController() mnet.MConnChannel {
 	return nil
 }
 
-func (inst *MapInstance) findControllerExcept(conn mnet.MConnChannel) mnet.MConnChannel {
+func (inst *MapInstance) findControllerExcept(conn mnet.Client) mnet.Client {
 	for _, p := range inst.players {
 		if p == conn {
 			continue

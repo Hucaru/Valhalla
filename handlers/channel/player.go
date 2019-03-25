@@ -12,7 +12,7 @@ import (
 	"github.com/Hucaru/Valhalla/nx"
 )
 
-func playerConnect(conn mnet.MConnChannel, reader mpacket.Reader) {
+func playerConnect(conn mnet.Client, reader mpacket.Reader) {
 	charID := reader.ReadInt32()
 
 	var accountID int32
@@ -51,7 +51,7 @@ func playerConnect(conn mnet.MConnChannel, reader mpacket.Reader) {
 	}
 }
 
-func playerUsePortal(conn mnet.MConnChannel, reader mpacket.Reader) {
+func playerUsePortal(conn mnet.Client, reader mpacket.Reader) {
 	player, ok := game.Players[conn]
 
 	if !ok {
@@ -106,11 +106,11 @@ func playerUsePortal(conn mnet.MConnChannel, reader mpacket.Reader) {
 
 }
 
-func playerEnterCashShop(conn mnet.MConnChannel, reader mpacket.Reader) {
+func playerEnterCashShop(conn mnet.Client, reader mpacket.Reader) {
 
 }
 
-func playerMovement(conn mnet.MConnChannel, reader mpacket.Reader) {
+func playerMovement(conn mnet.Client, reader mpacket.Reader) {
 	player, ok := game.Players[conn]
 
 	if !ok {
@@ -136,7 +136,7 @@ func playerMovement(conn mnet.MConnChannel, reader mpacket.Reader) {
 	game.Maps[char.MapID].SendExcept(game.PacketPlayerMove(char.ID, moveBytes), conn, player.InstanceID)
 }
 
-func playerTakeDamage(conn mnet.MConnChannel, reader mpacket.Reader) {
+func playerTakeDamage(conn mnet.Client, reader mpacket.Reader) {
 	mobAttack := reader.ReadInt8()
 	damage := reader.ReadInt32()
 
@@ -214,7 +214,7 @@ func playerTakeDamage(conn mnet.MConnChannel, reader mpacket.Reader) {
 		game.Maps[char.MapID].Send(game.PacketPlayerReceivedDmg(char.ID, mobAttack, damage, reducedDamange, spawnID, mobID,
 			healSkillID, stance, reflectAction, reflected, reflectX, reflectY), player.InstanceID)
 
-		if player.Char().HP == 0 && mob.Controller == player.MConnChannel {
+		if player.Char().HP == 0 && mob.Controller == player.Client {
 			mob.ResetAggro()
 		}
 	}
@@ -226,7 +226,7 @@ func playerTakeDamage(conn mnet.MConnChannel, reader mpacket.Reader) {
 	}
 }
 
-func playerRequestAvatarInfoWindow(conn mnet.MConnChannel, reader mpacket.Reader) {
+func playerRequestAvatarInfoWindow(conn mnet.Client, reader mpacket.Reader) {
 	player, err := game.Players.GetFromID(reader.ReadInt32())
 
 	if err != nil {
@@ -238,7 +238,7 @@ func playerRequestAvatarInfoWindow(conn mnet.MConnChannel, reader mpacket.Reader
 	conn.Send(game.PacketPlayerAvatarSummaryWindow(char.ID, char, char.Guild))
 }
 
-func playerEmote(conn mnet.MConnChannel, reader mpacket.Reader) {
+func playerEmote(conn mnet.Client, reader mpacket.Reader) {
 	emote := reader.ReadInt32()
 
 	player, ok := game.Players[conn]
@@ -252,7 +252,7 @@ func playerEmote(conn mnet.MConnChannel, reader mpacket.Reader) {
 	game.Maps[char.MapID].SendExcept(game.PacketPlayerEmoticon(char.ID, emote), conn, player.InstanceID)
 }
 
-func playerPassiveRegen(conn mnet.MConnChannel, reader mpacket.Reader) {
+func playerPassiveRegen(conn mnet.Client, reader mpacket.Reader) {
 	reader.ReadBytes(4) //?
 
 	hp := reader.ReadInt16()
@@ -279,7 +279,7 @@ func playerPassiveRegen(conn mnet.MConnChannel, reader mpacket.Reader) {
 	}
 }
 
-func playerAddStatPoint(conn mnet.MConnChannel, reader mpacket.Reader) {
+func playerAddStatPoint(conn mnet.Client, reader mpacket.Reader) {
 	player, ok := game.Players[conn]
 
 	if !ok {
@@ -306,7 +306,7 @@ func playerAddStatPoint(conn mnet.MConnChannel, reader mpacket.Reader) {
 	}
 }
 
-func playerAddSkillPoint(conn mnet.MConnChannel, reader mpacket.Reader) {
+func playerAddSkillPoint(conn mnet.Client, reader mpacket.Reader) {
 	player, ok := game.Players[conn]
 
 	if !ok {
@@ -353,11 +353,11 @@ func playerAddSkillPoint(conn mnet.MConnChannel, reader mpacket.Reader) {
 
 }
 
-func playerGiveFame(conn mnet.MConnChannel, reader mpacket.Reader) {
+func playerGiveFame(conn mnet.Client, reader mpacket.Reader) {
 
 }
 
-func playerMoveInventoryItem(conn mnet.MConnChannel, reader mpacket.Reader) {
+func playerMoveInventoryItem(conn mnet.Client, reader mpacket.Reader) {
 	invTabID := reader.ReadByte()
 	origPos := reader.ReadInt16()
 	newPos := reader.ReadInt16()
@@ -419,11 +419,11 @@ func playerMoveInventoryItem(conn mnet.MConnChannel, reader mpacket.Reader) {
 	}
 }
 
-func playerUseChair(conn mnet.MConnChannel, reader mpacket.Reader) {
+func playerUseChair(conn mnet.Client, reader mpacket.Reader) {
 	// chairID := reader.ReadInt32()
 }
 
-func playerStand(conn mnet.MConnChannel, reader mpacket.Reader) {
+func playerStand(conn mnet.Client, reader mpacket.Reader) {
 	if reader.ReadInt16() == -1 {
 
 	} else {

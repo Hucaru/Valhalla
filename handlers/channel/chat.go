@@ -17,7 +17,7 @@ import (
 	"github.com/Hucaru/Valhalla/mpacket"
 )
 
-func chatSendAll(conn mnet.MConnChannel, reader mpacket.Reader) {
+func chatSendAll(conn mnet.Client, reader mpacket.Reader) {
 	msg := reader.ReadString(int(reader.ReadInt16()))
 
 	if strings.Index(msg, "/") == 0 && conn.GetAdminLevel() > 0 {
@@ -34,7 +34,7 @@ func chatSendAll(conn mnet.MConnChannel, reader mpacket.Reader) {
 	}
 }
 
-func chatSlashCommand(conn mnet.MConnChannel, reader mpacket.Reader) {
+func chatSlashCommand(conn mnet.Client, reader mpacket.Reader) {
 	cmdType := reader.ReadByte()
 
 	switch cmdType {
@@ -46,7 +46,7 @@ func chatSlashCommand(conn mnet.MConnChannel, reader mpacket.Reader) {
 	}
 }
 
-func gmCommand(conn mnet.MConnChannel, msg string) {
+func gmCommand(conn mnet.Client, msg string) {
 	ind := strings.Index(msg, "/")
 	command := strings.SplitN(msg[ind+1:], " ", -1)
 

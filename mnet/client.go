@@ -5,31 +5,40 @@ import (
 
 	"github.com/Hucaru/Valhalla/constant"
 	"github.com/Hucaru/Valhalla/database"
-	"github.com/Hucaru/Valhalla/mpacket"
 	"github.com/Hucaru/Valhalla/mnet/crypt"
+	"github.com/Hucaru/Valhalla/mpacket"
 )
 
-type MConnChannel interface {
+type Client interface {
 	MConn
 
 	GetLogedIn() bool
 	SetLogedIn(bool)
 	GetAccountID() int32
 	SetAccountID(int32)
+	GetGender() byte
+	SetGender(byte)
+	GetWorldID() byte
+	SetWorldID(byte)
+	GetChannelID() byte
+	SetChannelID(byte)
 	GetAdminLevel() int
 	SetAdminLevel(int)
 }
 
-type channel struct {
+type client struct {
 	baseConn
 
 	logedIn    bool
 	accountID  int32
+	gender     byte
+	worldID    byte
+	channelID  byte
 	adminLevel int
 }
 
-func NewChannel(conn net.Conn, eRecv chan *Event, queueSize int, keySend, keyRecv [4]byte) *channel {
-	c := &channel{}
+func NewClient(conn net.Conn, eRecv chan *Event, queueSize int, keySend, keyRecv [4]byte) *client {
+	c := &client{}
 	c.Conn = conn
 
 	c.eSend = make(chan mpacket.Packet, queueSize)
@@ -46,7 +55,7 @@ func NewChannel(conn net.Conn, eRecv chan *Event, queueSize int, keySend, keyRec
 	return c
 }
 
-func (c *channel) Cleanup() {
+func (c *client) Cleanup() {
 	c.baseConn.Cleanup()
 
 	if c.logedIn {
@@ -60,26 +69,50 @@ func (c *channel) Cleanup() {
 	}
 }
 
-func (c *channel) GetLogedIn() bool {
+func (c *client) GetLogedIn() bool {
 	return c.logedIn
 }
 
-func (c *channel) SetLogedIn(logedIn bool) {
+func (c *client) SetLogedIn(logedIn bool) {
 	c.logedIn = logedIn
 }
 
-func (c *channel) GetAccountID() int32 {
+func (c *client) GetAccountID() int32 {
 	return c.accountID
 }
 
-func (c *channel) SetAccountID(accountID int32) {
+func (c *client) SetAccountID(accountID int32) {
 	c.accountID = accountID
 }
 
-func (c *channel) GetAdminLevel() int {
+func (c *client) GetGender() byte {
+	return c.gender
+}
+
+func (c *client) SetGender(gender byte) {
+	c.gender = gender
+}
+
+func (c *client) GetWorldID() byte {
+	return c.worldID
+}
+
+func (c *client) SetWorldID(id byte) {
+	c.worldID = id
+}
+
+func (c *client) GetChannelID() byte {
+	return c.channelID
+}
+
+func (c *client) SetChannelID(id byte) {
+	c.channelID = id
+}
+
+func (c *client) GetAdminLevel() int {
 	return c.adminLevel
 }
 
-func (c *channel) SetAdminLevel(level int) {
+func (c *client) SetAdminLevel(level int) {
 	c.adminLevel = level
 }

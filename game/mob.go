@@ -20,8 +20,8 @@ func CreateMobSpawnInfo(mob Mob) MobSI {
 
 type Mob struct {
 	SpawnID          int32
-	Summoner         mnet.MConnChannel
-	Controller       mnet.MConnChannel
+	Summoner         mnet.Client
+	Controller       mnet.Client
 	Stance           byte
 	SkillTimes       map[byte]int64
 	CanUseSkill      bool
@@ -35,10 +35,10 @@ type Mob struct {
 	nx.Mob
 
 	mapID    int32
-	DmgTaken map[mnet.MConnChannel]int32
+	DmgTaken map[mnet.Client]int32
 }
 
-func CreateMob(spawnID int32, life nx.Life, mob nx.Mob, summoner mnet.MConnChannel, mapID int32) Mob {
+func CreateMob(spawnID int32, life nx.Life, mob nx.Mob, summoner mnet.Client, mapID int32) Mob {
 	return Mob{SpawnID: spawnID,
 		Summoner:   summoner,
 		Stance:     0,
@@ -46,14 +46,14 @@ func CreateMob(spawnID int32, life nx.Life, mob nx.Mob, summoner mnet.MConnChann
 		Life:       life,
 		Mob:        mob,
 		mapID:      mapID,
-		DmgTaken:   make(map[mnet.MConnChannel]int32)}
+		DmgTaken:   make(map[mnet.Client]int32)}
 }
 
 func (m Mob) FacesLeft() bool {
 	return m.Stance%2 != 0
 }
 
-func (m *Mob) GiveDamage(conn mnet.MConnChannel, damages []int32) {
+func (m *Mob) GiveDamage(conn mnet.Client, damages []int32) {
 	if m.HP > 0 && m.Controller != conn {
 		m.ChangeController(conn)
 	}
@@ -69,7 +69,7 @@ func (m *Mob) GiveDamage(conn mnet.MConnChannel, damages []int32) {
 	}
 }
 
-func (m *Mob) ChangeController(newController mnet.MConnChannel) {
+func (m *Mob) ChangeController(newController mnet.Client) {
 	if newController == nil {
 		m.Controller = nil
 		return

@@ -34,7 +34,7 @@ const (
 	roomSelectCard            = 60
 )
 
-func handleUIWindow(conn mnet.MConnChannel, reader mpacket.Reader) {
+func handleUIWindow(conn mnet.Client, reader mpacket.Reader) {
 	operation := reader.ReadByte()
 
 	player := game.Players[conn]
