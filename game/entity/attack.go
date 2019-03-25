@@ -1,4 +1,6 @@
-package game
+package entity
+
+import "github.com/Hucaru/Valhalla/mpacket"
 
 type Pos struct {
 	X int16
@@ -22,4 +24,8 @@ type AttackData struct {
 
 	AttackInfo []AttackInfo
 	PlayerPos  Pos
+}
+
+func (data *AttackData) Parse(reader mpacket.Reader) {
+
 }

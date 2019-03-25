@@ -8,6 +8,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/Hucaru/Valhalla/game/entity"
+
 	"github.com/Hucaru/Valhalla/game"
 	"github.com/Hucaru/Valhalla/nx"
 
@@ -54,7 +56,7 @@ func (cs *channelServer) Run() {
 
 	log.Println("Loaded and parsed Wizet data (NX) in", elapsed)
 
-	game.InitMaps(cs.wRecv)
+	cs.gameState.Init(cs.wRecv)
 
 	go script.WatchScriptDirectory("scripts/npc/")
 	go script.WatchScriptDirectory("scripts/event/")
@@ -118,7 +120,7 @@ func (cs *channelServer) acceptNewConnections() {
 		go channelConn.Reader()
 		go channelConn.Writer()
 
-		conn.Write(game.PacketClientHandshake(constant.MapleVersion, keyRecv[:], keySend[:]))
+		conn.Write(entity.PacketClientHandshake(constant.MapleVersion, keyRecv[:], keySend[:]))
 	}
 }
 
@@ -134,33 +136,18 @@ func (cs *channelServer) processEvent() {
 				return
 			}
 
-			channelConn, ok := e.Conn.(mnet.Client)
+			clientConn, ok := e.Conn.(mnet.Client)
 
 			if ok {
 				switch e.Type {
 				case mnet.MEClientConnected:
-					log.Println("New client from", channelConn)
+					log.Println("New client from", clientConn)
 				case mnet.MEClientDisconnect:
-					log.Println("Client at", channelConn, "disconnected")
-					game.RemoveNpcChatSession(channelConn)
-
-					// Order is important
-					game.Maps[game.Players[channelConn].Char().MapID].RemovePlayer(channelConn)
-					game.RemoveNpcChatSession(channelConn)
-
-					if game.Players[channelConn].RoomID != 0 {
-						roomID := game.Players[channelConn].RoomID
-						if game.Rooms[roomID].RemovePlayer(channelConn, 0) {
-							delete(game.Rooms, roomID)
-						}
-					}
-
-					game.Players[channelConn].Char().Save()
-					delete(game.Players, channelConn)
-
-					channelConn.Cleanup()
+					log.Println("Client at", clientConn, "disconnected")
+					cs.gameState.ClientDisconnected(clientConn)
+					clientConn.Cleanup()
 				case mnet.MEClientPacket:
-					cs.gameState.HandleClientPacket(channelConn, mpacket.NewReader(&e.Packet, time.Now().Unix()))
+					cs.gameState.HandleClientPacket(clientConn, mpacket.NewReader(&e.Packet, time.Now().Unix()))
 				}
 			} else {
 				serverConn, ok := e.Conn.(mnet.Server)

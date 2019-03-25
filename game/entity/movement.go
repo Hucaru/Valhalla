@@ -1,4 +1,4 @@
-package game
+package entity
 
 type MovementFrag struct {
 	X, Y, Vx, Vy, Foothold, Duration int16

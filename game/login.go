@@ -8,10 +8,12 @@ import (
 
 	"github.com/Hucaru/Valhalla/constant/opcode"
 	"github.com/Hucaru/Valhalla/database"
+	"github.com/Hucaru/Valhalla/game/entity"
 	"github.com/Hucaru/Valhalla/mnet"
 	"github.com/Hucaru/Valhalla/mpacket"
 )
 
+// Login server state
 type Login struct {
 }
 
@@ -103,7 +105,7 @@ func (server *Login) handleLoginRequest(conn mnet.Client, reader mpacket.Reader)
 		}
 	}
 
-	conn.Send(PacketLoginResponce(result, accountID, gender, adminLevel > 0, username, isBanned))
+	conn.Send(entity.PacketLoginResponce(result, accountID, gender, adminLevel > 0, username, isBanned))
 }
 
 func (server *Login) handleGoodLogin(conn mnet.Client, reader mpacket.Reader) {
@@ -121,16 +123,16 @@ func (server *Login) handleGoodLogin(conn mnet.Client, reader mpacket.Reader) {
 	const maxNumberOfWorlds = 14
 
 	for i := maxNumberOfWorlds; i > -1; i-- {
-		conn.Send(PacketLoginWorldListing(byte(i))) // hard coded for now
+		conn.Send(entity.PacketLoginWorldListing(byte(i))) // hard coded for now
 	}
-	conn.Send(PacketLoginEndWorldList())
+	conn.Send(entity.PacketLoginEndWorldList())
 }
 
 func (server *Login) handleWorldSelect(conn mnet.Client, reader mpacket.Reader) {
 	conn.SetWorldID(reader.ReadByte())
 	reader.ReadByte() // ?
 
-	conn.Send(PacketLoginWorldInfo(0, 0)) // hard coded for now
+	conn.Send(entity.PacketLoginWorldInfo(0, 0)) // hard coded for now
 }
 
 func (server *Login) handleChannelSelect(conn mnet.Client, reader mpacket.Reader) {
@@ -138,8 +140,8 @@ func (server *Login) handleChannelSelect(conn mnet.Client, reader mpacket.Reader
 	conn.SetChannelID(reader.ReadByte()) // Channel
 
 	if selectedWorld == conn.GetWorldID() {
-		characters := GetCharactersFromAccountWorldID(conn.GetAccountID(), conn.GetWorldID())
-		conn.Send(PacketLoginDisplayCharacters(characters))
+		characters := entity.GetCharactersFromAccountWorldID(conn.GetAccountID(), conn.GetWorldID())
+		conn.Send(entity.PacketLoginDisplayCharacters(characters))
 	}
 }
 
@@ -155,7 +157,7 @@ func (server *Login) handleNameCheck(conn mnet.Client, reader mpacket.Reader) {
 		panic(err)
 	}
 
-	conn.Send(PacketLoginNameCheck(newCharName, nameFound))
+	conn.Send(entity.PacketLoginNameCheck(newCharName, nameFound))
 }
 
 func (server *Login) handleNewCharacter(conn mnet.Client, reader mpacket.Reader) {
@@ -207,7 +209,7 @@ func (server *Login) handleNewCharacter(conn mnet.Client, reader mpacket.Reader)
 		inSlice(bottom, allowedBottom) && inSlice(top, allowedTop) && inSlice(shoes, allowedShoes) &&
 		inSlice(weapon, allowedWeapons) && inSlice(skin, allowedSkinColour) && (counter == 0)
 
-	newCharacter := Character{}
+	newCharacter := entity.Character{}
 
 	if conn.GetAdminLevel() > 0 {
 		name = "[GM]" + name
@@ -246,11 +248,11 @@ func (server *Login) handleNewCharacter(conn mnet.Client, reader mpacket.Reader)
 			panic(err)
 		}
 
-		characters := GetCharactersFromAccountWorldID(conn.GetAccountID(), conn.GetWorldID())
+		characters := entity.GetCharactersFromAccountWorldID(conn.GetAccountID(), conn.GetWorldID())
 		newCharacter = characters[len(characters)-1]
 	}
 
-	conn.Send(PacketLoginCreatedCharacter(valid, newCharacter))
+	conn.Send(entity.PacketLoginCreatedCharacter(valid, newCharacter))
 }
 
 func (server *Login) handleDeleteCharacter(conn mnet.Client, reader mpacket.Reader) {
@@ -287,7 +289,7 @@ func (server *Login) handleDeleteCharacter(conn mnet.Client, reader mpacket.Read
 		deleted = true
 	}
 
-	conn.Send(PacketLoginDeleteCharacter(charID, deleted, hacking))
+	conn.Send(entity.PacketLoginDeleteCharacter(charID, deleted, hacking))
 }
 
 func (server *Login) handleSelectCharacter(conn mnet.Client, reader mpacket.Reader) {
@@ -304,7 +306,7 @@ func (server *Login) handleSelectCharacter(conn mnet.Client, reader mpacket.Read
 	if charCount == 1 {
 		ip := []byte{192, 168, 1, 240}
 		port := int16(8684)
-		conn.Send(PacketLoginMigrateClient(ip, port, charID))
+		conn.Send(entity.PacketLoginMigrateClient(ip, port, charID))
 	}
 }
 
@@ -323,7 +325,7 @@ func (server *Login) handleReturnToLoginScreen(conn mnet.Client, reader mpacket.
 		panic(err)
 	}
 
-	conn.Send(PacketLoginReturnFromChannel())
+	conn.Send(entity.PacketLoginReturnFromChannel())
 }
 
 // HandleServerPacket from client

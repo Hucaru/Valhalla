@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/Hucaru/Valhalla/game"
+	"github.com/Hucaru/Valhalla/game/entity"
 	"github.com/Hucaru/Valhalla/mpacket"
 
 	"github.com/Hucaru/Valhalla/constant"
@@ -128,7 +129,7 @@ func (ls *loginServer) acceptNewClientConnections() {
 		go loginConn.Reader()
 		go loginConn.Writer()
 
-		conn.Write(game.PacketClientHandshake(constant.MapleVersion, keyRecv[:], keySend[:]))
+		conn.Write(entity.PacketClientHandshake(constant.MapleVersion, keyRecv[:], keySend[:]))
 	}
 }
 
@@ -144,17 +145,17 @@ func (ls *loginServer) processEvent() {
 				return
 			}
 
-			loginConn, ok := e.Conn.(mnet.Client)
+			clientConn, ok := e.Conn.(mnet.Client)
 
 			if ok {
 				switch e.Type {
 				case mnet.MEClientConnected:
-					log.Println("New client from", loginConn)
+					log.Println("New client from", clientConn)
 				case mnet.MEClientDisconnect:
-					log.Println("Client at", loginConn, "disconnected")
-					loginConn.Cleanup()
+					log.Println("Client at", clientConn, "disconnected")
+					clientConn.Cleanup()
 				case mnet.MEClientPacket:
-					ls.state.HandleClientPacket(loginConn, mpacket.NewReader(&e.Packet, time.Now().Unix()))
+					ls.state.HandleClientPacket(clientConn, mpacket.NewReader(&e.Packet, time.Now().Unix()))
 				}
 			} else {
 				serverConn, ok := e.Conn.(mnet.Server)

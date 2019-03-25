@@ -1,4 +1,4 @@
-package game
+package entity
 
 import (
 	"github.com/Hucaru/Valhalla/database"

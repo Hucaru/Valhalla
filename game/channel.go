@@ -8,9 +8,18 @@ import (
 	"github.com/Hucaru/Valhalla/mpacket"
 )
 
+// Channel server state
 type Channel struct {
 	// maps
 	// players
+}
+
+func (server *Channel) Init(chan func()) {
+
+}
+
+func (server *Channel) ClientDisconnected(conn mnet.Client) {
+
 }
 
 // HandleClientPacket from client
@@ -79,6 +88,7 @@ func (server *Channel) playerConnect(conn mnet.Client, reader mpacket.Reader) {
 
 }
 
+// HandleServerPacket from client
 func (server *Channel) HandleServerPacket(conn mnet.Server, reader mpacket.Reader) {
 
 }
