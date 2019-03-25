@@ -5,13 +5,13 @@ import (
 	"fmt"
 	"math"
 
-	opcodes "github.com/Hucaru/Valhalla/constant/opcode"
+	"github.com/Hucaru/Valhalla/constant/opcode"
 	"github.com/Hucaru/Valhalla/mpacket"
 )
 
 func PacketPlayerReceivedDmg(charID int32, attack int8, initalAmmount, reducedAmmount, spawnID, mobID, healSkillID int32,
 	stance, reflectAction byte, reflected byte, reflectX, reflectY int16) mpacket.Packet {
-	p := mpacket.CreateWithOpcode(opcodes.SendChannelPlayerTakeDmg)
+	p := mpacket.CreateWithOpcode(opcode.SendChannelPlayerTakeDmg)
 	p.WriteInt32(charID)
 	p.WriteInt8(attack)
 	p.WriteInt32(initalAmmount)
@@ -38,7 +38,7 @@ func PacketPlayerReceivedDmg(charID int32, attack int8, initalAmmount, reducedAm
 }
 
 func PacketPlayerLevelUpAnimation(charID int32) mpacket.Packet {
-	p := mpacket.CreateWithOpcode(opcodes.SendChannelPlayerAnimation)
+	p := mpacket.CreateWithOpcode(opcode.SendChannelPlayerAnimation)
 	p.WriteInt32(charID)
 	p.WriteByte(0x00)
 
@@ -46,7 +46,7 @@ func PacketPlayerLevelUpAnimation(charID int32) mpacket.Packet {
 }
 
 func PacketPlayerMove(charID int32, bytes []byte) mpacket.Packet {
-	p := mpacket.CreateWithOpcode(opcodes.SendChannelPlayerMovement)
+	p := mpacket.CreateWithOpcode(opcode.SendChannelPlayerMovement)
 	p.WriteInt32(charID)
 	p.WriteBytes(bytes)
 
@@ -54,7 +54,7 @@ func PacketPlayerMove(charID int32, bytes []byte) mpacket.Packet {
 }
 
 func PacketPlayerEmoticon(charID int32, emotion int32) mpacket.Packet {
-	p := mpacket.CreateWithOpcode(opcodes.SendChannelPlayerEmoticon)
+	p := mpacket.CreateWithOpcode(opcode.SendChannelPlayerEmoticon)
 	p.WriteInt32(charID)
 	p.WriteInt32(emotion)
 
@@ -62,7 +62,7 @@ func PacketPlayerEmoticon(charID int32, emotion int32) mpacket.Packet {
 }
 
 func PacketPlayerSkillBookUpdate(skillID int32, level int32) mpacket.Packet {
-	p := mpacket.CreateWithOpcode(opcodes.SendChannelSkillRecordUpdate)
+	p := mpacket.CreateWithOpcode(opcode.SendChannelSkillRecordUpdate)
 	p.WriteByte(0x01)  // time check?
 	p.WriteInt16(0x01) // number of skills to update
 	p.WriteInt32(skillID)
@@ -73,7 +73,7 @@ func PacketPlayerSkillBookUpdate(skillID int32, level int32) mpacket.Packet {
 }
 
 func PacketPlayerStatChange(unknown bool, stat int32, value int32) mpacket.Packet {
-	p := mpacket.CreateWithOpcode(opcodes.SendChannelStatChange)
+	p := mpacket.CreateWithOpcode(opcode.SendChannelStatChange)
 	p.WriteBool(unknown)
 	p.WriteInt32(stat)
 	p.WriteInt32(value)
@@ -82,7 +82,7 @@ func PacketPlayerStatChange(unknown bool, stat int32, value int32) mpacket.Packe
 }
 
 func PacketPlayerNoChange() mpacket.Packet {
-	p := mpacket.CreateWithOpcode(opcodes.SendChannelInventoryOperation)
+	p := mpacket.CreateWithOpcode(opcode.SendChannelInventoryOperation)
 	p.WriteByte(0x01)
 	p.WriteByte(0x00)
 	p.WriteByte(0x00)
@@ -91,7 +91,7 @@ func PacketPlayerNoChange() mpacket.Packet {
 }
 
 func PacketPlayerAvatarSummaryWindow(charID int32, char Character, guildName string) mpacket.Packet {
-	p := mpacket.CreateWithOpcode(opcodes.SendChannelAvatarInfoWindow)
+	p := mpacket.CreateWithOpcode(opcode.SendChannelAvatarInfoWindow)
 	p.WriteInt32(charID)
 	p.WriteByte(char.Level)
 	p.WriteInt16(char.Job)
@@ -106,7 +106,7 @@ func PacketPlayerAvatarSummaryWindow(charID int32, char Character, guildName str
 }
 
 func PacketPlayerEnterGame(char Character, channelID int32) mpacket.Packet {
-	p := mpacket.CreateWithOpcode(opcodes.SendChannelWarpToMap)
+	p := mpacket.CreateWithOpcode(opcode.SendChannelWarpToMap)
 	p.WriteInt32(channelID)
 	p.WriteByte(0) // character portal counter
 	p.WriteByte(1) // Is connecting

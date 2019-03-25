@@ -6,7 +6,7 @@ import (
 )
 
 func PacketInventoryAddItem(item Item, newItem bool) mpacket.Packet {
-	p := mpacket.CreateWithOpcode(opcodes.SendChannelInventoryOperation)
+	p := mpacket.CreateWithOpcode(opcode.SendChannelInventoryOperation)
 	p.WriteByte(0x01)     // ?
 	p.WriteByte(0x01)     // number of operations? // e.g. loop over multiple interweaved operations
 	p.WriteBool(!newItem) // operation type
@@ -23,7 +23,7 @@ func PacketInventoryAddItem(item Item, newItem bool) mpacket.Packet {
 }
 
 func PacketInventoryChangeItemSlot(invTabID byte, origPos, newPos int16) mpacket.Packet {
-	p := mpacket.CreateWithOpcode(opcodes.SendChannelInventoryOperation)
+	p := mpacket.CreateWithOpcode(opcode.SendChannelInventoryOperation)
 	p.WriteByte(0x01)
 	p.WriteByte(0x01)
 	p.WriteByte(0x02)
@@ -36,7 +36,7 @@ func PacketInventoryChangeItemSlot(invTabID byte, origPos, newPos int16) mpacket
 }
 
 func PacketInventoryRemoveItem(item Item) mpacket.Packet {
-	p := mpacket.CreateWithOpcode(opcodes.SendChannelInventoryOperation)
+	p := mpacket.CreateWithOpcode(opcode.SendChannelInventoryOperation)
 	p.WriteByte(0x01)
 	p.WriteByte(0x01)
 	p.WriteByte(0x03)
@@ -48,7 +48,7 @@ func PacketInventoryRemoveItem(item Item) mpacket.Packet {
 }
 
 func PacketInventoryChangeEquip(char Character) mpacket.Packet {
-	p := mpacket.CreateWithOpcode(opcodes.SendChannelPlayerChangeAvatar)
+	p := mpacket.CreateWithOpcode(opcode.SendChannelPlayerChangeAvatar)
 	p.WriteInt32(char.ID)
 	p.WriteByte(1)
 	p.WriteBytes(writeDisplayCharacter(char))

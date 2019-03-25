@@ -1,4 +1,4 @@
-package opcodes
+package opcode
 
 import "github.com/Hucaru/Valhalla/mpacket"
 

@@ -1,12 +1,12 @@
 package game
 
 import (
-	opcodes "github.com/Hucaru/Valhalla/constant/opcode"
+	"github.com/Hucaru/Valhalla/constant/opcode"
 	"github.com/Hucaru/Valhalla/mpacket"
 )
 
 func PacketRoomShowWindow(roomType, boardType, maxPlayers, roomSlot byte, roomTitle string, chars []Character) mpacket.Packet {
-	p := mpacket.CreateWithOpcode(opcodes.SendChannelRoom)
+	p := mpacket.CreateWithOpcode(opcode.SendChannelRoom)
 	p.WriteByte(0x05)
 	p.WriteByte(roomType)
 	p.WriteByte(maxPlayers)
@@ -44,7 +44,7 @@ func PacketRoomShowWindow(roomType, boardType, maxPlayers, roomSlot byte, roomTi
 }
 
 func PacketRoomJoin(roomType, roomSlot byte, char Character) mpacket.Packet {
-	p := mpacket.CreateWithOpcode(opcodes.SendChannelRoom)
+	p := mpacket.CreateWithOpcode(opcode.SendChannelRoom)
 	p.WriteByte(0x04)
 	p.WriteByte(roomSlot)
 	p.Append(writeDisplayCharacter(char))
@@ -65,7 +65,7 @@ func PacketRoomJoin(roomType, roomSlot byte, char Character) mpacket.Packet {
 }
 
 func PacketRoomLeave(roomSlot byte, leaveCode byte) mpacket.Packet {
-	p := mpacket.CreateWithOpcode(opcodes.SendChannelRoom)
+	p := mpacket.CreateWithOpcode(opcode.SendChannelRoom)
 	p.WriteByte(0x0A)
 	p.WriteByte(roomSlot)
 	p.WriteByte(leaveCode)
@@ -74,7 +74,7 @@ func PacketRoomLeave(roomSlot byte, leaveCode byte) mpacket.Packet {
 }
 
 func PacketRoomChat(sender, message string, roomSlot byte) mpacket.Packet {
-	p := mpacket.CreateWithOpcode(opcodes.SendChannelRoom)
+	p := mpacket.CreateWithOpcode(opcode.SendChannelRoom)
 	p.WriteByte(0x06)
 	p.WriteByte(8)        // msg type
 	p.WriteByte(roomSlot) //
@@ -84,7 +84,7 @@ func PacketRoomChat(sender, message string, roomSlot byte) mpacket.Packet {
 }
 
 func PacketRoomYellowChat(msgType byte, name string) mpacket.Packet {
-	p := mpacket.CreateWithOpcode(opcodes.SendChannelRoom)
+	p := mpacket.CreateWithOpcode(opcode.SendChannelRoom)
 	p.WriteByte(0x06)
 	p.WriteByte(7)
 	// expelled: 0, x's turn: 1, forfeit: 2, handicap request: 3, left: 4,
@@ -97,7 +97,7 @@ func PacketRoomYellowChat(msgType byte, name string) mpacket.Packet {
 }
 
 func PacketRoomInvite(roomType byte, name string, roomID int32) mpacket.Packet {
-	p := mpacket.CreateWithOpcode(opcodes.SendChannelRoom)
+	p := mpacket.CreateWithOpcode(opcode.SendChannelRoom)
 	p.WriteByte(0x02)
 	p.WriteByte(roomType)
 	p.WriteString(name)
@@ -107,7 +107,7 @@ func PacketRoomInvite(roomType byte, name string, roomID int32) mpacket.Packet {
 }
 
 func PacketRoomInviteResult(resultCode byte, name string) mpacket.Packet {
-	p := mpacket.CreateWithOpcode(opcodes.SendChannelRoom)
+	p := mpacket.CreateWithOpcode(opcode.SendChannelRoom)
 	p.WriteByte(0x03)
 	p.WriteByte(resultCode)
 	p.WriteString(name)
@@ -116,35 +116,35 @@ func PacketRoomInviteResult(resultCode byte, name string) mpacket.Packet {
 }
 
 func PacketRoomShowAccept() mpacket.Packet {
-	p := mpacket.CreateWithOpcode(opcodes.SendChannelRoom)
+	p := mpacket.CreateWithOpcode(opcode.SendChannelRoom)
 	p.WriteByte(0x0F)
 
 	return p
 }
 
 func PacketRoomRequestTie() mpacket.Packet {
-	p := mpacket.CreateWithOpcode(opcodes.SendChannelRoom)
+	p := mpacket.CreateWithOpcode(opcode.SendChannelRoom)
 	p.WriteByte(0x2a)
 
 	return p
 }
 
 func PacketRoomRejectTie() mpacket.Packet {
-	p := mpacket.CreateWithOpcode(opcodes.SendChannelRoom)
+	p := mpacket.CreateWithOpcode(opcode.SendChannelRoom)
 	p.WriteByte(0x2b)
 
 	return p
 }
 
 func PacketRoomRequestUndo() mpacket.Packet {
-	p := mpacket.CreateWithOpcode(opcodes.SendChannelRoom)
+	p := mpacket.CreateWithOpcode(opcode.SendChannelRoom)
 	p.WriteByte(0x2e)
 
 	return p
 }
 
 func PacketRoomRejectUndo() mpacket.Packet {
-	p := mpacket.CreateWithOpcode(opcodes.SendChannelRoom)
+	p := mpacket.CreateWithOpcode(opcode.SendChannelRoom)
 	p.WriteByte(0x2f)
 	p.WriteByte(0x00)
 
@@ -152,7 +152,7 @@ func PacketRoomRejectUndo() mpacket.Packet {
 }
 
 func PacketRoomUndo(x, y int32, p1 bool) mpacket.Packet {
-	p := mpacket.CreateWithOpcode(opcodes.SendChannelRoom)
+	p := mpacket.CreateWithOpcode(opcode.SendChannelRoom)
 	p.WriteByte(0x2f)
 	p.WriteByte(0x01)
 	// the following bugs out of p1, p2, p1 and p2 requests undo. This will undo p1 move and set the board into a buged out state
@@ -163,21 +163,21 @@ func PacketRoomUndo(x, y int32, p1 bool) mpacket.Packet {
 }
 
 func PacketRoomReady() mpacket.Packet {
-	p := mpacket.CreateWithOpcode(opcodes.SendChannelRoom)
+	p := mpacket.CreateWithOpcode(opcode.SendChannelRoom)
 	p.WriteByte(0x32)
 
 	return p
 }
 
 func PacketRoomUnready() mpacket.Packet {
-	p := mpacket.CreateWithOpcode(opcodes.SendChannelRoom)
+	p := mpacket.CreateWithOpcode(opcode.SendChannelRoom)
 	p.WriteByte(0x33)
 
 	return p
 }
 
 func PacketRoomOmokStart(ownerStart bool) mpacket.Packet {
-	p := mpacket.CreateWithOpcode(opcodes.SendChannelRoom)
+	p := mpacket.CreateWithOpcode(opcode.SendChannelRoom)
 	p.WriteByte(0x35)
 	p.WriteBool(ownerStart)
 
@@ -185,7 +185,7 @@ func PacketRoomOmokStart(ownerStart bool) mpacket.Packet {
 }
 
 func PacketRoomMemoryStart(ownerStart bool, boardType int32, cards []byte) mpacket.Packet {
-	p := mpacket.CreateWithOpcode(opcodes.SendChannelRoom)
+	p := mpacket.CreateWithOpcode(opcode.SendChannelRoom)
 	p.WriteByte(0x35)
 	p.WriteBool(ownerStart)
 	p.WriteByte(0x0C)
@@ -198,7 +198,7 @@ func PacketRoomMemoryStart(ownerStart bool, boardType int32, cards []byte) mpack
 }
 
 func PacketRoomGameResult(draw bool, winningSlot byte, forfeit bool, chars []Character) mpacket.Packet {
-	p := mpacket.CreateWithOpcode(opcodes.SendChannelRoom)
+	p := mpacket.CreateWithOpcode(opcode.SendChannelRoom)
 	p.WriteByte(0x36)
 
 	if !draw && !forfeit {
@@ -234,7 +234,7 @@ func PacketRoomGameResult(draw bool, winningSlot byte, forfeit bool, chars []Cha
 }
 
 func PacketRoomGameSkip(isOwner bool) mpacket.Packet {
-	p := mpacket.CreateWithOpcode(opcodes.SendChannelRoom)
+	p := mpacket.CreateWithOpcode(opcode.SendChannelRoom)
 	p.WriteByte(0x37)
 	p.WriteBool(isOwner)
 
@@ -242,7 +242,7 @@ func PacketRoomGameSkip(isOwner bool) mpacket.Packet {
 }
 
 func PacketRoomPlaceOmokPiece(x, y int32, piece byte) mpacket.Packet {
-	p := mpacket.CreateWithOpcode(opcodes.SendChannelRoom)
+	p := mpacket.CreateWithOpcode(opcode.SendChannelRoom)
 	p.WriteByte(0x38)
 	p.WriteInt32(x)
 	p.WriteInt32(y)
@@ -252,7 +252,7 @@ func PacketRoomPlaceOmokPiece(x, y int32, piece byte) mpacket.Packet {
 }
 
 func PacketRoomOmokInvalidPlaceMsg() mpacket.Packet {
-	p := mpacket.CreateWithOpcode(opcodes.SendChannelRoom)
+	p := mpacket.CreateWithOpcode(opcode.SendChannelRoom)
 	p.WriteByte(0x39)
 	p.WriteByte(0x0)
 
@@ -260,7 +260,7 @@ func PacketRoomOmokInvalidPlaceMsg() mpacket.Packet {
 }
 
 func PacketRoomSelectCard(turn, cardID, firstCardPick byte, result byte) mpacket.Packet {
-	p := mpacket.CreateWithOpcode(opcodes.SendChannelRoom)
+	p := mpacket.CreateWithOpcode(opcode.SendChannelRoom)
 	p.WriteByte(0x3c)
 	p.WriteByte(turn)
 
@@ -276,7 +276,7 @@ func PacketRoomSelectCard(turn, cardID, firstCardPick byte, result byte) mpacket
 }
 
 func PacketRoomEnterErrorMsg(errorCode byte) mpacket.Packet {
-	p := mpacket.CreateWithOpcode(opcodes.SendChannelRoom)
+	p := mpacket.CreateWithOpcode(opcode.SendChannelRoom)
 	p.WriteByte(0x05)
 	p.WriteByte(0x00)
 	p.WriteByte(errorCode)

@@ -7,9 +7,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Hucaru/Valhalla/handlers/world"
-	"github.com/Hucaru/Valhalla/mpacket"
+	"github.com/Hucaru/Valhalla/game"
 	"github.com/Hucaru/Valhalla/mnet"
+	"github.com/Hucaru/Valhalla/mpacket"
 )
 
 type worldServer struct {
@@ -17,7 +17,8 @@ type worldServer struct {
 	dbConfig dbConfig
 	eRecv    chan *mnet.Event
 	wg       *sync.WaitGroup
-	lconn    net.Conn
+	lconn    mnet.Server
+	state    game.World
 }
 
 func NewWorldServer(configFile string) *worldServer {
@@ -57,7 +58,7 @@ func (ws *worldServer) connectToLogin() {
 
 	log.Println("Connected to login server at", ws.config.LoginAddress+":"+ws.config.LoginPort)
 
-	ws.lconn = conn
+	ws.lconn = mnet.NewServer(conn, ws.eRecv, ws.config.PacketQueueSize)
 }
 
 func (ws *worldServer) acceptNewServerConnections() {
@@ -100,7 +101,7 @@ func (ws *worldServer) processEvent() {
 				return
 			}
 
-			serverConn, ok := e.Conn.(mnet.MConnServer)
+			serverConn, ok := e.Conn.(mnet.Server)
 
 			if !ok {
 				panic("Invalid type assestion")
@@ -112,7 +113,7 @@ func (ws *worldServer) processEvent() {
 			case mnet.MEServerDisconnect:
 				log.Println("Server at", serverConn, "disconnected")
 			case mnet.MEServerPacket:
-				world.HandlePacket(ws.lconn, mpacket.NewReader(&e.Packet, time.Now().Unix()))
+				ws.state.HandleChannelPacket(serverConn, mpacket.NewReader(&e.Packet, time.Now().Unix()))
 			}
 		}
 

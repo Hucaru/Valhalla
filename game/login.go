@@ -1,4 +1,4 @@
-package login
+package game
 
 import (
 	"crypto/sha512"
@@ -6,50 +6,50 @@ import (
 	"log"
 	"strings"
 
-	opcodes "github.com/Hucaru/Valhalla/constant/opcode"
+	"github.com/Hucaru/Valhalla/constant/opcode"
 	"github.com/Hucaru/Valhalla/database"
-	"github.com/Hucaru/Valhalla/game"
 	"github.com/Hucaru/Valhalla/mnet"
 	"github.com/Hucaru/Valhalla/mpacket"
 )
 
-// HandlePacket
-func HandlePacket(conn mnet.Client, reader mpacket.Reader) {
+type Login struct {
+}
+
+// HandleClientPacket from client
+func (server *Login) HandleClientPacket(conn mnet.Client, reader mpacket.Reader) {
 	switch mpacket.Opcode(reader.ReadByte()) {
-	case opcodes.RecvLoginRequest:
-		handleLoginRequest(conn, reader)
+	case opcode.RecvLoginRequest:
+		server.handleLoginRequest(conn, reader)
 
-	case opcodes.RecvLoginCheckLogin:
-		handleGoodLogin(conn, reader)
+	case opcode.RecvLoginCheckLogin:
+		server.handleGoodLogin(conn, reader)
 
-	case opcodes.RecvLoginWorldSelect:
-		handleWorldSelect(conn, reader)
+	case opcode.RecvLoginWorldSelect:
+		server.handleWorldSelect(conn, reader)
 
-	case opcodes.RecvLoginChannelSelect:
-		handleChannelSelect(conn, reader)
+	case opcode.RecvLoginChannelSelect:
+		server.handleChannelSelect(conn, reader)
 
-	case opcodes.RecvLoginNameCheck:
-		handleNameCheck(conn, reader)
+	case opcode.RecvLoginNameCheck:
+		server.handleNameCheck(conn, reader)
 
-	case opcodes.RecvLoginNewCharacter:
-		handleNewCharacter(conn, reader)
+	case opcode.RecvLoginNewCharacter:
+		server.handleNewCharacter(conn, reader)
 
-	case opcodes.RecvLoginDeleteChar:
-		handleDeleteCharacter(conn, reader)
+	case opcode.RecvLoginDeleteChar:
+		server.handleDeleteCharacter(conn, reader)
 
-	case opcodes.RecvLoginSelectCharacter:
-		handleSelectCharacter(conn, reader)
+	case opcode.RecvLoginSelectCharacter:
+		server.handleSelectCharacter(conn, reader)
 
-	case opcodes.RecvReturnToLoginScreen:
-		handleReturnToLoginScreen(conn, reader)
+	case opcode.RecvReturnToLoginScreen:
+		server.handleReturnToLoginScreen(conn, reader)
 
 	default:
 		log.Println("UNKNOWN LOGIN PACKET:", reader)
 	}
-
 }
-
-func handleLoginRequest(conn mnet.Client, reader mpacket.Reader) {
+func (server *Login) handleLoginRequest(conn mnet.Client, reader mpacket.Reader) {
 	usernameLength := reader.ReadInt16()
 	username := reader.ReadString(int(usernameLength))
 
@@ -103,10 +103,10 @@ func handleLoginRequest(conn mnet.Client, reader mpacket.Reader) {
 		}
 	}
 
-	conn.Send(game.PacketLoginResponce(result, accountID, gender, adminLevel > 0, username, isBanned))
+	conn.Send(PacketLoginResponce(result, accountID, gender, adminLevel > 0, username, isBanned))
 }
 
-func handleGoodLogin(conn mnet.Client, reader mpacket.Reader) {
+func (server *Login) handleGoodLogin(conn mnet.Client, reader mpacket.Reader) {
 	var username, password string
 
 	accountID := conn.GetAccountID()
@@ -121,29 +121,29 @@ func handleGoodLogin(conn mnet.Client, reader mpacket.Reader) {
 	const maxNumberOfWorlds = 14
 
 	for i := maxNumberOfWorlds; i > -1; i-- {
-		conn.Send(game.PacketLoginWorldListing(byte(i))) // hard coded for now
+		conn.Send(PacketLoginWorldListing(byte(i))) // hard coded for now
 	}
-	conn.Send(game.PacketLoginEndWorldList())
+	conn.Send(PacketLoginEndWorldList())
 }
 
-func handleWorldSelect(conn mnet.Client, reader mpacket.Reader) {
+func (server *Login) handleWorldSelect(conn mnet.Client, reader mpacket.Reader) {
 	conn.SetWorldID(reader.ReadByte())
 	reader.ReadByte() // ?
 
-	conn.Send(game.PacketLoginWorldInfo(0, 0)) // hard coded for now
+	conn.Send(PacketLoginWorldInfo(0, 0)) // hard coded for now
 }
 
-func handleChannelSelect(conn mnet.Client, reader mpacket.Reader) {
+func (server *Login) handleChannelSelect(conn mnet.Client, reader mpacket.Reader) {
 	selectedWorld := reader.ReadByte()   // world
 	conn.SetChannelID(reader.ReadByte()) // Channel
 
 	if selectedWorld == conn.GetWorldID() {
-		characters := game.GetCharactersFromAccountWorldID(conn.GetAccountID(), conn.GetWorldID())
-		conn.Send(game.PacketLoginDisplayCharacters(characters))
+		characters := GetCharactersFromAccountWorldID(conn.GetAccountID(), conn.GetWorldID())
+		conn.Send(PacketLoginDisplayCharacters(characters))
 	}
 }
 
-func handleNameCheck(conn mnet.Client, reader mpacket.Reader) {
+func (server *Login) handleNameCheck(conn mnet.Client, reader mpacket.Reader) {
 	nameLength := reader.ReadInt16()
 	newCharName := reader.ReadString(int(nameLength))
 
@@ -155,10 +155,10 @@ func handleNameCheck(conn mnet.Client, reader mpacket.Reader) {
 		panic(err)
 	}
 
-	conn.Send(game.PacketLoginNameCheck(newCharName, nameFound))
+	conn.Send(PacketLoginNameCheck(newCharName, nameFound))
 }
 
-func handleNewCharacter(conn mnet.Client, reader mpacket.Reader) {
+func (server *Login) handleNewCharacter(conn mnet.Client, reader mpacket.Reader) {
 	nameLength := reader.ReadInt16()
 	name := reader.ReadString(int(nameLength))
 	face := reader.ReadInt32()
@@ -207,7 +207,7 @@ func handleNewCharacter(conn mnet.Client, reader mpacket.Reader) {
 		inSlice(bottom, allowedBottom) && inSlice(top, allowedTop) && inSlice(shoes, allowedShoes) &&
 		inSlice(weapon, allowedWeapons) && inSlice(skin, allowedSkinColour) && (counter == 0)
 
-	newCharacter := game.Character{}
+	newCharacter := Character{}
 
 	if conn.GetAdminLevel() > 0 {
 		name = "[GM]" + name
@@ -226,34 +226,34 @@ func handleNewCharacter(conn mnet.Client, reader mpacket.Reader) {
 		}
 
 		if conn.GetAdminLevel() > 0 {
-			addCharacterItem(characterID, 1002140, -1, name) // Hat
-			addCharacterItem(characterID, 1032006, -4, name) // Earrings
-			addCharacterItem(characterID, 1042003, -5, name)
-			addCharacterItem(characterID, 1062007, -6, name)
-			addCharacterItem(characterID, 1072004, -7, name)
-			addCharacterItem(characterID, 1082002, -8, name)  // Gloves
-			addCharacterItem(characterID, 1102054, -9, name)  // Cape
-			addCharacterItem(characterID, 1092008, -10, name) // Shield
-			addCharacterItem(characterID, 1322013, -11, name)
+			server.addCharacterItem(characterID, 1002140, -1, name) // Hat
+			server.addCharacterItem(characterID, 1032006, -4, name) // Earrings
+			server.addCharacterItem(characterID, 1042003, -5, name)
+			server.addCharacterItem(characterID, 1062007, -6, name)
+			server.addCharacterItem(characterID, 1072004, -7, name)
+			server.addCharacterItem(characterID, 1082002, -8, name)  // Gloves
+			server.addCharacterItem(characterID, 1102054, -9, name)  // Cape
+			server.addCharacterItem(characterID, 1092008, -10, name) // Shield
+			server.addCharacterItem(characterID, 1322013, -11, name)
 		} else {
-			addCharacterItem(characterID, top, -5, "")
-			addCharacterItem(characterID, bottom, -6, "")
-			addCharacterItem(characterID, shoes, -7, "")
-			addCharacterItem(characterID, weapon, -11, "")
+			server.addCharacterItem(characterID, top, -5, "")
+			server.addCharacterItem(characterID, bottom, -6, "")
+			server.addCharacterItem(characterID, shoes, -7, "")
+			server.addCharacterItem(characterID, weapon, -11, "")
 		}
 
 		if err != nil {
 			panic(err)
 		}
 
-		characters := game.GetCharactersFromAccountWorldID(conn.GetAccountID(), conn.GetWorldID())
+		characters := GetCharactersFromAccountWorldID(conn.GetAccountID(), conn.GetWorldID())
 		newCharacter = characters[len(characters)-1]
 	}
 
-	conn.Send(game.PacketLoginCreatedCharacter(valid, newCharacter))
+	conn.Send(PacketLoginCreatedCharacter(valid, newCharacter))
 }
 
-func handleDeleteCharacter(conn mnet.Client, reader mpacket.Reader) {
+func (server *Login) handleDeleteCharacter(conn mnet.Client, reader mpacket.Reader) {
 	dob := reader.ReadInt32()
 	charID := reader.ReadInt32()
 
@@ -287,10 +287,10 @@ func handleDeleteCharacter(conn mnet.Client, reader mpacket.Reader) {
 		deleted = true
 	}
 
-	conn.Send(game.PacketLoginDeleteCharacter(charID, deleted, hacking))
+	conn.Send(PacketLoginDeleteCharacter(charID, deleted, hacking))
 }
 
-func handleSelectCharacter(conn mnet.Client, reader mpacket.Reader) {
+func (server *Login) handleSelectCharacter(conn mnet.Client, reader mpacket.Reader) {
 	charID := reader.ReadInt32()
 
 	var charCount int
@@ -304,11 +304,11 @@ func handleSelectCharacter(conn mnet.Client, reader mpacket.Reader) {
 	if charCount == 1 {
 		ip := []byte{192, 168, 1, 240}
 		port := int16(8684)
-		conn.Send(game.PacketLoginMigrateClient(ip, port, charID))
+		conn.Send(PacketLoginMigrateClient(ip, port, charID))
 	}
 }
 
-func addCharacterItem(characterID int64, itemID int32, slot int32, creatorName string) {
+func (server *Login) addCharacterItem(characterID int64, itemID int32, slot int32, creatorName string) {
 	_, err := database.Handle.Exec("INSERT INTO items (characterID, itemID, slotNumber, creatorName) VALUES (?, ?, ?, ?)", characterID, itemID, slot, creatorName)
 
 	if err != nil {
@@ -316,12 +316,16 @@ func addCharacterItem(characterID int64, itemID int32, slot int32, creatorName s
 	}
 }
 
-func handleReturnToLoginScreen(conn mnet.Client, reader mpacket.Reader) {
+func (server *Login) handleReturnToLoginScreen(conn mnet.Client, reader mpacket.Reader) {
 	_, err := database.Handle.Exec("UPDATE accounts SET isLogedIn=0 WHERE accountID=?", conn.GetAccountID())
 
 	if err != nil {
 		panic(err)
 	}
 
-	conn.Send(game.PacketLoginReturnFromChannel())
+	conn.Send(PacketLoginReturnFromChannel())
+}
+
+// HandleServerPacket from client
+func (server *Login) HandleServerPacket(conn mnet.Server, reader mpacket.Reader) {
 }

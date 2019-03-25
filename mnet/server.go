@@ -7,7 +7,7 @@ import (
 	"github.com/Hucaru/Valhalla/mpacket"
 )
 
-type MConnServer interface {
+type Server interface {
 	MConn
 }
 

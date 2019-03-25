@@ -9,8 +9,6 @@ import (
 	"time"
 
 	"github.com/Hucaru/Valhalla/game"
-	"github.com/Hucaru/Valhalla/handlers/login"
-	"github.com/Hucaru/Valhalla/handlers/world"
 	"github.com/Hucaru/Valhalla/mpacket"
 
 	"github.com/Hucaru/Valhalla/constant"
@@ -23,6 +21,7 @@ type loginServer struct {
 	dbConfig dbConfig
 	eRecv    chan *mnet.Event
 	wg       *sync.WaitGroup
+	state    game.Login
 }
 
 func NewLoginServer(configFile string) *loginServer {
@@ -155,10 +154,10 @@ func (ls *loginServer) processEvent() {
 					log.Println("Client at", loginConn, "disconnected")
 					loginConn.Cleanup()
 				case mnet.MEClientPacket:
-					login.HandlePacket(loginConn, mpacket.NewReader(&e.Packet, time.Now().Unix()))
+					ls.state.HandleClientPacket(loginConn, mpacket.NewReader(&e.Packet, time.Now().Unix()))
 				}
 			} else {
-				serverConn, ok := e.Conn.(mnet.MConnServer)
+				serverConn, ok := e.Conn.(mnet.Server)
 
 				if ok {
 					switch e.Type {
@@ -167,7 +166,7 @@ func (ls *loginServer) processEvent() {
 					case mnet.MEServerDisconnect:
 						log.Println("Server at", serverConn, "disconnected")
 					case mnet.MEServerPacket:
-						world.HandlePacket(nil, mpacket.NewReader(&e.Packet, time.Now().Unix()))
+						ls.state.HandleServerPacket(serverConn, mpacket.NewReader(&e.Packet, time.Now().Unix()))
 					}
 				}
 			}

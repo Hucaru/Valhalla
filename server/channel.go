@@ -9,8 +9,6 @@ import (
 	"time"
 
 	"github.com/Hucaru/Valhalla/game"
-	"github.com/Hucaru/Valhalla/handlers/channel"
-	"github.com/Hucaru/Valhalla/handlers/world"
 	"github.com/Hucaru/Valhalla/nx"
 
 	"github.com/Hucaru/Valhalla/constant"
@@ -21,12 +19,13 @@ import (
 )
 
 type channelServer struct {
-	config   channelConfig
-	dbConfig dbConfig
-	eRecv    chan *mnet.Event
-	wRecv    chan func()
-	wg       *sync.WaitGroup
-	wconn    net.Conn
+	config    channelConfig
+	dbConfig  dbConfig
+	eRecv     chan *mnet.Event
+	wRecv     chan func()
+	wg        *sync.WaitGroup
+	worldConn mnet.Server
+	gameState game.Channel
 }
 
 func NewChannelServer(configFile string) *channelServer {
@@ -85,7 +84,7 @@ func (cs *channelServer) connectToWorld() {
 
 	log.Println("Connected to world server at", cs.config.WorldAddress+":"+cs.config.WorldPort)
 
-	cs.wconn = conn
+	cs.worldConn = mnet.NewServer(conn, cs.eRecv, cs.config.PacketQueueSize)
 }
 
 func (cs *channelServer) acceptNewConnections() {
@@ -161,17 +160,17 @@ func (cs *channelServer) processEvent() {
 
 					channelConn.Cleanup()
 				case mnet.MEClientPacket:
-					channel.HandlePacket(channelConn, mpacket.NewReader(&e.Packet, time.Now().Unix()))
+					cs.gameState.HandleClientPacket(channelConn, mpacket.NewReader(&e.Packet, time.Now().Unix()))
 				}
 			} else {
-				serverConn, ok := e.Conn.(mnet.MConnServer)
+				serverConn, ok := e.Conn.(mnet.Server)
 
 				if ok {
 					switch e.Type {
 					case mnet.MEServerDisconnect:
 						log.Println("Server at", serverConn, "disconnected")
 					case mnet.MEServerPacket:
-						world.HandlePacket(nil, mpacket.NewReader(&e.Packet, time.Now().Unix()))
+						cs.gameState.HandleServerPacket(serverConn, mpacket.NewReader(&e.Packet, time.Now().Unix()))
 					}
 				}
 			}

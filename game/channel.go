@@ -1,4 +1,4 @@
-package channel
+package game
 
 import (
 	"log"
@@ -8,63 +8,77 @@ import (
 	"github.com/Hucaru/Valhalla/mpacket"
 )
 
-func HandlePacket(conn mnet.Client, reader mpacket.Reader) {
+type Channel struct {
+	// maps
+	// players
+}
+
+// HandleClientPacket from client
+func (server *Channel) HandleClientPacket(conn mnet.Client, reader mpacket.Reader) {
 	switch mpacket.Opcode(reader.ReadByte()) {
 	case opcode.RecvPing:
 	case opcode.RecvChannelPlayerLoad:
-		playerConnect(conn, reader)
+		server.playerConnect(conn, reader)
 	case opcode.RecvChannelUserPortal:
-		playerUsePortal(conn, reader)
+		// server.playerUsePortal(conn, reader)
 	case opcode.RecvChannelEnterCashShop:
 	case opcode.RecvChannelPlayerMovement:
-		playerMovement(conn, reader)
+		// server.playerMovement(conn, reader)
 	case opcode.RecvChannelPlayerStand:
-		playerStand(conn, reader)
+		// server.playerStand(conn, reader)
 	case opcode.RecvChannelPlayerUserChair:
-		playerUseChair(conn, reader)
+		// server.playerUseChair(conn, reader)
 	case opcode.RecvChannelMeleeSkill:
-		playerMeleeSkill(conn, reader)
+		// server.playerMeleeSkill(conn, reader)
 	case opcode.RecvChannelRangedSkill:
-		playerRangedSkill(conn, reader)
+		// server.playerRangedSkill(conn, reader)
 	case opcode.RecvChannelMagicSkill:
-		playerMagicSkill(conn, reader)
+		// server.playerMagicSkill(conn, reader)
 	case opcode.RecvChannelDmgRecv:
-		playerTakeDamage(conn, reader)
+		// server.playerTakeDamage(conn, reader)
 	case opcode.RecvChannelPlayerSendAllChat:
-		chatSendAll(conn, reader)
+		// server.chatSendAll(conn, reader)
 	case opcode.RecvChannelSlashCommands:
-		chatSlashCommand(conn, reader)
+		// server.chatSlashCommand(conn, reader)
 	case opcode.RecvChannelCharacterUIWindow:
-		handleUIWindow(conn, reader)
+		// server.handleUIWindow(conn, reader)
 	case opcode.RecvChannelEmote:
-		playerEmote(conn, reader)
+		// server.playerEmote(conn, reader)
 	case opcode.RecvChannelNpcDialogue:
-		npcChatStart(conn, reader)
+		// server.npcChatStart(conn, reader)
 	case opcode.RecvChannelNpcDialogueContinue:
-		npcChatContinue(conn, reader)
+		// server.npcChatContinue(conn, reader)
 	case opcode.RecvChannelNpcShop:
 	case opcode.RecvChannelInvMoveItem:
-		playerMoveInventoryItem(conn, reader)
+		// server.playerMoveInventoryItem(conn, reader)
 	case opcode.RecvChannelAddStatPoint:
-		playerAddStatPoint(conn, reader)
+		// server.playerAddStatPoint(conn, reader)
 	case opcode.RecvChannelPassiveRegen:
-		playerPassiveRegen(conn, reader)
+		// server.playerPassiveRegen(conn, reader)
 	case opcode.RecvChannelAddSkillPoint:
-		playerAddSkillPoint(conn, reader)
+		// server.playerAddSkillPoint(conn, reader)
 	case opcode.RecvChannelSpecialSkill:
-		playerSpecialSkill(conn, reader)
+		// server.playerSpecialSkill(conn, reader)
 	case opcode.RecvChannelCharacterInfo:
-		playerRequestAvatarInfoWindow(conn, reader)
+		// server.playerRequestAvatarInfoWindow(conn, reader)
 	case opcode.RecvChannelLieDetectorResult:
 	case opcode.RecvChannelPartyInfo:
 	case opcode.RecvChannelGuildManagement:
 	case opcode.RecvChannelGuildReject:
 	case opcode.RecvChannelAddBuddy:
 	case opcode.RecvChannelMobControl:
-		mobControl(conn, reader)
+		// server.mobControl(conn, reader)
 	case opcode.RecvChannelNpcMovement:
-		npcMovement(conn, reader)
+		// server.npcMovement(conn, reader)
 	default:
 		log.Println("Unkown packet:", reader)
 	}
+}
+
+func (server *Channel) playerConnect(conn mnet.Client, reader mpacket.Reader) {
+
+}
+
+func (server *Channel) HandleServerPacket(conn mnet.Server, reader mpacket.Reader) {
+
 }

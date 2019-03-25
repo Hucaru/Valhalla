@@ -4,12 +4,12 @@ import (
 	"strconv"
 
 	"github.com/Hucaru/Valhalla/constant"
-	opcodes "github.com/Hucaru/Valhalla/constant/opcode"
+	"github.com/Hucaru/Valhalla/constant/opcode"
 	"github.com/Hucaru/Valhalla/mpacket"
 )
 
 func PacketLoginResponce(result byte, userID int32, gender byte, isAdmin bool, username string, isBanned int) mpacket.Packet {
-	pac := mpacket.CreateWithOpcode(opcodes.SendLoginResponce)
+	pac := mpacket.CreateWithOpcode(opcode.SendLoginResponce)
 	pac.WriteByte(result)
 	pac.WriteByte(0x00)
 	pac.WriteInt32(0)
@@ -34,7 +34,7 @@ func PacketLoginResponce(result byte, userID int32, gender byte, isAdmin bool, u
 }
 
 func PacketLoginMigrateClient(ip []byte, port int16, charID int32) mpacket.Packet {
-	pac := mpacket.CreateWithOpcode(opcodes.SendLoginCharacterMigrate)
+	pac := mpacket.CreateWithOpcode(opcode.SendLoginCharacterMigrate)
 	pac.WriteByte(0x00)
 	pac.WriteByte(0x00)
 	pac.WriteBytes(ip)
@@ -47,7 +47,7 @@ func PacketLoginMigrateClient(ip []byte, port int16, charID int32) mpacket.Packe
 }
 
 func PacketLoginSendBadMigrate() mpacket.Packet {
-	pac := mpacket.CreateWithOpcode(opcodes.SendLoginCharacterMigrate)
+	pac := mpacket.CreateWithOpcode(opcode.SendLoginCharacterMigrate)
 	pac.WriteByte(0x00) // flipping these 2 bytes makes the character select screen do nothing it appears
 	pac.WriteByte(0x00)
 	pac.WriteBytes([]byte{0, 0, 0, 0})
@@ -60,7 +60,7 @@ func PacketLoginSendBadMigrate() mpacket.Packet {
 }
 
 func PacketLoginDisplayCharacters(characters []Character) mpacket.Packet {
-	pac := mpacket.CreateWithOpcode(opcodes.SendLoginCharacterData)
+	pac := mpacket.CreateWithOpcode(opcode.SendLoginCharacterData)
 	pac.WriteByte(0) // ?
 
 	if len(characters) < 4 && len(characters) > 0 {
@@ -77,7 +77,7 @@ func PacketLoginDisplayCharacters(characters []Character) mpacket.Packet {
 }
 
 func PacketLoginNameCheck(name string, nameFound int) mpacket.Packet {
-	pac := mpacket.CreateWithOpcode(opcodes.SendLoginNameCheckResult)
+	pac := mpacket.CreateWithOpcode(opcode.SendLoginNameCheckResult)
 	pac.WriteString(name)
 
 	if nameFound > 0 {
@@ -90,7 +90,7 @@ func PacketLoginNameCheck(name string, nameFound int) mpacket.Packet {
 }
 
 func PacketLoginCreatedCharacter(success bool, character Character) mpacket.Packet {
-	pac := mpacket.CreateWithOpcode(opcodes.SendLoginNewCharacterGood)
+	pac := mpacket.CreateWithOpcode(opcode.SendLoginNewCharacterGood)
 
 	if success {
 		pac.WriteByte(0x0) // if creation was sucessfull - 0 = good, 1 = bad
@@ -103,7 +103,7 @@ func PacketLoginCreatedCharacter(success bool, character Character) mpacket.Pack
 }
 
 func PacketLoginDeleteCharacter(charID int32, deleted bool, hacking bool) mpacket.Packet {
-	pac := mpacket.CreateWithOpcode(opcodes.SendLoginDeleteCharacter)
+	pac := mpacket.CreateWithOpcode(opcode.SendLoginDeleteCharacter)
 	pac.WriteInt32(charID)
 
 	if deleted {
@@ -169,7 +169,7 @@ func loginWritePlayerCharacter(pac *mpacket.Packet, pos int32, char Character) {
 }
 
 func PacketLoginWorldListing(worldIndex byte) mpacket.Packet {
-	pac := mpacket.CreateWithOpcode(opcodes.SendLoginWorldList)
+	pac := mpacket.CreateWithOpcode(opcode.SendLoginWorldList)
 	pac.WriteByte(worldIndex)                         // world id
 	pac.WriteString(constant.WORLD_NAMES[worldIndex]) // World name -
 	pac.WriteByte(3)                                  // Ribbon on world - 0 = normal, 1 = event, 2 = new, 3 = hot
@@ -192,14 +192,14 @@ func PacketLoginWorldListing(worldIndex byte) mpacket.Packet {
 }
 
 func PacketLoginEndWorldList() mpacket.Packet {
-	pac := mpacket.CreateWithOpcode(opcodes.SendLoginWorldList)
+	pac := mpacket.CreateWithOpcode(opcode.SendLoginWorldList)
 	pac.WriteByte(0xFF)
 
 	return pac
 }
 
 func PacketLoginWorldInfo(warning byte, population byte) mpacket.Packet {
-	p := mpacket.CreateWithOpcode(opcodes.SendLoginWorldMeta)
+	p := mpacket.CreateWithOpcode(opcode.SendLoginWorldMeta)
 	p.WriteByte(warning)    // Warning - 0 = no warning, 1 - high amount of concurent users, 2 = max uesrs in world
 	p.WriteByte(population) // Population marker - 0 = No maker, 1 = Highly populated, 2 = over populated
 
@@ -207,7 +207,7 @@ func PacketLoginWorldInfo(warning byte, population byte) mpacket.Packet {
 }
 
 func PacketLoginReturnFromChannel() mpacket.Packet {
-	pac := mpacket.CreateWithOpcode(opcodes.SendLoginRestarter)
+	pac := mpacket.CreateWithOpcode(opcode.SendLoginRestarter)
 	pac.WriteByte(0x01)
 
 	return pac

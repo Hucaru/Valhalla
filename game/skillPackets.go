@@ -1,12 +1,12 @@
 package game
 
 import (
-	opcodes "github.com/Hucaru/Valhalla/constant/opcode"
+	"github.com/Hucaru/Valhalla/constant/opcode"
 	"github.com/Hucaru/Valhalla/mpacket"
 )
 
 func PacketSkillMelee(char Character, attackData AttackData) mpacket.Packet {
-	p := mpacket.CreateWithOpcode(opcodes.SendChannelPlayerUseMeleeSkill)
+	p := mpacket.CreateWithOpcode(opcode.SendChannelPlayerUseMeleeSkill)
 	p.WriteInt32(char.ID)
 	p.WriteByte(attackData.Targets*0x10 + attackData.Hits)
 	p.WriteByte(attackData.SkillLevel)
@@ -43,7 +43,7 @@ func PacketSkillMelee(char Character, attackData AttackData) mpacket.Packet {
 }
 
 func PacketSkillRanged(char Character, attackData AttackData) mpacket.Packet {
-	p := mpacket.CreateWithOpcode(opcodes.SendChannelPlayerUseRangedSkill)
+	p := mpacket.CreateWithOpcode(opcode.SendChannelPlayerUseRangedSkill)
 	p.WriteInt32(char.ID)
 	p.WriteByte(attackData.Targets*0x10 + attackData.Hits)
 	p.WriteByte(attackData.SkillLevel)
@@ -76,7 +76,7 @@ func PacketSkillRanged(char Character, attackData AttackData) mpacket.Packet {
 }
 
 func PacketSkillMagic(char Character, attackData AttackData) mpacket.Packet {
-	p := mpacket.CreateWithOpcode(opcodes.SendChannelPlayerUseMagicSkill)
+	p := mpacket.CreateWithOpcode(opcode.SendChannelPlayerUseMagicSkill)
 	p.WriteInt32(char.ID)
 	p.WriteByte(attackData.Targets*0x10 + attackData.Hits)
 	p.WriteByte(attackData.SkillLevel)
@@ -109,7 +109,7 @@ func PacketSkillMagic(char Character, attackData AttackData) mpacket.Packet {
 }
 
 func PacketSkillAnimation(charID int32, skillID int32, level byte) mpacket.Packet {
-	p := mpacket.CreateWithOpcode(opcodes.SendChannelPlayerAnimation)
+	p := mpacket.CreateWithOpcode(opcode.SendChannelPlayerAnimation)
 	p.WriteInt32(charID)
 	p.WriteByte(0x01)
 	p.WriteInt32(skillID)
@@ -119,7 +119,7 @@ func PacketSkillAnimation(charID int32, skillID int32, level byte) mpacket.Packe
 }
 
 func PacketSkillGmHide(isHidden bool) mpacket.Packet {
-	p := mpacket.CreateWithOpcode(opcodes.SendChannelEmployee)
+	p := mpacket.CreateWithOpcode(opcode.SendChannelEmployee)
 	p.WriteByte(0x0F)
 	p.WriteBool(isHidden)
 
