@@ -8,12 +8,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Hucaru/Valhalla/game/entity"
-
 	"github.com/Hucaru/Valhalla/game"
 	"github.com/Hucaru/Valhalla/nx"
 
-	"github.com/Hucaru/Valhalla/constant"
 	"github.com/Hucaru/Valhalla/database"
 	"github.com/Hucaru/Valhalla/game/script"
 	"github.com/Hucaru/Valhalla/mnet"
@@ -56,7 +53,7 @@ func (cs *channelServer) Run() {
 
 	log.Println("Loaded and parsed Wizet data (NX) in", elapsed)
 
-	cs.gameState.Init(cs.wRecv)
+	cs.gameState.Initialise(cs.wRecv)
 
 	go script.WatchScriptDirectory("scripts/npc/")
 	go script.WatchScriptDirectory("scripts/event/")
@@ -115,12 +112,12 @@ func (cs *channelServer) acceptNewConnections() {
 		keyRecv := [4]byte{}
 		rand.Read(keyRecv[:])
 
-		channelConn := mnet.NewClient(conn, cs.eRecv, cs.config.PacketQueueSize, keySend, keyRecv)
+		clientConn := mnet.NewClient(conn, cs.eRecv, cs.config.PacketQueueSize, keySend, keyRecv)
 
-		go channelConn.Reader()
-		go channelConn.Writer()
+		go clientConn.Reader()
+		go clientConn.Writer()
 
-		conn.Write(entity.PacketClientHandshake(constant.MapleVersion, keyRecv[:], keySend[:]))
+		cs.gameState.ClientConnected(clientConn, keyRecv[:], keySend[:])
 	}
 }
 

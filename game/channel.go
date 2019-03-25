@@ -3,7 +3,9 @@ package game
 import (
 	"log"
 
+	"github.com/Hucaru/Valhalla/constant"
 	"github.com/Hucaru/Valhalla/constant/opcode"
+	"github.com/Hucaru/Valhalla/game/entity"
 	"github.com/Hucaru/Valhalla/mnet"
 	"github.com/Hucaru/Valhalla/mpacket"
 )
@@ -14,8 +16,14 @@ type Channel struct {
 	// players
 }
 
-func (server *Channel) Init(chan func()) {
+// Initialise the server
+func (server *Channel) Initialise(chan func()) {
 
+}
+
+// ClientConnected to server
+func (server *Channel) ClientConnected(conn mnet.Client, keyRecv, keySend []byte) {
+	conn.Send(entity.PacketClientHandshake(constant.MapleVersion, keyRecv, keySend))
 }
 
 func (server *Channel) ClientDisconnected(conn mnet.Client) {

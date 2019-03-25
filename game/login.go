@@ -6,6 +6,7 @@ import (
 	"log"
 	"strings"
 
+	"github.com/Hucaru/Valhalla/constant"
 	"github.com/Hucaru/Valhalla/constant/opcode"
 	"github.com/Hucaru/Valhalla/database"
 	"github.com/Hucaru/Valhalla/game/entity"
@@ -15,6 +16,11 @@ import (
 
 // Login server state
 type Login struct {
+}
+
+// ClientConnected to server
+func (server *Login) ClientConnected(conn mnet.Client, keyRecv, keySend []byte) {
+	conn.Send(entity.PacketClientHandshake(constant.MapleVersion, keyRecv, keySend))
 }
 
 // HandleClientPacket from client

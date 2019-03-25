@@ -9,20 +9,18 @@ import (
 	"time"
 
 	"github.com/Hucaru/Valhalla/game"
-	"github.com/Hucaru/Valhalla/game/entity"
 	"github.com/Hucaru/Valhalla/mpacket"
 
-	"github.com/Hucaru/Valhalla/constant"
 	"github.com/Hucaru/Valhalla/database"
 	"github.com/Hucaru/Valhalla/mnet"
 )
 
 type loginServer struct {
-	config   loginConfig
-	dbConfig dbConfig
-	eRecv    chan *mnet.Event
-	wg       *sync.WaitGroup
-	state    game.Login
+	config    loginConfig
+	dbConfig  dbConfig
+	eRecv     chan *mnet.Event
+	wg        *sync.WaitGroup
+	gameState game.Login
 }
 
 func NewLoginServer(configFile string) *loginServer {
@@ -124,12 +122,12 @@ func (ls *loginServer) acceptNewClientConnections() {
 		keyRecv := [4]byte{}
 		rand.Read(keyRecv[:])
 
-		loginConn := mnet.NewClient(conn, ls.eRecv, ls.config.PacketQueueSize, keySend, keyRecv)
+		clientConn := mnet.NewClient(conn, ls.eRecv, ls.config.PacketQueueSize, keySend, keyRecv)
 
-		go loginConn.Reader()
-		go loginConn.Writer()
+		go clientConn.Reader()
+		go clientConn.Writer()
 
-		conn.Write(entity.PacketClientHandshake(constant.MapleVersion, keyRecv[:], keySend[:]))
+		ls.gameState.ClientConnected(clientConn, keyRecv[:], keySend[:])
 	}
 }
 
@@ -155,7 +153,7 @@ func (ls *loginServer) processEvent() {
 					log.Println("Client at", clientConn, "disconnected")
 					clientConn.Cleanup()
 				case mnet.MEClientPacket:
-					ls.state.HandleClientPacket(clientConn, mpacket.NewReader(&e.Packet, time.Now().Unix()))
+					ls.gameState.HandleClientPacket(clientConn, mpacket.NewReader(&e.Packet, time.Now().Unix()))
 				}
 			} else {
 				serverConn, ok := e.Conn.(mnet.Server)
@@ -167,7 +165,7 @@ func (ls *loginServer) processEvent() {
 					case mnet.MEServerDisconnect:
 						log.Println("Server at", serverConn, "disconnected")
 					case mnet.MEServerPacket:
-						ls.state.HandleServerPacket(serverConn, mpacket.NewReader(&e.Packet, time.Now().Unix()))
+						ls.gameState.HandleServerPacket(serverConn, mpacket.NewReader(&e.Packet, time.Now().Unix()))
 					}
 				}
 			}
