@@ -19,8 +19,9 @@ import (
 type Channel struct {
 	// maps
 	// players
-	db       *sql.DB
-	dispatch chan func()
+	migrating map[mnet.Client]bool
+	db        *sql.DB
+	dispatch  chan func()
 }
 
 // Initialise the server
@@ -61,7 +62,18 @@ func (server *Channel) ClientConnected(conn net.Conn, clientEvent chan *mnet.Eve
 
 // ClientDisconnected from server
 func (server *Channel) ClientDisconnected(conn mnet.Client) {
-	// if loged in, clear the login status of account
+	if isMigrating, ok := server.migrating[conn]; ok && isMigrating {
+		// set migrating channel and world in db
+		// conn.GetWorldID()
+		// conn.GetChannelID()
+	} else if conn.GetLogedIn() {
+		_, err := server.db.Exec("UPDATE accounts SET isLogedIn=0 WHERE accountID=?", conn.GetAccountID())
+
+		if err != nil {
+			log.Println("Unable to complete logout for ", conn.GetAccountID())
+		}
+	}
+	conn.Cleanup()
 	conn.Cleanup()
 }
 

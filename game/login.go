@@ -18,11 +18,14 @@ import (
 
 // Login server state
 type Login struct {
-	db *sql.DB
+	migrating map[mnet.Client]bool
+	db        *sql.DB
 }
 
 // Initialise the server
 func (server *Login) Initialise(dbuser, dbpassword, dbaddress, dbport, dbdatabase string) {
+	server.migrating = make(map[mnet.Client]bool)
+
 	var err error
 	server.db, err = sql.Open("mysql", dbuser+":"+dbpassword+"@tcp("+dbaddress+":"+dbport+")/"+dbdatabase)
 
@@ -47,22 +50,6 @@ func (server *Login) Initialise(dbuser, dbpassword, dbaddress, dbport, dbdatabas
 	}
 
 	log.Println("Reset all accounts login server status")
-
-	// does db need to pinged to keep connection alive?
-	// go func() {
-	// 	timer := time.NewTicker(60 * time.Second)
-
-	// 	for {
-	// 		select {
-	// 		case <-timer.C:
-	// 			err := server.db.Ping()
-
-	// 			if err != nil {
-	// 				log.Fatal(err.Error()) // change to attempt to re-connect
-	// 			}
-	// 		}
-	// 	}
-	// }()
 }
 
 // ClientConnected to server
@@ -83,12 +70,14 @@ func (server *Login) ClientConnected(conn net.Conn, clientEvent chan *mnet.Event
 // ClientDisconnected from server
 func (server *Login) ClientDisconnected(conn mnet.Client) {
 	// if transitioning keep loged in
+	if isMigrating, ok := server.migrating[conn]; ok && isMigrating {
+		// set migrating channel and world in db
+		// conn.GetWorldID()
+		// conn.GetChannelID()
+	} else if conn.GetLogedIn() {
+		_, err := server.db.Exec("UPDATE accounts SET isLogedIn=0 WHERE accountID=?", conn.GetAccountID())
 
-	if conn.GetLogedIn() {
-		records, err := server.db.Query("UPDATE accounts SET isInChannel=? WHERE accountID=?", -1, conn.GetAccountID())
-		defer records.Close()
-
-		if err == nil {
+		if err != nil {
 			log.Println("Unable to complete logout for ", conn.GetAccountID())
 		}
 	}
@@ -100,31 +89,22 @@ func (server *Login) HandleClientPacket(conn mnet.Client, reader mpacket.Reader)
 	switch mpacket.Opcode(reader.ReadByte()) {
 	case opcode.RecvLoginRequest:
 		server.handleLoginRequest(conn, reader)
-
 	case opcode.RecvLoginCheckLogin:
 		server.handleGoodLogin(conn, reader)
-
 	case opcode.RecvLoginWorldSelect:
 		server.handleWorldSelect(conn, reader)
-
 	case opcode.RecvLoginChannelSelect:
 		server.handleChannelSelect(conn, reader)
-
 	case opcode.RecvLoginNameCheck:
 		server.handleNameCheck(conn, reader)
-
 	case opcode.RecvLoginNewCharacter:
 		server.handleNewCharacter(conn, reader)
-
 	case opcode.RecvLoginDeleteChar:
 		server.handleDeleteCharacter(conn, reader)
-
 	case opcode.RecvLoginSelectCharacter:
 		server.handleSelectCharacter(conn, reader)
-
 	case opcode.RecvReturnToLoginScreen:
 		server.handleReturnToLoginScreen(conn, reader)
-
 	default:
 		log.Println("UNKNOWN LOGIN PACKET:", reader)
 	}
@@ -187,6 +167,7 @@ func (server *Login) handleLoginRequest(conn mnet.Client, reader mpacket.Reader)
 }
 
 func (server *Login) handleGoodLogin(conn mnet.Client, reader mpacket.Reader) {
+	server.migrating[conn] = false
 	var username, password string
 
 	accountID := conn.GetAccountID()
@@ -397,12 +378,6 @@ func (server *Login) addCharacterItem(characterID int64, itemID int32, slot int3
 }
 
 func (server *Login) handleReturnToLoginScreen(conn mnet.Client, reader mpacket.Reader) {
-	_, err := server.db.Exec("UPDATE accounts SET isLogedIn=0 WHERE accountID=?", conn.GetAccountID())
-
-	if err != nil {
-		panic(err)
-	}
-
 	conn.Send(entity.PacketLoginReturnFromChannel())
 }
 
