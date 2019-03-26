@@ -1,7 +1,6 @@
 package server
 
 import (
-	"crypto/rand"
 	"log"
 	"net"
 	"os"
@@ -11,7 +10,6 @@ import (
 	"github.com/Hucaru/Valhalla/game"
 	"github.com/Hucaru/Valhalla/nx"
 
-	"github.com/Hucaru/Valhalla/database"
 	"github.com/Hucaru/Valhalla/game/script"
 	"github.com/Hucaru/Valhalla/mnet"
 	"github.com/Hucaru/Valhalla/mpacket"
@@ -44,7 +42,6 @@ func NewChannelServer(configFile string) *channelServer {
 func (cs *channelServer) Run() {
 	log.Println("Channel Server")
 
-	cs.establishDatabaseConnection()
 	cs.connectToWorld()
 
 	start := time.Now()
@@ -53,7 +50,7 @@ func (cs *channelServer) Run() {
 
 	log.Println("Loaded and parsed Wizet data (NX) in", elapsed)
 
-	cs.gameState.Initialise(cs.wRecv)
+	cs.gameState.Initialise(cs.wRecv, cs.dbConfig.User, cs.dbConfig.Password, cs.dbConfig.Address, cs.dbConfig.Port, cs.dbConfig.Database)
 
 	go script.WatchScriptDirectory("scripts/npc/")
 	go script.WatchScriptDirectory("scripts/event/")
@@ -66,11 +63,6 @@ func (cs *channelServer) Run() {
 	go cs.processEvent()
 
 	cs.wg.Wait()
-}
-
-func (cs *channelServer) establishDatabaseConnection() {
-	database.Connect(cs.dbConfig.User, cs.dbConfig.Password, cs.dbConfig.Address, cs.dbConfig.Port, cs.dbConfig.Database)
-	go database.Monitor()
 }
 
 func (cs *channelServer) connectToWorld() {
@@ -107,17 +99,7 @@ func (cs *channelServer) acceptNewConnections() {
 			return
 		}
 
-		keySend := [4]byte{}
-		rand.Read(keySend[:])
-		keyRecv := [4]byte{}
-		rand.Read(keyRecv[:])
-
-		clientConn := mnet.NewClient(conn, cs.eRecv, cs.config.PacketQueueSize, keySend, keyRecv)
-
-		go clientConn.Reader()
-		go clientConn.Writer()
-
-		cs.gameState.ClientConnected(clientConn, keyRecv[:], keySend[:])
+		cs.gameState.ClientConnected(conn, cs.eRecv, cs.config.PacketQueueSize)
 	}
 }
 
@@ -142,7 +124,6 @@ func (cs *channelServer) processEvent() {
 				case mnet.MEClientDisconnect:
 					log.Println("Client at", clientConn, "disconnected")
 					cs.gameState.ClientDisconnected(clientConn)
-					clientConn.Cleanup()
 				case mnet.MEClientPacket:
 					cs.gameState.HandleClientPacket(clientConn, mpacket.NewReader(&e.Packet, time.Now().Unix()))
 				}

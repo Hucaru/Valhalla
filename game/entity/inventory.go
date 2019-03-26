@@ -1,7 +1,8 @@
 package entity
 
 import (
-	"github.com/Hucaru/Valhalla/database"
+	"database/sql"
+
 	"github.com/google/uuid"
 )
 
@@ -38,9 +39,9 @@ func (i Inventory) Save(id int32) {
 	// }
 }
 
-func GetInventoryFromCharID(id int32) Inventory {
+func GetInventoryFromCharID(db *sql.DB, id int32) Inventory {
 	filter := "inventoryID,itemID,slotNumber,amount,flag,upgradeSlots,level,str,dex,intt,luk,hp,mp,watk,matk,wdef,mdef,accuracy,avoid,hands,speed,jump,expireTime,creatorName"
-	row, err := database.Handle.Query("SELECT "+filter+" FROM items WHERE characterID=?", id)
+	row, err := db.Query("SELECT "+filter+" FROM items WHERE characterID=?", id)
 
 	if err != nil {
 		panic(err)

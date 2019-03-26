@@ -1,7 +1,6 @@
 package server
 
 import (
-	"crypto/rand"
 	"log"
 	"net"
 	"os"
@@ -11,7 +10,6 @@ import (
 	"github.com/Hucaru/Valhalla/game"
 	"github.com/Hucaru/Valhalla/mpacket"
 
-	"github.com/Hucaru/Valhalla/database"
 	"github.com/Hucaru/Valhalla/mnet"
 )
 
@@ -39,7 +37,7 @@ func NewLoginServer(configFile string) *loginServer {
 func (ls *loginServer) Run() {
 	log.Println("Login Server")
 
-	ls.establishDatabaseConnection()
+	ls.gameState.Initialise(ls.dbConfig.User, ls.dbConfig.Password, ls.dbConfig.Address, ls.dbConfig.Port, ls.dbConfig.Database)
 
 	ls.wg.Add(1)
 	go ls.acceptNewClientConnections()
@@ -51,11 +49,6 @@ func (ls *loginServer) Run() {
 	go ls.processEvent()
 
 	ls.wg.Wait()
-}
-
-func (ls *loginServer) establishDatabaseConnection() {
-	database.Connect(ls.dbConfig.User, ls.dbConfig.Password, ls.dbConfig.Address, ls.dbConfig.Port, ls.dbConfig.Database)
-	go database.Monitor()
 }
 
 func (ls *loginServer) acceptNewServerConnections() {
@@ -89,16 +82,6 @@ func (ls *loginServer) acceptNewServerConnections() {
 func (ls *loginServer) acceptNewClientConnections() {
 	defer ls.wg.Done()
 
-	records, err := database.Handle.Query("UPDATE accounts SET isLogedIn=?", 0)
-
-	defer records.Close()
-
-	if err != nil {
-		panic(err)
-	}
-
-	log.Println("Reset all accounts login server status")
-
 	listener, err := net.Listen("tcp", ls.config.ClientListenAddress+":"+ls.config.ClientListenPort)
 
 	if err != nil {
@@ -117,17 +100,7 @@ func (ls *loginServer) acceptNewClientConnections() {
 			return
 		}
 
-		keySend := [4]byte{}
-		rand.Read(keySend[:])
-		keyRecv := [4]byte{}
-		rand.Read(keyRecv[:])
-
-		clientConn := mnet.NewClient(conn, ls.eRecv, ls.config.PacketQueueSize, keySend, keyRecv)
-
-		go clientConn.Reader()
-		go clientConn.Writer()
-
-		ls.gameState.ClientConnected(clientConn, keyRecv[:], keySend[:])
+		ls.gameState.ClientConnected(conn, ls.eRecv, ls.config.PacketQueueSize)
 	}
 }
 
@@ -151,7 +124,7 @@ func (ls *loginServer) processEvent() {
 					log.Println("New client from", clientConn)
 				case mnet.MEClientDisconnect:
 					log.Println("Client at", clientConn, "disconnected")
-					clientConn.Cleanup()
+					ls.gameState.ClientDisconnected(clientConn)
 				case mnet.MEClientPacket:
 					ls.gameState.HandleClientPacket(clientConn, mpacket.NewReader(&e.Packet, time.Now().Unix()))
 				}

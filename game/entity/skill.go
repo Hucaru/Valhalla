@@ -1,7 +1,8 @@
 package entity
 
 import (
-	"github.com/Hucaru/Valhalla/database"
+	"database/sql"
+
 	"github.com/Hucaru/Valhalla/nx"
 )
 
@@ -20,12 +21,12 @@ func CreateSkillFromData(ID int32, level byte, skill nx.PlayerSkill) Skill {
 		TimeLastUsed: 0}
 }
 
-func GetSkillsFromCharID(id int32) []Skill {
+func GetSkillsFromCharID(db *sql.DB, id int32) []Skill {
 	skills := []Skill{}
 
 	filter := "skillID, level, cooldown"
 
-	row, err := database.Handle.Query("SELECT "+filter+" FROM skills where characterID=?", id)
+	row, err := db.Query("SELECT "+filter+" FROM skills where characterID=?", id)
 
 	if err != nil {
 		panic(err)

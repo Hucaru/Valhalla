@@ -1,7 +1,8 @@
 package entity
 
 import (
-	"github.com/Hucaru/Valhalla/database"
+	"database/sql"
+
 	"github.com/Hucaru/Valhalla/nx"
 )
 
@@ -56,14 +57,14 @@ type Character struct {
 	MiniGameWins, MiniGameDraw, MiniGameLoss int32
 }
 
-func (c Character) Save() error {
+func (c Character) Save(db *sql.DB) error {
 	query := `UPDATE characters set skin=?, hair=?, face=?, level=?,
 	job=?, str=?, dex=?, intt=?, luk=?, hp=?, maxHP=?, mp=?, maxMP=?,
 	ap=?, sp=?, exp=?, fame=?, mapID=?, mesos=? WHERE id=?`
 
 	// need to calculate nearest spawn point for mapPos
 
-	_, err := database.Handle.Exec(query,
+	_, err := db.Exec(query,
 		c.Skin, c.Hair, c.Face, c.Level, c.Job, c.Str, c.Dex, c.Int, c.Luk, c.HP, c.MaxHP, c.MP,
 		c.MaxMP, c.AP, c.SP, c.EXP, c.Fame, c.MapID, c.Mesos, c.ID)
 
@@ -72,25 +73,25 @@ func (c Character) Save() error {
 	// There has to be a better way of doing this in mysql
 	for skillID, skill := range c.Skills {
 		query = `UPDATE skills SET level=?, cooldown=? WHERE skillID=? AND characterID=?`
-		result, err := database.Handle.Exec(query, skill.Level, skill.Cooldown, skillID, c.ID)
+		result, err := db.Exec(query, skill.Level, skill.Cooldown, skillID, c.ID)
 
 		if rows, _ := result.RowsAffected(); rows < 1 || err != nil {
 			query = `INSERT INTO skills (characterID, skillID, level, cooldown) VALUES (?, ?, ?, ?)`
-			_, err = database.Handle.Exec(query, c.ID, skillID, skill.Level, 0)
+			_, err = db.Exec(query, c.ID, skillID, skill.Level, 0)
 		}
 	}
 
 	return err
 }
 
-func GetCharactersFromAccountWorldID(accountID int32, worldID byte) []Character {
+func GetCharactersFromAccountWorldID(db *sql.DB, accountID int32, worldID byte) []Character {
 	c := []Character{}
 
 	filter := "id,accountID,worldID,name,gender,skin,hair,face,level,job,str,dex,intt," +
 		"luk,hp,maxHP,mp,maxMP,ap,sp, exp,fame,mapID,mapPos,previousMapID,mesos," +
 		"equipSlotSize,useSlotSize,setupSlotSize,etcSlotSize,cashSlotSize"
 
-	chars, err := database.Handle.Query("SELECT "+filter+" FROM characters WHERE accountID=? AND worldID=?", accountID, worldID)
+	chars, err := db.Query("SELECT "+filter+" FROM characters WHERE accountID=? AND worldID=?", accountID, worldID)
 
 	if err != nil {
 		panic(err)
@@ -111,7 +112,7 @@ func GetCharactersFromAccountWorldID(accountID int32, worldID byte) []Character 
 			panic(err)
 		}
 
-		char.Inventory = GetInventoryFromCharID(char.ID)
+		char.Inventory = GetInventoryFromCharID(db, char.ID)
 
 		c = append(c, char)
 	}
@@ -119,14 +120,14 @@ func GetCharactersFromAccountWorldID(accountID int32, worldID byte) []Character 
 	return c
 }
 
-func GetCharacterFromID(id int32) Character {
+func GetCharacterFromID(db *sql.DB, id int32) Character {
 	var char Character
 
 	filter := "id,accountID,worldID,name,gender,skin,hair,face,level,job,str,dex,intt," +
 		"luk,hp,maxHP,mp,maxMP,ap,sp, exp,fame,mapID,mapPos,previousMapID,mesos," +
 		"equipSlotSize,useSlotSize,setupSlotSize,etcSlotSize,cashSlotSize"
 
-	err := database.Handle.QueryRow("SELECT "+filter+" FROM characters where id=?", id).Scan(&char.ID,
+	err := db.QueryRow("SELECT "+filter+" FROM characters where id=?", id).Scan(&char.ID,
 		&char.AccountID, &char.WorldID, &char.Name, &char.Gender, &char.Skin, &char.Hair, &char.Face,
 		&char.Level, &char.Job, &char.Str, &char.Dex, &char.Int, &char.Luk, &char.HP, &char.MaxHP, &char.MP,
 		&char.MaxMP, &char.AP, &char.SP, &char.EXP, &char.Fame, &char.MapID, &char.MapPos,
@@ -137,11 +138,11 @@ func GetCharacterFromID(id int32) Character {
 		panic(err)
 	}
 
-	char.Inventory = GetInventoryFromCharID(char.ID)
+	char.Inventory = GetInventoryFromCharID(db, char.ID)
 
 	char.Skills = make(map[int32]Skill)
 
-	for _, s := range GetSkillsFromCharID(char.ID) {
+	for _, s := range GetSkillsFromCharID(db, char.ID) {
 		char.Skills[s.ID] = s
 	}
 

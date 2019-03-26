@@ -4,7 +4,6 @@ import (
 	"net"
 
 	"github.com/Hucaru/Valhalla/constant"
-	"github.com/Hucaru/Valhalla/database"
 	"github.com/Hucaru/Valhalla/mnet/crypt"
 	"github.com/Hucaru/Valhalla/mpacket"
 )
@@ -53,20 +52,6 @@ func NewClient(conn net.Conn, eRecv chan *Event, queueSize int, keySend, keyRecv
 	}
 
 	return c
-}
-
-func (c *client) Cleanup() {
-	c.baseConn.Cleanup()
-
-	if c.logedIn {
-		records, err := database.Handle.Query("UPDATE accounts SET isInChannel=? WHERE accountID=?", -1, c.accountID)
-
-		defer records.Close()
-
-		if err != nil {
-			panic(err)
-		}
-	}
 }
 
 func (c *client) GetLogedIn() bool {

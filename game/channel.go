@@ -1,7 +1,12 @@
 package game
 
 import (
+	"database/sql"
 	"log"
+	"math/rand"
+	"net"
+
+	_ "github.com/go-sql-driver/mysql"
 
 	"github.com/Hucaru/Valhalla/constant"
 	"github.com/Hucaru/Valhalla/constant/opcode"
@@ -14,23 +19,53 @@ import (
 type Channel struct {
 	// maps
 	// players
+	db       *sql.DB
+	dispatch chan func()
 }
 
 // Initialise the server
-func (server *Channel) Initialise(chan func()) {
+func (server *Channel) Initialise(work chan func(), dbuser, dbpassword, dbaddress, dbport, dbdatabase string) {
+	server.dispatch = work
+
+	var err error
+	server.db, err = sql.Open("mysql", dbuser+":"+dbpassword+"@tcp("+dbaddress+":"+dbport+")/"+dbdatabase)
+
+	if err != nil {
+		log.Fatal(err.Error())
+	}
+
+	err = server.db.Ping()
+
+	if err != nil {
+		log.Fatal(err.Error()) // change to attempt to re-connect
+	}
+
+	log.Println("Connected to database")
 
 }
 
 // ClientConnected to server
-func (server *Channel) ClientConnected(conn mnet.Client, keyRecv, keySend []byte) {
-	conn.Send(entity.PacketClientHandshake(constant.MapleVersion, keyRecv, keySend))
+func (server *Channel) ClientConnected(conn net.Conn, clientEvent chan *mnet.Event, packetQueueSize int) {
+	keySend := [4]byte{}
+	rand.Read(keySend[:])
+	keyRecv := [4]byte{}
+	rand.Read(keyRecv[:])
+
+	client := mnet.NewClient(conn, clientEvent, packetQueueSize, keySend, keyRecv)
+
+	go client.Reader()
+	go client.Writer()
+
+	conn.Write(entity.PacketClientHandshake(constant.MapleVersion, keyRecv[:], keySend[:]))
 }
 
+// ClientDisconnected from server
 func (server *Channel) ClientDisconnected(conn mnet.Client) {
-
+	// if loged in, clear the login status of account
+	conn.Cleanup()
 }
 
-// HandleClientPacket from client
+// HandleClientPacket
 func (server *Channel) HandleClientPacket(conn mnet.Client, reader mpacket.Reader) {
 	switch mpacket.Opcode(reader.ReadByte()) {
 	case opcode.RecvPing:
@@ -96,7 +131,7 @@ func (server *Channel) playerConnect(conn mnet.Client, reader mpacket.Reader) {
 
 }
 
-// HandleServerPacket from client
+// HandleServerPacket
 func (server *Channel) HandleServerPacket(conn mnet.Server, reader mpacket.Reader) {
 
 }
