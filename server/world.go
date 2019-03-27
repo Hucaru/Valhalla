@@ -37,13 +37,7 @@ func NewWorldServer(configFile string) *worldServer {
 func (ws *worldServer) Run() {
 	log.Println("World Server")
 
-	ticker := time.NewTicker(5 * time.Second)
-	for !ws.connectToLogin() {
-		<-ticker.C
-	}
-	ticker.Stop()
-
-	ws.state.RegisterWithLogin(ws.lconn)
+	ws.establishLoginConnection()
 
 	ws.wg.Add(1)
 	go ws.acceptNewServerConnections()
@@ -52,6 +46,16 @@ func (ws *worldServer) Run() {
 	go ws.processEvent()
 
 	ws.wg.Wait()
+}
+
+func (ws *worldServer) establishLoginConnection() {
+	ticker := time.NewTicker(5 * time.Second)
+	for !ws.connectToLogin() {
+		<-ticker.C
+	}
+	ticker.Stop()
+
+	ws.state.RegisterWithLogin(ws.lconn)
 }
 
 func (ws *worldServer) connectToLogin() bool {
@@ -125,6 +129,12 @@ func (ws *worldServer) processEvent() {
 				log.Println("New server from", serverConn)
 			case mnet.MEServerDisconnect:
 				log.Println("Server at", serverConn, "disconnected")
+
+				if serverConn == ws.lconn {
+					log.Println("Attempting to re-establish login server connection")
+					ws.establishLoginConnection()
+				}
+
 			case mnet.MEServerPacket:
 				ws.state.HandleChannelPacket(serverConn, mpacket.NewReader(&e.Packet, time.Now().Unix()))
 			}

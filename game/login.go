@@ -20,6 +20,7 @@ import (
 type Login struct {
 	migrating map[mnet.Client]bool
 	db        *sql.DB
+	worlds    []world
 }
 
 // Initialise the server
@@ -399,5 +400,5 @@ func (server *Login) handleNewWorld(conn mnet.Server, reader mpacket.Reader) {
 }
 
 func (server *Login) handleWorldInfo(conn mnet.Server, reader mpacket.Reader) {
-	log.Println("World info")
+	log.Println("World info", reader)
 }
