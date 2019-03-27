@@ -1,7 +1,6 @@
 package mnet
 
 import (
-	"fmt"
 	"net"
 
 	"github.com/Hucaru/Valhalla/mnet/crypt"
@@ -105,7 +104,7 @@ func (bc *baseConn) Writer() {
 			if bc.interServer {
 				tmp[0] = byte(len(tmp) - 1)
 			}
-			fmt.Println(tmp)
+
 			bc.Conn.Write(tmp)
 		}
 	}
