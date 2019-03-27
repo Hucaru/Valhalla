@@ -1,4 +1,4 @@
-package game
+package entity
 
 import (
 	"net"
@@ -8,15 +8,15 @@ import (
 	"github.com/Hucaru/Valhalla/mpacket"
 )
 
-type world struct {
-	conn          mnet.Server
+type World struct {
+	Conn          mnet.Server
 	Icon          byte
 	Name, Message string
 	Ribbon        byte
-	Channels      []channel
+	Channels      []Channel
 }
 
-func (w *world) AddChannel(ch channel) bool {
+func (w *World) AddChannel(ch Channel) bool {
 	if len(w.Channels) > 19 {
 		return false
 	}
@@ -25,7 +25,7 @@ func (w *world) AddChannel(ch channel) bool {
 	return true
 }
 
-func (w *world) generateInfoPacket() mpacket.Packet {
+func (w *World) GenerateInfoPacket() mpacket.Packet {
 	p := mpacket.CreateInternal(opcode.WorldInfo)
 	p.WriteByte(w.Icon)
 	p.WriteString(w.Name)
@@ -40,27 +40,27 @@ func (w *world) generateInfoPacket() mpacket.Packet {
 	return p
 }
 
-func (w *world) serialisePacket(reader mpacket.Reader) {
+func (w *World) SerialisePacket(reader mpacket.Reader) {
 	w.Icon = reader.ReadByte()
 	w.Name = reader.ReadString(int(reader.ReadInt16()))
 	w.Message = reader.ReadString(int(reader.ReadInt16()))
 	w.Ribbon = reader.ReadByte()
 
 	nOfChannels := int(reader.ReadByte())
-	w.Channels = make([]channel, nOfChannels)
+	w.Channels = make([]Channel, nOfChannels)
 
 	for i := 0; i < nOfChannels; i++ {
 		w.Channels[i].serialisePacket(reader)
 	}
 }
 
-type channel struct {
+type Channel struct {
 	IP          net.IP
 	Port        int16
 	MaxPop, Pop int16
 }
 
-func (c channel) generatePacket() mpacket.Packet {
+func (c Channel) generatePacket() mpacket.Packet {
 	p := mpacket.NewPacket()
 	p.WriteBytes(c.IP)
 	p.WriteInt16(c.Port)
@@ -69,7 +69,7 @@ func (c channel) generatePacket() mpacket.Packet {
 	return p
 }
 
-func (c *channel) serialisePacket(reader mpacket.Reader) {
+func (c *Channel) serialisePacket(reader mpacket.Reader) {
 	c.IP = reader.ReadBytes(4)
 	c.Port = reader.ReadInt16()
 	c.MaxPop = reader.ReadInt16()

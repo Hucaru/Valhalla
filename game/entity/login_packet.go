@@ -3,7 +3,6 @@ package entity
 import (
 	"strconv"
 
-	"github.com/Hucaru/Valhalla/constant"
 	"github.com/Hucaru/Valhalla/constant/opcode"
 	"github.com/Hucaru/Valhalla/mpacket"
 )
@@ -168,24 +167,21 @@ func loginWritePlayerCharacter(pac *mpacket.Packet, pos int32, char Character) {
 	pac.WriteInt32(4) // increase / decrease amount
 }
 
-func PacketLoginWorldListing(worldIndex byte) mpacket.Packet {
+func PacketLoginWorldListing(worldIndex byte, w World) mpacket.Packet {
 	pac := mpacket.CreateWithOpcode(opcode.SendLoginWorldList)
-	pac.WriteByte(worldIndex)                         // world id
-	pac.WriteString(constant.WORLD_NAMES[worldIndex]) // World name -
-	pac.WriteByte(3)                                  // Ribbon on world - 0 = normal, 1 = event, 2 = new, 3 = hot
-	pac.WriteString("test")
-	pac.WriteByte(10) // ? exp event notification?
-	pac.WriteByte(20) // number of channels
+	pac.WriteByte(worldIndex) // world id
+	pac.WriteString(w.Name)   // World name -
+	pac.WriteByte(w.Ribbon)   // Ribbon on world - 0 = normal, 1 = event, 2 = new, 3 = hot
+	pac.WriteString(w.Message)
+	pac.WriteByte(0)                     // ? exp event notification?
+	pac.WriteByte(byte(len(w.Channels))) // number of channels
 
-	// maxPopulation := 150
-	// population := 50
-
-	for j := 1; j < 21; j++ {
-		pac.WriteString(constant.WORLD_NAMES[worldIndex] + "-" + strconv.Itoa(j)) // channel name
-		pac.WriteInt32(int32(1200.0 * (float64(21-j) / float64(21))))             // Population
-		pac.WriteByte(worldIndex)                                                 // world id
-		pac.WriteByte(byte(j))                                                    // channel id
-		pac.WriteByte(byte(j - 1))                                                //?
+	for i, v := range w.Channels {
+		pac.WriteString(w.Name + "-" + strconv.Itoa(i+1))
+		pac.WriteInt32(int32(1200.0 * (float64(v.Pop) / float64(v.MaxPop))))
+		pac.WriteByte(worldIndex)
+		pac.WriteByte(byte(i + 1)) // channel id
+		pac.WriteByte(0)           // ?
 	}
 
 	return pac

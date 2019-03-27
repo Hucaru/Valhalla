@@ -5,12 +5,13 @@ import (
 	"time"
 
 	"github.com/Hucaru/Valhalla/constant/opcode"
+	"github.com/Hucaru/Valhalla/game/entity"
 	"github.com/Hucaru/Valhalla/mnet"
 	"github.com/Hucaru/Valhalla/mpacket"
 )
 
 type World struct {
-	info  world
+	info  entity.World
 	login mnet.Server
 }
 
@@ -29,7 +30,7 @@ func (server *World) HandleServerPacket(conn mnet.Server, reader mpacket.Reader)
 	case opcode.WorldRequestOk:
 		server.info.Name = reader.ReadString(int(reader.ReadInt16()))
 		log.Println("Registered as", server.info.Name, "with login server at", conn)
-		server.login.Send(server.info.generateInfoPacket())
+		server.login.Send(server.info.GenerateInfoPacket())
 	case opcode.WorldRequestBad:
 		log.Println("Rejected by login server at", conn)
 		timer := time.NewTimer(30 * time.Second)

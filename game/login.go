@@ -20,7 +20,7 @@ import (
 type Login struct {
 	migrating map[mnet.Client]bool
 	db        *sql.DB
-	worlds    []world
+	worlds    []entity.World
 }
 
 // Initialise the server
@@ -182,9 +182,10 @@ func (server *Login) handleGoodLogin(conn mnet.Client, reader mpacket.Reader) {
 
 	const maxNumberOfWorlds = 14
 
-	for i := maxNumberOfWorlds; i > -1; i-- {
-		conn.Send(entity.PacketLoginWorldListing(byte(i))) // hard coded for now
+	for i := len(server.worlds) - 1; i > -1; i-- {
+		conn.Send(entity.PacketLoginWorldListing(byte(i), server.worlds[i]))
 	}
+
 	conn.Send(entity.PacketLoginEndWorldList())
 }
 
@@ -394,6 +395,7 @@ func (server *Login) HandleServerPacket(conn mnet.Server, reader mpacket.Reader)
 	}
 }
 
+// if world comes in with name give it that name always
 func (server *Login) handleNewWorld(conn mnet.Server, reader mpacket.Reader) {
 	log.Println("Server register request from", conn)
 
@@ -401,7 +403,7 @@ func (server *Login) handleNewWorld(conn mnet.Server, reader mpacket.Reader) {
 		log.Println("Rejected")
 		conn.Send(mpacket.CreateInternal(opcode.WorldRequestBad))
 	} else {
-		server.worlds = append(server.worlds, world{conn: conn, Name: constant.WORLD_NAMES[len(server.worlds)]})
+		server.worlds = append(server.worlds, entity.World{Conn: conn, Name: constant.WORLD_NAMES[len(server.worlds)]})
 		p := mpacket.CreateInternal(opcode.WorldRequestOk)
 		p.WriteString(server.worlds[len(server.worlds)-1].Name)
 		conn.Send(p)
@@ -410,11 +412,11 @@ func (server *Login) handleNewWorld(conn mnet.Server, reader mpacket.Reader) {
 
 func (server *Login) handleWorldInfo(conn mnet.Server, reader mpacket.Reader) {
 	for i, v := range server.worlds {
-		if v.conn != conn {
+		if v.Conn != conn {
 			continue
 		}
 
-		server.worlds[i].serialisePacket(reader)
+		server.worlds[i].SerialisePacket(reader)
 
 		if v.Name == "" {
 			log.Println("Registerd new world", server.worlds[i].Name)
