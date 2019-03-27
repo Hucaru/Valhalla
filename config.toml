@@ -14,7 +14,8 @@ serverListenPort = "8485"
 packetQueueSize = 10
 
 [world]
-name = "Scania"
+message = "message"
+ribbon = 2
 loginAddress = "127.0.0.1"
 loginPort = "8485"
 listenAddress = "0.0.0.0"

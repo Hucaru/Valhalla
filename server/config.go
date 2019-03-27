@@ -23,7 +23,8 @@ type loginConfig struct {
 }
 
 type worldConfig struct {
-	Name            string
+	Message         string
+	Ribbon          byte
 	LoginAddress    string
 	LoginPort       string
 	ListenAddress   string

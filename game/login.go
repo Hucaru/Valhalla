@@ -395,10 +395,31 @@ func (server *Login) HandleServerPacket(conn mnet.Server, reader mpacket.Reader)
 }
 
 func (server *Login) handleNewWorld(conn mnet.Server, reader mpacket.Reader) {
-	// Response tells server what world it is
 	log.Println("Server register request from", conn)
+
+	if len(server.worlds) > 14 {
+		log.Println("Rejected")
+		conn.Send(mpacket.CreateInternal(opcode.WorldRequestBad))
+	} else {
+		server.worlds = append(server.worlds, world{conn: conn, Name: constant.WORLD_NAMES[len(server.worlds)]})
+		p := mpacket.CreateInternal(opcode.WorldRequestOk)
+		p.WriteString(server.worlds[len(server.worlds)-1].Name)
+		conn.Send(p)
+	}
 }
 
 func (server *Login) handleWorldInfo(conn mnet.Server, reader mpacket.Reader) {
-	log.Println("World info", reader)
+	for i, v := range server.worlds {
+		if v.conn != conn {
+			continue
+		}
+
+		server.worlds[i].serialisePacket(reader)
+
+		if v.Name == "" {
+			log.Println("Registerd new world", server.worlds[i].Name)
+		} else {
+			log.Println("Updated world info for", v.Name)
+		}
+	}
 }

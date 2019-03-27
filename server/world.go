@@ -55,7 +55,7 @@ func (ws *worldServer) establishLoginConnection() {
 	}
 	ticker.Stop()
 
-	ws.state.RegisterWithLogin(ws.lconn)
+	ws.state.RegisterWithLogin(ws.lconn, ws.config.Message, ws.config.Ribbon)
 }
 
 func (ws *worldServer) connectToLogin() bool {
@@ -136,7 +136,7 @@ func (ws *worldServer) processEvent() {
 				}
 
 			case mnet.MEServerPacket:
-				ws.state.HandleChannelPacket(serverConn, mpacket.NewReader(&e.Packet, time.Now().Unix()))
+				ws.state.HandleServerPacket(serverConn, mpacket.NewReader(&e.Packet, time.Now().Unix()))
 			}
 		}
 

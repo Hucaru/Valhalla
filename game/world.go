@@ -2,7 +2,9 @@ package game
 
 import (
 	"log"
+	"time"
 
+	"github.com/Hucaru/Valhalla/constant/opcode"
 	"github.com/Hucaru/Valhalla/mnet"
 	"github.com/Hucaru/Valhalla/mpacket"
 )
@@ -13,23 +15,27 @@ type World struct {
 }
 
 // RegisterWithLogin server
-func (server *World) RegisterWithLogin(conn mnet.Server) {
+func (server *World) RegisterWithLogin(conn mnet.Server, message string, ribbon byte) {
+	server.info.Message = message
+	server.info.Ribbon = ribbon
+
 	server.login = conn
-	server.login.Send(server.info.generateInfoPacket())
+	server.login.Send(mpacket.CreateInternal(opcode.WorldNew))
 }
 
-// HandleChannelPacket from channel
-func (server *World) HandleChannelPacket(conn mnet.Server, reader mpacket.Reader) {
+// HandleServerPacket from servers
+func (server *World) HandleServerPacket(conn mnet.Server, reader mpacket.Reader) {
 	switch reader.ReadByte() {
+	case opcode.WorldRequestOk:
+		server.info.Name = reader.ReadString(int(reader.ReadInt16()))
+		log.Println("Registered as", server.info.Name, "with login server at", conn)
+		server.login.Send(server.info.generateInfoPacket())
+	case opcode.WorldRequestBad:
+		log.Println("Rejected by login server at", conn)
+		timer := time.NewTimer(30 * time.Second)
+		<-timer.C
+		server.login.Send(mpacket.CreateInternal(opcode.WorldNew))
 	default:
-		log.Println("UNKNOWN CHANNEL PACKET:", reader)
-	}
-}
-
-// HandleLoginPacket from login
-func (server *World) HandleLoginPacket(conn mnet.Server, reader mpacket.Reader) {
-	switch reader.ReadByte() {
-	default:
-		log.Println("UNKNOWN LOGIN PACKET:", reader)
+		log.Println("UNKNOWN SERVER PACKET:", reader)
 	}
 }
