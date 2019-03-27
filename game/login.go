@@ -106,7 +106,7 @@ func (server *Login) HandleClientPacket(conn mnet.Client, reader mpacket.Reader)
 	case opcode.RecvReturnToLoginScreen:
 		server.handleReturnToLoginScreen(conn, reader)
 	default:
-		log.Println("UNKNOWN LOGIN PACKET:", reader)
+		log.Println("UNKNOWN CLIENT PACKET:", reader)
 	}
 }
 func (server *Login) handleLoginRequest(conn mnet.Client, reader mpacket.Reader) {
@@ -383,4 +383,21 @@ func (server *Login) handleReturnToLoginScreen(conn mnet.Client, reader mpacket.
 
 // HandleServerPacket from client
 func (server *Login) HandleServerPacket(conn mnet.Server, reader mpacket.Reader) {
+	switch reader.ReadByte() {
+	case opcode.WorldNew:
+		server.handleNewWorld(conn, reader)
+	case opcode.WorldInfo:
+		server.handleWorldInfo(conn, reader)
+	default:
+		log.Println("UNKNOWN WORLD PACKET:", reader)
+	}
+}
+
+func (server *Login) handleNewWorld(conn mnet.Server, reader mpacket.Reader) {
+	// Response tells server what world it is
+	log.Println("Server register request from", conn)
+}
+
+func (server *Login) handleWorldInfo(conn mnet.Server, reader mpacket.Reader) {
+	log.Println("World info")
 }

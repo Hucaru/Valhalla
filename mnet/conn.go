@@ -1,9 +1,9 @@
 package mnet
 
 import (
+	"fmt"
 	"net"
 
-	"github.com/Hucaru/Valhalla/constant"
 	"github.com/Hucaru/Valhalla/mnet/crypt"
 
 	"github.com/Hucaru/Valhalla/mpacket"
@@ -32,7 +32,7 @@ func clientReader(conn net.Conn, eRecv chan *Event, mapleVersion int16, headerSi
 		if header {
 			readSize = crypt.GetPacketLength(buffer)
 		} else {
-			readSize = constant.ClientHeaderSize
+			readSize = headerSize
 
 			if cryptRecv != nil {
 				cryptRecv.Decrypt(buffer, true, false)
@@ -60,10 +60,10 @@ func serverReader(conn net.Conn, eRecv chan *Event, headerSize int) {
 		}
 
 		if header {
-			readSize = crypt.GetPacketLength(buffer)
+			readSize = int(buffer[0])
 		} else {
-			readSize = constant.ClientHeaderSize
-			eRecv <- &Event{Type: MEClientPacket, Conn: conn, Packet: buffer}
+			readSize = headerSize
+			eRecv <- &Event{Type: MEServerPacket, Conn: conn, Packet: buffer}
 		}
 
 		header = !header
@@ -79,6 +79,8 @@ type baseConn struct {
 
 	cryptSend *crypt.Maple
 	cryptRecv *crypt.Maple
+
+	interServer bool
 }
 
 func (bc *baseConn) Reader() {
@@ -100,6 +102,10 @@ func (bc *baseConn) Writer() {
 				bc.cryptSend.Encrypt(tmp, true, false)
 			}
 
+			if bc.interServer {
+				tmp[0] = byte(len(tmp) - 1)
+			}
+			fmt.Println(tmp)
 			bc.Conn.Write(tmp)
 		}
 	}

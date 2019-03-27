@@ -174,18 +174,18 @@ func PacketLoginWorldListing(worldIndex byte) mpacket.Packet {
 	pac.WriteString(constant.WORLD_NAMES[worldIndex]) // World name -
 	pac.WriteByte(3)                                  // Ribbon on world - 0 = normal, 1 = event, 2 = new, 3 = hot
 	pac.WriteString("test")
-	pac.WriteByte(0)  // ? exp event notification?
+	pac.WriteByte(10) // ? exp event notification?
 	pac.WriteByte(20) // number of channels
 
-	maxPopulation := 150
-	population := 50
+	// maxPopulation := 150
+	// population := 50
 
 	for j := 1; j < 21; j++ {
-		pac.WriteString(constant.WORLD_NAMES[worldIndex] + "-" + strconv.Itoa(j))      // channel name
-		pac.WriteInt32(int32(1200.0 * (float64(population) / float64(maxPopulation)))) // Population
-		pac.WriteByte(worldIndex)                                                      // world id
-		pac.WriteByte(byte(j))                                                         // channel id
-		pac.WriteByte(byte(j - 1))                                                     //?
+		pac.WriteString(constant.WORLD_NAMES[worldIndex] + "-" + strconv.Itoa(j)) // channel name
+		pac.WriteInt32(int32(1200.0 * (float64(21-j) / float64(21))))             // Population
+		pac.WriteByte(worldIndex)                                                 // world id
+		pac.WriteByte(byte(j))                                                    // channel id
+		pac.WriteByte(byte(j - 1))                                                //?
 	}
 
 	return pac

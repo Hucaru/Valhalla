@@ -51,6 +51,8 @@ func NewClient(conn net.Conn, eRecv chan *Event, queueSize int, keySend, keyRecv
 		clientReader(c, c.eRecv, constant.MapleVersion, constant.ClientHeaderSize, c.cryptRecv)
 	}
 
+	c.interServer = false
+
 	return c
 }
 

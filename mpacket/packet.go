@@ -23,6 +23,14 @@ func CreateWithOpcode(op Opcode) Packet {
 	return p
 }
 
+func CreateInterServer(op Opcode) Packet {
+	p := Packet{}
+	p.WriteByte(0)
+	p.WriteByte(byte(op))
+
+	return p
+}
+
 // Append -
 func (p *Packet) Append(data []byte) {
 	*p = append(*p, data...)

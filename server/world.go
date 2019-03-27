@@ -37,7 +37,13 @@ func NewWorldServer(configFile string) *worldServer {
 func (ws *worldServer) Run() {
 	log.Println("World Server")
 
-	ws.connectToLogin()
+	ticker := time.NewTicker(5 * time.Second)
+	for !ws.connectToLogin() {
+		<-ticker.C
+	}
+	ticker.Stop()
+
+	ws.state.RegisterWithLogin(ws.lconn)
 
 	ws.wg.Add(1)
 	go ws.acceptNewServerConnections()
@@ -48,17 +54,24 @@ func (ws *worldServer) Run() {
 	ws.wg.Wait()
 }
 
-func (ws *worldServer) connectToLogin() {
+func (ws *worldServer) connectToLogin() bool {
 	conn, err := net.Dial("tcp", ws.config.LoginAddress+":"+ws.config.LoginPort)
 
 	if err != nil {
-		log.Println(err)
-		os.Exit(1)
+		log.Println("Could not connect to login server at", ws.config.LoginAddress+":"+ws.config.LoginPort)
+		return false
 	}
 
 	log.Println("Connected to login server at", ws.config.LoginAddress+":"+ws.config.LoginPort)
 
-	ws.lconn = mnet.NewServer(conn, ws.eRecv, ws.config.PacketQueueSize)
+	login := mnet.NewServer(conn, ws.eRecv, ws.config.PacketQueueSize)
+
+	go login.Reader()
+	go login.Writer()
+
+	ws.lconn = login
+
+	return true
 }
 
 func (ws *worldServer) acceptNewServerConnections() {
