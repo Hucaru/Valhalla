@@ -21,22 +21,37 @@ func (server *World) RegisterWithLogin(conn mnet.Server, message string, ribbon 
 	server.info.Ribbon = ribbon
 
 	server.login = conn
-	server.login.Send(mpacket.CreateInternal(opcode.WorldNew))
+
+	p := mpacket.CreateInternal(opcode.WorldNew)
+	p.WriteString(server.info.Name)
+	server.login.Send(p)
 }
 
 // HandleServerPacket from servers
 func (server *World) HandleServerPacket(conn mnet.Server, reader mpacket.Reader) {
 	switch reader.ReadByte() {
 	case opcode.WorldRequestOk:
-		server.info.Name = reader.ReadString(int(reader.ReadInt16()))
-		log.Println("Registered as", server.info.Name, "with login server at", conn)
-		server.login.Send(server.info.GenerateInfoPacket())
+		server.handleRequestOk(conn, reader)
 	case opcode.WorldRequestBad:
-		log.Println("Rejected by login server at", conn)
-		timer := time.NewTimer(30 * time.Second)
-		<-timer.C
-		server.login.Send(mpacket.CreateInternal(opcode.WorldNew))
+		server.handleRequestBad(conn, reader)
 	default:
 		log.Println("UNKNOWN SERVER PACKET:", reader)
 	}
+}
+
+func (server *World) handleRequestOk(conn mnet.Server, reader mpacket.Reader) {
+	server.info.Name = reader.ReadString(int(reader.ReadInt16()))
+	log.Println("Registered as", server.info.Name, "with login server at", conn)
+	server.login.Send(server.info.GenerateInfoPacket())
+}
+
+func (server *World) handleRequestBad(conn mnet.Server, reader mpacket.Reader) {
+	log.Println("Rejected by login server at", conn)
+	timer := time.NewTimer(30 * time.Second)
+
+	<-timer.C
+
+	p := mpacket.CreateInternal(opcode.WorldNew)
+	p.WriteString(server.info.Name)
+	server.login.Send(p)
 }

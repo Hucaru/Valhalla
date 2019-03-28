@@ -137,6 +137,7 @@ func (ls *loginServer) processEvent() {
 						log.Println("New server from", serverConn)
 					case mnet.MEServerDisconnect:
 						log.Println("Server at", serverConn, "disconnected")
+						ls.gameState.ServerDisconnected(serverConn)
 					case mnet.MEServerPacket:
 						ls.gameState.HandleServerPacket(serverConn, mpacket.NewReader(&e.Packet, time.Now().Unix()))
 					}

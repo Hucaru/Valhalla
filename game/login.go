@@ -395,18 +395,76 @@ func (server *Login) HandleServerPacket(conn mnet.Server, reader mpacket.Reader)
 	}
 }
 
+func (server *Login) ServerDisconnected(conn mnet.Server) {
+	for i, v := range server.worlds {
+		if v.Conn == conn {
+			log.Println(v.Name, "disconnected")
+			server.worlds[i].Conn = nil
+			server.worlds[i].Channels = []entity.Channel{}
+			break
+		}
+	}
+}
+
 // if world comes in with name give it that name always
 func (server *Login) handleNewWorld(conn mnet.Server, reader mpacket.Reader) {
 	log.Println("Server register request from", conn)
-
 	if len(server.worlds) > 14 {
 		log.Println("Rejected")
 		conn.Send(mpacket.CreateInternal(opcode.WorldRequestBad))
 	} else {
-		server.worlds = append(server.worlds, entity.World{Conn: conn, Name: constant.WORLD_NAMES[len(server.worlds)]})
-		p := mpacket.CreateInternal(opcode.WorldRequestOk)
-		p.WriteString(server.worlds[len(server.worlds)-1].Name)
-		conn.Send(p)
+		name := reader.ReadString(int(reader.ReadInt16()))
+
+		if name == "" {
+			name = constant.WORLD_NAMES[len(server.worlds)]
+
+			registered := false
+			for i, v := range server.worlds {
+				if v.Conn == nil {
+					server.worlds[i].Conn = conn
+					name = server.worlds[i].Name
+
+					registered = true
+					break
+				}
+			}
+
+			if !registered {
+				server.worlds = append(server.worlds, entity.World{Conn: conn, Name: name})
+			}
+
+			p := mpacket.CreateInternal(opcode.WorldRequestOk)
+			p.WriteString(name)
+			conn.Send(p)
+
+			log.Println("Registered", name)
+		} else {
+			registered := false
+			for i, w := range server.worlds {
+				if w.Name == name {
+					server.worlds[i].Conn = conn
+					server.worlds[i].Name = name
+
+					p := mpacket.CreateInternal(opcode.WorldRequestOk)
+					p.WriteString(name)
+					conn.Send(p)
+
+					registered = true
+
+					break
+				}
+			}
+
+			if !registered {
+				server.worlds = append(server.worlds, entity.World{Conn: conn, Name: name})
+
+				p := mpacket.CreateInternal(opcode.WorldRequestOk)
+				p.WriteString(server.worlds[len(server.worlds)-1].Name)
+				conn.Send(p)
+			}
+
+			log.Println("Re-registered", name)
+		}
 	}
 }
 
