@@ -89,7 +89,7 @@ func (cs *channelServer) connectToWorld() {
 	go world.Writer()
 
 	cs.worldConn = world
-	cs.gameState.RegisterWithWorld(cs.worldConn, ip.To4(), int16(port))
+	cs.gameState.RegisterWithWorld(cs.worldConn, ip.To4(), int16(port), cs.config.MaxPop)
 }
 
 func (cs *channelServer) acceptNewConnections() {

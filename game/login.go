@@ -294,7 +294,27 @@ func (server *Login) handleWorldSelect(conn mnet.Client, reader mpacket.Reader) 
 	conn.SetWorldID(reader.ReadByte())
 	reader.ReadByte() // ?
 
-	conn.Send(entity.PacketLoginWorldInfo(0, 0)) // hard coded for now
+	var warning, population byte = 0, 0
+
+	if conn.GetAdminLevel() < 1 { // gms are not restricted in any capacity
+		var currentPlayers int16
+		var maxPlayers int16
+
+		for _, v := range server.worlds[conn.GetWorldID()].Channels {
+			currentPlayers += v.Pop
+			maxPlayers += v.MaxPop
+		}
+
+		if currentPlayers >= maxPlayers {
+			warning = 2
+		} else if float64(currentPlayers)/float64(maxPlayers) > 0.95 { // I'm not sure if this warning is even worth it
+			warning = 1
+		}
+
+		// implement server total registered characters lookup for population field
+	}
+
+	conn.Send(entity.PacketLoginWorldInfo(warning, population)) // hard coded for now
 }
 
 func (server *Login) handleChannelSelect(conn mnet.Client, reader mpacket.Reader) {

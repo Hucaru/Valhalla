@@ -25,6 +25,7 @@ type Channel struct {
 	world     mnet.Server
 	ip        []byte
 	port      int16
+	maxPop    int16
 	migrating map[mnet.Client]bool
 }
 
@@ -50,10 +51,11 @@ func (server *Channel) Initialise(work chan func(), dbuser, dbpassword, dbaddres
 }
 
 // RegisterWithWorld server
-func (server *Channel) RegisterWithWorld(conn mnet.Server, ip []byte, port int16) {
+func (server *Channel) RegisterWithWorld(conn mnet.Server, ip []byte, port int16, maxPop int16) {
 	server.world = conn
 	server.ip = ip
 	server.port = port
+	server.maxPop = maxPop
 
 	server.registerWithWorld()
 }
@@ -62,7 +64,7 @@ func (server *Channel) registerWithWorld() {
 	p := mpacket.CreateInternal(opcode.ChannelNew)
 	p.WriteBytes(server.ip)
 	p.WriteInt16(server.port)
-	p.WriteInt16(100)
+	p.WriteInt16(server.maxPop)
 	server.world.Send(p)
 }
 

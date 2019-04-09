@@ -200,7 +200,7 @@ func PacketLoginEndWorldList() mpacket.Packet {
 
 func PacketLoginWorldInfo(warning byte, population byte) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendLoginWorldMeta)
-	p.WriteByte(warning)    // Warning - 0 = no warning, 1 - high amount of concurent users, 2 = max uesrs in world
+	p.WriteByte(warning)    // Warning - 0 = no warning, 1 - high amount of concurent users, 2 = max users in world
 	p.WriteByte(population) // Population marker - 0 = No maker, 1 = Highly populated, 2 = over populated
 
 	return p

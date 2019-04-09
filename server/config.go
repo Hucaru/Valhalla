@@ -39,6 +39,7 @@ type channelConfig struct {
 	ClientConnectionAddress string
 	ListenPort              string
 	PacketQueueSize         int
+	MaxPop                  int16
 }
 
 type fullConfig struct {
