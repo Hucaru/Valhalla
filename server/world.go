@@ -135,6 +135,7 @@ func (ws *worldServer) processEvent() {
 					ws.establishLoginConnection()
 				}
 
+				ws.state.ServerDisconnected(serverConn)
 			case mnet.MEServerPacket:
 				ws.state.HandleServerPacket(serverConn, mpacket.NewReader(&e.Packet, time.Now().Unix()))
 			}

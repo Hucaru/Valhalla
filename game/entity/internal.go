@@ -1,8 +1,6 @@
 package entity
 
 import (
-	"net"
-
 	"github.com/Hucaru/Valhalla/constant/opcode"
 	"github.com/Hucaru/Valhalla/mnet"
 	"github.com/Hucaru/Valhalla/mpacket"
@@ -55,7 +53,8 @@ func (w *World) SerialisePacket(reader mpacket.Reader) {
 }
 
 type Channel struct {
-	IP          net.IP
+	Conn        mnet.Server
+	IP          []byte
 	Port        int16
 	MaxPop, Pop int16
 }

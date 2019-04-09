@@ -33,11 +33,12 @@ type worldConfig struct {
 }
 
 type channelConfig struct {
-	WorldAddress    string
-	WorldPort       string
-	ListenAddress   string
-	ListenPort      string
-	PacketQueueSize int
+	WorldAddress            string
+	WorldPort               string
+	ListenAddress           string
+	ClientConnectionAddress string
+	ListenPort              string
+	PacketQueueSize         int
 }
 
 type fullConfig struct {

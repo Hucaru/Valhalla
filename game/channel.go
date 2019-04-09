@@ -2,9 +2,11 @@ package game
 
 import (
 	"database/sql"
+	"fmt"
 	"log"
 	"math/rand"
 	"net"
+	"time"
 
 	_ "github.com/go-sql-driver/mysql"
 
@@ -17,11 +19,13 @@ import (
 
 // Channel server state
 type Channel struct {
-	// maps
-	// players
-	migrating map[mnet.Client]bool
+	id        byte
 	db        *sql.DB
 	dispatch  chan func()
+	world     mnet.Server
+	ip        []byte
+	port      int16
+	migrating map[mnet.Client]bool
 }
 
 // Initialise the server
@@ -43,6 +47,49 @@ func (server *Channel) Initialise(work chan func(), dbuser, dbpassword, dbaddres
 
 	log.Println("Connected to database")
 
+}
+
+// RegisterWithWorld server
+func (server *Channel) RegisterWithWorld(conn mnet.Server, ip []byte, port int16) {
+	server.world = conn
+	server.ip = ip
+	server.port = port
+
+	server.registerWithWorld()
+}
+
+func (server *Channel) registerWithWorld() {
+	p := mpacket.CreateInternal(opcode.ChannelNew)
+	p.WriteBytes(server.ip)
+	p.WriteInt16(server.port)
+	p.WriteInt16(100)
+	server.world.Send(p)
+}
+
+// HandleServerPacket from world
+func (server *Channel) HandleServerPacket(conn mnet.Server, reader mpacket.Reader) {
+	switch reader.ReadByte() {
+	case opcode.ChannelBad:
+		server.handleNewChannelBad(conn, reader)
+	case opcode.ChannelOk:
+		server.handleNewChannelOK(conn, reader)
+	default:
+		log.Println("UNKNOWN SERVER PACKET:", reader)
+	}
+}
+
+func (server *Channel) handleNewChannelBad(conn mnet.Server, reader mpacket.Reader) {
+	log.Println("Rejected by world server at", conn)
+	timer := time.NewTimer(30 * time.Second)
+
+	<-timer.C
+
+	server.registerWithWorld()
+}
+
+func (server *Channel) handleNewChannelOK(conn mnet.Server, reader mpacket.Reader) {
+	server.id = reader.ReadByte()
+	log.Println("Registered as channel", server.id)
 }
 
 // ClientConnected to server
@@ -74,12 +121,11 @@ func (server *Channel) ClientDisconnected(conn mnet.Client) {
 		}
 	}
 	conn.Cleanup()
-	conn.Cleanup()
 }
 
 // HandleClientPacket
 func (server *Channel) HandleClientPacket(conn mnet.Client, reader mpacket.Reader) {
-	switch mpacket.Opcode(reader.ReadByte()) {
+	switch reader.ReadByte() {
 	case opcode.RecvPing:
 	case opcode.RecvChannelPlayerLoad:
 		server.playerConnect(conn, reader)
@@ -140,10 +186,5 @@ func (server *Channel) HandleClientPacket(conn mnet.Client, reader mpacket.Reade
 }
 
 func (server *Channel) playerConnect(conn mnet.Client, reader mpacket.Reader) {
-
-}
-
-// HandleServerPacket
-func (server *Channel) HandleServerPacket(conn mnet.Server, reader mpacket.Reader) {
-
+	fmt.Println("player connected")
 }

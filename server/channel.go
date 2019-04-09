@@ -4,6 +4,7 @@ import (
 	"log"
 	"net"
 	"os"
+	"strconv"
 	"sync"
 	"time"
 
@@ -75,7 +76,20 @@ func (cs *channelServer) connectToWorld() {
 
 	log.Println("Connected to world server at", cs.config.WorldAddress+":"+cs.config.WorldPort)
 
-	cs.worldConn = mnet.NewServer(conn, cs.eRecv, cs.config.PacketQueueSize)
+	ip := net.ParseIP(cs.config.ClientConnectionAddress)
+	port, err := strconv.Atoi(cs.config.ListenPort)
+
+	if err != nil {
+		panic(err)
+	}
+
+	world := mnet.NewServer(conn, cs.eRecv, cs.config.PacketQueueSize)
+
+	go world.Reader()
+	go world.Writer()
+
+	cs.worldConn = world
+	cs.gameState.RegisterWithWorld(cs.worldConn, ip.To4(), int16(port))
 }
 
 func (cs *channelServer) acceptNewConnections() {

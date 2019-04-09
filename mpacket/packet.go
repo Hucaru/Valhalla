@@ -15,18 +15,18 @@ func NewPacket() Packet {
 type Opcode byte
 
 // CreateWithOpcode -
-func CreateWithOpcode(op Opcode) Packet {
+func CreateWithOpcode(op byte) Packet {
 	p := Packet{}
 	p.WriteInt32(0)
-	p.WriteByte(byte(op))
+	p.WriteByte(op)
 
 	return p
 }
 
-func CreateInternal(op Opcode) Packet {
+func CreateInternal(op byte) Packet {
 	p := Packet{}
 	p.WriteByte(0)
-	p.WriteByte(byte(op))
+	p.WriteByte(op)
 
 	return p
 }

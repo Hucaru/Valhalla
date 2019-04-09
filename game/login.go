@@ -53,6 +53,107 @@ func (server *Login) Initialise(dbuser, dbpassword, dbaddress, dbport, dbdatabas
 	log.Println("Reset all accounts login server status")
 }
 
+// HandleServerPacket from world
+func (server *Login) HandleServerPacket(conn mnet.Server, reader mpacket.Reader) {
+	switch reader.ReadByte() {
+	case opcode.WorldNew:
+		server.handleNewWorld(conn, reader)
+	case opcode.WorldInfo:
+		server.handleWorldInfo(conn, reader)
+	default:
+		log.Println("UNKNOWN WORLD PACKET:", reader)
+	}
+}
+
+func (server *Login) ServerDisconnected(conn mnet.Server) {
+	for i, v := range server.worlds {
+		if v.Conn == conn {
+			log.Println(v.Name, "disconnected")
+			server.worlds[i].Conn = nil
+			server.worlds[i].Channels = []entity.Channel{}
+			break
+		}
+	}
+}
+
+// if world comes in with name give it that name always
+func (server *Login) handleNewWorld(conn mnet.Server, reader mpacket.Reader) {
+	log.Println("Server register request from", conn)
+	if len(server.worlds) > 14 {
+		log.Println("Rejected")
+		conn.Send(mpacket.CreateInternal(opcode.WorldRequestBad))
+	} else {
+		name := reader.ReadString(int(reader.ReadInt16()))
+
+		if name == "" {
+			name = constant.WORLD_NAMES[len(server.worlds)]
+
+			registered := false
+			for i, v := range server.worlds {
+				if v.Conn == nil {
+					server.worlds[i].Conn = conn
+					name = server.worlds[i].Name
+
+					registered = true
+					break
+				}
+			}
+
+			if !registered {
+				server.worlds = append(server.worlds, entity.World{Conn: conn, Name: name})
+			}
+
+			p := mpacket.CreateInternal(opcode.WorldRequestOk)
+			p.WriteString(name)
+			conn.Send(p)
+
+			log.Println("Registered", name)
+		} else {
+			registered := false
+			for i, w := range server.worlds {
+				if w.Name == name {
+					server.worlds[i].Conn = conn
+					server.worlds[i].Name = name
+
+					p := mpacket.CreateInternal(opcode.WorldRequestOk)
+					p.WriteString(name)
+					conn.Send(p)
+
+					registered = true
+
+					break
+				}
+			}
+
+			if !registered {
+				server.worlds = append(server.worlds, entity.World{Conn: conn, Name: name})
+
+				p := mpacket.CreateInternal(opcode.WorldRequestOk)
+				p.WriteString(server.worlds[len(server.worlds)-1].Name)
+				conn.Send(p)
+			}
+
+			log.Println("Re-registered", name)
+		}
+	}
+}
+
+func (server *Login) handleWorldInfo(conn mnet.Server, reader mpacket.Reader) {
+	for i, v := range server.worlds {
+		if v.Conn != conn {
+			continue
+		}
+
+		server.worlds[i].SerialisePacket(reader)
+
+		if v.Name == "" {
+			log.Println("Registerd new world", server.worlds[i].Name)
+		} else {
+			log.Println("Updated world info for", v.Name)
+		}
+	}
+}
+
 // ClientConnected to server
 func (server *Login) ClientConnected(conn net.Conn, clientEvent chan *mnet.Event, packetQueueSize int) {
 	keySend := [4]byte{}
@@ -87,7 +188,7 @@ func (server *Login) ClientDisconnected(conn mnet.Client) {
 
 // HandleClientPacket from client
 func (server *Login) HandleClientPacket(conn mnet.Client, reader mpacket.Reader) {
-	switch mpacket.Opcode(reader.ReadByte()) {
+	switch reader.ReadByte() {
 	case opcode.RecvLoginRequest:
 		server.handleLoginRequest(conn, reader)
 	case opcode.RecvLoginCheckLogin:
@@ -199,6 +300,11 @@ func (server *Login) handleWorldSelect(conn mnet.Client, reader mpacket.Reader) 
 func (server *Login) handleChannelSelect(conn mnet.Client, reader mpacket.Reader) {
 	selectedWorld := reader.ReadByte()   // world
 	conn.SetChannelID(reader.ReadByte()) // Channel
+
+	if server.worlds[selectedWorld].Channels[conn.GetChannelID()].MaxPop == 0 {
+		conn.Send(entity.PacketMessageDialogueBox("Channel currently unavailable"))
+		return
+	}
 
 	if selectedWorld == conn.GetWorldID() {
 		characters := entity.GetCharactersFromAccountWorldID(server.db, conn.GetAccountID(), conn.GetWorldID())
@@ -381,105 +487,4 @@ func (server *Login) addCharacterItem(characterID int64, itemID int32, slot int3
 
 func (server *Login) handleReturnToLoginScreen(conn mnet.Client, reader mpacket.Reader) {
 	conn.Send(entity.PacketLoginReturnFromChannel())
-}
-
-// HandleServerPacket from client
-func (server *Login) HandleServerPacket(conn mnet.Server, reader mpacket.Reader) {
-	switch reader.ReadByte() {
-	case opcode.WorldNew:
-		server.handleNewWorld(conn, reader)
-	case opcode.WorldInfo:
-		server.handleWorldInfo(conn, reader)
-	default:
-		log.Println("UNKNOWN WORLD PACKET:", reader)
-	}
-}
-
-func (server *Login) ServerDisconnected(conn mnet.Server) {
-	for i, v := range server.worlds {
-		if v.Conn == conn {
-			log.Println(v.Name, "disconnected")
-			server.worlds[i].Conn = nil
-			server.worlds[i].Channels = []entity.Channel{}
-			break
-		}
-	}
-}
-
-// if world comes in with name give it that name always
-func (server *Login) handleNewWorld(conn mnet.Server, reader mpacket.Reader) {
-	log.Println("Server register request from", conn)
-	if len(server.worlds) > 14 {
-		log.Println("Rejected")
-		conn.Send(mpacket.CreateInternal(opcode.WorldRequestBad))
-	} else {
-		name := reader.ReadString(int(reader.ReadInt16()))
-
-		if name == "" {
-			name = constant.WORLD_NAMES[len(server.worlds)]
-
-			registered := false
-			for i, v := range server.worlds {
-				if v.Conn == nil {
-					server.worlds[i].Conn = conn
-					name = server.worlds[i].Name
-
-					registered = true
-					break
-				}
-			}
-
-			if !registered {
-				server.worlds = append(server.worlds, entity.World{Conn: conn, Name: name})
-			}
-
-			p := mpacket.CreateInternal(opcode.WorldRequestOk)
-			p.WriteString(name)
-			conn.Send(p)
-
-			log.Println("Registered", name)
-		} else {
-			registered := false
-			for i, w := range server.worlds {
-				if w.Name == name {
-					server.worlds[i].Conn = conn
-					server.worlds[i].Name = name
-
-					p := mpacket.CreateInternal(opcode.WorldRequestOk)
-					p.WriteString(name)
-					conn.Send(p)
-
-					registered = true
-
-					break
-				}
-			}
-
-			if !registered {
-				server.worlds = append(server.worlds, entity.World{Conn: conn, Name: name})
-
-				p := mpacket.CreateInternal(opcode.WorldRequestOk)
-				p.WriteString(server.worlds[len(server.worlds)-1].Name)
-				conn.Send(p)
-			}
-
-			log.Println("Re-registered", name)
-		}
-	}
-}
-
-func (server *Login) handleWorldInfo(conn mnet.Server, reader mpacket.Reader) {
-	for i, v := range server.worlds {
-		if v.Conn != conn {
-			continue
-		}
-
-		server.worlds[i].SerialisePacket(reader)
-
-		if v.Name == "" {
-			log.Println("Registerd new world", server.worlds[i].Name)
-		} else {
-			log.Println("Updated world info for", v.Name)
-		}
-	}
 }

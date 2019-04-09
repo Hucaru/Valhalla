@@ -11,7 +11,7 @@ clientListenAddress = "0.0.0.0"
 clientListenPort = "8484"
 serverListenAddress = "0.0.0.0"
 serverListenPort = "8485"
-packetQueueSize = 10
+packetQueueSize = 1024
 
 [world]
 message = "message"
@@ -20,11 +20,12 @@ loginAddress = "127.0.0.1"
 loginPort = "8485"
 listenAddress = "0.0.0.0"
 listenPort = "8584"
-packetQueueSize = 10
+packetQueueSize = 1024
 
 [channel]
 worldAddress = "127.0.0.1"
 worldPort = "8584"
 listenAddress = "0.0.0.0"
 listenPort = "8684"
-packetQueueSize = 10
+ClientConnectionAddress = "192.168.1.240"
+packetQueueSize = 1024

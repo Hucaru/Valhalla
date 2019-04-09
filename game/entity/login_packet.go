@@ -178,7 +178,11 @@ func PacketLoginWorldListing(worldIndex byte, w World) mpacket.Packet {
 
 	for i, v := range w.Channels {
 		pac.WriteString(w.Name + "-" + strconv.Itoa(i+1))
-		pac.WriteInt32(int32(1200.0 * (float64(v.Pop) / float64(v.MaxPop))))
+		if v.MaxPop == 0 {
+			pac.WriteInt32(0)
+		} else {
+			pac.WriteInt32(int32(1200.0 * (float64(v.Pop) / float64(v.MaxPop))))
+		}
 		pac.WriteByte(worldIndex)
 		pac.WriteByte(byte(i + 1)) // channel id
 		pac.WriteByte(0)           // ?
