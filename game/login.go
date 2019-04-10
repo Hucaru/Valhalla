@@ -76,14 +76,14 @@ func (server *Login) ServerDisconnected(conn mnet.Server) {
 	}
 }
 
-// if world comes in with name give it that name always
+// The following logic could do with being cleaned up
 func (server *Login) handleNewWorld(conn mnet.Server, reader mpacket.Reader) {
 	log.Println("Server register request from", conn)
 	if len(server.worlds) > 14 {
 		log.Println("Rejected")
 		conn.Send(mpacket.CreateInternal(opcode.WorldRequestBad))
 	} else {
-		name := reader.ReadString(int(reader.ReadInt16()))
+		name := reader.ReadString(reader.ReadInt16())
 
 		if name == "" {
 			name = constant.WORLD_NAMES[len(server.worlds)]
@@ -212,11 +212,8 @@ func (server *Login) HandleClientPacket(conn mnet.Client, reader mpacket.Reader)
 	}
 }
 func (server *Login) handleLoginRequest(conn mnet.Client, reader mpacket.Reader) {
-	usernameLength := reader.ReadInt16()
-	username := reader.ReadString(int(usernameLength))
-
-	passwordLength := reader.ReadInt16()
-	password := reader.ReadString(int(passwordLength))
+	username := reader.ReadString(reader.ReadInt16())
+	password := reader.ReadString(reader.ReadInt16())
 
 	// hash the password, cba to salt atm
 	hasher := sha512.New()
@@ -333,8 +330,7 @@ func (server *Login) handleChannelSelect(conn mnet.Client, reader mpacket.Reader
 }
 
 func (server *Login) handleNameCheck(conn mnet.Client, reader mpacket.Reader) {
-	nameLength := reader.ReadInt16()
-	newCharName := reader.ReadString(int(nameLength))
+	newCharName := reader.ReadString(reader.ReadInt16())
 
 	var nameFound int
 	err := server.db.QueryRow("SELECT count(*) name FROM characters WHERE name=?", newCharName).
@@ -348,8 +344,7 @@ func (server *Login) handleNameCheck(conn mnet.Client, reader mpacket.Reader) {
 }
 
 func (server *Login) handleNewCharacter(conn mnet.Client, reader mpacket.Reader) {
-	nameLength := reader.ReadInt16()
-	name := reader.ReadString(int(nameLength))
+	name := reader.ReadString(reader.ReadInt16())
 	face := reader.ReadInt32()
 	hair := reader.ReadInt32()
 	hairColour := reader.ReadInt32()
@@ -491,9 +486,8 @@ func (server *Login) handleSelectCharacter(conn mnet.Client, reader mpacket.Read
 	}
 
 	if charCount == 1 {
-		ip := []byte{192, 168, 1, 240}
-		port := int16(8684)
-		conn.Send(entity.PacketLoginMigrateClient(ip, port, charID))
+		channel := server.worlds[conn.GetWorldID()].Channels[conn.GetChannelID()]
+		conn.Send(entity.PacketLoginMigrateClient(channel.IP, channel.Port, charID))
 	}
 }
 

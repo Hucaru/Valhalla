@@ -59,7 +59,7 @@ func (server *World) ServerDisconnected(conn mnet.Server) {
 }
 
 func (server *World) handleRequestOk(conn mnet.Server, reader mpacket.Reader) {
-	server.info.Name = reader.ReadString(int(reader.ReadInt16()))
+	server.info.Name = reader.ReadString(reader.ReadInt16())
 	log.Println("Registered as", server.info.Name, "with login server at", conn)
 	server.login.Send(server.info.GenerateInfoPacket())
 }

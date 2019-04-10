@@ -122,9 +122,9 @@ func (r *Reader) ReadUint64() uint64 {
 }
 
 // ReadString -
-func (r *Reader) ReadString(size int) string {
-	if len(*r.packet)-r.pos >= size {
-		return r.packet.readString(&r.pos, size)
+func (r *Reader) ReadString(size int16) string {
+	if len(*r.packet)-r.pos >= int(size) {
+		return r.packet.readString(&r.pos, int(size))
 	}
 
 	return ""

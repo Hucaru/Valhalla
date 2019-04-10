@@ -14,15 +14,6 @@ type World struct {
 	Channels      []Channel
 }
 
-func (w *World) AddChannel(ch Channel) bool {
-	if len(w.Channels) > 19 {
-		return false
-	}
-
-	w.Channels = append(w.Channels, ch)
-	return true
-}
-
 func (w *World) GenerateInfoPacket() mpacket.Packet {
 	p := mpacket.CreateInternal(opcode.WorldInfo)
 	p.WriteByte(w.Icon)
@@ -40,15 +31,15 @@ func (w *World) GenerateInfoPacket() mpacket.Packet {
 
 func (w *World) SerialisePacket(reader mpacket.Reader) {
 	w.Icon = reader.ReadByte()
-	w.Name = reader.ReadString(int(reader.ReadInt16()))
-	w.Message = reader.ReadString(int(reader.ReadInt16()))
+	w.Name = reader.ReadString(reader.ReadInt16())
+	w.Message = reader.ReadString(reader.ReadInt16())
 	w.Ribbon = reader.ReadByte()
 
 	nOfChannels := int(reader.ReadByte())
 	w.Channels = make([]Channel, nOfChannels)
 
 	for i := 0; i < nOfChannels; i++ {
-		w.Channels[i].serialisePacket(reader)
+		w.Channels[i].serialisePacket(&reader)
 	}
 }
 
@@ -68,7 +59,7 @@ func (c Channel) generatePacket() mpacket.Packet {
 	return p
 }
 
-func (c *Channel) serialisePacket(reader mpacket.Reader) {
+func (c *Channel) serialisePacket(reader *mpacket.Reader) {
 	c.IP = reader.ReadBytes(4)
 	c.Port = reader.ReadInt16()
 	c.MaxPop = reader.ReadInt16()

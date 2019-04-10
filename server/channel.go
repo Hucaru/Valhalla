@@ -43,7 +43,7 @@ func NewChannelServer(configFile string) *channelServer {
 func (cs *channelServer) Run() {
 	log.Println("Channel Server")
 
-	cs.connectToWorld()
+	cs.establishWorldConnection()
 
 	start := time.Now()
 	nx.LoadFile("Data.nx")
@@ -66,15 +66,12 @@ func (cs *channelServer) Run() {
 	cs.wg.Wait()
 }
 
-func (cs *channelServer) connectToWorld() {
-	conn, err := net.Dial("tcp", cs.config.WorldAddress+":"+cs.config.WorldPort)
-
-	if err != nil {
-		log.Println(err)
-		os.Exit(1)
+func (cs *channelServer) establishWorldConnection() {
+	ticker := time.NewTicker(5 * time.Second)
+	for !cs.connectToWorld() {
+		<-ticker.C
 	}
-
-	log.Println("Connected to world server at", cs.config.WorldAddress+":"+cs.config.WorldPort)
+	ticker.Stop()
 
 	ip := net.ParseIP(cs.config.ClientConnectionAddress)
 	port, err := strconv.Atoi(cs.config.ListenPort)
@@ -83,13 +80,27 @@ func (cs *channelServer) connectToWorld() {
 		panic(err)
 	}
 
+	cs.gameState.RegisterWithWorld(cs.worldConn, ip.To4(), int16(port), cs.config.MaxPop)
+}
+
+func (cs *channelServer) connectToWorld() bool {
+	conn, err := net.Dial("tcp", cs.config.WorldAddress+":"+cs.config.WorldPort)
+
+	if err != nil {
+		log.Println("Could not connect to world server at", cs.config.WorldAddress+":"+cs.config.WorldPort)
+		return false
+	}
+
+	log.Println("Connected to world server at", cs.config.WorldAddress+":"+cs.config.WorldPort)
+
 	world := mnet.NewServer(conn, cs.eRecv, cs.config.PacketQueueSize)
 
 	go world.Reader()
 	go world.Writer()
 
 	cs.worldConn = world
-	cs.gameState.RegisterWithWorld(cs.worldConn, ip.To4(), int16(port), cs.config.MaxPop)
+
+	return true
 }
 
 func (cs *channelServer) acceptNewConnections() {
@@ -148,6 +159,8 @@ func (cs *channelServer) processEvent() {
 					switch e.Type {
 					case mnet.MEServerDisconnect:
 						log.Println("Server at", serverConn, "disconnected")
+						log.Println("Attempting to re-establish world server connection")
+						cs.establishWorldConnection()
 					case mnet.MEServerPacket:
 						cs.gameState.HandleServerPacket(serverConn, mpacket.NewReader(&e.Packet, time.Now().Unix()))
 					}
