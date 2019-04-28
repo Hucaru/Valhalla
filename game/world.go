@@ -39,6 +39,8 @@ func (server *World) HandleServerPacket(conn mnet.Server, reader mpacket.Reader)
 		server.handleRequestBad(conn, reader)
 	case opcode.ChannelNew:
 		server.handleNewChannel(conn, reader)
+	case opcode.ChannelConnectionInfo:
+		server.handleGetChannelConnectionInfo(conn, reader)
 	default:
 		log.Println("UNKNOWN SERVER PACKET:", reader)
 	}
@@ -112,4 +114,28 @@ func (server *World) handleNewChannel(conn mnet.Server, reader mpacket.Reader) {
 	server.login.Send(server.info.GenerateInfoPacket())
 
 	log.Println("Registered channel", len(server.info.Channels)-1)
+}
+
+func (server *World) handleGetChannelConnectionInfo(conn mnet.Server, reader mpacket.Reader) {
+	id := reader.ReadByte()
+
+	found := false
+
+	for i, v := range server.info.Channels {
+		if i == int(id) && v.Conn != nil {
+			found = true
+			break
+		}
+	}
+
+	p := mpacket.CreateInternal(opcode.ChannelConnectionInfo)
+	p.WriteBool(found)
+	p.WriteByte(id)
+
+	if found {
+		p.WriteBytes(server.info.Channels[id].IP)
+		p.WriteInt16(server.info.Channels[id].Port)
+	}
+
+	conn.Send(p)
 }

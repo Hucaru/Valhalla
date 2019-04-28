@@ -10,9 +10,9 @@ import (
 	"github.com/Hucaru/Valhalla/nx"
 )
 
-var Maps = make(map[int32]*GameMap)
+var Maps = make(map[int32]*Map)
 
-type GameMap struct {
+type Map struct {
 	id           int32
 	instances    []*MapInstance
 	mapData      nx.Map
@@ -25,7 +25,7 @@ type GameMap struct {
 func InitMaps(dispatcher chan func()) {
 	for mapID, nxMap := range nx.GetMaps() {
 
-		Maps[mapID] = &GameMap{
+		Maps[mapID] = &Map{
 			id:           mapID,
 			mapData:      nxMap,
 			workDispatch: dispatcher,
@@ -36,13 +36,13 @@ func InitMaps(dispatcher chan func()) {
 	}
 }
 
-func (gm *GameMap) CreateNewInstance() int {
+func (gm *Map) CreateNewInstance() int {
 	inst := createInstanceFromMapData(gm.mapData, gm.id, gm.workDispatch, gm.mobCapacityMin, gm.mobCapacityMax)
 	gm.instances = append(gm.instances, inst)
 	return len(gm.instances) - 1
 }
 
-func (gm *GameMap) DeleteInstance(instance int) error {
+func (gm *Map) DeleteInstance(instance int) error {
 	if len(gm.instances) > 0 {
 		if instance == 0 {
 			return fmt.Errorf("Not allowed to delete instance zero")
@@ -61,11 +61,11 @@ func (gm *GameMap) DeleteInstance(instance int) error {
 	return fmt.Errorf("Unable to delete instance")
 }
 
-func (gm *GameMap) GetNumberOfInstances() int {
+func (gm *Map) GetNumberOfInstances() int {
 	return len(gm.instances)
 }
 
-func (gm *GameMap) AddPlayer(conn mnet.Client, instance int) error {
+func (gm *Map) AddPlayer(conn mnet.Client, instance int) error {
 	if len(gm.instances) > 0 {
 		if instance < len(gm.instances) {
 			gm.instances[instance].addPlayer(conn)
@@ -80,11 +80,11 @@ func (gm *GameMap) AddPlayer(conn mnet.Client, instance int) error {
 	return fmt.Errorf("Unable to add player to map as there are no instances")
 }
 
-func (gm *GameMap) RemovePlayer(conn mnet.Client) {
+func (gm *Map) RemovePlayer(conn mnet.Client) {
 	gm.instances[Players[conn].InstanceID].removePlayer(conn)
 }
 
-func (gm *GameMap) GetRandomSpawnPortal() (nx.Portal, byte, error) {
+func (gm *Map) GetRandomSpawnPortal() (nx.Portal, byte, error) {
 	portals := []nx.Portal{}
 	inds := []int{}
 
@@ -105,7 +105,7 @@ func (gm *GameMap) GetRandomSpawnPortal() (nx.Portal, byte, error) {
 	return portals[ind], byte(inds[ind]), nil
 }
 
-func (gm *GameMap) GetPlayers(instance int) ([]mnet.Client, error) {
+func (gm *Map) GetPlayers(instance int) ([]mnet.Client, error) {
 	if len(gm.instances) > 0 && instance < len(gm.instances) {
 		return gm.instances[instance].players, nil
 	}
@@ -113,7 +113,7 @@ func (gm *GameMap) GetPlayers(instance int) ([]mnet.Client, error) {
 	return []mnet.Client{}, fmt.Errorf("Unable to get players")
 }
 
-func (gm *GameMap) GetMobs(instance int) ([]Mob, error) {
+func (gm *Map) GetMobs(instance int) ([]Mob, error) {
 	if len(gm.instances) > 0 && instance < len(gm.instances) {
 		return gm.instances[instance].mobs, nil
 	}
@@ -121,7 +121,7 @@ func (gm *GameMap) GetMobs(instance int) ([]Mob, error) {
 	return nil, fmt.Errorf("Unable to get mobs")
 }
 
-func (gm *GameMap) GetMobFromSpawnID(spawnID int32, instance int) (*Mob, error) {
+func (gm *Map) GetMobFromSpawnID(spawnID int32, instance int) (*Mob, error) {
 	if len(gm.instances) > 0 && instance < len(gm.instances) {
 		for i, v := range gm.instances[instance].mobs {
 			if v.SpawnID == spawnID {
@@ -133,7 +133,7 @@ func (gm *GameMap) GetMobFromSpawnID(spawnID int32, instance int) (*Mob, error) 
 	return nil, fmt.Errorf("Unable to get mob")
 }
 
-func (gm *GameMap) SpawnMob(mobID int32, pos Pos, fh int16, facesLeft bool, instance int) {
+func (gm *Map) SpawnMob(mobID int32, pos Pos, fh int16, facesLeft bool, instance int) {
 	if len(gm.instances) > 0 && instance < len(gm.instances) {
 		inst := gm.instances[instance]
 
@@ -141,7 +141,7 @@ func (gm *GameMap) SpawnMob(mobID int32, pos Pos, fh int16, facesLeft bool, inst
 	}
 }
 
-func (gm *GameMap) GetNpcFromSpawnID(spawnID int32, instance int) (*Npc, error) {
+func (gm *Map) GetNpcFromSpawnID(spawnID int32, instance int) (*Npc, error) {
 	if len(gm.instances) > 0 && instance < len(gm.instances) {
 		for i, v := range gm.instances[instance].npcs {
 			if v.SpawnID == spawnID {
@@ -153,13 +153,13 @@ func (gm *GameMap) GetNpcFromSpawnID(spawnID int32, instance int) (*Npc, error) 
 	return nil, fmt.Errorf("Unable to get npc")
 }
 
-func (gm *GameMap) HandleDeadMobs(instance int) {
+func (gm *Map) HandleDeadMobs(instance int) {
 	if len(gm.instances) > 0 && instance < len(gm.instances) {
 		gm.instances[instance].handleDeadMobs()
 	}
 }
 
-func (gm *GameMap) FindControllerExcept(conn mnet.Client, instance int) mnet.Client {
+func (gm *Map) FindControllerExcept(conn mnet.Client, instance int) mnet.Client {
 	if len(gm.instances) > 0 && instance < len(gm.instances) {
 		return gm.instances[instance].findControllerExcept(conn)
 	}
@@ -167,13 +167,13 @@ func (gm *GameMap) FindControllerExcept(conn mnet.Client, instance int) mnet.Cli
 	return nil
 }
 
-func (gm *GameMap) Send(p mpacket.Packet, instance int) {
+func (gm *Map) Send(p mpacket.Packet, instance int) {
 	if len(gm.instances) > 0 && instance < len(gm.instances) {
 		gm.instances[instance].send(p)
 	}
 }
 
-func (gm *GameMap) SendExcept(p mpacket.Packet, exception mnet.Client, instance int) {
+func (gm *Map) SendExcept(p mpacket.Packet, exception mnet.Client, instance int) {
 	if len(gm.instances) > 0 && instance < len(gm.instances) {
 		gm.instances[instance].sendExcept(p, exception)
 	}
@@ -226,7 +226,7 @@ func (r mapRectangle) contains(x, y int) bool {
 	return true
 }
 
-func (gm *GameMap) calculateMapLimits() {
+func (gm *Map) calculateMapLimits() {
 	left, top := math.MaxInt32, math.MaxInt32
 	right, bottom := math.MinInt32, math.MinInt32
 

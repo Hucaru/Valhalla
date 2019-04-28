@@ -2,7 +2,6 @@ package game
 
 import (
 	"database/sql"
-	"fmt"
 	"log"
 	"math/rand"
 	"net"
@@ -26,12 +25,15 @@ type Channel struct {
 	ip        []byte
 	port      int16
 	maxPop    int16
-	migrating map[mnet.Client]bool
+	migrating map[mnet.Client]byte
+	sessions  map[mnet.Client]*entity.Character
 }
 
 // Initialise the server
 func (server *Channel) Initialise(work chan func(), dbuser, dbpassword, dbaddress, dbport, dbdatabase string) {
 	server.dispatch = work
+	server.migrating = make(map[mnet.Client]byte)
+	server.sessions = make(map[mnet.Client]*entity.Character)
 
 	var err error
 	server.db, err = sql.Open("mysql", dbuser+":"+dbpassword+"@tcp("+dbaddress+":"+dbport+")/"+dbdatabase)
@@ -75,6 +77,8 @@ func (server *Channel) HandleServerPacket(conn mnet.Server, reader mpacket.Reade
 		server.handleNewChannelBad(conn, reader)
 	case opcode.ChannelOk:
 		server.handleNewChannelOK(conn, reader)
+	case opcode.ChannelConnectionInfo:
+		server.handleChannelConnectionInfo(conn, reader)
 	default:
 		log.Println("UNKNOWN SERVER PACKET:", reader)
 	}
@@ -94,6 +98,30 @@ func (server *Channel) handleNewChannelOK(conn mnet.Server, reader mpacket.Reade
 	log.Println("Registered as channel", server.id)
 }
 
+func (server *Channel) handleChannelConnectionInfo(conn mnet.Server, reader mpacket.Reader) {
+	valid := reader.ReadBool()
+	id := reader.ReadByte()
+
+	if !valid {
+		for k, v := range server.migrating {
+			if v == id {
+				k.Send(entity.PacketChangeChannel(server.ip, server.port))
+			}
+		}
+
+		return
+	}
+
+	ip := reader.ReadBytes(4)
+	port := reader.ReadInt16()
+
+	for k, v := range server.migrating {
+		if v == id {
+			k.Send(entity.PacketChangeChannel(ip, port))
+		}
+	}
+}
+
 // ClientConnected to server
 func (server *Channel) ClientConnected(conn net.Conn, clientEvent chan *mnet.Event, packetQueueSize int) {
 	keySend := [4]byte{}
@@ -111,10 +139,11 @@ func (server *Channel) ClientConnected(conn net.Conn, clientEvent chan *mnet.Eve
 
 // ClientDisconnected from server
 func (server *Channel) ClientDisconnected(conn mnet.Client) {
-	if isMigrating, ok := server.migrating[conn]; ok && isMigrating {
-		// set migrating channel and world in db
+	if _, ok := server.migrating[conn]; ok {
 		// conn.GetWorldID()
 		// conn.GetChannelID()
+		// set migrating channel and world in db
+		delete(server.migrating, conn)
 	} else if conn.GetLogedIn() {
 		_, err := server.db.Exec("UPDATE accounts SET isLogedIn=0 WHERE accountID=?", conn.GetAccountID())
 
@@ -131,6 +160,8 @@ func (server *Channel) HandleClientPacket(conn mnet.Client, reader mpacket.Reade
 	case opcode.RecvPing:
 	case opcode.RecvChannelPlayerLoad:
 		server.playerConnect(conn, reader)
+	case opcode.RecvCHannelChangeChannel:
+		server.playerChangeChannel(conn, reader)
 	case opcode.RecvChannelUserPortal:
 		// server.playerUsePortal(conn, reader)
 	case opcode.RecvChannelEnterCashShop:
@@ -185,8 +216,4 @@ func (server *Channel) HandleClientPacket(conn mnet.Client, reader mpacket.Reade
 	default:
 		log.Println("UNKNOWN CLIENT PACKET:", reader)
 	}
-}
-
-func (server *Channel) playerConnect(conn mnet.Client, reader mpacket.Reader) {
-	fmt.Println("player connected")
 }

@@ -120,40 +120,36 @@ func GetCharactersFromAccountWorldID(db *sql.DB, accountID int32, worldID byte) 
 	return c
 }
 
-func GetCharacterFromID(db *sql.DB, id int32) Character {
-	var char Character
-
+func (c *Character) LoadFromID(db *sql.DB, id int32) {
 	filter := "id,accountID,worldID,name,gender,skin,hair,face,level,job,str,dex,intt," +
 		"luk,hp,maxHP,mp,maxMP,ap,sp, exp,fame,mapID,mapPos,previousMapID,mesos," +
 		"equipSlotSize,useSlotSize,setupSlotSize,etcSlotSize,cashSlotSize"
 
-	err := db.QueryRow("SELECT "+filter+" FROM characters where id=?", id).Scan(&char.ID,
-		&char.AccountID, &char.WorldID, &char.Name, &char.Gender, &char.Skin, &char.Hair, &char.Face,
-		&char.Level, &char.Job, &char.Str, &char.Dex, &char.Int, &char.Luk, &char.HP, &char.MaxHP, &char.MP,
-		&char.MaxMP, &char.AP, &char.SP, &char.EXP, &char.Fame, &char.MapID, &char.MapPos,
-		&char.PreviousMap, &char.Mesos, &char.EquipSlotSize, &char.UseSlotSize, &char.SetupSlotSize,
-		&char.EtcSlotSize, &char.CashSlotSize)
+	err := db.QueryRow("SELECT "+filter+" FROM characters where id=?", id).Scan(&c.ID,
+		&c.AccountID, &c.WorldID, &c.Name, &c.Gender, &c.Skin, &c.Hair, &c.Face,
+		&c.Level, &c.Job, &c.Str, &c.Dex, &c.Int, &c.Luk, &c.HP, &c.MaxHP, &c.MP,
+		&c.MaxMP, &c.AP, &c.SP, &c.EXP, &c.Fame, &c.MapID, &c.MapPos,
+		&c.PreviousMap, &c.Mesos, &c.EquipSlotSize, &c.UseSlotSize, &c.SetupSlotSize,
+		&c.EtcSlotSize, &c.CashSlotSize)
 
 	if err != nil {
 		panic(err)
 	}
 
-	char.Inventory = GetInventoryFromCharID(db, char.ID)
+	c.Inventory = GetInventoryFromCharID(db, c.ID)
 
-	char.Skills = make(map[int32]Skill)
+	c.Skills = make(map[int32]Skill)
 
-	for _, s := range GetSkillsFromCharID(db, char.ID) {
-		char.Skills[s.ID] = s
+	for _, s := range GetSkillsFromCharID(db, c.ID) {
+		c.Skills[s.ID] = s
 	}
 
-	nxMap, err := nx.GetMap(char.MapID)
+	nxMap, err := nx.GetMap(c.MapID)
 
 	if err != nil {
 		panic(err)
 	}
 
-	char.Pos.X = nxMap.Portals[char.MapPos].X
-	char.Pos.Y = nxMap.Portals[char.MapPos].Y
-
-	return char
+	c.Pos.X = nxMap.Portals[c.MapPos].X
+	c.Pos.Y = nxMap.Portals[c.MapPos].Y
 }

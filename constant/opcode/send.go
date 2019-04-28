@@ -6,12 +6,13 @@ const (
 	SendLoginPinRegister            byte = 0x07 // Add 1 byte, 1 = register byte a pin
 	SendLoginPinStuff               byte = 0x08 // Setting byte pin good
 	SendLoginWorldList              byte = 0x09
-	SendLoginRestarter              byte = 0x15
 	SendLoginCharacterData          byte = 0x0A
 	SendLoginCharacterMigrate       byte = 0x0B
 	SendLoginNameCheckResult        byte = 0x0C
 	SendLoginNewCharacterGood       byte = 0x0D
 	SendLoginDeleteCharacter        byte = 0x0E
+	SendChannelChange               byte = 0x0F
+	SendLoginRestarter              byte = 0x15
 	SendChannelInventoryOperation   byte = 0x18
 	SendChannelStatChange           byte = 0x1A
 	SendChannelSkillRecordUpdate    byte = 0x1D

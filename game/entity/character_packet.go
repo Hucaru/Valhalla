@@ -105,6 +105,15 @@ func PacketPlayerAvatarSummaryWindow(charID int32, char Character, guildName str
 	return p
 }
 
+func PacketChangeChannel(ip []byte, port int16) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelChange)
+	p.WriteBool(true)
+	p.WriteBytes(ip)
+	p.WriteInt16(port)
+
+	return p
+}
+
 func PacketPlayerEnterGame(char Character, channelID int32) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelWarpToMap)
 	p.WriteInt32(channelID)

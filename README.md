@@ -28,9 +28,9 @@ Login server:
 
 World server:
 
-- [ ] Keep track of characters in world
-- [ ] Send information to login server
-- [ ] Send IP, port to channel for change channel requests
+- [ ] Keep track of player count
+- [x] Send information to login server
+- [x] Send IP, port to channel for change channel requests
 - [ ] Forward whisphers
 - [ ] Allow gm command to actiavate exp/drop changes accross all channels
 
@@ -39,6 +39,7 @@ Cashshop server:
 Channel server:
 
 - [x] Players can see each other
+- [x] Player can change channel
 - [x] Player chat
 - [x] GM commands
 - [x] Player use skills

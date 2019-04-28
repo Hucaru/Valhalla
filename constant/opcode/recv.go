@@ -14,6 +14,7 @@ const (
 	RecvPing                       byte = 0x12
 	RecvReturnToLoginScreen        byte = 0x14
 	RecvChannelUserPortal          byte = 0x17
+	RecvCHannelChangeChannel       byte = 0x18
 	RecvChannelEnterCashShop       byte = 0x19
 	RecvChannelPlayerMovement      byte = 0x1A
 	RecvChannelPlayerStand         byte = 0x1B
