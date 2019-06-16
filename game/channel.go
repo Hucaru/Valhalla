@@ -27,6 +27,7 @@ type Channel struct {
 	maxPop    int16
 	migrating map[mnet.Client]byte
 	sessions  map[mnet.Client]*entity.Character
+	channels  [20]entity.Channel
 }
 
 // Initialise the server
@@ -99,26 +100,11 @@ func (server *Channel) handleNewChannelOK(conn mnet.Server, reader mpacket.Reade
 }
 
 func (server *Channel) handleChannelConnectionInfo(conn mnet.Server, reader mpacket.Reader) {
-	valid := reader.ReadBool()
-	id := reader.ReadByte()
+	total := reader.ReadByte()
 
-	if !valid {
-		for k, v := range server.migrating {
-			if v == id {
-				k.Send(entity.PacketChangeChannel(server.ip, server.port))
-			}
-		}
-
-		return
-	}
-
-	ip := reader.ReadBytes(4)
-	port := reader.ReadInt16()
-
-	for k, v := range server.migrating {
-		if v == id {
-			k.Send(entity.PacketChangeChannel(ip, port))
-		}
+	for i := byte(0); i < total; i++ {
+		server.channels[i].IP = reader.ReadBytes(4)
+		server.channels[i].Port = reader.ReadInt16()
 	}
 }
 
