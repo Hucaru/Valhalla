@@ -22,7 +22,7 @@ type loginServer struct {
 }
 
 func NewLoginServer(configFile string) *loginServer {
-	config, dbConfig := loginConfigFromFile("config.toml")
+	config, dbConfig := loginConfigFromFile(configFile)
 
 	ls := &loginServer{
 		eRecv:    make(chan *mnet.Event),

@@ -12,7 +12,8 @@ import (
 func (server *Channel) playerChangeChannel(conn mnet.Client, reader mpacket.Reader) {
 	id := reader.ReadByte()
 	server.migrating[conn] = id
-	// save character
+
+	server.sessions[conn].Save(server.db)
 
 	p := mpacket.CreateInternal(opcode.ChannelConnectionInfo)
 	p.WriteByte(id)

@@ -22,7 +22,7 @@ type worldServer struct {
 }
 
 func NewWorldServer(configFile string) *worldServer {
-	config, dbConfig := worldConfigFromFile("config.toml")
+	config, dbConfig := worldConfigFromFile(configFile)
 
 	ws := &worldServer{
 		eRecv:    make(chan *mnet.Event),

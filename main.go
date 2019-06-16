@@ -9,7 +9,7 @@ import (
 
 func main() {
 	typePtr := flag.String("type", "", "Denotes what type of server to start: login, world, channel")
-	configPtr := flag.String("config", "config.toml", "config toml file")
+	configPtr := flag.String("config", "", "config toml file")
 
 	flag.Parse()
 
