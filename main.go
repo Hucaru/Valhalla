@@ -3,8 +3,6 @@ package main
 import (
 	"flag"
 	"log"
-
-	"github.com/Hucaru/Valhalla/server"
 )
 
 func main() {
@@ -15,14 +13,14 @@ func main() {
 
 	switch *typePtr {
 	case "login":
-		s := server.NewLoginServer(*configPtr)
-		s.Run()
+		s := newLoginServer(*configPtr)
+		s.run()
 	case "world":
-		s := server.NewWorldServer(*configPtr)
-		s.Run()
+		s := newWorldServer(*configPtr)
+		s.run()
 	case "channel":
-		s := server.NewChannelServer(*configPtr)
-		s.Run()
+		s := newChannelServer(*configPtr)
+		s.run()
 	default:
 		log.Println("Unkown server type:", *typePtr)
 	}
