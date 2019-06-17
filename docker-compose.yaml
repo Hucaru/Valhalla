@@ -1,31 +1,31 @@
 version: '3.1'
 
 services:
-    login-server:
-        image: valhalla/server
-        build:
-            context: ./
-            dockerfile: Dockerfile
-        command: -type=login
-        ports:
-            - 8484:8484
-        restart: unless-stopped
+    # login-server:
+    #     image: valhalla/server
+    #     build:
+    #         context: ./
+    #         dockerfile: Dockerfile
+    #     command: -type=login
+    #     ports:
+    #         - 8484:8484
+    #     restart: unless-stopped
 
-    channel-server:
-        image: valhalla/server
-        command: -type=channel
-        volumes:
-            - ./Data.nx:/app/wizetData
-            - ./scripts/:/app/scripts/
-        environment:
-            - DB_USER=root
-            - DB_PASSWORD=password
-            - DB_DATABASE=maplestory
-            - DB_ADDRESS=db
-            - DB_PORT=3306
-        ports:
-            - 8686:8686
-        restart: unless-stopped
+    # channel-server:
+    #     image: valhalla/server
+    #     command: -type=channel
+    #     volumes:
+    #         - ./Data.nx:/app/wizetData
+    #         - ./scripts/:/app/scripts/
+    #     environment:
+    #         - DB_USER=root
+    #         - DB_PASSWORD=password
+    #         - DB_DATABASE=maplestory
+    #         - DB_ADDRESS=db
+    #         - DB_PORT=3306
+    #     ports:
+    #         - 8686:8686
+    #     restart: unless-stopped
         
     db:
         image: mysql:5.7

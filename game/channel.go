@@ -126,11 +126,8 @@ func (server *Channel) ClientConnected(conn net.Conn, clientEvent chan *mnet.Eve
 // ClientDisconnected from server
 func (server *Channel) ClientDisconnected(conn mnet.Client) {
 	if _, ok := server.migrating[conn]; ok {
-		// conn.GetWorldID()
-		// conn.GetChannelID()
-		// set migrating channel and world in db
 		delete(server.migrating, conn)
-	} else if conn.GetLogedIn() {
+	} else {
 		_, err := server.db.Exec("UPDATE accounts SET isLogedIn=0 WHERE accountID=?", conn.GetAccountID())
 
 		if err != nil {

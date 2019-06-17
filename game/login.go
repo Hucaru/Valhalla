@@ -171,18 +171,16 @@ func (server *Login) ClientConnected(conn net.Conn, clientEvent chan *mnet.Event
 
 // ClientDisconnected from server
 func (server *Login) ClientDisconnected(conn mnet.Client) {
-	// if transitioning keep loged in
 	if isMigrating, ok := server.migrating[conn]; ok && isMigrating {
-		// set migrating channel and world in db
-		// conn.GetWorldID()
-		// conn.GetChannelID()
-	} else if conn.GetLogedIn() {
+		delete(server.migrating, conn)
+	} else {
 		_, err := server.db.Exec("UPDATE accounts SET isLogedIn=0 WHERE accountID=?", conn.GetAccountID())
 
 		if err != nil {
 			log.Println("Unable to complete logout for ", conn.GetAccountID())
 		}
 	}
+
 	conn.Cleanup()
 }
 
@@ -225,12 +223,11 @@ func (server *Login) handleLoginRequest(conn mnet.Client, reader mpacket.Reader)
 	var databasePassword string
 	var gender byte
 	var isLogedIn bool
-	var isInChannel int8
 	var isBanned int
 	var adminLevel int
 
-	err := server.db.QueryRow("SELECT accountID, username, password, gender, isLogedIn, isBanned, adminLevel, isInChannel FROM accounts WHERE username=?", username).
-		Scan(&accountID, &user, &databasePassword, &gender, &isLogedIn, &isBanned, &adminLevel, &isInChannel)
+	err := server.db.QueryRow("SELECT accountID, username, password, gender, isLogedIn, isBanned, adminLevel FROM accounts WHERE username=?", username).
+		Scan(&accountID, &user, &databasePassword, &gender, &isLogedIn, &isBanned, &adminLevel)
 
 	result := byte(0x00)
 
@@ -238,7 +235,7 @@ func (server *Login) handleLoginRequest(conn mnet.Client, reader mpacket.Reader)
 		result = 0x05
 	} else if hashedPassword != databasePassword {
 		result = 0x04
-	} else if isLogedIn || isInChannel > -1 {
+	} else if isLogedIn {
 		result = 0x07
 	} else if isBanned > 0 {
 		result = 0x02
@@ -487,6 +484,14 @@ func (server *Login) handleSelectCharacter(conn mnet.Client, reader mpacket.Read
 
 	if charCount == 1 {
 		channel := server.worlds[conn.GetWorldID()].Channels[conn.GetChannelID()]
+		_, err := server.db.Exec("UPDATE characters SET migrationID=? WHERE id=?", conn.GetChannelID(), charID)
+
+		if err != nil {
+			panic(err)
+		}
+
+		server.migrating[conn] = true
+
 		conn.Send(entity.PacketLoginMigrateClient(channel.IP, channel.Port, charID))
 	}
 }

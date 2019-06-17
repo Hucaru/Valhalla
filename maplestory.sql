@@ -1,4 +1,4 @@
--- Adminer 4.6.2 MySQL dump
+-- Adminer 4.7.1 MySQL dump
 
 SET NAMES utf8;
 SET time_zone = '+00:00';
@@ -15,7 +15,6 @@ CREATE TABLE `accounts` (
   `isBanned` int(11) NOT NULL DEFAULT '0',
   `gender` tinyint(4) NOT NULL DEFAULT '0',
   `dob` int(11) NOT NULL,
-  `isInChannel` tinyint(4) NOT NULL DEFAULT '-1',
   PRIMARY KEY (`accountID`)
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 
@@ -25,8 +24,7 @@ CREATE TABLE `characters` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `accountID` int(10) unsigned NOT NULL,
   `worldID` int(11) unsigned NOT NULL,
-  `isMigratingWorld` tinyint(4) NOT NULL DEFAULT '-1',
-  `isMigratingChannel` tinyint(4) NOT NULL DEFAULT '-1',
+  `migrationID` tinyint(4) NOT NULL DEFAULT '-1',
   `name` tinytext NOT NULL,
   `gender` int(11) unsigned NOT NULL,
   `skin` int(11) unsigned NOT NULL,
@@ -108,4 +106,4 @@ CREATE TABLE `skills` (
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 
 
--- 2019-02-21 00:49:09
+-- 2019-06-17 21:16:20
