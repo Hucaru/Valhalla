@@ -1,4 +1,4 @@
-package entity
+package game
 
 type Pos struct {
 	X int16

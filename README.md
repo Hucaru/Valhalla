@@ -15,7 +15,7 @@ This project exists to preserve and archive an early version of the game
 
 Login server:
 - [x] Login user
-- [ ] Pin (might not add this)
+- [ ] Pin
 - [x] Display world ribbons
 - [x] Display world messages
 - [x] Display world status (e.g. overpopulated)
@@ -24,7 +24,8 @@ Login server:
 - [x] Create character
 - [x] Delete character
 - [x] Migrate to channel server
-- [ ] Show worlds, channels, world status etc from information sent from world server
+- [x] Show worlds, channels, world status etc from information sent from world server
+- [x] Prevent players from accessing dead channel
 
 World server:
 
@@ -35,37 +36,41 @@ World server:
 - [ ] Allow gm command to actiavate exp/drop changes accross all channels
 
 Cashshop server:
+- [ ] List items
+- [ ] Allow purchases via different currencies
 
 Channel server:
 
-- [x] Players can see each other
+- [ ] Players can see each other
 - [x] Player can change channel
-- [x] Player chat
-- [x] GM commands
-- [x] Player use skills
-- [x] Player exp
-- [x] Player level up
+- [ ] Player chat
+- [ ] GM commands
+- [ ] Player use skills
+- [ ] Player exp
+- [ ] Player level up
 - [ ] Player skill logic (haste etc)
 - [ ] Player inventory
 - [ ] Player use item (scrolls, potions etc)
 - [ ] Player pets
-- [x] NPC visible
-- [x] NPC movement
-- [x] NPC basic chat
+- [ ] NPC visible
+- [ ] NPC movement
+- [ ] NPC basic chat
 - [ ] NPC shops
 - [ ] NPC stylist
 - [ ] NPC storage
-- [x] Map instancing
-- [x] Mob visible
-- [x] Mob movement
-- [x] Mob attack
+- [ ] PQ scripts
+- [ ] Event scripts
+- [ ] Map instancing
+- [ ] Mob visible
+- [ ] Mob movement
+- [ ] Mob attack
 - [ ] Mob skills that cause stat changes
-- [x] Mob death
-- [x] Mob respawn
+- [ ] Mob death
+- [ ] Mob respawn
 - [ ] Mob spawns mob(s) on death
 - [ ] Mob drops
 - [ ] Trade
-- [x] Minigames
+- [ ] Minigames
 - [ ] Communication Window
 - [ ] Party
 - [ ] Guild
@@ -117,5 +122,3 @@ Taken from [here](http://forum.ragezone.com/f428/add-learning-npcs-start-finish-
 - \n = New Line
 - \t = Tab (4 spaces)
 - \b = Backwards
-
-## Screenshots

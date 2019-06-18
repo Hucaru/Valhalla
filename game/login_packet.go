@@ -1,4 +1,4 @@
-package entity
+package game
 
 import (
 	"strconv"
@@ -7,7 +7,7 @@ import (
 	"github.com/Hucaru/Valhalla/mpacket"
 )
 
-func PacketLoginResponce(result byte, userID int32, gender byte, isAdmin bool, username string, isBanned int) mpacket.Packet {
+func packetLoginResponce(result byte, userID int32, gender byte, isAdmin bool, username string, isBanned int) mpacket.Packet {
 	pac := mpacket.CreateWithOpcode(opcode.SendLoginResponce)
 	pac.WriteByte(result)
 	pac.WriteByte(0x00)
@@ -32,7 +32,7 @@ func PacketLoginResponce(result byte, userID int32, gender byte, isAdmin bool, u
 	return pac
 }
 
-func PacketLoginMigrateClient(ip []byte, port int16, charID int32) mpacket.Packet {
+func packetLoginMigrateClient(ip []byte, port int16, charID int32) mpacket.Packet {
 	pac := mpacket.CreateWithOpcode(opcode.SendLoginCharacterMigrate)
 	pac.WriteByte(0x00)
 	pac.WriteByte(0x00)
@@ -45,7 +45,7 @@ func PacketLoginMigrateClient(ip []byte, port int16, charID int32) mpacket.Packe
 	return pac
 }
 
-func PacketLoginSendBadMigrate() mpacket.Packet {
+func packetLoginSendBadMigrate() mpacket.Packet {
 	pac := mpacket.CreateWithOpcode(opcode.SendLoginCharacterMigrate)
 	pac.WriteByte(0x00) // flipping these 2 bytes makes the character select screen do nothing it appears
 	pac.WriteByte(0x00)
@@ -58,7 +58,7 @@ func PacketLoginSendBadMigrate() mpacket.Packet {
 	return pac
 }
 
-func PacketLoginDisplayCharacters(characters []Character) mpacket.Packet {
+func packetLoginDisplayCharacters(characters []character) mpacket.Packet {
 	pac := mpacket.CreateWithOpcode(opcode.SendLoginCharacterData)
 	pac.WriteByte(0) // ?
 
@@ -66,7 +66,7 @@ func PacketLoginDisplayCharacters(characters []Character) mpacket.Packet {
 		pac.WriteByte(byte(len(characters)))
 
 		for _, c := range characters {
-			loginWritePlayerCharacter(&pac, c.ID, c)
+			loginWritePlayerCharacter(&pac, c.id, c)
 		}
 	} else {
 		pac.WriteByte(0)
@@ -75,7 +75,7 @@ func PacketLoginDisplayCharacters(characters []Character) mpacket.Packet {
 	return pac
 }
 
-func PacketLoginNameCheck(name string, nameFound int) mpacket.Packet {
+func packetLoginNameCheck(name string, nameFound int) mpacket.Packet {
 	pac := mpacket.CreateWithOpcode(opcode.SendLoginNameCheckResult)
 	pac.WriteString(name)
 
@@ -88,12 +88,12 @@ func PacketLoginNameCheck(name string, nameFound int) mpacket.Packet {
 	return pac
 }
 
-func PacketLoginCreatedCharacter(success bool, character Character) mpacket.Packet {
+func packetLoginCreatedCharacter(success bool, char character) mpacket.Packet {
 	pac := mpacket.CreateWithOpcode(opcode.SendLoginNewCharacterGood)
 
 	if success {
 		pac.WriteByte(0x0) // if creation was sucessfull - 0 = good, 1 = bad
-		loginWritePlayerCharacter(&pac, character.ID, character)
+		loginWritePlayerCharacter(&pac, char.id, char)
 	} else {
 		pac.WriteByte(0x1)
 	}
@@ -101,7 +101,7 @@ func PacketLoginCreatedCharacter(success bool, character Character) mpacket.Pack
 	return pac
 }
 
-func PacketLoginDeleteCharacter(charID int32, deleted bool, hacking bool) mpacket.Packet {
+func packetLoginDeleteCharacter(charID int32, deleted bool, hacking bool) mpacket.Packet {
 	pac := mpacket.CreateWithOpcode(opcode.SendLoginDeleteCharacter)
 	pac.WriteInt32(charID)
 
@@ -116,10 +116,10 @@ func PacketLoginDeleteCharacter(charID int32, deleted bool, hacking bool) mpacke
 	return pac
 }
 
-func loginWritePlayerCharacter(pac *mpacket.Packet, pos int32, char Character) {
+func loginWritePlayerCharacter(pac *mpacket.Packet, pos int32, char character) {
 	pac.WriteInt32(pos)
 
-	name := char.Name
+	name := char.name
 
 	if len(name) > 13 {
 		name = name[:13]
@@ -132,30 +132,30 @@ func loginWritePlayerCharacter(pac *mpacket.Packet, pos int32, char Character) {
 		pac.WriteByte(0x0)
 	}
 
-	pac.WriteByte(char.Gender) //gender
-	pac.WriteByte(char.Skin)   // skin
-	pac.WriteInt32(char.Face)  // face
-	pac.WriteInt32(char.Hair)  // Hair
+	pac.WriteByte(char.gender) //gender
+	pac.WriteByte(char.skin)   // skin
+	pac.WriteInt32(char.face)  // face
+	pac.WriteInt32(char.hair)  // Hair
 
 	pac.WriteInt64(0x0) // Pet cash ID
 
-	pac.WriteByte(char.Level)  // level
-	pac.WriteInt16(char.Job)   // Job
-	pac.WriteInt16(char.Str)   // str
-	pac.WriteInt16(char.Dex)   // dex
-	pac.WriteInt16(char.Int)   // int
-	pac.WriteInt16(char.Luk)   // luk
-	pac.WriteInt16(char.HP)    // hp
-	pac.WriteInt16(char.MaxHP) // max hp
-	pac.WriteInt16(char.MP)    // mp
-	pac.WriteInt16(char.MaxMP) // max mp
-	pac.WriteInt16(char.AP)    // ap
-	pac.WriteInt16(char.SP)    // sp
-	pac.WriteInt32(char.EXP)   // exp
-	pac.WriteInt16(char.Fame)  // fame
+	pac.WriteByte(char.level)  // level
+	pac.WriteInt16(char.job)   // Job
+	pac.WriteInt16(char.str)   // str
+	pac.WriteInt16(char.dex)   // dex
+	pac.WriteInt16(char.intt)  // int
+	pac.WriteInt16(char.luk)   // luk
+	pac.WriteInt16(char.hp)    // hp
+	pac.WriteInt16(char.maxHP) // max hp
+	pac.WriteInt16(char.mp)    // mp
+	pac.WriteInt16(char.maxMP) // max mp
+	pac.WriteInt16(char.ap)    // ap
+	pac.WriteInt16(char.sp)    // sp
+	pac.WriteInt32(char.exp)   // exp
+	pac.WriteInt16(char.fame)  // fame
 
-	pac.WriteInt32(char.MapID) // map id
-	pac.WriteByte(char.MapPos) // map
+	pac.WriteInt32(char.mapID) // map id
+	pac.WriteByte(char.mapPos) // map
 
 	pac.WriteBytes(writeDisplayCharacter(char))
 
@@ -167,21 +167,21 @@ func loginWritePlayerCharacter(pac *mpacket.Packet, pos int32, char Character) {
 	pac.WriteInt32(4) // increase / decrease amount
 }
 
-func PacketLoginWorldListing(worldIndex byte, w World) mpacket.Packet {
+func packetLoginWorldListing(worldIndex byte, w world) mpacket.Packet {
 	pac := mpacket.CreateWithOpcode(opcode.SendLoginWorldList)
 	pac.WriteByte(worldIndex) // world id
-	pac.WriteString(w.Name)   // World name -
-	pac.WriteByte(w.Ribbon)   // Ribbon on world - 0 = normal, 1 = event, 2 = new, 3 = hot
-	pac.WriteString(w.Message)
+	pac.WriteString(w.name)   // World name -
+	pac.WriteByte(w.ribbon)   // Ribbon on world - 0 = normal, 1 = event, 2 = new, 3 = hot
+	pac.WriteString(w.message)
 	pac.WriteByte(0)                     // ? exp event notification?
-	pac.WriteByte(byte(len(w.Channels))) // number of channels
+	pac.WriteByte(byte(len(w.channels))) // number of channels
 
-	for i, v := range w.Channels {
-		pac.WriteString(w.Name + "-" + strconv.Itoa(i+1))
-		if v.MaxPop == 0 {
+	for i, v := range w.channels {
+		pac.WriteString(w.name + "-" + strconv.Itoa(i+1))
+		if v.maxPop == 0 {
 			pac.WriteInt32(0)
 		} else {
-			pac.WriteInt32(int32(1200.0 * (float64(v.Pop) / float64(v.MaxPop))))
+			pac.WriteInt32(int32(1200.0 * (float64(v.pop) / float64(v.maxPop))))
 		}
 		pac.WriteByte(worldIndex)
 		pac.WriteByte(byte(i + 1)) // channel id
@@ -191,14 +191,14 @@ func PacketLoginWorldListing(worldIndex byte, w World) mpacket.Packet {
 	return pac
 }
 
-func PacketLoginEndWorldList() mpacket.Packet {
+func packetLoginEndWorldList() mpacket.Packet {
 	pac := mpacket.CreateWithOpcode(opcode.SendLoginWorldList)
 	pac.WriteByte(0xFF)
 
 	return pac
 }
 
-func PacketLoginWorldInfo(warning byte, population byte) mpacket.Packet {
+func packetLoginWorldInfo(warning byte, population byte) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendLoginWorldMeta)
 	p.WriteByte(warning)    // Warning - 0 = no warning, 1 - high amount of concurent users, 2 = max users in world
 	p.WriteByte(population) // Population marker - 0 = No maker, 1 = Highly populated, 2 = over populated
@@ -206,7 +206,7 @@ func PacketLoginWorldInfo(warning byte, population byte) mpacket.Packet {
 	return p
 }
 
-func PacketLoginReturnFromChannel() mpacket.Packet {
+func packetLoginReturnFromChannel() mpacket.Packet {
 	pac := mpacket.CreateWithOpcode(opcode.SendLoginRestarter)
 	pac.WriteByte(0x01)
 

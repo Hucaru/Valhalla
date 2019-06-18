@@ -3,21 +3,18 @@ package game
 import (
 	"database/sql"
 	"log"
-	"math/rand"
-	"net"
 	"time"
 
-	_ "github.com/go-sql-driver/mysql"
+	_ "github.com/go-sql-driver/mysql" // don't need full import
 
-	"github.com/Hucaru/Valhalla/constant"
 	"github.com/Hucaru/Valhalla/constant/opcode"
-	"github.com/Hucaru/Valhalla/game/entity"
 	"github.com/Hucaru/Valhalla/mnet"
 	"github.com/Hucaru/Valhalla/mpacket"
+	"github.com/Hucaru/Valhalla/nx"
 )
 
-// Channel server state
-type Channel struct {
+// ChannelServer state
+type ChannelServer struct {
 	id        byte
 	db        *sql.DB
 	dispatch  chan func()
@@ -26,15 +23,16 @@ type Channel struct {
 	port      int16
 	maxPop    int16
 	migrating map[mnet.Client]byte
-	sessions  map[mnet.Client]*entity.Character
-	channels  [20]entity.Channel
+	sessions  map[mnet.Client]*character
+	channels  [20]channel
+	fields    map[int32]*field
 }
 
 // Initialise the server
-func (server *Channel) Initialise(work chan func(), dbuser, dbpassword, dbaddress, dbport, dbdatabase string) {
+func (server *ChannelServer) Initialise(work chan func(), dbuser, dbpassword, dbaddress, dbport, dbdatabase string) {
 	server.dispatch = work
 	server.migrating = make(map[mnet.Client]byte)
-	server.sessions = make(map[mnet.Client]*entity.Character)
+	server.sessions = make(map[mnet.Client]*character)
 
 	var err error
 	server.db, err = sql.Open("mysql", dbuser+":"+dbpassword+"@tcp("+dbaddress+":"+dbport+")/"+dbdatabase)
@@ -46,15 +44,31 @@ func (server *Channel) Initialise(work chan func(), dbuser, dbpassword, dbaddres
 	err = server.db.Ping()
 
 	if err != nil {
-		log.Fatal(err.Error()) // change to attempt to re-connect
+		log.Fatal(err.Error())
 	}
 
 	log.Println("Connected to database")
 
+	server.fields = make(map[int32]*field)
+
+	for fieldID, nxMap := range nx.GetMaps() {
+
+		server.fields[fieldID] = &field{
+			id:       fieldID,
+			data:     nxMap,
+			dispatch: server.dispatch,
+			server:   server,
+		}
+
+		server.fields[fieldID].calculateFieldLimits()
+		server.fields[fieldID].createInstance()
+	}
+
+	log.Println("Initialised game state")
 }
 
 // RegisterWithWorld server
-func (server *Channel) RegisterWithWorld(conn mnet.Server, ip []byte, port int16, maxPop int16) {
+func (server *ChannelServer) RegisterWithWorld(conn mnet.Server, ip []byte, port int16, maxPop int16) {
 	server.world = conn
 	server.ip = ip
 	server.port = port
@@ -63,7 +77,7 @@ func (server *Channel) RegisterWithWorld(conn mnet.Server, ip []byte, port int16
 	server.registerWithWorld()
 }
 
-func (server *Channel) registerWithWorld() {
+func (server *ChannelServer) registerWithWorld() {
 	p := mpacket.CreateInternal(opcode.ChannelNew)
 	p.WriteBytes(server.ip)
 	p.WriteInt16(server.port)
@@ -72,7 +86,7 @@ func (server *Channel) registerWithWorld() {
 }
 
 // HandleServerPacket from world
-func (server *Channel) HandleServerPacket(conn mnet.Server, reader mpacket.Reader) {
+func (server *ChannelServer) HandleServerPacket(conn mnet.Server, reader mpacket.Reader) {
 	switch reader.ReadByte() {
 	case opcode.ChannelBad:
 		server.handleNewChannelBad(conn, reader)
@@ -85,7 +99,7 @@ func (server *Channel) HandleServerPacket(conn mnet.Server, reader mpacket.Reade
 	}
 }
 
-func (server *Channel) handleNewChannelBad(conn mnet.Server, reader mpacket.Reader) {
+func (server *ChannelServer) handleNewChannelBad(conn mnet.Server, reader mpacket.Reader) {
 	log.Println("Rejected by world server at", conn)
 	timer := time.NewTimer(30 * time.Second)
 
@@ -94,37 +108,22 @@ func (server *Channel) handleNewChannelBad(conn mnet.Server, reader mpacket.Read
 	server.registerWithWorld()
 }
 
-func (server *Channel) handleNewChannelOK(conn mnet.Server, reader mpacket.Reader) {
+func (server *ChannelServer) handleNewChannelOK(conn mnet.Server, reader mpacket.Reader) {
 	server.id = reader.ReadByte()
 	log.Println("Registered as channel", server.id)
 }
 
-func (server *Channel) handleChannelConnectionInfo(conn mnet.Server, reader mpacket.Reader) {
+func (server *ChannelServer) handleChannelConnectionInfo(conn mnet.Server, reader mpacket.Reader) {
 	total := reader.ReadByte()
 
 	for i := byte(0); i < total; i++ {
-		server.channels[i].IP = reader.ReadBytes(4)
-		server.channels[i].Port = reader.ReadInt16()
+		server.channels[i].ip = reader.ReadBytes(4)
+		server.channels[i].port = reader.ReadInt16()
 	}
 }
 
-// ClientConnected to server
-func (server *Channel) ClientConnected(conn net.Conn, clientEvent chan *mnet.Event, packetQueueSize int) {
-	keySend := [4]byte{}
-	rand.Read(keySend[:])
-	keyRecv := [4]byte{}
-	rand.Read(keyRecv[:])
-
-	client := mnet.NewClient(conn, clientEvent, packetQueueSize, keySend, keyRecv)
-
-	go client.Reader()
-	go client.Writer()
-
-	conn.Write(entity.PacketClientHandshake(constant.MapleVersion, keyRecv[:], keySend[:]))
-}
-
 // ClientDisconnected from server
-func (server *Channel) ClientDisconnected(conn mnet.Client) {
+func (server *ChannelServer) ClientDisconnected(conn mnet.Client) {
 	if _, ok := server.migrating[conn]; ok {
 		delete(server.migrating, conn)
 	} else {
@@ -135,68 +134,4 @@ func (server *Channel) ClientDisconnected(conn mnet.Client) {
 		}
 	}
 	conn.Cleanup()
-}
-
-// HandleClientPacket
-func (server *Channel) HandleClientPacket(conn mnet.Client, reader mpacket.Reader) {
-	switch reader.ReadByte() {
-	case opcode.RecvPing:
-	case opcode.RecvChannelPlayerLoad:
-		server.playerConnect(conn, reader)
-	case opcode.RecvCHannelChangeChannel:
-		server.playerChangeChannel(conn, reader)
-	case opcode.RecvChannelUserPortal:
-		// server.playerUsePortal(conn, reader)
-	case opcode.RecvChannelEnterCashShop:
-	case opcode.RecvChannelPlayerMovement:
-		// server.playerMovement(conn, reader)
-	case opcode.RecvChannelPlayerStand:
-		// server.playerStand(conn, reader)
-	case opcode.RecvChannelPlayerUserChair:
-		// server.playerUseChair(conn, reader)
-	case opcode.RecvChannelMeleeSkill:
-		// server.playerMeleeSkill(conn, reader)
-	case opcode.RecvChannelRangedSkill:
-		// server.playerRangedSkill(conn, reader)
-	case opcode.RecvChannelMagicSkill:
-		// server.playerMagicSkill(conn, reader)
-	case opcode.RecvChannelDmgRecv:
-		// server.playerTakeDamage(conn, reader)
-	case opcode.RecvChannelPlayerSendAllChat:
-		// server.chatSendAll(conn, reader)
-	case opcode.RecvChannelSlashCommands:
-		// server.chatSlashCommand(conn, reader)
-	case opcode.RecvChannelCharacterUIWindow:
-		// server.handleUIWindow(conn, reader)
-	case opcode.RecvChannelEmote:
-		// server.playerEmote(conn, reader)
-	case opcode.RecvChannelNpcDialogue:
-		// server.npcChatStart(conn, reader)
-	case opcode.RecvChannelNpcDialogueContinue:
-		// server.npcChatContinue(conn, reader)
-	case opcode.RecvChannelNpcShop:
-	case opcode.RecvChannelInvMoveItem:
-		// server.playerMoveInventoryItem(conn, reader)
-	case opcode.RecvChannelAddStatPoint:
-		// server.playerAddStatPoint(conn, reader)
-	case opcode.RecvChannelPassiveRegen:
-		// server.playerPassiveRegen(conn, reader)
-	case opcode.RecvChannelAddSkillPoint:
-		// server.playerAddSkillPoint(conn, reader)
-	case opcode.RecvChannelSpecialSkill:
-		// server.playerSpecialSkill(conn, reader)
-	case opcode.RecvChannelCharacterInfo:
-		// server.playerRequestAvatarInfoWindow(conn, reader)
-	case opcode.RecvChannelLieDetectorResult:
-	case opcode.RecvChannelPartyInfo:
-	case opcode.RecvChannelGuildManagement:
-	case opcode.RecvChannelGuildReject:
-	case opcode.RecvChannelAddBuddy:
-	case opcode.RecvChannelMobControl:
-		// server.mobControl(conn, reader)
-	case opcode.RecvChannelNpcMovement:
-		// server.npcMovement(conn, reader)
-	default:
-		log.Println("UNKNOWN CLIENT PACKET:", reader)
-	}
 }

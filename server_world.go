@@ -18,7 +18,7 @@ type worldServer struct {
 	eRecv    chan *mnet.Event
 	wg       *sync.WaitGroup
 	lconn    mnet.Server
-	state    game.World
+	state    game.WorldServer
 }
 
 func newWorldServer(configFile string) *worldServer {

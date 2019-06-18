@@ -1,4 +1,4 @@
-package entity
+package game
 
 import (
 	"database/sql"

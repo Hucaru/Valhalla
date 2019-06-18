@@ -1,12 +1,14 @@
 package main
 
 import (
+	"crypto/rand"
 	"log"
 	"net"
 	"os"
 	"sync"
 	"time"
 
+	"github.com/Hucaru/Valhalla/constant"
 	"github.com/Hucaru/Valhalla/game"
 	"github.com/Hucaru/Valhalla/mpacket"
 
@@ -18,7 +20,7 @@ type loginServer struct {
 	dbConfig  dbConfig
 	eRecv     chan *mnet.Event
 	wg        *sync.WaitGroup
-	gameState game.Login
+	gameState game.LoginServer
 }
 
 func newLoginServer(configFile string) *loginServer {
@@ -100,7 +102,18 @@ func (ls *loginServer) acceptNewClientConnections() {
 			return
 		}
 
-		ls.gameState.ClientConnected(conn, ls.eRecv, ls.config.PacketQueueSize)
+		// ls.gameState.ClientConnected(conn, ls.eRecv, ls.config.PacketQueueSize)
+		keySend := [4]byte{}
+		rand.Read(keySend[:])
+		keyRecv := [4]byte{}
+		rand.Read(keyRecv[:])
+
+		client := mnet.NewClient(conn, ls.eRecv, ls.config.PacketQueueSize, keySend, keyRecv)
+
+		go client.Reader()
+		go client.Writer()
+
+		conn.Write(game.PacketClientHandshake(constant.MapleVersion, keyRecv[:], keySend[:]))
 	}
 }
 

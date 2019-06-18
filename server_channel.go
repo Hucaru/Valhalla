@@ -1,6 +1,7 @@
 package main
 
 import (
+	"crypto/rand"
 	"log"
 	"net"
 	"os"
@@ -8,6 +9,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/Hucaru/Valhalla/constant"
 	"github.com/Hucaru/Valhalla/game"
 	"github.com/Hucaru/Valhalla/nx"
 
@@ -23,7 +25,7 @@ type channelServer struct {
 	wRecv     chan func()
 	wg        *sync.WaitGroup
 	worldConn mnet.Server
-	gameState game.Channel
+	gameState game.ChannelServer
 }
 
 func newChannelServer(configFile string) *channelServer {
@@ -124,7 +126,17 @@ func (cs *channelServer) acceptNewConnections() {
 			return
 		}
 
-		cs.gameState.ClientConnected(conn, cs.eRecv, cs.config.PacketQueueSize)
+		keySend := [4]byte{}
+		rand.Read(keySend[:])
+		keyRecv := [4]byte{}
+		rand.Read(keyRecv[:])
+
+		client := mnet.NewClient(conn, cs.eRecv, cs.config.PacketQueueSize, keySend, keyRecv)
+
+		go client.Reader()
+		go client.Writer()
+
+		conn.Write(game.PacketClientHandshake(constant.MapleVersion, keyRecv[:], keySend[:]))
 	}
 }
 

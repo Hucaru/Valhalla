@@ -1,4 +1,4 @@
-package entity
+package game
 
 import (
 	"crypto/rand"
@@ -9,7 +9,7 @@ import (
 	"github.com/Hucaru/Valhalla/mpacket"
 )
 
-func PacketPlayerReceivedDmg(charID int32, attack int8, initalAmmount, reducedAmmount, spawnID, mobID, healSkillID int32,
+func packetPlayerReceivedDmg(charID int32, attack int8, initalAmmount, reducedAmmount, spawnID, mobID, healSkillID int32,
 	stance, reflectAction byte, reflected byte, reflectX, reflectY int16) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelPlayerTakeDmg)
 	p.WriteInt32(charID)
@@ -37,7 +37,7 @@ func PacketPlayerReceivedDmg(charID int32, attack int8, initalAmmount, reducedAm
 	return p
 }
 
-func PacketPlayerLevelUpAnimation(charID int32) mpacket.Packet {
+func packetPlayerLevelUpAnimation(charID int32) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelPlayerAnimation)
 	p.WriteInt32(charID)
 	p.WriteByte(0x00)
@@ -45,7 +45,7 @@ func PacketPlayerLevelUpAnimation(charID int32) mpacket.Packet {
 	return p
 }
 
-func PacketPlayerMove(charID int32, bytes []byte) mpacket.Packet {
+func packetPlayerMove(charID int32, bytes []byte) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelPlayerMovement)
 	p.WriteInt32(charID)
 	p.WriteBytes(bytes)
@@ -53,7 +53,7 @@ func PacketPlayerMove(charID int32, bytes []byte) mpacket.Packet {
 	return p
 }
 
-func PacketPlayerEmoticon(charID int32, emotion int32) mpacket.Packet {
+func packetPlayerEmoticon(charID int32, emotion int32) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelPlayerEmoticon)
 	p.WriteInt32(charID)
 	p.WriteInt32(emotion)
@@ -61,7 +61,7 @@ func PacketPlayerEmoticon(charID int32, emotion int32) mpacket.Packet {
 	return p
 }
 
-func PacketPlayerSkillBookUpdate(skillID int32, level int32) mpacket.Packet {
+func packetPlayerSkillBookUpdate(skillID int32, level int32) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelSkillRecordUpdate)
 	p.WriteByte(0x01)  // time check?
 	p.WriteInt16(0x01) // number of skills to update
@@ -72,7 +72,7 @@ func PacketPlayerSkillBookUpdate(skillID int32, level int32) mpacket.Packet {
 	return p
 }
 
-func PacketPlayerStatChange(unknown bool, stat int32, value int32) mpacket.Packet {
+func packetPlayerStatChange(unknown bool, stat int32, value int32) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelStatChange)
 	p.WriteBool(unknown)
 	p.WriteInt32(stat)
@@ -81,7 +81,7 @@ func PacketPlayerStatChange(unknown bool, stat int32, value int32) mpacket.Packe
 	return p
 }
 
-func PacketPlayerNoChange() mpacket.Packet {
+func packetPlayerNoChange() mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelInventoryOperation)
 	p.WriteByte(0x01)
 	p.WriteByte(0x00)
@@ -90,12 +90,12 @@ func PacketPlayerNoChange() mpacket.Packet {
 	return p
 }
 
-func PacketPlayerAvatarSummaryWindow(charID int32, char Character, guildName string) mpacket.Packet {
+func packetPlayerAvatarSummaryWindow(charID int32, char character, guildName string) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelAvatarInfoWindow)
 	p.WriteInt32(charID)
-	p.WriteByte(char.Level)
-	p.WriteInt16(char.Job)
-	p.WriteInt16(char.Fame)
+	p.WriteByte(char.level)
+	p.WriteInt16(char.job)
+	p.WriteInt16(char.fame)
 
 	p.WriteString(guildName)
 
@@ -105,7 +105,7 @@ func PacketPlayerAvatarSummaryWindow(charID int32, char Character, guildName str
 	return p
 }
 
-func PacketChangeChannel(ip []byte, port int16) mpacket.Packet {
+func packetChangeChannel(ip []byte, port int16) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelChange)
 	p.WriteBool(true)
 	p.WriteBytes(ip)
@@ -114,7 +114,7 @@ func PacketChangeChannel(ip []byte, port int16) mpacket.Packet {
 	return p
 }
 
-func PacketPlayerEnterGame(char Character, channelID int32) mpacket.Packet {
+func packetPlayerEnterGame(char character, channelID int32) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelWarpToMap)
 	p.WriteInt32(channelID)
 	p.WriteByte(0) // character portal counter
@@ -134,44 +134,44 @@ func PacketPlayerEnterGame(char Character, channelID int32) mpacket.Packet {
 	p.WriteByte(0xFF)
 	p.WriteByte(0xFF)
 
-	p.WriteInt32(char.ID)
-	p.WritePaddedString(char.Name, 13)
-	p.WriteByte(char.Gender)
-	p.WriteByte(char.Skin)
-	p.WriteInt32(char.Face)
-	p.WriteInt32(char.Hair)
+	p.WriteInt32(char.id)
+	p.WritePaddedString(char.name, 13)
+	p.WriteByte(char.gender)
+	p.WriteByte(char.skin)
+	p.WriteInt32(char.face)
+	p.WriteInt32(char.hair)
 
 	p.WriteInt64(0) // Pet Cash ID
 
-	p.WriteByte(char.Level)
-	p.WriteInt16(char.Job)
-	p.WriteInt16(char.Str)
-	p.WriteInt16(char.Dex)
-	p.WriteInt16(char.Int)
-	p.WriteInt16(char.Luk)
-	p.WriteInt16(char.HP)
-	p.WriteInt16(char.MaxHP)
-	p.WriteInt16(char.MP)
-	p.WriteInt16(char.MaxMP)
-	p.WriteInt16(char.AP)
-	p.WriteInt16(char.SP)
-	p.WriteInt32(char.EXP)
-	p.WriteInt16(char.Fame)
+	p.WriteByte(char.level)
+	p.WriteInt16(char.job)
+	p.WriteInt16(char.str)
+	p.WriteInt16(char.dex)
+	p.WriteInt16(char.intt)
+	p.WriteInt16(char.luk)
+	p.WriteInt16(char.hp)
+	p.WriteInt16(char.maxHP)
+	p.WriteInt16(char.mp)
+	p.WriteInt16(char.maxMP)
+	p.WriteInt16(char.ap)
+	p.WriteInt16(char.sp)
+	p.WriteInt32(char.exp)
+	p.WriteInt16(char.fame)
 
-	p.WriteInt32(char.MapID)
-	p.WriteByte(char.MapPos)
+	p.WriteInt32(char.mapID)
+	p.WriteByte(char.mapPos)
 
 	p.WriteByte(20) // budy list size
-	p.WriteInt32(char.Mesos)
+	p.WriteInt32(char.mesos)
 
-	p.WriteByte(char.EquipSlotSize)
-	p.WriteByte(char.UseSlotSize)
-	p.WriteByte(char.SetupSlotSize)
-	p.WriteByte(char.EtcSlotSize)
-	p.WriteByte(char.CashSlotSize)
+	p.WriteByte(char.equipSlotSize)
+	p.WriteByte(char.useSlotSize)
+	p.WriteByte(char.setupSlotSize)
+	p.WriteByte(char.etcSlotSize)
+	p.WriteByte(char.cashSlotSize)
 
-	for _, v := range char.Equip {
-		if v.SlotID < 0 && v.InvID == 1 && !v.Cash {
+	for _, v := range char.equip {
+		if v.slotID < 0 && v.invID == 1 && !v.cash {
 			p.WriteBytes(addItem(v, false))
 		}
 	}
@@ -179,8 +179,8 @@ func PacketPlayerEnterGame(char Character, channelID int32) mpacket.Packet {
 	p.WriteByte(0)
 
 	// Equips
-	for _, v := range char.Equip {
-		if v.SlotID < 0 && v.InvID == 1 && v.Cash {
+	for _, v := range char.equip {
+		if v.slotID < 0 && v.invID == 1 && v.cash {
 			p.WriteBytes(addItem(v, false))
 		}
 	}
@@ -188,40 +188,40 @@ func PacketPlayerEnterGame(char Character, channelID int32) mpacket.Packet {
 	p.WriteByte(0)
 
 	// Inventory windows starts
-	for _, v := range char.Equip {
-		if v.SlotID > -1 && v.InvID == 1 {
+	for _, v := range char.equip {
+		if v.slotID > -1 && v.invID == 1 {
 			p.WriteBytes(addItem(v, false))
 		}
 	}
 
 	p.WriteByte(0)
 
-	for _, v := range char.Use {
-		if v.InvID == 2 { // Use
+	for _, v := range char.use {
+		if v.invID == 2 { // Use
 			p.WriteBytes(addItem(v, false))
 		}
 	}
 
 	p.WriteByte(0)
 
-	for _, v := range char.SetUp {
-		if v.InvID == 3 { // Set-up
+	for _, v := range char.setUp {
+		if v.invID == 3 { // Set-up
 			p.WriteBytes(addItem(v, false))
 		}
 	}
 
 	p.WriteByte(0)
 
-	for _, v := range char.Etc {
-		if v.InvID == 4 { // Etc
+	for _, v := range char.etc {
+		if v.invID == 4 { // Etc
 			p.WriteBytes(addItem(v, false))
 		}
 	}
 
 	p.WriteByte(0)
 
-	for _, v := range char.Cash {
-		if v.InvID == 5 { // Cash  - not working propery :(
+	for _, v := range char.cash {
+		if v.invID == 5 { // Cash  - not working propery :(
 			p.WriteBytes(addItem(v, false))
 		}
 	}
@@ -258,58 +258,58 @@ func PacketPlayerEnterGame(char Character, channelID int32) mpacket.Packet {
 	return p
 }
 
-func addItem(item Item, shortSlot bool) mpacket.Packet {
+func addItem(item item, shortSlot bool) mpacket.Packet {
 	p := mpacket.NewPacket()
 
 	if !shortSlot {
-		if item.Cash && item.SlotID < 0 {
-			p.WriteByte(byte(math.Abs(float64(item.SlotID + 100))))
+		if item.cash && item.slotID < 0 {
+			p.WriteByte(byte(math.Abs(float64(item.slotID + 100))))
 		} else {
-			p.WriteByte(byte(math.Abs(float64(item.SlotID))))
+			p.WriteByte(byte(math.Abs(float64(item.slotID))))
 		}
 	} else {
-		p.WriteInt16(item.SlotID)
+		p.WriteInt16(item.slotID)
 	}
 
-	switch item.InvID {
+	switch item.invID {
 	case 1:
 		p.WriteByte(0x01)
 	default:
 		p.WriteByte(0x02)
 	}
 
-	p.WriteInt32(item.ItemID)
+	p.WriteInt32(item.itemID)
 
-	if item.Cash {
+	if item.cash {
 		p.WriteByte(1)
-		p.WriteUint64(uint64(item.ItemID))
+		p.WriteUint64(uint64(item.itemID))
 	} else {
 		p.WriteByte(0)
 	}
 
-	p.WriteUint64(item.ExpireTime)
+	p.WriteUint64(item.expireTime)
 
-	switch item.InvID {
+	switch item.invID {
 	case 1:
-		p.WriteByte(item.UpgradeSlots)
-		p.WriteByte(item.ScrollLevel)
-		p.WriteInt16(item.Str)
-		p.WriteInt16(item.Dex)
-		p.WriteInt16(item.Int)
-		p.WriteInt16(item.Luk)
-		p.WriteInt16(item.HP)
-		p.WriteInt16(item.MP)
-		p.WriteInt16(item.Watk)
-		p.WriteInt16(item.Matk)
-		p.WriteInt16(item.Wdef)
-		p.WriteInt16(item.Mdef)
-		p.WriteInt16(item.Accuracy)
-		p.WriteInt16(item.Avoid)
-		p.WriteInt16(item.Hands)
-		p.WriteInt16(item.Speed)
-		p.WriteInt16(item.Jump)
-		p.WriteString(item.CreatorName)
-		p.WriteInt16(item.Flag) // lock, show, spikes, cape, cold protection etc ?
+		p.WriteByte(item.upgradeSlots)
+		p.WriteByte(item.scrollLevel)
+		p.WriteInt16(item.str)
+		p.WriteInt16(item.dex)
+		p.WriteInt16(item.intt)
+		p.WriteInt16(item.luk)
+		p.WriteInt16(item.hp)
+		p.WriteInt16(item.mp)
+		p.WriteInt16(item.watk)
+		p.WriteInt16(item.matk)
+		p.WriteInt16(item.wdef)
+		p.WriteInt16(item.mdef)
+		p.WriteInt16(item.accuracy)
+		p.WriteInt16(item.avoid)
+		p.WriteInt16(item.hands)
+		p.WriteInt16(item.speed)
+		p.WriteInt16(item.jump)
+		p.WriteString(item.creatorName)
+		p.WriteInt16(item.flag) // lock, show, spikes, cape, cold protection etc ?
 	case 2:
 		fallthrough
 	case 3:
@@ -317,40 +317,40 @@ func addItem(item Item, shortSlot bool) mpacket.Packet {
 	case 4:
 		fallthrough
 	case 5:
-		p.WriteInt16(item.Amount)
-		p.WriteString(item.CreatorName)
-		p.WriteInt16(item.Flag) // lock, show, spikes, cape, cold protection etc ?
+		p.WriteInt16(item.amount)
+		p.WriteString(item.creatorName)
+		p.WriteInt16(item.flag) // lock, show, spikes, cape, cold protection etc ?
 	default:
-		fmt.Println("Unsuported item type", item.InvID)
+		fmt.Println("Unsuported item type", item.invID)
 	}
 
 	return p
 }
 
-func writeDisplayCharacter(char Character) mpacket.Packet {
+func writeDisplayCharacter(char character) mpacket.Packet {
 	p := mpacket.NewPacket()
-	p.WriteByte(char.Gender) // gender
-	p.WriteByte(char.Skin)   // skin
-	p.WriteInt32(char.Face)  // face
+	p.WriteByte(char.gender) // gender
+	p.WriteByte(char.skin)   // skin
+	p.WriteInt32(char.face)  // face
 	p.WriteByte(0x00)        // ?
-	p.WriteInt32(char.Hair)  // hair
+	p.WriteInt32(char.hair)  // hair
 
 	cashWeapon := int32(0)
 
-	for _, b := range char.Equip {
-		if b.SlotID < 0 && b.SlotID > -20 {
-			p.WriteByte(byte(math.Abs(float64(b.SlotID))))
-			p.WriteInt32(b.ItemID)
+	for _, b := range char.equip {
+		if b.slotID < 0 && b.slotID > -20 {
+			p.WriteByte(byte(math.Abs(float64(b.slotID))))
+			p.WriteInt32(b.itemID)
 		}
 	}
 
-	for _, b := range char.Equip {
-		if b.SlotID < -100 {
-			if b.SlotID == -111 {
-				cashWeapon = b.ItemID
+	for _, b := range char.equip {
+		if b.slotID < -100 {
+			if b.slotID == -111 {
+				cashWeapon = b.itemID
 			} else {
-				p.WriteByte(byte(math.Abs(float64(b.SlotID + 100))))
-				p.WriteInt32(b.ItemID)
+				p.WriteByte(byte(math.Abs(float64(b.slotID + 100))))
+				p.WriteInt32(b.itemID)
 			}
 		}
 	}

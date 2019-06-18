@@ -3,33 +3,32 @@ package game
 import (
 	"log"
 
-	"github.com/Hucaru/Valhalla/game/entity"
 	"github.com/Hucaru/Valhalla/mnet"
 	"github.com/Hucaru/Valhalla/mpacket"
 )
 
-func (server *Channel) playerChangeChannel(conn mnet.Client, reader mpacket.Reader) {
+func (server *ChannelServer) playerChangeChannel(conn mnet.Client, reader mpacket.Reader) {
 	id := reader.ReadByte()
 
 	server.migrating[conn] = id
 	server.sessions[conn].Save(server.db)
 
 	if int(id) < len(server.channels) {
-		if server.channels[id].Port == 0 {
-			conn.Send(entity.PacketMessageDialogueBox("Cannot change channel"))
+		if server.channels[id].port == 0 {
+			conn.Send(packetMessageDialogueBox("Cannot change channel"))
 		} else {
-			_, err := server.db.Exec("UPDATE characters SET migrationID=? WHERE id=?", id, server.sessions[conn].ID)
+			_, err := server.db.Exec("UPDATE characters SET migrationID=? WHERE id=?", id, server.sessions[conn].id)
 
 			if err != nil {
 				panic(err)
 			}
 
-			conn.Send(entity.PacketChangeChannel(server.channels[id].IP, server.channels[id].Port))
+			conn.Send(packetChangeChannel(server.channels[id].ip, server.channels[id].port))
 		}
 	}
 }
 
-func (server *Channel) playerConnect(conn mnet.Client, reader mpacket.Reader) {
+func (server *ChannelServer) playerConnect(conn mnet.Client, reader mpacket.Reader) {
 	charID := reader.ReadInt32()
 
 	var migrationID byte
@@ -55,7 +54,7 @@ func (server *Channel) playerConnect(conn mnet.Client, reader mpacket.Reader) {
 
 	// check migration
 
-	char := entity.Character{}
+	char := character{}
 	char.LoadFromID(server.db, charID)
 
 	var adminLevel int
@@ -67,14 +66,16 @@ func (server *Channel) playerConnect(conn mnet.Client, reader mpacket.Reader) {
 
 	conn.SetAdminLevel(adminLevel)
 
-	server.sessions[conn] = &char
-
-	conn.Send(entity.PacketPlayerEnterGame(char, int32(server.id)))
-	conn.Send(entity.PacketMessageScrollingHeader("Valhalla Archival Project"))
-
 	_, err = server.db.Exec("UPDATE characters SET migrationID=? WHERE id=?", -1, charID)
 
 	if err != nil {
 		panic(err)
 	}
+
+	server.sessions[conn] = &char
+
+	conn.Send(packetPlayerEnterGame(char, int32(server.id)))
+	conn.Send(packetMessageScrollingHeader("Valhalla Archival Project"))
+
+	server.fields[char.mapID].addPlayer(conn, char.instanceID)
 }

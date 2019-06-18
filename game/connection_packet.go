@@ -1,4 +1,4 @@
-package entity
+package game
 
 import "github.com/Hucaru/Valhalla/mpacket"
 
