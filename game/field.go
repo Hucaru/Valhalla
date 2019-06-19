@@ -60,7 +60,6 @@ type field struct {
 	id        int32
 	instances []instance
 	data      nx.Map
-	dispatch  chan func()
 	server    *ChannelServer
 
 	vrlimit, mbr, ombr             fieldRectangle
@@ -116,7 +115,11 @@ func (f *field) addPlayer(conn mnet.Client, instance int) error {
 }
 
 func (f *field) removePlayer(conn mnet.Client, instance int) error {
-	return nil
+	if f.validInstance(instance) {
+		return f.instances[instance].removePlayer(conn)
+	}
+
+	return fmt.Errorf("Invalid instance")
 }
 
 func (f field) getRandomSpawnPortal() (nx.Portal, byte, error) {

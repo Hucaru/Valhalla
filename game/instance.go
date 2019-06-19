@@ -1,6 +1,8 @@
 package game
 
 import (
+	"fmt"
+
 	"github.com/Hucaru/Valhalla/mnet"
 	"github.com/Hucaru/Valhalla/mpacket"
 )
@@ -13,33 +15,65 @@ type instance struct {
 	server  *ChannelServer
 }
 
-func (i *instance) addPlayer(conn mnet.Client) error {
-	for _, npc := range i.npcs {
+func (inst *instance) addPlayer(conn mnet.Client) error {
+	for _, npc := range inst.npcs {
 		conn.Send(packetNpcShow(npc))
 		conn.Send(packetNpcSetController(npc.spawnID, true))
 	}
 
-	for _, other := range i.players {
-		other.Send(packetMapPlayerEnter(*i.server.sessions[conn]))
-		conn.Send(packetMapPlayerEnter(*i.server.sessions[other]))
+	for _, other := range inst.players {
+		other.Send(packetMapPlayerEnter(inst.server.players[conn].char))
+		conn.Send(packetMapPlayerEnter(inst.server.players[other].char))
 	}
 
-	i.players = append(i.players, conn)
+	inst.players = append(inst.players, conn)
 	return nil
 }
 
-func (i *instance) removePlayer(conn mnet.Client) error {
+func (inst *instance) removePlayer(conn mnet.Client) error {
+	index := -1
+
+	for i, v := range inst.players {
+		if v == conn {
+			index = i
+			break
+		} else {
+
+		}
+	}
+	if index == -1 {
+		return fmt.Errorf("player does not exist in instance")
+	}
+
+	inst.players = append(inst.players[:index], inst.players[index+1:]...)
+
+	for _, v := range inst.players {
+		v.Send(packetMapPlayerLeft(inst.server.players[conn].char.id))
+	}
+
 	return nil
 }
 
-func (i *instance) delete() error {
+func (inst *instance) delete() error {
 	return nil
 }
 
-func (i instance) send(p mpacket.Packet) error {
+func (inst instance) send(p mpacket.Packet) error {
+	for _, v := range inst.players {
+		v.Send(p)
+	}
+
 	return nil
 }
 
-func (i instance) sendExcept(p mpacket.Packet, exception mnet.Client) error {
+func (inst instance) sendExcept(p mpacket.Packet, exception mnet.Client) error {
+	for _, v := range inst.players {
+		if v == exception {
+			continue
+		}
+
+		v.Send(p)
+	}
+
 	return nil
 }

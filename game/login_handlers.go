@@ -148,7 +148,7 @@ func (server *LoginServer) handleChannelSelect(conn mnet.Client, reader mpacket.
 	}
 
 	if selectedWorld == conn.GetWorldID() {
-		characters := GetCharactersFromAccountWorldID(server.db, conn.GetAccountID(), conn.GetWorldID())
+		characters := getCharactersFromAccountWorldID(server.db, conn.GetAccountID(), conn.GetWorldID())
 		conn.Send(packetLoginDisplayCharacters(characters))
 	}
 }
@@ -254,7 +254,7 @@ func (server *LoginServer) handleNewCharacter(conn mnet.Client, reader mpacket.R
 			panic(err)
 		}
 
-		characters := GetCharactersFromAccountWorldID(server.db, conn.GetAccountID(), conn.GetWorldID())
+		characters := getCharactersFromAccountWorldID(server.db, conn.GetAccountID(), conn.GetWorldID())
 		newCharacter = characters[len(characters)-1]
 	}
 

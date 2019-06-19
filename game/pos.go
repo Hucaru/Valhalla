@@ -1,6 +1,6 @@
 package game
 
-type Pos struct {
-	X int16
-	Y int16
+type pos struct {
+	x int16
+	y int16
 }

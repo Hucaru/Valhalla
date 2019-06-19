@@ -7,10 +7,9 @@ import (
 )
 
 type character struct {
-	id         int32
-	instanceID int
-	accountID  int32
-	worldID    byte
+	id        int32
+	accountID int32
+	worldID   byte
 
 	mapID       int32
 	mapPos      byte
@@ -40,7 +39,7 @@ type character struct {
 	hair     int32
 	chairID  int32
 	stance   byte
-	pos      Pos
+	pos      pos
 	foothold int16
 	guild    string
 
@@ -55,10 +54,10 @@ type character struct {
 
 	Skills map[int32]Skill
 
-	MiniGameWins, MiniGameDraw, MiniGameLoss int32
+	MinigameWins, MinigameDraw, MinigameLoss int32
 }
 
-func (c character) Save(db *sql.DB) error {
+func (c character) save(db *sql.DB) error {
 	query := `UPDATE characters set skin=?, hair=?, face=?, level=?,
 	job=?, str=?, dex=?, intt=?, luk=?, hp=?, maxHP=?, mp=?, maxMP=?,
 	ap=?, sp=?, exp=?, fame=?, mapID=?, mesos=? WHERE id=?`
@@ -85,7 +84,7 @@ func (c character) Save(db *sql.DB) error {
 	return err
 }
 
-func GetCharactersFromAccountWorldID(db *sql.DB, accountID int32, worldID byte) []character {
+func getCharactersFromAccountWorldID(db *sql.DB, accountID int32, worldID byte) []character {
 	c := []character{}
 
 	filter := "id,accountID,worldID,name,gender,skin,hair,face,level,job,str,dex,intt," +
@@ -121,7 +120,7 @@ func GetCharactersFromAccountWorldID(db *sql.DB, accountID int32, worldID byte) 
 	return c
 }
 
-func (c *character) LoadFromID(db *sql.DB, id int32) {
+func (c *character) loadFromID(db *sql.DB, id int32) {
 	filter := "id,accountID,worldID,name,gender,skin,hair,face,level,job,str,dex,intt," +
 		"luk,hp,maxHP,mp,maxMP,ap,sp, exp,fame,mapID,mapPos,previousMapID,mesos," +
 		"equipSlotSize,useSlotSize,setupSlotSize,etcSlotSize,cashSlotSize"
@@ -151,7 +150,6 @@ func (c *character) LoadFromID(db *sql.DB, id int32) {
 		panic(err)
 	}
 
-	c.pos.X = nxMap.Portals[c.mapPos].X
-	c.pos.Y = nxMap.Portals[c.mapPos].Y
-	c.instanceID = 0
+	c.pos.x = nxMap.Portals[c.mapPos].X
+	c.pos.y = nxMap.Portals[c.mapPos].Y
 }

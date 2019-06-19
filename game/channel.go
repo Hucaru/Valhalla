@@ -22,8 +22,8 @@ type ChannelServer struct {
 	ip        []byte
 	port      int16
 	maxPop    int16
-	migrating map[mnet.Client]byte
-	sessions  map[mnet.Client]*character
+	migrating map[mnet.Client]byte // TODO: switch to slice
+	players   map[mnet.Client]*player
 	channels  [20]channel
 	fields    map[int32]*field
 }
@@ -32,7 +32,7 @@ type ChannelServer struct {
 func (server *ChannelServer) Initialise(work chan func(), dbuser, dbpassword, dbaddress, dbport, dbdatabase string) {
 	server.dispatch = work
 	server.migrating = make(map[mnet.Client]byte)
-	server.sessions = make(map[mnet.Client]*character)
+	server.players = make(map[mnet.Client]*player)
 
 	var err error
 	server.db, err = sql.Open("mysql", dbuser+":"+dbpassword+"@tcp("+dbaddress+":"+dbport+")/"+dbdatabase)
@@ -54,10 +54,9 @@ func (server *ChannelServer) Initialise(work chan func(), dbuser, dbpassword, db
 	for fieldID, nxMap := range nx.GetMaps() {
 
 		server.fields[fieldID] = &field{
-			id:       fieldID,
-			data:     nxMap,
-			dispatch: server.dispatch,
-			server:   server,
+			id:     fieldID,
+			data:   nxMap,
+			server: server,
 		}
 
 		server.fields[fieldID].calculateFieldLimits()
@@ -124,6 +123,11 @@ func (server *ChannelServer) handleChannelConnectionInfo(conn mnet.Server, reade
 
 // ClientDisconnected from server
 func (server *ChannelServer) ClientDisconnected(conn mnet.Client) {
+	player := server.players[conn]
+	char := player.char
+	server.fields[char.mapID].removePlayer(conn, player.instanceID)
+	delete(server.players, conn)
+
 	if _, ok := server.migrating[conn]; ok {
 		delete(server.migrating, conn)
 	} else {
@@ -133,5 +137,6 @@ func (server *ChannelServer) ClientDisconnected(conn mnet.Client) {
 			log.Println("Unable to complete logout for ", conn.GetAccountID())
 		}
 	}
+
 	conn.Cleanup()
 }

@@ -41,10 +41,12 @@ Cashshop server:
 
 Channel server:
 
-- [ ] Players can see each other
-- [x] Player can change channel
-- [ ] Player chat
 - [ ] GM commands
+- [x] Players can see each other
+- [x] Player can change channel
+- [x] Players can see other movement
+- [x] Player chat
+- [ ] player use portal
 - [ ] Player use skills
 - [ ] Player exp
 - [ ] Player level up
@@ -60,7 +62,7 @@ Channel server:
 - [ ] NPC storage
 - [ ] PQ scripts
 - [ ] Event scripts
-- [ ] Map instancing
+- [x] Map instancing
 - [ ] Mob visible
 - [ ] Mob movement
 - [ ] Mob attack
@@ -80,6 +82,7 @@ Channel server:
 - [ ] Whisphers
 - [ ] Buddy chat
 - [ ] Chat commands (/find etc.)
+- [ ] Server resets login status if account is signed in but no characters are present
 
 ## Acknowledgements
 

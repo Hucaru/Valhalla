@@ -32,8 +32,8 @@ func packetMapPlayerEnter(char character) mpacket.Packet {
 	p.WriteInt32(0)            // ?
 	p.WriteInt32(char.chairID) // 0 means no chair in use, stance needs to be changed to match
 
-	p.WriteInt16(char.pos.X)
-	p.WriteInt16(char.pos.Y)
+	p.WriteInt16(char.pos.x)
+	p.WriteInt16(char.pos.y)
 
 	p.WriteByte(char.stance)
 	p.WriteInt16(char.foothold)

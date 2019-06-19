@@ -20,7 +20,7 @@ func (server *ChannelServer) HandleClientPacket(conn mnet.Client, reader mpacket
 		// server.playerUsePortal(conn, reader)
 	case opcode.RecvChannelEnterCashShop:
 	case opcode.RecvChannelPlayerMovement:
-		// server.playerMovement(conn, reader)
+		server.playerMovement(conn, reader)
 	case opcode.RecvChannelPlayerStand:
 		// server.playerStand(conn, reader)
 	case opcode.RecvChannelPlayerUserChair:
@@ -34,13 +34,13 @@ func (server *ChannelServer) HandleClientPacket(conn mnet.Client, reader mpacket
 	case opcode.RecvChannelDmgRecv:
 		// server.playerTakeDamage(conn, reader)
 	case opcode.RecvChannelPlayerSendAllChat:
-		// server.chatSendAll(conn, reader)
+		server.chatSendAll(conn, reader)
 	case opcode.RecvChannelSlashCommands:
 		// server.chatSlashCommand(conn, reader)
 	case opcode.RecvChannelCharacterUIWindow:
 		// server.handleUIWindow(conn, reader)
 	case opcode.RecvChannelEmote:
-		// server.playerEmote(conn, reader)
+		server.playerEmote(conn, reader)
 	case opcode.RecvChannelNpcDialogue:
 		// server.npcChatStart(conn, reader)
 	case opcode.RecvChannelNpcDialogueContinue:
