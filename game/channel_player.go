@@ -11,13 +11,15 @@ func (server *ChannelServer) playerChangeChannel(conn mnet.Client, reader mpacke
 	id := reader.ReadByte()
 
 	server.migrating[conn] = id
-	server.players[conn].char.save(server.db)
+	player, _ := server.players.getFromConn(conn)
+	char := player.char
+	char.save(server.db)
 
 	if int(id) < len(server.channels) {
 		if server.channels[id].port == 0 {
 			conn.Send(packetMessageDialogueBox("Cannot change channel"))
 		} else {
-			_, err := server.db.Exec("UPDATE characters SET migrationID=? WHERE id=?", id, server.players[conn].char.id)
+			_, err := server.db.Exec("UPDATE characters SET migrationID=? WHERE id=?", id, char.id)
 
 			if err != nil {
 				panic(err)
@@ -72,16 +74,16 @@ func (server *ChannelServer) playerConnect(conn mnet.Client, reader mpacket.Read
 		panic(err)
 	}
 
-	server.players[conn] = newPlayer(conn, char)
+	server.players = append(server.players, newPlayer(conn, char))
 
 	conn.Send(packetPlayerEnterGame(char, int32(server.id)))
 	conn.Send(packetMessageScrollingHeader("Valhalla Archival Project"))
 
-	server.fields[char.mapID].addPlayer(conn, server.players[conn].instanceID)
+	server.fields[char.mapID].addPlayer(conn, server.players[len(server.players)-1].instanceID)
 }
 
 func (server *ChannelServer) playerMovement(conn mnet.Client, reader mpacket.Reader) {
-	player := server.players[conn]
+	player, _ := server.players.getFromConn(conn)
 	char := player.char
 
 	if char.portalCount != reader.ReadByte() {
@@ -104,7 +106,7 @@ func (server *ChannelServer) playerMovement(conn mnet.Client, reader mpacket.Rea
 func (server *ChannelServer) playerEmote(conn mnet.Client, reader mpacket.Reader) {
 	emote := reader.ReadInt32()
 
-	player := server.players[conn]
+	player, _ := server.players.getFromConn(conn)
 	char := player.char
 
 	server.fields[char.mapID].sendExcept(packetPlayerEmoticon(char.id, emote), conn, player.instanceID)

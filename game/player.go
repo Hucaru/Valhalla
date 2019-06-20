@@ -1,6 +1,44 @@
 package game
 
-import "github.com/Hucaru/Valhalla/mnet"
+import (
+	"fmt"
+
+	"github.com/Hucaru/Valhalla/constant"
+	"github.com/Hucaru/Valhalla/mnet"
+)
+
+type players []*player
+
+func (p *players) getFromConn(conn mnet.Client) (*player, error) {
+	for _, v := range *p {
+		if v.conn == conn {
+			return v, nil
+		}
+	}
+
+	return nil, fmt.Errorf("Could not retrieve player")
+}
+
+func (p *players) removeFromConn(conn mnet.Client) error {
+	i := -1
+
+	for j, v := range *p {
+		if v.conn == conn {
+			i = j
+			break
+		}
+	}
+
+	if i == -1 {
+		return fmt.Errorf("Could not find player")
+	}
+
+	(*p)[i] = (*p)[len(*p)-1]
+	(*p)[len(*p)-1] = nil
+	(*p) = (*p)[:len(*p)-1]
+
+	return nil
+}
 
 type player struct {
 	conn       mnet.Client
@@ -12,8 +50,9 @@ func newPlayer(conn mnet.Client, char character) *player {
 	return &player{conn: conn, char: char, instanceID: 0}
 }
 
-func (p *player) setJob(amount int16) {
-
+func (p *player) setJob(id int16) {
+	p.char.job = id
+	p.conn.Send(packetPlayerStatChange(true, constant.JobID, int32(id)))
 }
 
 func (p *player) setLevel(amount byte) {
@@ -121,5 +160,4 @@ func (p *player) updateMovement(frag movementFrag) {
 	p.char.pos.y = frag.y
 	p.char.foothold = frag.foothold
 	p.char.stance = frag.stance
-
 }

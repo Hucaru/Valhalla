@@ -23,7 +23,7 @@ type ChannelServer struct {
 	port      int16
 	maxPop    int16
 	migrating map[mnet.Client]byte // TODO: switch to slice
-	players   map[mnet.Client]*player
+	players   players
 	channels  [20]channel
 	fields    map[int32]*field
 }
@@ -32,7 +32,6 @@ type ChannelServer struct {
 func (server *ChannelServer) Initialise(work chan func(), dbuser, dbpassword, dbaddress, dbport, dbdatabase string) {
 	server.dispatch = work
 	server.migrating = make(map[mnet.Client]byte)
-	server.players = make(map[mnet.Client]*player)
 
 	var err error
 	server.db, err = sql.Open("mysql", dbuser+":"+dbpassword+"@tcp("+dbaddress+":"+dbport+")/"+dbdatabase)
@@ -123,10 +122,10 @@ func (server *ChannelServer) handleChannelConnectionInfo(conn mnet.Server, reade
 
 // ClientDisconnected from server
 func (server *ChannelServer) ClientDisconnected(conn mnet.Client) {
-	player := server.players[conn]
+	player, _ := server.players.getFromConn(conn)
 	char := player.char
 	server.fields[char.mapID].removePlayer(conn, player.instanceID)
-	delete(server.players, conn)
+	server.players.removeFromConn(conn)
 
 	if _, ok := server.migrating[conn]; ok {
 		delete(server.migrating, conn)
