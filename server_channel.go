@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/Hucaru/Valhalla/constant"
-	"github.com/Hucaru/Valhalla/game"
+	"github.com/Hucaru/Valhalla/server"
 	"github.com/Hucaru/Valhalla/nx"
 
 	"github.com/Hucaru/Valhalla/game/script"
@@ -25,7 +25,7 @@ type channelServer struct {
 	wRecv     chan func()
 	wg        *sync.WaitGroup
 	worldConn mnet.Server
-	gameState game.ChannelServer
+	gameState server.ChannelServer
 }
 
 func newChannelServer(configFile string) *channelServer {
@@ -136,7 +136,7 @@ func (cs *channelServer) acceptNewConnections() {
 		go client.Reader()
 		go client.Writer()
 
-		conn.Write(game.PacketClientHandshake(constant.MapleVersion, keyRecv[:], keySend[:]))
+		conn.Write(server.PacketClientHandshake(constant.MapleVersion, keyRecv[:], keySend[:]))
 	}
 }
 

@@ -1,4 +1,4 @@
-package game
+package server
 
 import (
 	"encoding/hex"
@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/Hucaru/Valhalla/entity"
 	"github.com/Hucaru/Valhalla/mnet"
 	"github.com/Hucaru/Valhalla/mpacket"
 )
@@ -16,10 +17,10 @@ func (server *ChannelServer) chatSendAll(conn mnet.Client, reader mpacket.Reader
 	if strings.Index(msg, "/") == 0 && conn.GetAdminLevel() > 0 {
 		server.gmCommand(conn, msg)
 	} else {
-		player, _ := server.players.getFromConn(conn)
-		char := player.char
+		player, _ := server.players.GetFromConn(conn)
+		char := player.Char()
 
-		server.fields[char.mapID].send(packetMessageAllChat(char.id, conn.GetAdminLevel() > 0, msg), player.instanceID)
+		server.fields[char.MapID()].Send(entity.PacketMessageAllChat(char.ID(), conn.GetAdminLevel() > 0, msg), player.InstanceID())
 	}
 }
 
@@ -49,7 +50,7 @@ func (server *ChannelServer) gmCommand(conn mnet.Client, msg string) {
 		}
 
 		for _, v := range server.players {
-			v.conn.Send(packetMessageNotice(strings.Join(command[1:], " ")))
+			v.Send(entity.PacketMessageNotice(strings.Join(command[1:], " ")))
 		}
 	case "msgBox":
 		if len(command) < 2 {
@@ -57,7 +58,7 @@ func (server *ChannelServer) gmCommand(conn mnet.Client, msg string) {
 		}
 
 		for _, v := range server.players {
-			v.conn.Send(packetMessageDialogueBox(strings.Join(command[1:], " ")))
+			v.Send(entity.PacketMessageDialogueBox(strings.Join(command[1:], " ")))
 		}
 	case "scrollHeader":
 	case "kill":
@@ -149,11 +150,11 @@ func (server *ChannelServer) gmCommand(conn mnet.Client, msg string) {
 
 		jobID := int16(val)
 
-		player, _ := server.players.getFromConn(conn)
-		player.setJob(jobID)
+		player, _ := server.players.GetFromConn(conn)
+		player.SetJob(jobID)
 	case "item":
 	case "spawn":
 	default:
-		conn.Send(packetMessageNotice("Unkown gm command " + command[0]))
+		conn.Send(entity.PacketMessageNotice("Unkown gm command " + command[0]))
 	}
 }

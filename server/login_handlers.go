@@ -1,4 +1,4 @@
-package game
+package server
 
 import (
 	"crypto/sha512"
@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/Hucaru/Valhalla/constant/opcode"
+	"github.com/Hucaru/Valhalla/entity"
 	"github.com/Hucaru/Valhalla/mnet"
 	"github.com/Hucaru/Valhalla/mpacket"
 )
@@ -143,12 +144,12 @@ func (server *LoginServer) handleChannelSelect(conn mnet.Client, reader mpacket.
 	conn.SetChannelID(reader.ReadByte()) // Channel
 
 	if server.worlds[selectedWorld].channels[conn.GetChannelID()].maxPop == 0 {
-		conn.Send(packetMessageDialogueBox("Channel currently unavailable"))
+		conn.Send(entity.PacketMessageDialogueBox("Channel currently unavailable"))
 		return
 	}
 
 	if selectedWorld == conn.GetWorldID() {
-		characters := getCharactersFromAccountWorldID(server.db, conn.GetAccountID(), conn.GetWorldID())
+		characters := entity.GetCharactersFromAccountWorldID(server.db, conn.GetAccountID(), conn.GetWorldID())
 		conn.Send(packetLoginDisplayCharacters(characters))
 	}
 }
@@ -215,7 +216,7 @@ func (server *LoginServer) handleNewCharacter(conn mnet.Client, reader mpacket.R
 		inSlice(bottom, allowedBottom) && inSlice(top, allowedTop) && inSlice(shoes, allowedShoes) &&
 		inSlice(weapon, allowedWeapons) && inSlice(skin, allowedSkinColour) && (counter == 0)
 
-	newCharacter := character{}
+	newCharacter := entity.Character{}
 
 	if conn.GetAdminLevel() > 0 {
 		name = "[GM]" + name
@@ -254,7 +255,7 @@ func (server *LoginServer) handleNewCharacter(conn mnet.Client, reader mpacket.R
 			panic(err)
 		}
 
-		characters := getCharactersFromAccountWorldID(server.db, conn.GetAccountID(), conn.GetWorldID())
+		characters := entity.GetCharactersFromAccountWorldID(server.db, conn.GetAccountID(), conn.GetWorldID())
 		newCharacter = characters[len(characters)-1]
 	}
 

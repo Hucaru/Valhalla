@@ -1,4 +1,4 @@
-package game
+package entity
 
 import (
 	"math"
@@ -8,7 +8,7 @@ import (
 	"github.com/Hucaru/Valhalla/nx"
 )
 
-func packetNpcShow(npc npc) mpacket.Packet {
+func PacketNpcShow(npc npc) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelNpcShow)
 	p.WriteInt32(npc.spawnID)
 	p.WriteInt32(npc.ID)
@@ -24,14 +24,14 @@ func packetNpcShow(npc npc) mpacket.Packet {
 	return p
 }
 
-func packetNpcRemove(npcID int32) mpacket.Packet {
+func PacketNpcRemove(npcID int32) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelNpcRemove)
 	p.WriteInt32(npcID)
 
 	return p
 }
 
-func packetNpcSetController(npcID int32, isLocal bool) mpacket.Packet {
+func PacketNpcSetController(npcID int32, isLocal bool) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelNpcControl)
 	p.WriteBool(isLocal)
 	p.WriteInt32(npcID)
@@ -39,14 +39,14 @@ func packetNpcSetController(npcID int32, isLocal bool) mpacket.Packet {
 	return p
 }
 
-func packetNpcMovement(bytes []byte) mpacket.Packet {
+func PacketNpcMovement(bytes []byte) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelNpcMovement)
 	p.WriteBytes(bytes)
 
 	return p
 }
 
-func packetNpcChatBackNext(npcID int32, msg string, front, back bool) mpacket.Packet {
+func PacketNpcChatBackNext(npcID int32, msg string, front, back bool) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelNpcDialogueBox)
 	p.WriteByte(4)
 	p.WriteInt32(npcID)
@@ -58,7 +58,7 @@ func packetNpcChatBackNext(npcID int32, msg string, front, back bool) mpacket.Pa
 	return p
 }
 
-func packetNpcChatYesNo(npcID int32, msg string) mpacket.Packet {
+func PacketNpcChatYesNo(npcID int32, msg string) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelNpcDialogueBox)
 	p.WriteByte(4)
 	p.WriteInt32(npcID)
@@ -68,7 +68,7 @@ func packetNpcChatYesNo(npcID int32, msg string) mpacket.Packet {
 	return p
 }
 
-func packetNpcChatUserString(npcID int32, msg string, defaultInput string, minLength, maxLength int16) mpacket.Packet {
+func PacketNpcChatUserString(npcID int32, msg string, defaultInput string, minLength, maxLength int16) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelNpcDialogueBox)
 	p.WriteByte(4)
 	p.WriteInt32(npcID)
@@ -81,7 +81,7 @@ func packetNpcChatUserString(npcID int32, msg string, defaultInput string, minLe
 	return p
 }
 
-func packetNpcChatUserNumber(npcID int32, msg string, defaultInput, minLength, maxLength int32) mpacket.Packet {
+func PacketNpcChatUserNumber(npcID int32, msg string, defaultInput, minLength, maxLength int32) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelNpcDialogueBox)
 	p.WriteByte(4)
 	p.WriteInt32(npcID)
@@ -94,7 +94,7 @@ func packetNpcChatUserNumber(npcID int32, msg string, defaultInput, minLength, m
 	return p
 }
 
-func packetNpcChatSelection(npcID int32, msg string) mpacket.Packet {
+func PacketNpcChatSelection(npcID int32, msg string) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelNpcDialogueBox)
 	p.WriteByte(4)
 	p.WriteInt32(npcID)
@@ -104,7 +104,7 @@ func packetNpcChatSelection(npcID int32, msg string) mpacket.Packet {
 	return p
 }
 
-func packetNpcChatStyleWindow(npcID int32, msg string, styles []int32) mpacket.Packet {
+func PacketNpcChatStyleWindow(npcID int32, msg string, styles []int32) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelNpcDialogueBox)
 	p.WriteByte(4)
 	p.WriteInt32(npcID)
@@ -119,7 +119,7 @@ func packetNpcChatStyleWindow(npcID int32, msg string, styles []int32) mpacket.P
 	return p
 }
 
-func packetNpcChatUnkown1(npcID int32, msg string) mpacket.Packet {
+func PacketNpcChatUnkown1(npcID int32, msg string) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelNpcDialogueBox)
 	p.WriteByte(4)
 	p.WriteInt32(npcID)
@@ -133,7 +133,7 @@ func packetNpcChatUnkown1(npcID int32, msg string) mpacket.Packet {
 	return p
 }
 
-func packetNpcChatUnkown2(npcID int32, msg string) mpacket.Packet {
+func PacketNpcChatUnkown2(npcID int32, msg string) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelNpcDialogueBox)
 	p.WriteByte(4)
 	p.WriteInt32(npcID)
@@ -148,7 +148,7 @@ func packetNpcChatUnkown2(npcID int32, msg string) mpacket.Packet {
 	return p
 }
 
-func packetNpcShop(npcID int32, items [][]int32) mpacket.Packet {
+func PacketNpcShop(npcID int32, items [][]int32) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelNpcShop)
 	p.WriteInt32(npcID)
 	p.WriteInt16(int16(len(items)))
@@ -183,30 +183,30 @@ func packetNpcShop(npcID int32, items [][]int32) mpacket.Packet {
 	return p
 }
 
-func packetNpcShopResult(code byte) mpacket.Packet {
+func PacketNpcShopResult(code byte) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelNpcShopResult)
 	p.WriteByte(code)
 
 	return p
 }
 
-func packetNpcShopContinue() mpacket.Packet {
-	return packetNpcShopResult(0x08)
+func PacketNpcShopContinue() mpacket.Packet {
+	return PacketNpcShopResult(0x08)
 }
 
-func packetNpcShopNotEnoughStock() mpacket.Packet {
-	return packetNpcShopResult(0x09)
+func PacketNpcShopNotEnoughStock() mpacket.Packet {
+	return PacketNpcShopResult(0x09)
 }
 
-func packetNpcShopNotEnoughMesos() mpacket.Packet {
-	return packetNpcShopResult(0x0A)
+func PacketNpcShopNotEnoughMesos() mpacket.Packet {
+	return PacketNpcShopResult(0x0A)
 }
 
-func packetNpcTradeError() mpacket.Packet {
-	return packetNpcShopResult(0xFF)
+func PacketNpcTradeError() mpacket.Packet {
+	return PacketNpcShopResult(0xFF)
 }
 
-func packetNpcStorageShow(npcID, storageMesos int32, storageSlots byte, items []item) mpacket.Packet {
+func PacketNpcStorageShow(npcID, storageMesos int32, storageSlots byte, items []item) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelNpcStorage)
 	p.WriteInt32(npcID)
 	p.WriteByte(storageSlots)

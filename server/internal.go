@@ -1,4 +1,4 @@
-package game
+package server
 
 import (
 	"github.com/Hucaru/Valhalla/constant/opcode"

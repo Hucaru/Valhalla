@@ -1,11 +1,11 @@
-package game
+package entity
 
 import (
 	"github.com/Hucaru/Valhalla/constant/opcode"
 	"github.com/Hucaru/Valhalla/mpacket"
 )
 
-func packetMapPlayerEnter(char character) mpacket.Packet {
+func PacketMapPlayerEnter(char Character) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelCharacterEnterField)
 	p.WriteInt32(char.id)    // player id
 	p.WriteString(char.name) // char name
@@ -25,7 +25,7 @@ func packetMapPlayerEnter(char character) mpacket.Packet {
 		p.WriteInt32(0)
 	}
 
-	p.WriteBytes(writeDisplayCharacter(char))
+	p.WriteBytes(WriteDisplayCharacter(char))
 
 	p.WriteInt32(0)            // ?
 	p.WriteInt32(0)            // ?
@@ -42,14 +42,14 @@ func packetMapPlayerEnter(char character) mpacket.Packet {
 	return p
 }
 
-func packetMapPlayerLeft(charID int32) mpacket.Packet {
+func PacketMapPlayerLeft(charID int32) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelCharacterLeaveField)
 	p.WriteInt32(charID)
 
 	return p
 }
 
-func packetMapChange(mapID int32, channelID int32, mapPos byte, hp int16) mpacket.Packet {
+func PacketMapChange(mapID int32, channelID int32, mapPos byte, hp int16) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelWarpToMap)
 	p.WriteInt32(channelID)
 	p.WriteByte(0) // character portal counter
@@ -62,7 +62,7 @@ func packetMapChange(mapID int32, channelID int32, mapPos byte, hp int16) mpacke
 	return p
 }
 
-func packetMapShowGameBox(charID, roomID int32, roomType, boardType byte, name string, hasPassword, koreanText bool, ammount byte) mpacket.Packet {
+func PacketMapShowGameBox(charID, roomID int32, roomType, boardType byte, name string, hasPassword, koreanText bool, ammount byte) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelRoomBox)
 	p.WriteInt32(charID)
 	p.WriteByte(roomType)
@@ -78,7 +78,7 @@ func packetMapShowGameBox(charID, roomID int32, roomType, boardType byte, name s
 	return p
 }
 
-func packetMapRemoveGameBox(charID int32) mpacket.Packet {
+func PacketMapRemoveGameBox(charID int32) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelRoomBox)
 	p.WriteInt32(charID)
 	p.WriteInt32(0)

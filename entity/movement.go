@@ -1,4 +1,4 @@
-package game
+package entity
 
 import (
 	"fmt"
@@ -46,7 +46,7 @@ var movementType = struct {
 	normalMovement3:  17,
 }
 
-func parseMovement(reader mpacket.Reader) (movementData, movementFrag) {
+func ParseMovement(reader mpacket.Reader) (movementData, movementFrag) {
 	// http://mapleref.wikia.com/wiki/Movement
 
 	mData := movementData{}
@@ -132,7 +132,7 @@ func parseMovement(reader mpacket.Reader) (movementData, movementFrag) {
 	return mData, final
 }
 
-func generateMovementBytes(moveData movementData) mpacket.Packet {
+func GenerateMovementBytes(moveData movementData) mpacket.Packet {
 	p := mpacket.NewPacket()
 
 	p.WriteInt16(moveData.origX)
@@ -188,13 +188,13 @@ func generateMovementBytes(moveData movementData) mpacket.Packet {
 	return p
 }
 
-func (data movementData) validateChar(char character) bool {
+func (data movementData) ValidateChar(char Character) bool {
 	// run through the movement data and make sure characters are not moving too fast (going to have to take into account gear and buffs "-_- )
 
 	return true
 }
 
-func (data movementData) validateMob(mob mob) bool {
+func (data movementData) ValidateMob(mob mob) bool {
 	// run through the movement data and make sure monsters are not moving too fast
 
 	return true

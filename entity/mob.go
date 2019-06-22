@@ -1,4 +1,4 @@
-package game
+package entity
 
 type mob struct {
 	

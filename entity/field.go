@@ -1,4 +1,4 @@
-package game
+package entity
 
 import (
 	"fmt"
@@ -56,21 +56,21 @@ func (r fieldRectangle) contains(x, y int) bool {
 	return true
 }
 
-type field struct {
-	id        int32
+type Field struct {
+	ID        int32
 	instances []instance
-	data      nx.Map
-	server    *ChannelServer
+	Data      nx.Map
+	Players   *Players
 
 	vrlimit, mbr, ombr             fieldRectangle
 	mobCapacityMin, mobCapacityMax int
 }
 
-func (f *field) createInstance() int {
+func (f *Field) CreateInstance() int {
 	id := len(f.instances)
-	npcs := make([]npc, len(f.data.NPCs))
+	npcs := make([]npc, len(f.Data.NPCs))
 
-	for i, l := range f.data.NPCs {
+	for i, l := range f.Data.NPCs {
 		npcs[i] = createNpc(int32(i), l)
 	}
 
@@ -78,9 +78,9 @@ func (f *field) createInstance() int {
 
 	f.instances = append(f.instances, instance{
 		id:      id,
-		fieldID: f.id,
+		fieldID: f.ID,
 		npcs:    npcs,
-		server:  f.server,
+		players: f.Players,
 	})
 
 	// register map work function
@@ -88,25 +88,25 @@ func (f *field) createInstance() int {
 	return id
 }
 
-func (f *field) calculateFieldLimits() {
+func (f *Field) CalculateFieldLimits() {
 
 }
 
-func (f field) validInstance(instance int) bool {
+func (f Field) validInstance(instance int) bool {
 	if len(f.instances) > instance && instance > -1 {
 		return true
 	}
 	return false
 }
 
-func (f *field) deleteInstance(instance int) error {
+func (f *Field) DeleteInstance(instance int) error {
 	if f.validInstance(instance) {
 		return f.instances[instance].delete()
 	}
 	return fmt.Errorf("Invalid instance")
 }
 
-func (f *field) addPlayer(conn mnet.Client, instance int) error {
+func (f *Field) AddPlayer(conn mnet.Client, instance int) error {
 	if f.validInstance(instance) {
 		return f.instances[instance].addPlayer(conn)
 	}
@@ -114,7 +114,7 @@ func (f *field) addPlayer(conn mnet.Client, instance int) error {
 	return fmt.Errorf("Invalid instance")
 }
 
-func (f *field) removePlayer(conn mnet.Client, instance int) error {
+func (f *Field) RemovePlayer(conn mnet.Client, instance int) error {
 	if f.validInstance(instance) {
 		return f.instances[instance].removePlayer(conn)
 	}
@@ -122,11 +122,11 @@ func (f *field) removePlayer(conn mnet.Client, instance int) error {
 	return fmt.Errorf("Invalid instance")
 }
 
-func (f field) getRandomSpawnPortal() (nx.Portal, byte, error) {
+func (f Field) GetRandomSpawnPortal() (nx.Portal, byte, error) {
 	portals := []nx.Portal{}
 	inds := []int{}
 
-	nxMap, err := nx.GetMap(f.id)
+	nxMap, err := nx.GetMap(f.ID)
 
 	if err != nil {
 		return nx.Portal{}, 0, fmt.Errorf("Invalid map id")
@@ -143,7 +143,7 @@ func (f field) getRandomSpawnPortal() (nx.Portal, byte, error) {
 	return portals[ind], byte(inds[ind]), nil
 }
 
-func (f field) send(p mpacket.Packet, instance int) error {
+func (f Field) Send(p mpacket.Packet, instance int) error {
 	if f.validInstance(instance) {
 		return f.instances[instance].send(p)
 	}
@@ -151,7 +151,7 @@ func (f field) send(p mpacket.Packet, instance int) error {
 	return fmt.Errorf("Invalid instance")
 }
 
-func (f field) sendExcept(p mpacket.Packet, exception mnet.Client, instance int) error {
+func (f Field) SendExcept(p mpacket.Packet, exception mnet.Client, instance int) error {
 	if f.validInstance(instance) {
 		return f.instances[instance].sendExcept(p, exception)
 	}

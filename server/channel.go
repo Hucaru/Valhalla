@@ -1,4 +1,4 @@
-package game
+package server
 
 import (
 	"database/sql"
@@ -8,6 +8,7 @@ import (
 	_ "github.com/go-sql-driver/mysql" // don't need full import
 
 	"github.com/Hucaru/Valhalla/constant/opcode"
+	"github.com/Hucaru/Valhalla/entity"
 	"github.com/Hucaru/Valhalla/mnet"
 	"github.com/Hucaru/Valhalla/mpacket"
 	"github.com/Hucaru/Valhalla/nx"
@@ -22,16 +23,15 @@ type ChannelServer struct {
 	ip        []byte
 	port      int16
 	maxPop    int16
-	migrating map[mnet.Client]byte // TODO: switch to slice
-	players   players
+	migrating []mnet.Client // TODO: switch to slice
+	players   entity.Players
 	channels  [20]channel
-	fields    map[int32]*field
+	fields    map[int32]*entity.Field
 }
 
 // Initialise the server
 func (server *ChannelServer) Initialise(work chan func(), dbuser, dbpassword, dbaddress, dbport, dbdatabase string) {
 	server.dispatch = work
-	server.migrating = make(map[mnet.Client]byte)
 
 	var err error
 	server.db, err = sql.Open("mysql", dbuser+":"+dbpassword+"@tcp("+dbaddress+":"+dbport+")/"+dbdatabase)
@@ -48,18 +48,18 @@ func (server *ChannelServer) Initialise(work chan func(), dbuser, dbpassword, db
 
 	log.Println("Connected to database")
 
-	server.fields = make(map[int32]*field)
+	server.fields = make(map[int32]*entity.Field)
 
 	for fieldID, nxMap := range nx.GetMaps() {
 
-		server.fields[fieldID] = &field{
-			id:     fieldID,
-			data:   nxMap,
-			server: server,
+		server.fields[fieldID] = &entity.Field{
+			ID:      fieldID,
+			Data:    nxMap,
+			Players: &server.players,
 		}
 
-		server.fields[fieldID].calculateFieldLimits()
-		server.fields[fieldID].createInstance()
+		server.fields[fieldID].CalculateFieldLimits()
+		server.fields[fieldID].CreateInstance()
 	}
 
 	log.Println("Initialised game state")
@@ -122,13 +122,21 @@ func (server *ChannelServer) handleChannelConnectionInfo(conn mnet.Server, reade
 
 // ClientDisconnected from server
 func (server *ChannelServer) ClientDisconnected(conn mnet.Client) {
-	player, _ := server.players.getFromConn(conn)
-	char := player.char
-	server.fields[char.mapID].removePlayer(conn, player.instanceID)
-	server.players.removeFromConn(conn)
+	player, _ := server.players.GetFromConn(conn)
+	char := player.Char()
+	server.fields[char.MapID()].RemovePlayer(conn, player.InstanceID())
+	server.players.RemoveFromConn(conn)
 
-	if _, ok := server.migrating[conn]; ok {
-		delete(server.migrating, conn)
+	index := -1
+
+	for i, v := range server.migrating {
+		if v == conn {
+			index = i
+		}
+	}
+
+	if index > -1 {
+		server.migrating = append(server.migrating[:index], server.migrating[index+1:]...)
 	} else {
 		_, err := server.db.Exec("UPDATE accounts SET isLogedIn=0 WHERE accountID=?", conn.GetAccountID())
 

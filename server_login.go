@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/Hucaru/Valhalla/constant"
-	"github.com/Hucaru/Valhalla/game"
+	"github.com/Hucaru/Valhalla/server"
 	"github.com/Hucaru/Valhalla/mpacket"
 
 	"github.com/Hucaru/Valhalla/mnet"
@@ -20,7 +20,7 @@ type loginServer struct {
 	dbConfig  dbConfig
 	eRecv     chan *mnet.Event
 	wg        *sync.WaitGroup
-	gameState game.LoginServer
+	gameState server.LoginServer
 }
 
 func newLoginServer(configFile string) *loginServer {
@@ -113,7 +113,7 @@ func (ls *loginServer) acceptNewClientConnections() {
 		go client.Reader()
 		go client.Writer()
 
-		conn.Write(game.PacketClientHandshake(constant.MapleVersion, keyRecv[:], keySend[:]))
+		conn.Write(server.PacketClientHandshake(constant.MapleVersion, keyRecv[:], keySend[:]))
 	}
 }
 

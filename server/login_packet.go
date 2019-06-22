@@ -1,9 +1,10 @@
-package game
+package server
 
 import (
 	"strconv"
 
 	"github.com/Hucaru/Valhalla/constant/opcode"
+	"github.com/Hucaru/Valhalla/entity"
 	"github.com/Hucaru/Valhalla/mpacket"
 )
 
@@ -58,7 +59,7 @@ func packetLoginSendBadMigrate() mpacket.Packet {
 	return pac
 }
 
-func packetLoginDisplayCharacters(characters []character) mpacket.Packet {
+func packetLoginDisplayCharacters(characters []entity.Character) mpacket.Packet {
 	pac := mpacket.CreateWithOpcode(opcode.SendLoginCharacterData)
 	pac.WriteByte(0) // ?
 
@@ -66,7 +67,7 @@ func packetLoginDisplayCharacters(characters []character) mpacket.Packet {
 		pac.WriteByte(byte(len(characters)))
 
 		for _, c := range characters {
-			loginWritePlayerCharacter(&pac, c.id, c)
+			loginWritePlayerCharacter(&pac, c.ID(), c)
 		}
 	} else {
 		pac.WriteByte(0)
@@ -88,12 +89,12 @@ func packetLoginNameCheck(name string, nameFound int) mpacket.Packet {
 	return pac
 }
 
-func packetLoginCreatedCharacter(success bool, char character) mpacket.Packet {
+func packetLoginCreatedCharacter(success bool, char entity.Character) mpacket.Packet {
 	pac := mpacket.CreateWithOpcode(opcode.SendLoginNewCharacterGood)
 
 	if success {
 		pac.WriteByte(0x0) // if creation was sucessfull - 0 = good, 1 = bad
-		loginWritePlayerCharacter(&pac, char.id, char)
+		loginWritePlayerCharacter(&pac, char.ID(), char)
 	} else {
 		pac.WriteByte(0x1)
 	}
@@ -116,10 +117,10 @@ func packetLoginDeleteCharacter(charID int32, deleted bool, hacking bool) mpacke
 	return pac
 }
 
-func loginWritePlayerCharacter(pac *mpacket.Packet, pos int32, char character) {
+func loginWritePlayerCharacter(pac *mpacket.Packet, pos int32, char entity.Character) {
 	pac.WriteInt32(pos)
 
-	name := char.name
+	name := char.Name()
 
 	if len(name) > 13 {
 		name = name[:13]
@@ -132,32 +133,32 @@ func loginWritePlayerCharacter(pac *mpacket.Packet, pos int32, char character) {
 		pac.WriteByte(0x0)
 	}
 
-	pac.WriteByte(char.gender) //gender
-	pac.WriteByte(char.skin)   // skin
-	pac.WriteInt32(char.face)  // face
-	pac.WriteInt32(char.hair)  // Hair
+	pac.WriteByte(char.Gender()) //gender
+	pac.WriteByte(char.Skin())   // skin
+	pac.WriteInt32(char.Face())  // face
+	pac.WriteInt32(char.Hair())  // Hair
 
 	pac.WriteInt64(0x0) // Pet cash ID
 
-	pac.WriteByte(char.level)  // level
-	pac.WriteInt16(char.job)   // Job
-	pac.WriteInt16(char.str)   // str
-	pac.WriteInt16(char.dex)   // dex
-	pac.WriteInt16(char.intt)  // int
-	pac.WriteInt16(char.luk)   // luk
-	pac.WriteInt16(char.hp)    // hp
-	pac.WriteInt16(char.maxHP) // max hp
-	pac.WriteInt16(char.mp)    // mp
-	pac.WriteInt16(char.maxMP) // max mp
-	pac.WriteInt16(char.ap)    // ap
-	pac.WriteInt16(char.sp)    // sp
-	pac.WriteInt32(char.exp)   // exp
-	pac.WriteInt16(char.fame)  // fame
+	pac.WriteByte(char.Level())  // level
+	pac.WriteInt16(char.Job())   // Job
+	pac.WriteInt16(char.Str())   // str
+	pac.WriteInt16(char.Dex())   // dex
+	pac.WriteInt16(char.Int())   // int
+	pac.WriteInt16(char.Luk())   // luk
+	pac.WriteInt16(char.HP())    // hp
+	pac.WriteInt16(char.MaxHP()) // max hp
+	pac.WriteInt16(char.MP())    // mp
+	pac.WriteInt16(char.MaxMP()) // max mp
+	pac.WriteInt16(char.AP())    // ap
+	pac.WriteInt16(char.SP())    // sp
+	pac.WriteInt32(char.Exp())   // exp
+	pac.WriteInt16(char.Fame())  // fame
 
-	pac.WriteInt32(char.mapID) // map id
-	pac.WriteByte(char.mapPos) // map
+	pac.WriteInt32(char.MapID()) // map id
+	pac.WriteByte(char.MapPos()) // map
 
-	pac.WriteBytes(writeDisplayCharacter(char))
+	pac.WriteBytes(entity.WriteDisplayCharacter(char))
 
 	pac.WriteInt32(0) // if character is selected and which one
 	pac.WriteByte(1)  // Rankings
