@@ -24,14 +24,12 @@ type worldServer struct {
 func newWorldServer(configFile string) *worldServer {
 	config, dbConfig := worldConfigFromFile(configFile)
 
-	ws := &worldServer{
+	return &worldServer{
 		eRecv:    make(chan *mnet.Event),
 		config:   config,
 		dbConfig: dbConfig,
 		wg:       &sync.WaitGroup{},
 	}
-
-	return ws
 }
 
 func (ws *worldServer) run() {

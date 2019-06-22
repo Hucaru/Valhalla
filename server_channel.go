@@ -13,7 +13,7 @@ import (
 	"github.com/Hucaru/Valhalla/server"
 	"github.com/Hucaru/Valhalla/nx"
 
-	"github.com/Hucaru/Valhalla/game/script"
+	"github.com/Hucaru/Valhalla/server/script"
 	"github.com/Hucaru/Valhalla/mnet"
 	"github.com/Hucaru/Valhalla/mpacket"
 )
@@ -31,15 +31,13 @@ type channelServer struct {
 func newChannelServer(configFile string) *channelServer {
 	config, dbConfig := channelConfigFromFile(configFile)
 
-	cs := &channelServer{
+	return &channelServer{
 		eRecv:    make(chan *mnet.Event),
 		wRecv:    make(chan func()),
 		config:   config,
 		dbConfig: dbConfig,
 		wg:       &sync.WaitGroup{},
 	}
-
-	return cs
 }
 
 func (cs *channelServer) run() {

@@ -9,8 +9,8 @@ import (
 	"time"
 
 	"github.com/Hucaru/Valhalla/constant"
-	"github.com/Hucaru/Valhalla/server"
 	"github.com/Hucaru/Valhalla/mpacket"
+	"github.com/Hucaru/Valhalla/server"
 
 	"github.com/Hucaru/Valhalla/mnet"
 )
@@ -26,14 +26,12 @@ type loginServer struct {
 func newLoginServer(configFile string) *loginServer {
 	config, dbConfig := loginConfigFromFile(configFile)
 
-	ls := &loginServer{
+	return &loginServer{
 		eRecv:    make(chan *mnet.Event),
 		config:   config,
 		dbConfig: dbConfig,
 		wg:       &sync.WaitGroup{},
 	}
-
-	return ls
 }
 
 func (ls *loginServer) run() {
