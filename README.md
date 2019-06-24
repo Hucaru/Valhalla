@@ -41,12 +41,12 @@ Cashshop server:
 
 Channel server:
 
-- [ ] GM commands
+- [x] GM commands
 - [x] Players can see each other
 - [x] Player can change channel
 - [x] Players can see other movement
 - [x] Player chat
-- [ ] player use portal
+- [x] player use portal
 - [ ] Player use skills
 - [ ] Player exp
 - [ ] Player level up
@@ -54,7 +54,7 @@ Channel server:
 - [ ] Player inventory
 - [ ] Player use item (scrolls, potions etc)
 - [ ] Player pets
-- [ ] NPC visible
+- [x] NPC visible
 - [ ] NPC movement
 - [ ] NPC basic chat
 - [ ] NPC shops
