@@ -1,12 +1,74 @@
 package server
 
 import (
+	"fmt"
 	"log"
 
 	"github.com/Hucaru/Valhalla/entity"
 	"github.com/Hucaru/Valhalla/mnet"
 	"github.com/Hucaru/Valhalla/mpacket"
 )
+
+func (server *ChannelServer) playerUsePortal(conn mnet.Client, reader mpacket.Reader) {
+	player, _ := server.players.GetFromConn(conn)
+	char := player.Char()
+
+	if char.PortalCount() != reader.ReadByte() {
+		conn.Send(entity.PacketPlayerNoChange())
+		return
+	}
+
+	entryType := reader.ReadInt32()
+	field := server.fields[char.MapID()]
+
+	switch entryType {
+	case 0:
+		if char.HP() == 0 {
+			returnMapID := field.Data.ReturnMap
+			portal, err := field.GetRandomSpawnPortal()
+
+			if err == nil {
+				conn.Send(entity.PacketPlayerNoChange())
+				return
+			}
+
+			field.RemovePlayer(conn, player.InstanceID())
+			player.SetMapID(returnMapID)
+			player.SetPos(portal.Pos())
+			conn.Send(entity.PacketMapChange(returnMapID, int32(server.id), portal.ID(), char.HP()))
+			server.fields[returnMapID].AddPlayer(conn, player.InstanceID())
+
+			player.SetHP(50)
+		}
+	case -1:
+		portalName := reader.ReadString(reader.ReadInt16())
+		srcPortal, err := field.GetPortalFromName(portalName)
+
+		if err != nil {
+			fmt.Println(err)
+			conn.Send(entity.PacketPlayerNoChange())
+			return
+		}
+
+		dstField := server.fields[srcPortal.DestFieldID()]
+		dstPortal, err := dstField.GetPortalFromName(srcPortal.DestName())
+
+		if err != nil {
+			fmt.Println(err)
+			conn.Send(entity.PacketPlayerNoChange())
+			return
+		}
+
+		field.RemovePlayer(conn, player.InstanceID())
+		player.SetMapID(dstField.ID)
+		player.SetPos(dstPortal.Pos())
+		conn.Send(entity.PacketMapChange(dstField.ID, int32(server.id), dstPortal.ID(), char.HP()))
+		server.fields[dstField.ID].AddPlayer(conn, player.InstanceID())
+
+	default:
+		log.Println("Unknown portal entry type, packet:", reader)
+	}
+}
 
 func (server *ChannelServer) playerChangeChannel(conn mnet.Client, reader mpacket.Reader) {
 	id := reader.ReadByte()
@@ -29,6 +91,36 @@ func (server *ChannelServer) playerChangeChannel(conn mnet.Client, reader mpacke
 			conn.Send(entity.PacketChangeChannel(server.channels[id].ip, server.channels[id].port))
 		}
 	}
+}
+
+func (server *ChannelServer) playerMovement(conn mnet.Client, reader mpacket.Reader) {
+	player, _ := server.players.GetFromConn(conn)
+	char := player.Char()
+
+	if char.PortalCount() != reader.ReadByte() {
+		return
+	}
+
+	moveData, finalData := entity.ParseMovement(reader)
+
+	if !moveData.ValidateChar(char) {
+		return
+	}
+
+	moveBytes := entity.GenerateMovementBytes(moveData)
+
+	player.UpdateMovement(finalData)
+
+	server.fields[char.MapID()].SendExcept(entity.PacketPlayerMove(char.ID(), moveBytes), conn, player.InstanceID())
+}
+
+func (server *ChannelServer) playerEmote(conn mnet.Client, reader mpacket.Reader) {
+	emote := reader.ReadInt32()
+
+	player, _ := server.players.GetFromConn(conn)
+	char := player.Char()
+
+	server.fields[char.MapID()].SendExcept(entity.PacketPlayerEmoticon(char.ID(), emote), conn, player.InstanceID())
 }
 
 func (server *ChannelServer) playerConnect(conn mnet.Client, reader mpacket.Reader) {
@@ -78,34 +170,4 @@ func (server *ChannelServer) playerConnect(conn mnet.Client, reader mpacket.Read
 	conn.Send(entity.PacketMessageScrollingHeader("Valhalla Archival Project"))
 
 	server.fields[char.MapID()].AddPlayer(conn, server.players[len(server.players)-1].InstanceID())
-}
-
-func (server *ChannelServer) playerMovement(conn mnet.Client, reader mpacket.Reader) {
-	player, _ := server.players.GetFromConn(conn)
-	char := player.Char()
-
-	if char.PortalCount() != reader.ReadByte() {
-		return
-	}
-
-	moveData, finalData := entity.ParseMovement(reader)
-
-	if !moveData.ValidateChar(char) {
-		return
-	}
-
-	moveBytes := entity.GenerateMovementBytes(moveData)
-
-	player.UpdateMovement(finalData)
-
-	server.fields[char.MapID()].SendExcept(entity.PacketPlayerMove(char.ID(), moveBytes), conn, player.InstanceID())
-}
-
-func (server *ChannelServer) playerEmote(conn mnet.Client, reader mpacket.Reader) {
-	emote := reader.ReadInt32()
-
-	player, _ := server.players.GetFromConn(conn)
-	char := player.Char()
-
-	server.fields[char.MapID()].SendExcept(entity.PacketPlayerEmoticon(char.ID(), emote), conn, player.InstanceID())
 }

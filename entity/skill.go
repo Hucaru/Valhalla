@@ -13,7 +13,7 @@ type Skill struct {
 	TimeLastUsed   int64
 }
 
-func CreateSkillFromData(ID int32, level byte, skill nx.PlayerSkill) Skill {
+func createSkillFromData(ID int32, level byte, skill nx.PlayerSkill) Skill {
 	return Skill{ID: ID,
 		Level:        level,
 		Mastery:      byte(skill.Mastery),
@@ -21,7 +21,7 @@ func CreateSkillFromData(ID int32, level byte, skill nx.PlayerSkill) Skill {
 		TimeLastUsed: 0}
 }
 
-func GetSkillsFromCharID(db *sql.DB, id int32) []Skill {
+func getSkillsFromCharID(db *sql.DB, id int32) []Skill {
 	skills := []Skill{}
 
 	filter := "skillID, level, cooldown"

@@ -183,7 +183,7 @@ func (c *Character) LoadFromID(db *sql.DB, id int32) {
 
 	c.skills = make(map[int32]Skill)
 
-	for _, s := range GetSkillsFromCharID(db, c.id) {
+	for _, s := range getSkillsFromCharID(db, c.id) {
 		c.skills[s.ID] = s
 	}
 

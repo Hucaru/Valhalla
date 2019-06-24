@@ -178,3 +178,11 @@ func (p *Player) UpdateMovement(frag movementFrag) {
 	p.char.foothold = frag.foothold
 	p.char.stance = frag.stance
 }
+
+func (p *Player) SetPos(pos pos) {
+	p.char.pos = pos
+}
+
+func (p *Player) SetMapID(id int32) {
+	p.char.mapID = id
+}

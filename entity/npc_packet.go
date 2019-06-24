@@ -11,15 +11,15 @@ import (
 func PacketNpcShow(npc npc) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelNpcShow)
 	p.WriteInt32(npc.spawnID)
-	p.WriteInt32(npc.ID)
-	p.WriteInt16(npc.X)
-	p.WriteInt16(npc.Y)
+	p.WriteInt32(npc.id)
+	p.WriteInt16(npc.pos.x)
+	p.WriteInt16(npc.pos.y)
 
-	p.WriteBool(!npc.FaceLeft)
+	p.WriteBool(!npc.faceLeft)
 
-	p.WriteInt16(npc.Foothold)
-	p.WriteInt16(npc.Rx0)
-	p.WriteInt16(npc.Rx1)
+	p.WriteInt16(npc.foothold)
+	p.WriteInt16(npc.rx0)
+	p.WriteInt16(npc.rx1)
 
 	return p
 }

@@ -17,7 +17,7 @@ func (server *ChannelServer) HandleClientPacket(conn mnet.Client, reader mpacket
 	case opcode.RecvCHannelChangeChannel:
 		server.playerChangeChannel(conn, reader)
 	case opcode.RecvChannelUserPortal:
-		// server.playerUsePortal(conn, reader)
+		server.playerUsePortal(conn, reader)
 	case opcode.RecvChannelEnterCashShop:
 	case opcode.RecvChannelPlayerMovement:
 		server.playerMovement(conn, reader)

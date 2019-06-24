@@ -2,7 +2,6 @@ package entity
 
 import (
 	"fmt"
-	"math/rand"
 
 	"github.com/Hucaru/Valhalla/mnet"
 	"github.com/Hucaru/Valhalla/mpacket"
@@ -71,7 +70,13 @@ func (f *Field) CreateInstance() int {
 	npcs := make([]npc, len(f.Data.NPCs))
 
 	for i, l := range f.Data.NPCs {
-		npcs[i] = createNpc(int32(i), l)
+		npcs[i] = createNpcFromData(int32(i), l)
+	}
+
+	portals := make([]portal, len(f.Data.Portals))
+	for i, p := range f.Data.Portals {
+		portals[i] = createPortalFromData(p)
+		portals[i].id = byte(i)
 	}
 
 	// add initial set of mobs
@@ -81,6 +86,7 @@ func (f *Field) CreateInstance() int {
 		fieldID: f.ID,
 		npcs:    npcs,
 		players: f.Players,
+		portals: portals,
 	})
 
 	// register map work function
@@ -122,25 +128,20 @@ func (f *Field) RemovePlayer(conn mnet.Client, instance int) error {
 	return fmt.Errorf("Invalid instance")
 }
 
-func (f Field) GetRandomSpawnPortal() (nx.Portal, byte, error) {
-	portals := []nx.Portal{}
-	inds := []int{}
-
-	nxMap, err := nx.GetMap(f.ID)
-
-	if err != nil {
-		return nx.Portal{}, 0, fmt.Errorf("Invalid map id")
+func (f Field) GetRandomSpawnPortal() (portal, error) { // spawn portals are instance independent
+	if len(f.instances) < 1 {
+		return portal{}, fmt.Errorf("No instances in map")
 	}
 
-	for i, p := range nxMap.Portals {
-		if p.Pn == "sp" {
-			portals = append(portals, p)
-			inds = append(inds, i)
-		}
+	return f.instances[0].getRandomSpawnPortal()
+}
+
+func (f Field) GetPortalFromName(name string) (portal, error) { // only spawn portals have string names
+	if len(f.instances) < 1 {
+		return portal{}, fmt.Errorf("No instances in map")
 	}
 
-	ind := rand.Intn(len(portals))
-	return portals[ind], byte(inds[ind]), nil
+	return f.instances[0].getPortalFromName(name)
 }
 
 func (f Field) Send(p mpacket.Packet, instance int) error {
