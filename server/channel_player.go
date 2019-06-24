@@ -1,7 +1,6 @@
 package server
 
 import (
-	"fmt"
 	"log"
 
 	"github.com/Hucaru/Valhalla/entity"
@@ -45,7 +44,6 @@ func (server *ChannelServer) playerUsePortal(conn mnet.Client, reader mpacket.Re
 		srcPortal, err := field.GetPortalFromName(portalName)
 
 		if err != nil {
-			fmt.Println(err)
 			conn.Send(entity.PacketPlayerNoChange())
 			return
 		}
@@ -54,7 +52,6 @@ func (server *ChannelServer) playerUsePortal(conn mnet.Client, reader mpacket.Re
 		dstPortal, err := dstField.GetPortalFromName(srcPortal.DestName())
 
 		if err != nil {
-			fmt.Println(err)
 			conn.Send(entity.PacketPlayerNoChange())
 			return
 		}
