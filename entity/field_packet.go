@@ -34,7 +34,6 @@ func PacketMapPlayerEnter(char Character) mpacket.Packet {
 
 	p.WriteInt16(char.pos.x)
 	p.WriteInt16(char.pos.y)
-
 	p.WriteByte(char.stance)
 	p.WriteInt16(char.foothold)
 	p.WriteInt32(0) // ?

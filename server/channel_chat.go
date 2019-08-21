@@ -44,6 +44,9 @@ func (server *ChannelServer) gmCommand(conn mnet.Client, msg string) {
 		data = append(make([]byte, 4), data...)
 		conn.Send(data)
 	case "map":
+	case "pos":
+		player, _ := server.players.GetFromConn(conn)
+		conn.Send(entity.PacketMessageNotice(player.Pos().String()))
 	case "notice":
 		if len(command) < 2 {
 			return

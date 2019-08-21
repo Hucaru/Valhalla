@@ -20,8 +20,8 @@ func createPortalFromData(p nx.Portal) portal {
 		pos:         pos{x: p.X, y: p.Y},
 		name:        p.Pn,
 		destFieldID: p.Tm,
-		temporary:   false,
-		destName:    p.Tn}
+		destName:    p.Tn,
+		temporary:   false}
 }
 
 func (p portal) ID() byte           { return p.id }

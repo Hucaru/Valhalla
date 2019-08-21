@@ -1,6 +1,7 @@
 package server
 
 import (
+	"fmt"
 	"log"
 
 	"github.com/Hucaru/Valhalla/entity"
@@ -31,24 +32,42 @@ func (server *ChannelServer) playerUsePortal(conn mnet.Client, reader mpacket.Re
 				return
 			}
 
-			field.RemovePlayer(conn, player.InstanceID())
-			player.SetMapID(returnMapID)
-			player.SetPos(portal.Pos())
-			conn.Send(entity.PacketMapChange(returnMapID, int32(server.id), portal.ID(), char.HP()))
-			server.fields[returnMapID].AddPlayer(conn, player.InstanceID())
+			// field.RemovePlayer(player)
+			// player.SetMapID(returnMapID)
+			// player.SetPos(portal.Pos())
+			// player.SetMapPosID(portal.ID())
+			// player.SetFoothold(0)
+			// conn.Send(entity.PacketMapChange(returnMapID, int32(server.id), portal.ID(), char.HP()))
+			// server.fields[returnMapID].AddPlayer(player)
 
+			server.WarpPlayer(player, returnMapID, portal.ID())
 			player.SetHP(50)
 		}
 	case -1:
 		portalName := reader.ReadString(reader.ReadInt16())
 		srcPortal, err := field.GetPortalFromName(portalName)
 
+		if !player.CheckPos(srcPortal.Pos(), 60, 10) { // I'm guessing what the portal hit box is
+			if conn.GetAdminLevel() > 0 {
+				conn.Send(entity.PacketMessageRedText("Portal - " + srcPortal.Pos().String() + " Player - " + player.Pos().String()))
+			}
+
+			conn.Send(entity.PacketPlayerNoChange())
+			return
+		}
+
 		if err != nil {
 			conn.Send(entity.PacketPlayerNoChange())
 			return
 		}
 
-		dstField := server.fields[srcPortal.DestFieldID()]
+		dstField, ok := server.fields[srcPortal.DestFieldID()]
+
+		if !ok {
+			conn.Send(entity.PacketPlayerNoChange())
+			return
+		}
+
 		dstPortal, err := dstField.GetPortalFromName(srcPortal.DestName())
 
 		if err != nil {
@@ -56,22 +75,57 @@ func (server *ChannelServer) playerUsePortal(conn mnet.Client, reader mpacket.Re
 			return
 		}
 
-		field.RemovePlayer(conn, player.InstanceID())
-		player.SetMapID(dstField.ID)
-		player.SetPos(dstPortal.Pos())
-		conn.Send(entity.PacketMapChange(dstField.ID, int32(server.id), dstPortal.ID(), char.HP()))
-		server.fields[dstField.ID].AddPlayer(conn, player.InstanceID())
+		server.WarpPlayer(player, dstField.ID, dstPortal.ID())
 
 	default:
 		log.Println("Unknown portal entry type, packet:", reader)
 	}
 }
 
+func (server ChannelServer) WarpPlayer(player *entity.Player, mapID int32, mapPos byte) error {
+
+	srcField, ok := server.fields[player.Char().MapID()]
+
+	if !ok {
+		return fmt.Errorf("Error in map id %d", player.Char().MapID())
+	}
+
+	dstField, ok := server.fields[mapID]
+
+	if !ok {
+		return fmt.Errorf("Error in map id %d", mapID)
+	}
+
+	dstPortal, err := dstField.GetPortalFromID(mapPos)
+
+	if err != nil {
+		return fmt.Errorf("Error in portal id %d", mapPos)
+	}
+
+	srcField.RemovePlayer(player)
+
+	player.SetMapID(dstField.ID)
+	player.SetMapPosID(dstPortal.ID())
+	player.SetPos(dstPortal.Pos())
+	player.SetFoothold(0) // Why is this needed to prevent incorrect initial x,y for others?
+	player.Send(entity.PacketMapChange(dstField.ID, int32(server.id), dstPortal.ID(), player.Char().HP()))
+
+	dstField.AddPlayer(player)
+
+	return nil
+}
+
 func (server *ChannelServer) playerChangeChannel(conn mnet.Client, reader mpacket.Reader) {
 	id := reader.ReadByte()
 
 	server.migrating = append(server.migrating, conn)
-	player, _ := server.players.GetFromConn(conn)
+	player, err := server.players.GetFromConn(conn)
+
+	if err != nil {
+		log.Println("Unable to get player from connection", conn)
+		return
+	}
+
 	char := player.Char()
 	char.Save(server.db)
 
@@ -82,7 +136,8 @@ func (server *ChannelServer) playerChangeChannel(conn mnet.Client, reader mpacke
 			_, err := server.db.Exec("UPDATE characters SET migrationID=? WHERE id=?", id, char.ID())
 
 			if err != nil {
-				panic(err)
+				log.Println(err)
+				return
 			}
 
 			conn.Send(entity.PacketChangeChannel(server.channels[id].ip, server.channels[id].port))
@@ -91,7 +146,13 @@ func (server *ChannelServer) playerChangeChannel(conn mnet.Client, reader mpacke
 }
 
 func (server *ChannelServer) playerMovement(conn mnet.Client, reader mpacket.Reader) {
-	player, _ := server.players.GetFromConn(conn)
+	player, err := server.players.GetFromConn(conn)
+
+	if err != nil {
+		log.Println("Unable to get player from connection", conn)
+		return
+	}
+
 	char := player.Char()
 
 	if char.PortalCount() != reader.ReadByte() {
@@ -140,6 +201,7 @@ func (server *ChannelServer) playerConnect(conn mnet.Client, reader mpacket.Read
 
 	if err != nil {
 		log.Println(err)
+		return
 	}
 
 	conn.SetAccountID(accountID)
@@ -151,6 +213,7 @@ func (server *ChannelServer) playerConnect(conn mnet.Client, reader mpacket.Read
 
 	if err != nil {
 		log.Println(err)
+		return
 	}
 
 	conn.SetAdminLevel(adminLevel)
@@ -158,7 +221,8 @@ func (server *ChannelServer) playerConnect(conn mnet.Client, reader mpacket.Read
 	_, err = server.db.Exec("UPDATE characters SET migrationID=? WHERE id=?", -1, charID)
 
 	if err != nil {
-		panic(err)
+		log.Println(err)
+		return
 	}
 
 	server.players = append(server.players, entity.NewPlayer(conn, char))
@@ -166,5 +230,5 @@ func (server *ChannelServer) playerConnect(conn mnet.Client, reader mpacket.Read
 	conn.Send(entity.PacketPlayerEnterGame(char, int32(server.id)))
 	conn.Send(entity.PacketMessageScrollingHeader("Valhalla Archival Project"))
 
-	server.fields[char.MapID()].AddPlayer(conn, server.players[len(server.players)-1].InstanceID())
+	server.fields[char.MapID()].AddPlayer(server.players[len(server.players)-1])
 }

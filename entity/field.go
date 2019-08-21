@@ -76,7 +76,7 @@ func (f *Field) CreateInstance() int {
 	portals := make([]portal, len(f.Data.Portals))
 	for i, p := range f.Data.Portals {
 		portals[i] = createPortalFromData(p)
-		portals[i].id = byte(i)
+		// portals[i].id = byte(i)
 	}
 
 	// add initial set of mobs
@@ -112,17 +112,17 @@ func (f *Field) DeleteInstance(instance int) error {
 	return fmt.Errorf("Invalid instance")
 }
 
-func (f *Field) AddPlayer(conn mnet.Client, instance int) error {
-	if f.validInstance(instance) {
-		return f.instances[instance].addPlayer(conn)
+func (f *Field) AddPlayer(player *Player) error {
+	if f.validInstance(player.InstanceID()) {
+		return f.instances[player.InstanceID()].addPlayer(player)
 	}
 
 	return fmt.Errorf("Invalid instance")
 }
 
-func (f *Field) RemovePlayer(conn mnet.Client, instance int) error {
-	if f.validInstance(instance) {
-		return f.instances[instance].removePlayer(conn)
+func (f *Field) RemovePlayer(player *Player) error {
+	if f.validInstance(player.InstanceID()) {
+		return f.instances[player.InstanceID()].removePlayer(player)
 	}
 
 	return fmt.Errorf("Invalid instance")
@@ -142,6 +142,14 @@ func (f Field) GetPortalFromName(name string) (portal, error) { // only spawn po
 	}
 
 	return f.instances[0].getPortalFromName(name)
+}
+
+func (f Field) GetPortalFromID(id byte) (portal, error) { // only spawn portals have string names
+	if len(f.instances) < 1 {
+		return portal{}, fmt.Errorf("No instances in map")
+	}
+
+	return f.instances[0].getPortalFromID(id)
 }
 
 func (f Field) Send(p mpacket.Packet, instance int) error {

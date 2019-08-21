@@ -29,11 +29,15 @@ Login server:
 
 World server:
 
-- [ ] Keep track of player count
+- [x] Keep track of player count
 - [x] Send information to login server
 - [x] Send IP, port to channel for change channel requests
 - [ ] Forward whisphers
+- [ ] Forward buddy chat
+- [ ] Forward party chat
+- [ ] Forward guild chat
 - [ ] Allow gm command to actiavate exp/drop changes accross all channels
+- [ ] Allow gm commands to update information displayed at login
 
 Cashshop server:
 - [ ] List items

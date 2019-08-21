@@ -183,6 +183,36 @@ func (p *Player) SetPos(pos pos) {
 	p.char.pos = pos
 }
 
+func (p Player) CheckPos(pos pos, xRange, yRange int16) bool {
+	var xValid, yValid bool
+
+	if xRange == 0 {
+		xValid = p.char.pos.x == pos.x
+	} else {
+		xValid = (pos.x-xRange < p.char.pos.x && p.char.pos.x < pos.x+xRange)
+	}
+
+	if yRange == 0 {
+		xValid = p.char.pos.y == pos.y
+	} else {
+		yValid = (pos.y-yRange < p.char.pos.y && p.char.pos.y < pos.y+yRange)
+	}
+
+	return xValid && yValid
+}
+
+func (p Player) Pos() pos {
+	return p.char.pos
+}
+
+func (p *Player) SetFoothold(fh int16) {
+	p.char.foothold = fh
+}
+
 func (p *Player) SetMapID(id int32) {
 	p.char.mapID = id
+}
+
+func (p *Player) SetMapPosID(pos byte) {
+	p.char.mapPos = pos
 }
