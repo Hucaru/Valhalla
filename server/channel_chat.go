@@ -9,6 +9,7 @@ import (
 	"github.com/Hucaru/Valhalla/entity"
 	"github.com/Hucaru/Valhalla/mnet"
 	"github.com/Hucaru/Valhalla/mpacket"
+	"github.com/Hucaru/Valhalla/nx"
 )
 
 func (server *ChannelServer) chatSendAll(conn mnet.Client, reader mpacket.Reader) {
@@ -17,10 +18,21 @@ func (server *ChannelServer) chatSendAll(conn mnet.Client, reader mpacket.Reader
 	if strings.Index(msg, "/") == 0 && conn.GetAdminLevel() > 0 {
 		server.gmCommand(conn, msg)
 	} else {
-		player, _ := server.players.GetFromConn(conn)
+		player, err := server.players.GetFromConn(conn)
+
+		if err != nil {
+			return
+		}
+
 		char := player.Char()
 
-		server.fields[char.MapID()].Send(entity.PacketMessageAllChat(char.ID(), conn.GetAdminLevel() > 0, msg), player.InstanceID())
+		inst, err := server.fields[char.MapID()].GetInstance(player.InstanceID())
+
+		if err != nil {
+			return
+		}
+
+		inst.Send(entity.PacketMessageAllChat(char.ID(), conn.GetAdminLevel() > 0, msg))
 	}
 }
 
@@ -43,9 +55,34 @@ func (server *ChannelServer) gmCommand(conn mnet.Client, msg string) {
 		log.Println("Sent packet:", hex.EncodeToString(data))
 		data = append(make([]byte, 4), data...)
 		conn.Send(data)
-	case "map":
+	case "mapInfo":
+		player, err := server.players.GetFromConn(conn)
+
+		if err != nil {
+			conn.Send(entity.PacketMessageRedText(err.Error()))
+			return
+		}
+
+		field, ok := server.fields[player.Char().MapID()]
+
+		if !ok {
+			return
+		}
+
+		for i, v := range field.Instances() {
+			info := "instance " + strconv.Itoa(i) + ":"
+			conn.Send(entity.PacketMessageNotice(info))
+			info = v.String()
+			conn.Send(entity.PacketMessageNotice(info))
+		}
 	case "pos":
-		player, _ := server.players.GetFromConn(conn)
+		player, err := server.players.GetFromConn(conn)
+
+		if err != nil {
+			conn.Send(entity.PacketMessageRedText(err.Error()))
+			return
+		}
+
 		conn.Send(entity.PacketMessageNotice(player.Pos().String()))
 	case "notice":
 		if len(command) < 2 {
@@ -70,8 +107,99 @@ func (server *ChannelServer) gmCommand(conn mnet.Client, msg string) {
 	case "admin":
 	case "shop":
 	case "createInstance":
+		player, err := server.players.GetFromConn(conn)
+
+		if err != nil {
+			conn.Send(entity.PacketMessageRedText(err.Error()))
+			return
+		}
+
+		field, ok := server.fields[player.Char().MapID()]
+
+		if !ok {
+			return
+		}
+
+		id := field.CreateInstance()
+
+		conn.Send(entity.PacketMessageNotice("Created instance: " + strconv.Itoa(id)))
 	case "changeInstance":
+		player, err := server.players.GetFromConn(conn)
+
+		if err != nil {
+			conn.Send(entity.PacketMessageRedText(err.Error()))
+			return
+		}
+
+		var instanceID int
+
+		if len(command) == 2 {
+			instanceID, err = strconv.Atoi(command[1])
+		} else if len(command) == 3 {
+			player, err = server.players.GetFromName(command[1])
+
+			if err != nil {
+				conn.Send(entity.PacketMessageRedText(err.Error()))
+				return
+			}
+
+			instanceID, err = strconv.Atoi(command[2])
+		}
+
+		field, ok := server.fields[player.Char().MapID()]
+
+		if !ok {
+			return
+		}
+
+		err = field.ChangePlayerInstance(player, instanceID)
+
+		if err != nil {
+			conn.Send(entity.PacketMessageRedText(err.Error()))
+		}
 	case "deleteInstance":
+		if len(command) != 2 {
+			return
+		}
+
+		instanceID, err := strconv.Atoi(command[1])
+
+		if err != nil {
+			conn.Send(entity.PacketMessageRedText(err.Error()))
+			return
+		}
+
+		if instanceID < 1 {
+			conn.Send(entity.PacketMessageRedText("Cannot delete instance 0"))
+			return
+		}
+
+		player, err := server.players.GetFromConn(conn)
+
+		if err != nil {
+			conn.Send(entity.PacketMessageRedText(err.Error()))
+			return
+		}
+
+		if player.InstanceID() == instanceID {
+			conn.Send(entity.PacketMessageRedText("Cannot delete the same instance you are in"))
+			return
+		}
+
+		field, ok := server.fields[player.Char().MapID()]
+
+		if !ok {
+			return
+		}
+
+		err = field.DeleteInstance(instanceID)
+
+		if err != nil {
+			conn.Send(entity.PacketMessageRedText(err.Error()))
+			return
+		}
+
+		conn.Send(entity.PacketMessageNotice("Deleted"))
 	case "hp":
 	case "mp":
 	case "exp":
@@ -89,75 +217,189 @@ func (server *ChannelServer) gmCommand(conn mnet.Client, msg string) {
 			jobName = command[2]
 		}
 
+		jobID := int16(val)
+
 		if err != nil {
-			// Check to see if name matches pre-recorded
-			switch jobName {
-			case "Beginner":
-				val = 0
-			case "Warrior":
-				val = 100
-			case "Fighter":
-				val = 110
-			case "Crusader":
-				val = 111
-			case "Page":
-				val = 120
-			case "WhiteKnight":
-				val = 121
-			case "Spearman":
-				val = 130
-			case "DragonKnight":
-				val = 131
-			case "Magician":
-				val = 200
-			case "FirePoisonWizard":
-				val = 210
-			case "FirePoisonMage":
-				val = 211
-			case "IceLightWizard":
-				val = 220
-			case "IceLightMage":
-				val = 221
-			case "Cleric":
-				val = 230
-			case "Priest":
-				val = 231
-			case "Bowman":
-				val = 300
-			case "Hunter":
-				val = 310
-			case "Ranger":
-				val = 311
-			case "Crossbowman":
-				val = 320
-			case "Sniper":
-				val = 321
-			case "Thief":
-				val = 400
-			case "Assassin":
-				val = 410
-			case "Hermit":
-				val = 411
-			case "Bandit":
-				val = 420
-			case "ChiefBandit":
-				val = 421
-			case "Gm":
-				val = 500
-			case "SuperGm":
-				val = 510
-			default:
+			jobID = convertJobNameToID(jobName)
+		}
+
+		player, err := server.players.GetFromConn(conn)
+
+		if err != nil {
+			conn.Send(entity.PacketMessageRedText(err.Error()))
+			return
+		}
+
+		player.SetJob(jobID)
+	case "item":
+	case "spawn":
+	case "warp":
+		var val int
+		var err error
+		var mapName string
+		var id int32
+		var playerName string
+
+		if len(command) == 2 {
+			val, err = strconv.Atoi(command[1])
+			mapName = command[1]
+		} else if len(command) == 3 {
+			playerName = command[1]
+			val, err = strconv.Atoi(command[2])
+			mapName = command[2]
+		}
+
+		if err != nil {
+			id = convertMapNameToID(mapName)
+		} else {
+			id = int32(val)
+		}
+
+		if _, err := nx.GetMap(id); err != nil {
+			return
+		}
+
+		player, err := server.players.GetFromConn(conn)
+
+		if err != nil {
+			conn.Send(entity.PacketMessageRedText(err.Error()))
+			return
+		}
+
+		field, ok := server.fields[id]
+
+		if !ok {
+			conn.Send(entity.PacketMessageRedText(err.Error()))
+			return
+		}
+
+		inst, err := field.GetInstance(player.InstanceID())
+
+		if err != nil {
+			conn.Send(entity.PacketMessageRedText(err.Error()))
+			return
+		}
+
+		portal, err := inst.GetRandomSpawnPortal()
+
+		if err != nil {
+			conn.Send(entity.PacketMessageRedText(err.Error()))
+			return
+		}
+
+		if playerName != "" {
+			player, err = server.players.GetFromName(playerName)
+
+			if err != nil {
+				conn.Send(entity.PacketMessageRedText(err.Error()))
 				return
 			}
 		}
 
-		jobID := int16(val)
-
-		player, _ := server.players.GetFromConn(conn)
-		player.SetJob(jobID)
-	case "item":
-	case "spawn":
+		server.WarpPlayer(player, id, portal.ID())
 	default:
-		conn.Send(entity.PacketMessageNotice("Unkown gm command " + command[0]))
+		conn.Send(entity.PacketMessageRedText("Unkown gm command " + command[0]))
+	}
+}
+
+func convertMapNameToID(name string) int32 {
+	switch name {
+	// Maple island
+	case "amherst":
+		return 1010000
+	case "southperry":
+		return 60000
+	// Victoria island
+	case "lith":
+		return 104000000
+	case "henesys":
+		return 100000000
+	case "kerning":
+		return 103000000
+	case "perion":
+		return 102000000
+	case "ellinia":
+		return 101000000
+	case "sleepy":
+		return 105040300
+	case "gm":
+		return 180000000
+	// Ossyria
+	case "orbis":
+		return 200000000
+	case "elnath":
+		return 211000000
+	case "ludi":
+		return 220000000
+	case "omega":
+		return 221000000
+	case "aqua":
+		return 230000000
+	// Misc
+	case "balrog":
+		return 105090900
+	default:
+		return 180000000
+	}
+}
+
+func convertJobNameToID(name string) int16 {
+	switch name {
+	case "Beginner":
+		return 0
+	case "Warrior":
+		return 100
+	case "Fighter":
+		return 110
+	case "Crusader":
+		return 111
+	case "Page":
+		return 120
+	case "WhiteKnight":
+		return 121
+	case "Spearman":
+		return 130
+	case "DragonKnight":
+		return 131
+	case "Magician":
+		return 200
+	case "FirePoisonWizard":
+		return 210
+	case "FirePoisonMage":
+		return 211
+	case "IceLightWizard":
+		return 220
+	case "IceLightMage":
+		return 221
+	case "Cleric":
+		return 230
+	case "Priest":
+		return 231
+	case "Bowman":
+		return 300
+	case "Hunter":
+		return 310
+	case "Ranger":
+		return 311
+	case "Crossbowman":
+		return 320
+	case "Sniper":
+		return 321
+	case "Thief":
+		return 400
+	case "Assassin":
+		return 410
+	case "Hermit":
+		return 411
+	case "Bandit":
+		return 420
+	case "ChiefBandit":
+		return 421
+	case "Gm":
+		return 500
+	case "SuperGm":
+		return 510
+	default:
+		return 0
 	}
 }

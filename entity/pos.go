@@ -8,5 +8,5 @@ type pos struct {
 }
 
 func (p pos) String() string {
-	return fmt.Sprintf("Position: %d (x) %d (y)", p.x, p.y)
+	return fmt.Sprintf(" %d(x) %d(y)", p.x, p.y)
 }

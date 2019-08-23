@@ -122,9 +122,22 @@ func (server *ChannelServer) handleChannelConnectionInfo(conn mnet.Server, reade
 
 // ClientDisconnected from server
 func (server *ChannelServer) ClientDisconnected(conn mnet.Client) {
-	player, _ := server.players.GetFromConn(conn)
+	player, err := server.players.GetFromConn(conn)
+
+	if err != nil {
+		return
+	}
+
 	char := player.Char()
-	server.fields[char.MapID()].RemovePlayer(player)
+	field, ok := server.fields[char.MapID()]
+
+	if !ok {
+		return
+	}
+
+	inst, err := field.GetInstance(player.InstanceID())
+
+	inst.RemovePlayer(player)
 	server.players.RemoveFromConn(conn)
 
 	index := -1

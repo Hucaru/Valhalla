@@ -22,6 +22,17 @@ func (p *Players) GetFromConn(conn mnet.Client) (*Player, error) {
 	return nil, fmt.Errorf("Could not retrieve player")
 }
 
+// GetFromName retrieve the player from the connection
+func (p *Players) GetFromName(name string) (*Player, error) {
+	for _, v := range *p {
+		if v.char.name == name {
+			return v, nil
+		}
+	}
+
+	return nil, fmt.Errorf("Could not retrieve player")
+}
+
 // RemoveFromConn removes the player based on the connection
 func (p *Players) RemoveFromConn(conn mnet.Client) error {
 	i := -1
@@ -61,6 +72,10 @@ func (p Player) Char() Character {
 
 func (p Player) InstanceID() int {
 	return p.instanceID
+}
+
+func (p *Player) SetInstance(id int) {
+	p.instanceID = id
 }
 
 func (p Player) Send(packet mpacket.Packet) {

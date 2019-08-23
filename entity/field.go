@@ -3,8 +3,6 @@ package entity
 import (
 	"fmt"
 
-	"github.com/Hucaru/Valhalla/mnet"
-	"github.com/Hucaru/Valhalla/mpacket"
 	"github.com/Hucaru/Valhalla/nx"
 )
 
@@ -76,7 +74,6 @@ func (f *Field) CreateInstance() int {
 	portals := make([]portal, len(f.Data.Portals))
 	for i, p := range f.Data.Portals {
 		portals[i] = createPortalFromData(p)
-		// portals[i].id = byte(i)
 	}
 
 	// add initial set of mobs
@@ -105,65 +102,57 @@ func (f Field) validInstance(instance int) bool {
 	return false
 }
 
-func (f *Field) DeleteInstance(instance int) error {
-	if f.validInstance(instance) {
-		return f.instances[instance].delete()
+func (f *Field) DeleteInstance(id int) error {
+	if f.validInstance(id) {
+		if f.instances[id].PlayerCount() > 0 {
+			return fmt.Errorf("Cannot delete an instance with players in it")
+		}
+		err := f.instances[id].delete()
+
+		if err != nil {
+			return err
+		}
+
+		f.instances = append(f.instances[:id], f.instances[id+1:]...)
+
+		return nil
 	}
 	return fmt.Errorf("Invalid instance")
 }
 
-func (f *Field) AddPlayer(player *Player) error {
-	if f.validInstance(player.InstanceID()) {
-		return f.instances[player.InstanceID()].addPlayer(player)
+func (f *Field) GetInstance(id int) (*instance, error) {
+	if f.validInstance(id) {
+		return &f.instances[id], nil
 	}
 
-	return fmt.Errorf("Invalid instance")
+	return nil, fmt.Errorf("Invalid instance id")
 }
 
-func (f *Field) RemovePlayer(player *Player) error {
-	if f.validInstance(player.InstanceID()) {
-		return f.instances[player.InstanceID()].removePlayer(player)
-	}
-
-	return fmt.Errorf("Invalid instance")
+func (f *Field) Instances() []instance {
+	return f.instances
 }
 
-func (f Field) GetRandomSpawnPortal() (portal, error) { // spawn portals are instance independent
-	if len(f.instances) < 1 {
-		return portal{}, fmt.Errorf("No instances in map")
+func (f *Field) ChangePlayerInstance(player *Player, id int) error {
+	if id == player.instanceID {
+		return fmt.Errorf("In specified instance")
 	}
 
-	return f.instances[0].getRandomSpawnPortal()
-}
+	if f.validInstance(id) {
+		err := f.instances[player.InstanceID()].RemovePlayer(player)
 
-func (f Field) GetPortalFromName(name string) (portal, error) { // only spawn portals have string names
-	if len(f.instances) < 1 {
-		return portal{}, fmt.Errorf("No instances in map")
+		if err != nil {
+			return err
+		}
+
+		player.instanceID = id
+		err = f.instances[id].AddPlayer(player)
+
+		if err != nil {
+			return err
+		}
+
+		return nil
 	}
 
-	return f.instances[0].getPortalFromName(name)
-}
-
-func (f Field) GetPortalFromID(id byte) (portal, error) { // only spawn portals have string names
-	if len(f.instances) < 1 {
-		return portal{}, fmt.Errorf("No instances in map")
-	}
-
-	return f.instances[0].getPortalFromID(id)
-}
-
-func (f Field) Send(p mpacket.Packet, instance int) error {
-	if f.validInstance(instance) {
-		return f.instances[instance].send(p)
-	}
-
-	return fmt.Errorf("Invalid instance")
-}
-
-func (f Field) SendExcept(p mpacket.Packet, exception mnet.Client, instance int) error {
-	if f.validInstance(instance) {
-		return f.instances[instance].sendExcept(p, exception)
-	}
-
-	return fmt.Errorf("Invalid instance")
+	return fmt.Errorf("Invalid instance id")
 }

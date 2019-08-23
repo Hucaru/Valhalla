@@ -3,6 +3,7 @@ package entity
 import (
 	"fmt"
 	"math/rand"
+	"strconv"
 
 	"github.com/Hucaru/Valhalla/mnet"
 	"github.com/Hucaru/Valhalla/mpacket"
@@ -21,14 +22,36 @@ func (inst *instance) delete() error {
 	return nil
 }
 
-func (inst *instance) addPlayer(player *Player) error {
+func (inst instance) String() string {
+	var info string
+
+	info += "players(" + strconv.Itoa(len(inst.conns)) + "): "
+
+	for _, v := range inst.conns {
+		player, _ := inst.players.GetFromConn(v)
+		info += " " + player.char.name + "(" + player.Pos().String() + ")"
+	}
+
+	return info
+}
+
+func (inst instance) PlayerCount() int {
+	return len(inst.conns)
+}
+
+func (inst *instance) AddPlayer(player *Player) error {
 	for _, npc := range inst.npcs {
 		player.Send(PacketNpcShow(npc))
 		player.Send(PacketNpcSetController(npc.spawnID, true))
 	}
 
 	for _, other := range inst.conns {
-		otherPlayer, _ := inst.players.GetFromConn(other)
+		otherPlayer, err := inst.players.GetFromConn(other)
+
+		if err != nil {
+			continue
+		}
+
 		other.Send(PacketMapPlayerEnter(player.char))
 		player.conn.Send(PacketMapPlayerEnter(otherPlayer.char))
 	}
@@ -43,15 +66,13 @@ func (inst *instance) addPlayer(player *Player) error {
 	return nil
 }
 
-func (inst *instance) removePlayer(player *Player) error {
+func (inst *instance) RemovePlayer(player *Player) error {
 	index := -1
 
 	for i, v := range inst.conns {
 		if v == player.conn {
 			index = i
 			break
-		} else {
-
 		}
 	}
 	if index == -1 {
@@ -61,14 +82,22 @@ func (inst *instance) removePlayer(player *Player) error {
 	inst.conns = append(inst.conns[:index], inst.conns[index+1:]...)
 
 	// if in room, remove
+
 	for _, v := range inst.conns {
 		v.Send(PacketMapPlayerLeft(player.char.id))
+		otherPlayer, err := inst.players.GetFromConn(v)
+
+		if err != nil {
+			continue
+		}
+
+		player.Send(PacketMapPlayerLeft(otherPlayer.char.id))
 	}
 
 	return nil
 }
 
-func (inst instance) send(p mpacket.Packet) error {
+func (inst instance) Send(p mpacket.Packet) error {
 	for _, v := range inst.conns {
 		v.Send(p)
 	}
@@ -76,7 +105,7 @@ func (inst instance) send(p mpacket.Packet) error {
 	return nil
 }
 
-func (inst instance) sendExcept(p mpacket.Packet, exception mnet.Client) error {
+func (inst instance) SendExcept(p mpacket.Packet, exception mnet.Client) error {
 	for _, v := range inst.conns {
 		if v == exception {
 			continue
@@ -88,7 +117,7 @@ func (inst instance) sendExcept(p mpacket.Packet, exception mnet.Client) error {
 	return nil
 }
 
-func (inst instance) getRandomSpawnPortal() (portal, error) {
+func (inst instance) GetRandomSpawnPortal() (portal, error) {
 	portals := []portal{}
 
 	for _, p := range inst.portals {
@@ -104,7 +133,7 @@ func (inst instance) getRandomSpawnPortal() (portal, error) {
 	return portals[rand.Intn(len(portals))], nil
 }
 
-func (inst instance) getPortalFromName(name string) (portal, error) {
+func (inst instance) GetPortalFromName(name string) (portal, error) {
 	for _, p := range inst.portals {
 		if p.name == name {
 			return p, nil
@@ -114,7 +143,7 @@ func (inst instance) getPortalFromName(name string) (portal, error) {
 	return portal{}, fmt.Errorf("No portal with that name")
 }
 
-func (inst instance) getPortalFromID(id byte) (portal, error) {
+func (inst instance) GetPortalFromID(id byte) (portal, error) {
 	for _, p := range inst.portals {
 		if p.id == id {
 			return p, nil
