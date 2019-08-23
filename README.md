@@ -59,7 +59,7 @@ Channel server:
 - [ ] Player use item (scrolls, potions etc)
 - [ ] Player pets
 - [x] NPC visible
-- [ ] NPC movement
+- [x] NPC movement
 - [ ] NPC basic chat
 - [ ] NPC shops
 - [ ] NPC stylist

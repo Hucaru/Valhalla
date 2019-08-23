@@ -40,9 +40,13 @@ func (inst instance) PlayerCount() int {
 }
 
 func (inst *instance) AddPlayer(player *Player) error {
-	for _, npc := range inst.npcs {
+	for i, npc := range inst.npcs {
 		player.Send(PacketNpcShow(npc))
-		player.Send(PacketNpcSetController(npc.spawnID, true))
+
+		if npc.controller == nil {
+			inst.npcs[i].controller = player.conn
+			player.Send(PacketNpcSetController(npc.spawnID, true))
+		}
 	}
 
 	for _, other := range inst.conns {
@@ -92,6 +96,17 @@ func (inst *instance) RemovePlayer(player *Player) error {
 		}
 
 		player.Send(PacketMapPlayerLeft(otherPlayer.char.id))
+	}
+
+	for i, v := range inst.npcs {
+		if v.controller == player.conn {
+			player.Send(PacketNpcSetController(v.spawnID, false))
+
+			if len(inst.conns) > 0 {
+				inst.conns[0].Send(PacketNpcSetController(v.spawnID, true))
+				inst.npcs[i].controller = inst.conns[0]
+			}
+		}
 	}
 
 	return nil
@@ -151,4 +166,12 @@ func (inst instance) GetPortalFromID(id byte) (portal, error) {
 	}
 
 	return portal{}, fmt.Errorf("No portal with that name")
+}
+
+func (inst *instance) GetNpc(id int32) *npc {
+	if id < 0 || int(id) > len(inst.npcs) {
+		return nil
+	}
+
+	return &inst.npcs[id]
 }

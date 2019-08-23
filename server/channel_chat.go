@@ -157,6 +157,8 @@ func (server *ChannelServer) gmCommand(conn mnet.Client, msg string) {
 		if err != nil {
 			conn.Send(entity.PacketMessageRedText(err.Error()))
 		}
+
+		conn.Send(entity.PacketMessageNotice("Changed instance to " + strconv.Itoa(instanceID)))
 	case "deleteInstance":
 		if len(command) != 2 {
 			return

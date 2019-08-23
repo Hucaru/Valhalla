@@ -66,7 +66,7 @@ func (server *ChannelServer) HandleClientPacket(conn mnet.Client, reader mpacket
 	case opcode.RecvChannelMobControl:
 		// server.mobControl(conn, reader)
 	case opcode.RecvChannelNpcMovement:
-		// server.npcMovement(conn, reader)
+		server.npcMovement(conn, reader)
 	default:
 		log.Println("UNKNOWN CLIENT PACKET:", reader)
 	}
