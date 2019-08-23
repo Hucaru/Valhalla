@@ -52,12 +52,11 @@ Channel server:
 - [x] Player chat
 - [x] player use portal
 - [ ] Player use skills
-- [ ] Player exp
-- [ ] Player level up
 - [ ] Player skill logic (haste etc)
 - [ ] Player inventory
 - [ ] Player use item (scrolls, potions etc)
 - [ ] Player pets
+- [ ] Player stats
 - [x] NPC visible
 - [x] NPC movement
 - [ ] NPC basic chat
@@ -86,7 +85,7 @@ Channel server:
 - [ ] Whisphers
 - [ ] Buddy chat
 - [ ] Chat commands (/find etc.)
-- [ ] Server resets login status if account is signed in but no characters are present
+- [x] Server resets login status upon restart for dangling characters
 
 ## Acknowledgements
 

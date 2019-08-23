@@ -27,6 +27,7 @@ type ChannelServer struct {
 	players   entity.Players
 	channels  [20]channel
 	fields    map[int32]*entity.Field
+	header    string
 }
 
 // Initialise the server

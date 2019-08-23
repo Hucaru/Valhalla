@@ -284,7 +284,7 @@ func (server *ChannelServer) playerConnect(conn mnet.Client, reader mpacket.Read
 	server.players = append(server.players, entity.NewPlayer(conn, char))
 
 	conn.Send(entity.PacketPlayerEnterGame(char, int32(server.id)))
-	conn.Send(entity.PacketMessageScrollingHeader("Valhalla Archival Project"))
+	conn.Send(entity.PacketMessageScrollingHeader(server.header))
 
 	field, ok := server.fields[char.MapID()]
 

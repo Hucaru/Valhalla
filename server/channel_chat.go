@@ -100,7 +100,18 @@ func (server *ChannelServer) gmCommand(conn mnet.Client, msg string) {
 		for _, v := range server.players {
 			v.Send(entity.PacketMessageDialogueBox(strings.Join(command[1:], " ")))
 		}
-	case "scrollHeader":
+	case "header":
+		if len(command) < 2 {
+			server.header = ""
+		} else {
+			server.header = strings.Join(command[1:], " ")
+		}
+
+		for _, v := range server.players {
+			v.Send(entity.PacketMessageScrollingHeader(server.header))
+		}
+	case "wheader": // sends to world server to propagate to all channels
+
 	case "kill":
 	case "revive":
 	case "cody":
