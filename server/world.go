@@ -49,7 +49,9 @@ func (server *WorldServer) ServerDisconnected(conn mnet.Server) {
 			server.info.channels[i].conn = nil
 			server.info.channels[i].maxPop = 0
 			server.info.channels[i].pop = 0
+			server.info.channels[i].port = 0
 			log.Println("Lost channel", i)
+			server.sendChannelInfo()
 			break
 		}
 	}

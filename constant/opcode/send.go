@@ -24,6 +24,7 @@ const (
 	SendChannelWarpToMap            byte = 0x36
 	SendChannelPortalClosed         byte = 0x3A
 	SendChannelBubblessChat         byte = 0x3D
+	SendChannelChangeServer         byte = 0x3B
 	SendChannelWhisper              byte = 0x3E
 	SendChannelEmployee             byte = 0x43
 	SendChannelQuizQAndA            byte = 0x44

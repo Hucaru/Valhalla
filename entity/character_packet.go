@@ -114,6 +114,20 @@ func PacketChangeChannel(ip []byte, port int16) mpacket.Packet {
 	return p
 }
 
+func PacketCannotChangeChannel() mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelChangeServer)
+	p.WriteByte(1)
+
+	return p
+}
+
+func PacketCannotEnterCashShop() mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelChangeServer)
+	p.WriteByte(2)
+
+	return p
+}
+
 func PacketPlayerEnterGame(char Character, channelID int32) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelWarpToMap)
 	p.WriteInt32(channelID)

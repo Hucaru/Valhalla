@@ -156,7 +156,7 @@ func (server *ChannelServer) playerChangeChannel(conn mnet.Client, reader mpacke
 
 	if int(id) < len(server.channels) {
 		if server.channels[id].port == 0 {
-			conn.Send(entity.PacketMessageDialogueBox("Cannot change channel"))
+			conn.Send(entity.PacketCannotChangeChannel())
 		} else {
 			_, err := server.db.Exec("UPDATE characters SET migrationID=? WHERE id=?", id, char.ID())
 
