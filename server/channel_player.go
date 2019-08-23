@@ -92,7 +92,7 @@ func (server *ChannelServer) playerUsePortal(conn mnet.Client, reader mpacket.Re
 	}
 }
 
-func (server* ChannelServer) WarpPlayer(player *entity.Player, mapID int32, mapPos byte) error {
+func (server *ChannelServer) WarpPlayer(player *entity.Player, mapID int32, mapPos byte) error {
 	srcField, ok := server.fields[player.Char().MapID()]
 
 	if !ok {
@@ -268,6 +268,13 @@ func (server *ChannelServer) playerConnect(conn mnet.Client, reader mpacket.Read
 	conn.SetAdminLevel(adminLevel)
 
 	_, err = server.db.Exec("UPDATE characters SET migrationID=? WHERE id=?", -1, charID)
+
+	if err != nil {
+		log.Println(err)
+		return
+	}
+
+	_, err = server.db.Exec("UPDATE characters SET channelID=? WHERE id=?", server.id, charID)
 
 	if err != nil {
 		log.Println(err)

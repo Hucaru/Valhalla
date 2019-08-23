@@ -63,6 +63,40 @@ func (server *ChannelServer) Initialise(work chan func(), dbuser, dbpassword, db
 	}
 
 	log.Println("Initialised game state")
+
+	accountIDs, err := server.db.Query("SELECT accountID from characters where channelID = ?", server.id)
+
+	if err != nil {
+		log.Println(err)
+		return
+	}
+
+	for accountIDs.Next() {
+		var accountID int
+		err := accountIDs.Scan(&accountID)
+
+		if err != nil {
+			continue
+		}
+
+		_, err = server.db.Exec("UPDATE accounts SET isLogedIn=? WHERE accountID=?", 0, accountID)
+
+		if err != nil {
+			log.Println(err)
+			return
+		}
+	}
+
+	accountIDs.Close()
+
+	_, err = server.db.Exec("UPDATE characters SET channelID=? WHERE channelID=?", -1, server.id)
+
+	if err != nil {
+		log.Println(err)
+		return
+	}
+
+	log.Println("Loged out any accounts still connected to this channel")
 }
 
 // RegisterWithWorld server
@@ -136,8 +170,15 @@ func (server *ChannelServer) ClientDisconnected(conn mnet.Client) {
 	}
 
 	inst, err := field.GetInstance(player.InstanceID())
-
 	inst.RemovePlayer(player)
+
+	_, err = server.db.Exec("UPDATE characters SET channelID=? WHERE id=?", -1, player.Char().ID())
+
+	if err != nil {
+		log.Println(err)
+		return
+	}
+
 	server.players.RemoveFromConn(conn)
 
 	index := -1
