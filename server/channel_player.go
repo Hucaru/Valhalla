@@ -34,7 +34,12 @@ func (server *ChannelServer) playerUsePortal(conn mnet.Client, reader mpacket.Re
 	switch entryType {
 	case 0:
 		if char.HP() == 0 {
-			returnMapID := field.Data.ReturnMap
+			dstField, ok := server.fields[field.Data.ReturnMap]
+
+			if !ok {
+				return
+			}
+
 			portal, err := srcInst.GetRandomSpawnPortal()
 
 			if err == nil {
@@ -42,7 +47,7 @@ func (server *ChannelServer) playerUsePortal(conn mnet.Client, reader mpacket.Re
 				return
 			}
 
-			server.WarpPlayer(player, returnMapID, portal.ID())
+			server.WarpPlayer(player, dstField, portal)
 			player.SetHP(50)
 		}
 	case -1:
@@ -85,14 +90,14 @@ func (server *ChannelServer) playerUsePortal(conn mnet.Client, reader mpacket.Re
 			return
 		}
 
-		server.WarpPlayer(player, dstField.ID, dstPortal.ID())
+		server.WarpPlayer(player, dstField, dstPortal)
 
 	default:
 		log.Println("Unknown portal entry type, packet:", reader)
 	}
 }
 
-func (server *ChannelServer) WarpPlayer(player *entity.Player, mapID int32, mapPos byte) error {
+func (server *ChannelServer) WarpPlayer(player *entity.Player, dstField *entity.Field, dstPortal entity.Portal) error {
 	srcField, ok := server.fields[player.Char().MapID()]
 
 	if !ok {
@@ -105,12 +110,6 @@ func (server *ChannelServer) WarpPlayer(player *entity.Player, mapID int32, mapP
 		return err
 	}
 
-	dstField, ok := server.fields[mapID]
-
-	if !ok {
-		return fmt.Errorf("Error in map id %d", mapID)
-	}
-
 	dstInst, err := dstField.GetInstance(player.InstanceID())
 
 	if err != nil {
@@ -119,12 +118,6 @@ func (server *ChannelServer) WarpPlayer(player *entity.Player, mapID int32, mapP
 		}
 
 		player.SetInstance(0)
-	}
-
-	dstPortal, err := dstInst.GetPortalFromID(mapPos)
-
-	if err != nil {
-		return fmt.Errorf("Error in portal id %d", mapPos)
 	}
 
 	srcInst.RemovePlayer(player)
@@ -152,7 +145,22 @@ func (server *ChannelServer) playerChangeChannel(conn mnet.Client, reader mpacke
 	}
 
 	char := player.Char()
-	char.Save(server.db)
+
+	// field, ok := server.fields[char.MapID()]
+
+	// if !ok {
+	// 	log.Println("Error in changing channel for", char.Name(), "when attempting to determine what field it is on", char.MapID())
+	// 	return
+	// }
+
+	// inst, err := field.GetInstance(player.InstanceID())
+
+	// if err != nil {
+	// 	log.Println(err)
+	// 	return
+	// }
+
+	// char.Save(server.db, *inst)
 
 	if int(id) < len(server.channels) {
 		if server.channels[id].port == 0 {
@@ -212,7 +220,12 @@ func (server ChannelServer) playerMovement(conn mnet.Client, reader mpacket.Read
 func (server *ChannelServer) playerEmote(conn mnet.Client, reader mpacket.Reader) {
 	emote := reader.ReadInt32()
 
-	player, _ := server.players.GetFromConn(conn)
+	player, err := server.players.GetFromConn(conn)
+
+	if err != nil {
+		return
+	}
+
 	char := player.Char()
 
 	field, ok := server.fields[char.MapID()]
@@ -228,6 +241,16 @@ func (server *ChannelServer) playerEmote(conn mnet.Client, reader mpacket.Reader
 	}
 
 	inst.SendExcept(entity.PacketPlayerEmoticon(char.ID(), emote), conn)
+}
+
+func (server *ChannelServer) playerUseMysticDoor(conn mnet.Client, reader mpacket.Reader) {
+	player, err := server.players.GetFromConn(conn)
+
+	if err != nil {
+		return
+	}
+
+	fmt.Println(player.Char().Name(), "has used the mystic door", reader)
 }
 
 func (server *ChannelServer) playerConnect(conn mnet.Client, reader mpacket.Reader) {

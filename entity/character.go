@@ -100,16 +100,21 @@ func (c Character) MinigameWins() int32     { return c.minigameWins }
 func (c Character) MinigameDraw() int32     { return c.minigameDraw }
 func (c Character) MinigameLoss() int32     { return c.minigameLoss }
 
-func (c Character) Save(db *sql.DB) error {
+func (c Character) Save(db *sql.DB, inst instance) error {
 	query := `UPDATE characters set skin=?, hair=?, face=?, level=?,
 	job=?, str=?, dex=?, intt=?, luk=?, hp=?, maxHP=?, mp=?, maxMP=?,
-	ap=?, sp=?, exp=?, fame=?, mapID=?, mesos=? WHERE id=?`
+	ap=?, sp=?, exp=?, fame=?, mapID=?, mapPos=?, mesos=? WHERE id=?`
 
 	// need to calculate nearest spawn point for mapPos
+	portal, err := inst.CalculateNearestSpawnPortal(c.pos)
 
-	_, err := db.Exec(query,
+	if err == nil {
+		c.mapPos = portal.ID()
+	}
+
+	_, err = db.Exec(query,
 		c.skin, c.hair, c.face, c.level, c.job, c.str, c.dex, c.intt, c.luk, c.hp, c.maxHP, c.mp,
-		c.maxMP, c.ap, c.sp, c.exp, c.fame, c.mapID, c.mesos, c.id)
+		c.maxMP, c.ap, c.sp, c.exp, c.fame, c.mapID, c.mapPos, c.mesos, c.id)
 
 	c.inventory.save(c.id)
 

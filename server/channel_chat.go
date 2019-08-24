@@ -309,7 +309,24 @@ func (server *ChannelServer) gmCommand(conn mnet.Client, msg string) {
 			}
 		}
 
-		server.WarpPlayer(player, id, portal.ID())
+		dstField, ok := server.fields[id]
+
+		if !ok {
+			conn.Send(entity.PacketMessageRedText("Invalid map id"))
+			return
+		}
+
+		server.WarpPlayer(player, dstField, portal)
+	case "spawnDoor":
+		player, err := server.players.GetFromConn(conn)
+
+		if err != nil {
+			conn.Send(entity.PacketMessageRedText(err.Error()))
+			return
+		}
+
+		player.Send(entity.PacketMapSpawnMysticDoor(1, player.Pos(), false))
+		player.Send(entity.PacketMapSpawnTownPortal(player.Char().MapID(), player.Char().MapID(), player.Pos()))
 	default:
 		conn.Send(entity.PacketMessageRedText("Unkown gm command " + command[0]))
 	}

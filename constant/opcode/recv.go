@@ -18,7 +18,7 @@ const (
 	RecvChannelEnterCashShop       byte = 0x19
 	RecvChannelPlayerMovement      byte = 0x1A
 	RecvChannelPlayerStand         byte = 0x1B
-	RecvChannelPlayerUserChair     byte = 0x1C
+	RecvChannelPlayerUseChair      byte = 0x1C
 	RecvChannelMeleeSkill          byte = 0x1D
 	RecvChannelRangedSkill         byte = 0x1E
 	RecvChannelMagicSkill          byte = 0x1F
@@ -42,6 +42,7 @@ const (
 	RecvChannelGuildManagement     byte = 0x51
 	RecvChannelGuildReject         byte = 0x52
 	RecvChannelAddBuddy            byte = 0x55
+	RecvChannelUseMysticDoor       byte = 0x58
 	RecvChannelMobControl          byte = 0x6A
 	RecvChannelNpcMovement         byte = 0x6F
 )

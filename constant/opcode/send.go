@@ -20,6 +20,7 @@ const (
 	SendChannelLieDetectorTest      byte = 0x23
 	SendChannelAvatarInfoWindow     byte = 0x2c
 	SendChannelPartyInfo            byte = 0x2D
+	SendChannelTownPortal           byte = 0x31
 	SendChannelBroadcastMessage     byte = 0x32
 	SendChannelWarpToMap            byte = 0x36
 	SendChannelPortalClosed         byte = 0x3A

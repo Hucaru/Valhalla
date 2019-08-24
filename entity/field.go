@@ -71,7 +71,7 @@ func (f *Field) CreateInstance() int {
 		npcs[i] = createNpcFromData(int32(i), l)
 	}
 
-	portals := make([]portal, len(f.Data.Portals))
+	portals := make([]Portal, len(f.Data.Portals))
 	for i, p := range f.Data.Portals {
 		portals[i] = createPortalFromData(p)
 	}

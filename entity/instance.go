@@ -13,7 +13,7 @@ type instance struct {
 	id      int
 	fieldID int32
 	npcs    []npc
-	portals []portal
+	portals []Portal
 	conns   []mnet.Client
 	players *Players
 }
@@ -98,13 +98,15 @@ func (inst *instance) RemovePlayer(player *Player) error {
 		player.Send(PacketMapPlayerLeft(otherPlayer.char.id))
 	}
 
+	var newController mnet.Client
+
 	for i, v := range inst.npcs {
 		if v.controller == player.conn {
 			player.Send(PacketNpcSetController(v.spawnID, false))
+			inst.npcs[i].controller = newController
 
-			if len(inst.conns) > 0 {
-				inst.conns[0].Send(PacketNpcSetController(v.spawnID, true))
-				inst.npcs[i].controller = inst.conns[0]
+			if newController != nil {
+				newController.Send(PacketNpcSetController(v.spawnID, true))
 			}
 		}
 	}
@@ -132,8 +134,8 @@ func (inst instance) SendExcept(p mpacket.Packet, exception mnet.Client) error {
 	return nil
 }
 
-func (inst instance) GetRandomSpawnPortal() (portal, error) {
-	portals := []portal{}
+func (inst instance) GetRandomSpawnPortal() (Portal, error) {
+	portals := []Portal{}
 
 	for _, p := range inst.portals {
 		if p.name == "sp" {
@@ -142,30 +144,53 @@ func (inst instance) GetRandomSpawnPortal() (portal, error) {
 	}
 
 	if len(portals) == 0 {
-		return portal{}, fmt.Errorf("No spawn portals in map")
+		return Portal{}, fmt.Errorf("No spawn portals in map")
 	}
 
 	return portals[rand.Intn(len(portals))], nil
 }
 
-func (inst instance) GetPortalFromName(name string) (portal, error) {
+func (inst instance) CalculateNearestSpawnPortal(pos pos) (Portal, error) {
+	var portal Portal
+	found := true
+	err := fmt.Errorf("Portal not found")
+
+	for _, p := range inst.portals {
+		if p.name == "sp" && found {
+			portal = p
+			found = false
+			err = nil
+		} else if p.name == "sp" {
+			delta1 := portal.pos.calcDistanceSquare(pos)
+			delta2 := p.pos.calcDistanceSquare(pos)
+
+			if delta2 < delta1 {
+				portal = p
+			}
+		}
+	}
+
+	return portal, err
+}
+
+func (inst instance) GetPortalFromName(name string) (Portal, error) {
 	for _, p := range inst.portals {
 		if p.name == name {
 			return p, nil
 		}
 	}
 
-	return portal{}, fmt.Errorf("No portal with that name")
+	return Portal{}, fmt.Errorf("No portal with that name")
 }
 
-func (inst instance) GetPortalFromID(id byte) (portal, error) {
+func (inst instance) GetPortalFromID(id byte) (Portal, error) {
 	for _, p := range inst.portals {
 		if p.id == id {
 			return p, nil
 		}
 	}
 
-	return portal{}, fmt.Errorf("No portal with that name")
+	return Portal{}, fmt.Errorf("No portal with that name")
 }
 
 func (inst *instance) GetNpc(id int32) *npc {

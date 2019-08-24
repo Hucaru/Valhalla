@@ -23,7 +23,7 @@ func (server *ChannelServer) HandleClientPacket(conn mnet.Client, reader mpacket
 		server.playerMovement(conn, reader)
 	case opcode.RecvChannelPlayerStand:
 		// server.playerStand(conn, reader)
-	case opcode.RecvChannelPlayerUserChair:
+	case opcode.RecvChannelPlayerUseChair:
 		// server.playerUseChair(conn, reader)
 	case opcode.RecvChannelMeleeSkill:
 		// server.playerMeleeSkill(conn, reader)
@@ -63,6 +63,8 @@ func (server *ChannelServer) HandleClientPacket(conn mnet.Client, reader mpacket
 	case opcode.RecvChannelGuildManagement:
 	case opcode.RecvChannelGuildReject:
 	case opcode.RecvChannelAddBuddy:
+	case opcode.RecvChannelUseMysticDoor:
+		server.playerUseMysticDoor(conn, reader)
 	case opcode.RecvChannelMobControl:
 		// server.mobControl(conn, reader)
 	case opcode.RecvChannelNpcMovement:

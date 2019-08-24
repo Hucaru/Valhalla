@@ -1,6 +1,8 @@
 package entity
 
 import (
+	"fmt"
+
 	"github.com/Hucaru/Valhalla/constant/opcode"
 	"github.com/Hucaru/Valhalla/mpacket"
 )
@@ -81,6 +83,46 @@ func PacketMapRemoveGameBox(charID int32) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelRoomBox)
 	p.WriteInt32(charID)
 	p.WriteInt32(0)
+
+	return p
+}
+
+func PacketMapSpawnMysticDoor(spawnID int32, pos pos, instant bool) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelSpawnDoor)
+	p.WriteBool(instant)
+	p.WriteInt32(spawnID)
+	p.WriteInt16(pos.x)
+	p.WriteInt16(pos.y)
+
+	return p
+}
+
+func PacketMapPortal(srcMap, dstmap int32, pos pos) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(0x2d)
+	p.WriteByte(26)
+	p.WriteByte(0) // ?
+	p.WriteInt32(srcMap)
+	p.WriteInt32(dstmap)
+	p.WriteInt16(pos.x)
+	p.WriteInt16(pos.y)
+
+	return p
+}
+
+func PacketMapSpawnTownPortal(dstMap, srcMap int32, destPos pos) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelTownPortal)
+	p.WriteInt32(dstMap)
+	p.WriteInt32(srcMap)
+	p.WriteInt16(destPos.x)
+	p.WriteInt16(destPos.y)
+	fmt.Println(p)
+	return p
+}
+
+func PacketMapRemoveMysticDoor(spawnID int32, fade bool) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelRemoveDoor)
+	p.WriteBool(fade)
+	p.WriteInt32(spawnID)
 
 	return p
 }
