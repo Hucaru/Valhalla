@@ -216,10 +216,6 @@ func (p Player) CheckPos(pos pos, xRange, yRange int16) bool {
 	return xValid && yValid
 }
 
-func (p Player) Pos() pos {
-	return p.char.pos
-}
-
 func (p *Player) SetFoothold(fh int16) {
 	p.char.foothold = fh
 }

@@ -56,7 +56,7 @@ func (server *ChannelServer) playerUsePortal(conn mnet.Client, reader mpacket.Re
 
 		if !player.CheckPos(srcPortal.Pos(), 60, 10) { // I'm guessing what the portal hit box is
 			if conn.GetAdminLevel() > 0 {
-				conn.Send(entity.PacketMessageRedText("Portal - " + srcPortal.Pos().String() + " Player - " + player.Pos().String()))
+				conn.Send(entity.PacketMessageRedText("Portal - " + srcPortal.Pos().String() + " Player - " + player.Char().Pos().String()))
 			}
 
 			conn.Send(entity.PacketPlayerNoChange())

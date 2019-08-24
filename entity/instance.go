@@ -29,7 +29,7 @@ func (inst instance) String() string {
 
 	for _, v := range inst.conns {
 		player, _ := inst.players.GetFromConn(v)
-		info += " " + player.char.name + "(" + player.Pos().String() + ")"
+		info += " " + player.char.name + "(" + player.Char().Pos().String() + ")"
 	}
 
 	return info

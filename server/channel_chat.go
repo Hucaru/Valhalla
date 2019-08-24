@@ -83,7 +83,7 @@ func (server *ChannelServer) gmCommand(conn mnet.Client, msg string) {
 			return
 		}
 
-		conn.Send(entity.PacketMessageNotice(player.Pos().String()))
+		conn.Send(entity.PacketMessageNotice(player.Char().Pos().String()))
 	case "notice":
 		if len(command) < 2 {
 			return
@@ -325,8 +325,8 @@ func (server *ChannelServer) gmCommand(conn mnet.Client, msg string) {
 			return
 		}
 
-		player.Send(entity.PacketMapSpawnMysticDoor(1, player.Pos(), false))
-		player.Send(entity.PacketMapSpawnTownPortal(player.Char().MapID(), player.Char().MapID(), player.Pos()))
+		player.Send(entity.PacketMapSpawnMysticDoor(1, player.Char().Pos(), false))
+		player.Send(entity.PacketMapSpawnTownPortal(player.Char().MapID(), player.Char().MapID(), player.Char().Pos()))
 	default:
 		conn.Send(entity.PacketMessageRedText("Unkown gm command " + command[0]))
 	}
