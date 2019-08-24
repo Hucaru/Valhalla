@@ -74,6 +74,7 @@ func (f *Field) CreateInstance() int {
 	portals := make([]Portal, len(f.Data.Portals))
 	for i, p := range f.Data.Portals {
 		portals[i] = createPortalFromData(p)
+		portals[i].id = byte(i)
 	}
 
 	// add initial set of mobs

@@ -125,7 +125,7 @@ func (server *ChannelServer) WarpPlayer(player *entity.Player, dstField *entity.
 	player.SetMapID(dstField.ID)
 	player.SetMapPosID(dstPortal.ID())
 	player.SetPos(dstPortal.Pos())
-	player.SetFoothold(0) // Why is this needed to prevent incorrect initial x,y for others?
+	player.SetFoothold(0)
 	player.Send(entity.PacketMapChange(dstField.ID, int32(server.id), dstPortal.ID(), player.Char().HP()))
 
 	dstInst.AddPlayer(player)
@@ -145,22 +145,6 @@ func (server *ChannelServer) playerChangeChannel(conn mnet.Client, reader mpacke
 	}
 
 	char := player.Char()
-
-	// field, ok := server.fields[char.MapID()]
-
-	// if !ok {
-	// 	log.Println("Error in changing channel for", char.Name(), "when attempting to determine what field it is on", char.MapID())
-	// 	return
-	// }
-
-	// inst, err := field.GetInstance(player.InstanceID())
-
-	// if err != nil {
-	// 	log.Println(err)
-	// 	return
-	// }
-
-	// char.Save(server.db, *inst)
 
 	if int(id) < len(server.channels) {
 		if server.channels[id].port == 0 {
