@@ -2,8 +2,6 @@ package entity
 
 import (
 	"database/sql"
-
-	"github.com/google/uuid"
 )
 
 type Inventory struct {
@@ -53,7 +51,7 @@ func getInventoryFromCharID(db *sql.DB, id int32) Inventory {
 
 	for row.Next() {
 
-		item := item{uuid: uuid.Must(uuid.NewRandom())}
+		item := item{}
 
 		row.Scan(&item.invID,
 			&item.itemID,

@@ -3,14 +3,14 @@ package entity
 import (
 	"fmt"
 	"math"
+	"math/rand"
+	"time"
 
 	"github.com/Hucaru/Valhalla/constant"
 	"github.com/Hucaru/Valhalla/nx"
-	"github.com/google/uuid"
 )
 
 type item struct {
-	uuid         uuid.UUID
 	cash         bool
 	invID        byte
 	slotID       int16
@@ -41,6 +41,7 @@ type item struct {
 	hands        int16
 	speed        int16
 	jump         int16
+	attackSpeed  int16
 }
 
 func itemIsRechargeable(itemID int32) bool {
@@ -62,8 +63,16 @@ func itemIsStackable(itemID int32, ammount int16) bool {
 	return false
 }
 
+func randomStat(min, max int) int16 {
+	if max-min == 0 {
+		return int16(max)
+	}
+	rand.Seed(time.Now().Unix())
+	return int16(rand.Intn(max-min) + min)
+}
+
 // TODO: Fill the rest out, for now this can be used to check functionality
-func createItemFromID(id int32) (item, error) {
+func CreateItemFromID(id int32, amount int16) (item, error) {
 	newItem := item{}
 
 	nxInfo, err := nx.GetItem(id)
@@ -72,27 +81,28 @@ func createItemFromID(id int32) (item, error) {
 		return item{}, fmt.Errorf("Unable to generate item of id: %v", id)
 	}
 
-	newItem.uuid = uuid.Must(uuid.NewRandom())
 	newItem.cash = nxInfo.Cash
 	newItem.invID = byte(id / 1e6)
 	newItem.itemID = id
-	newItem.accuracy = nxInfo.IncACC
-	newItem.avoid = nxInfo.IncEVA
+	newItem.accuracy = randomStat(int(math.Floor(nxInfo.IncACC-(nxInfo.IncACC*0.1))), int(math.Ceil(nxInfo.IncACC*1.1)))
+	newItem.avoid = randomStat(int(math.Floor(nxInfo.IncEVA-(nxInfo.IncEVA*0.1))), int(math.Ceil(nxInfo.IncEVA*1.1)))
+	newItem.speed = randomStat(int(math.Floor(nxInfo.IncSpeed-(nxInfo.IncSpeed*0.1))), int(math.Ceil(nxInfo.IncSpeed*1.1)))
 
-	newItem.matk = nxInfo.IncMAD
-	newItem.mdef = nxInfo.IncMDD
-	newItem.watk = nxInfo.IncPAD
-	newItem.wdef = nxInfo.IncPDD
+	newItem.matk = randomStat(int(math.Floor(nxInfo.IncMAD-(nxInfo.IncMAD*0.1))), int(math.Ceil(nxInfo.IncMAD*1.1)))
+	newItem.mdef = randomStat(int(math.Floor(nxInfo.IncMDD-(nxInfo.IncMDD*0.1))), int(math.Ceil(nxInfo.IncMDD*1.1)))
+	newItem.watk = randomStat(int(math.Floor(nxInfo.IncPAD-(nxInfo.IncPAD*0.1))), int(math.Ceil(nxInfo.IncPAD*1.1)))
+	newItem.wdef = randomStat(int(math.Floor(nxInfo.IncPDD-(nxInfo.IncPDD*0.1))), int(math.Ceil(nxInfo.IncPDD*1.1)))
 
 	newItem.str = nxInfo.IncSTR
 	newItem.dex = nxInfo.IncDEX
 	newItem.intt = nxInfo.IncINT
 	newItem.luk = nxInfo.IncLUK
 
+	newItem.attackSpeed = nxInfo.AttackSpeed
 	newItem.reqLevel = nxInfo.ReqLevel
 	newItem.upgradeSlots = nxInfo.Tuc
 
-	newItem.amount = 1
+	newItem.amount = amount
 
 	return newItem, nil
 }

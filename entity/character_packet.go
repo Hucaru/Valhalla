@@ -92,7 +92,7 @@ func PacketPlayerNoChange() mpacket.Packet {
 
 func PacketPlayerAvatarSummaryWindow(charID int32, char Character, guildName string) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelAvatarInfoWindow)
-	p.WriteInt32(charID)
+	p.WriteInt32(char.id)
 	p.WriteByte(char.level)
 	p.WriteInt16(char.job)
 	p.WriteInt16(char.fame)
@@ -331,6 +331,7 @@ func addItem(item item, shortSlot bool) mpacket.Packet {
 	case 4:
 		fallthrough
 	case 5:
+		// Pets have garbled text before name
 		p.WriteInt16(item.amount)
 		p.WriteString(item.creatorName)
 		p.WriteInt16(item.flag) // lock, show, spikes, cape, cold protection etc ?

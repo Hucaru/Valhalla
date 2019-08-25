@@ -14,8 +14,8 @@ import (
 type Players []*Player
 
 // GetFromConn retrieve the player from the connection
-func (p *Players) GetFromConn(conn mnet.Client) (*Player, error) {
-	for _, v := range *p {
+func (p Players) GetFromConn(conn mnet.Client) (*Player, error) {
+	for _, v := range p {
 		if v.conn == conn {
 			return v, nil
 		}
@@ -25,9 +25,20 @@ func (p *Players) GetFromConn(conn mnet.Client) (*Player, error) {
 }
 
 // GetFromName retrieve the player from the connection
-func (p *Players) GetFromName(name string) (*Player, error) {
-	for _, v := range *p {
+func (p Players) GetFromName(name string) (*Player, error) {
+	for _, v := range p {
 		if v.char.name == name {
+			return v, nil
+		}
+	}
+
+	return nil, fmt.Errorf("Could not retrieve player")
+}
+
+// GetFromID retrieve the player from the connection
+func (p Players) GetFromID(id int32) (*Player, error) {
+	for _, v := range p {
+		if v.char.id == id {
 			return v, nil
 		}
 	}
@@ -245,7 +256,7 @@ func (p *Player) SetMaxHP(amount int16) {
 
 func (p *Player) SetMP(amount int16) {
 	p.char.mp = amount
-	p.Send(PacketPlayerStatChange(true, constant.HpID, int32(amount)))
+	p.Send(PacketPlayerStatChange(true, constant.MpID, int32(amount)))
 }
 
 func (p *Player) GiveMP(amount int16) {
@@ -344,4 +355,163 @@ func (p *Player) SetMapID(id int32) {
 
 func (p *Player) SetMapPosID(pos byte) {
 	p.char.mapPos = pos
+}
+
+func (p *Player) GiveItem(newItem item) error {
+	findFirstEmptySlot := func(items []item, size byte) (int16, error) {
+		slotsUsed := make([]bool, size)
+
+		for _, v := range items {
+			if v.slotID > 0 {
+				slotsUsed[v.slotID-1] = true
+			}
+		}
+
+		slot := 0
+
+		for i, v := range slotsUsed {
+			if v == false {
+				slot = i + 1
+				break
+			}
+		}
+
+		if slot == 0 {
+			slot = len(slotsUsed) + 1
+		}
+
+		if byte(slot) > size {
+			return 0, fmt.Errorf("No empty item slot left")
+		}
+
+		return int16(slot), nil
+	}
+
+	switch newItem.invID {
+	case 1: // Equip
+		slotID, err := findFirstEmptySlot(p.char.inventory.equip, p.char.equipSlotSize)
+
+		if err != nil {
+			return err
+		}
+
+		newItem.slotID = slotID
+		p.char.inventory.equip = append(p.char.inventory.equip, newItem)
+		p.Send(PacketInventoryAddItem(newItem, true))
+	case 2: // Use
+		var slotID int16
+		var index int
+		for i, v := range p.char.inventory.use {
+			if v.itemID == newItem.itemID && v.amount < constant.MaxItemStack {
+				slotID = v.slotID
+				index = i
+				break
+			}
+		}
+
+		if slotID == 0 {
+			slotID, err := findFirstEmptySlot(p.char.inventory.use, p.char.useSlotSize)
+
+			if err != nil {
+				return err
+			}
+
+			newItem.slotID = slotID
+			p.char.inventory.use = append(p.char.inventory.use, newItem)
+			p.Send(PacketInventoryAddItem(newItem, true))
+		} else {
+			remainder := newItem.amount - (constant.MaxItemStack - p.char.inventory.use[index].amount)
+
+			if remainder > 0 { //partial merge
+				slotID, err := findFirstEmptySlot(p.char.inventory.use, p.char.useSlotSize)
+
+				if err != nil {
+					return err
+				}
+
+				p.char.inventory.use[index].amount = constant.MaxItemStack
+				p.Send(PacketInventoryAddItem(p.char.inventory.use[index], false))
+
+				newItem.amount = remainder
+				newItem.slotID = slotID
+				p.char.inventory.use = append(p.char.inventory.use, newItem)
+				p.Send(PacketInventoryAddItem(newItem, true))
+			} else { // full merge
+				p.char.inventory.use[index].amount += newItem.amount
+				p.Send(PacketInventoryAddItem(p.char.inventory.use[index], false))
+			}
+		}
+	case 3: // Set-up
+		slotID, err := findFirstEmptySlot(p.char.inventory.setUp, p.char.setupSlotSize)
+
+		if err != nil {
+			return err
+		}
+
+		newItem.slotID = slotID
+		p.char.inventory.setUp = append(p.char.inventory.setUp, newItem)
+		p.Send(PacketInventoryAddItem(newItem, true))
+	case 4: // Etc
+		// p.char.inventory.etc
+		var slotID int16
+		var index int
+		for i, v := range p.char.inventory.etc {
+			if v.itemID == newItem.itemID && v.amount < constant.MaxItemStack {
+				slotID = v.slotID
+				index = i
+				break
+			}
+		}
+
+		if slotID == 0 {
+			slotID, err := findFirstEmptySlot(p.char.inventory.etc, p.char.etcSlotSize)
+
+			if err != nil {
+				return err
+			}
+
+			newItem.slotID = slotID
+			p.char.inventory.etc = append(p.char.inventory.etc, newItem)
+			p.Send(PacketInventoryAddItem(newItem, true))
+		} else {
+			remainder := newItem.amount - (constant.MaxItemStack - p.char.inventory.etc[index].amount)
+
+			if remainder > 0 { //partial merge
+				slotID, err := findFirstEmptySlot(p.char.inventory.etc, p.char.etcSlotSize)
+
+				if err != nil {
+					return err
+				}
+
+				p.char.inventory.etc[index].amount = constant.MaxItemStack
+				p.Send(PacketInventoryAddItem(p.char.inventory.etc[index], false))
+
+				newItem.amount = remainder
+				newItem.slotID = slotID
+				p.char.inventory.etc = append(p.char.inventory.etc, newItem)
+				p.Send(PacketInventoryAddItem(newItem, true))
+			} else { // full merge
+				p.char.inventory.etc[index].amount += newItem.amount
+				p.Send(PacketInventoryAddItem(p.char.inventory.etc[index], false))
+			}
+		}
+	case 5: // Cash
+		// some are stackable, how to tell?
+		slotID, err := findFirstEmptySlot(p.char.inventory.cash, p.char.cashSlotSize)
+
+		if err != nil {
+			return err
+		}
+
+		newItem.slotID = slotID
+		p.char.inventory.cash = append(p.char.inventory.cash, newItem)
+		p.Send(PacketInventoryAddItem(newItem, true))
+	default:
+		return fmt.Errorf("Unkown inventory id: %d", newItem.invID)
+	}
+	return nil
+}
+
+func (p *Player) TakeItem(itemID int32, amount int16) (item, error) {
+	return item{}, nil
 }

@@ -4,134 +4,11 @@ import (
 	"fmt"
 	"log"
 
+	"github.com/Hucaru/Valhalla/constant"
 	"github.com/Hucaru/Valhalla/entity"
 	"github.com/Hucaru/Valhalla/mnet"
 	"github.com/Hucaru/Valhalla/mpacket"
 )
-
-func (server *ChannelServer) playerUsePortal(conn mnet.Client, reader mpacket.Reader) {
-	player, _ := server.players.GetFromConn(conn)
-	char := player.Char()
-
-	if char.PortalCount() != reader.ReadByte() {
-		conn.Send(entity.PacketPlayerNoChange())
-		return
-	}
-
-	entryType := reader.ReadInt32()
-	field, ok := server.fields[char.MapID()]
-
-	if !ok {
-		return
-	}
-
-	srcInst, err := field.GetInstance(player.InstanceID())
-
-	if err != nil {
-		return
-	}
-
-	switch entryType {
-	case 0:
-		if char.HP() == 0 {
-			dstField, ok := server.fields[field.Data.ReturnMap]
-
-			if !ok {
-				return
-			}
-
-			portal, err := srcInst.GetRandomSpawnPortal()
-
-			if err == nil {
-				conn.Send(entity.PacketPlayerNoChange())
-				return
-			}
-
-			server.WarpPlayer(player, dstField, portal)
-			player.SetHP(50)
-		}
-	case -1:
-		portalName := reader.ReadString(reader.ReadInt16())
-		srcPortal, err := srcInst.GetPortalFromName(portalName)
-
-		if !player.CheckPos(srcPortal.Pos(), 60, 10) { // I'm guessing what the portal hit box is
-			if conn.GetAdminLevel() > 0 {
-				conn.Send(entity.PacketMessageRedText("Portal - " + srcPortal.Pos().String() + " Player - " + player.Char().Pos().String()))
-			}
-
-			conn.Send(entity.PacketPlayerNoChange())
-			return
-		}
-
-		if err != nil {
-			conn.Send(entity.PacketPlayerNoChange())
-			return
-		}
-
-		dstField, ok := server.fields[srcPortal.DestFieldID()]
-
-		if !ok {
-			conn.Send(entity.PacketPlayerNoChange())
-			return
-		}
-
-		dstInst, err := dstField.GetInstance(player.InstanceID())
-
-		if err != nil {
-			if dstInst, err = dstField.GetInstance(0); err != nil {
-				return
-			}
-		}
-
-		dstPortal, err := dstInst.GetPortalFromName(srcPortal.DestName())
-
-		if err != nil {
-			conn.Send(entity.PacketPlayerNoChange())
-			return
-		}
-
-		server.WarpPlayer(player, dstField, dstPortal)
-
-	default:
-		log.Println("Unknown portal entry type, packet:", reader)
-	}
-}
-
-func (server *ChannelServer) WarpPlayer(player *entity.Player, dstField *entity.Field, dstPortal entity.Portal) error {
-	srcField, ok := server.fields[player.Char().MapID()]
-
-	if !ok {
-		return fmt.Errorf("Error in map id %d", player.Char().MapID())
-	}
-
-	srcInst, err := srcField.GetInstance(player.InstanceID())
-
-	if err != nil {
-		return err
-	}
-
-	dstInst, err := dstField.GetInstance(player.InstanceID())
-
-	if err != nil {
-		if dstInst, err = dstField.GetInstance(0); err != nil { // Check player is not in higher level instance than available
-			return err
-		}
-
-		player.SetInstance(0)
-	}
-
-	srcInst.RemovePlayer(player)
-
-	player.SetMapID(dstField.ID)
-	player.SetMapPosID(dstPortal.ID())
-	player.SetPos(dstPortal.Pos())
-	player.SetFoothold(0)
-	player.Send(entity.PacketMapChange(dstField.ID, int32(server.id), dstPortal.ID(), player.Char().HP()))
-
-	dstInst.AddPlayer(player)
-
-	return nil
-}
 
 func (server *ChannelServer) playerChangeChannel(conn mnet.Client, reader mpacket.Reader) {
 	id := reader.ReadByte()
@@ -201,7 +78,7 @@ func (server ChannelServer) playerMovement(conn mnet.Client, reader mpacket.Read
 	inst.SendExcept(entity.PacketPlayerMove(char.ID(), moveBytes), conn)
 }
 
-func (server *ChannelServer) playerEmote(conn mnet.Client, reader mpacket.Reader) {
+func (server ChannelServer) playerEmote(conn mnet.Client, reader mpacket.Reader) {
 	emote := reader.ReadInt32()
 
 	player, err := server.players.GetFromConn(conn)
@@ -227,7 +104,7 @@ func (server *ChannelServer) playerEmote(conn mnet.Client, reader mpacket.Reader
 	inst.SendExcept(entity.PacketPlayerEmoticon(char.ID(), emote), conn)
 }
 
-func (server *ChannelServer) playerUseMysticDoor(conn mnet.Client, reader mpacket.Reader) {
+func (server ChannelServer) playerUseMysticDoor(conn mnet.Client, reader mpacket.Reader) {
 	player, err := server.players.GetFromConn(conn)
 
 	if err != nil {
@@ -235,6 +112,58 @@ func (server *ChannelServer) playerUseMysticDoor(conn mnet.Client, reader mpacke
 	}
 
 	fmt.Println(player.Char().Name(), "has used the mystic door", reader)
+}
+
+func (server ChannelServer) playerAddStatPoint(conn mnet.Client, reader mpacket.Reader) {
+	player, err := server.players.GetFromConn(conn)
+
+	if err != nil {
+		return
+	}
+
+	if player.Char().AP() > 0 {
+		player.GiveAP(-1)
+	}
+
+	statID := reader.ReadInt32()
+
+	switch statID {
+	case constant.StrID:
+		player.GiveStr(1)
+	case constant.DexID:
+		player.GiveDex(1)
+	case constant.IntID:
+		player.GiveInt(1)
+	case constant.LukID:
+		player.GiveLuk(1)
+	default:
+		fmt.Println("unknown stat id:", statID)
+	}
+}
+
+func (server ChannelServer) playerRequestAvatarInfoWindow(conn mnet.Client, reader mpacket.Reader) {
+	player, err := server.players.GetFromID(reader.ReadInt32())
+
+	if err != nil {
+		return
+	}
+
+	char := player.Char()
+
+	conn.Send(entity.PacketPlayerAvatarSummaryWindow(char.ID(), char, char.Guild()))
+}
+
+func (server ChannelServer) playerUseChair(conn mnet.Client, reader mpacket.Reader) {
+	fmt.Println("use chair:", reader)
+	// chairID := reader.ReadInt32()
+}
+
+func (server ChannelServer) playerStand(conn mnet.Client, reader mpacket.Reader) {
+	fmt.Println(reader)
+	if reader.ReadInt16() == -1 {
+
+	} else {
+	}
 }
 
 func (server *ChannelServer) playerConnect(conn mnet.Client, reader mpacket.Reader) {
@@ -306,4 +235,128 @@ func (server *ChannelServer) playerConnect(conn mnet.Client, reader mpacket.Read
 	}
 
 	inst.AddPlayer(server.players[len(server.players)-1])
+}
+
+func (server ChannelServer) playerUsePortal(conn mnet.Client, reader mpacket.Reader) {
+	player, _ := server.players.GetFromConn(conn)
+	char := player.Char()
+
+	if char.PortalCount() != reader.ReadByte() {
+		conn.Send(entity.PacketPlayerNoChange())
+		return
+	}
+
+	entryType := reader.ReadInt32()
+	field, ok := server.fields[char.MapID()]
+
+	if !ok {
+		return
+	}
+
+	srcInst, err := field.GetInstance(player.InstanceID())
+
+	if err != nil {
+		return
+	}
+
+	switch entryType {
+	case 0:
+		if char.HP() == 0 {
+			dstField, ok := server.fields[field.Data.ReturnMap]
+
+			if !ok {
+				return
+			}
+
+			portal, err := srcInst.GetRandomSpawnPortal()
+
+			if err == nil {
+				conn.Send(entity.PacketPlayerNoChange())
+				return
+			}
+
+			server.warpPlayer(player, dstField, portal)
+			player.SetHP(50)
+		}
+	case -1:
+		portalName := reader.ReadString(reader.ReadInt16())
+		srcPortal, err := srcInst.GetPortalFromName(portalName)
+
+		if !player.CheckPos(srcPortal.Pos(), 60, 10) { // I'm guessing what the portal hit box is
+			if conn.GetAdminLevel() > 0 {
+				conn.Send(entity.PacketMessageRedText("Portal - " + srcPortal.Pos().String() + " Player - " + player.Char().Pos().String()))
+			}
+
+			conn.Send(entity.PacketPlayerNoChange())
+			return
+		}
+
+		if err != nil {
+			conn.Send(entity.PacketPlayerNoChange())
+			return
+		}
+
+		dstField, ok := server.fields[srcPortal.DestFieldID()]
+
+		if !ok {
+			conn.Send(entity.PacketPlayerNoChange())
+			return
+		}
+
+		dstInst, err := dstField.GetInstance(player.InstanceID())
+
+		if err != nil {
+			if dstInst, err = dstField.GetInstance(0); err != nil {
+				return
+			}
+		}
+
+		dstPortal, err := dstInst.GetPortalFromName(srcPortal.DestName())
+
+		if err != nil {
+			conn.Send(entity.PacketPlayerNoChange())
+			return
+		}
+
+		server.warpPlayer(player, dstField, dstPortal)
+
+	default:
+		log.Println("Unknown portal entry type, packet:", reader)
+	}
+}
+
+func (server ChannelServer) warpPlayer(player *entity.Player, dstField *entity.Field, dstPortal entity.Portal) error {
+	srcField, ok := server.fields[player.Char().MapID()]
+
+	if !ok {
+		return fmt.Errorf("Error in map id %d", player.Char().MapID())
+	}
+
+	srcInst, err := srcField.GetInstance(player.InstanceID())
+
+	if err != nil {
+		return err
+	}
+
+	dstInst, err := dstField.GetInstance(player.InstanceID())
+
+	if err != nil {
+		if dstInst, err = dstField.GetInstance(0); err != nil { // Check player is not in higher level instance than available
+			return err
+		}
+
+		player.SetInstance(0)
+	}
+
+	srcInst.RemovePlayer(player)
+
+	player.SetMapID(dstField.ID)
+	player.SetMapPosID(dstPortal.ID())
+	player.SetPos(dstPortal.Pos())
+	player.SetFoothold(0)
+	player.Send(entity.PacketMapChange(dstField.ID, int32(server.id), dstPortal.ID(), player.Char().HP()))
+
+	dstInst.AddPlayer(player)
+
+	return nil
 }

@@ -22,9 +22,9 @@ func (server *ChannelServer) HandleClientPacket(conn mnet.Client, reader mpacket
 	case opcode.RecvChannelPlayerMovement:
 		server.playerMovement(conn, reader)
 	case opcode.RecvChannelPlayerStand:
-		// server.playerStand(conn, reader)
+		server.playerStand(conn, reader)
 	case opcode.RecvChannelPlayerUseChair:
-		// server.playerUseChair(conn, reader)
+		server.playerUseChair(conn, reader)
 	case opcode.RecvChannelMeleeSkill:
 		// server.playerMeleeSkill(conn, reader)
 	case opcode.RecvChannelRangedSkill:
@@ -49,7 +49,7 @@ func (server *ChannelServer) HandleClientPacket(conn mnet.Client, reader mpacket
 	case opcode.RecvChannelInvMoveItem:
 		// server.playerMoveInventoryItem(conn, reader)
 	case opcode.RecvChannelAddStatPoint:
-		// server.playerAddStatPoint(conn, reader)
+		server.playerAddStatPoint(conn, reader)
 	case opcode.RecvChannelPassiveRegen:
 		// server.playerPassiveRegen(conn, reader)
 	case opcode.RecvChannelAddSkillPoint:
@@ -57,7 +57,7 @@ func (server *ChannelServer) HandleClientPacket(conn mnet.Client, reader mpacket
 	case opcode.RecvChannelSpecialSkill:
 		// server.playerSpecialSkill(conn, reader)
 	case opcode.RecvChannelCharacterInfo:
-		// server.playerRequestAvatarInfoWindow(conn, reader)
+		server.playerRequestAvatarInfoWindow(conn, reader)
 	case opcode.RecvChannelLieDetectorResult:
 	case opcode.RecvChannelPartyInfo:
 	case opcode.RecvChannelGuildManagement:

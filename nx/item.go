@@ -19,8 +19,9 @@ type Item struct {
 	SlotMax                                                        int16
 	ReqJob                                                         int64
 	ReqSTR, ReqDEX, ReqINT, ReqLUK, IncSTR, IncDEX, IncINT, IncLUK int16
-	IncACC, IncEVA, IncMDD, IncPDD, IncMAD, IncPAD, IncMHP, IncMMP int16
-	AttackSpeed, Attack, IncJump, IncSpeed, RecoveryHP             int64
+	IncACC, IncEVA, IncMDD, IncPDD, IncMAD, IncPAD, IncMHP, IncMMP float64
+	Attack, IncJump, IncSpeed, RecoveryHP                          float64
+	AttackSpeed                                                    int16
 	Price                                                          int32
 	NotSale                                                        int64
 	UnitPrice                                                      float64
@@ -179,33 +180,33 @@ func getItem(node *gonx.Node, nodes []gonx.Node, textLookup []string) Item {
 		case "incMMD": // typo?
 			fallthrough
 		case "incMDD":
-			item.IncMDD = gonx.DataToInt16(option.Data)
+			item.IncMDD = float64(gonx.DataToInt16(option.Data))
 		case "incPDD":
-			item.IncPDD = gonx.DataToInt16(option.Data)
+			item.IncPDD = float64(gonx.DataToInt16(option.Data))
 		case "incMAD":
-			item.IncMAD = gonx.DataToInt16(option.Data)
+			item.IncMAD = float64(gonx.DataToInt16(option.Data))
 		case "incPAD":
-			item.IncPAD = gonx.DataToInt16(option.Data)
+			item.IncPAD = float64(gonx.DataToInt16(option.Data))
 		case "incEVA":
-			item.IncEVA = gonx.DataToInt16(option.Data)
+			item.IncEVA = float64(gonx.DataToInt16(option.Data))
 		case "incACC":
-			item.IncACC = gonx.DataToInt16(option.Data)
+			item.IncACC = float64(gonx.DataToInt16(option.Data))
 		case "incMHP":
-			item.IncMHP = gonx.DataToInt16(option.Data)
+			item.IncMHP = float64(gonx.DataToInt16(option.Data))
 		case "recoveryHP":
-			item.RecoveryHP = gonx.DataToInt64(option.Data)
+			item.RecoveryHP = float64(gonx.DataToInt16(option.Data))
 		case "incMMP":
-			item.IncMMP = gonx.DataToInt16(option.Data)
+			item.IncMMP = float64(gonx.DataToInt16(option.Data))
 		case "only":
 			item.Only = gonx.DataToInt64(option.Data)
 		case "attackSpeed":
-			item.AttackSpeed = gonx.DataToInt64(option.Data)
+			item.AttackSpeed = gonx.DataToInt16(option.Data)
 		case "attack":
-			item.Attack = gonx.DataToInt64(option.Data)
+			item.Attack = float64(gonx.DataToInt16(option.Data))
 		case "incSpeed":
-			item.IncSpeed = gonx.DataToInt64(option.Data)
+			item.IncSpeed = float64(gonx.DataToInt16(option.Data))
 		case "incJump":
-			item.IncJump = gonx.DataToInt64(option.Data)
+			item.IncJump = float64(gonx.DataToInt16(option.Data))
 		case "tuc": // total upgrade count?
 			item.Tuc = option.Data[0]
 		case "notSale":
