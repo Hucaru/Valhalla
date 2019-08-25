@@ -113,10 +113,35 @@ func (server *ChannelServer) gmCommand(conn mnet.Client, msg string) {
 	case "wheader": // sends to world server to propagate to all channels
 
 	case "kill":
+		player, err := server.players.GetFromConn(conn)
+
+		if len(command) == 2 {
+			player, err = server.players.GetFromName(command[1])
+		}
+
+		if err != nil {
+			conn.Send(entity.PacketMessageRedText(err.Error()))
+			return
+		}
+
+		player.SetHP(0)
 	case "revive":
+		player, err := server.players.GetFromConn(conn)
+
+		if len(command) == 2 {
+			player, err = server.players.GetFromName(command[1])
+		}
+
+		if err != nil {
+			conn.Send(entity.PacketMessageRedText(err.Error()))
+			return
+		}
+
+		player.SetHP(player.Char().MaxHP())
 	case "cody":
 	case "admin":
 	case "shop":
+	case "style":
 	case "createInstance":
 		player, err := server.players.GetFromConn(conn)
 
@@ -214,9 +239,103 @@ func (server *ChannelServer) gmCommand(conn mnet.Client, msg string) {
 
 		conn.Send(entity.PacketMessageNotice("Deleted"))
 	case "hp":
+		player, err := server.players.GetFromConn(conn)
+
+		var amount int
+
+		if len(command) == 3 {
+			player, err = server.players.GetFromName(command[1])
+			amount, err = strconv.Atoi(command[2])
+		} else if len(command) == 2 {
+			amount, err = strconv.Atoi(command[1])
+		}
+
+		if err != nil {
+			conn.Send(entity.PacketMessageRedText(err.Error()))
+			return
+		}
+
+		player.SetHP(int16(amount))
 	case "mp":
+		player, err := server.players.GetFromConn(conn)
+
+		var amount int
+
+		if len(command) == 3 {
+			player, err = server.players.GetFromName(command[1])
+			amount, err = strconv.Atoi(command[2])
+		} else if len(command) == 2 {
+			amount, err = strconv.Atoi(command[1])
+		}
+
+		if err != nil {
+			conn.Send(entity.PacketMessageRedText(err.Error()))
+			return
+		}
+
+		player.SetMP(int16(amount))
 	case "exp":
+		player, err := server.players.GetFromConn(conn)
+
+		var amount int
+
+		if len(command) == 3 {
+			player, err = server.players.GetFromName(command[1])
+			amount, err = strconv.Atoi(command[2])
+		} else if len(command) == 2 {
+			amount, err = strconv.Atoi(command[1])
+		}
+
+		if err != nil {
+			conn.Send(entity.PacketMessageRedText(err.Error()))
+			return
+		}
+
+		field, ok := server.fields[player.Char().MapID()]
+
+		if !ok {
+			return
+		}
+
+		inst, err := field.GetInstance(player.InstanceID())
+
+		if err != nil {
+			conn.Send(entity.PacketMessageRedText(err.Error()))
+			return
+		}
+
+		player.SetEXP(int32(amount), inst)
 	case "level":
+		player, err := server.players.GetFromConn(conn)
+
+		var amount int
+
+		if len(command) == 3 {
+			player, err = server.players.GetFromName(command[1])
+			amount, err = strconv.Atoi(command[2])
+		} else if len(command) == 2 {
+			amount, err = strconv.Atoi(command[1])
+		}
+
+		if err != nil {
+			conn.Send(entity.PacketMessageRedText(err.Error()))
+			return
+		}
+
+		field, ok := server.fields[player.Char().MapID()]
+
+		if !ok {
+			return
+		}
+
+		inst, err := field.GetInstance(player.InstanceID())
+
+		if err != nil {
+			conn.Send(entity.PacketMessageRedText(err.Error()))
+			return
+		}
+
+		player.SetLevel(byte(amount), inst)
 	case "job":
 		var val int
 		var err error
