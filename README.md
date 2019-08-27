@@ -92,6 +92,7 @@ Channel server:
 - Sunnyboy for providing a [list](http://forum.ragezone.com/f921/library-idbs-versions-named-addresses-987815/) of idbs for which this project would not have started
 - [Vana](https://github.com/retep998/Vana)
 - [WvsGlobal](https://github.com/diamondo25/WvsGlobal)
+- [NX](https://nxformat.github.io/) file format (see acknowledgements at link)
 
 ## NPC chat display info (use this when scripting NPCs)
 

@@ -396,6 +396,7 @@ func (p *Player) GiveItem(newItem item) error {
 		}
 
 		newItem.slotID = slotID
+		newItem.amount = 1 // just in case
 		p.char.inventory.equip = append(p.char.inventory.equip, newItem)
 		p.Send(PacketInventoryAddItem(newItem, true))
 	case 2: // Use
@@ -429,13 +430,12 @@ func (p *Player) GiveItem(newItem item) error {
 					return err
 				}
 
-				p.char.inventory.use[index].amount = constant.MaxItemStack
-				p.Send(PacketInventoryAddItem(p.char.inventory.use[index], false))
-
 				newItem.amount = remainder
 				newItem.slotID = slotID
 				p.char.inventory.use = append(p.char.inventory.use, newItem)
-				p.Send(PacketInventoryAddItem(newItem, true))
+				p.char.inventory.use[index].amount = constant.MaxItemStack
+
+				p.Send(PacketInventoryAddItems([]item{p.char.inventory.use[index], newItem}, []bool{false, true}))
 			} else { // full merge
 				p.char.inventory.use[index].amount += newItem.amount
 				p.Send(PacketInventoryAddItem(p.char.inventory.use[index], false))
@@ -452,7 +452,6 @@ func (p *Player) GiveItem(newItem item) error {
 		p.char.inventory.setUp = append(p.char.inventory.setUp, newItem)
 		p.Send(PacketInventoryAddItem(newItem, true))
 	case 4: // Etc
-		// p.char.inventory.etc
 		var slotID int16
 		var index int
 		for i, v := range p.char.inventory.etc {
@@ -483,13 +482,12 @@ func (p *Player) GiveItem(newItem item) error {
 					return err
 				}
 
-				p.char.inventory.etc[index].amount = constant.MaxItemStack
-				p.Send(PacketInventoryAddItem(p.char.inventory.etc[index], false))
-
 				newItem.amount = remainder
 				newItem.slotID = slotID
 				p.char.inventory.etc = append(p.char.inventory.etc, newItem)
-				p.Send(PacketInventoryAddItem(newItem, true))
+				p.char.inventory.etc[index].amount = constant.MaxItemStack
+
+				p.Send(PacketInventoryAddItems([]item{p.char.inventory.etc[index], newItem}, []bool{false, true}))
 			} else { // full merge
 				p.char.inventory.etc[index].amount += newItem.amount
 				p.Send(PacketInventoryAddItem(p.char.inventory.etc[index], false))
@@ -514,4 +512,98 @@ func (p *Player) GiveItem(newItem item) error {
 
 func (p *Player) TakeItem(itemID int32, amount int16) (item, error) {
 	return item{}, nil
+}
+
+func (p *Player) RemoveItem(remove item) {
+	findIndex := func(items []item, item item) int {
+		for i, v := range items {
+			if v.uuid == remove.uuid {
+				return i
+			}
+		}
+
+		return 0
+	}
+
+	switch remove.invID {
+	case 1:
+		if i := findIndex(p.char.inventory.equip, remove); i != 0 {
+			p.char.inventory.equip[i] = p.char.inventory.equip[len(p.char.inventory.equip)-1]
+			p.char.inventory.equip = p.char.inventory.equip[:len(p.char.inventory.equip)-1]
+		}
+	case 2:
+		if i := findIndex(p.char.inventory.use, remove); i != 0 {
+			p.char.inventory.use[i] = p.char.inventory.use[len(p.char.inventory.use)-1]
+			p.char.inventory.use = p.char.inventory.use[:len(p.char.inventory.use)-1]
+		}
+	case 3:
+		if i := findIndex(p.char.inventory.setUp, remove); i != 0 {
+			p.char.inventory.setUp[i] = p.char.inventory.setUp[len(p.char.inventory.setUp)-1]
+			p.char.inventory.setUp = p.char.inventory.setUp[:len(p.char.inventory.setUp)-1]
+		}
+	case 4:
+		if i := findIndex(p.char.inventory.etc, remove); i != 0 {
+			p.char.inventory.etc[i] = p.char.inventory.etc[len(p.char.inventory.etc)-1]
+			p.char.inventory.etc = p.char.inventory.etc[:len(p.char.inventory.etc)-1]
+		}
+	case 5:
+		if i := findIndex(p.char.inventory.cash, remove); i != 0 {
+			p.char.inventory.cash[i] = p.char.inventory.cash[len(p.char.inventory.cash)-1]
+			p.char.inventory.cash = p.char.inventory.cash[:len(p.char.inventory.cash)-1]
+		}
+	}
+}
+
+func (p Player) GetItem(invID byte, slotID int16) (item, error) {
+	var result item
+	var err error
+
+	findItem := func(items []item, slotID int16) (item, error) {
+		for _, v := range items {
+			if v.slotID == slotID {
+				return v, nil
+			}
+		}
+
+		return item{}, fmt.Errorf("Unable to get item")
+	}
+
+	switch invID {
+	case 1:
+		result, err = findItem(p.char.inventory.equip, slotID)
+	case 2:
+		result, err = findItem(p.char.inventory.use, slotID)
+	case 3:
+		result, err = findItem(p.char.inventory.setUp, slotID)
+	case 4:
+		result, err = findItem(p.char.inventory.etc, slotID)
+	case 5:
+		result, err = findItem(p.char.inventory.cash, slotID)
+	}
+
+	return result, err
+}
+
+func (p *Player) UpdateItem(orig, new item) {
+	var items []item
+
+	switch new.invID {
+	case 1:
+		items = p.char.inventory.equip
+	case 2:
+		items = p.char.inventory.use
+	case 3:
+		items = p.char.inventory.setUp
+	case 4:
+		items = p.char.inventory.etc
+	case 5:
+		items = p.char.inventory.cash
+	}
+
+	for i, v := range items {
+		if v.uuid == new.uuid {
+			items[i] = new
+			break
+		}
+	}
 }

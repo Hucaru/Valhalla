@@ -2,6 +2,7 @@ package server
 
 import (
 	"encoding/hex"
+	"fmt"
 	"log"
 	"strconv"
 	"strings"
@@ -442,10 +443,29 @@ func (server *ChannelServer) gmCommand(conn mnet.Client, msg string) {
 			return
 		}
 
+		item.SetCreatorName(player.Char().Name())
 		err = player.GiveItem(item)
 
 		if err != nil {
 			conn.Send(entity.PacketMessageRedText(err.Error()))
+		}
+	case "mesos":
+		if len(command) == 2 {
+			val, err := strconv.Atoi(command[1])
+
+			if err != nil {
+				conn.Send(entity.PacketMessageRedText(err.Error()))
+				return
+			}
+
+			player, err := server.players.GetFromConn(conn)
+
+			if err != nil {
+				conn.Send(entity.PacketMessageRedText(err.Error()))
+				return
+			}
+
+			player.SetMesos(int32(val))
 		}
 	case "spawn":
 	case "warp":
@@ -529,6 +549,35 @@ func (server *ChannelServer) gmCommand(conn mnet.Client, msg string) {
 
 		player.Send(entity.PacketMapSpawnMysticDoor(1, player.Char().Pos(), false))
 		player.Send(entity.PacketMapSpawnTownPortal(player.Char().MapID(), player.Char().MapID(), player.Char().Pos()))
+	case "loadout":
+		player, err := server.players.GetFromConn(conn)
+
+		if err != nil {
+			conn.Send(entity.PacketMessageRedText(err.Error()))
+			return
+		}
+
+		items := []int32{1372010, 1402005, 1422013, 1412021, 1382016, 1432030, 1442002, 1302023, 1322045, 1312015, 1332027, 1332026, 1462017, 1472033, 1452020, 1092029, 1092025}
+
+		for _, v := range items {
+			nxInfo, err := nx.GetItem(v)
+
+			fmt.Println(v, nxInfo)
+
+			item, err := entity.CreateItemFromID(v, 1)
+
+			if err != nil {
+				conn.Send(entity.PacketMessageRedText(err.Error()))
+				return
+			}
+
+			item.SetCreatorName(player.Char().Name())
+			err = player.GiveItem(item)
+
+			if err != nil {
+				conn.Send(entity.PacketMessageRedText(err.Error()))
+			}
+		}
 	default:
 		conn.Send(entity.PacketMessageRedText("Unkown gm command " + command[0]))
 	}

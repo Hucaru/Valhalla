@@ -7,16 +7,42 @@ import (
 
 func PacketInventoryAddItem(item item, newItem bool) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelInventoryOperation)
-	p.WriteByte(0x01)     // ?
-	p.WriteByte(0x01)     // number of operations? // e.g. loop over multiple interweaved operations
-	p.WriteBool(!newItem) // operation type
+	p.WriteByte(0x01)
+	p.WriteByte(0x01)
+	p.WriteBool(!newItem)
 	p.WriteByte(item.invID)
 
 	if newItem {
 		p.WriteBytes(addItem(item, true))
 	} else {
 		p.WriteInt16(item.slotID)
-		p.WriteInt16(item.amount) // the new amount value (not a delta)
+		p.WriteInt16(item.amount)
+	}
+
+	return p
+}
+
+func PacketInventoryAddItems(items []item, newItem []bool) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelInventoryOperation)
+
+	p.WriteByte(0x01)
+	if len(items) != len(newItem) {
+		p.WriteByte(0)
+		return p
+	}
+
+	p.WriteByte(byte(len(items)))
+
+	for i, v := range items {
+		p.WriteBool(!newItem[i])
+		p.WriteByte(v.invID)
+
+		if newItem[i] {
+			p.WriteBytes(addItem(v, true))
+		} else {
+			p.WriteInt16(v.slotID)
+			p.WriteInt16(v.amount)
+		}
 	}
 
 	return p

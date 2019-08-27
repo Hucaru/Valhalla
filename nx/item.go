@@ -267,8 +267,7 @@ func getItem(node *gonx.Node, nodes []gonx.Node, textLookup []string) Item {
 		case "meso":
 			item.Meso = gonx.DataToInt64(option.Data)
 		case "path":
-			idLookup := gonx.DataToUint32(option.Data)
-			item.Path = textLookup[idLookup]
+			item.Path = textLookup[gonx.DataToUint32(option.Data)]
 		case "floatType":
 			item.FloatType = gonx.DataToInt64(option.Data)
 		case "noFlip":

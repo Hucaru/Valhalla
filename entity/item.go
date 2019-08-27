@@ -8,9 +8,11 @@ import (
 
 	"github.com/Hucaru/Valhalla/constant"
 	"github.com/Hucaru/Valhalla/nx"
+	"github.com/google/uuid"
 )
 
 type item struct {
+	uuid         uuid.UUID
 	cash         bool
 	invID        byte
 	slotID       int16
@@ -42,20 +44,41 @@ type item struct {
 	speed        int16
 	jump         int16
 	attackSpeed  int16
+	stand        byte
 }
 
-func itemIsRechargeable(itemID int32) bool {
-	return (math.Floor(float64(itemID/10000)) == 207) // Taken from cliet
+func (v item) Clone() item {
+	return v
 }
 
-func itemIsStackable(itemID int32, ammount int16) bool {
-	invID := itemID / 1e6
-	bullet := itemID / 1e4
+func (v item) IsTwoHanded() bool {
+	return v.stand == 2
+}
 
-	if invID != 5 && // pet item
+func (v *item) SetCreatorName(name string) {
+	v.creatorName = name
+}
+
+func (v *item) SetSlotID(id int16) {
+	v.slotID = id
+}
+
+func (v item) Amount() int16 {
+	return v.amount
+}
+
+func (v *item) SetAmount(value int16) {
+	v.amount = value
+}
+
+func (v item) IsStackable() bool {
+	invID := v.itemID / 1e6
+	bullet := v.itemID / 1e4
+
+	if invID != 5.0 && // pet item
 		invID != 1.0 && // equip
 		bullet != 207 && // star/arrow etc
-		ammount <= constant.MaxItemStack {
+		v.amount <= constant.MaxItemStack {
 
 		return true
 	}
@@ -71,9 +94,8 @@ func randomStat(min, max int) int16 {
 	return int16(rand.Intn(max-min) + min)
 }
 
-// TODO: Fill the rest out, for now this can be used to check functionality
 func CreateItemFromID(id int32, amount int16) (item, error) {
-	newItem := item{}
+	newItem := item{uuid: uuid.New()}
 
 	nxInfo, err := nx.GetItem(id)
 
@@ -103,6 +125,11 @@ func CreateItemFromID(id int32, amount int16) (item, error) {
 	newItem.upgradeSlots = nxInfo.Tuc
 
 	newItem.amount = amount
+	newItem.stand = byte(nxInfo.Stand)
 
 	return newItem, nil
+}
+
+func itemIsRechargeable(itemID int32) bool {
+	return (math.Floor(float64(itemID/10000)) == 207) // Taken from cliet
 }

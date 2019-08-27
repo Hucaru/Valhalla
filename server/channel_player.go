@@ -10,6 +10,77 @@ import (
 	"github.com/Hucaru/Valhalla/mpacket"
 )
 
+func (server *ChannelServer) playerConnect(conn mnet.Client, reader mpacket.Reader) {
+	charID := reader.ReadInt32()
+
+	var migrationID byte
+	err := server.db.QueryRow("SELECT migrationID FROM characters WHERE id=?", charID).Scan(&migrationID)
+
+	if err != nil {
+		log.Println(err)
+		return
+	}
+
+	if migrationID != server.id {
+		return
+	}
+
+	var accountID int32
+	err = server.db.QueryRow("SELECT accountID FROM characters WHERE id=?", charID).Scan(&accountID)
+
+	if err != nil {
+		log.Println(err)
+		return
+	}
+
+	conn.SetAccountID(accountID)
+	char := entity.Character{}
+	char.LoadFromID(server.db, charID)
+
+	var adminLevel int
+	err = server.db.QueryRow("SELECT adminLevel FROM accounts WHERE accountID=?", conn.GetAccountID()).Scan(&adminLevel)
+
+	if err != nil {
+		log.Println(err)
+		return
+	}
+
+	conn.SetAdminLevel(adminLevel)
+
+	_, err = server.db.Exec("UPDATE characters SET migrationID=? WHERE id=?", -1, charID)
+
+	if err != nil {
+		log.Println(err)
+		return
+	}
+
+	_, err = server.db.Exec("UPDATE characters SET channelID=? WHERE id=?", server.id, charID)
+
+	if err != nil {
+		log.Println(err)
+		return
+	}
+
+	server.players = append(server.players, entity.NewPlayer(conn, char))
+
+	conn.Send(entity.PacketPlayerEnterGame(char, int32(server.id)))
+	conn.Send(entity.PacketMessageScrollingHeader(server.header))
+
+	field, ok := server.fields[char.MapID()]
+
+	if !ok {
+		return
+	}
+
+	inst, err := field.GetInstance(0)
+
+	if err != nil {
+		return
+	}
+
+	inst.AddPlayer(server.players[len(server.players)-1])
+}
+
 func (server *ChannelServer) playerChangeChannel(conn mnet.Client, reader mpacket.Reader) {
 	id := reader.ReadByte()
 
@@ -166,79 +237,13 @@ func (server ChannelServer) playerStand(conn mnet.Client, reader mpacket.Reader)
 	}
 }
 
-func (server *ChannelServer) playerConnect(conn mnet.Client, reader mpacket.Reader) {
-	charID := reader.ReadInt32()
-
-	var migrationID byte
-	err := server.db.QueryRow("SELECT migrationID FROM characters WHERE id=?", charID).Scan(&migrationID)
-
-	if err != nil {
-		log.Println(err)
-		return
-	}
-
-	if migrationID != server.id {
-		return
-	}
-
-	var accountID int32
-	err = server.db.QueryRow("SELECT accountID FROM characters WHERE id=?", charID).Scan(&accountID)
-
-	if err != nil {
-		log.Println(err)
-		return
-	}
-
-	conn.SetAccountID(accountID)
-	char := entity.Character{}
-	char.LoadFromID(server.db, charID)
-
-	var adminLevel int
-	err = server.db.QueryRow("SELECT adminLevel FROM accounts WHERE accountID=?", conn.GetAccountID()).Scan(&adminLevel)
-
-	if err != nil {
-		log.Println(err)
-		return
-	}
-
-	conn.SetAdminLevel(adminLevel)
-
-	_, err = server.db.Exec("UPDATE characters SET migrationID=? WHERE id=?", -1, charID)
-
-	if err != nil {
-		log.Println(err)
-		return
-	}
-
-	_, err = server.db.Exec("UPDATE characters SET channelID=? WHERE id=?", server.id, charID)
-
-	if err != nil {
-		log.Println(err)
-		return
-	}
-
-	server.players = append(server.players, entity.NewPlayer(conn, char))
-
-	conn.Send(entity.PacketPlayerEnterGame(char, int32(server.id)))
-	conn.Send(entity.PacketMessageScrollingHeader(server.header))
-
-	field, ok := server.fields[char.MapID()]
-
-	if !ok {
-		return
-	}
-
-	inst, err := field.GetInstance(0)
-
-	if err != nil {
-		return
-	}
-
-	inst.AddPlayer(server.players[len(server.players)-1])
-}
-
 func (server ChannelServer) playerUsePortal(conn mnet.Client, reader mpacket.Reader) {
-	player, _ := server.players.GetFromConn(conn)
+	player, err := server.players.GetFromConn(conn)
+
+	if err != nil {
+		return
+	}
+
 	char := player.Char()
 
 	if char.PortalCount() != reader.ReadByte() {
@@ -282,7 +287,7 @@ func (server ChannelServer) playerUsePortal(conn mnet.Client, reader mpacket.Rea
 		portalName := reader.ReadString(reader.ReadInt16())
 		srcPortal, err := srcInst.GetPortalFromName(portalName)
 
-		if !player.CheckPos(srcPortal.Pos(), 60, 10) { // I'm guessing what the portal hit box is
+		if !player.CheckPos(srcPortal.Pos(), 100, 10) { // I'm guessing what the portal hit box is
 			if conn.GetAdminLevel() > 0 {
 				conn.Send(entity.PacketMessageRedText("Portal - " + srcPortal.Pos().String() + " Player - " + player.Char().Pos().String()))
 			}
@@ -359,4 +364,91 @@ func (server ChannelServer) warpPlayer(player *entity.Player, dstField *entity.F
 	dstInst.AddPlayer(player)
 
 	return nil
+}
+
+func (server ChannelServer) playerMoveInventoryItem(conn mnet.Client, reader mpacket.Reader) {
+	inv := reader.ReadByte()
+	pos1 := reader.ReadInt16()
+	pos2 := reader.ReadInt16()
+	amount := reader.ReadInt16()
+	fmt.Println(inv, pos1, pos2, amount)
+
+	player, err := server.players.GetFromConn(conn)
+
+	if err != nil {
+		return
+	}
+
+	var maxInvSize byte
+
+	switch inv {
+	case 1:
+		maxInvSize = player.Char().EquipSlotSize()
+	case 2:
+		maxInvSize = player.Char().UseSlotSize()
+	case 3:
+		maxInvSize = player.Char().SetupSlotSize()
+	case 4:
+		maxInvSize = player.Char().EtcSlotSize()
+	case 5:
+		maxInvSize = player.Char().CashSlotSize()
+	}
+
+	if pos2 > int16(maxInvSize) {
+		return // Moving to item slot the user does not have
+	}
+
+	item1, err := player.GetItem(inv, pos1)
+
+	if err != nil {
+		return // Player moving item that doesn't exit
+	}
+
+	if pos2 == 0 { // drop item
+
+	} else {
+		item2, err := player.GetItem(inv, pos2)
+
+		if err != nil { // Move item into empty slot
+			// if pos2 < 0 && item is 2h and there is a shield, unequip shield into pos1
+			if pos2 < 0 {
+
+			}
+
+			item1.SetSlotID(pos2)
+			player.UpdateItem(item1, item1)
+			conn.Send(entity.PacketInventoryChangeItemSlot(inv, pos1, pos2))
+		} else {
+			if item1.IsStackable() && item2.IsStackable() && (item1.Amount()+item2.Amount()) <= constant.MaxItemStack {
+				item2.SetAmount(item2.Amount() + item1.Amount())
+				player.UpdateItem(item2, item2)
+				player.RemoveItem(item1)
+				conn.Send(entity.PacketInventoryAddItem(item2, false))
+				conn.Send(entity.PacketInventoryRemoveItem(item1))
+			} else { // swap
+				item2.SetSlotID(pos1)
+				player.UpdateItem(item2, item2)
+				item1.SetSlotID(pos2)
+				player.UpdateItem(item1, item1)
+				conn.Send(entity.PacketInventoryChangeItemSlot(inv, pos1, pos2))
+			}
+		}
+	}
+
+	if (pos1 < 0 || pos2 < 0) && inv == 1 { // Change equip
+		field, ok := server.fields[player.Char().MapID()]
+
+		if !ok {
+			return
+		}
+
+		inst, err := field.GetInstance(player.InstanceID())
+
+		if err != nil {
+			return
+		}
+
+		inst.Send(entity.PacketInventoryChangeEquip(player.Char()))
+	}
+
 }
