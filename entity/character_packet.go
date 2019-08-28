@@ -331,7 +331,7 @@ func addItem(item item, shortSlot bool) mpacket.Packet {
 		p.WriteInt16(item.speed)
 		p.WriteInt16(item.jump)
 		p.WriteString(item.creatorName)
-		p.WriteInt16(item.flag) // lock, show, spikes, cape, cold protection etc ?
+		p.WriteInt16(item.flag) // lock/seal, show, spikes, cape, cold protection etc ?
 	case 2:
 		fallthrough
 	case 3:
@@ -350,7 +350,7 @@ func addItem(item item, shortSlot bool) mpacket.Packet {
 		} else {
 			p.WriteInt16(item.amount)
 			p.WriteString(item.creatorName)
-			p.WriteInt16(item.flag) // lock, show, spikes, cape, cold protection etc ?
+			p.WriteInt16(item.flag) // even (normal), odd (sealed) ?
 			// if rechargeable need extra bytes?
 			// int32(2)
 			// 0x54, 0, 0, 0x34

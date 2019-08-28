@@ -134,6 +134,10 @@ func CreateItemFromID(id int32, amount int16) (item, error) {
 	newItem.reqLevel = nxInfo.ReqLevel
 	newItem.upgradeSlots = nxInfo.Tuc
 
+	if amount < 1 {
+		amount = 1
+	}
+
 	newItem.amount = amount
 	newItem.stand = byte(nxInfo.Stand)
 
