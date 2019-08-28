@@ -17,7 +17,7 @@ type item struct {
 	invID        byte
 	slotID       int16
 	itemID       int32
-	expireTime   uint64
+	expireTime   int64
 	amount       int16
 	creatorName  string
 	flag         int16
@@ -51,8 +51,18 @@ func (v item) Clone() item {
 	return v
 }
 
-func (v item) IsTwoHanded() bool {
-	return v.stand == 2
+func (v item) IsPet() bool {
+	nxInfo, err := nx.GetItem(v.itemID)
+
+	if err != nil {
+		return false
+	}
+
+	return nxInfo.Pet
+}
+
+func (v item) PreventsShield() bool {
+	return false
 }
 
 func (v *item) SetCreatorName(name string) {

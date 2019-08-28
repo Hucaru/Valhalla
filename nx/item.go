@@ -12,7 +12,7 @@ import (
 // Item data from nx
 type Item struct {
 	InvTabID                                                       byte
-	Cash                                                           bool
+	Cash, Pet                                                      bool
 	Only, TradeBlock, ExpireOnLogout, Quest, TimeLimited           int64
 	ReqLevel                                                       byte
 	Tuc                                                            byte // Total upgrade count?
@@ -138,6 +138,41 @@ func extractItems(nodes []gonx.Node, textLookup []string) map[int32]Item {
 		if !valid {
 			log.Println("Invalid node search:", search)
 		}
+	}
+
+	valid := gonx.FindNode("/Item/Pet", nodes, textLookup, func(node *gonx.Node) {
+		for i := uint32(0); i < uint32(node.ChildCount); i++ {
+			itemNode := nodes[node.ChildID+i]
+			name := textLookup[itemNode.NameID]
+
+			subSearch := "/Item/Pet/" + name + "/info"
+
+			var item Item
+
+			valid := gonx.FindNode(subSearch, nodes, textLookup, func(node *gonx.Node) {
+				item = getItem(node, nodes, textLookup)
+			})
+
+			if !valid {
+				log.Println("Invalid node search:", subSearch)
+			}
+
+			name = strings.TrimSuffix(name, filepath.Ext(name))
+			itemID, err := strconv.Atoi(name)
+
+			if err != nil {
+				log.Println(err)
+				continue
+			}
+
+			item.InvTabID = byte(itemID / 1e6)
+			item.Pet = true
+			items[int32(itemID)] = item
+		}
+	})
+
+	if !valid {
+		log.Println("Invalid node search:", "/Item/Pet")
 	}
 
 	return items

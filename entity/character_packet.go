@@ -288,20 +288,28 @@ func addItem(item item, shortSlot bool) mpacket.Packet {
 	switch item.invID {
 	case 1:
 		p.WriteByte(0x01)
-	default:
-		p.WriteByte(0x02)
+	case 2:
+		fallthrough
+	case 3:
+		fallthrough
+	case 4:
+		fallthrough
+	case 5:
+		if item.IsPet() {
+			p.WriteByte(0x03)
+		} else {
+			p.WriteByte(0x02)
+		}
 	}
 
 	p.WriteInt32(item.itemID)
 
+	p.WriteBool(item.cash)
 	if item.cash {
-		p.WriteByte(1)
 		p.WriteUint64(uint64(item.itemID))
-	} else {
-		p.WriteByte(0)
 	}
 
-	p.WriteUint64(item.expireTime)
+	p.WriteInt64(item.expireTime)
 
 	switch item.invID {
 	case 1:
@@ -332,9 +340,22 @@ func addItem(item item, shortSlot bool) mpacket.Packet {
 		fallthrough
 	case 5:
 		// Pets have garbled text before name
-		p.WriteInt16(item.amount)
-		p.WriteString(item.creatorName)
-		p.WriteInt16(item.flag) // lock, show, spikes, cape, cold protection etc ?
+		if item.IsPet() {
+			p.WritePaddedString(item.creatorName, 13)
+			p.WriteByte(0)
+			p.WriteInt16(0)
+			p.WriteByte(0)
+			p.WriteInt64(item.expireTime)
+			p.WriteInt32(0) // ?
+		} else {
+			p.WriteInt16(item.amount)
+			p.WriteString(item.creatorName)
+			p.WriteInt16(item.flag) // lock, show, spikes, cape, cold protection etc ?
+			// if rechargeable need extra bytes?
+			// int32(2)
+			// 0x54, 0, 0, 0x34
+		}
+
 	default:
 		fmt.Println("Unsuported item type", item.invID)
 	}
