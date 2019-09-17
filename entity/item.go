@@ -50,67 +50,6 @@ type item struct {
 	twoHanded  bool
 }
 
-func (v item) Clone() item {
-	return v
-}
-
-func (v item) IsPet() bool {
-	nxInfo, err := nx.GetItem(v.itemID)
-
-	if err != nil {
-		return false
-	}
-
-	return nxInfo.Pet
-}
-
-func (v item) PreventsShield() bool {
-	return false
-}
-
-func (v *item) SetCreatorName(name string) {
-	v.creatorName = name
-}
-
-func (v *item) SetSlotID(id int16) {
-	v.slotID = id
-}
-
-func (v item) Amount() int16 {
-	return v.amount
-}
-
-func (v *item) SetAmount(value int16) {
-	v.amount = value
-}
-
-func (v item) IsStackable() bool {
-	invID := v.itemID / 1e6
-	bullet := v.itemID / 1e4
-
-	if invID != 5.0 && // pet item
-		invID != 1.0 && // equip
-		bullet != 207 && // star/arrow etc
-		v.amount <= constant.MaxItemStack {
-
-		return true
-	}
-
-	return false
-}
-
-func (v item) IsRechargeable() bool {
-	return (math.Floor(float64(v.itemID/10000)) == 207) // Taken from cliet
-}
-
-func (v item) Is2h() bool {
-	return v.twoHanded
-}
-
-func (v item) IsShield() bool {
-	return v.weaponType == 17
-}
-
 func randomStat(min, max int) int16 {
 	if max-min == 0 {
 		return int16(max)
@@ -207,4 +146,65 @@ func (v *item) calculateWeaponType() {
 
 func itemIsRechargeable(itemID int32) bool {
 	return (math.Floor(float64(itemID/10000)) == 207) // Taken from cliet
+}
+
+func (v item) Clone() item {
+	return v
+}
+
+func (v item) IsPet() bool {
+	nxInfo, err := nx.GetItem(v.itemID)
+
+	if err != nil {
+		return false
+	}
+
+	return nxInfo.Pet
+}
+
+func (v item) PreventsShield() bool {
+	return false
+}
+
+func (v *item) SetCreatorName(name string) {
+	v.creatorName = name
+}
+
+func (v *item) SetSlotID(id int16) {
+	v.slotID = id
+}
+
+func (v item) Amount() int16 {
+	return v.amount
+}
+
+func (v *item) SetAmount(value int16) {
+	v.amount = value
+}
+
+func (v item) IsStackable() bool {
+	invID := v.itemID / 1e6
+	bullet := v.itemID / 1e4
+
+	if invID != 5.0 && // pet item
+		invID != 1.0 && // equip
+		bullet != 207 && // star/arrow etc
+		v.amount <= constant.MaxItemStack {
+
+		return true
+	}
+
+	return false
+}
+
+func (v item) IsRechargeable() bool {
+	return (math.Floor(float64(v.itemID/10000)) == 207) // Taken from cliet
+}
+
+func (v item) Is2h() bool {
+	return v.twoHanded
+}
+
+func (v item) IsShield() bool {
+	return v.weaponType == 17
 }

@@ -366,12 +366,12 @@ func (server ChannelServer) warpPlayer(player *entity.Player, dstField *entity.F
 	return nil
 }
 
+// TODO: Refactor/Change logic
 func (server ChannelServer) playerMoveInventoryItem(conn mnet.Client, reader mpacket.Reader) {
 	inv := reader.ReadByte()
 	pos1 := reader.ReadInt16()
 	pos2 := reader.ReadInt16()
 	amount := reader.ReadInt16()
-	fmt.Println(inv, pos1, pos2, amount)
 
 	player, err := server.players.GetFromConn(conn)
 
@@ -405,7 +405,7 @@ func (server ChannelServer) playerMoveInventoryItem(conn mnet.Client, reader mpa
 	}
 
 	if pos2 == 0 { // drop item
-
+		fmt.Println(inv, pos1, pos2, amount)
 	} else {
 		item2, err := player.GetItem(inv, pos2)
 
