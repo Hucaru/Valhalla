@@ -2,7 +2,6 @@ package entity
 
 import (
 	"crypto/rand"
-	"fmt"
 	"math"
 
 	"github.com/Hucaru/Valhalla/constant/opcode"
@@ -285,21 +284,12 @@ func addItem(item item, shortSlot bool) mpacket.Packet {
 		p.WriteInt16(item.slotID)
 	}
 
-	switch item.invID {
-	case 1:
+	if item.invID == 1 {
 		p.WriteByte(0x01)
-	case 2:
-		fallthrough
-	case 3:
-		fallthrough
-	case 4:
-		fallthrough
-	case 5:
-		if item.IsPet() {
-			p.WriteByte(0x03)
-		} else {
-			p.WriteByte(0x02)
-		}
+	} else if item.IsPet() {
+		p.WriteByte(0x03)
+	} else {
+		p.WriteByte(0x02)
 	}
 
 	p.WriteInt32(item.itemID)
@@ -311,8 +301,7 @@ func addItem(item item, shortSlot bool) mpacket.Packet {
 
 	p.WriteInt64(item.expireTime)
 
-	switch item.invID {
-	case 1:
+	if item.invID == 1 {
 		p.WriteByte(item.upgradeSlots)
 		p.WriteByte(item.scrollLevel)
 		p.WriteInt16(item.str)
@@ -332,32 +321,20 @@ func addItem(item item, shortSlot bool) mpacket.Packet {
 		p.WriteInt16(item.jump)
 		p.WriteString(item.creatorName)
 		p.WriteInt16(item.flag) // lock/seal, show, spikes, cape, cold protection etc ?
-	case 2:
-		fallthrough
-	case 3:
-		fallthrough
-	case 4:
-		fallthrough
-	case 5:
-		// Pets have garbled text before name
-		if item.IsPet() {
-			p.WritePaddedString(item.creatorName, 13)
-			p.WriteByte(0)
-			p.WriteInt16(0)
-			p.WriteByte(0)
-			p.WriteInt64(item.expireTime)
-			p.WriteInt32(0) // ?
-		} else {
-			p.WriteInt16(item.amount)
-			p.WriteString(item.creatorName)
-			p.WriteInt16(item.flag) // even (normal), odd (sealed) ?
-			// if rechargeable need extra bytes?
-			// int32(2)
-			// 0x54, 0, 0, 0x34
-		}
-
-	default:
-		fmt.Println("Unsuported item type", item.invID)
+	} else if item.IsPet() {
+		p.WritePaddedString(item.creatorName, 13)
+		p.WriteByte(0)
+		p.WriteInt16(0)
+		p.WriteByte(0)
+		p.WriteInt64(item.expireTime)
+		p.WriteInt32(0) // ?
+	} else {
+		p.WriteInt16(item.amount)
+		p.WriteString(item.creatorName)
+		p.WriteInt16(item.flag) // even (normal), odd (sealed) ?
+		// if rechargeable need extra bytes?
+		// int32(2)
+		// 0x54, 0, 0, 0x34
 	}
 
 	return p

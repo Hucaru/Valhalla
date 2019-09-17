@@ -61,6 +61,8 @@ type Field struct {
 
 	vrlimit, mbr, ombr             fieldRectangle
 	mobCapacityMin, mobCapacityMax int
+
+	Dispatch chan func()
 }
 
 func (f *Field) CreateInstance() int {
@@ -80,11 +82,12 @@ func (f *Field) CreateInstance() int {
 	// add initial set of mobs
 
 	f.instances = append(f.instances, instance{
-		id:      id,
-		fieldID: f.ID,
-		npcs:    npcs,
-		players: f.Players,
-		portals: portals,
+		id:       id,
+		fieldID:  f.ID,
+		npcs:     npcs,
+		players:  f.Players,
+		portals:  portals,
+		dispatch: f.Dispatch,
 	})
 
 	// register map work function

@@ -54,9 +54,10 @@ func (server *ChannelServer) Initialise(work chan func(), dbuser, dbpassword, db
 	for fieldID, nxMap := range nx.GetMaps() {
 
 		server.fields[fieldID] = &entity.Field{
-			ID:      fieldID,
-			Data:    nxMap,
-			Players: &server.players,
+			ID:       fieldID,
+			Data:     nxMap,
+			Players:  &server.players,
+			Dispatch: server.dispatch,
 		}
 
 		server.fields[fieldID].CalculateFieldLimits()

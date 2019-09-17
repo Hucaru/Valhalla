@@ -4,18 +4,23 @@ import (
 	"fmt"
 	"math/rand"
 	"strconv"
+	"time"
 
 	"github.com/Hucaru/Valhalla/mnet"
 	"github.com/Hucaru/Valhalla/mpacket"
 )
 
 type instance struct {
-	id      int
-	fieldID int32
-	npcs    []npc
-	portals []Portal
-	conns   []mnet.Client
-	players *Players
+	id             int
+	fieldID        int32
+	npcs           []npc
+	portals        []Portal
+	conns          []mnet.Client
+	players        *Players
+	fieldTimer     *time.Ticker
+	fieldTimerTime int64
+
+	dispatch chan func()
 }
 
 func (inst *instance) delete() error {
@@ -67,6 +72,11 @@ func (inst *instance) AddPlayer(player *Player) error {
 	// show portals e.g. mystic door
 
 	inst.conns = append(inst.conns, player.conn)
+
+	if len(inst.conns) == 1 {
+		inst.startFieldTimer()
+	}
+
 	return nil
 }
 
@@ -109,6 +119,10 @@ func (inst *instance) RemovePlayer(player *Player) error {
 				newController.Send(PacketNpcSetController(v.spawnID, true))
 			}
 		}
+	}
+
+	if len(inst.conns) == 0 {
+		inst.stopFieldTimer()
 	}
 
 	return nil
@@ -199,4 +213,20 @@ func (inst *instance) GetNpc(id int32) *npc {
 	}
 
 	return &inst.npcs[id]
+}
+
+func (inst *instance) startFieldTimer() {
+	inst.fieldTimer = time.NewTicker(time.Second * time.Duration(5)) // Change to correct time
+	go func() {
+		for t := range inst.fieldTimer.C {
+			inst.dispatch <- func() { inst.fieldUpdate(t) }
+		}
+	}()
+}
+
+func (inst *instance) stopFieldTimer() {
+	inst.fieldTimer.Stop()
+}
+
+func (inst *instance) fieldUpdate(t time.Time) {
 }
