@@ -80,6 +80,8 @@ func getInventoryFromCharID(db *sql.DB, id int32) Inventory {
 			&item.expireTime,
 			&item.creatorName)
 
+		item.calculateWeaponType()
+
 		switch item.invID {
 		case 1:
 			inventory.equip = append(inventory.equip, item)

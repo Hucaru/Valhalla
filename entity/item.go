@@ -45,6 +45,9 @@ type item struct {
 	jump         int16
 	attackSpeed  int16
 	stand        byte
+
+	weaponType byte
+	twoHanded  bool
 }
 
 func (v item) Clone() item {
@@ -96,6 +99,18 @@ func (v item) IsStackable() bool {
 	return false
 }
 
+func (v item) IsRechargeable() bool {
+	return (math.Floor(float64(v.itemID/10000)) == 207) // Taken from cliet
+}
+
+func (v item) Is2h() bool {
+	return v.twoHanded
+}
+
+func (v item) IsShield() bool {
+	return v.weaponType == 17
+}
+
 func randomStat(min, max int) int16 {
 	if max-min == 0 {
 		return int16(max)
@@ -140,8 +155,54 @@ func CreateItemFromID(id int32, amount int16) (item, error) {
 
 	newItem.amount = amount
 	newItem.stand = byte(nxInfo.Stand)
+	newItem.calculateWeaponType()
 
 	return newItem, nil
+}
+
+func (v *item) calculateWeaponType() {
+	switch v.itemID / 10000 % 100 {
+	case 30:
+		v.weaponType = 1 // Sword1H
+	case 31:
+		v.weaponType = 2 // Axe1H
+	case 32:
+		v.weaponType = 3 // Blunt1H
+	case 33:
+		v.weaponType = 4 // Dagger
+	case 37:
+		v.weaponType = 5 // Wand
+	case 38:
+		v.weaponType = 6 // Staff
+	case 40:
+		v.weaponType = 7 // Sword2H
+	case 41:
+		v.weaponType = 8 // Axe2H
+	case 42:
+		v.weaponType = 9 // Blunt2H
+	case 43:
+		v.weaponType = 10 // Spear
+	case 44:
+		v.weaponType = 11 // PoleArm
+	case 45:
+		v.weaponType = 12 // Bow
+	case 46:
+		v.weaponType = 13 // Crossbow
+	case 47:
+		v.weaponType = 14 // Claw
+	case 48:
+		v.weaponType = 15 // Knuckle
+	case 49:
+		v.weaponType = 16 // Gun
+	case 9:
+		v.weaponType = 17 // Shield
+	default:
+		v.weaponType = 0 // Not a weapon
+	}
+
+	if v.weaponType > 6 && v.weaponType < 15 {
+		v.twoHanded = true
+	}
 }
 
 func itemIsRechargeable(itemID int32) bool {

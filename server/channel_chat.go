@@ -2,7 +2,6 @@ package server
 
 import (
 	"encoding/hex"
-	"fmt"
 	"log"
 	"strconv"
 	"strings"
@@ -560,10 +559,6 @@ func (server *ChannelServer) gmCommand(conn mnet.Client, msg string) {
 		items := []int32{1372010, 1402005, 1422013, 1412021, 1382016, 1432030, 1442002, 1302023, 1322045, 1312015, 1332027, 1332026, 1462017, 1472033, 1452020, 1092029, 1092025}
 
 		for _, v := range items {
-			nxInfo, err := nx.GetItem(v)
-
-			fmt.Println(v, nxInfo)
-
 			item, err := entity.CreateItemFromID(v, 1)
 
 			if err != nil {

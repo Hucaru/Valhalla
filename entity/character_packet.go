@@ -332,9 +332,10 @@ func addItem(item item, shortSlot bool) mpacket.Packet {
 		p.WriteInt16(item.amount)
 		p.WriteString(item.creatorName)
 		p.WriteInt16(item.flag) // even (normal), odd (sealed) ?
-		// if rechargeable need extra bytes?
-		// int32(2)
-		// 0x54, 0, 0, 0x34
+
+		if item.IsRechargeable() {
+			p.WriteInt32(0) // ?
+		}
 	}
 
 	return p

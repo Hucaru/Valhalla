@@ -410,9 +410,22 @@ func (server ChannelServer) playerMoveInventoryItem(conn mnet.Client, reader mpa
 		item2, err := player.GetItem(inv, pos2)
 
 		if err != nil { // Move item into empty slot
-			// if pos2 < 0 && item is 2h and there is a shield, unequip shield into pos1
 			if pos2 < 0 {
-
+				if item1.Is2h() {
+					if _, err = player.GetItem(inv, -10); err == nil { // check for shield
+						conn.Send(entity.PacketPlayerNoChange())
+						conn.Send(entity.PacketMessageRedText("Cannot equip"))
+						return
+					}
+				} else if item1.IsShield() {
+					if weapon, err := player.GetItem(inv, -11); err == nil {
+						if weapon.Is2h() {
+							conn.Send(entity.PacketPlayerNoChange())
+							conn.Send(entity.PacketMessageRedText("Cannot equip"))
+							return
+						}
+					}
+				}
 			}
 
 			item1.SetSlotID(pos2)
@@ -426,6 +439,22 @@ func (server ChannelServer) playerMoveInventoryItem(conn mnet.Client, reader mpa
 				conn.Send(entity.PacketInventoryAddItem(item2, false))
 				conn.Send(entity.PacketInventoryRemoveItem(item1))
 			} else { // swap
+				if item1.Is2h() {
+					if _, err = player.GetItem(inv, -10); err == nil {
+						conn.Send(entity.PacketPlayerNoChange())
+						conn.Send(entity.PacketMessageRedText("Cannot equip"))
+						return
+					}
+				} else if item1.IsShield() { // This condition should not be possible....
+					if weapon, err := player.GetItem(inv, -11); err == nil {
+						if weapon.Is2h() {
+							conn.Send(entity.PacketPlayerNoChange())
+							conn.Send(entity.PacketMessageRedText("Cannot equip"))
+							return
+						}
+					}
+				}
+
 				item2.SetSlotID(pos1)
 				player.UpdateItem(item2, item2)
 				item1.SetSlotID(pos2)
