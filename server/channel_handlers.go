@@ -51,9 +51,9 @@ func (server *ChannelServer) HandleClientPacket(conn mnet.Client, reader mpacket
 	case opcode.RecvChannelAddStatPoint:
 		server.playerAddStatPoint(conn, reader)
 	case opcode.RecvChannelPassiveRegen:
-		// server.playerPassiveRegen(conn, reader)
+		server.playerPassiveRegen(conn, reader)
 	case opcode.RecvChannelAddSkillPoint:
-		// server.playerAddSkillPoint(conn, reader)
+		server.playerAddSkillPoint(conn, reader)
 	case opcode.RecvChannelSpecialSkill:
 		// server.playerSpecialSkill(conn, reader)
 	case opcode.RecvChannelCharacterInfo:

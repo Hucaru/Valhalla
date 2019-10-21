@@ -286,7 +286,7 @@ func addItem(item item, shortSlot bool) mpacket.Packet {
 
 	if item.invID == 1 {
 		p.WriteByte(0x01)
-	} else if item.IsPet() {
+	} else if item.Pet() {
 		p.WriteByte(0x03)
 	} else {
 		p.WriteByte(0x02)
@@ -321,7 +321,7 @@ func addItem(item item, shortSlot bool) mpacket.Packet {
 		p.WriteInt16(item.jump)
 		p.WriteString(item.creatorName)
 		p.WriteInt16(item.flag) // lock/seal, show, spikes, cape, cold protection etc ?
-	} else if item.IsPet() {
+	} else if item.Pet() {
 		p.WritePaddedString(item.creatorName, 13)
 		p.WriteByte(0)
 		p.WriteInt16(0)

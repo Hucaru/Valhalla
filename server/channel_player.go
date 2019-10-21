@@ -224,6 +224,31 @@ func (server ChannelServer) playerRequestAvatarInfoWindow(conn mnet.Client, read
 	conn.Send(entity.PacketPlayerAvatarSummaryWindow(char.ID(), char, char.Guild()))
 }
 
+func (server ChannelServer) playerPassiveRegen(conn mnet.Client, reader mpacket.Reader) {
+	reader.ReadBytes(4) //?
+
+	hp := reader.ReadInt16()
+	mp := reader.ReadInt16()
+
+	player, err := server.players.GetFromConn(conn)
+
+	if err != nil {
+		return
+	}
+
+	char := player.Char()
+
+	if char.HP() == 0 || hp > 400 || mp > 1000 || (hp > 0 && mp > 0) {
+		return
+	}
+
+	if hp > 0 {
+		player.GiveHP(int16(hp))
+	} else if mp > 0 {
+		player.GiveMP(int16(mp))
+	}
+}
+
 func (server ChannelServer) playerUseChair(conn mnet.Client, reader mpacket.Reader) {
 	fmt.Println("use chair:", reader)
 	// chairID := reader.ReadInt32()
@@ -235,6 +260,164 @@ func (server ChannelServer) playerStand(conn mnet.Client, reader mpacket.Reader)
 
 	} else {
 	}
+}
+
+func (server ChannelServer) playerAddSkillPoint(conn mnet.Client, reader mpacket.Reader) {
+	player, err := server.players.GetFromConn(conn)
+
+	if err != nil {
+		return
+	}
+
+	char := player.Char()
+
+	if char.SP() < 1 {
+		return // hacker
+	}
+
+	skillID := reader.ReadInt32()
+	skill, ok := char.Skills()[skillID]
+
+	if ok {
+		skill, err = entity.CreateSkillFromData(skillID, skill.Level+1)
+
+		if err != nil {
+			return
+		}
+
+		player.UpdateSkill(skill)
+	} else {
+		// check if class can have skill
+		baseSkillID := skillID / 10000
+
+		if !validateSkillWithJob(char.Job(), baseSkillID) {
+			conn.Send(entity.PacketPlayerNoChange())
+			return
+		}
+
+		skill, err = entity.CreateSkillFromData(skillID, 1)
+
+		if err != nil {
+			return
+		}
+
+		player.UpdateSkill(skill)
+	}
+
+	player.GiveSP(-1)
+}
+
+func validateSkillWithJob(jobID int16, baseSkillID int32) bool {
+	switch jobID {
+	case constant.WarriorJobID:
+		if baseSkillID != constant.WarriorJobID {
+			return false
+		}
+	case constant.FighterJobID:
+		if baseSkillID != constant.WarriorJobID && baseSkillID != constant.FighterJobID {
+			return false
+		}
+	case constant.CrusaderJobID:
+		if baseSkillID != constant.WarriorJobID && baseSkillID != constant.FighterJobID && baseSkillID != constant.CrusaderJobID {
+			return false
+		}
+	case constant.PageJobID:
+		if baseSkillID != constant.WarriorJobID && baseSkillID != constant.PageJobID {
+			return false
+		}
+	case constant.WhiteKnightJobID:
+		if baseSkillID != constant.WarriorJobID && baseSkillID != constant.PageJobID && baseSkillID != constant.WhiteKnightJobID {
+			return false
+		}
+	case constant.SpearmanJobID:
+		if baseSkillID != constant.WarriorJobID && baseSkillID != constant.SpearmanJobID {
+			return false
+		}
+	case constant.DragonKnightJobID:
+		if baseSkillID != constant.WarriorJobID && baseSkillID != constant.SpearmanJobID && baseSkillID != constant.DragonKnightJobID {
+			return false
+		}
+	case constant.MagicianJobID:
+		if baseSkillID != constant.MagicianJobID {
+			return false
+		}
+	case constant.FirePoisonWizardJobID:
+		if baseSkillID != constant.MagicianJobID && baseSkillID != constant.FirePoisonWizardJobID {
+			return false
+		}
+	case constant.FirePoisonMageJobID:
+		if baseSkillID != constant.MagicianJobID && baseSkillID != constant.FirePoisonWizardJobID && baseSkillID != constant.FirePoisonMageJobID {
+			return false
+		}
+	case constant.IceLightWizardJobID:
+		if baseSkillID != constant.MagicianJobID && baseSkillID != constant.IceLightWizardJobID {
+			return false
+		}
+	case constant.IceLightMageJobID:
+		if baseSkillID != constant.MagicianJobID && baseSkillID != constant.IceLightWizardJobID && baseSkillID != constant.IceLightMageJobID {
+			return false
+		}
+	case constant.ClericJobID:
+		if baseSkillID != constant.MagicianJobID && baseSkillID != constant.ClericJobID {
+			return false
+		}
+	case constant.PriestJobID:
+		if baseSkillID != constant.MagicianJobID && baseSkillID != constant.ClericJobID && baseSkillID != constant.PriestJobID {
+			return false
+		}
+	case constant.BowmanJobID:
+		if baseSkillID != constant.BowmanJobID {
+			return false
+		}
+	case constant.HunterJobID:
+		if baseSkillID != constant.BowmanJobID && baseSkillID != constant.HunterJobID {
+			return false
+		}
+	case constant.RangerJobID:
+		if baseSkillID != constant.BowmanJobID && baseSkillID != constant.HunterJobID && baseSkillID != constant.RangerJobID {
+			return false
+		}
+	case constant.CrossbowmanJobID:
+		if baseSkillID != constant.BowmanJobID && baseSkillID != constant.CrossbowmanJobID {
+			return false
+		}
+	case constant.SniperJobID:
+		if baseSkillID != constant.BowmanJobID && baseSkillID != constant.CrossbowmanJobID && baseSkillID != constant.SniperJobID {
+			return false
+		}
+	case constant.ThiefJobID:
+		if baseSkillID != constant.ThiefJobID {
+			return false
+		}
+	case constant.AssassinJobID:
+		if baseSkillID != constant.ThiefJobID && baseSkillID != constant.AssassinJobID {
+			return false
+		}
+	case constant.HermitJobID:
+		if baseSkillID != constant.ThiefJobID && baseSkillID != constant.AssassinJobID && baseSkillID != constant.HermitJobID {
+			return false
+		}
+	case constant.BanditJobID:
+		if baseSkillID != constant.ThiefJobID && baseSkillID != constant.BanditJobID {
+			return false
+		}
+	case constant.ChiefBanditJobID:
+		if baseSkillID != constant.ThiefJobID && baseSkillID != constant.BanditJobID && baseSkillID != constant.ChiefBanditJobID {
+			return false
+		}
+	case constant.GmJobID:
+		if baseSkillID != constant.GmJobID {
+			return false
+		}
+	case constant.SuperGmJobID:
+		if baseSkillID != constant.GmJobID && baseSkillID != constant.SuperGmJobID {
+			return false
+		}
+	default:
+		return false
+	}
+
+	return true
 }
 
 func (server ChannelServer) playerUsePortal(conn mnet.Client, reader mpacket.Reader) {
@@ -411,15 +594,15 @@ func (server ChannelServer) playerMoveInventoryItem(conn mnet.Client, reader mpa
 
 		if err != nil { // Move item into empty slot
 			if pos2 < 0 {
-				if item1.Is2h() {
+				if item1.TwoHanded() {
 					if _, err = player.GetItem(inv, -10); err == nil { // check for shield
 						conn.Send(entity.PacketPlayerNoChange())
 						conn.Send(entity.PacketMessageRedText("Cannot equip"))
 						return
 					}
-				} else if item1.IsShield() {
+				} else if item1.Shield() {
 					if weapon, err := player.GetItem(inv, -11); err == nil {
-						if weapon.Is2h() {
+						if weapon.TwoHanded() {
 							conn.Send(entity.PacketPlayerNoChange())
 							conn.Send(entity.PacketMessageRedText("Cannot equip"))
 							return
@@ -439,15 +622,15 @@ func (server ChannelServer) playerMoveInventoryItem(conn mnet.Client, reader mpa
 				conn.Send(entity.PacketInventoryAddItem(item2, false))
 				conn.Send(entity.PacketInventoryRemoveItem(item1))
 			} else { // swap
-				if item1.Is2h() {
+				if item1.TwoHanded() {
 					if _, err = player.GetItem(inv, -10); err == nil {
 						conn.Send(entity.PacketPlayerNoChange())
 						conn.Send(entity.PacketMessageRedText("Cannot equip"))
 						return
 					}
-				} else if item1.IsShield() { // This condition should not be possible....
+				} else if item1.Shield() { // This condition should not be possible....
 					if weapon, err := player.GetItem(inv, -11); err == nil {
-						if weapon.Is2h() {
+						if weapon.TwoHanded() {
 							conn.Send(entity.PacketPlayerNoChange())
 							conn.Send(entity.PacketMessageRedText("Cannot equip"))
 							return

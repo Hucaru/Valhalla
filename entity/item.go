@@ -50,15 +50,35 @@ type item struct {
 	twoHanded  bool
 }
 
-func randomStat(min, max int) int16 {
-	if max-min == 0 {
-		return int16(max)
-	}
-	rand.Seed(time.Now().Unix())
-	return int16(rand.Intn(max-min) + min)
+func CreatePerfectItemFromID(id int32, amount int16) (item, error) {
+	return createItemFromID(id, amount, 1)
 }
 
 func CreateItemFromID(id int32, amount int16) (item, error) {
+	return createItemFromID(id, amount, 0)
+}
+
+func CreateWorstItemFromID(id int32, amount int16) (item, error) {
+	return createItemFromID(id, amount, -1)
+}
+
+func createItemFromID(id int32, amount int16, bias int8) (item, error) {
+	randomStat := func(min, max int) int16 {
+		if bias > 0 {
+			return int16(max)
+		} else if bias < 1 {
+			return int16(min)
+		}
+
+		if max-min == 0 {
+			return int16(max)
+		}
+
+		rand.Seed(time.Now().Unix())
+
+		return int16(rand.Intn(max-min) + min)
+	}
+
 	newItem := item{uuid: uuid.New()}
 
 	nxInfo, err := nx.GetItem(id)
@@ -70,14 +90,14 @@ func CreateItemFromID(id int32, amount int16) (item, error) {
 	newItem.cash = nxInfo.Cash
 	newItem.invID = byte(id / 1e6)
 	newItem.itemID = id
-	newItem.accuracy = randomStat(int(math.Floor(nxInfo.IncACC-(nxInfo.IncACC*0.1))), int(math.Ceil(nxInfo.IncACC*1.1)))
-	newItem.avoid = randomStat(int(math.Floor(nxInfo.IncEVA-(nxInfo.IncEVA*0.1))), int(math.Ceil(nxInfo.IncEVA*1.1)))
-	newItem.speed = randomStat(int(math.Floor(nxInfo.IncSpeed-(nxInfo.IncSpeed*0.1))), int(math.Ceil(nxInfo.IncSpeed*1.1)))
+	newItem.accuracy = randomStat(int(math.Floor(nxInfo.IncACC*0.9)), int(math.Ceil(nxInfo.IncACC*1.1)))
+	newItem.avoid = randomStat(int(math.Floor(nxInfo.IncEVA*0.9)), int(math.Ceil(nxInfo.IncEVA*1.1)))
+	newItem.speed = randomStat(int(math.Floor(nxInfo.IncSpeed*0.9)), int(math.Ceil(nxInfo.IncSpeed*1.1)))
 
-	newItem.matk = randomStat(int(math.Floor(nxInfo.IncMAD-(nxInfo.IncMAD*0.1))), int(math.Ceil(nxInfo.IncMAD*1.1)))
-	newItem.mdef = randomStat(int(math.Floor(nxInfo.IncMDD-(nxInfo.IncMDD*0.1))), int(math.Ceil(nxInfo.IncMDD*1.1)))
-	newItem.watk = randomStat(int(math.Floor(nxInfo.IncPAD-(nxInfo.IncPAD*0.1))), int(math.Ceil(nxInfo.IncPAD*1.1)))
-	newItem.wdef = randomStat(int(math.Floor(nxInfo.IncPDD-(nxInfo.IncPDD*0.1))), int(math.Ceil(nxInfo.IncPDD*1.1)))
+	newItem.matk = randomStat(int(math.Floor(nxInfo.IncMAD*0.9)), int(math.Ceil(nxInfo.IncMAD*1.1)))
+	newItem.mdef = randomStat(int(math.Floor(nxInfo.IncMDD*0.9)), int(math.Ceil(nxInfo.IncMDD*1.1)))
+	newItem.watk = randomStat(int(math.Floor(nxInfo.IncPAD*0.9)), int(math.Ceil(nxInfo.IncPAD*1.1)))
+	newItem.wdef = randomStat(int(math.Floor(nxInfo.IncPDD*0.9)), int(math.Ceil(nxInfo.IncPDD*1.1)))
 
 	newItem.str = nxInfo.IncSTR
 	newItem.dex = nxInfo.IncDEX
@@ -152,7 +172,7 @@ func (v item) Clone() item {
 	return v
 }
 
-func (v item) IsPet() bool {
+func (v item) Pet() bool {
 	nxInfo, err := nx.GetItem(v.itemID)
 
 	if err != nil {
@@ -160,10 +180,6 @@ func (v item) IsPet() bool {
 	}
 
 	return nxInfo.Pet
-}
-
-func (v item) PreventsShield() bool {
-	return false
 }
 
 func (v *item) SetCreatorName(name string) {
@@ -201,10 +217,10 @@ func (v item) IsRechargeable() bool {
 	return (math.Floor(float64(v.itemID/10000)) == 207) // Taken from cliet
 }
 
-func (v item) Is2h() bool {
+func (v item) TwoHanded() bool {
 	return v.twoHanded
 }
 
-func (v item) IsShield() bool {
+func (v item) Shield() bool {
 	return v.weaponType == 17
 }

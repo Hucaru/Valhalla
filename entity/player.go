@@ -607,3 +607,8 @@ func (p *Player) UpdateItem(orig, new item) {
 		}
 	}
 }
+
+func (p *Player) UpdateSkill(updatedSkill Skill) {
+	p.char.skills[updatedSkill.ID] = updatedSkill
+	p.Send(PacketPlayerSkillBookUpdate(updatedSkill.ID, int32(updatedSkill.Level)))
+}

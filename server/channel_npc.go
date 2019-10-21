@@ -30,9 +30,9 @@ func (server *ChannelServer) npcMovement(conn mnet.Client, reader mpacket.Reader
 
 	npc := inst.GetNpc(id)
 
-	inst.Send(entity.PacketNpcMovement(data))
-
 	if npc.Controller() != conn {
 		conn.Send(entity.PacketNpcSetController(id, false))
 	}
+
+	inst.Send(entity.PacketNpcMovement(data))
 }
