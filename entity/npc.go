@@ -15,9 +15,6 @@ type npc struct {
 	rx0, rx1   int16
 }
 
-func createNpcFromID(spawnID int32, npcID int32) {
-}
-
 func createNpcFromData(spawnID int32, life nx.Life) npc {
 	return npc{id: life.ID,
 		spawnID:  spawnID,

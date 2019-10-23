@@ -17,6 +17,7 @@ type instance struct {
 	portals        []Portal
 	conns          []mnet.Client
 	players        *Players
+	mobs           []mob
 	fieldTimer     *time.Ticker
 	fieldTimerTime int64
 
@@ -66,6 +67,12 @@ func (inst *instance) AddPlayer(player *Player) error {
 	}
 
 	// show all monsters on field
+	for i, m := range inst.mobs {
+		player.Send(PacketMobShow(m))
+		if m.controller == nil {
+			inst.mobs[i].SetController(player.conn, false)
+		}
+	}
 
 	// show all the rooms
 
@@ -118,6 +125,17 @@ func (inst *instance) RemovePlayer(player *Player) error {
 			if newController != nil {
 				newController.Send(PacketNpcSetController(v.spawnID, true))
 			}
+		}
+	}
+
+	for i, m := range inst.mobs {
+		if m.controller == player.conn {
+			if newController == nil {
+				inst.mobs[i].controller = nil
+			} else {
+				inst.mobs[i].SetController(newController, false)
+			}
+			player.Send(PacketMobEndControl(m))
 		}
 	}
 
@@ -213,6 +231,16 @@ func (inst *instance) GetNpc(id int32) *npc {
 	}
 
 	return &inst.npcs[id]
+}
+
+func (inst *instance) GetMob(id int32) *mob {
+	for i, v := range inst.mobs {
+		if v.spawnID == id {
+			return &inst.mobs[i]
+		}
+	}
+
+	return nil
 }
 
 func (inst *instance) startFieldTimer() {

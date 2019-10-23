@@ -80,6 +80,17 @@ func (f *Field) CreateInstance() int {
 	}
 
 	// add initial set of mobs
+	mobs := make([]mob, len(f.Data.Mobs))
+	for i, v := range f.Data.Mobs {
+		m, err := nx.GetMob(v.ID)
+
+		if err != nil {
+			continue
+		}
+
+		mobs[i] = createMobFromData(int32(i+1), v, m)
+		mobs[i].summonType = -1
+	}
 
 	f.instances = append(f.instances, instance{
 		id:       id,
@@ -88,6 +99,7 @@ func (f *Field) CreateInstance() int {
 		players:  f.Players,
 		portals:  portals,
 		dispatch: f.Dispatch,
+		mobs:     mobs,
 	})
 
 	// register map work function

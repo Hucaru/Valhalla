@@ -65,3 +65,14 @@ func (c *channel) serialisePacket(reader *mpacket.Reader) {
 	c.maxPop = reader.ReadInt16()
 	c.pop = reader.ReadInt16()
 }
+
+type party struct {
+}
+
+func (v party) generatePacket() mpacket.Packet {
+	p := mpacket.CreateInternal(0)
+	return p
+}
+
+func (v *party) serialisePacket(reader *mpacket.Reader) {
+}

@@ -51,12 +51,13 @@ Channel server:
 - [x] Players can see other movement
 - [x] Player chat
 - [x] player use portal
+- [x] Player allocate skill points
 - [ ] Player use skills
 - [ ] Player skill logic (haste etc)
 - [ ] Player inventory
 - [ ] Player use item (scrolls, potions etc)
 - [ ] Player pets
-- [ ] Player stats
+- [x] Player stats
 - [x] NPC visible
 - [x] NPC movement
 - [ ] NPC basic chat
@@ -66,8 +67,8 @@ Channel server:
 - [ ] PQ scripts
 - [ ] Event scripts
 - [x] Map instancing
-- [ ] Mob visible
-- [ ] Mob movement
+- [x] Mob visible
+- [x] Mob movement
 - [ ] Mob attack
 - [ ] Mob skills that cause stat changes
 - [ ] Mob death
