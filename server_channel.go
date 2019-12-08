@@ -10,12 +10,12 @@ import (
 	"time"
 
 	"github.com/Hucaru/Valhalla/constant"
-	"github.com/Hucaru/Valhalla/server"
 	"github.com/Hucaru/Valhalla/nx"
+	"github.com/Hucaru/Valhalla/server"
 
-	"github.com/Hucaru/Valhalla/server/script"
 	"github.com/Hucaru/Valhalla/mnet"
 	"github.com/Hucaru/Valhalla/mpacket"
+	"github.com/Hucaru/Valhalla/server/script"
 )
 
 type channelServer struct {
@@ -150,30 +150,25 @@ func (cs *channelServer) processEvent() {
 				return
 			}
 
-			clientConn, ok := e.Conn.(mnet.Client)
-
-			if ok {
+			switch conn := e.Conn.(type) {
+			case mnet.Client:
 				switch e.Type {
 				case mnet.MEClientConnected:
-					log.Println("New client from", clientConn)
+					log.Println("New client from", conn)
 				case mnet.MEClientDisconnect:
-					log.Println("Client at", clientConn, "disconnected")
-					cs.gameState.ClientDisconnected(clientConn)
+					log.Println("Client at", conn, "disconnected")
+					cs.gameState.ClientDisconnected(conn)
 				case mnet.MEClientPacket:
-					cs.gameState.HandleClientPacket(clientConn, mpacket.NewReader(&e.Packet, time.Now().Unix()))
+					cs.gameState.HandleClientPacket(conn, mpacket.NewReader(&e.Packet, time.Now().Unix()))
 				}
-			} else {
-				serverConn, ok := e.Conn.(mnet.Server)
-
-				if ok {
-					switch e.Type {
-					case mnet.MEServerDisconnect:
-						log.Println("Server at", serverConn, "disconnected")
-						log.Println("Attempting to re-establish world server connection")
-						cs.establishWorldConnection()
-					case mnet.MEServerPacket:
-						cs.gameState.HandleServerPacket(serverConn, mpacket.NewReader(&e.Packet, time.Now().Unix()))
-					}
+			case mnet.Server:
+				switch e.Type {
+				case mnet.MEServerDisconnect:
+					log.Println("Server at", conn, "disconnected")
+					log.Println("Attempting to re-establish world server connection")
+					cs.establishWorldConnection()
+				case mnet.MEServerPacket:
+					cs.gameState.HandleServerPacket(conn, mpacket.NewReader(&e.Packet, time.Now().Unix()))
 				}
 			}
 		case work, ok := <-cs.wRecv:

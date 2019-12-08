@@ -172,7 +172,7 @@ func (server *ChannelServer) ClientDisconnected(conn mnet.Client) {
 	}
 
 	inst, err := field.GetInstance(player.InstanceID())
-	char.Save(server.db, *inst)
+	go char.Save(server.db, *inst)
 	inst.RemovePlayer(player)
 
 	_, err = server.db.Exec("UPDATE characters SET channelID=? WHERE id=?", -1, player.Char().ID())

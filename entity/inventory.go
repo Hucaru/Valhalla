@@ -2,6 +2,7 @@ package entity
 
 import (
 	"database/sql"
+	"log"
 
 	"github.com/google/uuid"
 )
@@ -14,33 +15,80 @@ type Inventory struct {
 	cash  []item
 }
 
-func (i Inventory) save(id int32) {
-	// delete all items in inventory
+// Note: This is a slow way of doing it, save on item acquire, drop, scroll trade etc instead of bulk
+func (i Inventory) Save(db *sql.DB, charID int32) {
+	save := func(v item) int64 {
+		if v.dbID == 0 {
+			props := `characterID,inventoryID,itemID,slotNumber,amount,flag,upgradeSlots,level,
+				str,dex,intt,luk,hp,mp,watk,matk,wdef,mdef,accuracy,avoid,hands,speed,jump,
+				expireTime,creatorName`
 
-	// save all items in inventory
-	// for _, v := range i.Equip {
+			query := "INSERT into items (" + props + ") VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
 
-	// }
+			res, err := db.Exec(query,
+				charID, v.invID, v.itemID, v.slotID, v.amount, v.flag, v.upgradeSlots, v.scrollLevel,
+				v.str, v.dex, v.intt, v.luk, v.hp, v.mp, v.watk, v.matk, v.wdef, v.mdef, v.accuracy, v.avoid, v.hands, v.speed, v.jump,
+				v.expireTime, v.creatorName)
 
-	// for _, v := range i.Use {
+			if err != nil {
+				log.Println(err)
+				return 0
+			}
 
-	// }
+			v.dbID, err = res.LastInsertId()
 
-	// for _, v := range i.SetUp {
+			if err != nil {
+				log.Println(err)
+				return 0
+			}
+		} else {
+			props := `slotNumber=?,amount=?,flag=?,upgradeSlots=?,level=?,
+			str=?,dex=?,intt=?,luk=?,hp=?,mp=?,watk=?,matk=?,wdef=?,mdef=?,accuracy=?,avoid=?,hands=?,speed=?,jump=?,
+			expireTime=?`
 
-	// }
+			query := "UPDATE items SET " + props + " WHERE id=?"
 
-	// for _, v := range i.Etc {
+			_, err := db.Exec(query,
+				v.slotID, v.amount, v.flag, v.upgradeSlots, v.scrollLevel,
+				v.str, v.dex, v.intt, v.luk, v.hp, v.mp, v.watk, v.matk, v.wdef, v.mdef, v.accuracy, v.avoid, v.hands, v.speed, v.jump,
+				v.expireTime, v.dbID)
 
-	// }
+			if err != nil {
+				log.Println(err)
+				return 0
+			}
+		}
 
-	// for _, v := range i.Cash {
+		return v.dbID
+	}
 
-	// }
+	for j, v := range i.equip {
+		i.equip[j].dbID = save(v)
+	}
+
+	for j, v := range i.use {
+		i.use[j].dbID = save(v)
+	}
+
+	for j, v := range i.setUp {
+		i.setUp[j].dbID = save(v)
+	}
+
+	for j, v := range i.etc {
+		i.etc[j].dbID = save(v)
+	}
+
+	for j, v := range i.cash {
+		i.cash[j].dbID = save(v)
+	}
+}
+
+func (i *Inventory) addEquip(newItem item) {
+	i.equip = append(i.equip, newItem)
 }
 
 func getInventoryFromCharID(db *sql.DB, id int32) Inventory {
-	filter := "inventoryID,itemID,slotNumber,amount,flag,upgradeSlots,level,str,dex,intt,luk,hp,mp,watk,matk,wdef,mdef,accuracy,avoid,hands,speed,jump,expireTime,creatorName"
+	filter := "id,inventoryID,itemID,slotNumber,amount,flag,upgradeSlots,level,str,dex,intt,luk,hp,mp,watk,matk,wdef,mdef,accuracy,avoid,hands,speed,jump,expireTime,creatorName"
 	row, err := db.Query("SELECT "+filter+" FROM items WHERE characterID=?", id)
 
 	if err != nil {
@@ -55,7 +103,8 @@ func getInventoryFromCharID(db *sql.DB, id int32) Inventory {
 
 		item := item{uuid: uuid.New()}
 
-		row.Scan(&item.invID,
+		row.Scan(&item.dbID,
+			&item.invID,
 			&item.itemID,
 			&item.slotID,
 			&item.amount,

@@ -51,8 +51,11 @@ func (server ChannelServer) mobControl(conn mnet.Client, reader mpacket.Reader) 
 		return
 	}
 
-	// Perform received action e.g. use skill, attack etc
-	_ = actualAction
+	if actualAction >= 21 && actualAction <= 25 {
+		mob.PerformSkill(int16(skillData>>16), byte(skillData>>8), byte(skillData))
+	} else if actualAction > 12 && actualAction < 20 {
+		mob.PerformAttack(byte(actualAction - 12))
+	}
 
 	moveData, finalData := entity.ParseMovement(reader)
 

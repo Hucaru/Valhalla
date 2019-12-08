@@ -12,6 +12,7 @@ import (
 )
 
 type item struct {
+	dbID         int64
 	uuid         uuid.UUID
 	cash         bool
 	invID        byte
@@ -79,7 +80,7 @@ func createItemFromID(id int32, amount int16, bias int8) (item, error) {
 		return int16(rand.Intn(max-min) + min)
 	}
 
-	newItem := item{uuid: uuid.New()}
+	newItem := item{dbID: 0, uuid: uuid.New()}
 
 	nxInfo, err := nx.GetItem(id)
 

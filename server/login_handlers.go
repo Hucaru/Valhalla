@@ -228,35 +228,68 @@ func (server *LoginServer) handleNewCharacter(conn mnet.Client, reader mpacket.R
 		res, err := server.db.Exec("INSERT INTO characters (name, accountID, worldID, face, hair, skin, gender, str, dex, intt, luk) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
 			name, conn.GetAccountID(), conn.GetWorldID(), face, hair+hairColour, skin, conn.GetGender(), str, dex, intelligence, luk)
 
+		if err != nil {
+			log.Println(err)
+		}
+
 		characterID, err := res.LastInsertId()
 
 		if err != nil {
-			panic(err)
+			log.Println(err)
 		}
+
+		char := entity.Character{}
+		char.LoadFromID(server.db, int32(characterID)) // Downcasting (as the game expects int32)
 
 		if conn.GetAdminLevel() > 0 {
-			server.addCharacterItem(characterID, 1002140, -1, name) // Hat
-			server.addCharacterItem(characterID, 1032006, -4, name) // Earrings
-			server.addCharacterItem(characterID, 1042003, -5, name)
-			server.addCharacterItem(characterID, 1062007, -6, name)
-			server.addCharacterItem(characterID, 1072004, -7, name)
-			server.addCharacterItem(characterID, 1082002, -8, name)  // Gloves
-			server.addCharacterItem(characterID, 1102054, -9, name)  // Cape
-			server.addCharacterItem(characterID, 1092008, -10, name) // Shield
-			server.addCharacterItem(characterID, 1322013, -11, name)
+			items := map[int32]int16{
+				1002140: -1,  // Hat
+				1032006: -4,  // Earrings
+				1042003: -5,  // top
+				1062007: -6,  // bottom
+				1072004: -7,  // shoes
+				1082002: -8,  // Gloves
+				1102054: -9,  // Cape
+				1092008: -10, // Shield
+				1322013: -11, // weapon
+			}
+
+			for id, pos := range items {
+				item, err := entity.CreateItemFromID(id, 1)
+
+				if err != nil {
+					log.Println(err)
+					return
+				}
+
+				item.SetSlotID(pos)
+				item.SetCreatorName(name)
+				char.AddInventoryEquip(item)
+			}
 		} else {
-			server.addCharacterItem(characterID, top, -5, "")
-			server.addCharacterItem(characterID, bottom, -6, "")
-			server.addCharacterItem(characterID, shoes, -7, "")
-			server.addCharacterItem(characterID, weapon, -11, "")
-		}
+			items := map[int32]int16{
+				top:    -5,
+				bottom: -6,
+				shoes:  -7,
+				weapon: -11,
+			}
 
-		if err != nil {
-			panic(err)
-		}
+			for id, pos := range items {
+				item, err := entity.CreateItemFromID(id, 1)
 
-		characters := entity.GetCharactersFromAccountWorldID(server.db, conn.GetAccountID(), conn.GetWorldID())
-		newCharacter = characters[len(characters)-1]
+				if err != nil {
+					log.Println(err)
+					return
+				}
+
+				item.SetSlotID(pos)
+				char.AddInventoryEquip(item)
+			}
+		}
+		// characters := entity.GetCharactersFromAccountWorldID(server.db, conn.GetAccountID(), conn.GetWorldID())
+		// newCharacter = characters[len(characters)-1]
+		char.Inventory().Save(server.db, int32(characterID))
+		newCharacter = char
 	}
 
 	conn.Send(packetLoginCreatedCharacter(valid, newCharacter))
@@ -287,11 +320,12 @@ func (server *LoginServer) handleDeleteCharacter(conn mnet.Client, reader mpacke
 	if dob == storedDob {
 		records, err := server.db.Query("DELETE FROM characters where id=?", charID)
 
-		if err != nil {
-			panic(err)
-		}
+		defer records.Close()
 
-		records.Close()
+		if err != nil {
+			log.Println(err)
+			return
+		}
 
 		deleted = true
 	}

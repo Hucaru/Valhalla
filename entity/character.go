@@ -2,6 +2,7 @@ package entity
 
 import (
 	"database/sql"
+	"log"
 
 	"github.com/Hucaru/Valhalla/nx"
 )
@@ -100,6 +101,10 @@ func (c Character) MinigameWins() int32     { return c.minigameWins }
 func (c Character) MinigameDraw() int32     { return c.minigameDraw }
 func (c Character) MinigameLoss() int32     { return c.minigameLoss }
 
+func (c *Character) AddInventoryEquip(newItem item) {
+	c.inventory.equip = append(c.inventory.equip, newItem)
+}
+
 func (c Character) Save(db *sql.DB, inst instance) error {
 	query := `UPDATE characters set skin=?, hair=?, face=?, level=?,
 	job=?, str=?, dex=?, intt=?, luk=?, hp=?, maxHP=?, mp=?, maxMP=?,
@@ -116,7 +121,7 @@ func (c Character) Save(db *sql.DB, inst instance) error {
 		c.skin, c.hair, c.face, c.level, c.job, c.str, c.dex, c.intt, c.luk, c.hp, c.maxHP, c.mp,
 		c.maxMP, c.ap, c.sp, c.exp, c.fame, c.mapID, c.mapPos, c.mesos, c.id)
 
-	c.inventory.save(c.id)
+	c.inventory.Save(db, c.id)
 
 	// There has to be a better way of doing this in mysql
 	for skillID, skill := range c.skills {
@@ -142,7 +147,7 @@ func GetCharactersFromAccountWorldID(db *sql.DB, accountID int32, worldID byte) 
 	chars, err := db.Query("SELECT "+filter+" FROM characters WHERE accountID=? AND worldID=?", accountID, worldID)
 
 	if err != nil {
-		panic(err)
+		log.Println(err)
 	}
 
 	defer chars.Close()
@@ -157,7 +162,7 @@ func GetCharactersFromAccountWorldID(db *sql.DB, accountID int32, worldID byte) 
 			&char.etcSlotSize, &char.cashSlotSize)
 
 		if err != nil {
-			panic(err)
+			log.Println(err)
 		}
 
 		char.inventory = getInventoryFromCharID(db, char.id)
@@ -195,7 +200,7 @@ func (c *Character) LoadFromID(db *sql.DB, id int32) {
 	nxMap, err := nx.GetMap(c.mapID)
 
 	if err != nil {
-		panic(err)
+		log.Println(err)
 	}
 
 	c.pos.x = nxMap.Portals[c.mapPos].X

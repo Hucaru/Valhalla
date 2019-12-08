@@ -116,27 +116,25 @@ func (ws *worldServer) processEvent() {
 				return
 			}
 
-			serverConn, ok := e.Conn.(mnet.Server)
+			switch conn := e.Conn.(type) {
+			case mnet.Server:
+				switch e.Type {
+				case mnet.MEServerConnected:
+					log.Println("New server from", conn)
+				case mnet.MEServerDisconnect:
+					log.Println("Server at", conn, "disconnected")
 
-			if !ok {
-				panic("Invalid type assestion")
-			}
+					if conn == ws.lconn {
+						log.Println("Attempting to re-establish login server connection")
+						ws.establishLoginConnection()
+					}
 
-			switch e.Type {
-			case mnet.MEServerConnected:
-				log.Println("New server from", serverConn)
-			case mnet.MEServerDisconnect:
-				log.Println("Server at", serverConn, "disconnected")
-
-				if serverConn == ws.lconn {
-					log.Println("Attempting to re-establish login server connection")
-					ws.establishLoginConnection()
+					ws.state.ServerDisconnected(conn)
+				case mnet.MEServerPacket:
+					ws.state.HandleServerPacket(conn, mpacket.NewReader(&e.Packet, time.Now().Unix()))
 				}
-
-				ws.state.ServerDisconnected(serverConn)
-			case mnet.MEServerPacket:
-				ws.state.HandleServerPacket(serverConn, mpacket.NewReader(&e.Packet, time.Now().Unix()))
 			}
+
 		}
 
 	}

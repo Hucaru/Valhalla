@@ -38,6 +38,12 @@ type mob struct {
 	revives                []int32
 	stance                 byte
 	foothold               int16
+
+	lastAttackTime int64
+	lastSkillTime  int64
+	skillTimes     map[byte]int64
+
+	DmgTaken map[mnet.Client]int32
 }
 
 func createMobFromData(spawnID int32, life nx.Life, m nx.Mob) mob {
@@ -56,7 +62,7 @@ func createMobFromData(spawnID int32, life nx.Life, m nx.Mob) mob {
 	return mob
 }
 
-func createMobFromID(spawnID, id int32, p pos) (mob, error) {
+func createMobFromID(spawnID, id int32, p pos, conn mnet.Client) (mob, error) {
 	m, err := nx.GetMob(id)
 
 	if err != nil {
@@ -64,7 +70,9 @@ func createMobFromID(spawnID, id int32, p pos) (mob, error) {
 	}
 
 	// If this isn't working with regards to position make the foothold equal to player? nearest to pos?
-	return createMobFromData(spawnID, nx.Life{Foothold: 0, X: p.x, Y: p.y, FaceLeft: true}, m), nil
+	mob := createMobFromData(spawnID, nx.Life{Foothold: 0, X: p.x, Y: p.y, FaceLeft: true}, m)
+	mob.summoner = conn
+	return mob, nil
 }
 
 func (m mob) Controller() mnet.Client {
@@ -87,6 +95,14 @@ func (m *mob) AcknowledgeController(moveID int16, movData movementFrag) {
 	m.controller.Send(PacketMobControlAcknowledge(m.spawnID, moveID, allowedToUseSkill, m.mp, skill, level))
 }
 
-func (m mob) handleDeath(inst *instance) {
+func (m *mob) PerformSkill(delay int16, skillLevel, skillID byte) {
+
+}
+
+func (m *mob) PerformAttack(attackID byte) {
+
+}
+
+func (m mob) HandleDamage(dmg int32, conn mnet.Client, inst *instance) {
 
 }

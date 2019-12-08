@@ -10,6 +10,7 @@ import (
 
 	"github.com/Hucaru/Valhalla/constant"
 	"github.com/Hucaru/Valhalla/mpacket"
+	"github.com/Hucaru/Valhalla/nx"
 	"github.com/Hucaru/Valhalla/server"
 
 	"github.com/Hucaru/Valhalla/mnet"
@@ -36,6 +37,12 @@ func newLoginServer(configFile string) *loginServer {
 
 func (ls *loginServer) run() {
 	log.Println("Login Server")
+
+	start := time.Now()
+	nx.LoadFile("Data.nx")
+	elapsed := time.Since(start)
+
+	log.Println("Loaded and parsed Wizet data (NX) in", elapsed)
 
 	ls.gameState.Initialise(ls.dbConfig.User, ls.dbConfig.Password, ls.dbConfig.Address, ls.dbConfig.Port, ls.dbConfig.Database)
 
@@ -127,34 +134,28 @@ func (ls *loginServer) processEvent() {
 				return
 			}
 
-			clientConn, ok := e.Conn.(mnet.Client)
-
-			if ok {
+			switch conn := e.Conn.(type) {
+			case mnet.Client:
 				switch e.Type {
 				case mnet.MEClientConnected:
-					log.Println("New client from", clientConn)
+					log.Println("New client from", conn)
 				case mnet.MEClientDisconnect:
-					log.Println("Client at", clientConn, "disconnected")
-					ls.gameState.ClientDisconnected(clientConn)
+					log.Println("Client at", conn, "disconnected")
+					ls.gameState.ClientDisconnected(conn)
 				case mnet.MEClientPacket:
-					ls.gameState.HandleClientPacket(clientConn, mpacket.NewReader(&e.Packet, time.Now().Unix()))
+					ls.gameState.HandleClientPacket(conn, mpacket.NewReader(&e.Packet, time.Now().Unix()))
 				}
-			} else {
-				serverConn, ok := e.Conn.(mnet.Server)
-
-				if ok {
-					switch e.Type {
-					case mnet.MEServerConnected:
-						log.Println("New server from", serverConn)
-					case mnet.MEServerDisconnect:
-						log.Println("Server at", serverConn, "disconnected")
-						ls.gameState.ServerDisconnected(serverConn)
-					case mnet.MEServerPacket:
-						ls.gameState.HandleServerPacket(serverConn, mpacket.NewReader(&e.Packet, time.Now().Unix()))
-					}
+			case mnet.Server:
+				switch e.Type {
+				case mnet.MEServerConnected:
+					log.Println("New server from", conn)
+				case mnet.MEServerDisconnect:
+					log.Println("Server at", conn, "disconnected")
+					ls.gameState.ServerDisconnected(conn)
+				case mnet.MEServerPacket:
+					ls.gameState.HandleServerPacket(conn, mpacket.NewReader(&e.Packet, time.Now().Unix()))
 				}
 			}
-
 		}
 	}
 }
