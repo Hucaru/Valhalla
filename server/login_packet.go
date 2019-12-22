@@ -158,7 +158,7 @@ func loginWritePlayerCharacter(pac *mpacket.Packet, pos int32, char entity.Chara
 	pac.WriteInt32(char.MapID()) // map id
 	pac.WriteByte(char.MapPos()) // map
 
-	pac.WriteBytes(entity.WriteDisplayCharacter(char))
+	pac.WriteBytes(char.DisplayBytes())
 
 	pac.WriteInt32(0) // if character is selected and which one
 	pac.WriteByte(1)  // Rankings

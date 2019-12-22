@@ -2,12 +2,14 @@ package entity
 
 import (
 	"fmt"
+	"log"
 	"math/rand"
 	"strconv"
 	"time"
 
 	"github.com/Hucaru/Valhalla/mnet"
 	"github.com/Hucaru/Valhalla/mpacket"
+	"github.com/Hucaru/Valhalla/server/field/room"
 )
 
 type instance struct {
@@ -18,10 +20,16 @@ type instance struct {
 	conns          []mnet.Client
 	players        *Players
 	mobs           []mob
+	rooms          []room.Room
 	fieldTimer     *time.Ticker
 	fieldTimerTime int64
+	roomCounter    int32 // Counting on when this overflows rooms won't still be around to clash
 
 	dispatch chan func()
+}
+
+type gameRoom interface {
+	DisplayInfo()
 }
 
 func (inst *instance) delete() error {
@@ -75,8 +83,16 @@ func (inst *instance) AddPlayer(player *Player) error {
 	}
 
 	// show all the rooms
+	for _, v := range inst.rooms {
+		if r, valid := v.(gameRoom); valid {
+			r.DisplayInfo()
+			//inst.Send()
+		}
+	}
 
 	// show portals e.g. mystic door
+
+	// Play map animations e.g. ship arriving to dock
 
 	inst.conns = append(inst.conns, player.conn)
 
@@ -102,7 +118,20 @@ func (inst *instance) RemovePlayer(player *Player) error {
 
 	inst.conns = append(inst.conns[:index], inst.conns[index+1:]...)
 
-	// if in room, remove
+	// if in room, remove, if room is closed update map
+	for i, v := range inst.rooms {
+		if v.RemovePlayer(player.conn) {
+
+			inst.rooms[i] = inst.rooms[len(inst.rooms)-1]
+			inst.rooms = inst.rooms[:len(inst.rooms)-1]
+
+			if _, valid := v.(gameRoom); valid {
+				// inst.Send()
+			}
+
+			break
+		}
+	}
 
 	for _, v := range inst.conns {
 		v.Send(PacketMapPlayerLeft(player.char.id))
@@ -143,6 +172,25 @@ func (inst *instance) RemovePlayer(player *Player) error {
 		inst.stopFieldTimer()
 	}
 
+	return nil
+}
+
+func (inst *instance) NextRoomID() int32 {
+	inst.roomCounter++
+	return inst.roomCounter
+}
+
+func (inst *instance) AddRoom(r room.Room) {
+	inst.rooms = append(inst.rooms, r)
+
+	if room, valid := r.(gameRoom); valid {
+		log.Println("Send game room display to map")
+		room.DisplayInfo()
+		//inst.Send()
+	}
+}
+
+func (inst *instance) RemoveRoom() error {
 	return nil
 }
 

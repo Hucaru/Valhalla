@@ -3,7 +3,9 @@ package entity
 import (
 	"database/sql"
 	"log"
+	"math"
 
+	"github.com/Hucaru/Valhalla/mpacket"
 	"github.com/Hucaru/Valhalla/nx"
 )
 
@@ -55,7 +57,7 @@ type Character struct {
 
 	skills map[int32]Skill
 
-	minigameWins, minigameDraw, minigameLoss int32
+	miniGameWins, miniGameDraw, miniGameLoss int32
 }
 
 func (c Character) ID() int32               { return c.id }
@@ -97,9 +99,43 @@ func (c Character) CashSlotSize() byte      { return c.cashSlotSize }
 func (c Character) Inventory() Inventory    { return c.inventory }
 func (c Character) Mesos() int32            { return c.mesos }
 func (c Character) Skills() map[int32]Skill { return c.skills }
-func (c Character) MinigameWins() int32     { return c.minigameWins }
-func (c Character) MinigameDraw() int32     { return c.minigameDraw }
-func (c Character) MinigameLoss() int32     { return c.minigameLoss }
+func (c Character) MiniGameWins() int32     { return c.miniGameWins }
+func (c Character) MiniGameDraw() int32     { return c.miniGameDraw }
+func (c Character) MiniGameLoss() int32     { return c.miniGameLoss }
+func (c Character) DisplayBytes() []byte {
+	p := mpacket.NewPacket()
+	p.WriteByte(c.gender)
+	p.WriteByte(c.skin)
+	p.WriteInt32(c.face)
+	p.WriteByte(0x00) // ?
+	p.WriteInt32(c.hair)
+
+	cashWeapon := int32(0)
+
+	for _, b := range c.inventory.equip {
+		if b.slotID < 0 && b.slotID > -20 {
+			p.WriteByte(byte(math.Abs(float64(b.slotID))))
+			p.WriteInt32(b.itemID)
+		}
+	}
+
+	for _, b := range c.inventory.equip {
+		if b.slotID < -100 {
+			if b.slotID == -111 {
+				cashWeapon = b.itemID
+			} else {
+				p.WriteByte(byte(math.Abs(float64(b.slotID + 100))))
+				p.WriteInt32(b.itemID)
+			}
+		}
+	}
+
+	p.WriteByte(0xFF)
+	p.WriteByte(0xFF)
+	p.WriteInt32(cashWeapon)
+
+	return p
+}
 
 func (c *Character) AddInventoryEquip(newItem item) {
 	c.inventory.equip = append(c.inventory.equip, newItem)

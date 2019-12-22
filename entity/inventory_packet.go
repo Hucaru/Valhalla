@@ -77,7 +77,7 @@ func PacketInventoryChangeEquip(char Character) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelPlayerChangeAvatar)
 	p.WriteInt32(char.id)
 	p.WriteByte(1)
-	p.WriteBytes(WriteDisplayCharacter(char))
+	p.WriteBytes(char.DisplayBytes())
 	p.WriteByte(0xFF)
 	p.WriteUint64(0) //?
 

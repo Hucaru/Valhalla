@@ -27,7 +27,7 @@ func PacketMapPlayerEnter(char Character) mpacket.Packet {
 		p.WriteInt32(0)
 	}
 
-	p.WriteBytes(WriteDisplayCharacter(char))
+	p.WriteBytes(char.DisplayBytes())
 
 	p.WriteInt32(0)            // ?
 	p.WriteInt32(0)            // ?

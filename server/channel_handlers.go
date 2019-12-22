@@ -38,7 +38,7 @@ func (server *ChannelServer) HandleClientPacket(conn mnet.Client, reader mpacket
 	case opcode.RecvChannelSlashCommands:
 		// server.chatSlashCommand(conn, reader)
 	case opcode.RecvChannelCharacterUIWindow:
-		// server.handleUIWindow(conn, reader)
+		server.roomWindow(conn, reader)
 	case opcode.RecvChannelEmote:
 		server.playerEmote(conn, reader)
 	case opcode.RecvChannelNpcDialogue:

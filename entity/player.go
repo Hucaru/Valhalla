@@ -79,7 +79,23 @@ func NewPlayer(conn mnet.Client, char Character) *Player {
 	return &Player{conn: conn, char: char, instanceID: 0}
 }
 
+func (p Player) Conn() mnet.Client {
+	return p.conn
+}
+
 func (p Player) Char() Character {
+	return p.char
+}
+
+type Avatar interface {
+	Name() string
+	DisplayBytes() []byte
+	MiniGameWins() int32
+	MiniGameDraw() int32
+	MiniGameLoss() int32
+}
+
+func (p Player) Avatar() Avatar {
 	return p.char
 }
 
@@ -304,16 +320,16 @@ func (p *Player) GiveMesos(amount int32) {
 	p.SetMesos(p.char.mesos + amount)
 }
 
-func (p *Player) SetMinigameWins(v int32) {
-	p.char.minigameWins = v
+func (p *Player) SetMiniGameWins(v int32) {
+	p.char.miniGameWins = v
 }
 
-func (p *Player) SetMinigameLoss(v int32) {
-	p.char.minigameLoss = v
+func (p *Player) SetMiniGameLoss(v int32) {
+	p.char.miniGameLoss = v
 }
 
-func (p *Player) SetMinigameDraw(v int32) {
-	p.char.minigameDraw = v
+func (p *Player) SetMiniGameDraw(v int32) {
+	p.char.miniGameDraw = v
 }
 
 func (p *Player) UpdateMovement(frag movementFrag) {
