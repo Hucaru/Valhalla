@@ -2,7 +2,6 @@ package player
 
 import (
 	"crypto/rand"
-	"math"
 
 	"github.com/Hucaru/Valhalla/constant/opcode"
 	"github.com/Hucaru/Valhalla/mpacket"
@@ -183,60 +182,52 @@ func packetPlayerEnterGame(plr Player, channelID int32) mpacket.Packet {
 	p.WriteByte(plr.etcSlotSize)
 	p.WriteByte(plr.cashSlotSize)
 
-	for _, v := range plr.inventory.equip {
-		if v.slotID < 0 && v.invID == 1 && !v.cash {
-			p.WriteBytes(addItem(v, false))
+	for _, v := range plr.equip {
+		if v.SlotID() < 0 && !v.Cash() {
+			p.WriteBytes(v.InventoryBytes())
 		}
 	}
 
 	p.WriteByte(0)
 
 	// Equips
-	for _, v := range plr.inventory.equip {
-		if v.slotID < 0 && v.invID == 1 && v.cash {
-			p.WriteBytes(addItem(v, false))
+	for _, v := range plr.equip {
+		if v.SlotID() < 0 && v.Cash() {
+			p.WriteBytes(v.InventoryBytes())
 		}
 	}
 
 	p.WriteByte(0)
 
 	// Inventory windows starts
-	for _, v := range plr.inventory.equip {
-		if v.slotID > -1 && v.invID == 1 {
-			p.WriteBytes(addItem(v, false))
+	for _, v := range plr.equip {
+		if v.SlotID() > -1 {
+			p.WriteBytes(v.InventoryBytes())
 		}
 	}
 
 	p.WriteByte(0)
 
-	for _, v := range plr.inventory.use {
-		if v.invID == 2 { // Use
-			p.WriteBytes(addItem(v, false))
-		}
+	for _, v := range plr.use {
+		p.WriteBytes(v.InventoryBytes())
 	}
 
 	p.WriteByte(0)
 
-	for _, v := range plr.inventory.setUp {
-		if v.invID == 3 { // Set-up
-			p.WriteBytes(addItem(v, false))
-		}
+	for _, v := range plr.setUp {
+		p.WriteBytes(v.InventoryBytes())
 	}
 
 	p.WriteByte(0)
 
-	for _, v := range plr.inventory.etc {
-		if v.invID == 4 { // Etc
-			p.WriteBytes(addItem(v, false))
-		}
+	for _, v := range plr.etc {
+		p.WriteBytes(v.InventoryBytes())
 	}
 
 	p.WriteByte(0)
 
-	for _, v := range plr.inventory.cash {
-		if v.invID == 5 { // Cash  - not working propery :(
-			p.WriteBytes(addItem(v, false))
-		}
+	for _, v := range plr.cash {
+		p.WriteBytes(v.InventoryBytes())
 	}
 
 	p.WriteByte(0)
@@ -271,100 +262,53 @@ func packetPlayerEnterGame(plr Player, channelID int32) mpacket.Packet {
 	return p
 }
 
-type item interface {
-	ID() int32
-	Cash() bool
-	SlotID() int16
-	InvID() byte
-	Pet() bool
-	UpgradeSlots() byte
-	ScrollLevel() byte
-	Str() int16
-	Dex() int16
-	Int() int16
-	Luk() int16
-	Hp() int16
-	Mp() int16
-	Watk() int16
-	Matk() int16
-	Wdef() int16
-	Mdef() int16
-	Accuracy() int16
-	Avoid() int16
-	Hands() int16
-	Speed() int16
-	Jump() int16
-	CreatorName() string
-	Flag() int16
-	ExpireTime() int64
-	Amount() int16
-	IsRechargeable() bool
+func packetMessageExpGained(whiteText, appearInChat bool, ammount int32) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelInfoMessage)
+	p.WriteByte(3)
+	p.WriteBool(whiteText)
+	p.WriteInt32(ammount)
+	p.WriteBool(appearInChat)
+
+	return p
 }
 
-func addItem(item item, shortSlot bool) mpacket.Packet {
-	p := mpacket.NewPacket()
+func packetInventoryAddItem(item item, newItem bool) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelInventoryOperation)
+	p.WriteByte(0x01)
+	p.WriteByte(0x01)
+	p.WriteBool(!newItem)
+	p.WriteByte(item.InvID())
 
-	if !shortSlot {
-		if item.Cash() && item.SlotID() < 0 {
-			p.WriteByte(byte(math.Abs(float64(item.SlotID() + 100))))
-		} else {
-			p.WriteByte(byte(math.Abs(float64(item.SlotID()))))
-		}
+	if newItem {
+		p.WriteBytes(item.ShortBytes())
 	} else {
 		p.WriteInt16(item.SlotID())
-	}
-
-	if item.InvID() == 1 {
-		p.WriteByte(0x01)
-	} else if item.Pet() {
-		p.WriteByte(0x03)
-	} else {
-		p.WriteByte(0x02)
-	}
-
-	p.WriteInt32(item.ID())
-
-	p.WriteBool(item.Cash())
-	if item.Cash() {
-		p.WriteUint64(uint64(item.ID())) // I think this is somekind of cashshop transaction ID for the item
-	}
-
-	p.WriteInt64(item.ExpireTime())
-
-	if item.InvID() == 1 {
-		p.WriteByte(item.UpgradeSlots())
-		p.WriteByte(item.ScrollLevel())
-		p.WriteInt16(item.Str())
-		p.WriteInt16(item.Dex())
-		p.WriteInt16(item.Int())
-		p.WriteInt16(item.Luk())
-		p.WriteInt16(item.Hp())
-		p.WriteInt16(item.Mp())
-		p.WriteInt16(item.Watk())
-		p.WriteInt16(item.Matk())
-		p.WriteInt16(item.Wdef())
-		p.WriteInt16(item.Mdef())
-		p.WriteInt16(item.Accuracy())
-		p.WriteInt16(item.Avoid())
-		p.WriteInt16(item.Hands())
-		p.WriteInt16(item.Speed())
-		p.WriteInt16(item.Jump())
-		p.WriteString(item.CreatorName())
-		p.WriteInt16(item.Flag()) // lock/seal, show, spikes, cape, cold protection etc ?
-	} else if item.Pet() {
-		p.WritePaddedString(item.CreatorName(), 13)
-		p.WriteByte(0)
-		p.WriteInt16(0)
-		p.WriteByte(0)
-		p.WriteInt64(item.ExpireTime())
-		p.WriteInt32(0) // ?
-	} else {
 		p.WriteInt16(item.Amount())
-		p.WriteString(item.CreatorName())
-		p.WriteInt16(item.Flag()) // even (normal), odd (sealed) ?
+	}
 
-		if item.IsRechargeable() {
-			p.WriteInt32(0) // ?
+	return p
+}
+
+func packetInventoryAddItems(items []item, newItem []bool) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelInventoryOperation)
+
+	p.WriteByte(0x01)
+	if len(items) != len(newItem) {
+		p.WriteByte(0)
+		return p
+	}
+
+	p.WriteByte(byte(len(items)))
+
+	for i, v := range items {
+		p.WriteBool(!newItem[i])
+		p.WriteByte(v.InvID())
+
+		if newItem[i] {
+			p.WriteBytes(v.ShortBytes())
+		} else {
+			p.WriteInt16(v.SlotID())
+			p.WriteInt16(v.Amount())
 		}
 	}
 
