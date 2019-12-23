@@ -12,6 +12,8 @@ import (
 	"github.com/Hucaru/Valhalla/mpacket"
 )
 
+// TODO: Move Players into server level logic
+
 // Players type alias
 type Players []Player
 
@@ -71,6 +73,7 @@ func (p *Players) RemoveFromConn(conn mnet.Client) error {
 
 type item interface {
 	ID() int32
+	DbID() int64
 	Save(*sql.DB, int32)
 	Cash() bool
 	InvID() byte
@@ -82,14 +85,20 @@ type item interface {
 	ShortBytes() []byte
 }
 
-type instance interface {
-	Send(mpacket.Packet)
-}
 type pos interface {
 	X() int16
 	SetX(int16)
 	Y() int16
 	SetY(int16)
+}
+
+type portal interface {
+	ID() byte
+}
+
+type instance interface {
+	Send(mpacket.Packet)
+	CalculateNearestSpawnPortal(pos) (portal, error)
 }
 
 // Player connected to server
@@ -457,6 +466,7 @@ func (p *Player) SetPos(pos pos) {
 	p.pos = pos
 }
 
+// CheckPos - checks player is within a certain range of a position
 func (p Player) CheckPos(pos pos, xRange, yRange int16) bool {
 	var xValid, yValid bool
 
@@ -651,7 +661,7 @@ func (p *Player) TakeItem(itemID int32, amount int16) (item, error) {
 
 // RemoveItem from player
 func (p *Player) RemoveItem(remove item) {
-	// TODO(Hucaru): change function signature to (id int32) (invID, slotID, error)
+	// TODO(Hucaru): change function signature to (id int32, count int16) (invID, slotID, error)
 
 	// findIndex := func(items []item, item item) int {
 	// 	for i, v := range items {
@@ -723,156 +733,244 @@ func (p Player) GetItem(invID byte, slotID int16) (item, error) {
 	return result, err
 }
 
+// UpdateItem with the same database id
 func (p *Player) UpdateItem(orig, new item) {
 	var items []item
 
-	switch new.invID {
+	switch new.InvID() {
 	case 1:
-		items = p.inventory.equip
+		items = p.equip
 	case 2:
-		items = p.inventory.use
+		items = p.use
 	case 3:
-		items = p.inventory.setUp
+		items = p.setUp
 	case 4:
-		items = p.inventory.etc
+		items = p.etc
 	case 5:
-		items = p.inventory.cash
+		items = p.cash
 	}
 
 	for i, v := range items {
-		if v.uuid == new.uuid {
+		if v.DbID() == new.DbID() {
 			items[i] = new
 			break
 		}
 	}
 }
 
+// UpdateSkill map entry
 func (p *Player) UpdateSkill(updatedSkill Skill) {
 	p.skills[updatedSkill.ID] = updatedSkill
-	p.Send(PacketPlayerSkillBookUpdate(updatedSkill.ID, int32(updatedSkill.Level)))
+	p.Send(packetPlayerSkillBookUpdate(updatedSkill.ID, int32(updatedSkill.Level)))
 }
 
-func (c Player) ID() int32               { return p.id }
-func (p Player) AccountID() int32        { return p.accountID }
-func (p Player) WorldID() byte           { return p.worldID }
-func (p Player) MapID() int32            { return p.mapID }
-func (p Player) MapPos() byte            { return p.mapPos }
-func (p Player) PreviousMap() int32      { return p.previousMap }
-func (p Player) PortalCount() byte       { return p.portalCount }
-func (p Player) Job() int16              { return p.job }
-func (p Player) Level() byte             { return p.level }
-func (p Player) Str() int16              { return p.str }
-func (p Player) Dex() int16              { return p.dex }
-func (p Player) Int() int16              { return p.intt }
-func (p Player) Luk() int16              { return p.luk }
-func (p Player) HP() int16               { return p.hp }
-func (p Player) MaxHP() int16            { return p.maxHP }
-func (p Player) MP() int16               { return p.mp }
-func (p Player) MaxMP() int16            { return p.maxMP }
-func (p Player) AP() int16               { return p.ap }
-func (p Player) SP() int16               { return p.sp }
-func (p Player) Exp() int32              { return p.exp }
-func (p Player) Fame() int16             { return p.fame }
-func (p Player) Name() string            { return p.name }
-func (p Player) Gender() byte            { return p.gender }
-func (p Player) Skin() byte              { return p.skin }
-func (p Player) Face() int32             { return p.face }
-func (p Player) Hair() int32             { return p.hair }
-func (p Player) ChairID() int32          { return p.chairID }
-func (p Player) Stance() byte            { return p.stance }
-func (p Player) Pos() pos                { return p.pos }
-func (p Player) Foothold() int16         { return p.foothold }
-func (p Player) Guild() string           { return p.guild }
-func (p Player) EquipSlotSize() byte     { return p.equipSlotSize }
-func (p Player) UseSlotSize() byte       { return p.useSlotSize }
-func (p Player) SetupSlotSize() byte     { return p.setupSlotSize }
-func (p Player) EtcSlotSize() byte       { return p.etcSlotSize }
-func (p Player) CashSlotSize() byte      { return p.cashSlotSize }
-func (p Player) Inventory() Inventory    { return p.inventory }
-func (p Player) Mesos() int32            { return p.mesos }
+// ID of player
+func (p Player) ID() int32 { return p.id }
+
+// AccountID of player
+func (p Player) AccountID() int32 { return p.accountID }
+
+// WorldID of player
+func (p Player) WorldID() byte { return p.worldID }
+
+// MapID of player
+func (p Player) MapID() int32 { return p.mapID }
+
+// MapPos of player
+func (p Player) MapPos() byte { return p.mapPos }
+
+// PreviousMap the player was on
+func (p Player) PreviousMap() int32 { return p.previousMap }
+
+// PortalCount of player, used in detecting warp hacking
+func (p Player) PortalCount() byte { return p.portalCount }
+
+// Job of player
+func (p Player) Job() int16 { return p.job }
+
+// Level of player
+func (p Player) Level() byte { return p.level }
+
+// Str of player
+func (p Player) Str() int16 { return p.str }
+
+//Dex of player
+func (p Player) Dex() int16 { return p.dex }
+
+// Int of player
+func (p Player) Int() int16 { return p.intt }
+
+// Luk of player
+func (p Player) Luk() int16 { return p.luk }
+
+// HP of player
+func (p Player) HP() int16 { return p.hp }
+
+// MaxHP of player
+func (p Player) MaxHP() int16 { return p.maxHP }
+
+// MP of player
+func (p Player) MP() int16 { return p.mp }
+
+// MaxMP of player
+func (p Player) MaxMP() int16 { return p.maxMP }
+
+// AP of player
+func (p Player) AP() int16 { return p.ap }
+
+// SP of player
+func (p Player) SP() int16 { return p.sp }
+
+// Exp of player
+func (p Player) Exp() int32 { return p.exp }
+
+// Fame of player
+func (p Player) Fame() int16 { return p.fame }
+
+// Name of player
+func (p Player) Name() string { return p.name }
+
+// Gender of player
+func (p Player) Gender() byte { return p.gender }
+
+// Skin id of player
+func (p Player) Skin() byte { return p.skin }
+
+// Face id of player
+func (p Player) Face() int32 { return p.face }
+
+// Hair id of player
+func (p Player) Hair() int32 { return p.hair }
+
+// ChairID of the chair the player is sitting on
+func (p Player) ChairID() int32 { return p.chairID }
+
+// Stance id
+func (p Player) Stance() byte { return p.stance }
+
+// Pos of player
+func (p Player) Pos() pos { return p.pos }
+
+// Foothold player is currently tied to
+func (p Player) Foothold() int16 { return p.foothold }
+
+// Guild name player is currenty part of
+func (p Player) Guild() string { return p.guild }
+
+// EquipSlotSize in inventory
+func (p Player) EquipSlotSize() byte { return p.equipSlotSize }
+
+// UseSlotSize in inventory
+func (p Player) UseSlotSize() byte { return p.useSlotSize }
+
+// SetupSlotSize in inventory
+func (p Player) SetupSlotSize() byte { return p.setupSlotSize }
+
+// EtcSlotSize in inventory
+func (p Player) EtcSlotSize() byte { return p.etcSlotSize }
+
+//CashSlotSize in inventory
+func (p Player) CashSlotSize() byte { return p.cashSlotSize }
+
+// Mesos player currently has
+func (p Player) Mesos() int32 { return p.mesos }
+
+// Skills and their levels the player currently has
 func (p Player) Skills() map[int32]Skill { return p.skills }
-func (p Player) MiniGameWins() int32     { return p.miniGameWins }
-func (p Player) MiniGameDraw() int32     { return p.miniGameDraw }
-func (p Player) MiniGameLoss() int32     { return p.miniGameLoss }
-func (plr Player) DisplayBytes() []byte {
-	p := mpacket.NewPacket()
-	p.WriteByte(plr.gender)
-	p.WriteByte(plr.skin)
-	p.WriteInt32(plr.face)
-	p.WriteByte(0x00) // ?
-	p.WriteInt32(plr.hair)
+
+// MiniGameWins between omok and memory
+func (p Player) MiniGameWins() int32 { return p.miniGameWins }
+
+// MiniGameDraw betweeen omok and memory
+func (p Player) MiniGameDraw() int32 { return p.miniGameDraw }
+
+// MiniGameLoss between omok and memory
+func (p Player) MiniGameLoss() int32 { return p.miniGameLoss }
+
+// DisplayBytes used in packets for displaying player in various situations e.g. in field, in mini game room
+func (p Player) DisplayBytes() []byte {
+	pkt := mpacket.NewPacket()
+	pkt.WriteByte(p.gender)
+	pkt.WriteByte(p.skin)
+	pkt.WriteInt32(p.face)
+	pkt.WriteByte(0x00) // ?
+	pkt.WriteInt32(p.hair)
 
 	cashWeapon := int32(0)
 
-	for _, b := range plr.inventory.equip {
-		if b.slotID < 0 && b.slotID > -20 {
-			p.WriteByte(byte(math.Abs(float64(b.slotID))))
-			p.WriteInt32(b.itemID)
+	for _, b := range p.equip {
+		if b.SlotID() < 0 && b.SlotID() > -20 {
+			pkt.WriteByte(byte(math.Abs(float64(b.SlotID()))))
+			pkt.WriteInt32(b.ID())
 		}
 	}
 
-	for _, b := range plr.inventory.equip {
-		if b.slotID < -100 {
-			if b.slotID == -111 {
-				cashWeapon = b.itemID
+	for _, b := range p.equip {
+		if b.SlotID() < -100 {
+			if b.SlotID() == -111 {
+				cashWeapon = b.ID()
 			} else {
-				p.WriteByte(byte(math.Abs(float64(b.slotID + 100))))
-				p.WriteInt32(b.itemID)
+				pkt.WriteByte(byte(math.Abs(float64(b.SlotID() + 100))))
+				pkt.WriteInt32(b.ID())
 			}
 		}
 	}
 
-	p.WriteByte(0xFF)
-	p.WriteByte(0xFF)
-	p.WriteInt32(cashWeapon)
+	pkt.WriteByte(0xFF)
+	pkt.WriteByte(0xFF)
+	pkt.WriteInt32(cashWeapon)
 
-	return p
+	return pkt
 }
 
-func (c Player) Save(db *sql.DB, inst instance) error {
+// Save player detail that is not saved via actions
+func (p Player) Save(db *sql.DB, inst instance) error {
 	query := `UPDATE characters set skin=?, hair=?, face=?, level=?,
 	job=?, str=?, dex=?, intt=?, luk=?, hp=?, maxHP=?, mp=?, maxMP=?,
 	ap=?, sp=?, exp=?, fame=?, mapID=?, mapPos=?, mesos=? WHERE id=?`
 
 	// need to calculate nearest spawn point for mapPos
-	portal, err := inst.CalculateNearestSpawnPortal(c.pos)
+	portal, err := inst.CalculateNearestSpawnPortal(p.pos)
 
 	if err == nil {
-		c.mapPos = portal.ID()
+		p.mapPos = portal.ID()
 	}
 
 	_, err = db.Exec(query,
-		c.skin, c.hair, c.face, c.level, c.job, c.str, c.dex, c.intt, c.luk, c.hp, c.maxHP, c.mp,
-		c.maxMP, c.ap, c.sp, c.exp, c.fame, c.mapID, c.mapPos, c.mesos, c.id)
+		p.skin, p.hair, p.face, p.level, p.job, p.str, p.dex, p.intt, p.luk, p.hp, p.maxHP, p.mp,
+		p.maxMP, p.ap, p.sp, p.exp, p.fame, p.mapID, p.mapPos, p.mesos, p.id)
 
-	for _, v := range c.equip {
-		v.Save(db, c.id)
+	// TODO: Move these out into relevant item operations, add item, move item etc
+	// send sql queries to a dedicated green thread for item updates once a db id is acquired
+	for _, v := range p.equip {
+		v.Save(db, p.id)
 	}
 
-	for _, v := range c.use {
-		v.Save(db, c.id)
+	for _, v := range p.use {
+		v.Save(db, p.id)
 	}
 
-	for _, v := range c.setUp {
-		v.Save(db, c.id)
+	for _, v := range p.setUp {
+		v.Save(db, p.id)
 	}
 
-	for _, v := range c.etc {
-		v.Save(db, c.id)
+	for _, v := range p.etc {
+		v.Save(db, p.id)
 	}
 
-	for _, v := range c.cash {
-		v.Save(db, c.id)
+	for _, v := range p.cash {
+		v.Save(db, p.id)
 	}
 
+	// TODO: Move this into skill book update, this happens 3 times every level (or 15 at a time for min maxers)
 	// There has to be a better way of doing this in mysql
-	for skillID, skill := range c.skills {
+	for skillID, skill := range p.skills {
 		query = `UPDATE skills SET level=?, cooldown=? WHERE skillID=? AND characterID=?`
-		result, err := db.Exec(query, skill.Level, skill.Cooldown, skillID, c.id)
+		result, err := db.Exec(query, skill.Level, skill.Cooldown, skillID, p.id)
 
 		if rows, _ := result.RowsAffected(); rows < 1 || err != nil {
 			query = `INSERT INTO skills (characterID, skillID, level, cooldown) VALUES (?, ?, ?, ?)`
-			_, err = db.Exec(query, c.id, skillID, skill.Level, 0)
+			_, err = db.Exec(query, p.id, skillID, skill.Level, 0)
 		}
 	}
 

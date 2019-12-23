@@ -71,6 +71,6 @@ func (c *Player) LoadFromID(db *sql.DB, id int32) {
 		log.Println(err)
 	}
 
-	c.pos.X = nxMap.Portals[c.mapPos].X
-	c.pos.Y = nxMap.Portals[c.mapPos].Y
+	c.pos.SetX(nxMap.Portals[c.mapPos].X)
+	c.pos.SetY(nxMap.Portals[c.mapPos].Y)
 }
