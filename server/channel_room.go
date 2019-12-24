@@ -42,15 +42,13 @@ const (
 )
 
 func (server ChannelServer) roomWindow(conn mnet.Client, reader mpacket.Reader) {
-	player, err := server.players.GetFromConn(conn)
+	player, err := server.players.getFromConn(conn)
 
 	if err != nil {
 		return
 	}
 
-	char := player.Char()
-
-	field, ok := server.fields[char.MapID()]
+	field, ok := server.fields[player.MapID()]
 
 	if !ok {
 		return
@@ -77,7 +75,7 @@ func (server ChannelServer) roomWindow(conn mnet.Client, reader mpacket.Reader) 
 
 			boardType := reader.ReadByte()
 
-			r, valid := room.NewOmok(inst.NextRoomID(), name, password, boardType).(room.Room)
+			r, valid := room.NewOmok(inst.NextID(), name, password, boardType).(room.Room)
 
 			if !valid {
 				return
@@ -96,7 +94,7 @@ func (server ChannelServer) roomWindow(conn mnet.Client, reader mpacket.Reader) 
 
 			boardType := reader.ReadByte()
 
-			r, valid := room.NewMemory(inst.NextRoomID(), name, password, boardType).(room.Room)
+			r, valid := room.NewMemory(inst.NextID(), name, password, boardType).(room.Room)
 
 			if !valid {
 				return
@@ -106,7 +104,7 @@ func (server ChannelServer) roomWindow(conn mnet.Client, reader mpacket.Reader) 
 				inst.AddRoom(r)
 			}
 		case roomTypeTrade:
-			r, valid := room.NewTrade(inst.NextRoomID()).(room.Room)
+			r, valid := room.NewTrade(inst.NextID()).(room.Room)
 
 			if !valid {
 				return

@@ -13,7 +13,7 @@ import (
 	"github.com/google/uuid"
 )
 
-type Item struct {
+type Data struct {
 	dbID         int64
 	uuid         uuid.UUID
 	cash         bool
@@ -54,36 +54,36 @@ type Item struct {
 	pet        bool
 }
 
-func (v Item) DbID() int64         { return v.dbID }
-func (v Item) ID() int32           { return v.id }
-func (v Item) Cash() bool          { return v.cash }
-func (v Item) SlotID() int16       { return v.slotID }
-func (v Item) InvID() byte         { return v.invID }
-func (v Item) Pet() bool           { return v.pet }
-func (v Item) UpgradeSlots() byte  { return v.upgradeSlots }
-func (v Item) ScrollLevel() byte   { return v.scrollLevel }
-func (v Item) Str() int16          { return v.str }
-func (v Item) Dex() int16          { return v.dex }
-func (v Item) Int() int16          { return v.intt }
-func (v Item) Luk() int16          { return v.luk }
-func (v Item) Hp() int16           { return v.hp }
-func (v Item) Mp() int16           { return v.mp }
-func (v Item) Watk() int16         { return v.watk }
-func (v Item) Matk() int16         { return v.matk }
-func (v Item) Wdef() int16         { return v.wdef }
-func (v Item) Mdef() int16         { return v.mdef }
-func (v Item) Accuracy() int16     { return v.accuracy }
-func (v Item) Avoid() int16        { return v.avoid }
-func (v Item) Hands() int16        { return v.hands }
-func (v Item) Speed() int16        { return v.speed }
-func (v Item) Jump() int16         { return v.jump }
-func (v Item) CreatorName() string { return v.creatorName }
-func (v Item) Flag() int16         { return v.flag }
-func (v Item) ExpireTime() int64   { return v.expireTime }
-func (v Item) Amount() int16       { return v.amount }
+func (v Data) DbID() int64         { return v.dbID }
+func (v Data) ID() int32           { return v.id }
+func (v Data) Cash() bool          { return v.cash }
+func (v Data) SlotID() int16       { return v.slotID }
+func (v Data) InvID() byte         { return v.invID }
+func (v Data) Pet() bool           { return v.pet }
+func (v Data) UpgradeSlots() byte  { return v.upgradeSlots }
+func (v Data) ScrollLevel() byte   { return v.scrollLevel }
+func (v Data) Str() int16          { return v.str }
+func (v Data) Dex() int16          { return v.dex }
+func (v Data) Int() int16          { return v.intt }
+func (v Data) Luk() int16          { return v.luk }
+func (v Data) Hp() int16           { return v.hp }
+func (v Data) Mp() int16           { return v.mp }
+func (v Data) Watk() int16         { return v.watk }
+func (v Data) Matk() int16         { return v.matk }
+func (v Data) Wdef() int16         { return v.wdef }
+func (v Data) Mdef() int16         { return v.mdef }
+func (v Data) Accuracy() int16     { return v.accuracy }
+func (v Data) Avoid() int16        { return v.avoid }
+func (v Data) Hands() int16        { return v.hands }
+func (v Data) Speed() int16        { return v.speed }
+func (v Data) Jump() int16         { return v.jump }
+func (v Data) CreatorName() string { return v.creatorName }
+func (v Data) Flag() int16         { return v.flag }
+func (v Data) ExpireTime() int64   { return v.expireTime }
+func (v Data) Amount() int16       { return v.amount }
 
 // LoadInventoryFromDb gets the inventory for a given database connection and character id, returning equip, use, set-up, etc and cash slices
-func LoadInventoryFromDb(db *sql.DB, charID int32) ([]Item, []Item, []Item, []Item, []Item) {
+func LoadInventoryFromDb(db *sql.DB, charID int32) ([]Data, []Data, []Data, []Data, []Data) {
 	filter := "id,inventoryID,itemID,slotNumber,amount,flag,upgradeSlots,level,str,dex,intt,luk,hp,mp,watk,matk,wdef,mdef,accuracy,avoid,hands,speed,jump,expireTime,creatorName"
 	row, err := db.Query("SELECT "+filter+" FROM items WHERE characterID=?", charID)
 
@@ -91,17 +91,17 @@ func LoadInventoryFromDb(db *sql.DB, charID int32) ([]Item, []Item, []Item, []It
 		panic(err)
 	}
 
-	equip := []Item{}
-	use := []Item{}
-	setUp := []Item{}
-	etc := []Item{}
-	cash := []Item{}
+	equip := []Data{}
+	use := []Data{}
+	setUp := []Data{}
+	etc := []Data{}
+	cash := []Data{}
 
 	defer row.Close()
 
 	for row.Next() {
 
-		item := Item{uuid: uuid.New()}
+		item := Data{uuid: uuid.New()}
 
 		row.Scan(&item.dbID,
 			&item.invID,
@@ -151,15 +151,15 @@ func LoadInventoryFromDb(db *sql.DB, charID int32) ([]Item, []Item, []Item, []It
 }
 
 // CreatePerfectFromID creates an item with bis stats
-func CreatePerfectFromID(id int32, amount int16) (Item, error) { return createItemFromID(id, amount, 1) }
+func CreatePerfectFromID(id int32, amount int16) (Data, error) { return createItemFromID(id, amount, 1) }
 
 // CreateFromID creates an item with randomised stats within a predefined percentage range
-func CreateFromID(id int32, amount int16) (Item, error) { return createItemFromID(id, amount, 0) }
+func CreateFromID(id int32, amount int16) (Data, error) { return createItemFromID(id, amount, 0) }
 
 // CreateWorstFromID creates an item with wis stats
-func CreateWorstFromID(id int32, amount int16) (Item, error) { return createItemFromID(id, amount, -1) }
+func CreateWorstFromID(id int32, amount int16) (Data, error) { return createItemFromID(id, amount, -1) }
 
-func createItemFromID(id int32, amount int16, bias int8) (Item, error) {
+func createItemFromID(id int32, amount int16, bias int8) (Data, error) {
 	randomStat := func(min, max int) int16 {
 		if bias > 0 {
 			return int16(max)
@@ -176,12 +176,12 @@ func createItemFromID(id int32, amount int16, bias int8) (Item, error) {
 		return int16(rand.Intn(max-min) + min)
 	}
 
-	newItem := Item{dbID: 0, uuid: uuid.New()}
+	newItem := Data{dbID: 0, uuid: uuid.New()}
 
 	nxInfo, err := nx.GetItem(id)
 
 	if err != nil {
-		return Item{}, fmt.Errorf("Unable to generate item of id: %v", id)
+		return Data{}, fmt.Errorf("Unable to generate item of id: %v", id)
 	}
 
 	newItem.cash = nxInfo.Cash
@@ -217,7 +217,7 @@ func createItemFromID(id int32, amount int16, bias int8) (Item, error) {
 	return newItem, nil
 }
 
-func (v *Item) calculateWeaponType() {
+func (v *Data) calculateWeaponType() {
 	switch v.id / 10000 % 100 {
 	case 30:
 		v.weaponType = 1 // Sword1H
@@ -262,23 +262,23 @@ func (v *Item) calculateWeaponType() {
 	}
 }
 
-func (v *Item) SetDbID(id int64) {
+func (v *Data) SetDbID(id int64) {
 	v.dbID = id
 }
 
-func (v *Item) SetCreatorName(name string) {
+func (v *Data) SetCreatorName(name string) {
 	v.creatorName = name
 }
 
-func (v *Item) SetSlotID(id int16) {
+func (v *Data) SetSlotID(id int16) {
 	v.slotID = id
 }
 
-func (v *Item) SetAmount(value int16) {
+func (v *Data) SetAmount(value int16) {
 	v.amount = value
 }
 
-func (v Item) IsStackable() bool {
+func (v Data) IsStackable() bool {
 	bullet := v.id / 1e4
 
 	if v.invID != 5.0 && // pet item
@@ -292,19 +292,19 @@ func (v Item) IsStackable() bool {
 	return false
 }
 
-func (v Item) IsRechargeable() bool {
+func (v Data) IsRechargeable() bool {
 	return (math.Floor(float64(v.id/10000)) == 207) // Taken from cliet
 }
 
-func (v Item) TwoHanded() bool {
+func (v Data) TwoHanded() bool {
 	return v.twoHanded
 }
 
-func (v Item) Shield() bool {
+func (v Data) Shield() bool {
 	return v.weaponType == 17
 }
 
-func (v Item) Save(db *sql.DB, charID int32) (bool, error) {
+func (v Data) Save(db *sql.DB, charID int32) (bool, error) {
 	if v.dbID == 0 {
 		props := `characterID,inventoryID,itemID,slotNumber,amount,flag,upgradeSlots,level,
 				str,dex,intt,luk,hp,mp,watk,matk,wdef,mdef,accuracy,avoid,hands,speed,jump,
@@ -346,16 +346,16 @@ func (v Item) Save(db *sql.DB, charID int32) (bool, error) {
 }
 
 // InventoryBytes to display in character inventory window
-func (v Item) InventoryBytes() []byte {
+func (v Data) InventoryBytes() []byte {
 	return v.bytes(false)
 }
 
 // ShortBytes e.g. inventory operation, storage window
-func (v Item) ShortBytes() []byte {
+func (v Data) ShortBytes() []byte {
 	return v.bytes(true)
 }
 
-func (v Item) bytes(shortSlot bool) []byte {
+func (v Data) bytes(shortSlot bool) []byte {
 	p := mpacket.NewPacket()
 
 	if !shortSlot {

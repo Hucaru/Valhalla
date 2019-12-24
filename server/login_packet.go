@@ -4,8 +4,8 @@ import (
 	"strconv"
 
 	"github.com/Hucaru/Valhalla/constant/opcode"
-	"github.com/Hucaru/Valhalla/entity"
 	"github.com/Hucaru/Valhalla/mpacket"
+	"github.com/Hucaru/Valhalla/server/player"
 )
 
 func packetLoginResponce(result byte, userID int32, gender byte, isAdmin bool, username string, isBanned int) mpacket.Packet {
@@ -59,7 +59,7 @@ func packetLoginSendBadMigrate() mpacket.Packet {
 	return pac
 }
 
-func packetLoginDisplayCharacters(characters []entity.Character) mpacket.Packet {
+func packetLoginDisplayCharacters(characters []player.Data) mpacket.Packet {
 	pac := mpacket.CreateWithOpcode(opcode.SendLoginCharacterData)
 	pac.WriteByte(0) // ?
 
@@ -89,7 +89,7 @@ func packetLoginNameCheck(name string, nameFound int) mpacket.Packet {
 	return pac
 }
 
-func packetLoginCreatedCharacter(success bool, char entity.Character) mpacket.Packet {
+func packetLoginCreatedCharacter(success bool, char player.Data) mpacket.Packet {
 	pac := mpacket.CreateWithOpcode(opcode.SendLoginNewCharacterGood)
 
 	if success {
@@ -117,7 +117,7 @@ func packetLoginDeleteCharacter(charID int32, deleted bool, hacking bool) mpacke
 	return pac
 }
 
-func loginWritePlayerCharacter(pac *mpacket.Packet, pos int32, char entity.Character) {
+func loginWritePlayerCharacter(pac *mpacket.Packet, pos int32, char player.Data) {
 	pac.WriteInt32(pos)
 
 	name := char.Name()

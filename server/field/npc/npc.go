@@ -88,7 +88,15 @@ func (d *Data) RemoveController() {
 	d.controller = nil
 }
 
-// AcknowledgeController movement data
-func AcknowledgeController() {
+type instance interface {
+	Send(mpacket.Packet) error
+}
 
+// AcknowledgeController movement data
+func (d Data) AcknowledgeController(plr Controller, inst instance, data []byte) {
+	if d.controller != plr {
+		plr.Send(packetNpcSetController(d.spawnID, false))
+	}
+
+	inst.Send(packetNpcMovement(data))
 }

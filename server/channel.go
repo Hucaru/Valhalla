@@ -2,17 +2,74 @@ package server
 
 import (
 	"database/sql"
+	"fmt"
 	"log"
 	"time"
 
 	_ "github.com/go-sql-driver/mysql" // don't need full import
 
 	"github.com/Hucaru/Valhalla/constant/opcode"
-	"github.com/Hucaru/Valhalla/entity"
 	"github.com/Hucaru/Valhalla/mnet"
 	"github.com/Hucaru/Valhalla/mpacket"
 	"github.com/Hucaru/Valhalla/nx"
+	"github.com/Hucaru/Valhalla/server/field"
+	"github.com/Hucaru/Valhalla/server/player"
 )
+
+type players []player.Data
+
+func (p players) getFromConn(conn mnet.Client) (*player.Data, error) {
+	for _, v := range p {
+		if v.Conn() == conn {
+			return &v, nil
+		}
+	}
+
+	return nil, fmt.Errorf("Could not retrieve Data")
+}
+
+// GetFromName retrieve the Data from the connection
+func (p players) getFromName(name string) (*player.Data, error) {
+	for _, v := range p {
+		if v.Name() == name {
+			return &v, nil
+		}
+	}
+
+	return nil, fmt.Errorf("Could not retrieve Data")
+}
+
+// GetFromID retrieve the Data from the connection
+func (p players) GetFromID(id int32) (*player.Data, error) {
+	for _, v := range p {
+		if v.ID() == id {
+			return &v, nil
+		}
+	}
+
+	return nil, fmt.Errorf("Could not retrieve Data")
+}
+
+// RemoveFromConn removes the Data based on the connection
+func (p *players) RemoveFromConn(conn mnet.Client) error {
+	i := -1
+
+	for j, v := range *p {
+		if v.Conn() == conn {
+			i = j
+			break
+		}
+	}
+
+	if i == -1 {
+		return fmt.Errorf("Could not find Data")
+	}
+
+	(*p)[i] = (*p)[len((*p))-1]
+	(*p) = (*p)[:len((*p))-1]
+
+	return nil
+}
 
 // ChannelServer state
 type ChannelServer struct {
@@ -23,10 +80,10 @@ type ChannelServer struct {
 	ip        []byte
 	port      int16
 	maxPop    int16
-	migrating []mnet.Client // TODO: switch to slice
-	players   entity.Players
+	migrating []mnet.Client
+	players   players
 	channels  [20]channel
-	fields    map[int32]*entity.Field
+	fields    map[int32]*field.Field
 	header    string
 }
 
@@ -49,14 +106,13 @@ func (server *ChannelServer) Initialise(work chan func(), dbuser, dbpassword, db
 
 	log.Println("Connected to database")
 
-	server.fields = make(map[int32]*entity.Field)
+	server.fields = make(map[int32]*field.Field)
 
 	for fieldID, nxMap := range nx.GetMaps() {
 
-		server.fields[fieldID] = &entity.Field{
+		server.fields[fieldID] = &field.Field{
 			ID:       fieldID,
 			Data:     nxMap,
-			Players:  &server.players,
 			Dispatch: server.dispatch,
 		}
 
@@ -158,24 +214,23 @@ func (server *ChannelServer) handleChannelConnectionInfo(conn mnet.Server, reade
 
 // ClientDisconnected from server
 func (server *ChannelServer) ClientDisconnected(conn mnet.Client) {
-	player, err := server.players.GetFromConn(conn)
+	player, err := server.players.getFromConn(conn)
 
 	if err != nil {
 		return
 	}
 
-	char := player.Char()
-	field, ok := server.fields[char.MapID()]
+	field, ok := server.fields[player.MapID()]
 
 	if !ok {
 		return
 	}
 
 	inst, err := field.GetInstance(player.InstanceID())
-	go char.Save(server.db, *inst)
+	go player.Save(server.db, inst)
 	inst.RemovePlayer(player)
 
-	_, err = server.db.Exec("UPDATE characters SET channelID=? WHERE id=?", -1, player.Char().ID())
+	_, err = server.db.Exec("UPDATE characters SET channelID=? WHERE id=?", -1, player.ID())
 
 	if err != nil {
 		log.Println(err)

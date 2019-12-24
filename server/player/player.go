@@ -10,93 +10,17 @@ import (
 	"github.com/Hucaru/Valhalla/constant"
 	"github.com/Hucaru/Valhalla/mnet"
 	"github.com/Hucaru/Valhalla/mpacket"
+	"github.com/Hucaru/Valhalla/server/item"
 	"github.com/Hucaru/Valhalla/server/pos"
 )
 
-// TODO: Move Players into server level logic
-
-// Players type alias
-type Players []Player
-
-// GetFromConn retrieve the player from the connection
-func (p Players) GetFromConn(conn mnet.Client) (*Player, error) {
-	for _, v := range p {
-		if v.conn == conn {
-			return &v, nil
-		}
-	}
-
-	return nil, fmt.Errorf("Could not retrieve player")
-}
-
-// GetFromName retrieve the player from the connection
-func (p Players) GetFromName(name string) (*Player, error) {
-	for _, v := range p {
-		if v.name == name {
-			return &v, nil
-		}
-	}
-
-	return nil, fmt.Errorf("Could not retrieve player")
-}
-
-// GetFromID retrieve the player from the connection
-func (p Players) GetFromID(id int32) (*Player, error) {
-	for _, v := range p {
-		if v.id == id {
-			return &v, nil
-		}
-	}
-
-	return nil, fmt.Errorf("Could not retrieve player")
-}
-
-// RemoveFromConn removes the player based on the connection
-func (p *Players) RemoveFromConn(conn mnet.Client) error {
-	i := -1
-
-	for j, v := range *p {
-		if v.conn == conn {
-			i = j
-			break
-		}
-	}
-
-	if i == -1 {
-		return fmt.Errorf("Could not find player")
-	}
-
-	(*p)[i] = (*p)[len((*p))-1]
-	(*p) = (*p)[:len((*p))-1]
-
-	return nil
-}
-
-type item interface {
-	ID() int32
-	DbID() int64
-	Save(*sql.DB, int32)
-	Cash() bool
-	InvID() byte
-	SlotID() int16
-	SetSlotID(int16)
-	Amount() int16
-	SetAmount(int16)
-	InventoryBytes() []byte
-	ShortBytes() []byte
-}
-
-type portal interface {
-	ID() byte
-}
-
 type instance interface {
-	Send(mpacket.Packet)
-	CalculateNearestSpawnPortal(pos.Data) (portal, error)
+	Send(mpacket.Packet) error
+	CalculateNearestSpawnPortalID(pos.Data) (byte, error)
 }
 
-// Player connected to server
-type Player struct {
+// Data connected to server
+type Data struct {
 	conn       mnet.Client
 	instanceID int
 
@@ -142,11 +66,11 @@ type Player struct {
 	etcSlotSize   byte
 	cashSlotSize  byte
 
-	equip []item
-	use   []item
-	setUp []item
-	etc   []item
-	cash  []item
+	equip []item.Data
+	use   []item.Data
+	setUp []item.Data
+	etc   []item.Data
+	cash  []item.Data
 
 	mesos int32
 
@@ -155,40 +79,40 @@ type Player struct {
 	miniGameWins, miniGameDraw, miniGameLoss int32
 }
 
-// NewPlayer - returns a player struct from a client connection and inventory
-func NewPlayer(conn mnet.Client, equip []item, use []item, setUp []item, etc []item, cash []item) Player {
-	return Player{conn: conn, instanceID: 0, equip: equip, use: use, setUp: setUp, etc: etc, cash: cash}
+// New - returns a Data struct from a client connection and inventory
+func New(conn mnet.Client, equip []item.Data, use []item.Data, setUp []item.Data, etc []item.Data, cash []item.Data) Data {
+	return Data{conn: conn, instanceID: 0, equip: equip, use: use, setUp: setUp, etc: etc, cash: cash}
 }
 
-// Conn - client connection associated with this player
-func (p Player) Conn() mnet.Client {
-	return p.conn
+// Conn - client connection associated with this Data
+func (d Data) Conn() mnet.Client {
+	return d.conn
 }
 
-// InstanceID - field instance id the player is currently on
-func (p Player) InstanceID() int {
-	return p.instanceID
+// InstanceID - field instance id the Data is currently on
+func (d Data) InstanceID() int {
+	return d.instanceID
 }
 
-// SetInstance - assign the instance id for the player
-func (p *Player) SetInstance(id int) {
-	p.instanceID = id
+// SetInstanceID - assign the instance id for the Data
+func (d *Data) SetInstanceID(id int) {
+	d.instanceID = id
 }
 
-// Send the player a packet
-func (p Player) Send(packet mpacket.Packet) {
-	p.conn.Send(packet)
+// Send the Data a packet
+func (d Data) Send(packet mpacket.Packet) {
+	d.conn.Send(packet)
 }
 
-// SetJob id of the player
-func (p *Player) SetJob(id int16) {
-	p.job = id
-	p.conn.Send(packetPlayerStatChange(true, constant.JobID, int32(id)))
+// SetJob id of the Data
+func (d *Data) SetJob(id int16) {
+	d.job = id
+	d.conn.Send(packetPlayerStatChange(true, constant.JobID, int32(id)))
 }
 
-func (p *Player) levelUp(inst instance) {
-	p.GiveAP(5)
-	p.GiveSP(3)
+func (d *Data) levelUp(inst instance) {
+	d.GiveAP(5)
+	d.GiveSP(3)
 
 	levelUpHp := func(classIncrease int16, bonus int16) int16 {
 		return int16(rand.Intn(3)+1) + classIncrease + bonus // deterministic rand, maybe seed with time?
@@ -198,246 +122,251 @@ func (p *Player) levelUp(inst instance) {
 		return int16(rand.Intn(1)+1) + classIncrease + bonus // deterministic rand, maybe seed with time?
 	}
 
-	switch p.job / 100 { // add effects from skills e.g. improve max mp
+	switch d.job / 100 { // add effects from skills e.g. improve max mp
 	case 0:
-		p.maxHP += levelUpHp(constant.BeginnerHpAdd, 0)
-		p.maxMP += levelUpMp(constant.BeginnerMpAdd, p.intt)
+		d.maxHP += levelUpHp(constant.BeginnerHpAdd, 0)
+		d.maxMP += levelUpMp(constant.BeginnerMpAdd, d.intt)
 	case 1:
-		p.maxHP += levelUpHp(constant.WarriorHpAdd, 0)
-		p.maxMP += levelUpMp(constant.WarriorMpAdd, p.intt)
+		d.maxHP += levelUpHp(constant.WarriorHpAdd, 0)
+		d.maxMP += levelUpMp(constant.WarriorMpAdd, d.intt)
 	case 2:
-		p.maxHP += levelUpHp(constant.MagicianHpAdd, 0)
-		p.maxMP += levelUpMp(constant.MagicianMpAdd, 2*p.intt)
+		d.maxHP += levelUpHp(constant.MagicianHpAdd, 0)
+		d.maxMP += levelUpMp(constant.MagicianMpAdd, 2*d.intt)
 	case 3:
-		p.maxHP += levelUpHp(constant.BowmanHpAdd, 0)
-		p.maxMP += levelUpMp(constant.BowmanMpAdd, p.intt)
+		d.maxHP += levelUpHp(constant.BowmanHpAdd, 0)
+		d.maxMP += levelUpMp(constant.BowmanMpAdd, d.intt)
 	case 4:
-		p.maxHP += levelUpHp(constant.ThiefHpAdd, 0)
-		p.maxMP += levelUpMp(constant.ThiefMpAdd, p.intt)
+		d.maxHP += levelUpHp(constant.ThiefHpAdd, 0)
+		d.maxMP += levelUpMp(constant.ThiefMpAdd, d.intt)
 	case 5:
-		p.maxHP += constant.AdminHpAdd
-		p.maxMP += constant.AdminMpAdd
+		d.maxHP += constant.AdminHpAdd
+		d.maxMP += constant.AdminMpAdd
 	default:
-		log.Println("Unkown job during level up", p.job)
+		log.Println("Unkown job during level up", d.job)
 	}
 
-	p.hp = p.maxHP
-	p.mp = p.maxMP
+	d.hp = d.maxHP
+	d.mp = d.maxMP
 
-	p.SetHP(p.hp)
-	p.SetMaxHP(p.hp)
+	d.SetHP(d.hp)
+	d.SetMaxHP(d.hp)
 
-	p.SetMP(p.mp)
-	p.SetMaxMP(p.mp)
+	d.SetMP(d.mp)
+	d.SetMaxMP(d.mp)
 
-	p.GiveLevel(1, inst)
+	d.GiveLevel(1, inst)
 }
 
-// SetEXP of the player
-func (p *Player) SetEXP(amount int32, inst instance) {
-	if p.level > 199 {
+// SetEXP of the Data
+func (d *Data) SetEXP(amount int32, inst instance) {
+	if d.level > 199 {
 		return
 	}
 
-	remainder := amount - constant.ExpTable[p.level-1]
+	remainder := amount - constant.ExpTable[d.level-1]
 
 	if remainder >= 0 {
-		p.levelUp(inst)
-		p.SetEXP(remainder, inst)
+		d.levelUp(inst)
+		d.SetEXP(remainder, inst)
 	} else {
-		p.exp = amount
-		p.Send(packetPlayerStatChange(false, constant.ExpID, int32(amount)))
+		d.exp = amount
+		d.Send(packetPlayerStatChange(false, constant.ExpID, int32(amount)))
 	}
 }
 
-// GiveEXP to the player
-func (p *Player) GiveEXP(amount int32, fromMob, fromParty bool, inst instance) {
+// GiveEXP to the Data
+func (d *Data) GiveEXP(amount int32, fromMob, fromParty bool, inst instance) {
 	if fromMob {
-		p.Send(packetMessageExpGained(!fromParty, false, amount))
+		d.Send(packetMessageExpGained(!fromParty, false, amount))
 	} else {
-		p.Send(packetMessageExpGained(true, true, amount))
+		d.Send(packetMessageExpGained(true, true, amount))
 	}
 
-	p.SetEXP(p.exp+amount, inst)
+	d.SetEXP(d.exp+amount, inst)
 }
 
-// SetLevel of the player
-func (p *Player) SetLevel(amount byte, inst instance) {
-	p.level = amount
-	p.Send(packetPlayerStatChange(false, constant.LevelID, int32(amount)))
-	inst.Send(packetPlayerLevelUpAnimation(p.id))
+// SetLevel of the Data
+func (d *Data) SetLevel(amount byte, inst instance) {
+	d.level = amount
+	d.Send(packetPlayerStatChange(false, constant.LevelID, int32(amount)))
+	inst.Send(packetPlayerLevelUpAnimation(d.id))
 }
 
-// GiveLevel amount ot the player
-func (p *Player) GiveLevel(amount byte, inst instance) {
-	p.SetLevel(p.level+amount, inst)
+// GiveLevel amount ot the Data
+func (d *Data) GiveLevel(amount byte, inst instance) {
+	d.SetLevel(d.level+amount, inst)
 }
 
-// SetAP of player
-func (p *Player) SetAP(amount int16) {
-	p.ap = amount
-	p.Send(packetPlayerStatChange(false, constant.ApID, int32(amount)))
+// SetAP of Data
+func (d *Data) SetAP(amount int16) {
+	d.ap = amount
+	d.Send(packetPlayerStatChange(false, constant.ApID, int32(amount)))
 }
 
-// GiveAP to player
-func (p *Player) GiveAP(amount int16) {
-	p.SetAP(p.ap + amount)
+// GiveAP to Data
+func (d *Data) GiveAP(amount int16) {
+	d.SetAP(d.ap + amount)
 }
 
-// SetSP of player
-func (p *Player) SetSP(amount int16) {
-	p.sp = amount
-	p.Send(packetPlayerStatChange(false, constant.SpID, int32(amount)))
+// SetSP of Data
+func (d *Data) SetSP(amount int16) {
+	d.sp = amount
+	d.Send(packetPlayerStatChange(false, constant.SpID, int32(amount)))
 }
 
-// GiveSP to player
-func (p *Player) GiveSP(amount int16) {
-	p.SetSP(p.sp + amount)
+// GiveSP to Data
+func (d *Data) GiveSP(amount int16) {
+	d.SetSP(d.sp + amount)
 }
 
-// SetStr of the player
-func (p *Player) SetStr(amount int16) {
-	p.str = amount
-	p.Send(packetPlayerStatChange(true, constant.StrID, int32(amount)))
+// SetStr of the Data
+func (d *Data) SetStr(amount int16) {
+	d.str = amount
+	d.Send(packetPlayerStatChange(true, constant.StrID, int32(amount)))
 }
 
-// GiveStr to player
-func (p *Player) GiveStr(amount int16) {
-	p.SetStr(p.str + amount)
+// GiveStr to Data
+func (d *Data) GiveStr(amount int16) {
+	d.SetStr(d.str + amount)
 }
 
-// SetDex of player
-func (p *Player) SetDex(amount int16) {
-	p.dex = amount
-	p.Send(packetPlayerStatChange(true, constant.DexID, int32(amount)))
+// SetDex of Data
+func (d *Data) SetDex(amount int16) {
+	d.dex = amount
+	d.Send(packetPlayerStatChange(true, constant.DexID, int32(amount)))
 }
 
-// GiveDex to player
-func (p *Player) GiveDex(amount int16) {
-	p.SetDex(p.dex + amount)
+// GiveDex to Data
+func (d *Data) GiveDex(amount int16) {
+	d.SetDex(d.dex + amount)
 }
 
-// SetInt of player
-func (p *Player) SetInt(amount int16) {
-	p.intt = amount
-	p.Send(packetPlayerStatChange(true, constant.IntID, int32(amount)))
+// SetInt of Data
+func (d *Data) SetInt(amount int16) {
+	d.intt = amount
+	d.Send(packetPlayerStatChange(true, constant.IntID, int32(amount)))
 }
 
-// GiveInt to player
-func (p *Player) GiveInt(amount int16) {
-	p.SetInt(p.intt + amount)
+// GiveInt to Data
+func (d *Data) GiveInt(amount int16) {
+	d.SetInt(d.intt + amount)
 }
 
-// SetLuk of player
-func (p *Player) SetLuk(amount int16) {
-	p.luk = amount
-	p.Send(packetPlayerStatChange(true, constant.LukID, int32(amount)))
+// SetLuk of Data
+func (d *Data) SetLuk(amount int16) {
+	d.luk = amount
+	d.Send(packetPlayerStatChange(true, constant.LukID, int32(amount)))
 }
 
-// GiveLuk to player
-func (p *Player) GiveLuk(amount int16) {
-	p.SetLuk(p.luk + amount)
+// GiveLuk to Data
+func (d *Data) GiveLuk(amount int16) {
+	d.SetLuk(d.luk + amount)
 }
 
-// SetHP of player
-func (p *Player) SetHP(amount int16) {
-	p.hp = amount
-	p.Send(packetPlayerStatChange(true, constant.HpID, int32(amount)))
+// SetHP of Data
+func (d *Data) SetHP(amount int16) {
+	d.hp = amount
+	d.Send(packetPlayerStatChange(true, constant.HpID, int32(amount)))
 }
 
-// GiveHP to player
-func (p *Player) GiveHP(amount int16) {
-	p.SetHP(p.hp + amount)
-	if p.hp < 0 {
-		p.SetHP(0)
-	}
-}
-
-// SetMaxHP of player
-func (p *Player) SetMaxHP(amount int16) {
-	p.maxHP = amount
-	p.Send(packetPlayerStatChange(true, constant.MaxHpID, int32(amount)))
-}
-
-// SetMP of player
-func (p *Player) SetMP(amount int16) {
-	p.mp = amount
-	p.Send(packetPlayerStatChange(true, constant.MpID, int32(amount)))
-}
-
-// GiveMP to player
-func (p *Player) GiveMP(amount int16) {
-	p.SetMP(p.mp + amount)
-	if p.mp < 0 {
-		p.SetMP(0)
+// GiveHP to Data
+func (d *Data) GiveHP(amount int16) {
+	d.SetHP(d.hp + amount)
+	if d.hp < 0 {
+		d.SetHP(0)
 	}
 }
 
-// SetMaxMP of player
-func (p *Player) SetMaxMP(amount int16) {
-	p.maxMP = amount
-	p.Send(packetPlayerStatChange(true, constant.MaxMpID, int32(amount)))
+// SetMaxHP of Data
+func (d *Data) SetMaxHP(amount int16) {
+	d.maxHP = amount
+	d.Send(packetPlayerStatChange(true, constant.MaxHpID, int32(amount)))
 }
 
-// SetFame of player
-func (p *Player) SetFame(amount int16) {
-
+// SetMP of Data
+func (d *Data) SetMP(amount int16) {
+	d.mp = amount
+	d.Send(packetPlayerStatChange(true, constant.MpID, int32(amount)))
 }
 
-// SetGuild of player
-func (p *Player) SetGuild(name string, inst instance) {
-
+// GiveMP to Data
+func (d *Data) GiveMP(amount int16) {
+	d.SetMP(d.mp + amount)
+	if d.mp < 0 {
+		d.SetMP(0)
+	}
 }
 
-// SetEquipSlotSize of player
-func (p *Player) SetEquipSlotSize(size byte) {
-
+// SetMaxMP of Data
+func (d *Data) SetMaxMP(amount int16) {
+	d.maxMP = amount
+	d.Send(packetPlayerStatChange(true, constant.MaxMpID, int32(amount)))
 }
 
-// SetUseSlotSize of player
-func (p *Player) SetUseSlotSize(size byte) {
-
-}
-
-// SetSetUpSlotSize of player
-func (p *Player) SetSetUpSlotSize(size byte) {
-
-}
-
-// SetEtcSlotSize of player
-func (p *Player) SetEtcSlotSize(size byte) {
+// SetFame of Data
+func (d *Data) SetFame(amount int16) {
 
 }
 
-// SetCashSlotSize of player
-func (p *Player) SetCashSlotSize(size byte) {
+// AddEquip item to slice
+func (d *Data) AddEquip(item item.Data) {
+	d.equip = append(d.equip, item)
+}
+
+// SetGuild of Data
+func (d *Data) SetGuild(name string, inst instance) {
 
 }
 
-// SetMesos of player
-func (p *Player) SetMesos(amount int32) {
-	p.mesos = amount
-	p.Send(packetPlayerStatChange(false, constant.MesosID, amount))
+// SetEquipSlotSize of Data
+func (d *Data) SetEquipSlotSize(size byte) {
+
 }
 
-// GiveMesos to player
-func (p *Player) GiveMesos(amount int32) {
-	p.SetMesos(p.mesos + amount)
+// SetUseSlotSize of Data
+func (d *Data) SetUseSlotSize(size byte) {
+
 }
 
-// SetMiniGameWins of player
-func (p *Player) SetMiniGameWins(v int32) {
-	p.miniGameWins = v
+// SetSetUpSlotSize of Data
+func (d *Data) SetSetUpSlotSize(size byte) {
+
 }
 
-// SetMiniGameLoss of player
-func (p *Player) SetMiniGameLoss(v int32) {
-	p.miniGameLoss = v
+// SetEtcSlotSize of Data
+func (d *Data) SetEtcSlotSize(size byte) {
+
 }
 
-// SetMiniGameDraw of player
-func (p *Player) SetMiniGameDraw(v int32) {
-	p.miniGameDraw = v
+// SetCashSlotSize of Data
+func (d *Data) SetCashSlotSize(size byte) {
+
+}
+
+// SetMesos of Data
+func (d *Data) SetMesos(amount int32) {
+	d.mesos = amount
+	d.Send(packetPlayerStatChange(false, constant.MesosID, amount))
+}
+
+// GiveMesos to Data
+func (d *Data) GiveMesos(amount int32) {
+	d.SetMesos(d.mesos + amount)
+}
+
+// SetMiniGameWins of Data
+func (d *Data) SetMiniGameWins(v int32) {
+	d.miniGameWins = v
+}
+
+// SetMiniGameLoss of Data
+func (d *Data) SetMiniGameLoss(v int32) {
+	d.miniGameLoss = v
+}
+
+// SetMiniGameDraw of Data
+func (d *Data) SetMiniGameDraw(v int32) {
+	d.miniGameDraw = v
 }
 
 type movementFrag interface {
@@ -447,56 +376,56 @@ type movementFrag interface {
 	Stance() byte
 }
 
-// UpdateMovement - update player from position data
-func (p *Player) UpdateMovement(frag movementFrag) {
-	p.pos.SetX(frag.X())
-	p.pos.SetY(frag.Y())
-	p.foothold = frag.Foothold()
-	p.stance = frag.Stance()
+// UpdateMovement - update Data from position data
+func (d *Data) UpdateMovement(frag movementFrag) {
+	d.pos.SetX(frag.X())
+	d.pos.SetY(frag.Y())
+	d.foothold = frag.Foothold()
+	d.stance = frag.Stance()
 }
 
-// SetPos of player
-func (p *Player) SetPos(pos pos.Data) {
-	p.pos = pos
+// SetPos of Data
+func (d *Data) SetPos(pos pos.Data) {
+	d.pos = pos
 }
 
-// CheckPos - checks player is within a certain range of a position
-func (p Player) CheckPos(pos pos.Data, xRange, yRange int16) bool {
+// CheckPos - checks Data is within a certain range of a position
+func (d Data) CheckPos(pos pos.Data, xRange, yRange int16) bool {
 	var xValid, yValid bool
 
 	if xRange == 0 {
-		xValid = p.pos.X() == pos.X()
+		xValid = d.pos.X() == pos.X()
 	} else {
-		xValid = (pos.X()-xRange < p.pos.X() && p.pos.X() < pos.X()+xRange)
+		xValid = (pos.X()-xRange < d.pos.X() && d.pos.X() < pos.X()+xRange)
 	}
 
 	if yRange == 0 {
-		xValid = p.pos.Y() == pos.Y()
+		xValid = d.pos.Y() == pos.Y()
 	} else {
-		yValid = (pos.Y()-yRange < p.pos.Y() && p.pos.Y() < pos.Y()+yRange)
+		yValid = (pos.Y()-yRange < d.pos.Y() && d.pos.Y() < pos.Y()+yRange)
 	}
 
 	return xValid && yValid
 }
 
-// SetFoothold of player
-func (p *Player) SetFoothold(fh int16) {
-	p.foothold = fh
+// SetFoothold of Data
+func (d *Data) SetFoothold(fh int16) {
+	d.foothold = fh
 }
 
-// SetMapID of player
-func (p *Player) SetMapID(id int32) {
-	p.mapID = id
+// SetMapID of Data
+func (d *Data) SetMapID(id int32) {
+	d.mapID = id
 }
 
-// SetMapPosID of player
-func (p *Player) SetMapPosID(pos byte) {
-	p.mapPos = pos
+// SetMapPosID of Data
+func (d *Data) SetMapPosID(pos byte) {
+	d.mapPos = pos
 }
 
-// GiveItem to player
-func (p *Player) GiveItem(newItem item) error {
-	findFirstEmptySlot := func(items []item, size byte) (int16, error) {
+// GiveItem to Data
+func (d *Data) GiveItem(newItem item.Data) error {
+	findFirstEmptySlot := func(items []item.Data, size byte) (int16, error) {
 		slotsUsed := make([]bool, size)
 
 		for _, v := range items {
@@ -527,7 +456,7 @@ func (p *Player) GiveItem(newItem item) error {
 
 	switch newItem.InvID() {
 	case 1: // Equip
-		slotID, err := findFirstEmptySlot(p.equip, p.equipSlotSize)
+		slotID, err := findFirstEmptySlot(d.equip, d.equipSlotSize)
 
 		if err != nil {
 			return err
@@ -535,12 +464,12 @@ func (p *Player) GiveItem(newItem item) error {
 
 		newItem.SetSlotID(slotID)
 		newItem.SetAmount(1) // just in case
-		p.equip = append(p.equip, newItem)
-		p.Send(packetInventoryAddItem(newItem, true))
+		d.equip = append(d.equip, newItem)
+		d.Send(packetInventoryAddItem(newItem, true))
 	case 2: // Use
 		var slotID int16
 		var index int
-		for i, v := range p.use {
+		for i, v := range d.use {
 			if v.ID() == newItem.ID() && v.Amount() < constant.MaxItemStack {
 				slotID = v.SlotID()
 				index = i
@@ -549,20 +478,20 @@ func (p *Player) GiveItem(newItem item) error {
 		}
 
 		if slotID == 0 {
-			slotID, err := findFirstEmptySlot(p.use, p.useSlotSize)
+			slotID, err := findFirstEmptySlot(d.use, d.useSlotSize)
 
 			if err != nil {
 				return err
 			}
 
 			newItem.SetSlotID(slotID)
-			p.use = append(p.use, newItem)
-			p.Send(packetInventoryAddItem(newItem, true))
+			d.use = append(d.use, newItem)
+			d.Send(packetInventoryAddItem(newItem, true))
 		} else {
-			remainder := newItem.Amount() - (constant.MaxItemStack - p.use[index].Amount())
+			remainder := newItem.Amount() - (constant.MaxItemStack - d.use[index].Amount())
 
 			if remainder > 0 { //partial merge
-				slotID, err := findFirstEmptySlot(p.use, p.useSlotSize)
+				slotID, err := findFirstEmptySlot(d.use, d.useSlotSize)
 
 				if err != nil {
 					return err
@@ -570,29 +499,29 @@ func (p *Player) GiveItem(newItem item) error {
 
 				newItem.SetAmount(remainder)
 				newItem.SetSlotID(slotID)
-				p.use = append(p.use, newItem)
-				p.use[index].SetAmount(constant.MaxItemStack)
+				d.use = append(d.use, newItem)
+				d.use[index].SetAmount(constant.MaxItemStack)
 
-				p.Send(packetInventoryAddItems([]item{p.use[index], newItem}, []bool{false, true}))
+				d.Send(packetInventoryAddItems([]item.Data{d.use[index], newItem}, []bool{false, true}))
 			} else { // full merge
-				p.use[index].SetAmount(p.use[index].Amount() + newItem.Amount())
-				p.Send(packetInventoryAddItem(p.use[index], false))
+				d.use[index].SetAmount(d.use[index].Amount() + newItem.Amount())
+				d.Send(packetInventoryAddItem(d.use[index], false))
 			}
 		}
 	case 3: // Set-up
-		slotID, err := findFirstEmptySlot(p.setUp, p.setupSlotSize)
+		slotID, err := findFirstEmptySlot(d.setUp, d.setupSlotSize)
 
 		if err != nil {
 			return err
 		}
 
 		newItem.SetSlotID(slotID)
-		p.setUp = append(p.setUp, newItem)
-		p.Send(packetInventoryAddItem(newItem, true))
+		d.setUp = append(d.setUp, newItem)
+		d.Send(packetInventoryAddItem(newItem, true))
 	case 4: // Etc
 		var slotID int16
 		var index int
-		for i, v := range p.etc {
+		for i, v := range d.etc {
 			if v.ID() == newItem.ID() && v.Amount() < constant.MaxItemStack {
 				slotID = v.SlotID()
 				index = i
@@ -601,20 +530,20 @@ func (p *Player) GiveItem(newItem item) error {
 		}
 
 		if slotID == 0 {
-			slotID, err := findFirstEmptySlot(p.etc, p.etcSlotSize)
+			slotID, err := findFirstEmptySlot(d.etc, d.etcSlotSize)
 
 			if err != nil {
 				return err
 			}
 
 			newItem.SetSlotID(slotID)
-			p.etc = append(p.etc, newItem)
-			p.Send(packetInventoryAddItem(newItem, true))
+			d.etc = append(d.etc, newItem)
+			d.Send(packetInventoryAddItem(newItem, true))
 		} else {
-			remainder := newItem.Amount() - (constant.MaxItemStack - p.etc[index].Amount())
+			remainder := newItem.Amount() - (constant.MaxItemStack - d.etc[index].Amount())
 
 			if remainder > 0 { //partial merge
-				slotID, err := findFirstEmptySlot(p.etc, p.etcSlotSize)
+				slotID, err := findFirstEmptySlot(d.etc, d.etcSlotSize)
 
 				if err != nil {
 					return err
@@ -622,39 +551,39 @@ func (p *Player) GiveItem(newItem item) error {
 
 				newItem.SetAmount(remainder)
 				newItem.SetSlotID(slotID)
-				p.etc = append(p.etc, newItem)
-				p.etc[index].SetAmount(constant.MaxItemStack)
+				d.etc = append(d.etc, newItem)
+				d.etc[index].SetAmount(constant.MaxItemStack)
 
-				p.Send(packetInventoryAddItems([]item{p.etc[index], newItem}, []bool{false, true}))
+				d.Send(packetInventoryAddItems([]item.Data{d.etc[index], newItem}, []bool{false, true}))
 			} else { // full merge
-				p.etc[index].SetAmount(p.etc[index].Amount() + newItem.Amount())
-				p.Send(packetInventoryAddItem(p.etc[index], false))
+				d.etc[index].SetAmount(d.etc[index].Amount() + newItem.Amount())
+				d.Send(packetInventoryAddItem(d.etc[index], false))
 			}
 		}
 	case 5: // Cash
 		// some are stackable, how to tell?
-		slotID, err := findFirstEmptySlot(p.cash, p.cashSlotSize)
+		slotID, err := findFirstEmptySlot(d.cash, d.cashSlotSize)
 
 		if err != nil {
 			return err
 		}
 
 		newItem.SetSlotID(slotID)
-		p.cash = append(p.cash, newItem)
-		p.Send(packetInventoryAddItem(newItem, true))
+		d.cash = append(d.cash, newItem)
+		d.Send(packetInventoryAddItem(newItem, true))
 	default:
 		return fmt.Errorf("Unkown inventory id: %d", newItem.InvID())
 	}
 	return nil
 }
 
-// TakeItem from player
-func (p *Player) TakeItem(itemID int32, amount int16) (item, error) {
-	return nil, nil
+// TakeItem from Data
+func (d *Data) TakeItem(itemID int32, amount int16) (item.Data, error) {
+	return item.Data{}, nil
 }
 
-// RemoveItem from player
-func (p *Player) RemoveItem(remove item) {
+// RemoveItem from Data
+func (d *Data) RemoveItem(remove item.Data) {
 	// TODO(Hucaru): change function signature to (id int32, count int16) (invID, slotID, error)
 
 	// findIndex := func(items []item, item item) int {
@@ -669,79 +598,79 @@ func (p *Player) RemoveItem(remove item) {
 
 	// switch remove.invID {
 	// case 1:
-	// 	if i := findIndex(p.inventory.equip, remove); i != 0 {
-	// 		p.inventory.equip[i] = p.inventory.equip[len(p.inventory.equip)-1]
-	// 		p.inventory.equip = p.inventory.equip[:len(p.inventory.equip)-1]
+	// 	if i := findIndex(d.inventory.equip, remove); i != 0 {
+	// 		d.inventory.equip[i] = d.inventory.equip[len(d.inventory.equip)-1]
+	// 		d.inventory.equip = d.inventory.equip[:len(d.inventory.equip)-1]
 	// 	}
 	// case 2:
-	// 	if i := findIndex(p.inventory.use, remove); i != 0 {
-	// 		p.inventory.use[i] = p.inventory.use[len(p.inventory.use)-1]
-	// 		p.inventory.use = p.inventory.use[:len(p.inventory.use)-1]
+	// 	if i := findIndex(d.inventory.use, remove); i != 0 {
+	// 		d.inventory.use[i] = d.inventory.use[len(d.inventory.use)-1]
+	// 		d.inventory.use = d.inventory.use[:len(d.inventory.use)-1]
 	// 	}
 	// case 3:
-	// 	if i := findIndex(p.inventory.setUp, remove); i != 0 {
-	// 		p.inventory.setUp[i] = p.inventory.setUp[len(p.inventory.setUp)-1]
-	// 		p.inventory.setUp = p.inventory.setUp[:len(p.inventory.setUp)-1]
+	// 	if i := findIndex(d.inventory.setUp, remove); i != 0 {
+	// 		d.inventory.setUp[i] = d.inventory.setUp[len(d.inventory.setUp)-1]
+	// 		d.inventory.setUp = d.inventory.setUp[:len(d.inventory.setUp)-1]
 	// 	}
 	// case 4:
-	// 	if i := findIndex(p.inventory.etc, remove); i != 0 {
-	// 		p.inventory.etc[i] = p.inventory.etc[len(p.inventory.etc)-1]
-	// 		p.inventory.etc = p.inventory.etc[:len(p.inventory.etc)-1]
+	// 	if i := findIndex(d.inventory.etc, remove); i != 0 {
+	// 		d.inventory.etc[i] = d.inventory.etc[len(d.inventory.etc)-1]
+	// 		d.inventory.etc = d.inventory.etc[:len(d.inventory.etc)-1]
 	// 	}
 	// case 5:
-	// 	if i := findIndex(p.inventory.cash, remove); i != 0 {
-	// 		p.inventory.cash[i] = p.inventory.cash[len(p.inventory.cash)-1]
-	// 		p.inventory.cash = p.inventory.cash[:len(p.inventory.cash)-1]
+	// 	if i := findIndex(d.inventory.cash, remove); i != 0 {
+	// 		d.inventory.cash[i] = d.inventory.cash[len(d.inventory.cash)-1]
+	// 		d.inventory.cash = d.inventory.cash[:len(d.inventory.cash)-1]
 	// 	}
 	// }
 }
 
-// GetItem from player
-func (p Player) GetItem(invID byte, slotID int16) (item, error) {
-	var result item
+// GetItem from Data
+func (d Data) GetItem(invID byte, slotID int16) (item.Data, error) {
+	var result item.Data
 	var err error
 
-	findItem := func(items []item, slotID int16) (item, error) {
+	findItem := func(items []item.Data, slotID int16) (item.Data, error) {
 		for _, v := range items {
 			if v.SlotID() == slotID {
 				return v, nil
 			}
 		}
 
-		return nil, fmt.Errorf("Unable to get item")
+		return item.Data{}, fmt.Errorf("Unable to get item")
 	}
 
 	switch invID {
 	case 1:
-		result, err = findItem(p.equip, slotID)
+		result, err = findItem(d.equip, slotID)
 	case 2:
-		result, err = findItem(p.use, slotID)
+		result, err = findItem(d.use, slotID)
 	case 3:
-		result, err = findItem(p.setUp, slotID)
+		result, err = findItem(d.setUp, slotID)
 	case 4:
-		result, err = findItem(p.etc, slotID)
+		result, err = findItem(d.etc, slotID)
 	case 5:
-		result, err = findItem(p.cash, slotID)
+		result, err = findItem(d.cash, slotID)
 	}
 
 	return result, err
 }
 
 // UpdateItem with the same database id
-func (p *Player) UpdateItem(orig, new item) {
-	var items []item
+func (d *Data) UpdateItem(orig, new item.Data) {
+	var items []item.Data
 
 	switch new.InvID() {
 	case 1:
-		items = p.equip
+		items = d.equip
 	case 2:
-		items = p.use
+		items = d.use
 	case 3:
-		items = p.setUp
+		items = d.setUp
 	case 4:
-		items = p.etc
+		items = d.etc
 	case 5:
-		items = p.cash
+		items = d.cash
 	}
 
 	for i, v := range items {
@@ -753,153 +682,153 @@ func (p *Player) UpdateItem(orig, new item) {
 }
 
 // UpdateSkill map entry
-func (p *Player) UpdateSkill(updatedSkill Skill) {
-	p.skills[updatedSkill.ID] = updatedSkill
-	p.Send(packetPlayerSkillBookUpdate(updatedSkill.ID, int32(updatedSkill.Level)))
+func (d *Data) UpdateSkill(updatedSkill Skill) {
+	d.skills[updatedSkill.ID] = updatedSkill
+	d.Send(packetPlayerSkillBookUpdate(updatedSkill.ID, int32(updatedSkill.Level)))
 }
 
-// ID of player
-func (p Player) ID() int32 { return p.id }
+// ID of Data
+func (d Data) ID() int32 { return d.id }
 
-// AccountID of player
-func (p Player) AccountID() int32 { return p.accountID }
+// AccountID of Data
+func (d Data) AccountID() int32 { return d.accountID }
 
-// WorldID of player
-func (p Player) WorldID() byte { return p.worldID }
+// WorldID of Data
+func (d Data) WorldID() byte { return d.worldID }
 
-// MapID of player
-func (p Player) MapID() int32 { return p.mapID }
+// MapID of Data
+func (d Data) MapID() int32 { return d.mapID }
 
-// MapPos of player
-func (p Player) MapPos() byte { return p.mapPos }
+// MapPos of Data
+func (d Data) MapPos() byte { return d.mapPos }
 
-// PreviousMap the player was on
-func (p Player) PreviousMap() int32 { return p.previousMap }
+// PreviousMap the Data was on
+func (d Data) PreviousMap() int32 { return d.previousMap }
 
-// PortalCount of player, used in detecting warp hacking
-func (p Player) PortalCount() byte { return p.portalCount }
+// PortalCount of Data, used in detecting warp hacking
+func (d Data) PortalCount() byte { return d.portalCount }
 
-// Job of player
-func (p Player) Job() int16 { return p.job }
+// Job of Data
+func (d Data) Job() int16 { return d.job }
 
-// Level of player
-func (p Player) Level() byte { return p.level }
+// Level of Data
+func (d Data) Level() byte { return d.level }
 
-// Str of player
-func (p Player) Str() int16 { return p.str }
+// Str of Data
+func (d Data) Str() int16 { return d.str }
 
-//Dex of player
-func (p Player) Dex() int16 { return p.dex }
+//Dex of Data
+func (d Data) Dex() int16 { return d.dex }
 
-// Int of player
-func (p Player) Int() int16 { return p.intt }
+// Int of Data
+func (d Data) Int() int16 { return d.intt }
 
-// Luk of player
-func (p Player) Luk() int16 { return p.luk }
+// Luk of Data
+func (d Data) Luk() int16 { return d.luk }
 
-// HP of player
-func (p Player) HP() int16 { return p.hp }
+// HP of Data
+func (d Data) HP() int16 { return d.hp }
 
-// MaxHP of player
-func (p Player) MaxHP() int16 { return p.maxHP }
+// MaxHP of Data
+func (d Data) MaxHP() int16 { return d.maxHP }
 
-// MP of player
-func (p Player) MP() int16 { return p.mp }
+// MP of Data
+func (d Data) MP() int16 { return d.mp }
 
-// MaxMP of player
-func (p Player) MaxMP() int16 { return p.maxMP }
+// MaxMP of Data
+func (d Data) MaxMP() int16 { return d.maxMP }
 
-// AP of player
-func (p Player) AP() int16 { return p.ap }
+// AP of Data
+func (d Data) AP() int16 { return d.ap }
 
-// SP of player
-func (p Player) SP() int16 { return p.sp }
+// SP of Data
+func (d Data) SP() int16 { return d.sp }
 
-// Exp of player
-func (p Player) Exp() int32 { return p.exp }
+// Exp of Data
+func (d Data) Exp() int32 { return d.exp }
 
-// Fame of player
-func (p Player) Fame() int16 { return p.fame }
+// Fame of Data
+func (d Data) Fame() int16 { return d.fame }
 
-// Name of player
-func (p Player) Name() string { return p.name }
+// Name of Data
+func (d Data) Name() string { return d.name }
 
-// Gender of player
-func (p Player) Gender() byte { return p.gender }
+// Gender of Data
+func (d Data) Gender() byte { return d.gender }
 
-// Skin id of player
-func (p Player) Skin() byte { return p.skin }
+// Skin id of Data
+func (d Data) Skin() byte { return d.skin }
 
-// Face id of player
-func (p Player) Face() int32 { return p.face }
+// Face id of Data
+func (d Data) Face() int32 { return d.face }
 
-// Hair id of player
-func (p Player) Hair() int32 { return p.hair }
+// Hair id of Data
+func (d Data) Hair() int32 { return d.hair }
 
-// ChairID of the chair the player is sitting on
-func (p Player) ChairID() int32 { return p.chairID }
+// ChairID of the chair the Data is sitting on
+func (d Data) ChairID() int32 { return d.chairID }
 
 // Stance id
-func (p Player) Stance() byte { return p.stance }
+func (d Data) Stance() byte { return d.stance }
 
-// Pos of player
-func (p Player) Pos() pos.Data { return p.pos }
+// Pos of Data
+func (d Data) Pos() pos.Data { return d.pos }
 
-// Foothold player is currently tied to
-func (p Player) Foothold() int16 { return p.foothold }
+// Foothold Data is currently tied to
+func (d Data) Foothold() int16 { return d.foothold }
 
-// Guild name player is currenty part of
-func (p Player) Guild() string { return p.guild }
+// Guild name Data is currenty part of
+func (d Data) Guild() string { return d.guild }
 
 // EquipSlotSize in inventory
-func (p Player) EquipSlotSize() byte { return p.equipSlotSize }
+func (d Data) EquipSlotSize() byte { return d.equipSlotSize }
 
 // UseSlotSize in inventory
-func (p Player) UseSlotSize() byte { return p.useSlotSize }
+func (d Data) UseSlotSize() byte { return d.useSlotSize }
 
 // SetupSlotSize in inventory
-func (p Player) SetupSlotSize() byte { return p.setupSlotSize }
+func (d Data) SetupSlotSize() byte { return d.setupSlotSize }
 
 // EtcSlotSize in inventory
-func (p Player) EtcSlotSize() byte { return p.etcSlotSize }
+func (d Data) EtcSlotSize() byte { return d.etcSlotSize }
 
 //CashSlotSize in inventory
-func (p Player) CashSlotSize() byte { return p.cashSlotSize }
+func (d Data) CashSlotSize() byte { return d.cashSlotSize }
 
-// Mesos player currently has
-func (p Player) Mesos() int32 { return p.mesos }
+// Mesos Data currently has
+func (d Data) Mesos() int32 { return d.mesos }
 
-// Skills and their levels the player currently has
-func (p Player) Skills() map[int32]Skill { return p.skills }
+// Skills and their levels the Data currently has
+func (d Data) Skills() map[int32]Skill { return d.skills }
 
 // MiniGameWins between omok and memory
-func (p Player) MiniGameWins() int32 { return p.miniGameWins }
+func (d Data) MiniGameWins() int32 { return d.miniGameWins }
 
 // MiniGameDraw betweeen omok and memory
-func (p Player) MiniGameDraw() int32 { return p.miniGameDraw }
+func (d Data) MiniGameDraw() int32 { return d.miniGameDraw }
 
 // MiniGameLoss between omok and memory
-func (p Player) MiniGameLoss() int32 { return p.miniGameLoss }
+func (d Data) MiniGameLoss() int32 { return d.miniGameLoss }
 
-// DisplayBytes used in packets for displaying player in various situations e.g. in field, in mini game room
-func (p Player) DisplayBytes() []byte {
+// DisplayBytes used in packets for displaying Data in various situations e.g. in field, in mini game room
+func (d Data) DisplayBytes() []byte {
 	pkt := mpacket.NewPacket()
-	pkt.WriteByte(p.gender)
-	pkt.WriteByte(p.skin)
-	pkt.WriteInt32(p.face)
+	pkt.WriteByte(d.gender)
+	pkt.WriteByte(d.skin)
+	pkt.WriteInt32(d.face)
 	pkt.WriteByte(0x00) // ?
-	pkt.WriteInt32(p.hair)
+	pkt.WriteInt32(d.hair)
 
 	cashWeapon := int32(0)
 
-	for _, b := range p.equip {
+	for _, b := range d.equip {
 		if b.SlotID() < 0 && b.SlotID() > -20 {
 			pkt.WriteByte(byte(math.Abs(float64(b.SlotID()))))
 			pkt.WriteInt32(b.ID())
 		}
 	}
 
-	for _, b := range p.equip {
+	for _, b := range d.equip {
 		if b.SlotID() < -100 {
 			if b.SlotID() == -111 {
 				cashWeapon = b.ID()
@@ -917,54 +846,56 @@ func (p Player) DisplayBytes() []byte {
 	return pkt
 }
 
-// Save player detail that is not saved via actions
-func (p Player) Save(db *sql.DB, inst instance) error {
+// Save Data detail that is not saved via actions
+func (d Data) Save(db *sql.DB, inst instance) error {
 	query := `UPDATE characters set skin=?, hair=?, face=?, level=?,
 	job=?, str=?, dex=?, intt=?, luk=?, hp=?, maxHP=?, mp=?, maxMP=?,
 	ap=?, sp=?, exp=?, fame=?, mapID=?, mapPos=?, mesos=? WHERE id=?`
 
 	// need to calculate nearest spawn point for mapPos
-	portal, err := inst.CalculateNearestSpawnPortal(p.pos)
+	mapPos, err := inst.CalculateNearestSpawnPortalID(d.pos)
 
-	if err == nil {
-		p.mapPos = portal.ID()
+	if err != nil {
+		mapPos = 0 // This will be triggered by the login server as a new character has no instance
 	}
 
+	d.mapPos = mapPos
+
 	_, err = db.Exec(query,
-		p.skin, p.hair, p.face, p.level, p.job, p.str, p.dex, p.intt, p.luk, p.hp, p.maxHP, p.mp,
-		p.maxMP, p.ap, p.sp, p.exp, p.fame, p.mapID, p.mapPos, p.mesos, p.id)
+		d.skin, d.hair, d.face, d.level, d.job, d.str, d.dex, d.intt, d.luk, d.hp, d.maxHP, d.mp,
+		d.maxMP, d.ap, d.sp, d.exp, d.fame, d.mapID, d.mapPos, d.mesos, d.id)
 
 	// TODO: Move these out into relevant item operations, add item, move item etc
 	// send sql queries to a dedicated green thread for item updates once a db id is acquired
-	for _, v := range p.equip {
-		v.Save(db, p.id)
+	for _, v := range d.equip {
+		v.Save(db, d.id)
 	}
 
-	for _, v := range p.use {
-		v.Save(db, p.id)
+	for _, v := range d.use {
+		v.Save(db, d.id)
 	}
 
-	for _, v := range p.setUp {
-		v.Save(db, p.id)
+	for _, v := range d.setUp {
+		v.Save(db, d.id)
 	}
 
-	for _, v := range p.etc {
-		v.Save(db, p.id)
+	for _, v := range d.etc {
+		v.Save(db, d.id)
 	}
 
-	for _, v := range p.cash {
-		v.Save(db, p.id)
+	for _, v := range d.cash {
+		v.Save(db, d.id)
 	}
 
 	// TODO: Move this into skill book update, this happens 3 times every level (or 15 at a time for min maxers)
 	// There has to be a better way of doing this in mysql
-	for skillID, skill := range p.skills {
+	for skillID, skill := range d.skills {
 		query = `UPDATE skills SET level=?, cooldown=? WHERE skillID=? AND characterID=?`
-		result, err := db.Exec(query, skill.Level, skill.Cooldown, skillID, p.id)
+		result, err := db.Exec(query, skill.Level, skill.Cooldown, skillID, d.id)
 
 		if rows, _ := result.RowsAffected(); rows < 1 || err != nil {
 			query = `INSERT INTO skills (characterID, skillID, level, cooldown) VALUES (?, ?, ?, ?)`
-			_, err = db.Exec(query, p.id, skillID, skill.Level, 0)
+			_, err = db.Exec(query, d.id, skillID, skill.Level, 0)
 		}
 	}
 

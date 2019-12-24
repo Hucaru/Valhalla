@@ -5,6 +5,7 @@ import (
 
 	"github.com/Hucaru/Valhalla/constant/opcode"
 	"github.com/Hucaru/Valhalla/mpacket"
+	"github.com/Hucaru/Valhalla/server/item"
 )
 
 func packetPlayerReceivedDmg(charID int32, attack int8, initalAmmount, reducedAmmount, spawnID, mobID, healSkillID int32,
@@ -88,7 +89,7 @@ func packetPlayerNoChange() mpacket.Packet {
 	return p
 }
 
-func packetPlayerAvatarSummaryWindow(charID int32, plr Player, guildName string) mpacket.Packet {
+func packetPlayerAvatarSummaryWindow(charID int32, plr Data, guildName string) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelAvatarInfoWindow)
 	p.WriteInt32(plr.id)
 	p.WriteByte(plr.level)
@@ -126,7 +127,7 @@ func packetCannotEnterCashShop() mpacket.Packet {
 	return p
 }
 
-func packetPlayerEnterGame(plr Player, channelID int32) mpacket.Packet {
+func packetPlayerEnterGame(plr Data, channelID int32) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelWarpToMap)
 	p.WriteInt32(channelID)
 	p.WriteByte(0) // character portal counter
@@ -272,7 +273,7 @@ func packetMessageExpGained(whiteText, appearInChat bool, ammount int32) mpacket
 	return p
 }
 
-func packetInventoryAddItem(item item, newItem bool) mpacket.Packet {
+func packetInventoryAddItem(item item.Data, newItem bool) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelInventoryOperation)
 	p.WriteByte(0x01)
 	p.WriteByte(0x01)
@@ -289,7 +290,7 @@ func packetInventoryAddItem(item item, newItem bool) mpacket.Packet {
 	return p
 }
 
-func packetInventoryAddItems(items []item, newItem []bool) mpacket.Packet {
+func packetInventoryAddItems(items []item.Data, newItem []bool) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelInventoryOperation)
 
 	p.WriteByte(0x01)

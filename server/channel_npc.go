@@ -1,7 +1,6 @@
 package server
 
 import (
-	"github.com/Hucaru/Valhalla/entity"
 	"github.com/Hucaru/Valhalla/mnet"
 	"github.com/Hucaru/Valhalla/mpacket"
 )
@@ -10,13 +9,13 @@ func (server *ChannelServer) npcMovement(conn mnet.Client, reader mpacket.Reader
 	data := reader.GetRestAsBytes()
 	id := reader.ReadInt32()
 
-	player, err := server.players.GetFromConn(conn)
+	player, err := server.players.getFromConn(conn)
 
 	if err != nil {
 		return
 	}
 
-	field, ok := server.fields[player.Char().MapID()]
+	field, ok := server.fields[player.MapID()]
 
 	if !ok {
 		return
@@ -29,10 +28,5 @@ func (server *ChannelServer) npcMovement(conn mnet.Client, reader mpacket.Reader
 	}
 
 	npc := inst.GetNpc(id)
-
-	if npc.Controller() != conn {
-		conn.Send(entity.PacketNpcSetController(id, false))
-	}
-
-	inst.Send(entity.PacketNpcMovement(data))
+	npc.AcknowledgeController(player, inst, data)
 }

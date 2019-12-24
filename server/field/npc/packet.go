@@ -12,3 +12,10 @@ func packetNpcSetController(npcID int32, isLocal bool) mpacket.Packet {
 
 	return p
 }
+
+func packetNpcMovement(bytes []byte) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelNpcMovement)
+	p.WriteBytes(bytes)
+
+	return p
+}

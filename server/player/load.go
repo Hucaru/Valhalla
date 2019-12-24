@@ -8,8 +8,8 @@ import (
 )
 
 // GetCharactersFromAccountWorldID - characters under a specific account
-func GetCharactersFromAccountWorldID(db *sql.DB, accountID int32, worldID byte) []Player {
-	c := []Player{}
+func GetCharactersFromAccountWorldID(db *sql.DB, accountID int32, worldID byte) []Data {
+	c := []Data{}
 
 	filter := "id,accountID,worldID,name,gender,skin,hair,face,level,job,str,dex,intt," +
 		"luk,hp,maxHP,mp,maxMP,ap,sp, exp,fame,mapID,mapPos,previousMapID,mesos," +
@@ -24,7 +24,7 @@ func GetCharactersFromAccountWorldID(db *sql.DB, accountID int32, worldID byte) 
 	defer chars.Close()
 
 	for chars.Next() {
-		var char Player
+		var char Data
 
 		err = chars.Scan(&char.id, &char.accountID, &char.worldID, &char.name, &char.gender, &char.skin, &char.hair,
 			&char.face, &char.level, &char.job, &char.str, &char.dex, &char.intt, &char.luk, &char.hp, &char.maxHP,
@@ -43,7 +43,7 @@ func GetCharactersFromAccountWorldID(db *sql.DB, accountID int32, worldID byte) 
 }
 
 // LoadFromID - player id to load from database
-func (c *Player) LoadFromID(db *sql.DB, id int32) {
+func (c *Data) LoadFromID(db *sql.DB, id int32) {
 	filter := "id,accountID,worldID,name,gender,skin,hair,face,level,job,str,dex,intt," +
 		"luk,hp,maxHP,mp,maxMP,ap,sp, exp,fame,mapID,mapPos,previousMapID,mesos," +
 		"equipSlotSize,useSlotSize,setupSlotSize,etcSlotSize,cashSlotSize"

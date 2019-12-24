@@ -10,6 +10,7 @@ import (
 	"github.com/Hucaru/Valhalla/mnet"
 	"github.com/Hucaru/Valhalla/mpacket"
 	"github.com/Hucaru/Valhalla/nx"
+	"github.com/Hucaru/Valhalla/server/item"
 )
 
 func (server *ChannelServer) chatSendAll(conn mnet.Client, reader mpacket.Reader) {
@@ -18,21 +19,19 @@ func (server *ChannelServer) chatSendAll(conn mnet.Client, reader mpacket.Reader
 	if strings.Index(msg, "/") == 0 && conn.GetAdminLevel() > 0 {
 		server.gmCommand(conn, msg)
 	} else {
-		player, err := server.players.GetFromConn(conn)
+		player, err := server.players.getFromConn(conn)
 
 		if err != nil {
 			return
 		}
 
-		char := player.Char()
-
-		inst, err := server.fields[char.MapID()].GetInstance(player.InstanceID())
+		inst, err := server.fields[player.MapID()].GetInstance(player.InstanceID())
 
 		if err != nil {
 			return
 		}
 
-		inst.Send(entity.PacketMessageAllChat(char.ID(), conn.GetAdminLevel() > 0, msg))
+		inst.Send(entity.PacketMessageAllChat(player.ID(), conn.GetAdminLevel() > 0, msg))
 	}
 }
 
@@ -56,14 +55,14 @@ func (server *ChannelServer) gmCommand(conn mnet.Client, msg string) {
 		data = append(make([]byte, 4), data...)
 		conn.Send(data)
 	case "mapInfo":
-		player, err := server.players.GetFromConn(conn)
+		player, err := server.players.getFromConn(conn)
 
 		if err != nil {
 			conn.Send(entity.PacketMessageRedText(err.Error()))
 			return
 		}
 
-		field, ok := server.fields[player.Char().MapID()]
+		field, ok := server.fields[player.MapID()]
 
 		if !ok {
 			return
@@ -76,14 +75,14 @@ func (server *ChannelServer) gmCommand(conn mnet.Client, msg string) {
 			conn.Send(entity.PacketMessageNotice(info))
 		}
 	case "pos":
-		player, err := server.players.GetFromConn(conn)
+		player, err := server.players.getFromConn(conn)
 
 		if err != nil {
 			conn.Send(entity.PacketMessageRedText(err.Error()))
 			return
 		}
 
-		conn.Send(entity.PacketMessageNotice(player.Char().Pos().String()))
+		conn.Send(entity.PacketMessageNotice(player.Pos().String()))
 	case "notice":
 		if len(command) < 2 {
 			return
@@ -113,10 +112,10 @@ func (server *ChannelServer) gmCommand(conn mnet.Client, msg string) {
 	case "wheader": // sends to world server to propagate to all channels
 
 	case "kill":
-		player, err := server.players.GetFromConn(conn)
+		player, err := server.players.getFromConn(conn)
 
 		if len(command) == 2 {
-			player, err = server.players.GetFromName(command[1])
+			player, err = server.players.getFromName(command[1])
 		}
 
 		if err != nil {
@@ -126,10 +125,10 @@ func (server *ChannelServer) gmCommand(conn mnet.Client, msg string) {
 
 		player.SetHP(0)
 	case "revive":
-		player, err := server.players.GetFromConn(conn)
+		player, err := server.players.getFromConn(conn)
 
 		if len(command) == 2 {
-			player, err = server.players.GetFromName(command[1])
+			player, err = server.players.getFromName(command[1])
 		}
 
 		if err != nil {
@@ -137,20 +136,20 @@ func (server *ChannelServer) gmCommand(conn mnet.Client, msg string) {
 			return
 		}
 
-		player.SetHP(player.Char().MaxHP())
+		player.SetHP(player.MaxHP())
 	case "cody":
 	case "admin":
 	case "shop":
 	case "style":
 	case "createInstance":
-		player, err := server.players.GetFromConn(conn)
+		player, err := server.players.getFromConn(conn)
 
 		if err != nil {
 			conn.Send(entity.PacketMessageRedText(err.Error()))
 			return
 		}
 
-		field, ok := server.fields[player.Char().MapID()]
+		field, ok := server.fields[player.MapID()]
 
 		if !ok {
 			return
@@ -160,7 +159,7 @@ func (server *ChannelServer) gmCommand(conn mnet.Client, msg string) {
 
 		conn.Send(entity.PacketMessageNotice("Created instance: " + strconv.Itoa(id)))
 	case "changeInstance":
-		player, err := server.players.GetFromConn(conn)
+		player, err := server.players.getFromConn(conn)
 
 		if err != nil {
 			conn.Send(entity.PacketMessageRedText(err.Error()))
@@ -172,7 +171,7 @@ func (server *ChannelServer) gmCommand(conn mnet.Client, msg string) {
 		if len(command) == 2 {
 			instanceID, err = strconv.Atoi(command[1])
 		} else if len(command) == 3 {
-			player, err = server.players.GetFromName(command[1])
+			player, err = server.players.getFromName(command[1])
 
 			if err != nil {
 				conn.Send(entity.PacketMessageRedText(err.Error()))
@@ -182,7 +181,7 @@ func (server *ChannelServer) gmCommand(conn mnet.Client, msg string) {
 			instanceID, err = strconv.Atoi(command[2])
 		}
 
-		field, ok := server.fields[player.Char().MapID()]
+		field, ok := server.fields[player.MapID()]
 
 		if !ok {
 			return
@@ -212,7 +211,7 @@ func (server *ChannelServer) gmCommand(conn mnet.Client, msg string) {
 			return
 		}
 
-		player, err := server.players.GetFromConn(conn)
+		player, err := server.players.getFromConn(conn)
 
 		if err != nil {
 			conn.Send(entity.PacketMessageRedText(err.Error()))
@@ -224,7 +223,7 @@ func (server *ChannelServer) gmCommand(conn mnet.Client, msg string) {
 			return
 		}
 
-		field, ok := server.fields[player.Char().MapID()]
+		field, ok := server.fields[player.MapID()]
 
 		if !ok {
 			return
@@ -239,12 +238,12 @@ func (server *ChannelServer) gmCommand(conn mnet.Client, msg string) {
 
 		conn.Send(entity.PacketMessageNotice("Deleted"))
 	case "hp":
-		player, err := server.players.GetFromConn(conn)
+		player, err := server.players.getFromConn(conn)
 
 		var amount int
 
 		if len(command) == 3 {
-			player, err = server.players.GetFromName(command[1])
+			player, err = server.players.getFromName(command[1])
 			amount, err = strconv.Atoi(command[2])
 		} else if len(command) == 2 {
 			amount, err = strconv.Atoi(command[1])
@@ -255,18 +254,18 @@ func (server *ChannelServer) gmCommand(conn mnet.Client, msg string) {
 			return
 		}
 
-		if int16(amount) > player.Char().MaxHP() {
+		if int16(amount) > player.MaxHP() {
 			player.SetMaxHP(int16(amount))
 		}
 
 		player.SetHP(int16(amount))
 	case "mp":
-		player, err := server.players.GetFromConn(conn)
+		player, err := server.players.getFromConn(conn)
 
 		var amount int
 
 		if len(command) == 3 {
-			player, err = server.players.GetFromName(command[1])
+			player, err = server.players.getFromName(command[1])
 			amount, err = strconv.Atoi(command[2])
 		} else if len(command) == 2 {
 			amount, err = strconv.Atoi(command[1])
@@ -277,18 +276,18 @@ func (server *ChannelServer) gmCommand(conn mnet.Client, msg string) {
 			return
 		}
 
-		if int16(amount) > player.Char().MaxMP() {
+		if int16(amount) > player.MaxMP() {
 			player.SetMaxMP(int16(amount))
 		}
 
 		player.SetMP(int16(amount))
 	case "exp":
-		player, err := server.players.GetFromConn(conn)
+		player, err := server.players.getFromConn(conn)
 
 		var amount int
 
 		if len(command) == 3 {
-			player, err = server.players.GetFromName(command[1])
+			player, err = server.players.getFromName(command[1])
 			amount, err = strconv.Atoi(command[2])
 		} else if len(command) == 2 {
 			amount, err = strconv.Atoi(command[1])
@@ -299,7 +298,7 @@ func (server *ChannelServer) gmCommand(conn mnet.Client, msg string) {
 			return
 		}
 
-		field, ok := server.fields[player.Char().MapID()]
+		field, ok := server.fields[player.MapID()]
 
 		if !ok {
 			return
@@ -314,12 +313,12 @@ func (server *ChannelServer) gmCommand(conn mnet.Client, msg string) {
 
 		player.SetEXP(int32(amount), inst)
 	case "level":
-		player, err := server.players.GetFromConn(conn)
+		player, err := server.players.getFromConn(conn)
 
 		var amount int
 
 		if len(command) == 3 {
-			player, err = server.players.GetFromName(command[1])
+			player, err = server.players.getFromName(command[1])
 			amount, err = strconv.Atoi(command[2])
 		} else if len(command) == 2 {
 			amount, err = strconv.Atoi(command[1])
@@ -330,7 +329,7 @@ func (server *ChannelServer) gmCommand(conn mnet.Client, msg string) {
 			return
 		}
 
-		field, ok := server.fields[player.Char().MapID()]
+		field, ok := server.fields[player.MapID()]
 
 		if !ok {
 			return
@@ -345,12 +344,12 @@ func (server *ChannelServer) gmCommand(conn mnet.Client, msg string) {
 
 		player.SetLevel(byte(amount), inst)
 	case "levelup":
-		player, err := server.players.GetFromConn(conn)
+		player, err := server.players.getFromConn(conn)
 
 		var amount int
 
 		if len(command) == 3 {
-			player, err = server.players.GetFromName(command[1])
+			player, err = server.players.getFromName(command[1])
 			amount, err = strconv.Atoi(command[2])
 		} else if len(command) == 2 {
 			amount, err = strconv.Atoi(command[1])
@@ -361,7 +360,7 @@ func (server *ChannelServer) gmCommand(conn mnet.Client, msg string) {
 			return
 		}
 
-		field, ok := server.fields[player.Char().MapID()]
+		field, ok := server.fields[player.MapID()]
 
 		if !ok {
 			return
@@ -394,7 +393,7 @@ func (server *ChannelServer) gmCommand(conn mnet.Client, msg string) {
 			jobID = convertJobNameToID(jobName)
 		}
 
-		player, err := server.players.GetFromConn(conn)
+		player, err := server.players.getFromConn(conn)
 
 		if err != nil {
 			conn.Send(entity.PacketMessageRedText(err.Error()))
@@ -428,21 +427,21 @@ func (server *ChannelServer) gmCommand(conn mnet.Client, msg string) {
 			}
 		}
 
-		item, err := entity.CreateItemFromID(itemID, amount)
+		item, err := item.CreateFromID(itemID, amount)
 
 		if err != nil {
 			conn.Send(entity.PacketMessageRedText(err.Error()))
 			return
 		}
 
-		player, err := server.players.GetFromConn(conn)
+		player, err := server.players.getFromConn(conn)
 
 		if err != nil {
 			conn.Send(entity.PacketMessageRedText(err.Error()))
 			return
 		}
 
-		item.SetCreatorName(player.Char().Name())
+		item.SetCreatorName(player.Name())
 		err = player.GiveItem(item)
 
 		if err != nil {
@@ -457,7 +456,7 @@ func (server *ChannelServer) gmCommand(conn mnet.Client, msg string) {
 				return
 			}
 
-			player, err := server.players.GetFromConn(conn)
+			player, err := server.players.getFromConn(conn)
 
 			if err != nil {
 				conn.Send(entity.PacketMessageRedText(err.Error()))
@@ -493,7 +492,7 @@ func (server *ChannelServer) gmCommand(conn mnet.Client, msg string) {
 			return
 		}
 
-		player, err := server.players.GetFromConn(conn)
+		player, err := server.players.getFromConn(conn)
 
 		if err != nil {
 			conn.Send(entity.PacketMessageRedText(err.Error()))
@@ -522,7 +521,7 @@ func (server *ChannelServer) gmCommand(conn mnet.Client, msg string) {
 		}
 
 		if playerName != "" {
-			player, err = server.players.GetFromName(playerName)
+			player, err = server.players.getFromName(playerName)
 
 			if err != nil {
 				conn.Send(entity.PacketMessageRedText(err.Error()))
@@ -538,18 +537,8 @@ func (server *ChannelServer) gmCommand(conn mnet.Client, msg string) {
 		}
 
 		server.warpPlayer(player, dstField, portal)
-	case "spawnDoor":
-		player, err := server.players.GetFromConn(conn)
-
-		if err != nil {
-			conn.Send(entity.PacketMessageRedText(err.Error()))
-			return
-		}
-
-		player.Send(entity.PacketMapSpawnMysticDoor(1, player.Char().Pos(), false))
-		player.Send(entity.PacketMapSpawnTownPortal(player.Char().MapID(), player.Char().MapID(), player.Char().Pos()))
 	case "loadout":
-		player, err := server.players.GetFromConn(conn)
+		player, err := server.players.getFromConn(conn)
 
 		if err != nil {
 			conn.Send(entity.PacketMessageRedText(err.Error()))
@@ -559,14 +548,14 @@ func (server *ChannelServer) gmCommand(conn mnet.Client, msg string) {
 		items := []int32{1372010, 1402005, 1422013, 1412021, 1382016, 1432030, 1442002, 1302023, 1322045, 1312015, 1332027, 1332026, 1462017, 1472033, 1452020, 1092029, 1092025}
 
 		for _, v := range items {
-			item, err := entity.CreatePerfectItemFromID(v, 1)
+			item, err := item.CreatePerfectFromID(v, 1)
 
 			if err != nil {
 				conn.Send(entity.PacketMessageRedText(err.Error()))
 				return
 			}
 
-			item.SetCreatorName(player.Char().Name())
+			item.SetCreatorName(player.Name())
 			err = player.GiveItem(item)
 
 			if err != nil {

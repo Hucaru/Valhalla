@@ -8,6 +8,9 @@ import (
 	"github.com/Hucaru/Valhalla/entity"
 	"github.com/Hucaru/Valhalla/mnet"
 	"github.com/Hucaru/Valhalla/mpacket"
+	"github.com/Hucaru/Valhalla/server/field"
+	"github.com/Hucaru/Valhalla/server/item"
+	"github.com/Hucaru/Valhalla/server/player"
 )
 
 func (server *ChannelServer) playerConnect(conn mnet.Client, reader mpacket.Reader) {
@@ -34,8 +37,6 @@ func (server *ChannelServer) playerConnect(conn mnet.Client, reader mpacket.Read
 	}
 
 	conn.SetAccountID(accountID)
-	char := entity.Character{}
-	char.LoadFromID(server.db, charID)
 
 	var adminLevel int
 	err = server.db.QueryRow("SELECT adminLevel FROM accounts WHERE accountID=?", conn.GetAccountID()).Scan(&adminLevel)
@@ -61,12 +62,15 @@ func (server *ChannelServer) playerConnect(conn mnet.Client, reader mpacket.Read
 		return
 	}
 
-	server.players = append(server.players, entity.NewPlayer(conn, char))
+	equip, use, setUp, etc, cash := item.LoadInventoryFromDb(server.db, charID)
+	plr := player.New(conn, equip, use, setUp, etc, cash)
+
+	server.players = append(server.players, plr)
 
 	conn.Send(entity.PacketPlayerEnterGame(char, int32(server.id)))
 	conn.Send(entity.PacketMessageScrollingHeader(server.header))
 
-	field, ok := server.fields[char.MapID()]
+	field, ok := server.fields[plr.MapID()]
 
 	if !ok {
 		return
@@ -85,7 +89,7 @@ func (server *ChannelServer) playerChangeChannel(conn mnet.Client, reader mpacke
 	id := reader.ReadByte()
 
 	server.migrating = append(server.migrating, conn)
-	player, err := server.players.GetFromConn(conn)
+	player, err := server.players.getFromConn(conn)
 
 	if err != nil {
 		log.Println("Unable to get player from connection", conn)
@@ -111,7 +115,7 @@ func (server *ChannelServer) playerChangeChannel(conn mnet.Client, reader mpacke
 }
 
 func (server ChannelServer) playerMovement(conn mnet.Client, reader mpacket.Reader) {
-	player, err := server.players.GetFromConn(conn)
+	player, err := server.players.getFromConn(conn)
 
 	if err != nil {
 		log.Println("Unable to get player from connection", conn)
@@ -152,7 +156,7 @@ func (server ChannelServer) playerMovement(conn mnet.Client, reader mpacket.Read
 func (server ChannelServer) playerEmote(conn mnet.Client, reader mpacket.Reader) {
 	emote := reader.ReadInt32()
 
-	player, err := server.players.GetFromConn(conn)
+	player, err := server.players.getFromConn(conn)
 
 	if err != nil {
 		return
@@ -176,7 +180,7 @@ func (server ChannelServer) playerEmote(conn mnet.Client, reader mpacket.Reader)
 }
 
 func (server ChannelServer) playerUseMysticDoor(conn mnet.Client, reader mpacket.Reader) {
-	player, err := server.players.GetFromConn(conn)
+	player, err := server.players.getFromConn(conn)
 
 	if err != nil {
 		return
@@ -186,7 +190,7 @@ func (server ChannelServer) playerUseMysticDoor(conn mnet.Client, reader mpacket
 }
 
 func (server ChannelServer) playerAddStatPoint(conn mnet.Client, reader mpacket.Reader) {
-	player, err := server.players.GetFromConn(conn)
+	player, err := server.players.getFromConn(conn)
 
 	if err != nil {
 		return
@@ -230,7 +234,7 @@ func (server ChannelServer) playerPassiveRegen(conn mnet.Client, reader mpacket.
 	hp := reader.ReadInt16()
 	mp := reader.ReadInt16()
 
-	player, err := server.players.GetFromConn(conn)
+	player, err := server.players.getFromConn(conn)
 
 	if err != nil {
 		return
@@ -263,7 +267,7 @@ func (server ChannelServer) playerStand(conn mnet.Client, reader mpacket.Reader)
 }
 
 func (server ChannelServer) playerAddSkillPoint(conn mnet.Client, reader mpacket.Reader) {
-	player, err := server.players.GetFromConn(conn)
+	player, err := server.players.getFromConn(conn)
 
 	if err != nil {
 		return
@@ -421,7 +425,7 @@ func validateSkillWithJob(jobID int16, baseSkillID int32) bool {
 }
 
 func (server ChannelServer) playerUsePortal(conn mnet.Client, reader mpacket.Reader) {
-	player, err := server.players.GetFromConn(conn)
+	player, err := server.players.getFromConn(conn)
 
 	if err != nil {
 		return
@@ -513,11 +517,11 @@ func (server ChannelServer) playerUsePortal(conn mnet.Client, reader mpacket.Rea
 	}
 }
 
-func (server ChannelServer) warpPlayer(player *entity.Player, dstField *entity.Field, dstPortal entity.Portal) error {
-	srcField, ok := server.fields[player.Char().MapID()]
+func (server ChannelServer) warpPlayer(player *player.Data, dstField *field.Field, dstPortal field.Portal) error {
+	srcField, ok := server.fields[player.MapID()]
 
 	if !ok {
-		return fmt.Errorf("Error in map id %d", player.Char().MapID())
+		return fmt.Errorf("Error in map id %d", player.MapID())
 	}
 
 	srcInst, err := srcField.GetInstance(player.InstanceID())
@@ -533,7 +537,7 @@ func (server ChannelServer) warpPlayer(player *entity.Player, dstField *entity.F
 			return err
 		}
 
-		player.SetInstance(0)
+		player.SetInstanceID(0)
 	}
 
 	srcInst.RemovePlayer(player)
@@ -556,7 +560,7 @@ func (server ChannelServer) playerMoveInventoryItem(conn mnet.Client, reader mpa
 	pos2 := reader.ReadInt16()
 	amount := reader.ReadInt16()
 
-	player, err := server.players.GetFromConn(conn)
+	player, err := server.players.getFromConn(conn)
 
 	if err != nil {
 		return
@@ -566,15 +570,15 @@ func (server ChannelServer) playerMoveInventoryItem(conn mnet.Client, reader mpa
 
 	switch inv {
 	case 1:
-		maxInvSize = player.Char().EquipSlotSize()
+		maxInvSize = player.EquipSlotSize()
 	case 2:
-		maxInvSize = player.Char().UseSlotSize()
+		maxInvSize = player.UseSlotSize()
 	case 3:
-		maxInvSize = player.Char().SetupSlotSize()
+		maxInvSize = player.SetupSlotSize()
 	case 4:
-		maxInvSize = player.Char().EtcSlotSize()
+		maxInvSize = player.EtcSlotSize()
 	case 5:
-		maxInvSize = player.Char().CashSlotSize()
+		maxInvSize = player.CashSlotSize()
 	}
 
 	if pos2 > int16(maxInvSize) {
@@ -648,7 +652,7 @@ func (server ChannelServer) playerMoveInventoryItem(conn mnet.Client, reader mpa
 	}
 
 	if (pos1 < 0 || pos2 < 0) && inv == 1 { // Change equip
-		field, ok := server.fields[player.Char().MapID()]
+		field, ok := server.fields[player.MapID()]
 
 		if !ok {
 			return
@@ -660,7 +664,7 @@ func (server ChannelServer) playerMoveInventoryItem(conn mnet.Client, reader mpa
 			return
 		}
 
-		inst.Send(entity.PacketInventoryChangeEquip(player.Char()))
+		inst.Send(entity.PacketInventoryChangeEquip(player))
 	}
 
 }

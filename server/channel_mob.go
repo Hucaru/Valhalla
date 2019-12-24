@@ -4,6 +4,7 @@ import (
 	"github.com/Hucaru/Valhalla/entity"
 	"github.com/Hucaru/Valhalla/mnet"
 	"github.com/Hucaru/Valhalla/mpacket"
+	"github.com/Hucaru/Valhalla/server/movement"
 )
 
 func (server ChannelServer) mobControl(conn mnet.Client, reader mpacket.Reader) {
@@ -21,15 +22,13 @@ func (server ChannelServer) mobControl(conn mnet.Client, reader mpacket.Reader) 
 
 	skillPossible := (bits & 0x0F) != 0
 
-	player, err := server.players.GetFromConn(conn)
+	player, err := server.players.getFromConn(conn)
 
 	if err != nil {
 		return
 	}
 
-	char := player.Char()
-
-	field, ok := server.fields[char.MapID()]
+	field, ok := server.fields[player.MapID()]
 
 	if !ok {
 		return
@@ -57,13 +56,13 @@ func (server ChannelServer) mobControl(conn mnet.Client, reader mpacket.Reader) 
 		mob.PerformAttack(byte(actualAction - 12))
 	}
 
-	moveData, finalData := entity.ParseMovement(reader)
+	moveData, finalData := movement.ParseMovement(reader)
 
 	if !moveData.ValidateMob(*mob) {
 		return
 	}
 
 	mob.AcknowledgeController(moveID, finalData)
-	moveBytes := entity.GenerateMovementBytes(moveData)
-	inst.SendExcept(entity.PacketMobMove(mobSpawnID, skillPossible, byte(action), skillData, moveBytes), conn)
+	moveBytes := movement.GenerateMovementBytes(moveData)
+	inst.SendExcept(entity.PacketMobMove(mobSpawnID, skillPossible, byte(action), skillData, moveBytes), player)
 }

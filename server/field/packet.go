@@ -3,8 +3,8 @@ package field
 import (
 	"github.com/Hucaru/Valhalla/constant/opcode"
 	"github.com/Hucaru/Valhalla/mpacket"
-	mob "github.com/Hucaru/Valhalla/server/field/mob"
-	npc "github.com/Hucaru/Valhalla/server/field/npc"
+	"github.com/Hucaru/Valhalla/server/field/mob"
+	"github.com/Hucaru/Valhalla/server/field/npc"
 )
 
 func packetMapPlayerEnter(plr player) mpacket.Packet {

@@ -211,8 +211,8 @@ func (inst Instance) GetRandomSpawnPortal() (Portal, error) {
 	return portals[rand.Intn(len(portals))], nil
 }
 
-// CalculateNearestSpawnPortal from a given position
-func (inst Instance) CalculateNearestSpawnPortal(pos pos.Data) (Portal, error) {
+// CalculateNearestSpawnPortalID from a given position
+func (inst Instance) CalculateNearestSpawnPortalID(pos pos.Data) (byte, error) {
 	var portal Portal
 	found := true
 	err := fmt.Errorf("Portal not found")
@@ -232,7 +232,7 @@ func (inst Instance) CalculateNearestSpawnPortal(pos pos.Data) (Portal, error) {
 		}
 	}
 
-	return portal, err
+	return portal.id, err
 }
 
 // GetPortalFromName in the current instance

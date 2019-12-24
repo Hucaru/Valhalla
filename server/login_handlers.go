@@ -10,6 +10,8 @@ import (
 	"github.com/Hucaru/Valhalla/entity"
 	"github.com/Hucaru/Valhalla/mnet"
 	"github.com/Hucaru/Valhalla/mpacket"
+	"github.com/Hucaru/Valhalla/server/item"
+	"github.com/Hucaru/Valhalla/server/player"
 )
 
 // HandleClientPacket data
@@ -149,7 +151,7 @@ func (server *LoginServer) handleChannelSelect(conn mnet.Client, reader mpacket.
 	}
 
 	if selectedWorld == conn.GetWorldID() {
-		characters := entity.GetCharactersFromAccountWorldID(server.db, conn.GetAccountID(), conn.GetWorldID())
+		characters := player.GetCharactersFromAccountWorldID(server.db, conn.GetAccountID(), conn.GetWorldID())
 		conn.Send(packetLoginDisplayCharacters(characters))
 	}
 }
@@ -216,7 +218,7 @@ func (server *LoginServer) handleNewCharacter(conn mnet.Client, reader mpacket.R
 		inSlice(bottom, allowedBottom) && inSlice(top, allowedTop) && inSlice(shoes, allowedShoes) &&
 		inSlice(weapon, allowedWeapons) && inSlice(skin, allowedSkinColour) && (counter == 0)
 
-	newCharacter := entity.Character{}
+	newCharacter := player.Data{}
 
 	if conn.GetAdminLevel() > 0 {
 		name = "[GM]" + name
@@ -238,7 +240,7 @@ func (server *LoginServer) handleNewCharacter(conn mnet.Client, reader mpacket.R
 			log.Println(err)
 		}
 
-		char := entity.Character{}
+		char := player.Data{}
 		char.LoadFromID(server.db, int32(characterID)) // Downcasting (as the game expects int32)
 
 		if conn.GetAdminLevel() > 0 {
@@ -255,7 +257,7 @@ func (server *LoginServer) handleNewCharacter(conn mnet.Client, reader mpacket.R
 			}
 
 			for id, pos := range items {
-				item, err := entity.CreateItemFromID(id, 1)
+				item, err := item.CreateFromID(id, 1)
 
 				if err != nil {
 					log.Println(err)
@@ -264,7 +266,7 @@ func (server *LoginServer) handleNewCharacter(conn mnet.Client, reader mpacket.R
 
 				item.SetSlotID(pos)
 				item.SetCreatorName(name)
-				char.AddInventoryEquip(item)
+				char.AddEquip(item)
 			}
 		} else {
 			items := map[int32]int16{
@@ -275,7 +277,7 @@ func (server *LoginServer) handleNewCharacter(conn mnet.Client, reader mpacket.R
 			}
 
 			for id, pos := range items {
-				item, err := entity.CreateItemFromID(id, 1)
+				item, err := item.CreateFromID(id, 1)
 
 				if err != nil {
 					log.Println(err)
@@ -283,12 +285,12 @@ func (server *LoginServer) handleNewCharacter(conn mnet.Client, reader mpacket.R
 				}
 
 				item.SetSlotID(pos)
-				char.AddInventoryEquip(item)
+				char.AddEquip(item)
 			}
 		}
 		// characters := entity.GetCharactersFromAccountWorldID(server.db, conn.GetAccountID(), conn.GetWorldID())
 		// newCharacter = characters[len(characters)-1]
-		char.Inventory().Save(server.db, int32(characterID))
+		char.Save(server.db, nil)
 		newCharacter = char
 	}
 
