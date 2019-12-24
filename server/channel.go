@@ -259,3 +259,11 @@ func (server *ChannelServer) ClientDisconnected(conn mnet.Client) {
 
 	conn.Cleanup()
 }
+
+// SetScrollingHeaderMessage that appears at the top of game window
+func (server *ChannelServer) SetScrollingHeaderMessage(msg string) {
+	server.header = msg
+	for _, v := range server.players {
+		v.Send(packetMessageScrollingHeader(msg))
+	}
+}

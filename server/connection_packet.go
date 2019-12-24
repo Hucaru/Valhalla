@@ -2,6 +2,7 @@ package server
 
 import "github.com/Hucaru/Valhalla/mpacket"
 
+// PacketClientHandshake sent to client on initial connection
 func PacketClientHandshake(mapleVersion int16, recv, send []byte) mpacket.Packet {
 	p := mpacket.NewPacket()
 

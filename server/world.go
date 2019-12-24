@@ -9,6 +9,7 @@ import (
 	"github.com/Hucaru/Valhalla/mpacket"
 )
 
+// WorldServer data
 type WorldServer struct {
 	info  world
 	login mnet.Server
@@ -43,6 +44,7 @@ func (server *WorldServer) HandleServerPacket(conn mnet.Server, reader mpacket.R
 	}
 }
 
+// ServerDisconnected handler
 func (server *WorldServer) ServerDisconnected(conn mnet.Server) {
 	for i, v := range server.info.channels {
 		if v.conn == conn {

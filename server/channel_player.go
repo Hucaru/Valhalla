@@ -10,6 +10,7 @@ import (
 	"github.com/Hucaru/Valhalla/mpacket"
 	"github.com/Hucaru/Valhalla/server/field"
 	"github.com/Hucaru/Valhalla/server/item"
+	"github.com/Hucaru/Valhalla/server/movement"
 	"github.com/Hucaru/Valhalla/server/player"
 )
 
@@ -67,8 +68,8 @@ func (server *ChannelServer) playerConnect(conn mnet.Client, reader mpacket.Read
 
 	server.players = append(server.players, plr)
 
-	conn.Send(entity.PacketPlayerEnterGame(char, int32(server.id)))
-	conn.Send(entity.PacketMessageScrollingHeader(server.header))
+	conn.Send(player.PacketPlayerEnterGame(plr, int32(server.id)))
+	conn.Send(packetMessageScrollingHeader(server.header))
 
 	field, ok := server.fields[plr.MapID()]
 
@@ -82,7 +83,7 @@ func (server *ChannelServer) playerConnect(conn mnet.Client, reader mpacket.Read
 		return
 	}
 
-	inst.AddPlayer(server.players[len(server.players)-1])
+	inst.AddPlayer(&server.players[len(server.players)-1])
 }
 
 func (server *ChannelServer) playerChangeChannel(conn mnet.Client, reader mpacket.Reader) {
@@ -96,13 +97,11 @@ func (server *ChannelServer) playerChangeChannel(conn mnet.Client, reader mpacke
 		return
 	}
 
-	char := player.Char()
-
 	if int(id) < len(server.channels) {
 		if server.channels[id].port == 0 {
 			conn.Send(entity.PacketCannotChangeChannel())
 		} else {
-			_, err := server.db.Exec("UPDATE characters SET migrationID=? WHERE id=?", id, char.ID())
+			_, err := server.db.Exec("UPDATE characters SET migrationID=? WHERE id=?", id, player.ID())
 
 			if err != nil {
 				log.Println(err)
@@ -122,23 +121,21 @@ func (server ChannelServer) playerMovement(conn mnet.Client, reader mpacket.Read
 		return
 	}
 
-	char := player.Char()
-
-	if char.PortalCount() != reader.ReadByte() {
+	if player.PortalCount() != reader.ReadByte() {
 		return
 	}
 
-	moveData, finalData := entity.ParseMovement(reader)
+	moveData, finalData := movement.ParseMovement(reader)
 
-	if !moveData.ValidateChar(char) {
+	if !moveData.ValidateChar(player) {
 		return
 	}
 
-	moveBytes := entity.GenerateMovementBytes(moveData)
+	moveBytes := movement.GenerateMovementBytes(moveData)
 
 	player.UpdateMovement(finalData)
 
-	field, ok := server.fields[char.MapID()]
+	field, ok := server.fields[player.MapID()]
 
 	if !ok {
 		return
@@ -150,7 +147,7 @@ func (server ChannelServer) playerMovement(conn mnet.Client, reader mpacket.Read
 		return
 	}
 
-	inst.SendExcept(entity.PacketPlayerMove(char.ID(), moveBytes), conn)
+	inst.SendExcept(entity.PacketPlayerMove(player.ID(), moveBytes), player)
 }
 
 func (server ChannelServer) playerEmote(conn mnet.Client, reader mpacket.Reader) {
@@ -162,9 +159,7 @@ func (server ChannelServer) playerEmote(conn mnet.Client, reader mpacket.Reader)
 		return
 	}
 
-	char := player.Char()
-
-	field, ok := server.fields[char.MapID()]
+	field, ok := server.fields[player.MapID()]
 
 	if !ok {
 		return
@@ -176,7 +171,7 @@ func (server ChannelServer) playerEmote(conn mnet.Client, reader mpacket.Reader)
 		return
 	}
 
-	inst.SendExcept(entity.PacketPlayerEmoticon(char.ID(), emote), conn)
+	inst.SendExcept(entity.PacketPlayerEmoticon(player.ID(), emote), player)
 }
 
 func (server ChannelServer) playerUseMysticDoor(conn mnet.Client, reader mpacket.Reader) {
@@ -186,7 +181,7 @@ func (server ChannelServer) playerUseMysticDoor(conn mnet.Client, reader mpacket
 		return
 	}
 
-	fmt.Println(player.Char().Name(), "has used the mystic door", reader)
+	fmt.Println(player.Name(), "has used the mystic door", reader)
 }
 
 func (server ChannelServer) playerAddStatPoint(conn mnet.Client, reader mpacket.Reader) {
@@ -196,7 +191,7 @@ func (server ChannelServer) playerAddStatPoint(conn mnet.Client, reader mpacket.
 		return
 	}
 
-	if player.Char().AP() > 0 {
+	if player.AP() > 0 {
 		player.GiveAP(-1)
 	}
 
@@ -223,9 +218,7 @@ func (server ChannelServer) playerRequestAvatarInfoWindow(conn mnet.Client, read
 		return
 	}
 
-	char := player.Char()
-
-	conn.Send(entity.PacketPlayerAvatarSummaryWindow(char.ID(), char, char.Guild()))
+	conn.Send(packetPlayerAvatarSummaryWindow(player.ID(), *player))
 }
 
 func (server ChannelServer) playerPassiveRegen(conn mnet.Client, reader mpacket.Reader) {
@@ -240,9 +233,7 @@ func (server ChannelServer) playerPassiveRegen(conn mnet.Client, reader mpacket.
 		return
 	}
 
-	char := player.Char()
-
-	if char.HP() == 0 || hp > 400 || mp > 1000 || (hp > 0 && mp > 0) {
+	if player.HP() == 0 || hp > 400 || mp > 1000 || (hp > 0 && mp > 0) {
 		return
 	}
 
@@ -267,48 +258,46 @@ func (server ChannelServer) playerStand(conn mnet.Client, reader mpacket.Reader)
 }
 
 func (server ChannelServer) playerAddSkillPoint(conn mnet.Client, reader mpacket.Reader) {
-	player, err := server.players.getFromConn(conn)
+	plr, err := server.players.getFromConn(conn)
 
 	if err != nil {
 		return
 	}
 
-	char := player.Char()
-
-	if char.SP() < 1 {
+	if plr.SP() < 1 {
 		return // hacker
 	}
 
 	skillID := reader.ReadInt32()
-	skill, ok := char.Skills()[skillID]
+	skill, ok := plr.Skills()[skillID]
 
 	if ok {
-		skill, err = entity.CreateSkillFromData(skillID, skill.Level+1)
+		skill, err = player.CreateSkillFromData(skillID, skill.Level+1)
 
 		if err != nil {
 			return
 		}
 
-		player.UpdateSkill(skill)
+		plr.UpdateSkill(skill)
 	} else {
 		// check if class can have skill
 		baseSkillID := skillID / 10000
 
-		if !validateSkillWithJob(char.Job(), baseSkillID) {
+		if !validateSkillWithJob(plr.Job(), baseSkillID) {
 			conn.Send(entity.PacketPlayerNoChange())
 			return
 		}
 
-		skill, err = entity.CreateSkillFromData(skillID, 1)
+		skill, err = player.CreateSkillFromData(skillID, 1)
 
 		if err != nil {
 			return
 		}
 
-		player.UpdateSkill(skill)
+		plr.UpdateSkill(skill)
 	}
 
-	player.GiveSP(-1)
+	plr.GiveSP(-1)
 }
 
 func validateSkillWithJob(jobID int16, baseSkillID int32) bool {
@@ -425,27 +414,25 @@ func validateSkillWithJob(jobID int16, baseSkillID int32) bool {
 }
 
 func (server ChannelServer) playerUsePortal(conn mnet.Client, reader mpacket.Reader) {
-	player, err := server.players.getFromConn(conn)
+	plr, err := server.players.getFromConn(conn)
 
 	if err != nil {
 		return
 	}
 
-	char := player.Char()
-
-	if char.PortalCount() != reader.ReadByte() {
+	if plr.PortalCount() != reader.ReadByte() {
 		conn.Send(entity.PacketPlayerNoChange())
 		return
 	}
 
 	entryType := reader.ReadInt32()
-	field, ok := server.fields[char.MapID()]
+	field, ok := server.fields[plr.MapID()]
 
 	if !ok {
 		return
 	}
 
-	srcInst, err := field.GetInstance(player.InstanceID())
+	srcInst, err := field.GetInstance(plr.InstanceID())
 
 	if err != nil {
 		return
@@ -453,7 +440,7 @@ func (server ChannelServer) playerUsePortal(conn mnet.Client, reader mpacket.Rea
 
 	switch entryType {
 	case 0:
-		if char.HP() == 0 {
+		if plr.HP() == 0 {
 			dstField, ok := server.fields[field.Data.ReturnMap]
 
 			if !ok {
@@ -467,16 +454,16 @@ func (server ChannelServer) playerUsePortal(conn mnet.Client, reader mpacket.Rea
 				return
 			}
 
-			server.warpPlayer(player, dstField, portal)
-			player.SetHP(50)
+			server.warpPlayer(plr, dstField, portal)
+			plr.SetHP(50)
 		}
 	case -1:
 		portalName := reader.ReadString(reader.ReadInt16())
 		srcPortal, err := srcInst.GetPortalFromName(portalName)
 
-		if !player.CheckPos(srcPortal.Pos(), 100, 10) { // I'm guessing what the portal hit box is
+		if !plr.CheckPos(srcPortal.Pos(), 100, 10) { // I'm guessing what the portal hit box is
 			if conn.GetAdminLevel() > 0 {
-				conn.Send(entity.PacketMessageRedText("Portal - " + srcPortal.Pos().String() + " Player - " + player.Char().Pos().String()))
+				conn.Send(entity.PacketMessageRedText("Portal - " + srcPortal.Pos().String() + " Player - " + plr.Pos().String()))
 			}
 
 			conn.Send(entity.PacketPlayerNoChange())
@@ -495,7 +482,7 @@ func (server ChannelServer) playerUsePortal(conn mnet.Client, reader mpacket.Rea
 			return
 		}
 
-		dstInst, err := dstField.GetInstance(player.InstanceID())
+		dstInst, err := dstField.GetInstance(plr.InstanceID())
 
 		if err != nil {
 			if dstInst, err = dstField.GetInstance(0); err != nil {
@@ -510,161 +497,160 @@ func (server ChannelServer) playerUsePortal(conn mnet.Client, reader mpacket.Rea
 			return
 		}
 
-		server.warpPlayer(player, dstField, dstPortal)
+		server.warpPlayer(plr, dstField, dstPortal)
 
 	default:
 		log.Println("Unknown portal entry type, packet:", reader)
 	}
 }
 
-func (server ChannelServer) warpPlayer(player *player.Data, dstField *field.Field, dstPortal field.Portal) error {
-	srcField, ok := server.fields[player.MapID()]
+func (server ChannelServer) warpPlayer(plr *player.Data, dstField *field.Field, dstPortal field.Portal) error {
+	srcField, ok := server.fields[plr.MapID()]
 
 	if !ok {
-		return fmt.Errorf("Error in map id %d", player.MapID())
+		return fmt.Errorf("Error in map id %d", plr.MapID())
 	}
 
-	srcInst, err := srcField.GetInstance(player.InstanceID())
+	srcInst, err := srcField.GetInstance(plr.InstanceID())
 
 	if err != nil {
 		return err
 	}
 
-	dstInst, err := dstField.GetInstance(player.InstanceID())
+	dstInst, err := dstField.GetInstance(plr.InstanceID())
 
 	if err != nil {
 		if dstInst, err = dstField.GetInstance(0); err != nil { // Check player is not in higher level instance than available
 			return err
 		}
 
-		player.SetInstanceID(0)
+		plr.SetInstanceID(0)
 	}
 
-	srcInst.RemovePlayer(player)
+	srcInst.RemovePlayer(plr)
 
-	player.SetMapID(dstField.ID)
-	player.SetMapPosID(dstPortal.ID())
-	player.SetPos(dstPortal.Pos())
-	player.SetFoothold(0)
-	player.Send(entity.PacketMapChange(dstField.ID, int32(server.id), dstPortal.ID(), player.Char().HP()))
+	plr.SetMapID(dstField.ID)
+	plr.SetMapPosID(dstPortal.ID())
+	plr.SetPos(dstPortal.Pos())
+	plr.SetFoothold(0)
+	plr.Send(entity.PacketMapChange(dstField.ID, int32(server.id), dstPortal.ID(), plr.HP()))
 
-	dstInst.AddPlayer(player)
+	dstInst.AddPlayer(plr)
 
 	return nil
 }
 
 // TODO: Refactor/Change logic
 func (server ChannelServer) playerMoveInventoryItem(conn mnet.Client, reader mpacket.Reader) {
-	inv := reader.ReadByte()
-	pos1 := reader.ReadInt16()
-	pos2 := reader.ReadInt16()
-	amount := reader.ReadInt16()
+	// inv := reader.ReadByte()
+	// pos1 := reader.ReadInt16()
+	// pos2 := reader.ReadInt16()
+	// amount := reader.ReadInt16()
 
-	player, err := server.players.getFromConn(conn)
+	// plr, err := server.players.getFromConn(conn)
 
-	if err != nil {
-		return
-	}
+	// if err != nil {
+	// 	return
+	// }
 
-	var maxInvSize byte
+	// var maxInvSize byte
 
-	switch inv {
-	case 1:
-		maxInvSize = player.EquipSlotSize()
-	case 2:
-		maxInvSize = player.UseSlotSize()
-	case 3:
-		maxInvSize = player.SetupSlotSize()
-	case 4:
-		maxInvSize = player.EtcSlotSize()
-	case 5:
-		maxInvSize = player.CashSlotSize()
-	}
+	// switch inv {
+	// case 1:
+	// 	maxInvSize = plr.EquipSlotSize()
+	// case 2:
+	// 	maxInvSize = plr.UseSlotSize()
+	// case 3:
+	// 	maxInvSize = plr.SetupSlotSize()
+	// case 4:
+	// 	maxInvSize = plr.EtcSlotSize()
+	// case 5:
+	// 	maxInvSize = plr.CashSlotSize()
+	// }
 
-	if pos2 > int16(maxInvSize) {
-		return // Moving to item slot the user does not have
-	}
+	// if pos2 > int16(maxInvSize) {
+	// 	return // Moving to item slot the user does not have
+	// }
 
-	item1, err := player.GetItem(inv, pos1)
+	// item1, err := plr.GetItem(inv, pos1)
 
-	if err != nil {
-		return // Player moving item that doesn't exit
-	}
+	// if err != nil {
+	// 	return // Player moving item that doesn't exit
+	// }
 
-	if pos2 == 0 { // drop item
-		fmt.Println(inv, pos1, pos2, amount)
-	} else {
-		item2, err := player.GetItem(inv, pos2)
+	// if pos2 == 0 { // drop item
+	// 	fmt.Println(inv, pos1, pos2, amount)
+	// } else {
+	// 	item2, err := plr.GetItem(inv, pos2)
 
-		if err != nil { // Move item into empty slot
-			if pos2 < 0 {
-				if item1.TwoHanded() {
-					if _, err = player.GetItem(inv, -10); err == nil { // check for shield
-						conn.Send(entity.PacketPlayerNoChange())
-						conn.Send(entity.PacketMessageRedText("Cannot equip"))
-						return
-					}
-				} else if item1.Shield() {
-					if weapon, err := player.GetItem(inv, -11); err == nil {
-						if weapon.TwoHanded() {
-							conn.Send(entity.PacketPlayerNoChange())
-							conn.Send(entity.PacketMessageRedText("Cannot equip"))
-							return
-						}
-					}
-				}
-			}
+	// 	if err != nil { // Move item into empty slot
+	// 		if pos2 < 0 {
+	// 			if item1.TwoHanded() {
+	// 				if _, err = plr.GetItem(inv, -10); err == nil { // check for shield
+	// 					conn.Send(entity.PacketPlayerNoChange())
+	// 					conn.Send(entity.PacketMessageRedText("Cannot equip"))
+	// 					return
+	// 				}
+	// 			} else if item1.Shield() {
+	// 				if weapon, err := plr.GetItem(inv, -11); err == nil {
+	// 					if weapon.TwoHanded() {
+	// 						conn.Send(entity.PacketPlayerNoChange())
+	// 						conn.Send(entity.PacketMessageRedText("Cannot equip"))
+	// 						return
+	// 					}
+	// 				}
+	// 			}
+	// 		}
 
-			item1.SetSlotID(pos2)
-			player.UpdateItem(item1, item1)
-			conn.Send(entity.PacketInventoryChangeItemSlot(inv, pos1, pos2))
-		} else {
-			if item1.IsStackable() && item2.IsStackable() && (item1.Amount()+item2.Amount()) <= constant.MaxItemStack {
-				item2.SetAmount(item2.Amount() + item1.Amount())
-				player.UpdateItem(item2, item2)
-				player.RemoveItem(item1)
-				conn.Send(entity.PacketInventoryAddItem(item2, false))
-				conn.Send(entity.PacketInventoryRemoveItem(item1))
-			} else { // swap
-				if item1.TwoHanded() {
-					if _, err = player.GetItem(inv, -10); err == nil {
-						conn.Send(entity.PacketPlayerNoChange())
-						conn.Send(entity.PacketMessageRedText("Cannot equip"))
-						return
-					}
-				} else if item1.Shield() { // This condition should not be possible....
-					if weapon, err := player.GetItem(inv, -11); err == nil {
-						if weapon.TwoHanded() {
-							conn.Send(entity.PacketPlayerNoChange())
-							conn.Send(entity.PacketMessageRedText("Cannot equip"))
-							return
-						}
-					}
-				}
+	// 		item1.SetSlotID(pos2)
+	// 		plr.UpdateItem(item1, item1)
+	// 		conn.Send(entity.PacketInventoryChangeItemSlot(inv, pos1, pos2))
+	// 	} else {
+	// 		if item1.IsStackable() && item2.IsStackable() && (item1.Amount()+item2.Amount()) <= constant.MaxItemStack {
+	// 			item2.SetAmount(item2.Amount() + item1.Amount())
+	// 			plr.UpdateItem(item2, item2)
+	// 			plr.RemoveItem(item1)
+	// 			conn.Send(entity.PacketInventoryAddItem(item2, false))
+	// 			conn.Send(entity.PacketInventoryRemoveItem(item1))
+	// 		} else { // swap
+	// 			if item1.TwoHanded() {
+	// 				if _, err = plr.GetItem(inv, -10); err == nil {
+	// 					conn.Send(entity.PacketPlayerNoChange())
+	// 					conn.Send(entity.PacketMessageRedText("Cannot equip"))
+	// 					return
+	// 				}
+	// 			} else if item1.Shield() { // This condition should not be possible....
+	// 				if weapon, err := plr.GetItem(inv, -11); err == nil {
+	// 					if weapon.TwoHanded() {
+	// 						conn.Send(entity.PacketPlayerNoChange())
+	// 						conn.Send(entity.PacketMessageRedText("Cannot equip"))
+	// 						return
+	// 					}
+	// 				}
+	// 			}
 
-				item2.SetSlotID(pos1)
-				player.UpdateItem(item2, item2)
-				item1.SetSlotID(pos2)
-				player.UpdateItem(item1, item1)
-				conn.Send(entity.PacketInventoryChangeItemSlot(inv, pos1, pos2))
-			}
-		}
-	}
+	// 			item2.SetSlotID(pos1)
+	// 			plr.UpdateItem(item2, item2)
+	// 			item1.SetSlotID(pos2)
+	// 			plr.UpdateItem(item1, item1)
+	// 			conn.Send(packetInventoryChangeItemSlot(inv, pos1, pos2))
+	// 		}
+	// 	}
+	// }
 
-	if (pos1 < 0 || pos2 < 0) && inv == 1 { // Change equip
-		field, ok := server.fields[player.MapID()]
+	// if (pos1 < 0 || pos2 < 0) && inv == 1 { // Change equip
+	// 	field, ok := server.fields[plr.MapID()]
 
-		if !ok {
-			return
-		}
+	// 	if !ok {
+	// 		return
+	// 	}
 
-		inst, err := field.GetInstance(player.InstanceID())
+	// 	inst, err := field.GetInstance(plr.InstanceID())
 
-		if err != nil {
-			return
-		}
+	// 	if err != nil {
+	// 		return
+	// 	}
 
-		inst.Send(entity.PacketInventoryChangeEquip(player))
-	}
-
+	// 	inst.Send(packetInventoryChangeEquip(plr))
+	// }
 }

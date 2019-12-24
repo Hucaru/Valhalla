@@ -127,7 +127,8 @@ func packetCannotEnterCashShop() mpacket.Packet {
 	return p
 }
 
-func packetPlayerEnterGame(plr Data, channelID int32) mpacket.Packet {
+// PacketPlayerEnterGame - packet that is sent to player when connecting to the channel server
+func PacketPlayerEnterGame(plr Data, channelID int32) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelWarpToMap)
 	p.WriteInt32(channelID)
 	p.WriteByte(0) // character portal counter

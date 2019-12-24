@@ -10,7 +10,7 @@ import (
 	"github.com/Hucaru/Valhalla/mpacket"
 )
 
-// Login server state
+// LoginServer state
 type LoginServer struct {
 	migrating map[mnet.Client]bool
 	db        *sql.DB
@@ -49,6 +49,7 @@ func (server *LoginServer) HandleServerPacket(conn mnet.Server, reader mpacket.R
 	}
 }
 
+// ServerDisconnected handler
 func (server *LoginServer) ServerDisconnected(conn mnet.Server) {
 	for i, v := range server.worlds {
 		if v.conn == conn {
