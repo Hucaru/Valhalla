@@ -852,11 +852,15 @@ func (d Data) Save(db *sql.DB, inst instance) error {
 	job=?, str=?, dex=?, intt=?, luk=?, hp=?, maxHP=?, mp=?, maxMP=?,
 	ap=?, sp=?, exp=?, fame=?, mapID=?, mapPos=?, mesos=? WHERE id=?`
 
-	// need to calculate nearest spawn point for mapPos
-	mapPos, err := inst.CalculateNearestSpawnPortalID(d.pos)
+	var mapPos byte = 0
+	var err error
+
+	if inst != nil {
+		mapPos, err = inst.CalculateNearestSpawnPortalID(d.pos)
+	}
 
 	if err != nil {
-		mapPos = 0 // This will be triggered by the login server as a new character has no instance
+		return err
 	}
 
 	d.mapPos = mapPos
