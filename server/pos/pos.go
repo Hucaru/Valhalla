@@ -11,6 +11,11 @@ type Data struct {
 	y int16
 }
 
+// New portal func
+func New(x, y int16) Data {
+	return Data{x: x, y: y}
+}
+
 // X axis value
 func (d Data) X() int16 {
 	return d.x

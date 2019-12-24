@@ -5,14 +5,14 @@ import (
 	"github.com/Hucaru/Valhalla/mpacket"
 )
 
-func PacketMobShow(mob mob) mpacket.Packet {
+func PacketMobShow(mob Data) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelShowMob)
 	p.Append(addMob(mob))
 
 	return p
 }
 
-func PacketMobControl(m mob, chase bool) mpacket.Packet {
+func PacketMobControl(m Data, chase bool) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelControlMob)
 	if chase {
 		p.WriteByte(0x02) // 2 chase, 1 no chase, 0 no control

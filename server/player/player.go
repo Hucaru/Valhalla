@@ -10,6 +10,7 @@ import (
 	"github.com/Hucaru/Valhalla/constant"
 	"github.com/Hucaru/Valhalla/mnet"
 	"github.com/Hucaru/Valhalla/mpacket"
+	"github.com/Hucaru/Valhalla/server/pos"
 )
 
 // TODO: Move Players into server level logic
@@ -85,20 +86,13 @@ type item interface {
 	ShortBytes() []byte
 }
 
-type pos interface {
-	X() int16
-	SetX(int16)
-	Y() int16
-	SetY(int16)
-}
-
 type portal interface {
 	ID() byte
 }
 
 type instance interface {
 	Send(mpacket.Packet)
-	CalculateNearestSpawnPortal(pos) (portal, error)
+	CalculateNearestSpawnPortal(pos.Data) (portal, error)
 }
 
 // Player connected to server
@@ -138,7 +132,7 @@ type Player struct {
 	hair     int32
 	chairID  int32
 	stance   byte
-	pos      pos
+	pos      pos.Data
 	foothold int16
 	guild    string
 
@@ -462,12 +456,12 @@ func (p *Player) UpdateMovement(frag movementFrag) {
 }
 
 // SetPos of player
-func (p *Player) SetPos(pos pos) {
+func (p *Player) SetPos(pos pos.Data) {
 	p.pos = pos
 }
 
 // CheckPos - checks player is within a certain range of a position
-func (p Player) CheckPos(pos pos, xRange, yRange int16) bool {
+func (p Player) CheckPos(pos pos.Data, xRange, yRange int16) bool {
 	var xValid, yValid bool
 
 	if xRange == 0 {
@@ -849,7 +843,7 @@ func (p Player) ChairID() int32 { return p.chairID }
 func (p Player) Stance() byte { return p.stance }
 
 // Pos of player
-func (p Player) Pos() pos { return p.pos }
+func (p Player) Pos() pos.Data { return p.pos }
 
 // Foothold player is currently tied to
 func (p Player) Foothold() int16 { return p.foothold }
