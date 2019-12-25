@@ -312,6 +312,37 @@ func (server *ChannelServer) gmCommand(conn mnet.Client, msg string) {
 		}
 
 		player.SetEXP(int32(amount), inst)
+	case "gexp":
+		player, err := server.players.getFromConn(conn)
+
+		var amount int
+
+		if len(command) == 3 {
+			player, err = server.players.getFromName(command[1])
+			amount, err = strconv.Atoi(command[2])
+		} else if len(command) == 2 {
+			amount, err = strconv.Atoi(command[1])
+		}
+
+		if err != nil {
+			conn.Send(entity.PacketMessageRedText(err.Error()))
+			return
+		}
+
+		field, ok := server.fields[player.MapID()]
+
+		if !ok {
+			return
+		}
+
+		inst, err := field.GetInstance(player.InstanceID())
+
+		if err != nil {
+			conn.Send(entity.PacketMessageRedText(err.Error()))
+			return
+		}
+
+		player.GiveEXP(int32(amount), false, false, inst)
 	case "level":
 		plr, err := server.players.getFromConn(conn)
 
@@ -353,6 +384,8 @@ func (server *ChannelServer) gmCommand(conn mnet.Client, msg string) {
 			amount, err = strconv.Atoi(command[2])
 		} else if len(command) == 2 {
 			amount, err = strconv.Atoi(command[1])
+		} else if len(command) == 1 {
+			amount = 1
 		}
 
 		if err != nil {

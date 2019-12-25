@@ -545,37 +545,46 @@ func (server ChannelServer) warpPlayer(plr *player.Data, dstField *field.Field, 
 	return nil
 }
 
-// TODO: Refactor/Change logic
 func (server ChannelServer) playerMoveInventoryItem(conn mnet.Client, reader mpacket.Reader) {
-	// inv := reader.ReadByte()
-	// pos1 := reader.ReadInt16()
-	// pos2 := reader.ReadInt16()
-	// amount := reader.ReadInt16()
+	inv := reader.ReadByte()
+	pos1 := reader.ReadInt16()
+	pos2 := reader.ReadInt16()
+	amount := reader.ReadInt16()
 
-	// plr, err := server.players.getFromConn(conn)
+	plr, err := server.players.getFromConn(conn)
 
-	// if err != nil {
-	// 	return
-	// }
+	if err != nil {
+		return
+	}
 
-	// var maxInvSize byte
+	var maxInvSize byte
 
-	// switch inv {
-	// case 1:
-	// 	maxInvSize = plr.EquipSlotSize()
-	// case 2:
-	// 	maxInvSize = plr.UseSlotSize()
-	// case 3:
-	// 	maxInvSize = plr.SetupSlotSize()
-	// case 4:
-	// 	maxInvSize = plr.EtcSlotSize()
-	// case 5:
-	// 	maxInvSize = plr.CashSlotSize()
-	// }
+	switch inv {
+	case 1:
+		maxInvSize = plr.EquipSlotSize()
+	case 2:
+		maxInvSize = plr.UseSlotSize()
+	case 3:
+		maxInvSize = plr.SetupSlotSize()
+	case 4:
+		maxInvSize = plr.EtcSlotSize()
+	case 5:
+		maxInvSize = plr.CashSlotSize()
+	}
 
-	// if pos2 > int16(maxInvSize) {
-	// 	return // Moving to item slot the user does not have
-	// }
+	if pos2 > int16(maxInvSize) {
+		return // Moving to item slot the user does not have
+	}
+
+	field, ok := server.fields[plr.MapID()]
+
+	if !ok {
+		return
+	}
+
+	inst, err := field.GetInstance(plr.InstanceID())
+
+	plr.MoveItem(pos1, pos2, amount, inv, inst)
 
 	// item1, err := plr.GetItem(inv, pos1)
 

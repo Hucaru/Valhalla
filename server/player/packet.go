@@ -316,3 +316,48 @@ func packetInventoryAddItems(items []item.Data, newItem []bool) mpacket.Packet {
 
 	return p
 }
+
+func packetInventoryChangeItemSlot(invTabID byte, origPos, newPos int16) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelInventoryOperation)
+	p.WriteByte(0x01)
+	p.WriteByte(0x01)
+	p.WriteByte(0x02)
+	p.WriteByte(invTabID)
+	p.WriteInt16(origPos)
+	p.WriteInt16(newPos)
+	p.WriteByte(0x00) // ?
+
+	return p
+}
+
+func packetInventoryRemoveItem(item item.Data) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelInventoryOperation)
+	p.WriteByte(0x01)
+	p.WriteByte(0x01)
+	p.WriteByte(0x03)
+	p.WriteByte(item.InvID())
+	p.WriteInt16(item.SlotID())
+	p.WriteUint64(0) //?
+
+	return p
+}
+
+func packetInventoryChangeEquip(char Data) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelPlayerChangeAvatar)
+	p.WriteInt32(char.id)
+	p.WriteByte(1)
+	p.WriteBytes(char.DisplayBytes())
+	p.WriteByte(0xFF)
+	p.WriteUint64(0) //?
+
+	return p
+}
+
+func packetInventoryNoChange() mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelInventoryOperation)
+	p.WriteByte(0x01)
+	p.WriteByte(0x00)
+	p.WriteByte(0x00)
+
+	return p
+}

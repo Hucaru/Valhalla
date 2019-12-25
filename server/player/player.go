@@ -155,6 +155,7 @@ func (d *Data) levelUp(inst instance) {
 // SetEXP of the Data
 func (d *Data) SetEXP(amount int32, inst instance) {
 	if d.level > 199 {
+		d.SetEXP(0, inst)
 		return
 	}
 
@@ -574,85 +575,11 @@ func (d *Data) GiveItem(newItem item.Data) error {
 
 // TakeItem from Data
 func (d *Data) TakeItem(itemID int32, amount int16) (item.Data, error) {
+	log.Println("player.Data.TakeItem not implemented")
 	return item.Data{}, nil
 }
 
-// RemoveItem from Data
-func (d *Data) RemoveItem(remove item.Data) {
-	// TODO(Hucaru): change function signature to (id int32, count int16) (invID, slotID, error)
-
-	// findIndex := func(items []item, item item) int {
-	// 	for i, v := range items {
-	// 		if v.uuid == remove.uuid {
-	// 			return i
-	// 		}
-	// 	}
-
-	// 	return 0
-	// }
-
-	// switch remove.invID {
-	// case 1:
-	// 	if i := findIndex(d.inventory.equip, remove); i != 0 {
-	// 		d.inventory.equip[i] = d.inventory.equip[len(d.inventory.equip)-1]
-	// 		d.inventory.equip = d.inventory.equip[:len(d.inventory.equip)-1]
-	// 	}
-	// case 2:
-	// 	if i := findIndex(d.inventory.use, remove); i != 0 {
-	// 		d.inventory.use[i] = d.inventory.use[len(d.inventory.use)-1]
-	// 		d.inventory.use = d.inventory.use[:len(d.inventory.use)-1]
-	// 	}
-	// case 3:
-	// 	if i := findIndex(d.inventory.setUp, remove); i != 0 {
-	// 		d.inventory.setUp[i] = d.inventory.setUp[len(d.inventory.setUp)-1]
-	// 		d.inventory.setUp = d.inventory.setUp[:len(d.inventory.setUp)-1]
-	// 	}
-	// case 4:
-	// 	if i := findIndex(d.inventory.etc, remove); i != 0 {
-	// 		d.inventory.etc[i] = d.inventory.etc[len(d.inventory.etc)-1]
-	// 		d.inventory.etc = d.inventory.etc[:len(d.inventory.etc)-1]
-	// 	}
-	// case 5:
-	// 	if i := findIndex(d.inventory.cash, remove); i != 0 {
-	// 		d.inventory.cash[i] = d.inventory.cash[len(d.inventory.cash)-1]
-	// 		d.inventory.cash = d.inventory.cash[:len(d.inventory.cash)-1]
-	// 	}
-	// }
-}
-
-// GetItem from Data
-func (d Data) GetItem(invID byte, slotID int16) (item.Data, error) {
-	var result item.Data
-	var err error
-
-	findItem := func(items []item.Data, slotID int16) (item.Data, error) {
-		for _, v := range items {
-			if v.SlotID() == slotID {
-				return v, nil
-			}
-		}
-
-		return item.Data{}, fmt.Errorf("Unable to get item")
-	}
-
-	switch invID {
-	case 1:
-		result, err = findItem(d.equip, slotID)
-	case 2:
-		result, err = findItem(d.use, slotID)
-	case 3:
-		result, err = findItem(d.setUp, slotID)
-	case 4:
-		result, err = findItem(d.etc, slotID)
-	case 5:
-		result, err = findItem(d.cash, slotID)
-	}
-
-	return result, err
-}
-
-// UpdateItem with the same database id
-func (d *Data) UpdateItem(orig, new item.Data) {
+func (d *Data) updateItem(new item.Data) {
 	var items []item.Data
 
 	switch new.InvID() {
@@ -674,6 +601,92 @@ func (d *Data) UpdateItem(orig, new item.Data) {
 			break
 		}
 	}
+}
+
+func (d Data) getItem(invID byte, slotID int16) (item.Data, error) {
+	var items []item.Data
+
+	switch invID {
+	case 1:
+		items = d.equip
+	case 2:
+		items = d.use
+	case 3:
+		items = d.setUp
+	case 4:
+		items = d.etc
+	case 5:
+		items = d.cash
+	}
+
+	for _, v := range items {
+		if v.SlotID() == slotID {
+			return v, nil
+		}
+	}
+
+	return item.Data{}, fmt.Errorf("Could not find item")
+}
+
+// MoveItem from one slot to another, if the final slot is zero then this is a drop action
+func (d *Data) MoveItem(start, end, amount int16, invID byte, inst instance) error {
+	if end == 0 { //drop item
+		fmt.Println("Drop item amount:", amount)
+	} else if end < 0 { // Move to equip slot
+		item1, err := d.getItem(invID, start)
+
+		if err != nil {
+			return fmt.Errorf("Item to move doesn't exist")
+		}
+
+		if item1.TwoHanded() {
+			if _, err := d.getItem(invID, -10); err == nil {
+				d.Send(packetInventoryNoChange()) // Should this do switching if space is available?
+				return nil
+			}
+		} else if item1.Shield() {
+			if weapon, err := d.getItem(invID, -11); err == nil && weapon.TwoHanded() {
+				d.Send(packetInventoryNoChange()) // should this move weapon into into item 1 slot?
+				return nil
+			}
+		}
+
+		item2, err := d.getItem(invID, end)
+
+		if err == nil {
+			item2.SetSlotID(start)
+			d.updateItem(item2)
+		}
+
+		item1.SetSlotID(end)
+		d.updateItem(item1)
+
+		d.Send(packetInventoryChangeItemSlot(invID, start, end))
+		inst.Send(packetInventoryChangeEquip(*d))
+	} else { // move within inventory
+		item1, err := d.getItem(invID, start)
+
+		if err != nil {
+			return fmt.Errorf("Item to move doesn't exist")
+		}
+
+		item2, err := d.getItem(invID, end)
+
+		if err != nil { // empty slot
+			item1.SetSlotID(end)
+			d.updateItem(item1)
+
+			d.Send(packetInventoryChangeItemSlot(invID, start, end))
+		} else { // moved onto item
+			fmt.Println(item2)
+		}
+
+		if start < 0 {
+			inst.Send(packetInventoryChangeEquip(*d))
+		}
+	}
+
+	return nil
 }
 
 // UpdateSkill map entry
