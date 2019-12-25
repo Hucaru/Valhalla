@@ -16,12 +16,12 @@ import (
 	"github.com/Hucaru/Valhalla/server/player"
 )
 
-type players []player.Data
+type players []*player.Data
 
 func (p players) getFromConn(conn mnet.Client) (*player.Data, error) {
 	for _, v := range p {
 		if v.Conn() == conn {
-			return &v, nil
+			return v, nil
 		}
 	}
 
@@ -32,7 +32,7 @@ func (p players) getFromConn(conn mnet.Client) (*player.Data, error) {
 func (p players) getFromName(name string) (*player.Data, error) {
 	for _, v := range p {
 		if v.Name() == name {
-			return &v, nil
+			return v, nil
 		}
 	}
 
@@ -43,7 +43,7 @@ func (p players) getFromName(name string) (*player.Data, error) {
 func (p players) getFromID(id int32) (*player.Data, error) {
 	for _, v := range p {
 		if v.ID() == id {
-			return &v, nil
+			return v, nil
 		}
 	}
 

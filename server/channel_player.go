@@ -64,7 +64,7 @@ func (server *ChannelServer) playerConnect(conn mnet.Client, reader mpacket.Read
 
 	plr := player.LoadFromID(server.db, charID, conn)
 
-	server.players = append(server.players, plr)
+	server.players = append(server.players, &plr)
 
 	conn.Send(player.PacketPlayerEnterGame(plr, int32(server.id)))
 	conn.Send(packetMessageScrollingHeader(server.header))
@@ -119,40 +119,40 @@ func (server *ChannelServer) playerChangeChannel(conn mnet.Client, reader mpacke
 }
 
 func (server ChannelServer) playerMovement(conn mnet.Client, reader mpacket.Reader) {
-	player, err := server.players.getFromConn(conn)
+	plr, err := server.players.getFromConn(conn)
 
 	if err != nil {
 		log.Println("Unable to get player from connection", conn)
 		return
 	}
 
-	if player.PortalCount() != reader.ReadByte() {
+	if plr.PortalCount() != reader.ReadByte() {
 		return
 	}
 
 	moveData, finalData := movement.ParseMovement(reader)
 
-	if !moveData.ValidateChar(player) {
+	if !moveData.ValidateChar(plr) {
 		return
 	}
 
 	moveBytes := movement.GenerateMovementBytes(moveData)
 
-	player.UpdateMovement(finalData)
+	plr.UpdateMovement(finalData)
 
-	field, ok := server.fields[player.MapID()]
+	field, ok := server.fields[plr.MapID()]
 
 	if !ok {
 		return
 	}
 
-	inst, err := field.GetInstance(player.InstanceID())
+	inst, err := field.GetInstance(plr.InstanceID())
 
 	if err != nil {
 		return
 	}
 
-	inst.SendExcept(entity.PacketPlayerMove(player.ID(), moveBytes), player)
+	inst.SendExcept(entity.PacketPlayerMove(plr.ID(), moveBytes), plr)
 }
 
 func (server ChannelServer) playerEmote(conn mnet.Client, reader mpacket.Reader) {
@@ -466,7 +466,7 @@ func (server ChannelServer) playerUsePortal(conn mnet.Client, reader mpacket.Rea
 		portalName := reader.ReadString(reader.ReadInt16())
 		srcPortal, err := srcInst.GetPortalFromName(portalName)
 
-		if !plr.CheckPos(srcPortal.Pos(), 100, 10) { // I'm guessing what the portal hit box is
+		if !plr.CheckPos(srcPortal.Pos(), 100, 10) { // trying to account for lag
 			if conn.GetAdminLevel() > 0 {
 				conn.Send(entity.PacketMessageRedText("Portal - " + srcPortal.Pos().String() + " Player - " + plr.Pos().String()))
 			}

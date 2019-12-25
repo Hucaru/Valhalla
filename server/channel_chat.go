@@ -492,7 +492,7 @@ func (server *ChannelServer) gmCommand(conn mnet.Client, msg string) {
 			return
 		}
 
-		player, err := server.players.getFromConn(conn)
+		plr, err := server.players.getFromConn(conn)
 
 		if err != nil {
 			conn.Send(entity.PacketMessageRedText(err.Error()))
@@ -506,7 +506,7 @@ func (server *ChannelServer) gmCommand(conn mnet.Client, msg string) {
 			return
 		}
 
-		inst, err := field.GetInstance(player.InstanceID())
+		inst, err := field.GetInstance(plr.InstanceID())
 
 		if err != nil {
 			conn.Send(entity.PacketMessageRedText(err.Error()))
@@ -521,7 +521,7 @@ func (server *ChannelServer) gmCommand(conn mnet.Client, msg string) {
 		}
 
 		if playerName != "" {
-			player, err = server.players.getFromName(playerName)
+			plr, err = server.players.getFromName(playerName)
 
 			if err != nil {
 				conn.Send(entity.PacketMessageRedText(err.Error()))
@@ -536,7 +536,7 @@ func (server *ChannelServer) gmCommand(conn mnet.Client, msg string) {
 			return
 		}
 
-		server.warpPlayer(player, dstField, portal)
+		server.warpPlayer(plr, dstField, portal)
 	case "loadout":
 		player, err := server.players.getFromConn(conn)
 
