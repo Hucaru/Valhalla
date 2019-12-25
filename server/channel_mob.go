@@ -46,7 +46,7 @@ func (server ChannelServer) mobControl(conn mnet.Client, reader mpacket.Reader) 
 		return
 	}
 
-	if mob.Controller() != conn {
+	if mob.Controller().Conn() != conn {
 		return
 	}
 

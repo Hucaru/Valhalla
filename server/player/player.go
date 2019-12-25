@@ -24,7 +24,7 @@ type Data struct {
 	conn       mnet.Client
 	instanceID int
 
-	id        int32
+	id        int32 // Unique identifier of the character
 	accountID int32
 	worldID   byte
 
@@ -77,11 +77,6 @@ type Data struct {
 	skills map[int32]Skill
 
 	miniGameWins, miniGameDraw, miniGameLoss int32
-}
-
-// New - returns a Data struct from a client connection and inventory
-func New(conn mnet.Client, equip []item.Data, use []item.Data, setUp []item.Data, etc []item.Data, cash []item.Data) Data {
-	return Data{conn: conn, instanceID: 0, equip: equip, use: use, setUp: setUp, etc: etc, cash: cash}
 }
 
 // Conn - client connection associated with this Data
@@ -846,13 +841,13 @@ func (d Data) DisplayBytes() []byte {
 	return pkt
 }
 
-// Save Data detail that is not saved via actions
+// Save data
 func (d Data) Save(db *sql.DB, inst instance) error {
 	query := `UPDATE characters set skin=?, hair=?, face=?, level=?,
 	job=?, str=?, dex=?, intt=?, luk=?, hp=?, maxHP=?, mp=?, maxMP=?,
 	ap=?, sp=?, exp=?, fame=?, mapID=?, mapPos=?, mesos=? WHERE id=?`
 
-	var mapPos byte = 0
+	var mapPos byte
 	var err error
 
 	if inst != nil {

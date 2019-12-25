@@ -313,12 +313,12 @@ func (server *ChannelServer) gmCommand(conn mnet.Client, msg string) {
 
 		player.SetEXP(int32(amount), inst)
 	case "level":
-		player, err := server.players.getFromConn(conn)
+		plr, err := server.players.getFromConn(conn)
 
 		var amount int
 
 		if len(command) == 3 {
-			player, err = server.players.getFromName(command[1])
+			plr, err = server.players.getFromName(command[1])
 			amount, err = strconv.Atoi(command[2])
 		} else if len(command) == 2 {
 			amount, err = strconv.Atoi(command[1])
@@ -329,20 +329,20 @@ func (server *ChannelServer) gmCommand(conn mnet.Client, msg string) {
 			return
 		}
 
-		field, ok := server.fields[player.MapID()]
+		field, ok := server.fields[plr.MapID()]
 
 		if !ok {
 			return
 		}
 
-		inst, err := field.GetInstance(player.InstanceID())
+		inst, err := field.GetInstance(plr.InstanceID())
 
 		if err != nil {
 			conn.Send(entity.PacketMessageRedText(err.Error()))
 			return
 		}
 
-		player.SetLevel(byte(amount), inst)
+		plr.SetLevel(byte(amount), inst)
 	case "levelup":
 		player, err := server.players.getFromConn(conn)
 

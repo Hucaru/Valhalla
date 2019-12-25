@@ -4,7 +4,9 @@ import (
 	"database/sql"
 	"log"
 
+	"github.com/Hucaru/Valhalla/mnet"
 	"github.com/Hucaru/Valhalla/nx"
+	"github.com/Hucaru/Valhalla/server/item"
 )
 
 // GetCharactersFromAccountWorldID - characters under a specific account
@@ -36,6 +38,8 @@ func GetCharactersFromAccountWorldID(db *sql.DB, accountID int32, worldID byte) 
 			log.Println(err)
 		}
 
+		char.equip, char.use, char.setUp, char.etc, char.cash = item.LoadInventoryFromDb(db, char.id)
+
 		c = append(c, char)
 	}
 
@@ -43,7 +47,8 @@ func GetCharactersFromAccountWorldID(db *sql.DB, accountID int32, worldID byte) 
 }
 
 // LoadFromID - player id to load from database
-func (c *Data) LoadFromID(db *sql.DB, id int32) {
+func LoadFromID(db *sql.DB, id int32, conn mnet.Client) Data {
+	c := Data{}
 	filter := "id,accountID,worldID,name,gender,skin,hair,face,level,job,str,dex,intt," +
 		"luk,hp,maxHP,mp,maxMP,ap,sp, exp,fame,mapID,mapPos,previousMapID,mesos," +
 		"equipSlotSize,useSlotSize,setupSlotSize,etcSlotSize,cashSlotSize"
@@ -73,4 +78,8 @@ func (c *Data) LoadFromID(db *sql.DB, id int32) {
 
 	c.pos.SetX(nxMap.Portals[c.mapPos].X)
 	c.pos.SetY(nxMap.Portals[c.mapPos].Y)
+
+	c.equip, c.use, c.setUp, c.etc, c.cash = item.LoadInventoryFromDb(db, c.id)
+	c.conn = conn
+	return c
 }

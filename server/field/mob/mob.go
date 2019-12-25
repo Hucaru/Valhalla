@@ -12,6 +12,7 @@ import (
 
 // Controller of mob
 type Controller interface {
+	Conn() mnet.Client
 	Send(mpacket.Packet)
 }
 
@@ -71,7 +72,7 @@ func CreateFromData(spawnID int32, life nx.Life, m nx.Mob) Data {
 }
 
 // CreateFromID - creates a mob from an id and position data
-func CreateFromID(spawnID, id int32, p pos.Data, conn mnet.Client) (Data, error) {
+func CreateFromID(spawnID, id int32, p pos.Data, controller Controller) (Data, error) {
 	m, err := nx.GetMob(id)
 
 	if err != nil {
@@ -80,7 +81,7 @@ func CreateFromID(spawnID, id int32, p pos.Data, conn mnet.Client) (Data, error)
 
 	// If this isn't working with regards to position make the foothold equal to player? nearest to pos?
 	mob := CreateFromData(spawnID, nx.Life{Foothold: 0, X: p.X(), Y: p.Y(), FaceLeft: true}, m)
-	mob.summoner = conn
+	mob.summoner = controller
 	return mob, nil
 }
 

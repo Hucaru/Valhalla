@@ -240,8 +240,7 @@ func (server *LoginServer) handleNewCharacter(conn mnet.Client, reader mpacket.R
 			log.Println(err)
 		}
 
-		char := player.Data{}
-		char.LoadFromID(server.db, int32(characterID)) // Downcasting (as the game expects int32)
+		char := player.LoadFromID(server.db, int32(characterID), conn)
 
 		if conn.GetAdminLevel() > 0 {
 			items := map[int32]int16{

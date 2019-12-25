@@ -9,24 +9,25 @@ func (server *ChannelServer) npcMovement(conn mnet.Client, reader mpacket.Reader
 	data := reader.GetRestAsBytes()
 	id := reader.ReadInt32()
 
-	player, err := server.players.getFromConn(conn)
+	plr, err := server.players.getFromConn(conn)
 
 	if err != nil {
 		return
 	}
 
-	field, ok := server.fields[player.MapID()]
+	field, ok := server.fields[plr.MapID()]
 
 	if !ok {
 		return
 	}
 
-	inst, err := field.GetInstance(player.InstanceID())
+	inst, err := field.GetInstance(plr.InstanceID())
 
 	if err != nil {
 		return
 	}
 
-	npc := inst.GetNpc(id)
-	npc.AcknowledgeController(player, inst, data)
+	if npc := inst.GetNpc(id); npc != nil {
+		npc.AcknowledgeController(plr, inst, data)
+	}
 }

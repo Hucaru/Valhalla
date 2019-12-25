@@ -9,7 +9,6 @@ import (
 	"github.com/Hucaru/Valhalla/mnet"
 	"github.com/Hucaru/Valhalla/mpacket"
 	"github.com/Hucaru/Valhalla/server/field"
-	"github.com/Hucaru/Valhalla/server/item"
 	"github.com/Hucaru/Valhalla/server/movement"
 	"github.com/Hucaru/Valhalla/server/player"
 )
@@ -63,8 +62,7 @@ func (server *ChannelServer) playerConnect(conn mnet.Client, reader mpacket.Read
 		return
 	}
 
-	equip, use, setUp, etc, cash := item.LoadInventoryFromDb(server.db, charID)
-	plr := player.New(conn, equip, use, setUp, etc, cash)
+	plr := player.LoadFromID(server.db, charID, conn)
 
 	server.players = append(server.players, plr)
 
@@ -83,7 +81,14 @@ func (server *ChannelServer) playerConnect(conn mnet.Client, reader mpacket.Read
 		return
 	}
 
-	inst.AddPlayer(&server.players[len(server.players)-1])
+	newPlr, err := server.players.getFromConn(conn)
+
+	if err != nil {
+		log.Println(err)
+		return
+	}
+
+	inst.AddPlayer(newPlr)
 }
 
 func (server *ChannelServer) playerChangeChannel(conn mnet.Client, reader mpacket.Reader) {
@@ -212,7 +217,7 @@ func (server ChannelServer) playerAddStatPoint(conn mnet.Client, reader mpacket.
 }
 
 func (server ChannelServer) playerRequestAvatarInfoWindow(conn mnet.Client, reader mpacket.Reader) {
-	player, err := server.players.GetFromID(reader.ReadInt32())
+	player, err := server.players.getFromID(reader.ReadInt32())
 
 	if err != nil {
 		return

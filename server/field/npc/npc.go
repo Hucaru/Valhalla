@@ -1,6 +1,7 @@
 package npc
 
 import (
+	"github.com/Hucaru/Valhalla/mnet"
 	"github.com/Hucaru/Valhalla/mpacket"
 	"github.com/Hucaru/Valhalla/nx"
 	"github.com/Hucaru/Valhalla/server/pos"
@@ -8,6 +9,7 @@ import (
 
 // Controller of the npc
 type Controller interface {
+	Conn() mnet.Client
 	Send(mpacket.Packet)
 }
 
@@ -94,9 +96,11 @@ type instance interface {
 
 // AcknowledgeController movement data
 func (d Data) AcknowledgeController(plr Controller, inst instance, data []byte) {
-	if d.controller != plr {
+	if d.controller.Conn() != plr.Conn() {
 		plr.Send(packetNpcSetController(d.spawnID, false))
+		return
 	}
 
+	plr.Send(packetNpcSetController(d.spawnID, true))
 	inst.Send(packetNpcMovement(data))
 }

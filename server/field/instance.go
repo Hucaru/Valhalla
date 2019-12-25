@@ -15,6 +15,7 @@ import (
 )
 
 type player interface {
+	Conn() mnet.Client
 	ID() int32
 	InstanceID() int
 	SetInstanceID(int)
@@ -70,11 +71,11 @@ func (inst Instance) PlayerCount() int {
 
 // AddPlayer to the instance
 func (inst *Instance) AddPlayer(player player) error {
-	for _, npc := range inst.npcs {
+	for i, npc := range inst.npcs {
 		player.Send(packetNpcShow(npc))
 
 		if npc.Controller() == nil {
-			npc.SetController(player)
+			inst.npcs[i].SetController(player)
 		}
 	}
 
@@ -111,11 +112,12 @@ func (inst *Instance) RemovePlayer(player player) error {
 	index := -1
 
 	for i, v := range inst.players {
-		if v == player {
+		if v.Conn() == player.Conn() {
 			index = i
 			break
 		}
 	}
+
 	if index == -1 {
 		return fmt.Errorf("player does not exist in instance")
 	}

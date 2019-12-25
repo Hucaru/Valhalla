@@ -116,7 +116,6 @@ func (bc *baseConn) Send(p mpacket.Packet) {
 	case <-bc.endSend:
 		close(bc.eSend)
 	}
-
 }
 
 func (bc *baseConn) String() string {

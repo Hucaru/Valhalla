@@ -40,7 +40,7 @@ func (p players) getFromName(name string) (*player.Data, error) {
 }
 
 // GetFromID retrieve the Data from the connection
-func (p players) GetFromID(id int32) (*player.Data, error) {
+func (p players) getFromID(id int32) (*player.Data, error) {
 	for _, v := range p {
 		if v.ID() == id {
 			return &v, nil
@@ -51,7 +51,7 @@ func (p players) GetFromID(id int32) (*player.Data, error) {
 }
 
 // RemoveFromConn removes the Data based on the connection
-func (p *players) RemoveFromConn(conn mnet.Client) error {
+func (p *players) removeFromConn(conn mnet.Client) error {
 	i := -1
 
 	for j, v := range *p {
@@ -214,30 +214,36 @@ func (server *ChannelServer) handleChannelConnectionInfo(conn mnet.Server, reade
 
 // ClientDisconnected from server
 func (server *ChannelServer) ClientDisconnected(conn mnet.Client) {
-	player, err := server.players.getFromConn(conn)
+	plr, err := server.players.getFromConn(conn)
 
 	if err != nil {
 		return
 	}
 
-	field, ok := server.fields[player.MapID()]
+	field, ok := server.fields[plr.MapID()]
 
 	if !ok {
 		return
 	}
 
-	inst, err := field.GetInstance(player.InstanceID())
-	go player.Save(server.db, inst)
-	inst.RemovePlayer(player)
-
-	_, err = server.db.Exec("UPDATE characters SET channelID=? WHERE id=?", -1, player.ID())
+	inst, err := field.GetInstance(plr.InstanceID())
+	err = inst.RemovePlayer(plr)
 
 	if err != nil {
 		log.Println(err)
 		return
 	}
 
-	server.players.RemoveFromConn(conn)
+	plr.Save(server.db, inst)
+
+	_, err = server.db.Exec("UPDATE characters SET channelID=? WHERE id=?", -1, plr.ID())
+
+	if err != nil {
+		log.Println(err)
+		return
+	}
+
+	server.players.removeFromConn(conn)
 
 	index := -1
 
