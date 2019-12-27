@@ -584,87 +584,9 @@ func (server ChannelServer) playerMoveInventoryItem(conn mnet.Client, reader mpa
 
 	inst, err := field.GetInstance(plr.InstanceID())
 
-	plr.MoveItem(pos1, pos2, amount, inv, inst)
+	err = plr.MoveItem(pos1, pos2, amount, inv, inst, server.db)
 
-	// item1, err := plr.GetItem(inv, pos1)
-
-	// if err != nil {
-	// 	return // Player moving item that doesn't exit
-	// }
-
-	// if pos2 == 0 { // drop item
-	// 	fmt.Println(inv, pos1, pos2, amount)
-	// } else {
-	// 	item2, err := plr.GetItem(inv, pos2)
-
-	// 	if err != nil { // Move item into empty slot
-	// 		if pos2 < 0 {
-	// 			if item1.TwoHanded() {
-	// 				if _, err = plr.GetItem(inv, -10); err == nil { // check for shield
-	// 					conn.Send(entity.PacketPlayerNoChange())
-	// 					conn.Send(entity.PacketMessageRedText("Cannot equip"))
-	// 					return
-	// 				}
-	// 			} else if item1.Shield() {
-	// 				if weapon, err := plr.GetItem(inv, -11); err == nil {
-	// 					if weapon.TwoHanded() {
-	// 						conn.Send(entity.PacketPlayerNoChange())
-	// 						conn.Send(entity.PacketMessageRedText("Cannot equip"))
-	// 						return
-	// 					}
-	// 				}
-	// 			}
-	// 		}
-
-	// 		item1.SetSlotID(pos2)
-	// 		plr.UpdateItem(item1, item1)
-	// 		conn.Send(entity.PacketInventoryChangeItemSlot(inv, pos1, pos2))
-	// 	} else {
-	// 		if item1.IsStackable() && item2.IsStackable() && (item1.Amount()+item2.Amount()) <= constant.MaxItemStack {
-	// 			item2.SetAmount(item2.Amount() + item1.Amount())
-	// 			plr.UpdateItem(item2, item2)
-	// 			plr.RemoveItem(item1)
-	// 			conn.Send(entity.PacketInventoryAddItem(item2, false))
-	// 			conn.Send(entity.PacketInventoryRemoveItem(item1))
-	// 		} else { // swap
-	// 			if item1.TwoHanded() {
-	// 				if _, err = plr.GetItem(inv, -10); err == nil {
-	// 					conn.Send(entity.PacketPlayerNoChange())
-	// 					conn.Send(entity.PacketMessageRedText("Cannot equip"))
-	// 					return
-	// 				}
-	// 			} else if item1.Shield() { // This condition should not be possible....
-	// 				if weapon, err := plr.GetItem(inv, -11); err == nil {
-	// 					if weapon.TwoHanded() {
-	// 						conn.Send(entity.PacketPlayerNoChange())
-	// 						conn.Send(entity.PacketMessageRedText("Cannot equip"))
-	// 						return
-	// 					}
-	// 				}
-	// 			}
-
-	// 			item2.SetSlotID(pos1)
-	// 			plr.UpdateItem(item2, item2)
-	// 			item1.SetSlotID(pos2)
-	// 			plr.UpdateItem(item1, item1)
-	// 			conn.Send(packetInventoryChangeItemSlot(inv, pos1, pos2))
-	// 		}
-	// 	}
-	// }
-
-	// if (pos1 < 0 || pos2 < 0) && inv == 1 { // Change equip
-	// 	field, ok := server.fields[plr.MapID()]
-
-	// 	if !ok {
-	// 		return
-	// 	}
-
-	// 	inst, err := field.GetInstance(plr.InstanceID())
-
-	// 	if err != nil {
-	// 		return
-	// 	}
-
-	// 	inst.Send(packetInventoryChangeEquip(plr))
-	// }
+	if err != nil {
+		log.Println(err)
+	}
 }

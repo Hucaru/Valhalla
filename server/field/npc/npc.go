@@ -85,9 +85,8 @@ func (d *Data) SetController(controller Controller) {
 func (d *Data) RemoveController() {
 	if d.controller != nil {
 		d.controller.Send(packetNpcSetController(d.spawnID, false))
+		d.controller = nil
 	}
-
-	d.controller = nil
 }
 
 type instance interface {

@@ -54,7 +54,7 @@ Channel server:
 - [x] Player allocate skill points
 - [ ] Player use skills
 - [ ] Player skill logic (haste etc)
-- [ ] Player inventory
+- [x] Player inventory (might be a potentiall dupplication bug, more testing needed)
 - [ ] Player use item (scrolls, potions etc)
 - [ ] Player pets
 - [x] Player stats

@@ -98,7 +98,11 @@ func (m *Data) SetController(controller Controller, follow bool) {
 
 // RemoveController from mob
 func (m *Data) RemoveController() {
-	m.controller.Send(packetMobEndControl(*m))
+	if m.Controller() != nil {
+		m.controller.Send(packetMobEndControl(*m))
+		m.controller = nil
+	}
+
 }
 
 // AcknowledgeController movement bytes

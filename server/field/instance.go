@@ -131,22 +131,22 @@ func (inst *Instance) RemovePlayer(player player) error {
 		player.Send(packetMapPlayerLeft(v.ID()))
 	}
 
-	for _, v := range inst.npcs {
-		if v.Controller() == player {
-			v.RemoveController()
+	for i, v := range inst.npcs {
+		if v.Controller().Conn() == player.Conn() {
+			inst.npcs[i].RemoveController()
 
 			if len(inst.players) > 0 {
-				v.SetController(inst.players[0])
+				inst.npcs[i].SetController(inst.players[0])
 			}
 		}
 	}
 
-	for _, v := range inst.mobs {
-		if v.Controller() == player {
-			v.RemoveController()
+	for i, v := range inst.mobs {
+		if v.Controller().Conn() == player.Conn() {
+			inst.mobs[i].RemoveController()
 
 			if len(inst.players) > 0 {
-				v.SetController(inst.players[0], false)
+				inst.mobs[i].SetController(inst.players[0], false)
 			}
 		}
 	}

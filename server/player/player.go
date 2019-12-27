@@ -155,7 +155,8 @@ func (d *Data) levelUp(inst instance) {
 // SetEXP of the Data
 func (d *Data) SetEXP(amount int32, inst instance) {
 	if d.level > 199 {
-		d.SetEXP(0, inst)
+		d.exp = amount
+		d.Send(packetPlayerStatChange(false, constant.ExpID, int32(amount)))
 		return
 	}
 
@@ -420,7 +421,7 @@ func (d *Data) SetMapPosID(pos byte) {
 }
 
 // GiveItem to Data
-func (d *Data) GiveItem(newItem item.Data) error {
+func (d *Data) GiveItem(newItem item.Data, db *sql.DB) error { // TODO: Refactor
 	findFirstEmptySlot := func(items []item.Data, size byte) (int16, error) {
 		slotsUsed := make([]bool, size)
 
@@ -460,49 +461,68 @@ func (d *Data) GiveItem(newItem item.Data) error {
 
 		newItem.SetSlotID(slotID)
 		newItem.SetAmount(1) // just in case
+		newItem.Save(db, d.id)
 		d.equip = append(d.equip, newItem)
 		d.Send(packetInventoryAddItem(newItem, true))
 	case 2: // Use
-		var slotID int16
-		var index int
-		for i, v := range d.use {
-			if v.ID() == newItem.ID() && v.Amount() < constant.MaxItemStack {
-				slotID = v.SlotID()
-				index = i
-				break
+		size := newItem.Amount()
+		for size > 0 {
+			var value int16 = 200
+			value -= size
+
+			if value < 1 {
+				value = 200
+			} else {
+				value = size
 			}
-		}
+			size -= constant.MaxItemStack
 
-		if slotID == 0 {
-			slotID, err := findFirstEmptySlot(d.use, d.useSlotSize)
+			newItem.SetAmount(value)
 
-			if err != nil {
-				return err
+			var slotID int16
+			var index int
+			for i, v := range d.use {
+				if v.ID() == newItem.ID() && v.Amount() < constant.MaxItemStack {
+					slotID = v.SlotID()
+					index = i
+					break
+				}
 			}
 
-			newItem.SetSlotID(slotID)
-			d.use = append(d.use, newItem)
-			d.Send(packetInventoryAddItem(newItem, true))
-		} else {
-			remainder := newItem.Amount() - (constant.MaxItemStack - d.use[index].Amount())
-
-			if remainder > 0 { //partial merge
+			if slotID == 0 {
 				slotID, err := findFirstEmptySlot(d.use, d.useSlotSize)
 
 				if err != nil {
 					return err
 				}
 
-				newItem.SetAmount(remainder)
 				newItem.SetSlotID(slotID)
+				newItem.Save(db, d.id)
 				d.use = append(d.use, newItem)
-				d.use[index].SetAmount(constant.MaxItemStack)
+				d.Send(packetInventoryAddItem(newItem, true))
+			} else {
+				remainder := newItem.Amount() - (constant.MaxItemStack - d.use[index].Amount())
 
-				d.Send(packetInventoryAddItems([]item.Data{d.use[index], newItem}, []bool{false, true}))
-			} else { // full merge
-				d.use[index].SetAmount(d.use[index].Amount() + newItem.Amount())
-				d.Send(packetInventoryAddItem(d.use[index], false))
+				if remainder > 0 { //partial merge
+					slotID, err := findFirstEmptySlot(d.use, d.useSlotSize)
+
+					if err != nil {
+						return err
+					}
+
+					newItem.SetAmount(value)
+					newItem.SetSlotID(slotID)
+					newItem.Save(db, d.id)
+
+					d.use = append(d.use, newItem)
+					d.Send(packetInventoryAddItems([]item.Data{d.use[index], newItem}, []bool{false, true}))
+				} else { // full merge
+					d.use[index].SetAmount(d.use[index].Amount() + newItem.Amount())
+					d.Send(packetInventoryAddItem(d.use[index], false))
+					d.use[index].Save(db, d.id)
+				}
 			}
+
 		}
 	case 3: // Set-up
 		slotID, err := findFirstEmptySlot(d.setUp, d.setupSlotSize)
@@ -512,49 +532,68 @@ func (d *Data) GiveItem(newItem item.Data) error {
 		}
 
 		newItem.SetSlotID(slotID)
+		newItem.Save(db, d.id)
 		d.setUp = append(d.setUp, newItem)
 		d.Send(packetInventoryAddItem(newItem, true))
 	case 4: // Etc
-		var slotID int16
-		var index int
-		for i, v := range d.etc {
-			if v.ID() == newItem.ID() && v.Amount() < constant.MaxItemStack {
-				slotID = v.SlotID()
-				index = i
-				break
+		size := newItem.Amount()
+		for size > 0 {
+			var value int16 = 200
+			value -= size
+
+			if value < 1 {
+				value = 200
+			} else {
+				value = size
 			}
-		}
+			size -= constant.MaxItemStack
 
-		if slotID == 0 {
-			slotID, err := findFirstEmptySlot(d.etc, d.etcSlotSize)
+			newItem.SetAmount(value)
 
-			if err != nil {
-				return err
+			var slotID int16
+			var index int
+			for i, v := range d.etc {
+				if v.ID() == newItem.ID() && v.Amount() < constant.MaxItemStack {
+					slotID = v.SlotID()
+					index = i
+					break
+				}
 			}
 
-			newItem.SetSlotID(slotID)
-			d.etc = append(d.etc, newItem)
-			d.Send(packetInventoryAddItem(newItem, true))
-		} else {
-			remainder := newItem.Amount() - (constant.MaxItemStack - d.etc[index].Amount())
-
-			if remainder > 0 { //partial merge
+			if slotID == 0 {
 				slotID, err := findFirstEmptySlot(d.etc, d.etcSlotSize)
 
 				if err != nil {
 					return err
 				}
 
-				newItem.SetAmount(remainder)
 				newItem.SetSlotID(slotID)
+				newItem.Save(db, d.id)
 				d.etc = append(d.etc, newItem)
-				d.etc[index].SetAmount(constant.MaxItemStack)
+				d.Send(packetInventoryAddItem(newItem, true))
+			} else {
+				remainder := newItem.Amount() - (constant.MaxItemStack - d.etc[index].Amount())
 
-				d.Send(packetInventoryAddItems([]item.Data{d.etc[index], newItem}, []bool{false, true}))
-			} else { // full merge
-				d.etc[index].SetAmount(d.etc[index].Amount() + newItem.Amount())
-				d.Send(packetInventoryAddItem(d.etc[index], false))
+				if remainder > 0 { //partial merge
+					slotID, err := findFirstEmptySlot(d.etc, d.etcSlotSize)
+
+					if err != nil {
+						return err
+					}
+
+					newItem.SetAmount(value)
+					newItem.SetSlotID(slotID)
+					newItem.Save(db, d.id)
+
+					d.etc = append(d.etc, newItem)
+					d.Send(packetInventoryAddItems([]item.Data{d.etc[index], newItem}, []bool{false, true}))
+				} else { // full merge
+					d.etc[index].SetAmount(d.etc[index].Amount() + newItem.Amount())
+					d.Send(packetInventoryAddItem(d.etc[index], false))
+					d.etc[index].Save(db, d.id)
+				}
 			}
+
 		}
 	case 5: // Cash
 		// some are stackable, how to tell?
@@ -565,17 +604,20 @@ func (d *Data) GiveItem(newItem item.Data) error {
 		}
 
 		newItem.SetSlotID(slotID)
+		newItem.Save(db, d.id)
 		d.cash = append(d.cash, newItem)
 		d.Send(packetInventoryAddItem(newItem, true))
 	default:
 		return fmt.Errorf("Unkown inventory id: %d", newItem.InvID())
 	}
+
 	return nil
 }
 
 // TakeItem from Data
 func (d *Data) TakeItem(itemID int32, amount int16) (item.Data, error) {
 	log.Println("player.Data.TakeItem not implemented")
+	// removeItem if item.Amount() == 0
 	return item.Data{}, nil
 }
 
@@ -628,10 +670,78 @@ func (d Data) getItem(invID byte, slotID int16) (item.Data, error) {
 	return item.Data{}, fmt.Errorf("Could not find item")
 }
 
+func (d *Data) swapItems(item1, item2 item.Data, start, end int16, db *sql.DB) {
+	item1.SetSlotID(end)
+	item1.Save(db, d.id)
+	d.updateItem(item1)
+
+	item2.SetSlotID(start)
+	item2.Save(db, d.id)
+	d.updateItem(item2)
+
+	d.Send(packetInventoryChangeItemSlot(item1.InvID(), start, end))
+}
+
+func (d *Data) removeItem(item item.Data, db *sql.DB) {
+	switch item.InvID() {
+	case 1:
+		for i, v := range d.equip {
+			if v.DbID() == item.DbID() {
+				d.equip[i] = d.equip[len(d.equip)-1]
+				d.equip = d.equip[:len(d.equip)-1]
+				break
+			}
+		}
+	case 2:
+		for i, v := range d.use {
+			if v.DbID() == item.DbID() {
+				d.use[i] = d.use[len(d.use)-1]
+				d.use = d.use[:len(d.use)-1]
+				break
+			}
+		}
+	case 3:
+		for i, v := range d.setUp {
+			if v.DbID() == item.DbID() {
+				d.setUp[i] = d.setUp[len(d.setUp)-1]
+				d.setUp = d.setUp[:len(d.setUp)-1]
+				break
+			}
+		}
+	case 4:
+		for i, v := range d.etc {
+			if v.DbID() == item.DbID() {
+				d.etc[i] = d.etc[len(d.etc)-1]
+				d.etc = d.etc[:len(d.etc)-1]
+				break
+			}
+		}
+	case 5:
+		for i, v := range d.cash {
+			if v.DbID() == item.DbID() {
+				d.cash[i] = d.cash[len(d.cash)-1]
+				d.cash = d.cash[:len(d.cash)-1]
+				break
+			}
+		}
+	}
+
+	item.Delete(db)
+	d.Send(packetInventoryRemoveItem(item))
+}
+
 // MoveItem from one slot to another, if the final slot is zero then this is a drop action
-func (d *Data) MoveItem(start, end, amount int16, invID byte, inst instance) error {
+func (d *Data) MoveItem(start, end, amount int16, invID byte, inst instance, db *sql.DB) error {
 	if end == 0 { //drop item
 		fmt.Println("Drop item amount:", amount)
+		item, err := d.getItem(invID, start)
+
+		if err != nil {
+			return fmt.Errorf("Item to move doesn't exist")
+		}
+
+		d.removeItem(item, db)
+		// inst.AddDrop()
 	} else if end < 0 { // Move to equip slot
 		item1, err := d.getItem(invID, start)
 
@@ -655,10 +765,12 @@ func (d *Data) MoveItem(start, end, amount int16, invID byte, inst instance) err
 
 		if err == nil {
 			item2.SetSlotID(start)
+			item2.Save(db, d.id)
 			d.updateItem(item2)
 		}
 
 		item1.SetSlotID(end)
+		item1.Save(db, d.id)
 		d.updateItem(item1)
 
 		d.Send(packetInventoryChangeItemSlot(invID, start, end))
@@ -674,14 +786,32 @@ func (d *Data) MoveItem(start, end, amount int16, invID byte, inst instance) err
 
 		if err != nil { // empty slot
 			item1.SetSlotID(end)
+			item1.Save(db, d.id)
 			d.updateItem(item1)
 
 			d.Send(packetInventoryChangeItemSlot(invID, start, end))
 		} else { // moved onto item
-			fmt.Println(item2)
+			if (item1.IsStackable() && item2.IsStackable()) && (item1.ID() == item2.ID()) {
+				if item1.Amount() == constant.MaxItemStack || item2.Amount() == constant.MaxItemStack { // swap items
+					d.swapItems(item1, item2, start, end, db)
+				} else if item2.Amount() < constant.MaxItemStack { // full merge
+					if item2.Amount()+item1.Amount() <= constant.MaxItemStack {
+						item2.SetAmount(item2.Amount() + item1.Amount())
+						item2.Save(db, d.id)
+						d.updateItem(item2)
+						d.Send(packetInventoryAddItem(item2, false))
+
+						d.removeItem(item1, db)
+					} else { // partial merge is just a swap
+						d.swapItems(item1, item2, start, end, db)
+					}
+				}
+			} else {
+				d.swapItems(item1, item2, start, end, db)
+			}
 		}
 
-		if start < 0 {
+		if start < 0 || end < 0 {
 			inst.Send(packetInventoryChangeEquip(*d))
 		}
 	}
@@ -873,31 +1003,10 @@ func (d Data) Save(db *sql.DB, inst instance) error {
 
 	d.mapPos = mapPos
 
+	// TODO: Move relevant actions to the time of event
 	_, err = db.Exec(query,
 		d.skin, d.hair, d.face, d.level, d.job, d.str, d.dex, d.intt, d.luk, d.hp, d.maxHP, d.mp,
 		d.maxMP, d.ap, d.sp, d.exp, d.fame, d.mapID, d.mapPos, d.mesos, d.id)
-
-	// TODO: Move these out into relevant item operations, add item, move item etc
-	// send sql queries to a dedicated green thread for item updates once a db id is acquired
-	for _, v := range d.equip {
-		v.Save(db, d.id)
-	}
-
-	for _, v := range d.use {
-		v.Save(db, d.id)
-	}
-
-	for _, v := range d.setUp {
-		v.Save(db, d.id)
-	}
-
-	for _, v := range d.etc {
-		v.Save(db, d.id)
-	}
-
-	for _, v := range d.cash {
-		v.Save(db, d.id)
-	}
 
 	// TODO: Move this into skill book update, this happens 3 times every level (or 15 at a time for min maxers)
 	// There has to be a better way of doing this in mysql

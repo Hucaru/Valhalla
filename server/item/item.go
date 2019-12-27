@@ -304,6 +304,7 @@ func (v Data) Shield() bool {
 	return v.weaponType == 17
 }
 
+// Save item to database
 func (v Data) Save(db *sql.DB, charID int32) (bool, error) {
 	if v.dbID == 0 {
 		props := `characterID,inventoryID,itemID,slotNumber,amount,flag,upgradeSlots,level,
@@ -343,6 +344,18 @@ func (v Data) Save(db *sql.DB, charID int32) (bool, error) {
 		}
 	}
 	return true, nil
+}
+
+// Delete item from database
+func (v Data) Delete(db *sql.DB) error {
+	query := "DELETE FROM `items` WHERE id=?"
+	_, err := db.Exec(query, v.dbID)
+
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // InventoryBytes to display in character inventory window
