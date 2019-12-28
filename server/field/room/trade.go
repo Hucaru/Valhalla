@@ -1,14 +1,14 @@
 package room
 
-// Trade interface to the omok struct
-type Trade interface {
-}
+// Trade behaviours
+type Trade interface{}
 
+// Trade window
 type trade struct {
 	room
 }
 
-// NewTrade returns an interface of Trade
+// NewTrade a trade
 func NewTrade(id int32) Trade {
 	return &trade{}
 }

@@ -15,6 +15,7 @@ const (
 	roomAccept                = 4
 	roomChat                  = 6
 	roomCloseWindow           = 10
+	roomUnkownOp              = 11
 	roomInsertItem            = 13
 	roomMesos                 = 14
 	roomAcceptTrade           = 16
@@ -42,19 +43,19 @@ const (
 )
 
 func (server ChannelServer) roomWindow(conn mnet.Client, reader mpacket.Reader) {
-	player, err := server.players.getFromConn(conn)
+	plr, err := server.players.getFromConn(conn)
 
 	if err != nil {
 		return
 	}
 
-	field, ok := server.fields[player.MapID()]
+	field, ok := server.fields[plr.MapID()]
 
 	if !ok {
 		return
 	}
 
-	inst, err := field.GetInstance(player.InstanceID())
+	inst, err := field.GetInstance(plr.InstanceID())
 
 	if err != nil {
 		return
@@ -81,7 +82,7 @@ func (server ChannelServer) roomWindow(conn mnet.Client, reader mpacket.Reader) 
 				return
 			}
 
-			if r.AddPlayer(player) {
+			if r.AddPlayer(plr) {
 				inst.AddRoom(r)
 			}
 		case roomTypeMemory:
@@ -100,7 +101,7 @@ func (server ChannelServer) roomWindow(conn mnet.Client, reader mpacket.Reader) 
 				return
 			}
 
-			if r.AddPlayer(player) {
+			if r.AddPlayer(plr) {
 				inst.AddRoom(r)
 			}
 		case roomTypeTrade:
@@ -110,7 +111,7 @@ func (server ChannelServer) roomWindow(conn mnet.Client, reader mpacket.Reader) 
 				return
 			}
 
-			if r.AddPlayer(player) {
+			if r.AddPlayer(plr) {
 				inst.AddRoom(r)
 			}
 		case roomTypePersonalShop:
@@ -121,8 +122,49 @@ func (server ChannelServer) roomWindow(conn mnet.Client, reader mpacket.Reader) 
 	case roomSendInvite:
 	case roomReject:
 	case roomAccept:
+		id := reader.ReadInt32()
+
+		r, err := inst.GetRoomID(id)
+
+		if err != nil {
+			return
+		}
+
+		r.AddPlayer(plr)
+
+		if _, valid := r.(room.Game); valid {
+			inst.UpdateGameBox(r)
+		}
 	case roomChat:
+		msg := reader.ReadString(reader.ReadInt16())
+
+		if len(msg) > 0 {
+			r, err := inst.GetPlayerRoom(plr.ID())
+
+			if err != nil {
+				return
+			}
+
+			r.ChatMsg(plr, msg)
+		}
 	case roomCloseWindow:
+		r, err := inst.GetPlayerRoom(plr.ID())
+
+		if err != nil {
+			return
+		}
+
+		if game, valid := r.(room.Game); valid {
+			game.KickPlayer(plr, 0x0)
+
+			if r.Closed() {
+				inst.RemoveRoom(r)
+			} else {
+				inst.UpdateGameBox(r)
+			}
+		} else {
+			r.RemovePlayer(plr)
+		}
 	case roomInsertItem:
 		// invTab := reader.ReadByte()
 		// itemSlot := reader.ReadInt16()
@@ -139,11 +181,77 @@ func (server ChannelServer) roomWindow(conn mnet.Client, reader mpacket.Reader) 
 	case roomRequestExitDuringGame:
 	case roomUndoRequestExit:
 	case roomReadyButtonPressed:
+		r, err := inst.GetPlayerRoom(plr.ID())
+
+		if err != nil {
+			return
+		}
+
+		if game, valid := r.(room.Game); valid {
+			game.Ready(plr)
+		}
 	case roomUnready:
+		r, err := inst.GetPlayerRoom(plr.ID())
+
+		if err != nil {
+			return
+		}
+
+		if game, valid := r.(room.Game); valid {
+			game.Unready(plr)
+		}
 	case roomOwnerExpells:
+		r, err := inst.GetPlayerRoom(plr.ID())
+
+		if err != nil {
+			return
+		}
+
+		if game, valid := r.(room.Game); valid {
+			game.Expel()
+			inst.UpdateGameBox(r)
+		}
 	case roomGameStart:
+		r, err := inst.GetPlayerRoom(plr.ID())
+
+		if err != nil {
+			return
+		}
+
+		if game, valid := r.(room.Game); valid {
+			game.Start(plr)
+			inst.UpdateGameBox(r)
+		}
 	case roomChangeTurn:
+		r, err := inst.GetPlayerRoom(plr.ID())
+
+		if err != nil {
+			return
+		}
+
+		if game, valid := r.(room.Game); valid {
+			game.ChangeTurn()
+		}
 	case roomPlacePiece:
+		x := reader.ReadInt32()
+		y := reader.ReadInt32()
+		piece := reader.ReadByte()
+
+		r, err := inst.GetPlayerRoom(plr.ID())
+
+		if err != nil {
+			return
+		}
+
+		if game, valid := r.(room.Omok); valid {
+			if game.PlacePiece(x, y, piece, plr) {
+				inst.UpdateGameBox(r)
+			}
+
+			if r.Closed() {
+				inst.RemoveRoom(r)
+			}
+		}
 	case roomSelectCard:
 	default:
 		log.Println("Unknown room operation", operation)

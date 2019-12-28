@@ -265,6 +265,7 @@ func (server *LoginServer) handleNewCharacter(conn mnet.Client, reader mpacket.R
 
 				item.SetSlotID(pos)
 				item.SetCreatorName(name)
+				item.Save(server.db, int32(characterID))
 				char.AddEquip(item)
 			}
 		} else {
@@ -284,6 +285,7 @@ func (server *LoginServer) handleNewCharacter(conn mnet.Client, reader mpacket.R
 				}
 
 				item.SetSlotID(pos)
+				item.Save(server.db, int32(characterID))
 				char.AddEquip(item)
 			}
 		}

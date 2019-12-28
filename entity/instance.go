@@ -119,19 +119,6 @@ func (inst *instance) RemovePlayer(player *Player) error {
 	inst.conns = append(inst.conns[:index], inst.conns[index+1:]...)
 
 	// if in room, remove, if room is closed update map
-	for i, v := range inst.rooms {
-		if v.RemovePlayer(player.conn) {
-
-			inst.rooms[i] = inst.rooms[len(inst.rooms)-1]
-			inst.rooms = inst.rooms[:len(inst.rooms)-1]
-
-			if _, valid := v.(gameRoom); valid {
-				// inst.Send()
-			}
-
-			break
-		}
-	}
 
 	for _, v := range inst.conns {
 		v.Send(PacketMapPlayerLeft(player.char.id))

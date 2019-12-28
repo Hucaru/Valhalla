@@ -79,3 +79,18 @@ func packetMobShow(mob mob.Data) mpacket.Packet {
 
 	return p
 }
+
+func packetMapShowGameBox(displayBytes []byte) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelRoomBox)
+	p.WriteBytes(displayBytes)
+
+	return p
+}
+
+func packetMapRemoveGameBox(charID int32) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelRoomBox)
+	p.WriteInt32(charID)
+	p.WriteInt32(0)
+
+	return p
+}
