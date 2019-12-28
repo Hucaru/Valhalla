@@ -76,7 +76,7 @@ type Data struct {
 
 	skills map[int32]Skill
 
-	miniGameWins, miniGameDraw, miniGameLoss int32
+	miniGameWins, miniGameDraw, miniGameLoss, miniGamePoints int32
 }
 
 // Conn - client connection associated with this Data
@@ -364,6 +364,11 @@ func (d *Data) SetMiniGameLoss(v int32) {
 // SetMiniGameDraw of Data
 func (d *Data) SetMiniGameDraw(v int32) {
 	d.miniGameDraw = v
+}
+
+// SetMiniGamePoints of data
+func (d *Data) SetMiniGamePoints(v int32) {
+	d.miniGamePoints = v
 }
 
 type movementFrag interface {
@@ -948,6 +953,9 @@ func (d Data) MiniGameDraw() int32 { return d.miniGameDraw }
 // MiniGameLoss between omok and memory
 func (d Data) MiniGameLoss() int32 { return d.miniGameLoss }
 
+// MiniGamePoints between omok and memory
+func (d Data) MiniGamePoints() int32 { return d.miniGamePoints }
+
 // DisplayBytes used in packets for displaying Data in various situations e.g. in field, in mini game room
 func (d Data) DisplayBytes() []byte {
 	pkt := mpacket.NewPacket()
@@ -1003,7 +1011,8 @@ func (d Data) Save(db *sql.DB, inst instance) error {
 
 	d.mapPos = mapPos
 
-	// TODO: Move relevant actions to the time of event
+	// TODO: Move mesos, to instances of it changing, otherwise items and mesos can become out of sync from
+	// any crashes
 	_, err = db.Exec(query,
 		d.skin, d.hair, d.face, d.level, d.job, d.str, d.dex, d.intt, d.luk, d.hp, d.maxHP, d.mp,
 		d.maxMP, d.ap, d.sp, d.exp, d.fame, d.mapID, d.mapPos, d.mesos, d.id)

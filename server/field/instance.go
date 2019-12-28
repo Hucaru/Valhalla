@@ -30,6 +30,11 @@ type player interface {
 	MiniGameWins() int32
 	MiniGameDraw() int32
 	MiniGameLoss() int32
+	MiniGamePoints() int32
+	SetMiniGameWins(int32)
+	SetMiniGameDraw(int32)
+	SetMiniGameLoss(int32)
+	SetMiniGamePoints(int32)
 }
 
 type players interface {

@@ -4,7 +4,6 @@ const roomTypeOmok = 0x01
 
 // Omok behaviours
 type Omok interface {
-	Game
 	PlacePiece(int32, int32, byte, player) bool
 }
 
@@ -56,7 +55,7 @@ func (r *omok) PlacePiece(x, y int32, piece byte, plr player) bool {
 		r.previousTurn[1][1] = y
 	}
 
-	r.Send(packetRoomPlaceOmokPiece(x, y, piece))
+	r.send(packetRoomPlaceOmokPiece(x, y, piece))
 
 	win := checkOmokWin(r.board, piece)
 	draw := checkOmokDraw(r.board)
@@ -72,7 +71,7 @@ func (r *omok) PlacePiece(x, y int32, piece byte, plr player) bool {
 }
 
 // Start button pressed
-func (r *omok) Start(plr player) {
+func (r *omok) Start() {
 	if len(r.players) < 2 {
 		return
 	}
@@ -81,7 +80,7 @@ func (r *omok) Start(plr player) {
 	r.inProgress = true
 	r.ownerStart = !r.ownerStart
 	r.p1Turn = r.ownerStart
-	r.Send(packetRoomOmokStart(r.ownerStart))
+	r.send(packetRoomOmokStart(r.ownerStart))
 }
 
 func checkOmokDraw(board [15][15]byte) bool {

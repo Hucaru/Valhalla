@@ -2,6 +2,7 @@ package room
 
 import (
 	"fmt"
+	"math"
 
 	"github.com/Hucaru/Valhalla/mnet"
 	"github.com/Hucaru/Valhalla/mpacket"
@@ -16,13 +17,17 @@ type player interface {
 	MiniGameWins() int32
 	MiniGameDraw() int32
 	MiniGameLoss() int32
+	MiniGamePoints() int32
+	SetMiniGameWins(int32)
+	SetMiniGameDraw(int32)
+	SetMiniGameLoss(int32)
+	SetMiniGamePoints(int32)
 }
 
 // Room base behaviours
 type Room interface {
 	ID() int32
 	AddPlayer(player) bool
-	RemovePlayer(player) bool
 	Closed() bool
 	Present(int32) bool
 	ChatMsg(player, string)
@@ -40,11 +45,11 @@ func (r room) ID() int32 {
 }
 
 // OwnerID of the room
-func (r omok) OwnerID() int32 {
+func (r room) OwnerID() int32 {
 	return r.ownerID
 }
 
-func (r *room) AddPlayer(plr player) bool {
+func (r *room) addPlayer(plr player) bool {
 	if len(r.players) == 0 {
 		r.ownerID = plr.ID()
 	} else if len(r.players) == 2 {
@@ -63,7 +68,7 @@ func (r *room) AddPlayer(plr player) bool {
 	return true
 }
 
-func (r *room) RemovePlayer(plr player) bool {
+func (r *room) removePlayer(plr player) bool {
 	for i, v := range r.players {
 		if v.Conn() == plr.Conn() {
 			r.players = append(r.players[:i], r.players[i+1:]...) // preserve order for slot numbers
@@ -74,7 +79,7 @@ func (r *room) RemovePlayer(plr player) bool {
 	return false
 }
 
-func (r room) Send(p mpacket.Packet) {
+func (r room) send(p mpacket.Packet) {
 	for _, v := range r.players {
 		v.Send(p)
 	}
@@ -100,7 +105,7 @@ func (r room) Closed() bool {
 func (r room) ChatMsg(plr player, msg string) {
 	for i, v := range r.players {
 		if v.Conn() == plr.Conn() {
-			r.Send(packetRoomChat(plr.Name(), msg, byte(i)))
+			r.send(packetRoomChat(plr.Name(), msg, byte(i)))
 		}
 	}
 }
@@ -120,7 +125,7 @@ func (r room) Present(id int32) bool {
 type Game interface {
 	Ready(player)
 	Unready(player)
-	Start(player)
+	Start()
 	DisplayBytes() []byte
 	KickPlayer(player, byte) bool
 	Expel() bool
@@ -141,7 +146,7 @@ type game struct {
 
 // AddPlayer to game
 func (r *game) AddPlayer(plr player) bool {
-	if !r.room.AddPlayer(plr) {
+	if !r.room.addPlayer(plr) {
 		return false
 	}
 
@@ -158,7 +163,7 @@ func (r *game) AddPlayer(plr player) bool {
 func (r *game) KickPlayer(plr player, reason byte) bool {
 	for i, v := range r.players {
 		if v.Conn() == plr.Conn() {
-			if !r.room.RemovePlayer(plr) {
+			if !r.room.removePlayer(plr) {
 				return false
 			}
 
@@ -167,12 +172,12 @@ func (r *game) KickPlayer(plr player, reason byte) bool {
 			if i == 0 { // owner is always at index 0
 				for j := range r.players {
 					fmt.Println(packetRoomLeave(byte(j+1), 0x0))
-					r.Send(packetRoomLeave(byte(j+1), 0x0))
+					r.send(packetRoomLeave(byte(j+1), 0x0))
 				}
 				r.players = []player{} // sets the room into a closed state
 			} else {
 				fmt.Println(packetRoomLeave(byte(i), reason))
-				r.Send(packetRoomLeave(byte(i), reason))
+				r.send(packetRoomLeave(byte(i), reason))
 			}
 
 			return true
@@ -184,7 +189,7 @@ func (r *game) KickPlayer(plr player, reason byte) bool {
 
 func (r *game) Expel() bool {
 	if len(r.players) > 1 {
-		r.Send(packetRoomYellowChat(0, r.players[1].Name()))
+		r.send(packetRoomYellowChat(0, r.players[1].Name()))
 		r.KickPlayer(r.players[1], 0x5)
 
 		return true
@@ -197,7 +202,7 @@ func (r *game) Expel() bool {
 func (r *game) Ready(plr player) {
 	for i, v := range r.players {
 		if v.Conn() == plr.Conn() && i == 1 {
-			r.Send(packetRoomReady())
+			r.send(packetRoomReady())
 		}
 	}
 }
@@ -206,7 +211,7 @@ func (r *game) Ready(plr player) {
 func (r *game) Unready(plr player) {
 	for i, v := range r.players {
 		if v.Conn() == plr.Conn() && i == 1 {
-			r.Send(packetRoomUnready())
+			r.send(packetRoomUnready())
 		}
 	}
 }
@@ -214,9 +219,10 @@ func (r *game) Unready(plr player) {
 // ChangeTurn of player
 func (r *game) ChangeTurn() {
 	r.p1Turn = !r.p1Turn
-	r.Send(packetRoomGameSkip(r.p1Turn))
+	r.send(packetRoomGameSkip(r.p1Turn))
 }
 
+// TODO: Points calculation
 func (r *game) gameEnd(draw, forfeit bool, plr player) {
 	r.inProgress = false
 
@@ -226,19 +232,42 @@ func (r *game) gameEnd(draw, forfeit bool, plr player) {
 		winningSlot = 0x01
 	}
 
+	// This is not the correct calculation
+	diff := math.Abs(float64(r.players[0].MiniGamePoints() - r.players[1].MiniGamePoints()))
+	pointChange := 17 - int32(diff/27)
+
 	if forfeit {
 		if plr.Conn() == r.players[0].Conn() {
 			winningSlot = 0x01
+			r.players[0].SetMiniGameLoss(r.players[0].MiniGameLoss() + 1)
+			r.players[1].SetMiniGameWins(r.players[1].MiniGameWins() + 1)
 		} else {
 			winningSlot = 0x00
+			r.players[0].SetMiniGameWins(r.players[0].MiniGameWins() + 1)
+			r.players[1].SetMiniGameLoss(r.players[1].MiniGameLoss() + 1)
 		}
 	} else if draw {
-
+		r.players[0].SetMiniGameDraw(r.players[0].MiniGameDraw() + 1)
+		r.players[1].SetMiniGameDraw(r.players[1].MiniGameDraw() + 1)
 	} else {
+		r.players[winningSlot].SetMiniGameWins(r.players[winningSlot].MiniGameWins() + 1)
 
+		if winningSlot == 0x00 {
+			r.players[1].SetMiniGameLoss(r.players[1].MiniGameLoss() + 1)
+		} else {
+			r.players[0].SetMiniGameLoss(r.players[0].MiniGameLoss() + 1)
+		}
 	}
 
-	r.Send(packetRoomGameResult(draw, winningSlot, forfeit, r.players))
+	r.players[winningSlot].SetMiniGamePoints(r.players[winningSlot].MiniGamePoints() + pointChange)
+
+	if winningSlot == 0x00 {
+		r.players[1].SetMiniGamePoints(r.players[1].MiniGamePoints() - pointChange)
+	} else {
+		r.players[0].SetMiniGamePoints(r.players[0].MiniGamePoints() - pointChange)
+	}
+
+	r.send(packetRoomGameResult(draw, winningSlot, forfeit, r.players))
 }
 
 // DisplayBytes to show room game box

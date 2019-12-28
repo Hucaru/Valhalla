@@ -162,8 +162,6 @@ func (server ChannelServer) roomWindow(conn mnet.Client, reader mpacket.Reader) 
 			} else {
 				inst.UpdateGameBox(r)
 			}
-		} else {
-			r.RemovePlayer(plr)
 		}
 	case roomInsertItem:
 		// invTab := reader.ReadByte()
@@ -219,7 +217,7 @@ func (server ChannelServer) roomWindow(conn mnet.Client, reader mpacket.Reader) 
 		}
 
 		if game, valid := r.(room.Game); valid {
-			game.Start(plr)
+			game.Start()
 			inst.UpdateGameBox(r)
 		}
 	case roomChangeTurn:
@@ -253,6 +251,24 @@ func (server ChannelServer) roomWindow(conn mnet.Client, reader mpacket.Reader) 
 			}
 		}
 	case roomSelectCard:
+		turn := reader.ReadByte()
+		cardID := reader.ReadByte()
+
+		r, err := inst.GetPlayerRoom(plr.ID())
+
+		if err != nil {
+			return
+		}
+
+		if game, valid := r.(room.Memory); valid {
+			if game.SelectCard(turn, cardID, plr) {
+				inst.UpdateGameBox(r)
+			}
+
+			if r.Closed() {
+				inst.RemoveRoom(r)
+			}
+		}
 	default:
 		log.Println("Unknown room operation", operation)
 	}

@@ -31,7 +31,7 @@ func packetRoomShowWindow(roomType, boardType, maxPlayers, roomSlot byte, roomTi
 		p.WriteInt32(v.MiniGameWins())
 		p.WriteInt32(v.MiniGameDraw())
 		p.WriteInt32(v.MiniGameLoss())
-		p.WriteInt32(2000) // Points in the ui. What does it represent?
+		p.WriteInt32(v.MiniGamePoints())
 	}
 
 	p.WriteByte(0xFF)
@@ -203,12 +203,12 @@ func packetRoomGameResult(draw bool, winningSlot byte, forfeit bool, plr []playe
 	p.WriteInt32(plr[0].MiniGameWins())
 	p.WriteInt32(plr[0].MiniGameDraw())
 	p.WriteInt32(plr[0].MiniGameLoss())
-	p.WriteInt32(2000) // points
+	p.WriteInt32(plr[0].MiniGamePoints())
 	p.WriteInt32(1)
 	p.WriteInt32(plr[1].MiniGameWins())
 	p.WriteInt32(plr[1].MiniGameDraw())
 	p.WriteInt32(plr[1].MiniGameLoss())
-	p.WriteInt32(2000) // points
+	p.WriteInt32(plr[1].MiniGamePoints())
 
 	return p
 }
