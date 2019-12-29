@@ -76,7 +76,7 @@ Channel server:
 - [ ] Mob spawns mob(s) on death
 - [ ] Mob drops
 - [ ] Trade
-- [ ] Minigames
+- [x] Minigames
 - [ ] Communication Window
 - [ ] Party
 - [ ] Guild

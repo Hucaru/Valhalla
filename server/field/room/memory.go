@@ -53,6 +53,11 @@ func (r *memory) SelectCard(turn, cardID byte, plr player) bool {
 
 		if win || draw {
 			r.gameEnd(draw, false, nil)
+
+			if r.Closed() { // If owner exit as part of game leave
+				return false
+			}
+
 			return true
 		}
 

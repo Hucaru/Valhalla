@@ -50,7 +50,7 @@ func packetRoomJoin(roomType, roomSlot byte, plr player) mpacket.Packet {
 	p.WriteInt32(0) //?
 	p.WriteString(plr.Name())
 
-	if roomType == 0x03 {
+	if roomType == 0x03 || roomType == 0x04 {
 		return p
 	}
 
@@ -58,7 +58,7 @@ func packetRoomJoin(roomType, roomSlot byte, plr player) mpacket.Packet {
 	p.WriteInt32(plr.MiniGameWins())
 	p.WriteInt32(plr.MiniGameDraw())
 	p.WriteInt32(plr.MiniGameLoss())
-	p.WriteInt32(2000) // Points in the ui. What does it represent?
+	p.WriteInt32(plr.MiniGamePoints())
 
 	return p
 }
@@ -177,6 +177,45 @@ func packetRoomSelectCard(turn, cardID, firstCardPick byte, result byte) mpacket
 	return p
 }
 
+func packetRoomRequestTie() mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelRoom)
+	p.WriteByte(0x2a)
+
+	return p
+}
+
+func packetRoomRejectTie() mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelRoom)
+	p.WriteByte(0x2b)
+
+	return p
+}
+
+func packetRoomRequestUndo() mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelRoom)
+	p.WriteByte(0x2e)
+
+	return p
+}
+
+func packetRoomRejectUndo() mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelRoom)
+	p.WriteByte(0x2f)
+	p.WriteByte(0x00)
+
+	return p
+}
+
+func packetRoomUndo(piece, slot byte) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelRoom)
+	p.WriteByte(0x2f)
+	p.WriteByte(0x01)
+	p.WriteByte(piece) // 0x00 seems to do nothing?
+	p.WriteByte(slot)
+
+	return p
+}
+
 func packetRoomGameResult(draw bool, winningSlot byte, forfeit bool, plr []player) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelRoom)
 	p.WriteByte(0x36)
@@ -209,6 +248,32 @@ func packetRoomGameResult(draw bool, winningSlot byte, forfeit bool, plr []playe
 	p.WriteInt32(plr[1].MiniGameDraw())
 	p.WriteInt32(plr[1].MiniGameLoss())
 	p.WriteInt32(plr[1].MiniGamePoints())
+
+	return p
+}
+
+func packetRoomInvite(roomType byte, name string, roomID int32) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelRoom)
+	p.WriteByte(0x02)
+	p.WriteByte(roomType)
+	p.WriteString(name)
+	p.WriteInt32(roomID)
+
+	return p
+}
+
+func packetRoomInviteResult(resultCode byte, name string) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelRoom)
+	p.WriteByte(0x03)
+	p.WriteByte(resultCode)
+	p.WriteString(name)
+
+	return p
+}
+
+func packetRoomShowAccept() mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelRoom)
+	p.WriteByte(0x0F)
 
 	return p
 }

@@ -21,7 +21,7 @@ const (
 	roomAcceptTrade           = 16
 	roomRequestTie            = 42
 	roomRequestTieResult      = 43
-	roomRequestGiveUp         = 44
+	roomForfeit               = 44
 	roomRequestUndo           = 46
 	roomRequestUndoResult     = 47
 	roomRequestExitDuringGame = 48
@@ -172,12 +172,89 @@ func (server ChannelServer) roomWindow(conn mnet.Client, reader mpacket.Reader) 
 		// amount := reader.ReadInt32()
 	case roomAcceptTrade:
 	case roomRequestTie:
+		r, err := inst.GetPlayerRoom(plr.ID())
+
+		if err != nil {
+			return
+		}
+
+		if game, valid := r.(room.Game); valid {
+			game.RequestTie(plr)
+		}
 	case roomRequestTieResult:
-	case roomRequestGiveUp:
+		r, err := inst.GetPlayerRoom(plr.ID())
+
+		if err != nil {
+			return
+		}
+
+		if game, valid := r.(room.Game); valid {
+			tie := reader.ReadBool()
+			game.RequestTieResult(tie, plr)
+
+			if r.Closed() {
+				inst.RemoveRoom(r)
+			} else {
+				inst.UpdateGameBox(r)
+			}
+		}
+	case roomForfeit:
+		r, err := inst.GetPlayerRoom(plr.ID())
+
+		if err != nil {
+			return
+		}
+
+		if game, valid := r.(room.Game); valid {
+			game.Forfeit(plr)
+
+			if r.Closed() {
+				inst.RemoveRoom(r)
+			} else {
+				inst.UpdateGameBox(r)
+			}
+		}
 	case roomRequestUndo:
+		r, err := inst.GetPlayerRoom(plr.ID())
+
+		if err != nil {
+			return
+		}
+
+		if game, valid := r.(room.Omok); valid {
+			game.RequestUndo(plr)
+		}
 	case roomRequestUndoResult:
+		r, err := inst.GetPlayerRoom(plr.ID())
+
+		if err != nil {
+			return
+		}
+
+		if game, valid := r.(room.Omok); valid {
+			undo := reader.ReadBool()
+			game.RequestUndoResult(undo, plr)
+		}
 	case roomRequestExitDuringGame:
+		r, err := inst.GetPlayerRoom(plr.ID())
+
+		if err != nil {
+			return
+		}
+
+		if game, valid := r.(room.Game); valid {
+			game.RequestExit(true, plr)
+		}
 	case roomUndoRequestExit:
+		r, err := inst.GetPlayerRoom(plr.ID())
+
+		if err != nil {
+			return
+		}
+
+		if game, valid := r.(room.Game); valid {
+			game.RequestExit(false, plr)
+		}
 	case roomReadyButtonPressed:
 		r, err := inst.GetPlayerRoom(plr.ID())
 

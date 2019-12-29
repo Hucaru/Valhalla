@@ -5,13 +5,20 @@ const roomTypeOmok = 0x01
 // Omok behaviours
 type Omok interface {
 	PlacePiece(int32, int32, byte, player) bool
+	RequestUndo(player)
+	RequestUndoResult(bool, player)
 }
 
 type omok struct {
 	game
 
-	board        [15][15]byte
-	previousTurn [2][2]int32
+	board [15][15]byte
+
+	p1History [2][2]int32
+	p2History [2][2]int32
+
+	p1Plays int
+	p2Plays int
 }
 
 const maxPlayers = 2
@@ -48,11 +55,15 @@ func (r *omok) PlacePiece(x, y int32, piece byte, plr player) bool {
 	r.board[x][y] = piece
 
 	if r.p1Turn {
-		r.previousTurn[0][0] = x
-		r.previousTurn[0][1] = y
+		i := 1 - r.p1Plays%2
+		r.p1History[i][0] = x
+		r.p1History[i][1] = y
+		r.p1Plays++
 	} else {
-		r.previousTurn[1][0] = x
-		r.previousTurn[1][1] = y
+		i := 1 - r.p2Plays%2
+		r.p2History[i][0] = x
+		r.p2History[i][1] = y
+		r.p2Plays++
 	}
 
 	r.send(packetRoomPlaceOmokPiece(x, y, piece))
@@ -62,12 +73,91 @@ func (r *omok) PlacePiece(x, y int32, piece byte, plr player) bool {
 
 	if win || draw {
 		r.gameEnd(draw, false, nil)
+
+		if r.Closed() { // If owner exit as part of game leave
+			return false
+		}
+
 		return true
 	}
 
 	r.p1Turn = !r.p1Turn
 
 	return false
+}
+
+// RequestUndo to the last move the player made
+func (r *omok) RequestUndo(plr player) {
+	for i, v := range r.players {
+		if v.Conn() != plr.Conn() {
+			if (i == 0 && r.p1Plays == 0) || (i == 1 && r.p2Plays == 0) {
+				return
+			}
+
+			v.Send(packetRoomRequestUndo())
+			return
+		}
+	}
+}
+
+// RequestUndoResult is the choice the other player made to the request
+func (r *omok) RequestUndoResult(undo bool, plr player) {
+	if undo {
+		for i, v := range r.players {
+			if v.Conn() != plr.Conn() {
+				turns := byte(1)
+				slot := byte(i)
+
+				if i == 0 {
+					r.p1Plays--
+					j := 1 - r.p1Plays%2
+					x := r.p1History[j][0]
+					y := r.p1History[j][1]
+					r.board[x][y] = 0
+
+					if r.p1Turn {
+						r.p2Plays--
+						k := 1 - r.p2Plays%2
+						x := r.p2History[k][0]
+						y := r.p2History[k][1]
+						r.board[x][y] = 0
+						turns = 2
+					}
+				} else if i == 1 {
+					r.p2Plays--
+					j := 1 - r.p2Plays%2
+					x := r.p2History[j][0]
+					y := r.p2History[j][1]
+					r.board[x][y] = 0
+
+					if !r.p1Turn {
+						r.p1Plays--
+						k := 1 - r.p1Plays%2
+						x := r.p1History[k][0]
+						y := r.p1History[k][1]
+						r.board[x][y] = 0
+						turns = 2
+					}
+				}
+
+				if slot == 0 {
+					r.p1Turn = true
+				} else {
+					r.p1Turn = false
+				}
+
+				r.send(packetRoomUndo(turns, slot))
+				return
+			}
+		}
+	} else {
+		for _, v := range r.players {
+			if v.Conn() != plr.Conn() {
+				v.Send(packetRoomRejectUndo())
+				return
+			}
+		}
+	}
 }
 
 // Start button pressed

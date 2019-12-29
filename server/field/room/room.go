@@ -130,6 +130,10 @@ type Game interface {
 	KickPlayer(player, byte) bool
 	Expel() bool
 	ChangeTurn()
+	RequestTie(player)
+	RequestTieResult(bool, player)
+	Forfeit(player)
+	RequestExit(bool, player)
 }
 
 type game struct {
@@ -142,6 +146,7 @@ type game struct {
 	inProgress bool
 	name       string
 	password   string
+	exit       [2]bool
 }
 
 // AddPlayer to game
@@ -163,6 +168,10 @@ func (r *game) AddPlayer(plr player) bool {
 func (r *game) KickPlayer(plr player, reason byte) bool {
 	for i, v := range r.players {
 		if v.Conn() == plr.Conn() {
+			if r.inProgress {
+				r.gameEnd(false, true, plr)
+			}
+
 			if !r.room.removePlayer(plr) {
 				return false
 			}
@@ -222,7 +231,6 @@ func (r *game) ChangeTurn() {
 	r.send(packetRoomGameSkip(r.p1Turn))
 }
 
-// TODO: Points calculation
 func (r *game) gameEnd(draw, forfeit bool, plr player) {
 	r.inProgress = false
 
@@ -232,21 +240,30 @@ func (r *game) gameEnd(draw, forfeit bool, plr player) {
 		winningSlot = 0x01
 	}
 
-	// This is not the correct calculation
-	diff := math.Abs(float64(r.players[0].MiniGamePoints() - r.players[1].MiniGamePoints()))
-	pointChange := 17 - int32(diff/27)
-
 	if forfeit {
 		if plr.Conn() == r.players[0].Conn() {
 			winningSlot = 0x01
-			r.players[0].SetMiniGameLoss(r.players[0].MiniGameLoss() + 1)
-			r.players[1].SetMiniGameWins(r.players[1].MiniGameWins() + 1)
 		} else {
 			winningSlot = 0x00
-			r.players[0].SetMiniGameWins(r.players[0].MiniGameWins() + 1)
-			r.players[1].SetMiniGameLoss(r.players[1].MiniGameLoss() + 1)
 		}
-	} else if draw {
+	}
+
+	r.assignPoints(draw, winningSlot)
+	r.assignWinLossDraw(draw, winningSlot)
+	r.send(packetRoomGameResult(draw, winningSlot, forfeit, r.players))
+
+	if r.exit[0] == true {
+		for _, v := range r.players {
+			r.KickPlayer(v, 0)
+		}
+	} else if r.exit[1] == true {
+		r.KickPlayer(r.players[1], 0)
+		r.exit[1] = false // no need to clear owner entry, if they leave room closes
+	}
+}
+
+func (r *game) assignWinLossDraw(draw bool, winningSlot byte) {
+	if draw {
 		r.players[0].SetMiniGameDraw(r.players[0].MiniGameDraw() + 1)
 		r.players[1].SetMiniGameDraw(r.players[1].MiniGameDraw() + 1)
 	} else {
@@ -258,16 +275,70 @@ func (r *game) gameEnd(draw, forfeit bool, plr player) {
 			r.players[0].SetMiniGameLoss(r.players[0].MiniGameLoss() + 1)
 		}
 	}
+}
 
-	r.players[winningSlot].SetMiniGamePoints(r.players[winningSlot].MiniGamePoints() + pointChange)
+// TODO: Correct points/elo calculation
+func (r *game) assignPoints(draw bool, winningSlot byte) {
+	// This is not the correct calculation
+	diff := math.Abs(float64(r.players[0].MiniGamePoints() - r.players[1].MiniGamePoints()))
+	pointChange := 17 - int32(diff/27)
 
-	if winningSlot == 0x00 {
-		r.players[1].SetMiniGamePoints(r.players[1].MiniGamePoints() - pointChange)
+	if draw {
+
 	} else {
-		r.players[0].SetMiniGamePoints(r.players[0].MiniGamePoints() - pointChange)
+		r.players[winningSlot].SetMiniGamePoints(r.players[winningSlot].MiniGamePoints() + pointChange)
+
+		if winningSlot == 0x00 {
+			r.players[1].SetMiniGamePoints(r.players[1].MiniGamePoints() - pointChange)
+		} else {
+			r.players[0].SetMiniGamePoints(r.players[0].MiniGamePoints() - pointChange)
+		}
 	}
 
-	r.send(packetRoomGameResult(draw, winningSlot, forfeit, r.players))
+}
+
+// ReqestTie of game
+func (r *game) RequestTie(plr player) {
+	for _, v := range r.players {
+		if v.Conn() != plr.Conn() {
+			v.Send(packetRoomRequestTie())
+			return
+		}
+	}
+}
+
+// RequestTieResult of the choice the other player mode
+func (r *game) RequestTieResult(tie bool, plr player) {
+	if tie == true {
+		r.gameEnd(true, false, nil)
+	} else {
+		for _, v := range r.players {
+			if v.Conn() != plr.Conn() {
+				v.Send(packetRoomRejectTie())
+				return
+			}
+		}
+	}
+}
+
+// Forfeit the game
+func (r *game) Forfeit(plr player) {
+	for _, v := range r.players {
+		if v.Conn() == plr.Conn() {
+			r.gameEnd(false, true, plr)
+			return
+		}
+	}
+}
+
+// RequestExit at end of game
+func (r *game) RequestExit(exit bool, plr player) {
+	for i, v := range r.players {
+		if v.Conn() == plr.Conn() {
+			r.exit[i] = exit
+			return
+		}
+	}
 }
 
 // DisplayBytes to show room game box
