@@ -21,11 +21,10 @@ type omok struct {
 	p2Plays int
 }
 
-const maxPlayers = 2
-
 // NewOmok returns a new Omok
 func NewOmok(id int32, name, password string, boardType byte) Room {
-	g := game{name: name, password: password, boardType: boardType, roomType: roomTypeOmok, ownerStart: false}
+	r := room{id: id, roomType: roomTypeOmok}
+	g := game{room: r, name: name, password: password, boardType: boardType, ownerStart: false}
 	return &omok{game: g}
 }
 

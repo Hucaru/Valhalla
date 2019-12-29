@@ -120,14 +120,55 @@ func (server ChannelServer) roomWindow(conn mnet.Client, reader mpacket.Reader) 
 			log.Println("Unknown room type", roomType)
 		}
 	case roomSendInvite:
+		id := reader.ReadInt32()
+
+		plr2, err := inst.GetPlayerFromID(id)
+
+		if err != nil {
+			plr.Send(room.PacketRoomTradeRequireSameMap())
+			return
+		}
+
+		r, err := inst.GetPlayerRoom(plr.ID())
+
+		if err != nil {
+			return
+		}
+
+		if trade, valid := r.(room.Trade); valid {
+			trade.SendInvite(plr2)
+		}
 	case roomReject:
+		id := reader.ReadInt32()
+		code := reader.ReadByte()
+
+		r, err := inst.GetRoomID(id)
+
+		if err != nil {
+			return
+		}
+
+		if trade, valid := r.(room.Trade); valid {
+			trade.Reject(code, plr.Name())
+		}
 	case roomAccept:
 		id := reader.ReadInt32()
 
 		r, err := inst.GetRoomID(id)
 
 		if err != nil {
+			plr.Send(room.PacketRoomTradeRequireSameMap())
 			return
+		}
+
+		if reader.ReadBool() {
+			password := reader.ReadString(reader.ReadInt16())
+
+			if game, valid := r.(room.Game); valid {
+				if !game.CheckPassword(password, plr) {
+					return
+				}
+			}
 		}
 
 		r.AddPlayer(plr)
@@ -162,6 +203,9 @@ func (server ChannelServer) roomWindow(conn mnet.Client, reader mpacket.Reader) 
 			} else {
 				inst.UpdateGameBox(r)
 			}
+		} else if trade, valid := r.(room.Trade); valid {
+			trade.RemovePlayer(plr)
+			inst.RemoveRoom(r)
 		}
 	case roomInsertItem:
 		// invTab := reader.ReadByte()

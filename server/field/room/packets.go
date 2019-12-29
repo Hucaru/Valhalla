@@ -67,7 +67,7 @@ func packetRoomLeave(roomSlot byte, leaveCode byte) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelRoom)
 	p.WriteByte(0x0A)
 	p.WriteByte(roomSlot)
-	p.WriteByte(leaveCode)
+	p.WriteByte(leaveCode) // 2 - trade cancelled, 6 - trade success
 
 	return p
 }
@@ -319,7 +319,8 @@ func packetRoomMiniRoomNotHere() mpacket.Packet {
 	return packetRoomEnterErrorMsg(0x08)
 }
 
-func packetRoomTradeRequireSameMap() mpacket.Packet {
+// PacketRoomTradeRequireSameMap error message
+func PacketRoomTradeRequireSameMap() mpacket.Packet {
 	return packetRoomEnterErrorMsg(0x09)
 }
 

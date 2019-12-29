@@ -8,6 +8,8 @@ import (
 	"github.com/Hucaru/Valhalla/mpacket"
 )
 
+const maxPlayers = 2
+
 type player interface {
 	ID() int32
 	Conn() mnet.Client
@@ -35,9 +37,10 @@ type Room interface {
 }
 
 type room struct {
-	id      int32
-	ownerID int32
-	players []player
+	id       int32
+	ownerID  int32
+	roomType byte
+	players  []player
 }
 
 func (r room) ID() int32 {
@@ -123,6 +126,7 @@ func (r room) Present(id int32) bool {
 
 // Game base behaviours
 type Game interface {
+	CheckPassword(string, player) bool
 	Ready(player)
 	Unready(player)
 	Start()
@@ -139,7 +143,6 @@ type Game interface {
 type game struct {
 	room
 
-	roomType   byte
 	boardType  byte
 	ownerStart bool
 	p1Turn     bool
@@ -161,6 +164,14 @@ func (r *game) AddPlayer(plr player) bool {
 		r.sendExcept(packetRoomJoin(r.roomType, byte(len(r.players)-1), r.players[len(r.players)-1]), plr)
 	}
 
+	return true
+}
+
+func (r game) CheckPassword(password string, plr player) bool {
+	if password != r.password {
+		plr.Send(packetRoomIncorrectPassword())
+		return true
+	}
 	return true
 }
 

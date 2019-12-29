@@ -13,11 +13,11 @@ func packetMapPlayerEnter(plr player) mpacket.Packet {
 	p.WriteString(plr.Name())
 
 	if true {
-		p.WriteString("test")
-		p.WriteInt16(0)
-		p.WriteByte(0)
-		p.WriteByte(0)
-		p.WriteInt16(0)
+		p.WriteString("[Admins]")
+		p.WriteInt16(1030) // logo background
+		p.WriteByte(3)     // logo bg colour
+		p.WriteInt16(4017) // logo
+		p.WriteByte(2)     // logo colour
 		p.WriteInt32(0)
 		p.WriteInt32(0)
 	} else {

@@ -191,6 +191,17 @@ func (inst *Instance) RemovePlayer(plr player) error {
 	return nil
 }
 
+// GetPlayerFromID from the instance
+func (inst Instance) GetPlayerFromID(id int32) (player, error) {
+	for i, v := range inst.players {
+		if v.ID() == id {
+			return inst.players[i], nil
+		}
+	}
+
+	return nil, fmt.Errorf("Player not in instance")
+}
+
 // NextID - gets the next available id to be used by the instance
 func (inst *Instance) NextID() int32 {
 	inst.idCounter++

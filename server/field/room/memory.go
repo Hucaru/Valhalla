@@ -23,7 +23,8 @@ type memory struct {
 
 // NewMemory a new memory
 func NewMemory(id int32, name, password string, boardType byte) Room {
-	g := game{name: name, password: password, boardType: boardType, roomType: roomTypeMemory, ownerStart: false}
+	r := room{id: id, roomType: roomTypeMemory}
+	g := game{room: r, name: name, password: password, boardType: boardType, ownerStart: false}
 	return &memory{game: g}
 }
 

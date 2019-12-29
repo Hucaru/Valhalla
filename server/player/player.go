@@ -1031,3 +1031,8 @@ func (d Data) Save(db *sql.DB, inst instance) error {
 
 	return err
 }
+
+// UpdateGuildInfo for the player
+func (d *Data) UpdateGuildInfo() {
+	d.Send(packetGuildInfo(0, "[Admins]", 0))
+}

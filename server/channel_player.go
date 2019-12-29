@@ -89,6 +89,7 @@ func (server *ChannelServer) playerConnect(conn mnet.Client, reader mpacket.Read
 	}
 
 	inst.AddPlayer(newPlr)
+	newPlr.UpdateGuildInfo()
 }
 
 func (server *ChannelServer) playerChangeChannel(conn mnet.Client, reader mpacket.Reader) {
