@@ -2,7 +2,7 @@
 
 towns = [100000000, 103000000, 102000000, 101000000]
 prices = ["800", "1,000", "1,000", "1,200"]
-numPrices = [800, 1000, 1000, 1200]
+numPrices = [-800, -1000, -1000, -1200]
 
 if state == 1 {
     return SendNext("Do you wanna head over to some other town? With a a little money involved, I can make it happen. It's a tad expensive, but I run a special 90% discount for Beginners.")
@@ -10,7 +10,7 @@ if state == 1 {
      text = "Oh you aren't a beginner, huh? Then I'm afraid I may have to charge you full price. Where would you like to go? \r "
 
     for i = 0; i  < len(towns); i++ {
-        if player.GetJob() == 0 {
+        if player.Char().Job == 0 {
             text += "#L" + i + "##b#m" + towns[i] + "# (" + numPrices[i] * 0.1 +" mesos)#l \r\n"
         } else {
             text += "#L" + i + "##b#m" + towns[i] + "# (" + prices[i] +" mesos)#l \r\n"
@@ -20,16 +20,22 @@ if state == 1 {
 
     return SendSelection(text)
 } else if state == 3 {
-    if toInt(player.GetMesos()) < prices[selection] {
+    if toInt(player.Char().Mesos) < prices[selection] {
         return SendOk("You don't have enough mesos! Come back when you do.")
     }
 
     # Take mesos
-    if player.GetJob() == 0 {
-        player.TakeMesos(numPrices[selection] * 0.1)
+    if player.Char().Job == 0 {
+        player.GiveMesos(numPrices[selection] * 0.1)
     } else {
-        player.TakeMesos(numPrices[selection])
+        player.GiveMesos(numPrices[selection])
     }
-    portal, pID = maps.GetMap(player.GetCurrentMap()).GetRandomSpawnPortal()
+   
+    portal, pID, err = Maps[int32(towns[selection])].GetRandomSpawnPortal()
+
+    if err != nil {
+        return
+    }
+
     player.ChangeMap(towns[selection], portal, pID)
 }

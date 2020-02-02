@@ -1,0 +1,36 @@
+version: '3.1'
+
+services:
+    db:
+        image: mysql:5.7
+        ports:
+            - 3306:3306
+        volumes:
+            - db-data:/var/lib/mysql
+        environment:
+            - MYSQL_ROOT_PASSWORD=password
+            - MYSQL_DATABASE=maplestory
+        restart: unless-stopped
+
+    adminer:
+        image: adminer
+        ports:
+            - 8080:8080
+        restart: unless-stopped
+
+    # prometheus:
+    #     image: prom/prometheus
+    #     container_name: elasticsearch
+    #     volumes:
+    #         - /tmp/prometheus.yml:/etc/prometheus/prometheus.yml
+    #     ports:
+    #         - 9090:9090
+    #     restart: unless-stopped
+    
+    # grafana:
+    #     image: grafana/grafana
+    #     ports:
+    #         - "3000:3000"   
+
+volumes:
+    db-data:

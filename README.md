@@ -1,44 +1,110 @@
-<p align="center">
-  <img src="https://i.imgur.com/mo4tfJF.png"/>
-  <br/>Valhalla Logo made with <a href="https://
-www.designevo.com/" title="Free Online Logo Maker">DesignEvo</a>
-</p>
+# Valhalla
 
 ## What is this?
+
 This project exists to preserve and archive an early version of the game
 
-## Compiling Instructions
-Install [docker](https://docs.docker.com/install/) & [docker-compose](https://docs.docker.com/compose/install/). Thats it! 
+## Client modifications
 
-## Starting the Server
+- 00663007 - change to jmp for multiclient
+- 0041BD17 - fill with nop to remove internet explorer iframe add after client close
+- 0066520B - push to stack resolution in y
+- 00665211 - push to stack resolution in x
 
-In order to run the channel server you are required to convert a v28 Data.wz (not provided) to Data.nx ([NX](https://nxformat.github.io/) file format). Note: Make sure to disable re-ordering for items when performing the conversion. This is needed as Wizet did not match index with id. If the order of items is re-ordered based on id then you will end up with mismatched portals.
+## Features
 
-* docker-compose up -d && docker-compose logs -f will start the server components in docker containers
-* ctrl+c will stop displaying logs but the servers will be running in the background still
-* To stop everything run docker-compose down
-* To restart a specific container run docker-compose restart \<name e.g. login-server\>, if a container crashes it will auto restart
-* To stop/start a single container run docker-compose stop/start \<name e.g. login-server\>
-* To rebuild and start a container incase of source updates run docker-compose build && docker-compose up -d --no-deps \<name e.g. channel-server\>, it will say that the login-server is being rebuilt, this is because all the servers run off of the same base image
+Login server:
+- [x] Login user
+- [ ] Pin
+- [x] Display world ribbons
+- [x] Display world messages
+- [x] Display world status (e.g. overpopulated)
+- [x] World selection
+- [x] Channel selection
+- [x] Create character
+- [x] Delete character
+- [x] Migrate to channel server
+- [x] Show worlds, channels, world status etc from information sent from world server
+- [x] Prevent players from accessing dead channel
+- [] Server resets login status upon restart for dangling users
 
-***note: curently the login server tells the client the channel server at a fixed ip address. change this before docker-compose build***
+World server:
 
-***note: database data is stored as docker volume***
+- [x] Keep track of player count
+- [x] Send information to login server
+- [x] Send IP, port to channel for change channel requests
+- [ ] Forward whisphers
+- [ ] Forward buddy chat
+- [ ] Forward party chat
+- [ ] Forward guild chat
+- [ ] Allow gm command to actiavate exp/drop changes accross all channels
+- [ ] Allow gm commands to update information displayed at login
 
-***note: make sure to configure the services for your ip addresses and ports in the docker-compose.yaml file***
+Cashshop server:
+- [ ] List items
+- [ ] Allow purchases via different currencies
 
-The following is an example of what the docker logs should look like:
-![](https://i.imgur.com/Lqh0Ln7.png)
+Channel server:
 
-## Roadmap
-* Redo login & channel server to handle single events and move away from mutexes
-* World server
+- [x] GM commands
+- [x] Players can see each other
+- [x] Player can change channel
+- [x] Players can see other movement
+- [x] Player chat
+- [x] player use portal
+- [x] Player allocate skill points
+- [ ] Player use skills
+- [ ] Player skill logic (haste etc)
+- [x] Player inventory (might be a potentiall dupplication bug, more testing needed)
+- [ ] Player use item (scrolls, potions etc)
+- [ ] Player pets
+- [x] Player stats
+- [x] NPC visible
+- [x] NPC movement
+- [ ] NPC basic chat
+- [ ] NPC shops
+- [ ] NPC stylist
+- [ ] NPC storage
+- [ ] PQ scripts
+- [ ] Event scripts
+- [x] Map instancing
+- [x] Mob visible
+- [x] Mob movement
+- [ ] Mob attack
+- [ ] Mob skills that cause stat changes
+- [ ] Mob death
+- [ ] Mob respawn
+- [ ] Mob spawns mob(s) on death
+- [ ] Mob drops
+- [ ] Trade
+- [x] Minigames
+- [ ] Communication Window
+- [ ] Party
+- [ ] Guild
+- [ ] Quests
+- [ ] Friends list
+- [ ] Reactors
+- [ ] Whisphers
+- [ ] Buddy chat
+- [ ] Chat commands (/find etc.)
+- [x] Server resets login status upon restart for dangling characters
+
+## TODOs
+- Decouple character id from database id
+
+## Acknowledgements
+
+- Sunnyboy for providing a [list](http://forum.ragezone.com/f921/library-idbs-versions-named-addresses-987815/) of idbs for which this project would not have started
+- [Vana](https://github.com/retep998/Vana)
+- [WvsGlobal](https://github.com/diamondo25/WvsGlobal)
+- [NX](https://nxformat.github.io/) file format (see acknowledgements at link)
 
 ## NPC chat display info (use this when scripting NPCs)
 
 NPCs are scripted in [anko](https://github.com/mattn/anko)
 
 Taken from [here](http://forum.ragezone.com/f428/add-learning-npcs-start-finish-643364/)
+
 - #b = Blue text.
 - #c[itemid]# Shows how many [itemid] the player has in their inventory.
 - #d = Purple text.
@@ -68,21 +134,3 @@ Taken from [here](http://forum.ragezone.com/f428/add-learning-npcs-start-finish-
 - \n = New Line
 - \t = Tab (4 spaces)
 - \b = Backwards
-
-## Acknowledgements 
-- [Vana](https://github.com/retep998/Vana)
-- Sunnyboy for providing a [list](http://forum.ragezone.com/f921/library-idbs-versions-named-addresses-987815/) of idbs for which this project would not have started
-
-## Screenshots
-
-![](https://i.imgur.com/RIp8OWV.png)
-
-![](https://i.imgur.com/2wYVksH.png)
-
-![](https://i.imgur.com/g7OEhTc.png)
-
-![](https://i.imgur.com/ovAujlt.png)
-
-![](https://i.imgur.com/hE0mWItg.png)
-
-![](https://i.imgur.com/4bizhIi.png)

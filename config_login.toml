@@ -1,0 +1,13 @@
+[database]
+address = "127.0.0.1"
+port = "3306"
+user = "root"
+password = "password"
+database = "maplestory"
+
+[login]
+clientListenAddress = "0.0.0.0"
+clientListenPort = "8484"
+serverListenAddress = "0.0.0.0"
+serverListenPort = "8485"
+packetQueueSize = 512

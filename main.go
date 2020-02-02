@@ -3,22 +3,24 @@ package main
 import (
 	"flag"
 	"log"
-
-	"github.com/Hucaru/Valhalla/server"
 )
 
 func main() {
 	typePtr := flag.String("type", "", "Denotes what type of server to start: login, world, channel")
+	configPtr := flag.String("config", "", "config toml file")
 
 	flag.Parse()
 
 	switch *typePtr {
 	case "login":
-		server.Login()
+		s := newLoginServer(*configPtr)
+		s.run()
 	case "world":
-		log.Println("World server not implemented yet")
+		s := newWorldServer(*configPtr)
+		s.run()
 	case "channel":
-		server.Channel()
+		s := newChannelServer(*configPtr)
+		s.run()
 	default:
 		log.Println("Unkown server type:", *typePtr)
 	}
