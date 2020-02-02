@@ -231,16 +231,18 @@ func (server *ChannelServer) ClientDisconnected(conn mnet.Client) {
 
 	if err != nil {
 		log.Println(err)
-		return
 	}
 
-	plr.Save(server.db, inst)
+	err = plr.Save(server.db, inst)
+
+	if err != nil {
+		log.Println(err)
+	}
 
 	_, err = server.db.Exec("UPDATE characters SET channelID=? WHERE id=?", -1, plr.ID())
 
 	if err != nil {
 		log.Println(err)
-		return
 	}
 
 	server.players.removeFromConn(conn)

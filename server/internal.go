@@ -76,3 +76,6 @@ func (v party) generatePacket() mpacket.Packet {
 
 func (v *party) serialisePacket(reader *mpacket.Reader) {
 }
+
+type guild struct {
+}

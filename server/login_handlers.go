@@ -7,10 +7,10 @@ import (
 	"strings"
 
 	"github.com/Hucaru/Valhalla/constant/opcode"
-	"github.com/Hucaru/Valhalla/entity"
 	"github.com/Hucaru/Valhalla/mnet"
 	"github.com/Hucaru/Valhalla/mpacket"
 	"github.com/Hucaru/Valhalla/server/item"
+	"github.com/Hucaru/Valhalla/server/message"
 	"github.com/Hucaru/Valhalla/server/player"
 )
 
@@ -146,7 +146,7 @@ func (server *LoginServer) handleChannelSelect(conn mnet.Client, reader mpacket.
 	conn.SetChannelID(reader.ReadByte()) // Channel
 
 	if server.worlds[selectedWorld].channels[conn.GetChannelID()].maxPop == 0 {
-		conn.Send(entity.PacketMessageDialogueBox("Channel currently unavailable"))
+		conn.Send(message.PacketMessageDialogueBox("Channel currently unavailable"))
 		return
 	}
 
@@ -289,8 +289,7 @@ func (server *LoginServer) handleNewCharacter(conn mnet.Client, reader mpacket.R
 				char.AddEquip(item)
 			}
 		}
-		// characters := entity.GetCharactersFromAccountWorldID(server.db, conn.GetAccountID(), conn.GetWorldID())
-		// newCharacter = characters[len(characters)-1]
+
 		char.Save(server.db, nil)
 		newCharacter = char
 	}

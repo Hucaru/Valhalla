@@ -37,6 +37,10 @@ type player interface {
 	SetMiniGamePoints(int32)
 }
 
+type socket interface {
+	Send(mpacket.Packet)
+}
+
 type players interface {
 	GetFromConn(mnet.Client) (player, error)
 }
@@ -202,6 +206,11 @@ func (inst Instance) GetPlayerFromID(id int32) (player, error) {
 	return nil, fmt.Errorf("Player not in instance")
 }
 
+// MovePlayer for other players
+func (inst Instance) MovePlayer(id int32, moveBytes []byte, plr player) {
+	inst.SendExcept(packetPlayerMove(id, moveBytes), plr)
+}
+
 // NextID - gets the next available id to be used by the instance
 func (inst *Instance) NextID() int32 {
 	inst.idCounter++
@@ -272,7 +281,7 @@ func (inst Instance) Send(p mpacket.Packet) error {
 }
 
 // SendExcept - sends packet to instance except a particular player
-func (inst Instance) SendExcept(p mpacket.Packet, exception player) error {
+func (inst Instance) SendExcept(p mpacket.Packet, exception socket) error {
 	for _, v := range inst.players {
 		if v == exception {
 			continue
@@ -369,6 +378,16 @@ func (inst *Instance) GetMob(id int32) *mob.Data {
 	return nil
 }
 
+// UpdateMob with associated id
+func (inst Instance) UpdateMob(mobID int32, allowedToUseSkill bool, action byte, skillData uint32, moveBytes []byte) {
+	// get mob
+	for _, v := range inst.mobs {
+		if v.SpawnID() == mobID {
+			inst.SendExcept(packetMobMove(mobID, allowedToUseSkill, action, skillData, moveBytes), v.Controller())
+		}
+	}
+}
+
 func (inst *Instance) startFieldTimer() {
 	inst.fieldTimer = time.NewTicker(time.Second * time.Duration(5)) // Change to correct time
 	go func() {
@@ -382,5 +401,6 @@ func (inst *Instance) stopFieldTimer() {
 	inst.fieldTimer.Stop()
 }
 
+// Responsible for hadnling the showing of mystic doors, disappearence of loot, ships coming and going
 func (inst *Instance) fieldUpdate(t time.Time) {
 }

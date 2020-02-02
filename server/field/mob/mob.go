@@ -102,7 +102,6 @@ func (m *Data) RemoveController() {
 		m.controller.Send(packetMobEndControl(*m))
 		m.controller = nil
 	}
-
 }
 
 // AcknowledgeController movement bytes

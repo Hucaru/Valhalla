@@ -5,10 +5,11 @@ import (
 	"log"
 
 	"github.com/Hucaru/Valhalla/constant"
-	"github.com/Hucaru/Valhalla/entity"
+	"github.com/Hucaru/Valhalla/constant/opcode"
 	"github.com/Hucaru/Valhalla/mnet"
 	"github.com/Hucaru/Valhalla/mpacket"
 	"github.com/Hucaru/Valhalla/server/field"
+	"github.com/Hucaru/Valhalla/server/message"
 	"github.com/Hucaru/Valhalla/server/movement"
 	"github.com/Hucaru/Valhalla/server/player"
 )
@@ -105,7 +106,7 @@ func (server *ChannelServer) playerChangeChannel(conn mnet.Client, reader mpacke
 
 	if int(id) < len(server.channels) {
 		if server.channels[id].port == 0 {
-			conn.Send(entity.PacketCannotChangeChannel())
+			conn.Send(message.PacketCannotChangeChannel())
 		} else {
 			_, err := server.db.Exec("UPDATE characters SET migrationID=? WHERE id=?", id, player.ID())
 
@@ -114,7 +115,16 @@ func (server *ChannelServer) playerChangeChannel(conn mnet.Client, reader mpacke
 				return
 			}
 
-			conn.Send(entity.PacketChangeChannel(server.channels[id].ip, server.channels[id].port))
+			packetChangeChannel := func(ip []byte, port int16) mpacket.Packet {
+				p := mpacket.CreateWithOpcode(opcode.SendChannelChange)
+				p.WriteBool(true)
+				p.WriteBytes(ip)
+				p.WriteInt16(port)
+
+				return p
+			}
+
+			conn.Send(packetChangeChannel(server.channels[id].ip, server.channels[id].port))
 		}
 	}
 }
@@ -153,7 +163,7 @@ func (server ChannelServer) playerMovement(conn mnet.Client, reader mpacket.Read
 		return
 	}
 
-	inst.SendExcept(entity.PacketPlayerMove(plr.ID(), moveBytes), plr)
+	inst.MovePlayer(plr.ID(), moveBytes, plr)
 }
 
 func (server ChannelServer) playerEmote(conn mnet.Client, reader mpacket.Reader) {
@@ -177,7 +187,15 @@ func (server ChannelServer) playerEmote(conn mnet.Client, reader mpacket.Reader)
 		return
 	}
 
-	inst.SendExcept(entity.PacketPlayerEmoticon(player.ID(), emote), player)
+	packetPlayerEmoticon := func(charID int32, emotion int32) mpacket.Packet {
+		p := mpacket.CreateWithOpcode(opcode.SendChannelPlayerEmoticon)
+		p.WriteInt32(charID)
+		p.WriteInt32(emotion)
+
+		return p
+	}
+
+	inst.SendExcept(packetPlayerEmoticon(player.ID(), emote), player)
 }
 
 func (server ChannelServer) playerUseMysticDoor(conn mnet.Client, reader mpacket.Reader) {
@@ -263,6 +281,16 @@ func (server ChannelServer) playerStand(conn mnet.Client, reader mpacket.Reader)
 	}
 }
 
+// TODO find better place for this
+func packetPlayerNoChange() mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelInventoryOperation)
+	p.WriteByte(0x01)
+	p.WriteByte(0x00)
+	p.WriteByte(0x00)
+
+	return p
+}
+
 func (server ChannelServer) playerAddSkillPoint(conn mnet.Client, reader mpacket.Reader) {
 	plr, err := server.players.getFromConn(conn)
 
@@ -290,7 +318,7 @@ func (server ChannelServer) playerAddSkillPoint(conn mnet.Client, reader mpacket
 		baseSkillID := skillID / 10000
 
 		if !validateSkillWithJob(plr.Job(), baseSkillID) {
-			conn.Send(entity.PacketPlayerNoChange())
+			conn.Send(packetPlayerNoChange())
 			return
 		}
 
@@ -427,7 +455,7 @@ func (server ChannelServer) playerUsePortal(conn mnet.Client, reader mpacket.Rea
 	}
 
 	if plr.PortalCount() != reader.ReadByte() {
-		conn.Send(entity.PacketPlayerNoChange())
+		conn.Send(packetPlayerNoChange())
 		return
 	}
 
@@ -456,7 +484,7 @@ func (server ChannelServer) playerUsePortal(conn mnet.Client, reader mpacket.Rea
 			portal, err := srcInst.GetRandomSpawnPortal()
 
 			if err == nil {
-				conn.Send(entity.PacketPlayerNoChange())
+				conn.Send(packetPlayerNoChange())
 				return
 			}
 
@@ -469,22 +497,22 @@ func (server ChannelServer) playerUsePortal(conn mnet.Client, reader mpacket.Rea
 
 		if !plr.CheckPos(srcPortal.Pos(), 100, 10) { // trying to account for lag
 			if conn.GetAdminLevel() > 0 {
-				conn.Send(entity.PacketMessageRedText("Portal - " + srcPortal.Pos().String() + " Player - " + plr.Pos().String()))
+				conn.Send(message.PacketMessageRedText("Portal - " + srcPortal.Pos().String() + " Player - " + plr.Pos().String()))
 			}
 
-			conn.Send(entity.PacketPlayerNoChange())
+			conn.Send(packetPlayerNoChange())
 			return
 		}
 
 		if err != nil {
-			conn.Send(entity.PacketPlayerNoChange())
+			conn.Send(packetPlayerNoChange())
 			return
 		}
 
 		dstField, ok := server.fields[srcPortal.DestFieldID()]
 
 		if !ok {
-			conn.Send(entity.PacketPlayerNoChange())
+			conn.Send(packetPlayerNoChange())
 			return
 		}
 
@@ -499,7 +527,7 @@ func (server ChannelServer) playerUsePortal(conn mnet.Client, reader mpacket.Rea
 		dstPortal, err := dstInst.GetPortalFromName(srcPortal.DestName())
 
 		if err != nil {
-			conn.Send(entity.PacketPlayerNoChange())
+			conn.Send(packetPlayerNoChange())
 			return
 		}
 
@@ -539,8 +567,21 @@ func (server ChannelServer) warpPlayer(plr *player.Data, dstField *field.Field, 
 	plr.SetMapPosID(dstPortal.ID())
 	plr.SetPos(dstPortal.Pos())
 	plr.SetFoothold(0)
-	plr.Send(entity.PacketMapChange(dstField.ID, int32(server.id), dstPortal.ID(), plr.HP()))
 
+	packetMapChange := func(mapID int32, channelID int32, mapPos byte, hp int16) mpacket.Packet {
+		p := mpacket.CreateWithOpcode(opcode.SendChannelWarpToMap)
+		p.WriteInt32(channelID)
+		p.WriteByte(0) // character portal counter
+		p.WriteByte(0) // Is connecting
+		p.WriteInt32(mapID)
+		p.WriteByte(mapPos)
+		p.WriteInt16(hp)
+		p.WriteByte(0) // flag for more reading
+
+		return p
+	}
+
+	plr.Send(packetMapChange(dstField.ID, int32(server.id), dstPortal.ID(), plr.HP())) // plr.ChangeMap(dstField.ID, dstPortal.ID(), dstPortal.Pos(), foothold)
 	dstInst.AddPlayer(plr)
 
 	return nil

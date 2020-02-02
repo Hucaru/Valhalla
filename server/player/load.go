@@ -51,14 +51,16 @@ func LoadFromID(db *sql.DB, id int32, conn mnet.Client) Data {
 	c := Data{}
 	filter := "id,accountID,worldID,name,gender,skin,hair,face,level,job,str,dex,intt," +
 		"luk,hp,maxHP,mp,maxMP,ap,sp, exp,fame,mapID,mapPos,previousMapID,mesos," +
-		"equipSlotSize,useSlotSize,setupSlotSize,etcSlotSize,cashSlotSize"
+		"equipSlotSize,useSlotSize,setupSlotSize,etcSlotSize,cashSlotSize,miniGameWins," +
+		"miniGameDraw,miniGameLoss,miniGamePoints"
 
 	err := db.QueryRow("SELECT "+filter+" FROM characters where id=?", id).Scan(&c.id,
 		&c.accountID, &c.worldID, &c.name, &c.gender, &c.skin, &c.hair, &c.face,
 		&c.level, &c.job, &c.str, &c.dex, &c.intt, &c.luk, &c.hp, &c.maxHP, &c.mp,
 		&c.maxMP, &c.ap, &c.sp, &c.exp, &c.fame, &c.mapID, &c.mapPos,
 		&c.previousMap, &c.mesos, &c.equipSlotSize, &c.useSlotSize, &c.setupSlotSize,
-		&c.etcSlotSize, &c.cashSlotSize)
+		&c.etcSlotSize, &c.cashSlotSize, &c.miniGameWins, &c.miniGameDraw, &c.miniGameLoss,
+		&c.miniGamePoints)
 
 	if err != nil {
 		panic(err)

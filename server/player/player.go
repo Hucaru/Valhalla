@@ -996,7 +996,8 @@ func (d Data) DisplayBytes() []byte {
 func (d Data) Save(db *sql.DB, inst instance) error {
 	query := `UPDATE characters set skin=?, hair=?, face=?, level=?,
 	job=?, str=?, dex=?, intt=?, luk=?, hp=?, maxHP=?, mp=?, maxMP=?,
-	ap=?, sp=?, exp=?, fame=?, mapID=?, mapPos=?, mesos=? WHERE id=?`
+	ap=?, sp=?, exp=?, fame=?, mapID=?, mapPos=?, mesos=?, miniGameWins=?,
+	miniGameDraw=?, miniGameLoss=?, miniGamePoints=? WHERE id=?`
 
 	var mapPos byte
 	var err error
@@ -1015,7 +1016,12 @@ func (d Data) Save(db *sql.DB, inst instance) error {
 	// any crashes
 	_, err = db.Exec(query,
 		d.skin, d.hair, d.face, d.level, d.job, d.str, d.dex, d.intt, d.luk, d.hp, d.maxHP, d.mp,
-		d.maxMP, d.ap, d.sp, d.exp, d.fame, d.mapID, d.mapPos, d.mesos, d.id)
+		d.maxMP, d.ap, d.sp, d.exp, d.fame, d.mapID, d.mapPos, d.mesos, d.id, d.miniGameWins,
+		d.miniGameDraw, d.miniGameLoss, d.miniGamePoints)
+
+	if err != nil {
+		return err
+	}
 
 	// TODO: Move this into skill book update, this happens 3 times every level (or 15 at a time for min maxers)
 	// There has to be a better way of doing this in mysql

@@ -50,6 +50,14 @@ func packetMapPlayerLeft(charID int32) mpacket.Packet {
 	return p
 }
 
+func packetPlayerMove(charID int32, bytes []byte) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelPlayerMovement)
+	p.WriteInt32(charID)
+	p.WriteBytes(bytes)
+
+	return p
+}
+
 func packetNpcShow(npc npc.Data) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelNpcShow)
 	p.WriteInt32(npc.SpawnID())
@@ -78,6 +86,18 @@ func packetMobShow(mob mob.Data) mpacket.Packet {
 	p.Append(mob.DisplayBytes())
 
 	return p
+}
+
+func packetMobMove(mobID int32, allowedToUseSkill bool, action byte, skillData uint32, moveBytes []byte) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelMoveMob)
+	p.WriteInt32(mobID)
+	p.WriteBool(allowedToUseSkill)
+	p.WriteByte(action)
+	p.WriteUint32(skillData)
+	p.WriteBytes(moveBytes)
+
+	return p
+
 }
 
 func packetMapShowGameBox(displayBytes []byte) mpacket.Packet {

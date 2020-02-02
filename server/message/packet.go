@@ -1,10 +1,11 @@
-package entity
+package message
 
 import (
 	"github.com/Hucaru/Valhalla/constant/opcode"
 	"github.com/Hucaru/Valhalla/mpacket"
 )
 
+// PacketMessageRedText - sends red error message to client chat window
 func PacketMessageRedText(msg string) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelInfoMessage)
 	p.WriteByte(9)
@@ -13,6 +14,7 @@ func PacketMessageRedText(msg string) mpacket.Packet {
 	return p
 }
 
+// PacketMessageGuildPointsChange - sends guild point change message to client chat window
 func PacketMessageGuildPointsChange(ammount int32) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelInfoMessage)
 	p.WriteByte(6)
@@ -21,6 +23,7 @@ func PacketMessageGuildPointsChange(ammount int32) mpacket.Packet {
 	return p
 }
 
+// PacketMessageFameChange - sends fame amount to client chat window
 func PacketMessageFameChange(ammount int32) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelInfoMessage)
 	p.WriteByte(4)
@@ -29,7 +32,7 @@ func PacketMessageFameChange(ammount int32) mpacket.Packet {
 	return p
 }
 
-// sends the [item name] has passed its expeiration date and will be removed from your inventory
+// PacketMessageItemExpired - sends the [item name] has passed its expeiration date and will be removed from your inventory
 func PacketMessageItemExpired(itemID int32) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelInfoMessage)
 	p.WriteByte(2)
@@ -37,6 +40,7 @@ func PacketMessageItemExpired(itemID int32) mpacket.Packet {
 	return p
 }
 
+// PacketMessageItemExpired2 - alternate msg to above
 func PacketMessageItemExpired2(itemID int32) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelInfoMessage)
 	p.WriteByte(8)
@@ -45,6 +49,7 @@ func PacketMessageItemExpired2(itemID int32) mpacket.Packet {
 	return p
 }
 
+// PacketMessageMesosChangeChat - mesos amount change client chat window message
 func PacketMessageMesosChangeChat(ammount int32) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelInfoMessage)
 	p.WriteByte(5)
@@ -53,6 +58,7 @@ func PacketMessageMesosChangeChat(ammount int32) mpacket.Packet {
 	return p
 }
 
+// PacketMessageUnableToPickUp - unable to pick up message to client chat window
 func PacketMessageUnableToPickUp(itemNotAvailable bool) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelInfoMessage)
 	p.WriteByte(0)
@@ -65,6 +71,7 @@ func PacketMessageUnableToPickUp(itemNotAvailable bool) mpacket.Packet {
 	return p
 }
 
+// PacketMessageDropPickUp - pick up drop client chat window message
 func PacketMessageDropPickUp(isMesos bool, itemID, ammount int32) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelInfoMessage)
 	p.WriteByte(0)
@@ -80,6 +87,7 @@ func PacketMessageDropPickUp(isMesos bool, itemID, ammount int32) mpacket.Packet
 	return p
 }
 
+// PacketMessageExpGained - exp gained client chat or side message
 func PacketMessageExpGained(whiteText, appearInChat bool, ammount int32) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelInfoMessage)
 	p.WriteByte(3)
@@ -90,6 +98,7 @@ func PacketMessageExpGained(whiteText, appearInChat bool, ammount int32) mpacket
 	return p
 }
 
+// PacketMessageNotice - blue notice client chat message
 func PacketMessageNotice(msg string) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelBroadcastMessage)
 	p.WriteByte(0)
@@ -98,6 +107,7 @@ func PacketMessageNotice(msg string) mpacket.Packet {
 	return p
 }
 
+// PacketMessageDialogueBox - pop up dialogue box
 func PacketMessageDialogueBox(msg string) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelBroadcastMessage)
 	p.WriteByte(1)
@@ -106,6 +116,15 @@ func PacketMessageDialogueBox(msg string) mpacket.Packet {
 	return p
 }
 
+// PacketCannotChangeChannel - red text
+func PacketCannotChangeChannel() mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelChangeServer)
+	p.WriteByte(1)
+
+	return p
+}
+
+// PacketMessageWhiteBar - white bar message, is this gm chat messages?
 func PacketMessageWhiteBar(msg string) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelBroadcastMessage)
 	p.WriteByte(2)
@@ -114,7 +133,7 @@ func PacketMessageWhiteBar(msg string) mpacket.Packet {
 	return p
 }
 
-// Need to figure out how to display the username and  atm it bastardises it.
+//PacketMessageBroadcastChannel - Need to figure out how to display the username and  atm it bastardises it.
 func PacketMessageBroadcastChannel(senderName string, msg string, channel byte, ear bool) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelBroadcastMessage)
 	p.WriteByte(3)
@@ -129,6 +148,7 @@ func PacketMessageBroadcastChannel(senderName string, msg string, channel byte, 
 	return p
 }
 
+// PacketMessageScrollingHeader - scroll message a the top
 func PacketMessageScrollingHeader(msg string) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelBroadcastMessage)
 	p.WriteByte(4)
@@ -138,6 +158,7 @@ func PacketMessageScrollingHeader(msg string) mpacket.Packet {
 	return p
 }
 
+// PacketMessageBubblessChat - user chat that has no bubble
 func PacketMessageBubblessChat(msgType byte, sender string, msg string) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelBubblessChat)
 	p.WriteByte(msgType) // 0x00 buddy chat, 0x01 - party, 0x02 - guild
@@ -147,6 +168,7 @@ func PacketMessageBubblessChat(msgType byte, sender string, msg string) mpacket.
 	return p
 }
 
+// PacketMessageWhisper - whispher msg in client chat window
 func PacketMessageWhisper(sender string, message string, channel byte) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelWhisper)
 	p.WriteByte(0x12)
@@ -157,6 +179,7 @@ func PacketMessageWhisper(sender string, message string, channel byte) mpacket.P
 	return p
 }
 
+// PacketMessageFindResult - send the result of using the /find comand
 func PacketMessageFindResult(character string, isAdmin, inCashShop, sameChannel bool, mapID int32) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelWhisper)
 
@@ -190,6 +213,7 @@ func PacketMessageFindResult(character string, isAdmin, inCashShop, sameChannel 
 	return p
 }
 
+// PacketMessageAllChat - sends general chat message to client
 func PacketMessageAllChat(senderID int32, isAdmin bool, msg string) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelAllChatMsg)
 	p.WriteInt32(senderID)
@@ -199,7 +223,7 @@ func PacketMessageAllChat(senderID int32, isAdmin bool, msg string) mpacket.Pack
 	return p
 }
 
-// Implement logic for these
+// PacketMessageGmBan -
 func PacketMessageGmBan(good bool) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelEmployee)
 	if good {
@@ -213,6 +237,7 @@ func PacketMessageGmBan(good bool) mpacket.Packet {
 	return p
 }
 
+// PacketMessageGmRemoveFromRanks -
 func PacketMessageGmRemoveFromRanks() mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelEmployee)
 	p.WriteByte(6)
@@ -221,6 +246,7 @@ func PacketMessageGmRemoveFromRanks() mpacket.Packet {
 	return p
 }
 
+// PacketMessageGmWarning -
 func PacketMessageGmWarning(good bool) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelEmployee)
 	p.WriteByte(14)
@@ -233,6 +259,7 @@ func PacketMessageGmWarning(good bool) mpacket.Packet {
 	return p
 }
 
+// PacketMessageGmBlockedAccess -
 func PacketMessageGmBlockedAccess() mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelEmployee)
 	p.WriteByte(4)
@@ -241,6 +268,7 @@ func PacketMessageGmBlockedAccess() mpacket.Packet {
 	return p
 }
 
+// PacketMessageGmUnblock -
 func PacketMessageGmUnblock() mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelEmployee)
 	p.WriteByte(5)
@@ -249,7 +277,7 @@ func PacketMessageGmUnblock() mpacket.Packet {
 	return p
 }
 
-// Don't know what this is used for
+// PacketMessageGmWrongNpc -
 func PacketMessageGmWrongNpc() mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelEmployee)
 	p.WriteByte(8)

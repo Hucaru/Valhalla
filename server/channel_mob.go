@@ -1,7 +1,6 @@
 package server
 
 import (
-	"github.com/Hucaru/Valhalla/entity"
 	"github.com/Hucaru/Valhalla/mnet"
 	"github.com/Hucaru/Valhalla/mpacket"
 	"github.com/Hucaru/Valhalla/server/movement"
@@ -64,5 +63,5 @@ func (server ChannelServer) mobControl(conn mnet.Client, reader mpacket.Reader) 
 
 	mob.AcknowledgeController(moveID, finalData)
 	moveBytes := movement.GenerateMovementBytes(moveData)
-	inst.SendExcept(entity.PacketMobMove(mobSpawnID, skillPossible, byte(action), skillData, moveBytes), player)
+	inst.UpdateMob(mobSpawnID, skillPossible, byte(action), skillData, moveBytes)
 }

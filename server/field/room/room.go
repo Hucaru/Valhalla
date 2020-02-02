@@ -290,22 +290,30 @@ func (r *game) assignWinLossDraw(draw bool, winningSlot byte) {
 
 // TODO: Correct points/elo calculation
 func (r *game) assignPoints(draw bool, winningSlot byte) {
-	// This is not the correct calculation
-	diff := math.Abs(float64(r.players[0].MiniGamePoints() - r.players[1].MiniGamePoints()))
-	pointChange := 17 - int32(diff/27)
+	p := 400 // use the same as chess
+	// Rating transformation
+	r0 := math.Pow10(int(r.players[0].MiniGamePoints()) / p)
+	r1 := math.Pow10(int(r.players[1].MiniGamePoints()) / p)
+	// Expected score
+	e0 := float64(r0 / (r0 + r1))
+	e1 := float64(r1 / (r0 + r1))
+
+	var s0, s1 float64
+
+	var k = 32.0 // ICC chess value, Change this to change how hard ratings are impacted
 
 	if draw {
-
+		s0, s1 = 0.5, 0.5
+	} else if winningSlot == 0x00 {
+		s0 = 1
+		s1 = 0
 	} else {
-		r.players[winningSlot].SetMiniGamePoints(r.players[winningSlot].MiniGamePoints() + pointChange)
-
-		if winningSlot == 0x00 {
-			r.players[1].SetMiniGamePoints(r.players[1].MiniGamePoints() - pointChange)
-		} else {
-			r.players[0].SetMiniGamePoints(r.players[0].MiniGamePoints() - pointChange)
-		}
+		s0 = 0
+		s1 = 1
 	}
 
+	r.players[0].SetMiniGamePoints(r.players[0].MiniGamePoints() + int32(k*(s0-e0)))
+	r.players[1].SetMiniGamePoints(r.players[1].MiniGamePoints() + int32(k*(s1-e1)))
 }
 
 // ReqestTie of game
