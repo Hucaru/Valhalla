@@ -89,9 +89,6 @@ Channel server:
 - [ ] Chat commands (/find etc.)
 - [x] Server resets login status upon restart for dangling characters
 
-## TODOs
-- Decouple character id from database id
-
 ## Acknowledgements
 
 - Sunnyboy for providing a [list](http://forum.ragezone.com/f921/library-idbs-versions-named-addresses-987815/) of idbs for which this project would not have started
