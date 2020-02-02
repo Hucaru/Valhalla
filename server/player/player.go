@@ -1016,8 +1016,8 @@ func (d Data) Save(db *sql.DB, inst instance) error {
 	// any crashes
 	_, err = db.Exec(query,
 		d.skin, d.hair, d.face, d.level, d.job, d.str, d.dex, d.intt, d.luk, d.hp, d.maxHP, d.mp,
-		d.maxMP, d.ap, d.sp, d.exp, d.fame, d.mapID, d.mapPos, d.mesos, d.id, d.miniGameWins,
-		d.miniGameDraw, d.miniGameLoss, d.miniGamePoints)
+		d.maxMP, d.ap, d.sp, d.exp, d.fame, d.mapID, d.mapPos, d.mesos, d.miniGameWins,
+		d.miniGameDraw, d.miniGameLoss, d.miniGamePoints, d.id)
 
 	if err != nil {
 		return err
