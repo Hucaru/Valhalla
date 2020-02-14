@@ -13,6 +13,7 @@ import (
 	"github.com/Hucaru/Valhalla/mpacket"
 	"github.com/Hucaru/Valhalla/nx"
 	"github.com/Hucaru/Valhalla/server/field"
+	"github.com/Hucaru/Valhalla/server/message"
 	"github.com/Hucaru/Valhalla/server/player"
 )
 
@@ -233,7 +234,7 @@ func (server *ChannelServer) ClientDisconnected(conn mnet.Client) {
 		log.Println(err)
 	}
 
-	err = plr.Save(server.db, inst)
+	err = plr.Save(server.db)
 
 	if err != nil {
 		log.Println(err)
@@ -272,6 +273,6 @@ func (server *ChannelServer) ClientDisconnected(conn mnet.Client) {
 func (server *ChannelServer) SetScrollingHeaderMessage(msg string) {
 	server.header = msg
 	for _, v := range server.players {
-		v.Send(packetMessageScrollingHeader(msg))
+		v.Send(message.PacketMessageScrollingHeader(msg))
 	}
 }

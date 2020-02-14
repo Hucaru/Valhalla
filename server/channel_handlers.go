@@ -26,7 +26,7 @@ func (server *ChannelServer) HandleClientPacket(conn mnet.Client, reader mpacket
 	case opcode.RecvChannelPlayerUseChair:
 		server.playerUseChair(conn, reader)
 	case opcode.RecvChannelMeleeSkill:
-		// server.playerMeleeSkill(conn, reader)
+		server.playerMeleeSkill(conn, reader)
 	case opcode.RecvChannelRangedSkill:
 		// server.playerRangedSkill(conn, reader)
 	case opcode.RecvChannelMagicSkill:

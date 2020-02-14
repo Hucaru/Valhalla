@@ -88,6 +88,14 @@ func packetMobShow(mob mob.Data) mpacket.Packet {
 	return p
 }
 
+func packetMobRemove(spawnID int32, deathType byte) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelRemoveMob)
+	p.WriteInt32(spawnID)
+	p.WriteByte(deathType)
+
+	return p
+}
+
 func packetMobMove(mobID int32, allowedToUseSkill bool, action byte, skillData uint32, moveBytes []byte) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelMoveMob)
 	p.WriteInt32(mobID)

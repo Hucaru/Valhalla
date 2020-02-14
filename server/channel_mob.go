@@ -49,8 +49,12 @@ func (server ChannelServer) mobControl(conn mnet.Client, reader mpacket.Reader) 
 		return
 	}
 
+	skillDelay := int16(skillData >> 16)
+	skillID := byte(skillData)
+	skillLevel := byte(skillData >> 8)
+
 	if actualAction >= 21 && actualAction <= 25 {
-		mob.PerformSkill(int16(skillData>>16), byte(skillData>>8), byte(skillData))
+		mob.PerformSkill(skillDelay, skillLevel, skillID)
 	} else if actualAction > 12 && actualAction < 20 {
 		mob.PerformAttack(byte(actualAction - 12))
 	}
@@ -61,7 +65,7 @@ func (server ChannelServer) mobControl(conn mnet.Client, reader mpacket.Reader) 
 		return
 	}
 
-	mob.AcknowledgeController(moveID, finalData)
+	mob.AcknowledgeController(moveID, finalData, skillPossible, skillID, skillID)
 	moveBytes := movement.GenerateMovementBytes(moveData)
 	inst.UpdateMob(mobSpawnID, skillPossible, byte(action), skillData, moveBytes)
 }

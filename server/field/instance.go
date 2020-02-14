@@ -19,7 +19,7 @@ type player interface {
 	Conn() mnet.Client
 	ID() int32
 	InstanceID() int
-	SetInstanceID(int)
+	SetInstance(interface{})
 	Name() string
 	Pos() pos.Data
 	DisplayBytes() []byte
@@ -70,6 +70,11 @@ type Instance struct {
 	dispatch chan func()
 }
 
+// ID of the instance within the field
+func (inst Instance) ID() int {
+	return inst.id
+}
+
 func (inst *Instance) delete() error {
 	return nil
 }
@@ -83,6 +88,12 @@ func (inst Instance) String() string {
 		info += " " + v.Name() + "(" + v.Pos().String() + ")"
 	}
 
+	info += "mobs(" + strconv.Itoa(len(inst.mobs)) + "): "
+
+	for _, v := range inst.mobs {
+		info += " " + strconv.Itoa(int(v.SpawnID())) + ","
+	}
+
 	return info
 }
 
@@ -93,6 +104,8 @@ func (inst Instance) PlayerCount() int {
 
 // AddPlayer to the instance
 func (inst *Instance) AddPlayer(plr player) error {
+	plr.SetInstance(inst)
+
 	for i, npc := range inst.npcs {
 		plr.Send(packetNpcShow(npc))
 
@@ -176,6 +189,8 @@ func (inst *Instance) RemovePlayer(plr player) error {
 				inst.mobs[i].SetController(inst.players[0], false)
 			}
 		}
+
+		plr.Send(packetMobRemove(v.SpawnID(), 0x0)) // mob disappear to account for mob persisting during instance change
 	}
 
 	for _, v := range inst.rooms {
@@ -386,6 +401,45 @@ func (inst Instance) UpdateMob(mobID int32, allowedToUseSkill bool, action byte,
 			inst.SendExcept(packetMobMove(mobID, allowedToUseSkill, action, skillData, moveBytes), v.Controller())
 		}
 	}
+}
+
+// SpawnMobFromMobID into instance
+func (inst *Instance) SpawnMobFromMobID(mobID int32, pos pos.Data, hasAgro, items, mesos bool) error {
+	mob, err := mob.CreateFromID(inst.NextID(), mobID, pos, nil, items, mesos)
+
+	if err != nil {
+		return err
+	}
+
+	if len(inst.players) > 0 {
+		mob.SetController(inst.players[0], hasAgro)
+	}
+
+	inst.addmob(mob)
+	return nil
+}
+
+// SpawnOverridenMobFromMobID this is to summon mobs with exception
+func (inst *Instance) SpawnOverridenMobFromMobID(mob mob.Data) {
+	inst.addmob(mob)
+}
+
+func (inst *Instance) addmob(mob mob.Data) {
+	inst.mobs = append(inst.mobs, mob)
+	inst.Send(packetMobShow(mob))
+}
+
+// RemoveMob from instance
+func (inst *Instance) RemoveMob(spawnID int32, deathType byte) error {
+	for i, v := range inst.mobs {
+		if v.SpawnID() == spawnID {
+			inst.mobs = append(inst.mobs[:i], inst.mobs[i+1:]...)
+			inst.Send(packetMobRemove(spawnID, deathType))
+			return nil
+		}
+	}
+
+	return fmt.Errorf("Could not kill mob as spawnID does not exist")
 }
 
 func (inst *Instance) startFieldTimer() {

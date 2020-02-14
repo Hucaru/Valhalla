@@ -68,7 +68,7 @@ func (server *ChannelServer) playerConnect(conn mnet.Client, reader mpacket.Read
 	server.players = append(server.players, &plr)
 
 	conn.Send(player.PacketPlayerEnterGame(plr, int32(server.id)))
-	conn.Send(packetMessageScrollingHeader(server.header))
+	conn.Send(message.PacketMessageScrollingHeader(server.header))
 
 	field, ok := server.fields[plr.MapID()]
 
@@ -236,13 +236,28 @@ func (server ChannelServer) playerAddStatPoint(conn mnet.Client, reader mpacket.
 }
 
 func (server ChannelServer) playerRequestAvatarInfoWindow(conn mnet.Client, reader mpacket.Reader) {
-	player, err := server.players.getFromID(reader.ReadInt32())
+	plr, err := server.players.getFromID(reader.ReadInt32())
 
 	if err != nil {
 		return
 	}
 
-	conn.Send(packetPlayerAvatarSummaryWindow(player.ID(), *player))
+	packetPlayerAvatarSummaryWindow := func(charID int32, plr player.Data) mpacket.Packet {
+		p := mpacket.CreateWithOpcode(opcode.SendChannelAvatarInfoWindow)
+		p.WriteInt32(plr.ID())
+		p.WriteByte(plr.Level())
+		p.WriteInt16(plr.Job())
+		p.WriteInt16(plr.Fame())
+
+		p.WriteString(plr.Guild())
+
+		p.WriteBool(false) // if has pet
+		p.WriteByte(0)     // wishlist count
+
+		return p
+	}
+
+	conn.Send(packetPlayerAvatarSummaryWindow(plr.ID(), *plr))
 }
 
 func (server ChannelServer) playerPassiveRegen(conn mnet.Client, reader mpacket.Reader) {
@@ -557,8 +572,6 @@ func (server ChannelServer) warpPlayer(plr *player.Data, dstField *field.Field, 
 		if dstInst, err = dstField.GetInstance(0); err != nil { // Check player is not in higher level instance than available
 			return err
 		}
-
-		plr.SetInstanceID(0)
 	}
 
 	srcInst.RemovePlayer(plr)

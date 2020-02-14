@@ -91,7 +91,7 @@ func (f *Field) CreateInstance() int {
 			continue
 		}
 
-		mobs[i] = mob.CreateFromData(int32(i+1), v, m)
+		mobs[i] = mob.CreateFromData(int32(i+1), v, m, true, true)
 		mobs[i].SetSummonType(-1)
 	}
 
@@ -165,7 +165,7 @@ func (f *Field) ChangePlayerInstance(player player, id int) error {
 			return err
 		}
 
-		player.SetInstanceID(id)
+		player.SetInstance(f.instances[id])
 		err = f.instances[id].AddPlayer(player)
 
 		if err != nil {

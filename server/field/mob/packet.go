@@ -23,7 +23,7 @@ func packetMobControlAcknowledge(mobID int32, moveID int16, allowedToUseSkill bo
 	p.WriteInt32(mobID)
 	p.WriteInt16(moveID)
 	p.WriteBool(allowedToUseSkill)
-	p.WriteInt16(mp)
+	p.WriteInt16(mp) // check this shouldn't be int32 or uint16 as Zakum has 60,000 mp
 	p.WriteByte(skill)
 	p.WriteByte(level)
 

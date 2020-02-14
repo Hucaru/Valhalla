@@ -298,20 +298,7 @@ func (server *ChannelServer) gmCommand(conn mnet.Client, msg string) {
 			return
 		}
 
-		field, ok := server.fields[player.MapID()]
-
-		if !ok {
-			return
-		}
-
-		inst, err := field.GetInstance(player.InstanceID())
-
-		if err != nil {
-			conn.Send(message.PacketMessageRedText(err.Error()))
-			return
-		}
-
-		player.SetEXP(int32(amount), inst)
+		player.SetEXP(int32(amount))
 	case "gexp":
 		player, err := server.players.getFromConn(conn)
 
@@ -329,20 +316,7 @@ func (server *ChannelServer) gmCommand(conn mnet.Client, msg string) {
 			return
 		}
 
-		field, ok := server.fields[player.MapID()]
-
-		if !ok {
-			return
-		}
-
-		inst, err := field.GetInstance(player.InstanceID())
-
-		if err != nil {
-			conn.Send(message.PacketMessageRedText(err.Error()))
-			return
-		}
-
-		player.GiveEXP(int32(amount), false, false, inst)
+		player.GiveEXP(int32(amount), false, false)
 	case "level":
 		plr, err := server.players.getFromConn(conn)
 
@@ -360,20 +334,7 @@ func (server *ChannelServer) gmCommand(conn mnet.Client, msg string) {
 			return
 		}
 
-		field, ok := server.fields[plr.MapID()]
-
-		if !ok {
-			return
-		}
-
-		inst, err := field.GetInstance(plr.InstanceID())
-
-		if err != nil {
-			conn.Send(message.PacketMessageRedText(err.Error()))
-			return
-		}
-
-		plr.SetLevel(byte(amount), inst)
+		plr.SetLevel(byte(amount))
 	case "levelup":
 		player, err := server.players.getFromConn(conn)
 
@@ -393,20 +354,7 @@ func (server *ChannelServer) gmCommand(conn mnet.Client, msg string) {
 			return
 		}
 
-		field, ok := server.fields[player.MapID()]
-
-		if !ok {
-			return
-		}
-
-		inst, err := field.GetInstance(player.InstanceID())
-
-		if err != nil {
-			conn.Send(message.PacketMessageRedText(err.Error()))
-			return
-		}
-
-		player.GiveLevel(byte(amount), inst)
+		player.GiveLevel(byte(amount))
 	case "job":
 		var val int
 		var err error
@@ -498,7 +446,6 @@ func (server *ChannelServer) gmCommand(conn mnet.Client, msg string) {
 
 			player.SetMesos(int32(val))
 		}
-	case "spawn":
 	case "warp":
 		var val int
 		var err error
@@ -595,6 +542,86 @@ func (server *ChannelServer) gmCommand(conn mnet.Client, msg string) {
 				conn.Send(message.PacketMessageRedText(err.Error()))
 			}
 		}
+	case "spawn":
+		if len(command) == 2 {
+			val, err := strconv.Atoi(command[1])
+
+			if err != nil {
+				conn.Send(message.PacketMessageRedText(err.Error()))
+				return
+			}
+
+			plr, err := server.players.getFromConn(conn)
+
+			if err != nil {
+				conn.Send(message.PacketMessageRedText(err.Error()))
+				return
+			}
+
+			field, ok := server.fields[plr.MapID()]
+
+			if !ok {
+				conn.Send(message.PacketMessageRedText("Could not find field ID"))
+				return
+			}
+
+			inst, err := field.GetInstance(plr.InstanceID())
+
+			if err != nil {
+				conn.Send(message.PacketMessageRedText(err.Error()))
+				return
+			}
+
+			inst.SpawnMobFromMobID(int32(val), plr.Pos(), false, true, true)
+		}
+	case "killMob":
+		var spawnID int32
+		var deathType byte
+
+		if len(command) > 1 {
+			val, err := strconv.Atoi(command[1])
+
+			if err != nil {
+				conn.Send(message.PacketMessageRedText(err.Error()))
+				return
+			}
+
+			spawnID = int32(val)
+		}
+
+		if len(command) == 3 {
+			val, err := strconv.Atoi(command[2])
+
+			if err != nil {
+				conn.Send(message.PacketMessageRedText(err.Error()))
+				return
+			}
+
+			deathType = byte(val)
+		}
+
+		plr, err := server.players.getFromConn(conn)
+
+		if err != nil {
+			conn.Send(message.PacketMessageRedText(err.Error()))
+			return
+		}
+
+		field, ok := server.fields[plr.MapID()]
+
+		if !ok {
+			conn.Send(message.PacketMessageRedText("Could not find field ID"))
+			return
+		}
+
+		inst, err := field.GetInstance(plr.InstanceID())
+
+		if err != nil {
+			conn.Send(message.PacketMessageRedText(err.Error()))
+			return
+		}
+
+		inst.RemoveMob(int32(spawnID), deathType)
 	default:
 		conn.Send(message.PacketMessageRedText("Unkown gm command " + command[0]))
 	}

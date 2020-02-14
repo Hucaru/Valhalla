@@ -14,15 +14,21 @@ import (
 	"github.com/Hucaru/Valhalla/server/pos"
 )
 
-type instance interface {
+type sender interface {
 	Send(mpacket.Packet) error
+}
+
+type instance interface {
+	sender
 	CalculateNearestSpawnPortalID(pos.Data) (byte, error)
+	ID() int
 }
 
 // Data connected to server
 type Data struct {
 	conn       mnet.Client
 	instanceID int
+	inst       instance
 
 	id        int32 // Unique identifier of the character
 	accountID int32
@@ -77,6 +83,8 @@ type Data struct {
 	skills map[int32]Skill
 
 	miniGameWins, miniGameDraw, miniGameLoss, miniGamePoints int32
+
+	lastAttackPacketTime int64
 }
 
 // Conn - client connection associated with this Data
@@ -86,12 +94,12 @@ func (d Data) Conn() mnet.Client {
 
 // InstanceID - field instance id the Data is currently on
 func (d Data) InstanceID() int {
-	return d.instanceID
+	return d.inst.ID()
 }
 
-// SetInstanceID - assign the instance id for the Data
-func (d *Data) SetInstanceID(id int) {
-	d.instanceID = id
+// SetInstance of player
+func (d *Data) SetInstance(inst interface{}) {
+	d.inst, _ = inst.(instance)
 }
 
 // Send the Data a packet
@@ -105,7 +113,7 @@ func (d *Data) SetJob(id int16) {
 	d.conn.Send(packetPlayerStatChange(true, constant.JobID, int32(id)))
 }
 
-func (d *Data) levelUp(inst instance) {
+func (d *Data) levelUp(inst sender) {
 	d.GiveAP(5)
 	d.GiveSP(3)
 
@@ -149,11 +157,11 @@ func (d *Data) levelUp(inst instance) {
 	d.SetMP(d.mp)
 	d.SetMaxMP(d.mp)
 
-	d.GiveLevel(1, inst)
+	d.GiveLevel(1)
 }
 
 // SetEXP of the Data
-func (d *Data) SetEXP(amount int32, inst instance) {
+func (d *Data) SetEXP(amount int32) {
 	if d.level > 199 {
 		d.exp = amount
 		d.Send(packetPlayerStatChange(false, constant.ExpID, int32(amount)))
@@ -163,8 +171,8 @@ func (d *Data) SetEXP(amount int32, inst instance) {
 	remainder := amount - constant.ExpTable[d.level-1]
 
 	if remainder >= 0 {
-		d.levelUp(inst)
-		d.SetEXP(remainder, inst)
+		d.levelUp(d.inst)
+		d.SetEXP(remainder)
 	} else {
 		d.exp = amount
 		d.Send(packetPlayerStatChange(false, constant.ExpID, int32(amount)))
@@ -172,26 +180,26 @@ func (d *Data) SetEXP(amount int32, inst instance) {
 }
 
 // GiveEXP to the Data
-func (d *Data) GiveEXP(amount int32, fromMob, fromParty bool, inst instance) {
+func (d *Data) GiveEXP(amount int32, fromMob, fromParty bool) {
 	if fromMob {
 		d.Send(packetMessageExpGained(!fromParty, false, amount))
 	} else {
 		d.Send(packetMessageExpGained(true, true, amount))
 	}
 
-	d.SetEXP(d.exp+amount, inst)
+	d.SetEXP(d.exp + amount)
 }
 
 // SetLevel of the Data
-func (d *Data) SetLevel(amount byte, inst instance) {
+func (d *Data) SetLevel(amount byte) {
 	d.level = amount
 	d.Send(packetPlayerStatChange(false, constant.LevelID, int32(amount)))
-	inst.Send(packetPlayerLevelUpAnimation(d.id))
+	d.inst.Send(packetPlayerLevelUpAnimation(d.id))
 }
 
 // GiveLevel amount ot the Data
-func (d *Data) GiveLevel(amount byte, inst instance) {
-	d.SetLevel(d.level+amount, inst)
+func (d *Data) GiveLevel(amount byte) {
+	d.SetLevel(d.level + amount)
 }
 
 // SetAP of Data
@@ -311,7 +319,7 @@ func (d *Data) AddEquip(item item.Data) {
 }
 
 // SetGuild of Data
-func (d *Data) SetGuild(name string, inst instance) {
+func (d *Data) SetGuild(name string) {
 
 }
 
@@ -369,6 +377,16 @@ func (d *Data) SetMiniGameDraw(v int32) {
 // SetMiniGamePoints of data
 func (d *Data) SetMiniGamePoints(v int32) {
 	d.miniGamePoints = v
+}
+
+// LastAttackPacketTime of player
+func (d *Data) LastAttackPacketTime() int64 {
+	return d.lastAttackPacketTime
+}
+
+// SetLastAttackPacketTime of player
+func (d *Data) SetLastAttackPacketTime(t int64) {
+	d.lastAttackPacketTime = t
 }
 
 type movementFrag interface {
@@ -824,6 +842,11 @@ func (d *Data) MoveItem(start, end, amount int16, invID byte, inst instance, db 
 	return nil
 }
 
+// Use items
+func (d Data) Use() []item.Data {
+	return d.use
+}
+
 // UpdateSkill map entry
 func (d *Data) UpdateSkill(updatedSkill Skill) {
 	d.skills[updatedSkill.ID] = updatedSkill
@@ -993,7 +1016,7 @@ func (d Data) DisplayBytes() []byte {
 }
 
 // Save data
-func (d Data) Save(db *sql.DB, inst instance) error {
+func (d Data) Save(db *sql.DB) error {
 	query := `UPDATE characters set skin=?, hair=?, face=?, level=?,
 	job=?, str=?, dex=?, intt=?, luk=?, hp=?, maxHP=?, mp=?, maxMP=?,
 	ap=?, sp=?, exp=?, fame=?, mapID=?, mapPos=?, mesos=?, miniGameWins=?,
@@ -1002,8 +1025,8 @@ func (d Data) Save(db *sql.DB, inst instance) error {
 	var mapPos byte
 	var err error
 
-	if inst != nil {
-		mapPos, err = inst.CalculateNearestSpawnPortalID(d.pos)
+	if d.inst != nil {
+		mapPos, err = d.inst.CalculateNearestSpawnPortalID(d.pos)
 	}
 
 	if err != nil {

@@ -290,7 +290,7 @@ func (server *LoginServer) handleNewCharacter(conn mnet.Client, reader mpacket.R
 			}
 		}
 
-		char.Save(server.db, nil)
+		char.Save(server.db)
 		newCharacter = char
 	}
 

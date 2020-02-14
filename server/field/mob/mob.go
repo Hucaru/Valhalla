@@ -2,6 +2,7 @@ package mob
 
 import (
 	"fmt"
+	"strconv"
 
 	"github.com/Hucaru/Valhalla/mnet"
 	"github.com/Hucaru/Valhalla/mpacket"
@@ -16,6 +17,20 @@ type Controller interface {
 	Send(mpacket.Packet)
 }
 
+type instance interface {
+	Send(mpacket.Packet) error
+	RemoveMob(int32, byte) error
+}
+
+type sender interface {
+	Send(mpacket.Packet) error
+}
+
+type player interface {
+	MapID() int32
+	GiveEXP(int32, bool, bool)
+}
+
 // Data for mob
 type Data struct {
 	controller, summoner   Controller
@@ -23,8 +38,8 @@ type Data struct {
 	spawnID                int32
 	pos                    pos.Data
 	faceLeft               bool
-	hp, mp                 int16
-	maxHP, maxMP           int16
+	hp, mp                 int32
+	maxHP, maxMP           int32
 	hpRecovery, mpRecovery int32
 	level                  int32
 	exp                    int32
@@ -53,26 +68,31 @@ type Data struct {
 	lastSkillTime  int64
 	skillTimes     map[byte]int64
 
-	DmgTaken map[mnet.Client]int32
+	dmgTaken map[player]int32
+
+	dropsItems bool
+	dropsMesos bool
 }
 
 // CreateFromData - creates a mob from nx data
-func CreateFromData(spawnID int32, life nx.Life, m nx.Mob) Data {
+func CreateFromData(spawnID int32, life nx.Life, m nx.Mob, dropsItems, dropsMesos bool) Data {
 	return Data{id: life.ID,
 		spawnID:    spawnID,
 		pos:        pos.New(life.X, life.Y),
 		faceLeft:   life.FaceLeft,
-		hp:         int16(m.HP),
-		mp:         int16(m.HP),
-		maxHP:      int16(m.MaxHP),
-		maxMP:      int16(m.MaxMP),
+		hp:         m.HP,
+		mp:         m.HP,
+		maxHP:      m.MaxHP,
+		maxMP:      m.MaxMP,
+		exp:        int32(m.Exp),
 		foothold:   life.Foothold,
 		summonType: -2,
+		dmgTaken:   make(map[player]int32),
 	}
 }
 
 // CreateFromID - creates a mob from an id and position data
-func CreateFromID(spawnID, id int32, p pos.Data, controller Controller) (Data, error) {
+func CreateFromID(spawnID, id int32, p pos.Data, controller Controller, dropsItems, dropsMesos bool) (Data, error) {
 	m, err := nx.GetMob(id)
 
 	if err != nil {
@@ -80,7 +100,7 @@ func CreateFromID(spawnID, id int32, p pos.Data, controller Controller) (Data, e
 	}
 
 	// If this isn't working with regards to position make the foothold equal to player? nearest to pos?
-	mob := CreateFromData(spawnID, nx.Life{Foothold: 0, X: p.X(), Y: p.Y(), FaceLeft: true}, m)
+	mob := CreateFromData(spawnID, nx.Life{Foothold: 0, X: p.X(), Y: p.Y(), FaceLeft: true}, m, dropsItems, dropsMesos)
 	mob.summoner = controller
 	return mob, nil
 }
@@ -98,22 +118,20 @@ func (m *Data) SetController(controller Controller, follow bool) {
 
 // RemoveController from mob
 func (m *Data) RemoveController() {
-	if m.Controller() != nil {
+	if m.controller != nil {
 		m.controller.Send(packetMobEndControl(*m))
 		m.controller = nil
 	}
 }
 
 // AcknowledgeController movement bytes
-func (m *Data) AcknowledgeController(moveID int16, movData movement.Frag) {
+func (m *Data) AcknowledgeController(moveID int16, movData movement.Frag, allowedToUseSkill bool, skill, level byte) {
 	m.pos.SetX(movData.X())
 	m.pos.SetY(movData.Y())
 	m.foothold = movData.Foothold()
 	m.stance = movData.Stance()
 
-	allowedToUseSkill := false
-	var skill, level byte = 0, 0
-	m.controller.Send(packetMobControlAcknowledge(m.spawnID, moveID, allowedToUseSkill, m.mp, skill, level))
+	m.controller.Send(packetMobControlAcknowledge(m.spawnID, moveID, allowedToUseSkill, int16(m.mp), skill, level))
 }
 
 // SpawnID of mob
@@ -136,12 +154,66 @@ func (m *Data) PerformAttack(attackID byte) {
 
 }
 
-type instance interface {
+type party interface {
 }
 
 // HandleDamage on the mob
-func (m Data) HandleDamage(dmg int32, conn mnet.Client, inst instance) {
+func (m *Data) HandleDamage(damager player, inst instance, prty party, dmg ...int32) error {
+	var err error
 
+	for _, v := range dmg {
+		if v > m.hp {
+			v = m.hp
+		}
+
+		m.hp -= v
+
+		if _, ok := m.dmgTaken[damager]; ok {
+			m.dmgTaken[damager] += v
+		} else {
+			m.dmgTaken[damager] = v
+		}
+	}
+
+	if m.hp < 1 {
+		for plr, dmg := range m.dmgTaken {
+			if plr.MapID() != damager.MapID() {
+				continue
+			}
+
+			// Not sure what the correct calculation theresholds are.
+			if dmg == m.maxHP {
+				plr.GiveEXP(m.exp, true, false)
+			} else if float64(dmg)/float64(m.maxHP) > 0.60 {
+				plr.GiveEXP(m.exp, true, false)
+			} else {
+				newExp := int32(float64(m.exp) * 0.25)
+
+				if newExp == 0 {
+					newExp = 1
+				}
+
+				plr.GiveEXP(newExp, true, false)
+			}
+		}
+
+		// Calculate party exp, iterate over party excluding person who dealt dmg (controller)
+		if prty != nil {
+
+		}
+
+		err = inst.RemoveMob(m.spawnID, 0x1)
+
+		// If monster has on die logic e.g. spawns mob(s), drops items
+	}
+
+	return err
+}
+
+// Kill the mob silently
+func (m *Data) Kill(inst instance, plr player) {
+	inst.RemoveMob(m.spawnID, 0x0)
+	plr.GiveEXP(m.exp, true, false)
 }
 
 // DisplayBytes to show mob
@@ -193,4 +265,17 @@ func (m Data) DisplayBytes() []byte {
 	p.WriteInt32(0) // encode mob status
 
 	return p
+}
+
+func (m Data) String() string {
+	sid := strconv.Itoa(int(m.spawnID))
+	mid := strconv.Itoa(int(m.id))
+
+	hp := strconv.Itoa(int(m.hp))
+	mhp := strconv.Itoa(int(m.maxHP))
+
+	mp := strconv.Itoa(int(m.mp))
+	mmp := strconv.Itoa(int(m.maxMP))
+
+	return sid + "(" + mid + ") " + hp + "/" + mhp + " " + mp + "/" + mmp + " (" + m.pos.String() + ")"
 }
