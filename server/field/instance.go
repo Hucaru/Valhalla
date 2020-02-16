@@ -25,7 +25,6 @@ type player interface {
 	DisplayBytes() []byte
 	ChairID() int32
 	Stance() byte
-	Foothold() int16
 	Send(mpacket.Packet)
 	MiniGameWins() int32
 	MiniGameDraw() int32
@@ -90,9 +89,9 @@ func (inst Instance) String() string {
 
 	info += "mobs(" + strconv.Itoa(len(inst.mobs)) + "): "
 
-	for _, v := range inst.mobs {
-		info += " " + strconv.Itoa(int(v.SpawnID())) + ","
-	}
+	// for _, v := range inst.mobs {
+	// 	info += " " + v.String() + ","
+	// }
 
 	return info
 }
@@ -122,9 +121,12 @@ func (inst *Instance) AddPlayer(plr player) error {
 	// show all monsters on field
 	for i, m := range inst.mobs {
 		plr.Send(packetMobShow(m))
+
 		if m.Controller() == nil {
 			inst.mobs[i].SetController(plr, false)
 		}
+
+		inst.ShowMobBossHPBar(m)
 	}
 
 	// show all the rooms
@@ -182,7 +184,7 @@ func (inst *Instance) RemovePlayer(plr player) error {
 	}
 
 	for i, v := range inst.mobs {
-		if v.Controller().Conn() == plr.Conn() {
+		if v.Controller() != nil && v.Controller().Conn() == plr.Conn() {
 			inst.mobs[i].RemoveController()
 
 			if len(inst.players) > 0 {
@@ -411,22 +413,40 @@ func (inst *Instance) SpawnMobFromMobID(mobID int32, pos pos.Data, hasAgro, item
 		return err
 	}
 
-	if len(inst.players) > 0 {
-		mob.SetController(inst.players[0], hasAgro)
-	}
-
 	inst.addmob(mob)
+
+	if len(inst.players) > 0 {
+		inst.mobs[len(inst.mobs)-1].SetController(inst.players[0], hasAgro)
+	}
 	return nil
 }
 
-// SpawnOverridenMobFromMobID this is to summon mobs with exception
-func (inst *Instance) SpawnOverridenMobFromMobID(mob mob.Data) {
+// SpawnMobFromData in the instance
+func (inst *Instance) SpawnMobFromData(mob mob.Data) {
 	inst.addmob(mob)
+}
+
+// SpawnReviveMob in the instance
+func (inst *Instance) SpawnReviveMob(mob mob.Data, controller interface{}) {
+	inst.addmob(mob)
+
+	inst.mobs[len(inst.mobs)-1].SetSummonType(-2)
+	inst.mobs[len(inst.mobs)-1].SetSummonOption(0)
+
+	inst.mobs[len(inst.mobs)-1].SetController(controller.(player), true)
 }
 
 func (inst *Instance) addmob(mob mob.Data) {
 	inst.mobs = append(inst.mobs, mob)
 	inst.Send(packetMobShow(mob))
+	inst.ShowMobBossHPBar(mob)
+}
+
+// ShowMobBossHPBar to instance if possible
+func (inst Instance) ShowMobBossHPBar(mob mob.Data) {
+	if show, mobID, hp, maxHP, hpFgColour, hpBgColour := mob.HasHPBar(); show {
+		inst.Send(packetMobShowBossHP(mobID, hp, maxHP, hpFgColour, hpBgColour))
+	}
 }
 
 // RemoveMob from instance

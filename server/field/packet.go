@@ -37,7 +37,7 @@ func packetMapPlayerEnter(plr player) mpacket.Packet {
 	p.WriteInt16(plr.Pos().X())
 	p.WriteInt16(plr.Pos().Y())
 	p.WriteByte(plr.Stance())
-	p.WriteInt16(plr.Foothold())
+	p.WriteInt16(plr.Pos().Foothold())
 	p.WriteInt32(0) // ?
 
 	return p
@@ -67,7 +67,7 @@ func packetNpcShow(npc npc.Data) mpacket.Packet {
 
 	p.WriteBool(!npc.FaceLeft())
 
-	p.WriteInt16(npc.Foothold())
+	p.WriteInt16(npc.Pos().Foothold())
 	p.WriteInt16(npc.Rx0())
 	p.WriteInt16(npc.Rx1())
 
@@ -92,6 +92,18 @@ func packetMobRemove(spawnID int32, deathType byte) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelRemoveMob)
 	p.WriteInt32(spawnID)
 	p.WriteByte(deathType)
+
+	return p
+}
+
+func packetMobShowBossHP(mobID, hp, maxHP int32, colourFg, colourBg byte) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelMapEffect)
+	p.WriteByte(5)
+	p.WriteInt32(mobID)
+	p.WriteInt32(hp)
+	p.WriteInt32(maxHP)
+	p.WriteByte(colourFg)
+	p.WriteByte(colourBg)
 
 	return p
 }

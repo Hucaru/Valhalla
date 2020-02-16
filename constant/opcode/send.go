@@ -28,6 +28,7 @@ const (
 	SendChannelChangeServer         byte = 0x3B
 	SendChannelBubblessChat         byte = 0x3D
 	SendChannelWhisper              byte = 0x3E
+	SendChannelMapEffect            byte = 0x40
 	SendChannelEmployee             byte = 0x43
 	SendChannelQuizQAndA            byte = 0x44
 	SendChannelCharacterEnterField  byte = 0x4E
@@ -47,7 +48,7 @@ const (
 	SendChannelControlMob           byte = 0x88
 	SendChannelMoveMob              byte = 0x8A
 	SendChannelControlMobAck        byte = 0x8B
-	SendChannelMobChangeHP          byte = 0x91
+	SendChannelMobDamage            byte = 0x91
 	SendChannelNpcShow              byte = 0x97
 	SendChannelNpcRemove            byte = 0x98
 	SendChannelNpcControl           byte = 0x99

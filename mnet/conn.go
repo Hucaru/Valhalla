@@ -71,10 +71,10 @@ func serverReader(conn net.Conn, eRecv chan *Event, headerSize int) {
 
 type baseConn struct {
 	net.Conn
-	eSend   chan mpacket.Packet
-	eRecv   chan *Event
-	endSend chan bool
-	reader  func()
+	eSend  chan mpacket.Packet
+	eRecv  chan *Event
+	reader func()
+	closed bool
 
 	cryptSend *crypt.Maple
 	cryptRecv *crypt.Maple
@@ -88,34 +88,32 @@ func (bc *baseConn) Reader() {
 
 func (bc *baseConn) Writer() {
 	for {
-		select {
-		case p, ok := <-bc.eSend:
-			if !ok {
-				return
-			}
-
-			tmp := make(mpacket.Packet, len(p))
-			copy(tmp, p)
-
-			if bc.cryptSend != nil {
-				bc.cryptSend.Encrypt(tmp, true, false)
-			}
-
-			if bc.interServer {
-				tmp[0] = byte(len(tmp) - 1)
-			}
-
-			bc.Conn.Write(tmp)
+		p, ok := <-bc.eSend
+		if !ok {
+			return
 		}
+
+		tmp := make(mpacket.Packet, len(p))
+		copy(tmp, p)
+
+		if bc.cryptSend != nil {
+			bc.cryptSend.Encrypt(tmp, true, false)
+		}
+
+		if bc.interServer {
+			tmp[0] = byte(len(tmp) - 1)
+		}
+
+		bc.Conn.Write(tmp)
 	}
 }
 
 func (bc *baseConn) Send(p mpacket.Packet) {
-	select {
-	case bc.eSend <- p:
-	case <-bc.endSend:
-		close(bc.eSend)
+	if bc.closed {
+		return
 	}
+
+	bc.eSend <- p
 }
 
 func (bc *baseConn) String() string {
@@ -123,5 +121,6 @@ func (bc *baseConn) String() string {
 }
 
 func (bc *baseConn) Cleanup() {
-	bc.endSend <- true
+	bc.closed = true
+	close(bc.eSend)
 }

@@ -19,7 +19,6 @@ type Data struct {
 	id         int32
 	spawnID    int32
 	pos        pos.Data
-	foothold   int16
 	faceLeft   bool
 	rx0, rx1   int16
 }
@@ -28,8 +27,7 @@ type Data struct {
 func CreateFromData(spawnID int32, life nx.Life) Data {
 	return Data{id: life.ID,
 		spawnID:  spawnID,
-		pos:      pos.New(life.X, life.Y),
-		foothold: life.Foothold,
+		pos:      pos.New(life.X, life.Y, life.Foothold),
 		faceLeft: life.FaceLeft,
 		rx0:      life.Rx0,
 		rx1:      life.Rx1}
@@ -53,11 +51,6 @@ func (d Data) SpawnID() int32 {
 // Pos of npc
 func (d Data) Pos() pos.Data {
 	return d.pos
-}
-
-// Foothold the npc is attached to
-func (d Data) Foothold() int16 {
-	return d.foothold
 }
 
 // FaceLeft - does npc face left direction

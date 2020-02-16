@@ -579,7 +579,7 @@ func (server ChannelServer) warpPlayer(plr *player.Data, dstField *field.Field, 
 	plr.SetMapID(dstField.ID)
 	plr.SetMapPosID(dstPortal.ID())
 	plr.SetPos(dstPortal.Pos())
-	plr.SetFoothold(0)
+	// plr.SetFoothold(0)
 
 	packetMapChange := func(mapID int32, channelID int32, mapPos byte, hp int16) mpacket.Packet {
 		p := mpacket.CreateWithOpcode(opcode.SendChannelWarpToMap)

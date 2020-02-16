@@ -7,13 +7,14 @@ import (
 
 // Data information that has helpful calculation methods
 type Data struct {
-	x int16
-	y int16
+	x        int16
+	y        int16
+	foothold int16
 }
 
 // New portal func
-func New(x, y int16) Data {
-	return Data{x: x, y: y}
+func New(x, y, foothold int16) Data {
+	return Data{x: x, y: y, foothold: foothold}
 }
 
 // X axis value
@@ -34,6 +35,16 @@ func (d Data) Y() int16 {
 // SetY axis value
 func (d *Data) SetY(v int16) {
 	d.y = v
+}
+
+// Foothold value
+func (d Data) Foothold() int16 {
+	return d.foothold
+}
+
+// SetFoothold value
+func (d *Data) SetFoothold(v int16) {
+	d.foothold = v
 }
 
 // String representation of pos

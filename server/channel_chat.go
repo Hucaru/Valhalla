@@ -2,6 +2,7 @@ package server
 
 import (
 	"encoding/hex"
+	"fmt"
 	"log"
 	"strconv"
 	"strings"
@@ -574,7 +575,7 @@ func (server *ChannelServer) gmCommand(conn mnet.Client, msg string) {
 
 			inst.SpawnMobFromMobID(int32(val), plr.Pos(), false, true, true)
 		}
-	case "killMob":
+	case "removeMob":
 		var spawnID int32
 		var deathType byte
 
@@ -622,6 +623,185 @@ func (server *ChannelServer) gmCommand(conn mnet.Client, msg string) {
 		}
 
 		inst.RemoveMob(int32(spawnID), deathType)
+	case "killMob":
+		var spawnID int32
+
+		if len(command) > 1 {
+			val, err := strconv.Atoi(command[1])
+
+			if err != nil {
+				conn.Send(message.PacketMessageRedText(err.Error()))
+				return
+			}
+
+			spawnID = int32(val)
+		}
+
+		plr, err := server.players.getFromConn(conn)
+
+		if err != nil {
+			conn.Send(message.PacketMessageRedText(err.Error()))
+			return
+		}
+
+		field, ok := server.fields[plr.MapID()]
+
+		if !ok {
+			conn.Send(message.PacketMessageRedText("Could not find field ID"))
+			return
+		}
+
+		inst, err := field.GetInstance(plr.InstanceID())
+
+		if err != nil {
+			conn.Send(message.PacketMessageRedText(err.Error()))
+			return
+		}
+
+		m := inst.GetMob(spawnID)
+
+		if m == nil {
+			conn.Send(message.PacketMessageRedText("Invalid mob spawn id"))
+			return
+		}
+
+		m.HandleDamage(plr, inst, nil, m.HP())
+	case "spawnMob":
+		var mobID int32
+		var count int = 1
+
+		if len(command) > 1 {
+			val, err := strconv.Atoi(command[1])
+
+			if err != nil {
+				conn.Send(message.PacketMessageRedText(err.Error()))
+				return
+			}
+
+			mobID = int32(val)
+		}
+
+		if len(command) == 3 {
+			val, err := strconv.Atoi(command[2])
+
+			if err != nil {
+				conn.Send(message.PacketMessageRedText(err.Error()))
+				return
+			}
+
+			count = val
+		}
+
+		plr, err := server.players.getFromConn(conn)
+
+		if err != nil {
+			conn.Send(message.PacketMessageRedText(err.Error()))
+			return
+		}
+
+		field, ok := server.fields[plr.MapID()]
+
+		if !ok {
+			conn.Send(message.PacketMessageRedText("Could not find field ID"))
+			return
+		}
+
+		inst, err := field.GetInstance(plr.InstanceID())
+
+		if err != nil {
+			conn.Send(message.PacketMessageRedText(err.Error()))
+			return
+		}
+
+		for i := 0; i < count; i++ {
+			err := inst.SpawnMobFromMobID(mobID, plr.Pos(), false, true, true)
+
+			if err != nil {
+				conn.Send(message.PacketMessageRedText(err.Error()))
+				break
+			}
+		}
+	case "spawnBoss":
+		var mobID []int32
+		var count int = 1
+		var err error
+
+		if len(command) > 1 {
+			mobID, err = covnertMobNameToID(command[1])
+
+			if err != nil {
+				conn.Send(message.PacketMessageRedText(err.Error()))
+				return
+			}
+		}
+
+		if len(command) == 3 {
+			count, err = strconv.Atoi(command[2])
+
+			if err != nil {
+				conn.Send(message.PacketMessageRedText(err.Error()))
+				return
+			}
+		}
+
+		plr, err := server.players.getFromConn(conn)
+
+		if err != nil {
+			conn.Send(message.PacketMessageRedText(err.Error()))
+			return
+		}
+
+		field, ok := server.fields[plr.MapID()]
+
+		if !ok {
+			conn.Send(message.PacketMessageRedText("Could not find field ID"))
+			return
+		}
+
+		inst, err := field.GetInstance(plr.InstanceID())
+
+		if err != nil {
+			conn.Send(message.PacketMessageRedText(err.Error()))
+			return
+		}
+
+		for i := 0; i < count; i++ {
+			for _, id := range mobID {
+				err = inst.SpawnMobFromMobID(id, plr.Pos(), false, true, true)
+			}
+
+			if err != nil {
+				conn.Send(message.PacketMessageRedText(err.Error()))
+				break
+			}
+		}
+	case "testMob":
+		plr, err := server.players.getFromConn(conn)
+
+		if err != nil {
+			conn.Send(message.PacketMessageRedText(err.Error()))
+			return
+		}
+
+		field, ok := server.fields[plr.MapID()]
+
+		if !ok {
+			conn.Send(message.PacketMessageRedText("Could not find field ID"))
+			return
+		}
+
+		inst, err := field.GetInstance(plr.InstanceID())
+
+		if err != nil {
+			conn.Send(message.PacketMessageRedText(err.Error()))
+			return
+		}
+		err = inst.SpawnMobFromMobID(5100001, plr.Pos(), true, true, true)
+
+		if err != nil {
+			conn.Send(message.PacketMessageRedText(err.Error()))
+		}
+
 	default:
 		conn.Send(message.PacketMessageRedText("Unkown gm command " + command[0]))
 	}
@@ -727,4 +907,35 @@ func convertJobNameToID(name string) int16 {
 	default:
 		return 0
 	}
+}
+
+func covnertMobNameToID(name string) ([]int32, error) {
+	switch name {
+	case "balrog":
+		return []int32{8130100}, nil
+	case "cbalrog":
+		return []int32{8150000}, nil
+	case "zakum":
+		return []int32{
+			8800003, //Zakum's Arm 1
+			8800004, //Zakum's Arm 2
+			8800005, //Zakum's Arm 3
+			8800006, //Zakum's Arm 4
+			8800007, //Zakum's Arm 5
+			8800008, //Zakum's Arm 6
+			8800009, //Zakum's Arm 7
+			8800010, //Zakum's Arm 8
+			8800000, //Zakum1's body
+		}, nil
+	case "pap":
+		return []int32{8500001}, nil // clock - 8500002
+	case "pianus":
+		return []int32{8520000}, nil // or 8510000
+	case "mushmom":
+		return []int32{6130101}, nil
+	case "zmushmom":
+		return []int32{6300005}, nil
+	}
+
+	return nil, fmt.Errorf("Unkown mob name")
 }

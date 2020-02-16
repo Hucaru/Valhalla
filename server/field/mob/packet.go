@@ -39,7 +39,7 @@ func packetMobEndControl(m Data) mpacket.Packet {
 }
 
 func packetMobShowHpChange(spawnID int32, dmg int32) mpacket.Packet {
-	p := mpacket.CreateWithOpcode(opcode.SendChannelMobChangeHP)
+	p := mpacket.CreateWithOpcode(opcode.SendChannelMobDamage)
 	p.WriteInt32(spawnID)
 	p.WriteByte(0)
 	p.WriteInt32(dmg)

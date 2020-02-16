@@ -53,9 +53,9 @@ Channel server:
 - [x] Player chat
 - [x] player use portal
 - [x] Player allocate skill points
-- [ ] Player use skills
+- [x] Player use skills
 - [ ] Player skill logic (haste etc)
-- [x] Player inventory (might be a potentiall dupplication bug, more testing needed)
+- [x] Player inventory (needs a re-write)
 - [ ] Player use item (scrolls, potions etc)
 - [ ] Player pets
 - [x] Player stats
@@ -72,10 +72,11 @@ Channel server:
 - [x] Mob movement
 - [ ] Mob attack
 - [ ] Mob skills that cause stat changes
-- [ ] Mob death
+- [x] Mob death
 - [ ] Mob respawn
-- [ ] Mob spawns mob(s) on death
+- [x] Mob spawns mob(s) on death
 - [ ] Mob drops
+- [x] Mob boss HP bar
 - [ ] Trade
 - [x] Minigames
 - [ ] Communication Window
@@ -131,3 +132,5 @@ Taken from [here](http://forum.ragezone.com/f428/add-learning-npcs-start-finish-
 - \n = New Line
 - \t = Tab (4 spaces)
 - \b = Backwards
+
+## Screenshots

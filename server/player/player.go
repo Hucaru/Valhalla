@@ -55,16 +55,15 @@ type Data struct {
 	exp   int32
 	fame  int16
 
-	name     string
-	gender   byte
-	skin     byte
-	face     int32
-	hair     int32
-	chairID  int32
-	stance   byte
-	pos      pos.Data
-	foothold int16
-	guild    string
+	name    string
+	gender  byte
+	skin    byte
+	face    int32
+	hair    int32
+	chairID int32
+	stance  byte
+	pos     pos.Data
+	guild   string
 
 	equipSlotSize byte
 	useSlotSize   byte
@@ -400,7 +399,7 @@ type movementFrag interface {
 func (d *Data) UpdateMovement(frag movementFrag) {
 	d.pos.SetX(frag.X())
 	d.pos.SetY(frag.Y())
-	d.foothold = frag.Foothold()
+	d.pos.SetFoothold(frag.Foothold())
 	d.stance = frag.Stance()
 }
 
@@ -426,11 +425,6 @@ func (d Data) CheckPos(pos pos.Data, xRange, yRange int16) bool {
 	}
 
 	return xValid && yValid
-}
-
-// SetFoothold of Data
-func (d *Data) SetFoothold(fh int16) {
-	d.foothold = fh
 }
 
 // SetMapID of Data
@@ -939,9 +933,6 @@ func (d Data) Stance() byte { return d.stance }
 
 // Pos of Data
 func (d Data) Pos() pos.Data { return d.pos }
-
-// Foothold Data is currently tied to
-func (d Data) Foothold() int16 { return d.foothold }
 
 // Guild name Data is currenty part of
 func (d Data) Guild() string { return d.guild }

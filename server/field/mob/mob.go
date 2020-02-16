@@ -15,11 +15,15 @@ import (
 type Controller interface {
 	Conn() mnet.Client
 	Send(mpacket.Packet)
+	ID() int32
 }
 
 type instance interface {
 	Send(mpacket.Packet) error
 	RemoveMob(int32, byte) error
+	NextID() int32
+	SpawnReviveMob(Data, interface{})
+	ShowMobBossHPBar(Data)
 }
 
 type sender interface {
@@ -62,7 +66,6 @@ type Data struct {
 	skills                 map[byte]byte
 	revives                []int32
 	stance                 byte
-	foothold               int16
 
 	lastAttackTime int64
 	lastSkillTime  int64
@@ -72,21 +75,27 @@ type Data struct {
 
 	dropsItems bool
 	dropsMesos bool
+
+	hpBgColour byte
+	hpFgColour byte
 }
 
 // CreateFromData - creates a mob from nx data
 func CreateFromData(spawnID int32, life nx.Life, m nx.Mob, dropsItems, dropsMesos bool) Data {
 	return Data{id: life.ID,
 		spawnID:    spawnID,
-		pos:        pos.New(life.X, life.Y),
+		pos:        pos.New(life.X, life.Y, life.Foothold),
 		faceLeft:   life.FaceLeft,
 		hp:         m.HP,
-		mp:         m.HP,
+		mp:         m.MP,
 		maxHP:      m.MaxHP,
 		maxMP:      m.MaxMP,
 		exp:        int32(m.Exp),
-		foothold:   life.Foothold,
+		revives:    m.Revives,
 		summonType: -2,
+		boss:       m.Boss >= 0,
+		hpBgColour: byte(m.HPTagBGColor),
+		hpFgColour: byte(m.HPTagColor),
 		dmgTaken:   make(map[player]int32),
 	}
 }
@@ -100,8 +109,9 @@ func CreateFromID(spawnID, id int32, p pos.Data, controller Controller, dropsIte
 	}
 
 	// If this isn't working with regards to position make the foothold equal to player? nearest to pos?
-	mob := CreateFromData(spawnID, nx.Life{Foothold: 0, X: p.X(), Y: p.Y(), FaceLeft: true}, m, dropsItems, dropsMesos)
+	mob := CreateFromData(spawnID, nx.Life{ID: id, Foothold: p.Foothold(), X: p.X(), Y: p.Y(), FaceLeft: true}, m, dropsItems, dropsMesos)
 	mob.summoner = controller
+
 	return mob, nil
 }
 
@@ -112,6 +122,10 @@ func (m Data) Controller() Controller {
 
 // SetController of mob
 func (m *Data) SetController(controller Controller, follow bool) {
+	if controller == nil {
+		return
+	}
+
 	m.controller = controller
 	controller.Send(packetMobControl(*m, follow))
 }
@@ -128,8 +142,13 @@ func (m *Data) RemoveController() {
 func (m *Data) AcknowledgeController(moveID int16, movData movement.Frag, allowedToUseSkill bool, skill, level byte) {
 	m.pos.SetX(movData.X())
 	m.pos.SetY(movData.Y())
-	m.foothold = movData.Foothold()
+	m.pos.SetFoothold(movData.Foothold())
 	m.stance = movData.Stance()
+	m.faceLeft = m.stance%2 == 1
+
+	if m.controller == nil {
+		return
+	}
 
 	m.controller.Send(packetMobControlAcknowledge(m.spawnID, moveID, allowedToUseSkill, int16(m.mp), skill, level))
 }
@@ -142,6 +161,31 @@ func (m Data) SpawnID() int32 {
 // SetSummonType of mob
 func (m *Data) SetSummonType(v int8) {
 	m.summonType = v
+}
+
+// SummonType of mob
+func (m Data) SummonType() int8 {
+	return m.summonType
+}
+
+// SetSummonOption of mob
+func (m *Data) SetSummonOption(v int32) {
+	m.summonOption = v
+}
+
+// HP of mob
+func (m Data) HP() int32 {
+	return m.hp
+}
+
+// Boss value of mob
+func (m Data) Boss() bool {
+	return m.boss
+}
+
+// HasHPBar that can be shown
+func (m Data) HasHPBar() (bool, int32, int32, int32, byte, byte) {
+	return (m.boss && m.hpBgColour > 0), m.id, m.hp, m.maxHP, m.hpFgColour, m.hpBgColour
 }
 
 // PerformSkill - mob skill action
@@ -197,15 +241,31 @@ func (m *Data) HandleDamage(damager player, inst instance, prty party, dmg ...in
 			}
 		}
 
-		// Calculate party exp, iterate over party excluding person who dealt dmg (controller)
+		// Update quest mob
+
+		// Calculate party exp, iterate over party excluding person who dealt dmg (controller), update party member quest mobs if in same instance
 		if prty != nil {
 
 		}
 
-		err = inst.RemoveMob(m.spawnID, 0x1)
-
 		// If monster has on die logic e.g. spawns mob(s), drops items
+		for _, id := range m.revives {
+			newMob, err := CreateFromID(inst.NextID(), int32(id), m.pos, nil, true, true)
+
+			if err != nil {
+				return err
+			}
+
+			newMob.faceLeft = m.faceLeft
+			newMob.summonType = -3
+			newMob.summonOption = m.spawnID
+			inst.SpawnReviveMob(newMob, damager)
+		}
+
+		err = inst.RemoveMob(m.spawnID, 0x1)
 	}
+
+	inst.ShowMobBossHPBar(*m)
 
 	return err
 }
@@ -253,17 +313,16 @@ func (m Data) DisplayBytes() []byte {
 		bitfield |= 0x04
 	}
 
-	p.WriteByte(bitfield)    // 0x08 - a summon, 0x04 - flying, 0x02 - ???, 0x01 - faces left
-	p.WriteInt16(m.foothold) // foothold to oscillate around
-	p.WriteInt16(m.foothold) // spawn foothold
+	p.WriteByte(bitfield)          // 0x08 - a summon, 0x04 - flying, 0x02 - ???, 0x01 - faces left
+	p.WriteInt16(m.pos.Foothold()) // foothold to oscillate around
+	p.WriteInt16(m.pos.Foothold()) // spawn foothold
 	p.WriteInt8(m.summonType)
 
 	if m.summonType == -3 || m.summonType >= 0 {
-		p.WriteInt32(m.summonOption) // some sort of summoning options, not sure what this is
+		p.WriteInt32(m.summonOption) // when -3 used to link mob to a death using spawnID
 	}
 
 	p.WriteInt32(0) // encode mob status
-
 	return p
 }
 
