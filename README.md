@@ -135,4 +135,4 @@ Taken from [here](http://forum.ragezone.com/f428/add-learning-npcs-start-finish-
 
 ## Screenshots
 
-![Bosses](/img/bosses.pmg?raw=true "Bosses")
+![Bosses](img/bosses.PNG?raw=true "Bosses")
