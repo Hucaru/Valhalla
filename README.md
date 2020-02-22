@@ -134,3 +134,5 @@ Taken from [here](http://forum.ragezone.com/f428/add-learning-npcs-start-finish-
 - \b = Backwards
 
 ## Screenshots
+
+![Bosses](/img/bosses.pmg?raw=true "Bosses")
