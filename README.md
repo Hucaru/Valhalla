@@ -100,7 +100,7 @@ Channel server:
 
 ## NPC chat display info (use this when scripting NPCs)
 
-NPCs are scripted in [anko](https://github.com/mattn/anko)
+NPCs are scripted in [gomacro](https://github.com/cosmos72/gomacro)
 
 Taken from [here](http://forum.ragezone.com/f428/add-learning-npcs-start-finish-643364/)
 
