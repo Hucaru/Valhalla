@@ -268,6 +268,8 @@ func (server *LoginServer) handleNewCharacter(conn mnet.Client, reader mpacket.R
 				item.Save(server.db, int32(characterID))
 				char.AddEquip(item)
 			}
+
+			// TODO: Give GM all skils maxed
 		} else {
 			items := map[int32]int16{
 				top:    -5,

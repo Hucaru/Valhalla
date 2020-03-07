@@ -51,7 +51,7 @@ type Foothold struct {
 
 // Map data from nx
 type Map struct {
-	Town         int64
+	Town         bool
 	ForcedReturn int64
 	ReturnMap    int32
 	MobRate      float64
@@ -67,8 +67,8 @@ type Map struct {
 	Reactors  []Reactor
 	Footholds []Foothold
 
-	FieldLimit                       int64
-	VRRight, VRTop, VRLeft, VRBottom int64
+	FieldLimit                                int64
+	VRRight, VRTop, VRLeft, VRBottom, VRLimit int64
 
 	Recovery                  float64
 	Version                   int64
@@ -148,7 +148,7 @@ func getMapInfo(node *gonx.Node, nodes []gonx.Node, textLookup []string) Map {
 
 		switch optionName {
 		case "town":
-			m.Town = gonx.DataToInt64(option.Data)
+			m.Town = gonx.DataToBool(option.Data[0])
 		case "mobRate":
 			m.MobRate = gonx.DataToFloat64(option.Data)
 		case "forcedReturn":
@@ -177,7 +177,7 @@ func getMapInfo(node *gonx.Node, nodes []gonx.Node, textLookup []string) Map {
 		case "VRBottom":
 			m.VRBottom = gonx.DataToInt64(option.Data)
 		case "VRLimit":
-		// 	m.VRLimit = gonx.DataToInt64(option.Data)
+			m.VRLimit = gonx.DataToInt64(option.Data)
 		case "recovery": // float64
 			m.Recovery = gonx.DataToFloat64(option.Data)
 		case "returnMap":

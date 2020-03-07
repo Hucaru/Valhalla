@@ -4,65 +4,16 @@ import (
 	"fmt"
 
 	"github.com/Hucaru/Valhalla/nx"
-	"github.com/Hucaru/Valhalla/server/field/mob"
-	"github.com/Hucaru/Valhalla/server/field/npc"
+	"github.com/Hucaru/Valhalla/server/field/lifepool"
 )
-
-type fieldRectangle struct {
-	left, top, right, bottom int
-}
-
-func (r fieldRectangle) empty() bool {
-	if (r.left | r.top | r.right | r.bottom) == 0 {
-		return true
-	}
-
-	return false
-}
-
-func (r *fieldRectangle) inflate(x, y int) {
-	r.left -= x
-	r.top += y
-	r.right += x
-	r.bottom -= y
-}
-
-func (r fieldRectangle) width() int {
-	return r.right - r.left
-}
-
-func (r fieldRectangle) height() int {
-	return r.top - r.bottom
-}
-
-func (r fieldRectangle) contains(x, y int) bool {
-	if r.left > x {
-		return false
-	}
-
-	if r.top < y {
-		return false
-	}
-
-	if r.right < x {
-		return false
-	}
-
-	if r.bottom > y {
-		return false
-	}
-
-	return true
-}
 
 // Field data
 type Field struct {
 	ID        int32
-	instances []Instance
+	instances []*Instance
 	Data      nx.Map
 
-	vrlimit, mbr, ombr             fieldRectangle
-	mobCapacityMin, mobCapacityMax int
+	deltaX, deltaY float64
 
 	Dispatch chan func()
 }
@@ -70,11 +21,6 @@ type Field struct {
 // CreateInstance for this field
 func (f *Field) CreateInstance() int {
 	id := len(f.instances)
-	npcs := make([]npc.Data, len(f.Data.NPCs))
-
-	for i, l := range f.Data.NPCs {
-		npcs[i] = npc.CreateFromData(int32(i), l)
-	}
 
 	portals := make([]Portal, len(f.Data.Portals))
 	for i, p := range f.Data.Portals {
@@ -82,34 +28,30 @@ func (f *Field) CreateInstance() int {
 		portals[i].id = byte(i)
 	}
 
-	// add initial set of mobs
-	mobs := make([]mob.Data, len(f.Data.Mobs))
-	for i, v := range f.Data.Mobs {
-		m, err := nx.GetMob(v.ID)
-
-		if err != nil {
-			continue
-		}
-
-		mobs[i] = mob.CreateFromData(int32(i+1), v, m, true, true)
-		mobs[i].SetSummonType(-1)
+	inst := &Instance{
+		id:          id,
+		fieldID:     f.ID,
+		portals:     portals,
+		dispatch:    f.Dispatch,
+		town:        f.Data.Town,
+		returnMapID: f.Data.ReturnMap,
+		timeLimit:   f.Data.TimeLimit,
 	}
 
-	f.instances = append(f.instances, Instance{
-		id:       id,
-		fieldID:  f.ID,
-		npcs:     npcs,
-		portals:  portals,
-		dispatch: f.Dispatch,
-		mobs:     mobs,
-	})
+	lifePool := lifepool.CreatNewPool(inst, f.Data.NPCs, f.Data.Mobs, f.deltaX, f.deltaY, f.Data.MobRate)
+
+	inst.lifePool = lifePool
+
+	f.instances = append(f.instances, inst)
 
 	return id
 }
 
 // CalculateFieldLimits for mob spawning
 func (f *Field) CalculateFieldLimits() {
-
+	// not sure if this is correct
+	f.deltaX = float64(f.Data.VRRight - f.Data.VRLeft)
+	f.deltaY = float64(f.Data.VRTop - f.Data.VRBottom)
 }
 
 func (f Field) validInstance(instance int) bool {
@@ -122,7 +64,7 @@ func (f Field) validInstance(instance int) bool {
 // DeleteInstance from id
 func (f *Field) DeleteInstance(id int) error {
 	if f.validInstance(id) {
-		if f.instances[id].PlayerCount() > 0 {
+		if len(f.instances[id].players) > 0 {
 			return fmt.Errorf("Cannot delete an instance with players in it")
 		}
 		err := f.instances[id].delete()
@@ -141,14 +83,14 @@ func (f *Field) DeleteInstance(id int) error {
 // GetInstance from id
 func (f *Field) GetInstance(id int) (*Instance, error) {
 	if f.validInstance(id) {
-		return &f.instances[id], nil
+		return f.instances[id], nil
 	}
 
 	return nil, fmt.Errorf("Invalid instance id")
 }
 
 // Instances in field
-func (f *Field) Instances() []Instance {
+func (f *Field) Instances() []*Instance {
 	return f.instances
 }
 

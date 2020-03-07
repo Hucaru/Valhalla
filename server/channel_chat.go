@@ -4,6 +4,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"log"
+	"math"
 	"strconv"
 	"strings"
 
@@ -36,6 +37,11 @@ func (server *ChannelServer) chatSendAll(conn mnet.Client, reader mpacket.Reader
 	}
 }
 
+// TODO: Split these into ranks/levels (each rank can do everything the previous can):
+// Admin -  Everything, can run server wide commands, can generate items, provide exp etc.
+// Game Master  - can ban, can run channel wide commands, can spawn monsters
+// Support  - can assist with issues such as missing passes in PQ, stuck players, misc issues
+// Community - can start and moderate events
 func (server *ChannelServer) gmCommand(conn mnet.Client, msg string) {
 	ind := strings.Index(msg, "/")
 	command := strings.SplitN(msg[ind+1:], " ", -1)
@@ -470,6 +476,7 @@ func (server *ChannelServer) gmCommand(conn mnet.Client, msg string) {
 		}
 
 		if _, err := nx.GetMap(id); err != nil {
+			conn.Send(message.PacketMessageRedText(err.Error()))
 			return
 		}
 
@@ -543,86 +550,6 @@ func (server *ChannelServer) gmCommand(conn mnet.Client, msg string) {
 				conn.Send(message.PacketMessageRedText(err.Error()))
 			}
 		}
-	case "spawn":
-		if len(command) == 2 {
-			val, err := strconv.Atoi(command[1])
-
-			if err != nil {
-				conn.Send(message.PacketMessageRedText(err.Error()))
-				return
-			}
-
-			plr, err := server.players.getFromConn(conn)
-
-			if err != nil {
-				conn.Send(message.PacketMessageRedText(err.Error()))
-				return
-			}
-
-			field, ok := server.fields[plr.MapID()]
-
-			if !ok {
-				conn.Send(message.PacketMessageRedText("Could not find field ID"))
-				return
-			}
-
-			inst, err := field.GetInstance(plr.InstanceID())
-
-			if err != nil {
-				conn.Send(message.PacketMessageRedText(err.Error()))
-				return
-			}
-
-			inst.SpawnMobFromMobID(int32(val), plr.Pos(), false, true, true)
-		}
-	case "removeMob":
-		var spawnID int32
-		var deathType byte
-
-		if len(command) > 1 {
-			val, err := strconv.Atoi(command[1])
-
-			if err != nil {
-				conn.Send(message.PacketMessageRedText(err.Error()))
-				return
-			}
-
-			spawnID = int32(val)
-		}
-
-		if len(command) == 3 {
-			val, err := strconv.Atoi(command[2])
-
-			if err != nil {
-				conn.Send(message.PacketMessageRedText(err.Error()))
-				return
-			}
-
-			deathType = byte(val)
-		}
-
-		plr, err := server.players.getFromConn(conn)
-
-		if err != nil {
-			conn.Send(message.PacketMessageRedText(err.Error()))
-			return
-		}
-
-		field, ok := server.fields[plr.MapID()]
-
-		if !ok {
-			conn.Send(message.PacketMessageRedText("Could not find field ID"))
-			return
-		}
-
-		inst, err := field.GetInstance(plr.InstanceID())
-
-		if err != nil {
-			conn.Send(message.PacketMessageRedText(err.Error()))
-			return
-		}
-
-		inst.RemoveMob(int32(spawnID), deathType)
 	case "killMob":
 		var spawnID int32
 
@@ -658,14 +585,42 @@ func (server *ChannelServer) gmCommand(conn mnet.Client, msg string) {
 			return
 		}
 
-		m := inst.GetMob(spawnID)
+		inst.LifePool().MobDamaged(spawnID, plr, nil, math.MaxInt32)
+	case "killmobs":
+		var deathType byte = 1
+		if len(command) > 1 {
+			val, err := strconv.Atoi(command[1])
 
-		if m == nil {
-			conn.Send(message.PacketMessageRedText("Invalid mob spawn id"))
+			if err != nil {
+				conn.Send(message.PacketMessageRedText(err.Error()))
+				return
+			}
+
+			deathType = byte(val)
+		}
+
+		plr, err := server.players.getFromConn(conn)
+
+		if err != nil {
+			conn.Send(message.PacketMessageRedText(err.Error()))
 			return
 		}
 
-		m.HandleDamage(plr, inst, nil, m.HP())
+		field, ok := server.fields[plr.MapID()]
+
+		if !ok {
+			conn.Send(message.PacketMessageRedText("Could not find field ID"))
+			return
+		}
+
+		inst, err := field.GetInstance(plr.InstanceID())
+
+		if err != nil {
+			conn.Send(message.PacketMessageRedText(err.Error()))
+			return
+		}
+
+		inst.LifePool().KillMobs(deathType)
 	case "spawnMob":
 		var mobID int32
 		var count int = 1
@@ -714,7 +669,7 @@ func (server *ChannelServer) gmCommand(conn mnet.Client, msg string) {
 		}
 
 		for i := 0; i < count; i++ {
-			err := inst.SpawnMobFromMobID(mobID, plr.Pos(), false, true, true)
+			err := inst.LifePool().SpawnMobFromID(mobID, plr.Pos(), false, true, true)
 
 			if err != nil {
 				conn.Send(message.PacketMessageRedText(err.Error()))
@@ -767,7 +722,7 @@ func (server *ChannelServer) gmCommand(conn mnet.Client, msg string) {
 
 		for i := 0; i < count; i++ {
 			for _, id := range mobID {
-				err = inst.SpawnMobFromMobID(id, plr.Pos(), false, true, true)
+				err = inst.LifePool().SpawnMobFromID(id, plr.Pos(), false, true, true)
 			}
 
 			if err != nil {
@@ -796,12 +751,42 @@ func (server *ChannelServer) gmCommand(conn mnet.Client, msg string) {
 			conn.Send(message.PacketMessageRedText(err.Error()))
 			return
 		}
-		err = inst.SpawnMobFromMobID(5100001, plr.Pos(), true, true, true)
+
+		err = inst.LifePool().SpawnMobFromID(5100001, plr.Pos(), true, true, true)
 
 		if err != nil {
 			conn.Send(message.PacketMessageRedText(err.Error()))
 		}
+	case "portal":
+		// plr, err := server.players.getFromConn(conn)
 
+		// if err != nil {
+		// 	conn.Send(message.PacketMessageRedText(err.Error()))
+		// 	return
+		// }
+
+		// field, ok := server.fields[plr.MapID()]
+
+		// if !ok {
+		// 	conn.Send(message.PacketMessageRedText("Could not find field ID"))
+		// 	return
+		// }
+
+		// inst, err := field.GetInstance(plr.InstanceID())
+
+		// if err != nil {
+		// 	conn.Send(message.PacketMessageRedText(err.Error()))
+		// 	return
+		// }
+
+		// dstField, ok := server.fields[180000000]
+
+		// if !ok {
+		// 	conn.Send(message.PacketMessageRedText("Could not find field ID"))
+		// 	return
+		// }
+
+		// inst.CreatePublicMysticDoor(dstField, plr.Pos(), time.Now().Add(time.Second*60).Unix())
 	default:
 		conn.Send(message.PacketMessageRedText("Unkown gm command " + command[0]))
 	}

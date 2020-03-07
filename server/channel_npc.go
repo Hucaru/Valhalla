@@ -27,7 +27,5 @@ func (server *ChannelServer) npcMovement(conn mnet.Client, reader mpacket.Reader
 		return
 	}
 
-	if npc := inst.GetNpc(id); npc != nil {
-		npc.AcknowledgeController(plr, inst, data)
-	}
+	inst.LifePool().NpcAcknowledge(id, plr, data)
 }

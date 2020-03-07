@@ -3,6 +3,7 @@ package mob
 import (
 	"fmt"
 	"strconv"
+	"time"
 
 	"github.com/Hucaru/Valhalla/mnet"
 	"github.com/Hucaru/Valhalla/mpacket"
@@ -12,10 +13,9 @@ import (
 )
 
 // Controller of mob
-type Controller interface {
+type controller interface {
 	Conn() mnet.Client
 	Send(mpacket.Packet)
-	ID() int32
 }
 
 type instance interface {
@@ -37,7 +37,7 @@ type player interface {
 
 // Data for mob
 type Data struct {
-	controller, summoner   Controller
+	controller, summoner   controller
 	id                     int32
 	spawnID                int32
 	pos                    pos.Data
@@ -71,37 +71,41 @@ type Data struct {
 	lastSkillTime  int64
 	skillTimes     map[byte]int64
 
-	dmgTaken map[player]int32
+	dmgTaken map[controller]int32
 
 	dropsItems bool
 	dropsMesos bool
 
 	hpBgColour byte
 	hpFgColour byte
+
+	spawnInterval int64
+	timeToSpawn   time.Time
 }
 
 // CreateFromData - creates a mob from nx data
 func CreateFromData(spawnID int32, life nx.Life, m nx.Mob, dropsItems, dropsMesos bool) Data {
 	return Data{id: life.ID,
-		spawnID:    spawnID,
-		pos:        pos.New(life.X, life.Y, life.Foothold),
-		faceLeft:   life.FaceLeft,
-		hp:         m.HP,
-		mp:         m.MP,
-		maxHP:      m.MaxHP,
-		maxMP:      m.MaxMP,
-		exp:        int32(m.Exp),
-		revives:    m.Revives,
-		summonType: -2,
-		boss:       m.Boss >= 0,
-		hpBgColour: byte(m.HPTagBGColor),
-		hpFgColour: byte(m.HPTagColor),
-		dmgTaken:   make(map[player]int32),
+		spawnID:       spawnID,
+		pos:           pos.New(life.X, life.Y, life.Foothold),
+		faceLeft:      life.FaceLeft,
+		hp:            m.HP,
+		mp:            m.MP,
+		maxHP:         m.MaxHP,
+		maxMP:         m.MaxMP,
+		exp:           int32(m.Exp),
+		revives:       m.Revives,
+		summonType:    -2,
+		boss:          m.Boss >= 0,
+		hpBgColour:    byte(m.HPTagBGColor),
+		hpFgColour:    byte(m.HPTagColor),
+		spawnInterval: life.MobTime,
+		dmgTaken:      make(map[controller]int32),
 	}
 }
 
 // CreateFromID - creates a mob from an id and position data
-func CreateFromID(spawnID, id int32, p pos.Data, controller Controller, dropsItems, dropsMesos bool) (Data, error) {
+func CreateFromID(spawnID, id int32, p pos.Data, controller controller, dropsItems, dropsMesos bool) (Data, error) {
 	m, err := nx.GetMob(id)
 
 	if err != nil {
@@ -116,12 +120,12 @@ func CreateFromID(spawnID, id int32, p pos.Data, controller Controller, dropsIte
 }
 
 // Controller of mob
-func (m Data) Controller() Controller {
+func (m Data) Controller() controller {
 	return m.controller
 }
 
 // SetController of mob
-func (m *Data) SetController(controller Controller, follow bool) {
+func (m *Data) SetController(controller controller, follow bool) {
 	if controller == nil {
 		return
 	}
@@ -153,9 +157,19 @@ func (m *Data) AcknowledgeController(moveID int16, movData movement.Frag, allowe
 	m.controller.Send(packetMobControlAcknowledge(m.spawnID, moveID, allowedToUseSkill, int16(m.mp), skill, level))
 }
 
+// ID of mob
+func (m Data) ID() int32 {
+	return m.id
+}
+
 // SpawnID of mob
 func (m Data) SpawnID() int32 {
 	return m.spawnID
+}
+
+// SetSpawnID of mob
+func (m *Data) SetSpawnID(v int32) {
+	m.spawnID = v
 }
 
 // SetSummonType of mob
@@ -173,9 +187,39 @@ func (m *Data) SetSummonOption(v int32) {
 	m.summonOption = v
 }
 
+// FaceLeft property
+func (m Data) FaceLeft() bool {
+	return m.faceLeft
+}
+
+// SetFaceLeft property
+func (m *Data) SetFaceLeft(v bool) {
+	m.faceLeft = v
+}
+
 // HP of mob
 func (m Data) HP() int32 {
 	return m.hp
+}
+
+// MaxHP of mob
+func (m Data) MaxHP() int32 {
+	return m.maxHP
+}
+
+// Exp of mob
+func (m Data) Exp() int32 {
+	return m.exp
+}
+
+// Revives this mob spawns
+func (m Data) Revives() []int32 {
+	return m.revives
+}
+
+// Pos of the mob
+func (m Data) Pos() pos.Data {
+	return m.pos
 }
 
 // Boss value of mob
@@ -188,6 +232,21 @@ func (m Data) HasHPBar() (bool, int32, int32, int32, byte, byte) {
 	return (m.boss && m.hpBgColour > 0), m.id, m.hp, m.maxHP, m.hpFgColour, m.hpBgColour
 }
 
+// SpawnInterval between mob spawning
+func (m Data) SpawnInterval() int64 {
+	return m.spawnInterval
+}
+
+// TimeToSpawn for boss monsters
+func (m Data) TimeToSpawn() time.Time {
+	return m.timeToSpawn
+}
+
+// SetTimeToSpawn for the mob
+func (m *Data) SetTimeToSpawn(t time.Time) {
+	m.timeToSpawn = t
+}
+
 // PerformSkill - mob skill action
 func (m *Data) PerformSkill(delay int16, skillLevel, skillID byte) {
 
@@ -198,13 +257,8 @@ func (m *Data) PerformAttack(attackID byte) {
 
 }
 
-type party interface {
-}
-
-// HandleDamage on the mob
-func (m *Data) HandleDamage(damager player, inst instance, prty party, dmg ...int32) error {
-	var err error
-
+// GiveDamage to mob
+func (m *Data) GiveDamage(damager controller, dmg ...int32) {
 	for _, v := range dmg {
 		if v > m.hp {
 			v = m.hp
@@ -218,56 +272,11 @@ func (m *Data) HandleDamage(damager player, inst instance, prty party, dmg ...in
 			m.dmgTaken[damager] = v
 		}
 	}
+}
 
-	if m.hp < 1 {
-		for plr, dmg := range m.dmgTaken {
-			if plr.MapID() != damager.MapID() {
-				continue
-			}
-
-			// Not sure what the correct calculation theresholds are.
-			if dmg == m.maxHP {
-				plr.GiveEXP(m.exp, true, false)
-			} else if float64(dmg)/float64(m.maxHP) > 0.60 {
-				plr.GiveEXP(m.exp, true, false)
-			} else {
-				newExp := int32(float64(m.exp) * 0.25)
-
-				if newExp == 0 {
-					newExp = 1
-				}
-
-				plr.GiveEXP(newExp, true, false)
-			}
-		}
-
-		// Update quest mob
-
-		// Calculate party exp, iterate over party excluding person who dealt dmg (controller), update party member quest mobs if in same instance
-		if prty != nil {
-
-		}
-
-		// If monster has on die logic e.g. spawns mob(s), drops items
-		for _, id := range m.revives {
-			newMob, err := CreateFromID(inst.NextID(), int32(id), m.pos, nil, true, true)
-
-			if err != nil {
-				return err
-			}
-
-			newMob.faceLeft = m.faceLeft
-			newMob.summonType = -3
-			newMob.summonOption = m.spawnID
-			inst.SpawnReviveMob(newMob, damager)
-		}
-
-		err = inst.RemoveMob(m.spawnID, 0x1)
-	}
-
-	inst.ShowMobBossHPBar(*m)
-
-	return err
+// GetDamage done to mob
+func (m Data) GetDamage() map[controller]int32 {
+	return m.dmgTaken
 }
 
 // Kill the mob silently
@@ -337,4 +346,9 @@ func (m Data) String() string {
 	mmp := strconv.Itoa(int(m.maxMP))
 
 	return sid + "(" + mid + ") " + hp + "/" + mhp + " " + mp + "/" + mmp + " (" + m.pos.String() + ")"
+}
+
+// Update mob for status changes e.g. posion, hp/mp recover, finding a new controller after inactivity
+func (m *Data) Update(t time.Time) {
+
 }

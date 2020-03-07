@@ -3,8 +3,7 @@ package field
 import (
 	"github.com/Hucaru/Valhalla/constant/opcode"
 	"github.com/Hucaru/Valhalla/mpacket"
-	"github.com/Hucaru/Valhalla/server/field/mob"
-	"github.com/Hucaru/Valhalla/server/field/npc"
+	"github.com/Hucaru/Valhalla/server/pos"
 )
 
 func packetMapPlayerEnter(plr player) mpacket.Packet {
@@ -58,68 +57,6 @@ func packetPlayerMove(charID int32, bytes []byte) mpacket.Packet {
 	return p
 }
 
-func packetNpcShow(npc npc.Data) mpacket.Packet {
-	p := mpacket.CreateWithOpcode(opcode.SendChannelNpcShow)
-	p.WriteInt32(npc.SpawnID())
-	p.WriteInt32(npc.ID())
-	p.WriteInt16(npc.Pos().X())
-	p.WriteInt16(npc.Pos().Y())
-
-	p.WriteBool(!npc.FaceLeft())
-
-	p.WriteInt16(npc.Pos().Foothold())
-	p.WriteInt16(npc.Rx0())
-	p.WriteInt16(npc.Rx1())
-
-	return p
-}
-
-func packetNpcRemove(npcID int32) mpacket.Packet {
-	p := mpacket.CreateWithOpcode(opcode.SendChannelNpcRemove)
-	p.WriteInt32(npcID)
-
-	return p
-}
-
-func packetMobShow(mob mob.Data) mpacket.Packet {
-	p := mpacket.CreateWithOpcode(opcode.SendChannelShowMob)
-	p.Append(mob.DisplayBytes())
-
-	return p
-}
-
-func packetMobRemove(spawnID int32, deathType byte) mpacket.Packet {
-	p := mpacket.CreateWithOpcode(opcode.SendChannelRemoveMob)
-	p.WriteInt32(spawnID)
-	p.WriteByte(deathType)
-
-	return p
-}
-
-func packetMobShowBossHP(mobID, hp, maxHP int32, colourFg, colourBg byte) mpacket.Packet {
-	p := mpacket.CreateWithOpcode(opcode.SendChannelMapEffect)
-	p.WriteByte(5)
-	p.WriteInt32(mobID)
-	p.WriteInt32(hp)
-	p.WriteInt32(maxHP)
-	p.WriteByte(colourFg)
-	p.WriteByte(colourBg)
-
-	return p
-}
-
-func packetMobMove(mobID int32, allowedToUseSkill bool, action byte, skillData uint32, moveBytes []byte) mpacket.Packet {
-	p := mpacket.CreateWithOpcode(opcode.SendChannelMoveMob)
-	p.WriteInt32(mobID)
-	p.WriteBool(allowedToUseSkill)
-	p.WriteByte(action)
-	p.WriteUint32(skillData)
-	p.WriteBytes(moveBytes)
-
-	return p
-
-}
-
 func packetMapShowGameBox(displayBytes []byte) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelRoomBox)
 	p.WriteBytes(displayBytes)
@@ -134,3 +71,43 @@ func packetMapRemoveGameBox(charID int32) mpacket.Packet {
 
 	return p
 }
+
+func packetMapSpawnMysticDoor(spawnID int32, pos pos.Data, instant bool) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelSpawnDoor)
+	p.WriteBool(instant)
+	p.WriteInt32(spawnID)
+	p.WriteInt16(pos.X())
+	p.WriteInt16(pos.Y())
+
+	return p
+}
+
+func packetMapSpawnTownMysticDoor(dstMap int32, destPos pos.Data) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelTownPortal)
+	p.WriteInt32(dstMap)
+	p.WriteInt32(dstMap)
+	p.WriteInt16(destPos.X())
+	p.WriteInt16(destPos.Y())
+
+	return p
+}
+
+func packetMapRemoveMysticDoor(spawnID int32, instant bool) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelRemoveDoor)
+	p.WriteBool(instant)
+	p.WriteInt32(spawnID)
+
+	return p
+}
+
+// func packetMapPortal(srcMap, dstmap int32, pos pos.Data) mpacket.Packet {
+// 	p := mpacket.CreateWithOpcode(0x2d)
+// 	p.WriteByte(26)
+// 	p.WriteByte(0) // ?
+// 	p.WriteInt32(srcMap)
+// 	p.WriteInt32(dstmap)
+// 	p.WriteInt16(pos.X())
+// 	p.WriteInt16(pos.Y())
+
+// 	return p
+// }

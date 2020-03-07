@@ -169,19 +169,19 @@ func (server ChannelServer) playerMovement(conn mnet.Client, reader mpacket.Read
 func (server ChannelServer) playerEmote(conn mnet.Client, reader mpacket.Reader) {
 	emote := reader.ReadInt32()
 
-	player, err := server.players.getFromConn(conn)
+	plr, err := server.players.getFromConn(conn)
 
 	if err != nil {
 		return
 	}
 
-	field, ok := server.fields[player.MapID()]
+	field, ok := server.fields[plr.MapID()]
 
 	if !ok {
 		return
 	}
 
-	inst, err := field.GetInstance(player.InstanceID())
+	inst, err := field.GetInstance(plr.InstanceID())
 
 	if err != nil {
 		return
@@ -195,17 +195,12 @@ func (server ChannelServer) playerEmote(conn mnet.Client, reader mpacket.Reader)
 		return p
 	}
 
-	inst.SendExcept(packetPlayerEmoticon(player.ID(), emote), player)
+	inst.SendExcept(packetPlayerEmoticon(plr.ID(), emote), plr.Conn())
 }
 
 func (server ChannelServer) playerUseMysticDoor(conn mnet.Client, reader mpacket.Reader) {
-	player, err := server.players.getFromConn(conn)
-
-	if err != nil {
-		return
-	}
-
-	fmt.Println(player.Name(), "has used the mystic door", reader)
+	// doorID := reader.ReadInt32()
+	// fromTown := reader.ReadBool()
 }
 
 func (server ChannelServer) playerAddStatPoint(conn mnet.Client, reader mpacket.Reader) {

@@ -10,7 +10,7 @@ This project exists to preserve and archive an early version of the game
 - 0041BD17 - fill with nop to remove internet explorer iframe add after client close
 - 0066520B - push to stack resolution in y
 - 00665211 - push to stack resolution in x
-- 0066519c - mov 0x0 instead of 0x10
+- 0066519c - mov 0x0 instead of 0x10 for windowed mode
 
 ## Features
 
@@ -74,7 +74,7 @@ Channel server:
 - [ ] Mob attack
 - [ ] Mob skills that cause stat changes
 - [x] Mob death
-- [ ] Mob respawn
+- [x] Mob respawn
 - [x] Mob spawns mob(s) on death
 - [ ] Mob drops
 - [x] Mob boss HP bar
