@@ -2,9 +2,11 @@ package field
 
 import (
 	"fmt"
+	"math"
 
 	"github.com/Hucaru/Valhalla/nx"
 	"github.com/Hucaru/Valhalla/server/field/lifepool"
+	"github.com/Hucaru/Valhalla/server/field/rectangle"
 )
 
 // Field data
@@ -16,6 +18,9 @@ type Field struct {
 	deltaX, deltaY float64
 
 	Dispatch chan func()
+
+	vrLimit                        rectangle.Data
+	mobCapacityMin, mobCapacityMax int
 }
 
 // CreateInstance for this field
@@ -38,7 +43,7 @@ func (f *Field) CreateInstance() int {
 		timeLimit:   f.Data.TimeLimit,
 	}
 
-	lifePool := lifepool.CreatNewPool(inst, f.Data.NPCs, f.Data.Mobs, f.deltaX, f.deltaY, f.Data.MobRate)
+	lifePool := lifepool.CreatNewPool(inst, f.Data.NPCs, f.Data.Mobs, f.mobCapacityMin, f.mobCapacityMax)
 
 	inst.lifePool = lifePool
 
@@ -49,9 +54,107 @@ func (f *Field) CreateInstance() int {
 
 // CalculateFieldLimits for mob spawning
 func (f *Field) CalculateFieldLimits() {
-	// not sure if this is correct
-	f.deltaX = float64(f.Data.VRRight - f.Data.VRLeft)
-	f.deltaY = float64(f.Data.VRTop - f.Data.VRBottom)
+	vrLimit := rectangle.CreateFromLTRB(f.Data.VRLeft, f.Data.VRTop, f.Data.VRRight, f.Data.VRBottom)
+
+	var left int64 = math.MaxInt32
+	var top int64 = math.MaxInt32
+	var right int64 = math.MinInt32
+	var bottom int64 = math.MinInt32
+
+	for _, fh := range f.Data.Footholds {
+		if int64(fh.X1) < left {
+			left = int64(fh.X1)
+		}
+
+		if int64(fh.Y1) < top {
+			top = int64(fh.Y1)
+		}
+
+		if int64(fh.X2) < left {
+			left = int64(fh.X2)
+		}
+
+		if int64(fh.Y2) < top {
+			top = int64(fh.Y2)
+		}
+
+		if int64(fh.X1) > right {
+			right = int64(fh.X1)
+		}
+
+		if int64(fh.Y1) > bottom {
+			bottom = int64(fh.Y1)
+		}
+
+		if int64(fh.X2) > right {
+			right = int64(fh.X2)
+		}
+
+		if int64(fh.Y2) > bottom {
+			bottom = int64(fh.Y2)
+		}
+	}
+
+	if !vrLimit.Empty() {
+		f.vrLimit = vrLimit
+	} else {
+		f.vrLimit = rectangle.CreateFromLTRB(left, top-300, right, bottom+75)
+	}
+
+	left += 30
+	top -= 300
+	right -= 30
+	bottom += 10
+
+	if !vrLimit.Empty() {
+		if vrLimit.Left+20 < left {
+			left = vrLimit.Left + 20
+		}
+
+		if vrLimit.Top+65 < top {
+			top = vrLimit.Top + 20
+		}
+
+		if vrLimit.Right-5 > right {
+			right = vrLimit.Right - 5
+		}
+
+		if vrLimit.Bottom > bottom {
+			bottom = vrLimit.Bottom
+		}
+	}
+
+	mbr := rectangle.CreateFromLTRB(left+10, top-375, right-10, bottom+60)
+	mbr = mbr.Inflate(10, 10)
+
+	// outofBounds := mbr.Inflate(60, 60)
+
+	var mobX, mobY int64
+
+	if mbr.Width() > 800 {
+		mobX = mbr.Width()
+	} else {
+		mobX = 800
+	}
+
+	if mbr.Height()-450 > 600 {
+		mobY = mbr.Height() - 450
+	} else {
+		mobY = 600
+	}
+
+	var mobCapacityMin int = int(float64(mobX*mobY) * f.Data.MobRate * 0.0000078125)
+
+	if mobCapacityMin < 1 {
+		mobCapacityMin = 1
+	} else if mobCapacityMin > 40 {
+		mobCapacityMin = 40
+	}
+
+	mobCapacityMax := mobCapacityMin * 2
+
+	f.mobCapacityMin = mobCapacityMin
+	f.mobCapacityMax = mobCapacityMax
 }
 
 func (f Field) validInstance(instance int) bool {

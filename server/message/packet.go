@@ -223,21 +223,16 @@ func PacketMessageAllChat(senderID int32, isAdmin bool, msg string) mpacket.Pack
 	return p
 }
 
-// PacketMessageGmBan -
+// PacketMessageGmBan - "You have entered an invalid character name"
 func PacketMessageGmBan(good bool) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelEmployee)
-	if good {
-		p.WriteByte(4)
-		p.WriteByte(0)
-	} else {
-		p.WriteByte(6)
-		p.WriteByte(1)
-	}
+	p.WriteByte(6)
+	p.WriteByte(1)
 
 	return p
 }
 
-// PacketMessageGmRemoveFromRanks -
+// PacketMessageGmRemoveFromRanks -"You have successfully removed the name from the ranks"
 func PacketMessageGmRemoveFromRanks() mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelEmployee)
 	p.WriteByte(6)
@@ -259,7 +254,7 @@ func PacketMessageGmWarning(good bool) mpacket.Packet {
 	return p
 }
 
-// PacketMessageGmBlockedAccess -
+// PacketMessageGmBlockedAccess - "You have successfully blocked access"
 func PacketMessageGmBlockedAccess() mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelEmployee)
 	p.WriteByte(4)
@@ -268,7 +263,7 @@ func PacketMessageGmBlockedAccess() mpacket.Packet {
 	return p
 }
 
-// PacketMessageGmUnblock -
+// PacketMessageGmUnblock - "The unblocking has been successful"
 func PacketMessageGmUnblock() mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelEmployee)
 	p.WriteByte(5)

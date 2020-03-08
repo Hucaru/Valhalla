@@ -19,7 +19,6 @@ type field interface {
 	Send(mpacket.Packet) error
 	SendExcept(mpacket.Packet, mnet.Client) error
 	FindController() interface{}
-	NextID() int32
 }
 
 type controller interface {
@@ -31,6 +30,13 @@ type player interface {
 	controller
 	GiveEXP(int32, bool, bool)
 	MapID() int32
+}
+
+type dropPool interface {
+	CreateMobDrop(mobID, plrID int32, location pos.Data)
+}
+
+type party interface {
 }
 
 type rectangle struct {
@@ -60,16 +66,6 @@ func (r rectangle) pointInRect(x, y int16) bool {
 	return true
 }
 
-type party interface {
-}
-
-const (
-	screenHeight       = 600
-	screenWidth        = 800
-	screenHeightOffset = (screenHeight * 75) / 100
-	screenWidthOffset  = (screenWidth * 75) / 100 // not used?
-)
-
 // Data structure for pool
 type Data struct {
 	instance field
@@ -83,12 +79,12 @@ type Data struct {
 	lastMobSpawnTime     time.Time
 	mobCapMin, mobCapMax int
 
-	mobControllerList map[controller]bool
+	activeMobCtrl map[controller]bool
 }
 
 // CreatNewPool for life
-func CreatNewPool(inst field, npcData, mobData []nx.Life, fieldWidth, fieldHeight, fieldMobRate float64) Data {
-	pool := Data{instance: inst, mobControllerList: make(map[controller]bool)}
+func CreatNewPool(inst field, npcData, mobData []nx.Life, mobCapMin, mobCapMax int) Data {
+	pool := Data{instance: inst, activeMobCtrl: make(map[controller]bool)}
 
 	pool.npcs = make([]npc.Data, len(npcData))
 
@@ -112,11 +108,8 @@ func CreatNewPool(inst field, npcData, mobData []nx.Life, fieldWidth, fieldHeigh
 		pool.spawnableMobs[i] = mob.CreateFromData(pool.nextID(), v, m, true, true)
 	}
 
-	mapWidth := math.Max(fieldWidth, screenWidth)
-	mapHeight := math.Max(math.Max(fieldHeight, screenHeight), screenHeightOffset)
-
-	pool.mobCapMin = int(math.Min(40, math.Max(1, (mapWidth*mapHeight)*fieldMobRate*0.0000078125)))
-	pool.mobCapMax = 1 << pool.mobCapMin
+	pool.mobCapMin = mobCapMin
+	pool.mobCapMax = mobCapMax
 
 	return pool
 }
@@ -148,7 +141,6 @@ func (pool *Data) AddPlayer(plr controller) {
 
 		if m.Controller() == nil {
 			pool.mobs[i].SetController(plr, false)
-			pool.mobControllerList[plr] = true
 		}
 
 		pool.showMobBossHPBar(m)
@@ -173,7 +165,6 @@ func (pool *Data) RemovePlayer(plr controller) {
 	for i, v := range pool.mobs {
 		if v.Controller() != nil && v.Controller().Conn() == plr.Conn() {
 			pool.mobs[i].RemoveController()
-			delete(pool.mobControllerList, v.Controller())
 
 			// find new controller
 			if plr := pool.instance.FindController(); plr != nil {
@@ -185,6 +176,8 @@ func (pool *Data) RemovePlayer(plr controller) {
 
 		plr.Send(packetMobRemove(v.SpawnID(), 0x0)) // need to tell client to remove mobs for instance swapping
 	}
+
+	delete(pool.activeMobCtrl, plr)
 }
 
 // NpcAcknowledge bytes to be applied to the pool
@@ -230,14 +223,15 @@ func (pool *Data) MobAcknowledge(poolID int32, plr controller, moveID int16, ski
 
 // MobDamaged handling
 func (pool *Data) MobDamaged(poolID int32, damager player, prty party, dmg ...int32) {
-	for i := 0; i < len(pool.mobs); i++ {
-		v := pool.mobs[i]
+	for i, v := range pool.mobs {
 		if v.SpawnID() == poolID {
 			pool.mobs[i].RemoveController()
-			pool.mobs[i].SetController(damager, true)
-			pool.mobControllerList[damager] = true
 
-			pool.mobs[i].GiveDamage(damager, dmg...)
+			if damager != nil {
+				pool.mobs[i].SetController(damager, true)
+				pool.activeMobCtrl[damager] = true
+				pool.mobs[i].GiveDamage(damager, dmg...)
+			}
 
 			pool.showMobBossHPBar(v)
 
@@ -249,7 +243,7 @@ func (pool *Data) MobDamaged(poolID int32, damager player, prty party, dmg ...in
 						continue
 					}
 
-					if damager.MapID() != plr.MapID() {
+					if damager != nil && damager.MapID() != plr.MapID() {
 						continue
 					}
 
@@ -300,14 +294,16 @@ func (pool *Data) MobDamaged(poolID int32, damager player, prty party, dmg ...in
 					}
 				}
 			}
-			i--
+			break
 		}
 	}
 }
 
 // KillMobs in the pool
 func (pool *Data) KillMobs(deathType byte) {
-
+	for _, v := range pool.mobs {
+		pool.MobDamaged(v.SpawnID(), nil, nil, v.HP())
+	}
 }
 
 func (pool *Data) spawnMob(m mob.Data, hasAgro bool) bool {
@@ -344,7 +340,9 @@ func (pool *Data) spawnReviveMob(m mob.Data, cont controller) {
 	pool.mobs[len(pool.mobs)-1].SetSummonType(-2)
 	pool.mobs[len(pool.mobs)-1].SetSummonOption(0)
 
-	pool.mobs[len(pool.mobs)-1].SetController(cont, true)
+	if cont != nil {
+		pool.mobs[len(pool.mobs)-1].SetController(cont, true)
+	}
 }
 
 func (pool *Data) removeMob(poolID int32, deathType byte) {
@@ -383,15 +381,13 @@ func (pool *Data) attemptMobSpawn(poolReset bool) {
 	if poolReset || currentTime.Sub(pool.lastMobSpawnTime).Milliseconds() >= 7000 {
 		mobCapacity := pool.mobCapMin
 
-		if len(pool.mobControllerList) > (mobCapacity / 2) {
-			if len(pool.mobControllerList) < (2 * mobCapacity) {
-				mobCapacity = pool.mobCapMin + (pool.mobCapMax-pool.mobCapMin)*(2*len(pool.mobControllerList)-pool.mobCapMin)/(3*pool.mobCapMax)
+		if len(pool.activeMobCtrl) > (mobCapacity / 2) {
+			if len(pool.activeMobCtrl) < (2 * mobCapacity) {
+				mobCapacity = pool.mobCapMin + (pool.mobCapMax-pool.mobCapMin)*(2*len(pool.activeMobCtrl)-pool.mobCapMin)/(3*pool.mobCapMax)
 			} else {
 				mobCapacity = pool.mobCapMax
 			}
 		}
-
-		fmt.Println(mobCapacity, pool.mobCapMin, pool.mobCapMax)
 
 		mobCount := mobCapacity - len(pool.mobs)
 		if mobCount <= 0 {
