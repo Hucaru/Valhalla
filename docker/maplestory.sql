@@ -24,6 +24,7 @@ CREATE TABLE `characters` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `accountID` int(10) unsigned NOT NULL,
   `worldID` int(11) unsigned NOT NULL,
+  `channelID` tinyint(2) NOT NULL DEFAULT '-1',
   `migrationID` tinyint(4) NOT NULL DEFAULT '-1',
   `name` tinytext NOT NULL,
   `gender` int(11) unsigned NOT NULL,
@@ -53,6 +54,10 @@ CREATE TABLE `characters` (
   `setupSlotSize` tinyint(4) NOT NULL DEFAULT '32',
   `etcSlotSize` tinyint(4) NOT NULL DEFAULT '32',
   `cashSlotSize` tinyint(4) NOT NULL DEFAULT '32',
+  `miniGameWins` int(11) NOT NULL DEFAULT '0',
+  `miniGameDraw` int(11) NOT NULL DEFAULT '0',
+  `miniGameLoss` int(11) NOT NULL DEFAULT '0',
+  `miniGamePoints` int(11) NOT NULL DEFAULT '2000',
   PRIMARY KEY (`id`),
   KEY `userID` (`accountID`),
   CONSTRAINT `characters_ibfk_1` FOREIGN KEY (`accountID`) REFERENCES `accounts` (`accountID`)
@@ -106,4 +111,4 @@ CREATE TABLE `skills` (
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 
 
--- 2019-06-17 21:16:20
+-- 2020-04-20 18:10:54
