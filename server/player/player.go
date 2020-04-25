@@ -1037,15 +1037,12 @@ func (d Data) Save(db *sql.DB) error {
 		return err
 	}
 
-	// TODO: Move this into skill book update, this happens 3 times every level (or 15 at a time for min maxers)
-	// There has to be a better way of doing this in mysql
 	for skillID, skill := range d.skills {
-		query = `UPDATE skills SET level=?, cooldown=? WHERE skillID=? AND characterID=?`
-		result, err := db.Exec(query, skill.Level, skill.Cooldown, skillID, d.id)
+		query = `INSERT INTO skills(characterID,skillID,level,cooldown) VALUES(?,?,?,?) ON DUPLICATE KEY UPDATE characterID=?, skillID=?`
+		_, err := db.Exec(query, d.id, skillID, skill.Level, skill.Cooldown, d.id, skillID)
 
-		if rows, _ := result.RowsAffected(); rows < 1 || err != nil {
-			query = `INSERT INTO skills (characterID, skillID, level, cooldown) VALUES (?, ?, ?, ?)`
-			_, err = db.Exec(query, d.id, skillID, skill.Level, 0)
+		if err != nil {
+			return err
 		}
 	}
 

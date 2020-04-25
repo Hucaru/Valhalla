@@ -158,6 +158,24 @@ func (server *ChannelServer) Initialise(work chan func(), dbuser, dbpassword, db
 	log.Println("Loged out any accounts still connected to this channel")
 }
 
+// SendCountdownToPlayers - Send a countdown to players that appears as a clock
+func (server ChannelServer) SendCountdownToPlayers(time int32) {
+	for _, p := range server.players {
+		if time == 0 {
+			p.Send(message.PacketHideCountdown())
+		} else {
+			p.Send(message.PacketShowCountdown(time))
+		}
+	}
+}
+
+// SendLostWorldConnectionMessage - Send message to players alerting them of whatever they do it won't be saved
+func (server *ChannelServer) SendLostWorldConnectionMessage() {
+	for _, p := range server.players {
+		p.Send(message.PacketMessageNotice("Cannot connect to world server, any action from the point until the countdown disappears won't be processed"))
+	}
+}
+
 // RegisterWithWorld server
 func (server *ChannelServer) RegisterWithWorld(conn mnet.Server, ip []byte, port int16, maxPop int16) {
 	server.world = conn

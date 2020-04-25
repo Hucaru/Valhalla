@@ -106,9 +106,10 @@ CREATE TABLE `skills` (
   `level` tinyint(4) NOT NULL DEFAULT '1',
   `cooldown` int(11) NOT NULL DEFAULT '0',
   PRIMARY KEY (`id`),
+  UNIQUE KEY `unique_index` (`characterID`,`skillID`),
   KEY `characterID` (`characterID`),
   CONSTRAINT `skills_ibfk_2` FOREIGN KEY (`characterID`) REFERENCES `characters` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 
 
--- 2020-04-20 18:10:54
+-- 2020-04-25 23:28:50

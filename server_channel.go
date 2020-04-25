@@ -67,8 +67,10 @@ func (cs *channelServer) run() {
 }
 
 func (cs *channelServer) establishWorldConnection() {
+
 	ticker := time.NewTicker(5 * time.Second)
 	for !cs.connectToWorld() {
+		cs.gameState.SendCountdownToPlayers(5)
 		<-ticker.C
 	}
 	ticker.Stop()
@@ -81,6 +83,7 @@ func (cs *channelServer) establishWorldConnection() {
 	}
 
 	cs.gameState.RegisterWithWorld(cs.worldConn, ip.To4(), int16(port), cs.config.MaxPop)
+	cs.gameState.SendCountdownToPlayers(0)
 }
 
 func (cs *channelServer) connectToWorld() bool {
@@ -88,6 +91,7 @@ func (cs *channelServer) connectToWorld() bool {
 
 	if err != nil {
 		log.Println("Could not connect to world server at", cs.config.WorldAddress+":"+cs.config.WorldPort)
+		cs.gameState.SendLostWorldConnectionMessage()
 		return false
 	}
 

@@ -2,6 +2,7 @@ package player
 
 import (
 	"crypto/rand"
+	"time"
 
 	"github.com/Hucaru/Valhalla/constant/opcode"
 	"github.com/Hucaru/Valhalla/mpacket"
@@ -131,7 +132,7 @@ func packetCannotEnterCashShop() mpacket.Packet {
 func PacketPlayerEnterGame(plr Data, channelID int32) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelWarpToMap)
 	p.WriteInt32(channelID)
-	p.WriteByte(0) // character portal counter
+	p.WriteByte(1) // character portal counter
 	p.WriteByte(1) // Is connecting
 
 	randomBytes := make([]byte, 4)
@@ -242,24 +243,41 @@ func PacketPlayerEnterGame(plr Data, channelID int32) mpacket.Packet {
 		p.WriteInt32(int32(skill.Level))
 	}
 
+	p.WriteInt16(1)          // Cool Downs
+	p.WriteInt32(1240968814) // Nimble feet
+	p.WriteInt16(500)
+
 	// Quests
-	p.WriteInt16(0) // # of quests?
+	p.WriteInt16(1) // # of started quests
+	p.WriteInt16(2000)
+	// p.WriteString("000000")
+	p.WriteString("")
+	p.WriteInt16(1) // # of completed quests
+	p.WriteInt16(2029)
+	p.WriteInt64(0)
 
-	// What are these for?
+	// Ring
+	p.WriteInt16(0) // Crush ring amount
+	p.WriteInt16(0) // Friendship ring amount
+	p.WriteInt16(0) // Marriage ring amount
+
 	p.WriteInt16(0)
-	p.WriteInt32(0)
-	p.WriteInt32(0)
-	// Setting these appears to do nothing
-	p.WriteInt32(1)
-	p.WriteInt32(1)
-	p.WriteInt32(1)
 
-	p.WriteUint64(1)
-	p.WriteUint64(1)
-	p.WriteUint64(1)
-	p.WriteUint64(1)
-	p.WriteUint64(1)
-	p.WriteInt64(1)
+	p.WriteInt32(0xFFFFFFF)
+	p.WriteInt32(0xFFFFFFF)
+	p.WriteInt32(0xFFFFFFF)
+	p.WriteInt32(0xFFFFFFF)
+	p.WriteInt32(0xFFFFFFF)
+	p.WriteInt32(0xFFFFFFF)
+	p.WriteInt32(0xFFFFFFF)
+	p.WriteInt32(0xFFFFFFF)
+	p.WriteInt32(0xFFFFFFF)
+	p.WriteInt32(0xFFFFFFF)
+	p.WriteInt32(0xFFFFFFF)
+	p.WriteInt32(0xFFFFFFF)
+
+	// p.WriteInt64(time.Now().Unix()*10 + 116444592000000000)
+	p.WriteInt64(time.Now().UnixNano())
 
 	return p
 }

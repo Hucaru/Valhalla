@@ -31,9 +31,11 @@ const (
 	SendChannelMapEffect            byte = 0x40
 	SendChannelEmployee             byte = 0x43
 	SendChannelQuizQAndA            byte = 0x44
+	SendChannelCountdown            byte = 0x46
 	SendChannelCharacterEnterField  byte = 0x4E
 	SendChannelCharacterLeaveField  byte = 0x4F
 	SendChannelAllChatMsg           byte = 0x51
+	SendChannelRoomBox              byte = 0x52
 	SendChannelPlayerMovement       byte = 0x65
 	SendChannelPlayerUseMeleeSkill  byte = 0x66
 	SendChannelPlayerUseRangedSkill byte = 0x67
@@ -53,6 +55,7 @@ const (
 	SendChannelNpcRemove            byte = 0x98
 	SendChannelNpcControl           byte = 0x99
 	SendChannelNpcMovement          byte = 0x9B
+	SendChannelDrobEnterMap         byte = 0xA4
 	SendChannelSpawnDoor            byte = 0xB1
 	SendChannelRemoveDoor           byte = 0xB2
 	SendChannelNpcDialogueBox       byte = 0xC5
@@ -60,5 +63,4 @@ const (
 	SendChannelNpcShopResult        byte = 0xC9
 	SendChannelNpcStorage           byte = 0xCD
 	SendChannelRoom                 byte = 0xDC
-	SendChannelRoomBox              byte = 0x52
 )

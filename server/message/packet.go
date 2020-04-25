@@ -280,3 +280,21 @@ func PacketMessageGmWrongNpc() mpacket.Packet {
 
 	return p
 }
+
+// PacketShowCountdown - Displays a countdown on top of screen with given time in seconds
+func PacketShowCountdown(time int32) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelCountdown)
+	p.WriteByte(2)
+	p.WriteInt32(time)
+
+	return p
+}
+
+// PacketHideCountdown - hides the countdown from the player
+func PacketHideCountdown() mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelCountdown)
+	p.WriteByte(0)
+	p.WriteInt32(0)
+
+	return p
+}

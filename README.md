@@ -2,12 +2,12 @@
 
 ## What is this?
 
-This project exists to preserve and archive an early version of the game
+This project exists to preserve and archive an early version of the game (v28 of global)
 
 ## Client modifications
 
 - 00663007 - change to jmp for multiclient
-- 0041BD17 - fill with nop to remove internet explorer iframe add after client close
+- 0041BD17 - fill with nop to remove internet explorer iframe advert after client close
 - 0066520B - push to stack resolution in y
 - 00665211 - push to stack resolution in x
 - 0066519c - mov 0x0 instead of 0x10 for windowed mode
@@ -30,7 +30,6 @@ Login server:
 - [ ] Server resets login status upon restart for dangling users
 
 World server:
-
 - [x] Keep track of player count
 - [x] Send information to login server
 - [x] Send IP, port to channel for change channel requests
@@ -46,7 +45,6 @@ Cashshop server:
 - [ ] Allow purchases via different currencies
 
 Channel server:
-
 - [x] GM commands
 - [x] Players can see each other
 - [x] Player can change channel
@@ -58,6 +56,7 @@ Channel server:
 - [ ] Player skill logic (haste etc)
 - [x] Player inventory (needs a re-write)
 - [ ] Player use item (scrolls, potions etc)
+- [ ] Player drop item(s)
 - [ ] Player pets
 - [x] Player stats
 - [x] NPC visible
@@ -90,6 +89,7 @@ Channel server:
 - [ ] Buddy chat
 - [ ] Chat commands (/find etc.)
 - [x] Server resets login status upon restart for dangling characters
+- [ ] Autonomous GM commands which can be started and stopped at will
 
 ## Acknowledgements
 
@@ -104,22 +104,22 @@ NPCs are scripted in [gomacro](https://github.com/cosmos72/gomacro)
 
 Taken from [here](http://forum.ragezone.com/f428/add-learning-npcs-start-finish-643364/)
 
-- #b = Blue text.
-- #c[itemid]# Shows how many [itemid] the player has in their inventory.
-- #d = Purple text.
-- #e = Bold text.
+- #b - Blue text.
+- #c[itemid]# - Shows how many [itemid] the player has in their inventory.
+- #d - Purple text.
+- #e - Bold text.
 - #f[imagelocation]# - Shows an image inside the .wz files.
-- #g = Green text.
+- #g - Green text.
 - #h # - Shows the name of the player.
 - #i[itemid]# - Shows a picture of the item.
-- #k = Black text.
+- #k - Black text.
 - #l - Selection close.
 - #m[mapid]# - Shows the name of the map.
-- #n = Normal text (removes bold).
+- #n - Normal text (removes bold).
 - #o[mobid]# - Shows the name of the mob.
 - #p[npcid]# - Shows the name of the NPC.
 - #q[skillid]# - Shows the name of the skill.
-- #r = Red text.
+- #r - Red text.
 - #s[skillid]# - Shows the image of the skill.
 - #t[itemid]# - Shows the name of the item.
 - #v[itemid]# - Shows a picture of the item.
@@ -129,10 +129,10 @@ Taken from [here](http://forum.ragezone.com/f428/add-learning-npcs-start-finish-
 - #F[imagelocation]# - Shows an image inside the .wz files.
 - #L[number]# Selection open.
 - \r\n - Moves down a line.
-- \r = Return Carriage
-- \n = New Line
-- \t = Tab (4 spaces)
-- \b = Backwards
+- \r - Return Carriage
+- \n - New Line
+- \t - Tab (4 spaces)
+- \b - Backwards
 
 ## Screenshots
 

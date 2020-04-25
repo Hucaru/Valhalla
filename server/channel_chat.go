@@ -11,6 +11,7 @@ import (
 	"github.com/Hucaru/Valhalla/mnet"
 	"github.com/Hucaru/Valhalla/mpacket"
 	"github.com/Hucaru/Valhalla/nx"
+	"github.com/Hucaru/Valhalla/server/field/droppool"
 	"github.com/Hucaru/Valhalla/server/item"
 	"github.com/Hucaru/Valhalla/server/message"
 )
@@ -787,6 +788,24 @@ func (server *ChannelServer) gmCommand(conn mnet.Client, msg string) {
 		// }
 
 		// inst.CreatePublicMysticDoor(dstField, plr.Pos(), time.Now().Add(time.Second*60).Unix())
+	case "drop":
+		plr, err := server.players.getFromConn(conn)
+
+		if err != nil {
+			conn.Send(message.PacketMessageRedText(err.Error()))
+			return
+		}
+
+		plr.Send(droppool.PacketShowDrop(1, plr.Pos(), plr.Pos(), false, 1587842888000))
+	case "dropr":
+		plr, err := server.players.getFromConn(conn)
+
+		if err != nil {
+			conn.Send(message.PacketMessageRedText(err.Error()))
+			return
+		}
+
+		plr.Send(droppool.PacketRemoveDrop(false, 1))
 	default:
 		conn.Send(message.PacketMessageRedText("Unkown gm command " + command[0]))
 	}
