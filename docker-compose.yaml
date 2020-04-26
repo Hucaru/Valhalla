@@ -6,10 +6,10 @@ services:
             context: .
             dockerfile: docker/Dockerfile
         container_name: login-server
-        command: /bin/sh -c "/app/Valhalla -type login -config ./config_login.toml"
+        command: /bin/sh -c "/app/Valhalla -type login -config ./docker/docker_config_login.toml"
         restart: unless-stopped
         volumes:
-            - ./docker/docker_config_login.toml:/app/config_login.toml
+            - ./docker/docker_config_login.toml:/app/docker/docker_config_login.toml
             - ./Data.nx:/app/Data.nx
         ports:
             - 8484:8484
@@ -22,10 +22,10 @@ services:
             context: .
             dockerfile: docker/Dockerfile
         container_name: world-server
-        command: /bin/sh -c "/app/Valhalla -type world -config ./config_world.toml"
+        command: /bin/sh -c "/app/Valhalla -type world -config ./docker/docker_config_world.toml"
         restart: unless-stopped
         volumes:
-            - ./docker/docker_config_world.toml:/app/config_world.toml
+            - ./docker/docker_config_world.toml:/app/docker/docker_config_world.toml
             - ./Data.nx:/app/Data.nx
         ports:
             - 8584:8584
@@ -37,10 +37,10 @@ services:
             context: .
             dockerfile: docker/Dockerfile
         container_name: channel-server
-        command: /bin/sh -c "/app/Valhalla -type channel -config ./config_channel_1.toml"
+        command: /bin/sh -c "/app/Valhalla -type channel -config ./docker/docker_config_channel_1.toml"
         restart: unless-stopped
         volumes:
-            - ./docker/docker_config_channel_1.toml:/app/config_channel_1.toml
+            - ./docker/docker_config_channel_1.toml:/app/docker/docker_config_channel_1.toml
             - ./Data.nx:/app/Data.nx
         ports:
             - 8685:8685
