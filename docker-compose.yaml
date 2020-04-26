@@ -1,0 +1,77 @@
+version: '3.1'
+
+services:
+    login_server:
+        build:
+            context: .
+            dockerfile: docker/Dockerfile
+        container_name: login-server
+        command: /bin/sh -c "/app/Valhalla -type login -config ./config_login.toml"
+        restart: unless-stopped
+        volumes:
+            - ./docker/docker_config_login.toml:/app/config_login.toml
+            - ./Data.nx:/app/Data.nx
+        ports:
+            - 8484:8484
+            - 8585:8585
+        depends_on:
+            - db
+
+    world_server:
+        build:
+            context: .
+            dockerfile: docker/Dockerfile
+        container_name: world-server
+        command: /bin/sh -c "/app/Valhalla -type world -config ./config_world.toml"
+        restart: unless-stopped
+        volumes:
+            - ./docker/docker_config_world.toml:/app/config_world.toml
+            - ./Data.nx:/app/Data.nx
+        ports:
+            - 8584:8584
+        depends_on:
+            - login_server
+
+    channel_server:
+        build:
+            context: .
+            dockerfile: docker/Dockerfile
+        container_name: channel-server
+        command: /bin/sh -c "/app/Valhalla -type channel -config ./config_channel_1.toml"
+        restart: unless-stopped
+        volumes:
+            - ./docker/docker_config_channel_1.toml:/app/config_channel_1.toml
+            - ./Data.nx:/app/Data.nx
+        ports:
+            - 8685:8685
+        depends_on:
+            - world_server
+
+    db:
+        image: mysql:5.7
+        restart: unless-stopped
+        volumes:
+            - db-data:/var/lib/mysql
+            - ./sql:/docker-entrypoint-initdb.d
+        environment:
+            MYSQL_ROOT_PASSWORD: password
+            MYSQL_DATABASE: maplestory
+            MYSQL_USER: root
+        ports:
+            - 3306:3306
+
+    adminer:
+        image: adminer
+        restart: unless-stopped
+        environment:
+            ADMINER_DEFAULT_DB_DRIVER: mysql
+            ADMINER_DEFAULT_DB_HOST: db
+            ADMINER_DEFAULT_DB_NAME: maplestory
+            ADMINER_DESIGN: nette
+        ports:
+            - 8080:8080
+        depends_on:
+            - db
+
+volumes:
+    db-data:

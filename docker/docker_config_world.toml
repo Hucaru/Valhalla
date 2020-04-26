@@ -1,0 +1,15 @@
+[database]
+address = "db"
+port = "3306"
+user = "root"
+password = "password"
+database = "maplestory"
+
+[world]
+message = "message"
+ribbon = 2
+loginAddress = "login_server"
+loginPort = "8485"
+listenAddress = "0.0.0.0"
+listenPort = "8584"
+packetQueueSize = 512
