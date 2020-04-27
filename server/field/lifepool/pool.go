@@ -126,6 +126,17 @@ func (pool *Data) nextID() int32 {
 	return pool.poolID
 }
 
+// GetNPCFromSpawnID - get npc data from spawn id
+func (pool Data) GetNPCFromSpawnID(id int32) (npc.Data, error) {
+	for _, v := range pool.npcs {
+		if v.SpawnID() == id {
+			return v, nil
+		}
+	}
+
+	return npc.Data{}, fmt.Errorf("Could not find npc with id %d", id)
+}
+
 // AddPlayer to be added to the pool
 func (pool *Data) AddPlayer(plr controller) {
 	for i, npc := range pool.npcs {
