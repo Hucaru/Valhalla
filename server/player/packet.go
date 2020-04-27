@@ -238,46 +238,49 @@ func PacketPlayerEnterGame(plr Data, channelID int32) mpacket.Packet {
 	// Skills
 	p.WriteInt16(int16(len(plr.skills))) // number of skills
 
+	skillCooldowns := make(map[int32]int16)
+
 	for _, skill := range plr.skills {
 		p.WriteInt32(skill.ID)
 		p.WriteInt32(int32(skill.Level))
+
+		if skill.Cooldown > 0 {
+			skillCooldowns[skill.ID] = skill.Cooldown
+		}
 	}
 
-	p.WriteInt16(1)          // Cool Downs
-	p.WriteInt32(1240968814) // Nimble feet
-	p.WriteInt16(500)
+	p.WriteInt16(int16(len(skillCooldowns))) // number of cooldowns
+
+	for id, cooldown := range skillCooldowns {
+		p.WriteInt32(id)
+		p.WriteInt16(cooldown)
+	}
 
 	// Quests
-	p.WriteInt16(1) // # of started quests
-	p.WriteInt16(2000)
-	// p.WriteString("000000")
-	p.WriteString("")
-	p.WriteInt16(1) // # of completed quests
+	p.WriteInt16(3) // Active quest count
 	p.WriteInt16(2029)
-	p.WriteInt64(0)
+	p.WriteString("")
+	p.WriteInt16(2000)
+	p.WriteString("")
+	p.WriteInt16(1000)
+	p.WriteString("")
+	p.WriteInt16(0) // Completed quest count?
 
-	// Ring
-	p.WriteInt16(0) // Crush ring amount
-	p.WriteInt16(0) // Friendship ring amount
-	p.WriteInt16(0) // Marriage ring amount
-
-	p.WriteInt16(0)
-
-	p.WriteInt32(0xFFFFFFF)
-	p.WriteInt32(0xFFFFFFF)
-	p.WriteInt32(0xFFFFFFF)
-	p.WriteInt32(0xFFFFFFF)
-	p.WriteInt32(0xFFFFFFF)
-	p.WriteInt32(0xFFFFFFF)
-	p.WriteInt32(0xFFFFFFF)
-	p.WriteInt32(0xFFFFFFF)
-	p.WriteInt32(0xFFFFFFF)
-	p.WriteInt32(0xFFFFFFF)
-	p.WriteInt32(0xFFFFFFF)
-	p.WriteInt32(0xFFFFFFF)
-
-	// p.WriteInt64(time.Now().Unix()*10 + 116444592000000000)
-	p.WriteInt64(time.Now().UnixNano())
+	p.WriteInt32(0)
+	p.WriteInt32(0)
+	p.WriteInt32(0)
+	p.WriteInt32(0)
+	p.WriteInt32(0)
+	p.WriteInt32(0)
+	p.WriteInt32(0)
+	p.WriteInt32(0)
+	p.WriteInt32(0)
+	p.WriteInt32(0)
+	p.WriteInt32(0)
+	p.WriteInt32(0)
+	p.WriteInt32(0)
+	p.WriteInt32(0)
+	p.WriteInt64(time.Now().Unix())
 
 	return p
 }

@@ -1037,8 +1037,8 @@ func (d Data) Save(db *sql.DB) error {
 		return err
 	}
 
+	query = `INSERT INTO skills(characterID,skillID,level,cooldown) VALUES(?,?,?,?) ON DUPLICATE KEY UPDATE characterID=?, skillID=?`
 	for skillID, skill := range d.skills {
-		query = `INSERT INTO skills(characterID,skillID,level,cooldown) VALUES(?,?,?,?) ON DUPLICATE KEY UPDATE characterID=?, skillID=?`
 		_, err := db.Exec(query, d.id, skillID, skill.Level, skill.Cooldown, d.id, skillID)
 
 		if err != nil {

@@ -326,7 +326,6 @@ func (server ChannelServer) playerAddSkillPoint(conn mnet.Client, reader mpacket
 	} else {
 		// check if class can have skill
 		baseSkillID := skillID / 10000
-
 		if !validateSkillWithJob(plr.Job(), baseSkillID) {
 			conn.Send(packetPlayerNoChange())
 			return
@@ -345,6 +344,10 @@ func (server ChannelServer) playerAddSkillPoint(conn mnet.Client, reader mpacket
 }
 
 func validateSkillWithJob(jobID int16, baseSkillID int32) bool {
+	if baseSkillID == 0 { // Beginner skills
+		return true
+	}
+
 	switch jobID {
 	case constant.WarriorJobID:
 		if baseSkillID != constant.WarriorJobID {
