@@ -12,7 +12,7 @@ RUN echo "#!/bin/sh" > docker-entrypoint.sh && \
   echo 'exec "$@"' >> docker-entrypoint.sh && \
   chmod +x docker-entrypoint.sh
 
-EXPOSE 8484 8585 8584 8685
+EXPOSE 8484 8685
 
 ENTRYPOINT ["/app/docker-entrypoint.sh"]
-CMD ./Valhalla -type login -config ./config_login.toml
+CMD ["/app/Valhalla", "-type", "login", "-config", "/app/config_login.toml"]
