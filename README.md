@@ -95,9 +95,9 @@ Metrics:
 - [x] Channel population
 - [x] Server thread count (OS and Go)
 - [x] Server memory usage (heap and stack)
-- [] Monster kill rate
-- [] Ongoing trades
-- [] Ongoing minigames
+- [ ] Monster kill rate
+- [ ] Ongoing trades
+- [ ] Ongoing minigames
 
 See screenshots section for an example Grafana dashboard
 
