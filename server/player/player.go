@@ -312,6 +312,11 @@ func (d *Data) SetFame(amount int16) {
 
 }
 
+// IncrementPortalCount of player
+func (d *Data) IncrementPortalCount() {
+	d.portalCount++
+}
+
 // AddEquip item to slice
 func (d *Data) AddEquip(item item.Data) {
 	d.equip = append(d.equip, item)

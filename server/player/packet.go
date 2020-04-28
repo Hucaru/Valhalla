@@ -132,7 +132,7 @@ func packetCannotEnterCashShop() mpacket.Packet {
 func PacketPlayerEnterGame(plr Data, channelID int32) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelWarpToMap)
 	p.WriteInt32(channelID)
-	p.WriteByte(1) // character portal counter
+	p.WriteByte(0) // character portal counter
 	p.WriteByte(1) // Is connecting
 
 	randomBytes := make([]byte, 4)

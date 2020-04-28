@@ -91,6 +91,16 @@ Channel server:
 - [x] Server resets login status upon restart for dangling characters
 - [ ] Autonomous GM commands which can be started and stopped at will
 
+Metrics:
+- [x] Channel population
+- [x] Server thread count (OS and Go)
+- [x] Server memory usage (heap and stack)
+- [] Monster kill rate
+- [] Ongoing trades
+- [] Ongoing minigames
+
+See screenshots section for an example Grafana dashboard
+
 ## Acknowledgements
 
 - Sunnyboy for providing a [list](http://forum.ragezone.com/f921/library-idbs-versions-named-addresses-987815/) of idbs for which this project would not have started
@@ -137,3 +147,5 @@ Taken from [here](http://forum.ragezone.com/f428/add-learning-npcs-start-finish-
 ## Screenshots
 
 ![Bosses](img/bosses.PNG?raw=true "Bosses")
+
+![Metrics](img/metrics.PNG?raw=true "Metrics")
