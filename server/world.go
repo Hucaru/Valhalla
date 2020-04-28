@@ -111,6 +111,7 @@ func (server *WorldServer) handleNewChannel(conn mnet.Server, reader mpacket.Rea
 	server.info.channels = append(server.info.channels, newChannel)
 
 	p := mpacket.CreateInternal(opcode.ChannelOk)
+	p.WriteString(server.info.name)
 	p.WriteByte(byte(len(server.info.channels) - 1))
 	conn.Send(p)
 	server.login.Send(server.info.generateInfoPacket())

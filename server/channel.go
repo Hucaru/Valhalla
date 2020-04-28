@@ -4,9 +4,11 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"strconv"
 	"time"
 
 	_ "github.com/go-sql-driver/mysql" // don't need full import
+	"github.com/prometheus/client_golang/prometheus"
 
 	"github.com/Hucaru/Valhalla/constant/opcode"
 	"github.com/Hucaru/Valhalla/mnet"
@@ -14,6 +16,7 @@ import (
 	"github.com/Hucaru/Valhalla/nx"
 	"github.com/Hucaru/Valhalla/server/field"
 	"github.com/Hucaru/Valhalla/server/message"
+	"github.com/Hucaru/Valhalla/server/metrics"
 	"github.com/Hucaru/Valhalla/server/player"
 )
 
@@ -75,6 +78,7 @@ func (p *players) removeFromConn(conn mnet.Client) error {
 // ChannelServer state
 type ChannelServer struct {
 	id        byte
+	worldName string
 	db        *sql.DB
 	dispatch  chan func()
 	world     mnet.Server
@@ -156,6 +160,15 @@ func (server *ChannelServer) Initialise(work chan func(), dbuser, dbpassword, db
 	}
 
 	log.Println("Loged out any accounts still connected to this channel")
+
+	metrics.Gauges["player_count"] = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "player_count",
+		Help: "Number of players in this channel",
+	}, []string{"channel", "world"})
+
+	prometheus.MustRegister(metrics.Gauges["player_count"])
+
+	log.Println("Started serving metrics on :" + strconv.Itoa(metrics.Port))
 }
 
 // SendCountdownToPlayers - Send a countdown to players that appears as a clock
@@ -218,8 +231,9 @@ func (server *ChannelServer) handleNewChannelBad(conn mnet.Server, reader mpacke
 }
 
 func (server *ChannelServer) handleNewChannelOK(conn mnet.Server, reader mpacket.Reader) {
+	server.worldName = reader.ReadString(reader.ReadInt16())
 	server.id = reader.ReadByte()
-	log.Println("Registered as channel", server.id)
+	log.Println("Registered as channel", server.id, "on world", server.worldName)
 }
 
 func (server *ChannelServer) handleChannelConnectionInfo(conn mnet.Server, reader mpacket.Reader) {
@@ -285,6 +299,8 @@ func (server *ChannelServer) ClientDisconnected(conn mnet.Client) {
 	}
 
 	conn.Cleanup()
+
+	metrics.Gauges["player_count"].With(prometheus.Labels{"channel": strconv.Itoa(int(server.id)), "world": server.worldName}).Dec()
 }
 
 // SetScrollingHeaderMessage that appears at the top of game window

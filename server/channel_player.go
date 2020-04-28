@@ -3,6 +3,7 @@ package server
 import (
 	"fmt"
 	"log"
+	"strconv"
 
 	"github.com/Hucaru/Valhalla/constant"
 	"github.com/Hucaru/Valhalla/constant/opcode"
@@ -10,8 +11,10 @@ import (
 	"github.com/Hucaru/Valhalla/mpacket"
 	"github.com/Hucaru/Valhalla/server/field"
 	"github.com/Hucaru/Valhalla/server/message"
+	"github.com/Hucaru/Valhalla/server/metrics"
 	"github.com/Hucaru/Valhalla/server/movement"
 	"github.com/Hucaru/Valhalla/server/player"
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 func (server *ChannelServer) playerConnect(conn mnet.Client, reader mpacket.Reader) {
@@ -91,6 +94,8 @@ func (server *ChannelServer) playerConnect(conn mnet.Client, reader mpacket.Read
 
 	inst.AddPlayer(newPlr)
 	newPlr.UpdateGuildInfo()
+
+	metrics.Gauges["player_count"].With(prometheus.Labels{"channel": strconv.Itoa(int(server.id)), "world": server.worldName}).Inc()
 }
 
 func (server *ChannelServer) playerChangeChannel(conn mnet.Client, reader mpacket.Reader) {

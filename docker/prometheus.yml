@@ -1,0 +1,8 @@
+global:
+    scrape_interval: 15s
+
+scrape_configs:
+    - job_name: 'metrics'
+      scrape_interval: 5s
+      static_configs:
+      - targets: ['channel_server_1:9000', 'channel_server_2:9000']

@@ -29,18 +29,33 @@ services:
         depends_on:
             - login_server
 
-    channel_server:
+    channel_server_1:
         build:
             context: .
             dockerfile: docker/Dockerfile
-        container_name: channel-server
-        command: /bin/sh -c "/app/Valhalla -type channel -config ./docker/docker_config_channel_1.toml"
+        container_name: channel-server-1
+        command: /bin/sh -c "/app/Valhalla -type channel -config ./docker/docker_config_channel.toml"
         restart: unless-stopped
         volumes:
-            - ./docker/docker_config_channel_1.toml:/app/docker/docker_config_channel_1.toml
+            - ./docker/docker_config_channel_1.toml:/app/docker/docker_config_channel.toml
             - ./Data.nx:/app/Data.nx
         ports:
             - 8685:8685
+        depends_on:
+            - world_server
+
+    channel_server_2:
+        build:
+            context: .
+            dockerfile: docker/Dockerfile
+        container_name: channel-server-2
+        command: /bin/sh -c "/app/Valhalla -type channel -config ./docker/docker_config_channel.toml"
+        restart: unless-stopped
+        volumes:
+            - ./docker/docker_config_channel_2.toml:/app/docker/docker_config_channel.toml
+            - ./Data.nx:/app/Data.nx
+        ports:
+            - 8686:8686
         depends_on:
             - world_server
 
@@ -69,6 +84,14 @@ services:
             - 8080:8080
         depends_on:
             - db
+
+    prometheus:
+        image: prom/prometheus:master
+        restart: unless-stopped
+        volumes:
+            - ./docker/prometheus.yml:/etc/prometheus/prometheus.yml
+        ports:
+            - 9090:9090
 
 volumes:
     db-data:
