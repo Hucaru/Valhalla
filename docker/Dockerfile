@@ -1,11 +1,16 @@
-FROM iron/go:dev
+FROM golang:buster
 
-ENV SRC_DIR=/app
+WORKDIR /app
+COPY . /app
 
-WORKDIR $SRC_DIR
+RUN go get
+RUN go build
+RUN chmod +x Valhalla
 
-ADD . $SRC_DIR
+RUN echo "#!/bin/sh" > docker-entrypoint.sh && \
+  echo "set -ex" >> docker-entrypoint.sh && \
+  echo 'exec "$@"' >> docker-entrypoint.sh && \
+  chmod +x docker-entrypoint.sh
 
-RUN cd $SRC_DIR; go build -o server
-
-ENTRYPOINT ["/app/server"]
+ENTRYPOINT ["/app/docker-entrypoint.sh"]
+CMD ["/app/Valhalla", "-type", "login", "-config", "/app/config_login.toml"]
