@@ -796,7 +796,34 @@ func (server *ChannelServer) gmCommand(conn mnet.Client, msg string) {
 			return
 		}
 
-		plr.Send(droppool.PacketShowDrop(1, plr.Pos(), plr.Pos(), false, 1587842888000))
+		field, ok := server.fields[plr.MapID()]
+
+		if !ok {
+			conn.Send(message.PacketMessageRedText("Could not find field ID"))
+			return
+		}
+
+		inst, err := field.GetInstance(plr.InstanceID())
+
+		pool := inst.DropPool()
+
+		var mesos int32 = 0
+
+		items := []int32{1372010, 1402005, 1422013, 1412021, 1382016, 1432030, 1442002, 1302023, 1322045, 1312015, 1332027, 1332026, 1462017, 1472033, 1452020, 1092029, 1092025}
+
+		for _, v := range items {
+			item, err := item.CreatePerfectFromID(v, 1)
+
+			if err != nil {
+				conn.Send(message.PacketMessageRedText(err.Error()))
+				return
+			}
+
+			item.SetCreatorName(plr.Name())
+			pool.CreateGenericDrop(droppool.SpawnNormal, droppool.DropFreeForAll, mesos, item, plr.Pos(), plr.Pos(), true, plr.ID(), 0)
+		}
+
+		// plr.Send(droppool.PacketShowDrop(1, plr.Pos(), plr.Pos(), false, 1587842888000))
 	case "dropr":
 		plr, err := server.players.getFromConn(conn)
 
