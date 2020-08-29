@@ -27,7 +27,7 @@ Login server:
 - [x] Migrate to channel server
 - [x] Show worlds, channels, world status etc from information sent from world server
 - [x] Prevent players from accessing dead channel
-- [x] Server resets login status upon restart for dangling users
+- [ ] Server resets login status upon restart for dangling users
 
 World server:
 - [x] Keep track of player count
