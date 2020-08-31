@@ -35,6 +35,20 @@ func (server *LoginServer) Initialise(dbuser, dbpassword, dbaddress, dbport, dbd
 	}
 
 	log.Println("Connected to database")
+
+	server.CleanupDB()
+
+	log.Println("Cleaned up the database")
+}
+
+// CleanupDB sets all accounts isLogedIn to 0
+func (server *LoginServer) CleanupDB() {
+	res, err := server.db.Exec("UPDATE accounts AS a INNER JOIN characters c ON a.accountID = c.accountID SET a.isLogedIn = 0 WHERE isLogedIn = 1 AND a.accountID != ALL (SELECT c.accountID FROM characters c WHERE c.channelID != -1);")
+	if err != nil {
+		log.Fatal(err)
+	}
+	amount, _ := res.RowsAffected()
+	log.Printf("Set %d isLogedin rows to 0.", amount)
 }
 
 // HandleServerPacket from world
