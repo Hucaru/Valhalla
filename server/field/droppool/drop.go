@@ -9,7 +9,7 @@ const (
 	DropTimeoutNonOwner      = 0
 	DropTimeoutNonOwnerParty = 1
 	DropFreeForAll           = 2
-	DropExplosiveFreeForAll  = 3
+	DropExplosiveFreeForAll  = 3 // e.g. ludi pq extra stage boxes
 )
 
 type drop struct {

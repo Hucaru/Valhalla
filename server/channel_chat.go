@@ -811,7 +811,7 @@ func (server *ChannelServer) gmCommand(conn mnet.Client, msg string) {
 
 		items := []int32{1372010, 1402005, 1422013, 1412021, 1382016, 1432030, 1442002, 1302023, 1322045, 1312015, 1332027, 1332026, 1462017, 1472033, 1452020, 1092029, 1092025}
 
-		for _, v := range items {
+		for i, v := range items {
 			item, err := item.CreatePerfectFromID(v, 1)
 
 			if err != nil {
@@ -820,11 +820,28 @@ func (server *ChannelServer) gmCommand(conn mnet.Client, msg string) {
 			}
 
 			item.SetCreatorName(plr.Name())
-			pool.CreateGenericDrop(droppool.SpawnNormal, droppool.DropFreeForAll, mesos, item, plr.Pos(), plr.Pos(), true, plr.ID(), 0)
+			location := plr.Pos()
+			location.SetX(location.X() + int16(i*10))
+			pool.CreatePlayerDrop(droppool.SpawnNormal, droppool.DropFreeForAll, mesos, item, location, true, plr.ID(), 0)
+		}
+	case "dropr":
+		var id int32 = -1
+		var err error
+
+		if len(command) > 1 {
+			val, err := strconv.Atoi(command[2])
+
+			if err != nil {
+				conn.Send(message.PacketMessageRedText(err.Error()))
+				return
+			}
+
+			id = int32(val)
+		} else {
+			conn.Send(message.PacketMessageRedText("Supply drop id"))
+			return
 		}
 
-		// plr.Send(droppool.PacketShowDrop(1, plr.Pos(), plr.Pos(), false, 1587842888000))
-	case "dropr":
 		plr, err := server.players.getFromConn(conn)
 
 		if err != nil {
@@ -832,7 +849,7 @@ func (server *ChannelServer) gmCommand(conn mnet.Client, msg string) {
 			return
 		}
 
-		plr.Send(droppool.PacketRemoveDrop(false, 1))
+		plr.Send(droppool.PacketRemoveDrop(false, id))
 	default:
 		conn.Send(message.PacketMessageRedText("Unkown gm command " + command[0]))
 	}

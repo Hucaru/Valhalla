@@ -137,7 +137,6 @@ func (inst *Instance) AddPlayer(plr player) error {
 	// life pool, max number of mobs spawned and no dot attacks in field
 	if !inst.runUpdate {
 		inst.startFieldTimer()
-		inst.runUpdate = true
 	}
 
 	return nil
@@ -342,6 +341,7 @@ func (inst Instance) GetPortalFromID(id byte) (Portal, error) {
 }
 
 func (inst *Instance) startFieldTimer() {
+	inst.runUpdate = true
 	inst.fieldTimer = time.NewTicker(time.Millisecond * 1000) // Is this correct time?
 
 	go func() {
@@ -352,6 +352,7 @@ func (inst *Instance) startFieldTimer() {
 }
 
 func (inst *Instance) stopFieldTimer() {
+	inst.runUpdate = false
 	inst.fieldTimer.Stop()
 }
 
@@ -359,4 +360,13 @@ func (inst *Instance) stopFieldTimer() {
 func (inst *Instance) fieldUpdate(t time.Time) {
 	inst.lifePool.Update(t)
 	inst.dropPool.Update(t)
+
+	if inst.lifePool.CanClose() && inst.dropPool.CanClose() {
+		inst.stopFieldTimer()
+	}
+}
+
+// CalculateFinalDropPos from a starting position
+func (inst *Instance) CalculateFinalDropPos(from pos.Data) pos.Data {
+	return from
 }

@@ -126,6 +126,11 @@ func (pool *Data) nextID() int32 {
 	return pool.poolID
 }
 
+// CanClose the pool down
+func (pool Data) CanClose() bool {
+	return false
+}
+
 // GetNPCFromSpawnID - get npc data from spawn id
 func (pool Data) GetNPCFromSpawnID(id int32) (npc.Data, error) {
 	for _, v := range pool.npcs {

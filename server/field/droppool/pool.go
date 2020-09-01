@@ -19,6 +19,7 @@ const (
 
 type field interface {
 	Send(mpacket.Packet) error
+	CalculateFinalDropPos(pos.Data) pos.Data
 }
 
 type controller interface {
@@ -50,27 +51,32 @@ func (pool *Data) nextID() int32 {
 	return pool.poolID
 }
 
-// PlayerShowDrops when entering field
-func (pool *Data) PlayerShowDrops(plr controller) {
+// CanClose the pool down
+func (pool Data) CanClose() bool {
+	return false
+}
+
+// PlayerShowDrops when entering instance
+func (pool Data) PlayerShowDrops(plr controller) {
 	for _, drop := range pool.drops {
-		pool.instance.Send(PacketShowDrop(DropFreeForAll, drop))
+		plr.Send(packetShowDrop(SpawnShow, drop))
 	}
 }
 
 // PlayerAttemptPickup of item
 func (pool *Data) PlayerAttemptPickup(dropID int32, position pos.Data) (bool, item.Data) {
-
 	return false, item.Data{}
 }
 
 // CreateMobDrop from a mobID from a player at a given location
-func (pool *Data) CreateMobDrop(mesos int32, itemID int32, dropFrom pos.Data, finalPos pos.Data) {
+func (pool *Data) CreateMobDrop(mesos int32, itemID int32, dropFrom pos.Data) {
 
 }
 
-// CreateGenericDrop into field e.g. player drop
-func (pool *Data) CreateGenericDrop(spawnType byte, dropType byte, mesos int32, item item.Data, dropFrom pos.Data, finalPos pos.Data, expire bool, ownerID, partyID int32) {
-	// finalPos needs to be calculated from dropFrom
+// CreatePlayerDrop into field
+func (pool *Data) CreatePlayerDrop(spawnType byte, dropType byte, mesos int32, item item.Data, dropFrom pos.Data, expire bool, ownerID, partyID int32) {
+	finalPos := pool.instance.CalculateFinalDropPos(dropFrom)
+
 	drop := drop{
 		ID:      pool.nextID(),
 		ownerID: ownerID,
@@ -90,7 +96,7 @@ func (pool *Data) CreateGenericDrop(spawnType byte, dropType byte, mesos int32, 
 
 	pool.drops = append(pool.drops, drop)
 
-	pool.instance.Send(PacketShowDrop(spawnType, drop))
+	pool.instance.Send(packetShowDrop(spawnType, drop))
 }
 
 // Update logic for the pool e.g. drops disappear
