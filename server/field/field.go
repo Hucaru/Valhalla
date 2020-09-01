@@ -44,8 +44,9 @@ func (f *Field) CreateInstance() int {
 		timeLimit:   f.Data.TimeLimit,
 	}
 
-	inst.lifePool = lifepool.CreatNewPool(inst, f.Data.NPCs, f.Data.Mobs, f.mobCapacityMin, f.mobCapacityMax)
 	inst.dropPool = droppool.CreateNewPool(inst)
+	inst.lifePool = lifepool.CreatNewPool(inst, f.Data.NPCs, f.Data.Mobs, f.mobCapacityMin, f.mobCapacityMax)
+	inst.lifePool.SetDropPool(&inst.dropPool)
 
 	f.instances = append(f.instances, inst)
 

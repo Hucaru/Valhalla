@@ -807,9 +807,10 @@ func (server *ChannelServer) gmCommand(conn mnet.Client, msg string) {
 
 		pool := inst.DropPool()
 
-		var mesos int32 = 0
+		var mesos int32 = 1000
 
 		items := []int32{1372010, 1402005, 1422013, 1412021, 1382016, 1432030, 1442002, 1302023, 1322045, 1312015, 1332027, 1332026, 1462017, 1472033, 1452020, 1092029, 1092025}
+		drops := make([]item.Data, len(items))
 
 		for i, v := range items {
 			item, err := item.CreatePerfectFromID(v, 1)
@@ -820,10 +821,10 @@ func (server *ChannelServer) gmCommand(conn mnet.Client, msg string) {
 			}
 
 			item.SetCreatorName(plr.Name())
-			location := plr.Pos()
-			location.SetX(location.X() + int16(i*10))
-			pool.CreatePlayerDrop(droppool.SpawnNormal, droppool.DropFreeForAll, mesos, item, location, true, plr.ID(), 0)
+			drops[i] = item
 		}
+
+		pool.CreateDrop(droppool.SpawnNormal, droppool.DropFreeForAll, mesos, plr.Pos(), true, plr.ID(), 0, drops...)
 	case "dropr":
 		var id int32 = -1
 		var err error

@@ -69,34 +69,81 @@ func (pool *Data) PlayerAttemptPickup(dropID int32, position pos.Data) (bool, it
 }
 
 // CreateMobDrop from a mobID from a player at a given location
-func (pool *Data) CreateMobDrop(mesos int32, itemID int32, dropFrom pos.Data) {
+func (pool *Data) CreateMobDrop(mesos int32, dropFrom pos.Data, itemID ...int32) {
 
 }
 
-// CreatePlayerDrop into field
-func (pool *Data) CreatePlayerDrop(spawnType byte, dropType byte, mesos int32, item item.Data, dropFrom pos.Data, expire bool, ownerID, partyID int32) {
-	finalPos := pool.instance.CalculateFinalDropPos(dropFrom)
+const itemDistance = 20 // Between 15 and 20?
 
-	drop := drop{
-		ID:      pool.nextID(),
-		ownerID: ownerID,
-		partyID: partyID,
-		mesos:   mesos,
-		item:    item,
+// CreateDrop into field
+func (pool *Data) CreateDrop(spawnType byte, dropType byte, mesos int32, dropFrom pos.Data, expire bool, ownerID, partyID int32, items ...item.Data) {
+	// TODO: Clean up separation logic, should pass in drop struct
+	iCount := len(items)
+	var offset int16 = 0
 
-		expireTime:  0,
-		timeoutTime: 0,
-		neverExpire: false,
-
-		originPos: dropFrom,
-		finalPos:  finalPos,
-
-		dropType: dropType,
+	if mesos > 0 {
+		iCount++
 	}
 
-	pool.drops = append(pool.drops, drop)
+	if iCount > 0 {
+		offset = int16(itemDistance * (iCount / 2))
+	}
 
-	pool.instance.Send(packetShowDrop(spawnType, drop))
+	for i, item := range items {
+		finalPos := pool.instance.CalculateFinalDropPos(dropFrom) // (dropFrom, xShift)
+
+		finalPos.SetX(finalPos.X() - offset + int16(i*itemDistance)) // This calculation needs to be interpolated to be placed on correct position on ledge
+
+		drop := drop{
+			ID:      pool.nextID(),
+			ownerID: ownerID,
+			partyID: partyID,
+			mesos:   0,
+			item:    item,
+
+			expireTime:  0,
+			timeoutTime: 0,
+			neverExpire: false,
+
+			originPos: dropFrom,
+			finalPos:  finalPos,
+
+			dropType: dropType,
+		}
+
+		pool.drops = append(pool.drops, drop)
+
+		pool.instance.Send(packetShowDrop(spawnType, drop))
+	}
+
+	if mesos > 0 {
+		finalPos := pool.instance.CalculateFinalDropPos(dropFrom)
+
+		if iCount > 1 {
+			finalPos.SetX(finalPos.X() - offset + int16((iCount-1)*itemDistance))
+		}
+
+		drop := drop{
+			ID:      pool.nextID(),
+			ownerID: ownerID,
+			partyID: partyID,
+			mesos:   mesos,
+
+			expireTime:  0,
+			timeoutTime: 0,
+			neverExpire: false,
+
+			originPos: dropFrom,
+			finalPos:  finalPos,
+
+			dropType: dropType,
+		}
+
+		pool.drops = append(pool.drops, drop)
+
+		pool.instance.Send(packetShowDrop(spawnType, drop))
+	}
+
 }
 
 // Update logic for the pool e.g. drops disappear

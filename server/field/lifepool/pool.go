@@ -9,8 +9,10 @@ import (
 	"github.com/Hucaru/Valhalla/mnet"
 	"github.com/Hucaru/Valhalla/mpacket"
 	"github.com/Hucaru/Valhalla/nx"
+	"github.com/Hucaru/Valhalla/server/field/droppool"
 	"github.com/Hucaru/Valhalla/server/field/lifepool/mob"
 	"github.com/Hucaru/Valhalla/server/field/lifepool/npc"
+	"github.com/Hucaru/Valhalla/server/item"
 	"github.com/Hucaru/Valhalla/server/movement"
 	"github.com/Hucaru/Valhalla/server/pos"
 )
@@ -33,7 +35,7 @@ type player interface {
 }
 
 type dropPool interface {
-	CreateMobDrop(mobID, plrID int32, location pos.Data)
+	CreateDrop(byte, byte, int32, pos.Data, bool, int32, int32, ...item.Data)
 }
 
 type party interface {
@@ -80,6 +82,8 @@ type Data struct {
 	mobCapMin, mobCapMax int
 
 	activeMobCtrl map[controller]bool
+
+	dropPool dropPool
 }
 
 // CreatNewPool for life
@@ -112,6 +116,11 @@ func CreatNewPool(inst field, npcData, mobData []nx.Life, mobCapMin, mobCapMax i
 	pool.mobCapMax = mobCapMax
 
 	return pool
+}
+
+// SetDropPool to use
+func (pool *Data) SetDropPool(drop *droppool.Data) {
+	pool.dropPool = drop
 }
 
 func (pool *Data) nextID() int32 {
@@ -299,6 +308,22 @@ func (pool *Data) MobDamaged(poolID int32, damager player, prty party, dmg ...in
 					pool.spawnReviveMob(newMob, damager)
 				}
 
+				// TODO: Change into drop table lookup
+				var mesos int32 = 500
+				items := []int32{1372010, 1402005}
+				drops := make([]item.Data, len(items))
+
+				for i, v := range items {
+					item, err := item.CreatePerfectFromID(v, 1)
+
+					if err != nil {
+						fmt.Println(err.Error())
+					}
+
+					drops[i] = item
+				}
+
+				pool.dropPool.CreateDrop(droppool.SpawnNormal, droppool.DropFreeForAll, mesos, v.Pos(), true, 0, 0, drops...)
 				pool.removeMob(v.SpawnID(), 0x1)
 
 				if v.SpawnInterval() > 0 {
