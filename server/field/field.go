@@ -5,6 +5,7 @@ import (
 	"math"
 
 	"github.com/Hucaru/Valhalla/nx"
+	"github.com/Hucaru/Valhalla/server/field/droppool"
 	"github.com/Hucaru/Valhalla/server/field/lifepool"
 	"github.com/Hucaru/Valhalla/server/field/rectangle"
 )
@@ -43,9 +44,9 @@ func (f *Field) CreateInstance() int {
 		timeLimit:   f.Data.TimeLimit,
 	}
 
-	lifePool := lifepool.CreatNewPool(inst, f.Data.NPCs, f.Data.Mobs, f.mobCapacityMin, f.mobCapacityMax)
-
-	inst.lifePool = lifePool
+	inst.dropPool = droppool.CreateNewPool(inst)
+	inst.lifePool = lifepool.CreatNewPool(inst, f.Data.NPCs, f.Data.Mobs, f.mobCapacityMin, f.mobCapacityMax)
+	inst.lifePool.SetDropPool(&inst.dropPool)
 
 	f.instances = append(f.instances, inst)
 

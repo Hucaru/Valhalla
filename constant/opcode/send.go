@@ -56,6 +56,7 @@ const (
 	SendChannelNpcControl           byte = 0x99
 	SendChannelNpcMovement          byte = 0x9B
 	SendChannelDrobEnterMap         byte = 0xA4
+	SendChannelDropExitMap          byte = 0xA5
 	SendChannelSpawnDoor            byte = 0xB1
 	SendChannelRemoveDoor           byte = 0xB2
 	SendChannelNpcDialogueBox       byte = 0xC5

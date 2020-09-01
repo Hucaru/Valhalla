@@ -8,6 +8,7 @@ import (
 
 	"github.com/Hucaru/Valhalla/mnet"
 	"github.com/Hucaru/Valhalla/mpacket"
+	"github.com/Hucaru/Valhalla/server/field/droppool"
 	"github.com/Hucaru/Valhalla/server/field/lifepool"
 	"github.com/Hucaru/Valhalla/server/field/room"
 	"github.com/Hucaru/Valhalla/server/pos"
@@ -50,17 +51,20 @@ type Instance struct {
 	timeLimit   int64
 
 	lifePool lifepool.Data
+	dropPool droppool.Data
 
 	portals []Portal
 	players []player
 
 	rooms []room.Room
 
-	fieldTimer *time.Ticker
-	idCounter  int32
-	town       bool
+	idCounter int32
+	town      bool
 
 	dispatch chan func()
+
+	fieldTimer *time.Ticker
+	runUpdate  bool
 }
 
 // ID of the instance within the field
@@ -89,6 +93,11 @@ func (inst *Instance) LifePool() *lifepool.Data {
 	return &inst.lifePool
 }
 
+// DropPool pointer for instance
+func (inst *Instance) DropPool() *droppool.Data {
+	return &inst.dropPool
+}
+
 // FindController in instance, need to return interface for casting
 func (inst Instance) FindController() interface{} {
 	for _, v := range inst.players {
@@ -108,6 +117,7 @@ func (inst *Instance) AddPlayer(plr player) error {
 	}
 
 	inst.lifePool.AddPlayer(plr)
+	inst.dropPool.PlayerShowDrops(plr)
 
 	// show all the rooms
 	for _, v := range inst.rooms {
@@ -120,7 +130,12 @@ func (inst *Instance) AddPlayer(plr player) error {
 
 	inst.players = append(inst.players, plr)
 
-	if len(inst.players) == 1 {
+	// For now pools run on all maps forever after first player enters.
+	// If this hits perf too much then a set of params for each pool
+	// will need to be determined to allow it to stop updating e.g.
+	// drop pool, no drops and no players
+	// life pool, max number of mobs spawned and no dot attacks in field
+	if !inst.runUpdate {
 		inst.startFieldTimer()
 	}
 
@@ -326,6 +341,7 @@ func (inst Instance) GetPortalFromID(id byte) (Portal, error) {
 }
 
 func (inst *Instance) startFieldTimer() {
+	inst.runUpdate = true
 	inst.fieldTimer = time.NewTicker(time.Millisecond * 1000) // Is this correct time?
 
 	go func() {
@@ -336,10 +352,21 @@ func (inst *Instance) startFieldTimer() {
 }
 
 func (inst *Instance) stopFieldTimer() {
+	inst.runUpdate = false
 	inst.fieldTimer.Stop()
 }
 
 // Responsible for hadnling the removing of mystic doors, disappearence of loot, ships coming and going
 func (inst *Instance) fieldUpdate(t time.Time) {
 	inst.lifePool.Update(t)
+	inst.dropPool.Update(t)
+
+	if inst.lifePool.CanClose() && inst.dropPool.CanClose() {
+		inst.stopFieldTimer()
+	}
+}
+
+// CalculateFinalDropPos from a starting position
+func (inst *Instance) CalculateFinalDropPos(from pos.Data) pos.Data {
+	return from
 }

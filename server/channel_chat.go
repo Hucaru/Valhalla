@@ -796,8 +796,53 @@ func (server *ChannelServer) gmCommand(conn mnet.Client, msg string) {
 			return
 		}
 
-		plr.Send(droppool.PacketShowDrop(1, plr.Pos(), plr.Pos(), false, 1587842888000))
+		field, ok := server.fields[plr.MapID()]
+
+		if !ok {
+			conn.Send(message.PacketMessageRedText("Could not find field ID"))
+			return
+		}
+
+		inst, err := field.GetInstance(plr.InstanceID())
+
+		pool := inst.DropPool()
+
+		var mesos int32 = 1000
+
+		items := []int32{1372010, 1402005, 1422013, 1412021, 1382016, 1432030, 1442002, 1302023, 1322045, 1312015, 1332027, 1332026, 1462017, 1472033, 1452020, 1092029, 1092025}
+		drops := make([]item.Data, len(items))
+
+		for i, v := range items {
+			item, err := item.CreatePerfectFromID(v, 1)
+
+			if err != nil {
+				conn.Send(message.PacketMessageRedText(err.Error()))
+				return
+			}
+
+			item.SetCreatorName(plr.Name())
+			drops[i] = item
+		}
+
+		pool.CreateDrop(droppool.SpawnNormal, droppool.DropFreeForAll, mesos, plr.Pos(), true, plr.ID(), 0, drops...)
 	case "dropr":
+		var id int32 = -1
+		var err error
+
+		if len(command) > 1 {
+			val, err := strconv.Atoi(command[2])
+
+			if err != nil {
+				conn.Send(message.PacketMessageRedText(err.Error()))
+				return
+			}
+
+			id = int32(val)
+		} else {
+			conn.Send(message.PacketMessageRedText("Supply drop id"))
+			return
+		}
+
 		plr, err := server.players.getFromConn(conn)
 
 		if err != nil {
@@ -805,7 +850,7 @@ func (server *ChannelServer) gmCommand(conn mnet.Client, msg string) {
 			return
 		}
 
-		plr.Send(droppool.PacketRemoveDrop(false, 1))
+		plr.Send(droppool.PacketRemoveDrop(false, id))
 	default:
 		conn.Send(message.PacketMessageRedText("Unkown gm command " + command[0]))
 	}
