@@ -3,14 +3,13 @@ package metrics
 import (
 	"log"
 	"net/http"
-	"strconv"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 // Port metrics are served on
-const Port = 9000
+var Port string
 
 var (
 	// Gauges available
@@ -20,12 +19,15 @@ var (
 	Counters = make(map[string]*prometheus.CounterVec)
 )
 
-func init() {
+// StartMetrics initializes and handles metrics Prometheus endpoint
+func StartMetrics() {
 	go func() {
 		http.Handle("/metrics", promhttp.HandlerFor(
 			prometheus.DefaultGatherer,
 			promhttp.HandlerOpts{},
 		))
-		log.Fatal(http.ListenAndServe("0.0.0.0:"+strconv.Itoa(Port), nil))
+		if err := http.ListenAndServe("0.0.0.0:"+Port, nil); err != nil {
+			log.Fatal(err)
+		}
 	}()
 }

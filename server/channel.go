@@ -167,8 +167,8 @@ func (server *ChannelServer) Initialise(work chan func(), dbuser, dbpassword, db
 	}, []string{"channel", "world"})
 
 	prometheus.MustRegister(metrics.Gauges["player_count"])
-
-	log.Println("Started serving metrics on :" + strconv.Itoa(metrics.Port))
+	metrics.StartMetrics()
+	log.Println("Started serving metrics on :" + metrics.Port)
 }
 
 // SendCountdownToPlayers - Send a countdown to players that appears as a clock

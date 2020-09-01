@@ -9,6 +9,9 @@ certs/**
 database_data/**
 elastic_data/**
 
+# Binary File
+Valhalla
+
 # Folders
 _obj
 _test
