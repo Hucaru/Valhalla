@@ -15,6 +15,7 @@ import (
 
 	"github.com/Hucaru/Valhalla/mnet"
 	"github.com/Hucaru/Valhalla/mpacket"
+	"github.com/Hucaru/Valhalla/server/item"
 	"github.com/Hucaru/Valhalla/server/script"
 )
 
@@ -48,6 +49,8 @@ func (cs *channelServer) run() {
 	start := time.Now()
 	nx.LoadFile("Data.nx")
 	elapsed := time.Since(start)
+
+	item.PopulateDropTable("drops.json")
 
 	log.Println("Loaded and parsed Wizet data (NX) in", elapsed)
 
