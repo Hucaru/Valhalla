@@ -314,8 +314,7 @@ func (pool *Data) MobDamaged(poolID int32, damager player, prty party, dmg ...in
 				}
 
 				if dropEntry, ok := item.DropTable[v.ID()]; ok {
-					// DO chance RNG to 50,000
-					chance := pool.rNumber.Int31n(50000)
+					chance := pool.rNumber.Int31n(100000)
 
 					var mesos int32
 					drops := make([]item.Data, 0, len(dropEntry))
