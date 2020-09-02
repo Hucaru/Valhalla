@@ -9,7 +9,7 @@ import (
 	"github.com/Hucaru/Valhalla/server/item"
 )
 
-func packetPlayerReceivedDmg(charID int32, attack int8, initalAmmount, reducedAmmount, spawnID, mobID, healSkillID int32,
+func PlayerReceivedDmg(charID int32, attack int8, initalAmmount, reducedAmmount, spawnID, mobID, healSkillID int32,
 	stance, reflectAction byte, reflected byte, reflectX, reflectY int16) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelPlayerTakeDmg)
 	p.WriteInt32(charID)

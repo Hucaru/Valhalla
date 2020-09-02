@@ -505,3 +505,14 @@ func (pool *Data) attemptMobSpawn(poolReset bool) {
 		pool.lastMobSpawnTime = currentTime
 	}
 }
+
+// GetMobFromID returns the mob data from mobID
+func (pool *Data) GetMobFromID(mobID int32) (mob.Data, error) {
+	for _, m := range pool.mobs {
+		if m.SpawnID() == mobID {
+			return m, nil
+		}
+	}
+
+	return mob.Data{}, fmt.Errorf("Could not find mob with id %d", mobID)
+}
