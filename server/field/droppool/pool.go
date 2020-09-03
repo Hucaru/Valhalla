@@ -1,6 +1,7 @@
 package droppool
 
 import (
+	"fmt"
 	"math"
 	"time"
 
@@ -31,7 +32,7 @@ type controller interface {
 type Data struct {
 	instance field
 	poolID   int32
-	drops map[int32]drop
+	drops    map[int32]drop
 }
 
 // CreateNewPool for drops
@@ -39,16 +40,22 @@ func CreateNewPool(inst field) Data {
 	return Data{instance: inst, drops: make(map[int32]drop)}
 }
 
-func (pool *Data) nextID() int32 {
-	pool.poolID++
+func (pool *Data) nextID() (int32, error) {
+	for {
+		pool.poolID++
 
-	if pool.poolID == math.MaxInt32-1 {
-		pool.poolID = math.MaxInt32 / 2
-	} else if pool.poolID == 0 {
-		pool.poolID = 1
+		if pool.poolID == math.MaxInt32-1 {
+			pool.poolID = math.MaxInt32 / 2
+		} else if pool.poolID == 0 {
+			pool.poolID = 1
+		}
+
+		if _, ok := pool.drops[pool.poolID]; !ok {
+			return pool.poolID, nil
+		}
 	}
 
-	return pool.poolID
+	return 0, fmt.Errorf("No space to generate id in drop pool")
 }
 
 // CanClose the pool down
@@ -101,7 +108,7 @@ func (pool *Data) CreateDrop(spawnType byte, dropType byte, mesos int32, dropFro
 	var timeoutTime int64 = 0
 
 	if dropType == DropTimeoutNonOwner || dropType == DropTimeoutNonOwnerParty {
-		timeoutTime =  currentTime.Add(itemLootableByAllTimeout).Unix()
+		timeoutTime = currentTime.Add(itemLootableByAllTimeout).Unix()
 	}
 
 	for i, item := range items {
@@ -109,26 +116,28 @@ func (pool *Data) CreateDrop(spawnType byte, dropType byte, mesos int32, dropFro
 
 		finalPos.SetX(finalPos.X() - offset + int16(i*itemDistance)) // This calculation needs to be interpolated to be placed on correct position on ledge
 
-		drop := drop{
-			ID:      pool.nextID(),
-			ownerID: ownerID,
-			partyID: partyID,
-			mesos:   0,
-			item:    item,
+		if poolID, err := pool.nextID(); err == nil {
+			drop := drop{
+				ID:      poolID,
+				ownerID: ownerID,
+				partyID: partyID,
+				mesos:   0,
+				item:    item,
 
-			expireTime:  expireTime,
-			timeoutTime: timeoutTime,
-			neverExpire: false,
+				expireTime:  expireTime,
+				timeoutTime: timeoutTime,
+				neverExpire: false,
 
-			originPos: dropFrom,
-			finalPos:  finalPos,
+				originPos: dropFrom,
+				finalPos:  finalPos,
 
-			dropType: dropType,
+				dropType: dropType,
+			}
+
+			pool.drops[drop.ID] = drop
+
+			pool.instance.Send(packetShowDrop(spawnType, drop))
 		}
-
-		pool.drops[drop.ID] = drop
-
-		pool.instance.Send(packetShowDrop(spawnType, drop))
 	}
 
 	if mesos > 0 {
@@ -138,27 +147,28 @@ func (pool *Data) CreateDrop(spawnType byte, dropType byte, mesos int32, dropFro
 			finalPos.SetX(finalPos.X() - offset + int16((iCount-1)*itemDistance))
 		}
 
-		drop := drop{
-			ID:      pool.nextID(),
-			ownerID: ownerID,
-			partyID: partyID,
-			mesos:   mesos,
+		if poolID, err := pool.nextID(); err == nil {
+			drop := drop{
+				ID:      poolID,
+				ownerID: ownerID,
+				partyID: partyID,
+				mesos:   mesos,
 
-			expireTime:  expireTime,
-			timeoutTime: timeoutTime,
-			neverExpire: false,
+				expireTime:  expireTime,
+				timeoutTime: timeoutTime,
+				neverExpire: false,
 
-			originPos: dropFrom,
-			finalPos:  finalPos,
+				originPos: dropFrom,
+				finalPos:  finalPos,
 
-			dropType: dropType,
+				dropType: dropType,
+			}
+
+			pool.drops[drop.ID] = drop
+
+			pool.instance.Send(packetShowDrop(spawnType, drop))
 		}
-
-		pool.drops[drop.ID] = drop
-
-		pool.instance.Send(packetShowDrop(spawnType, drop))
 	}
-
 }
 
 // Update logic for the pool e.g. drops disappear
