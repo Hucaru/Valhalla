@@ -351,6 +351,7 @@ func (pool *Data) MobDamaged(poolID int32, damager player, prty party, dmg ...in
 						}
 					}
 
+					// TODO: droppool type determination between DropTimeoutNonOwner and DropTimeoutNonOwnerParty
 					pool.dropPool.CreateDrop(droppool.SpawnNormal, droppool.DropFreeForAll, mesos, v.Pos(), true, 0, 0, drops...)
 				}
 

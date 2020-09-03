@@ -44,7 +44,8 @@ func packetShowDrop(spawnType byte, drop drop) mpacket.Packet {
 			p.WriteInt32(400967355)
 			p.WriteByte(2)
 		} else {
-			p.WriteInt32(int32(drop.expireTime-946681229830) / 1000 / 60)
+			// p.WriteInt32(int32(drop.expireTime-946681229830) / 1000 / 60)
+			p.WriteInt32(int32(drop.expireTime))
 			p.WriteByte(0)
 		}
 	}
@@ -55,7 +56,7 @@ func packetShowDrop(spawnType byte, drop drop) mpacket.Packet {
 }
 
 // PacketRemoveDrop on field
-func PacketRemoveDrop(instant bool, dropID int32) mpacket.Packet {
+func packetRemoveDrop(instant bool, dropID int32) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelDropExitMap)
 	p.WriteBool(instant)
 	p.WriteInt32(dropID)

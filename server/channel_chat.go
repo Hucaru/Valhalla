@@ -830,7 +830,7 @@ func (server *ChannelServer) gmCommand(conn mnet.Client, msg string) {
 		var err error
 
 		if len(command) > 1 {
-			val, err := strconv.Atoi(command[2])
+			val, err := strconv.Atoi(command[1])
 
 			if err != nil {
 				conn.Send(message.PacketMessageRedText(err.Error()))
@@ -850,7 +850,15 @@ func (server *ChannelServer) gmCommand(conn mnet.Client, msg string) {
 			return
 		}
 
-		plr.Send(droppool.PacketRemoveDrop(false, id))
+		field, ok := server.fields[plr.MapID()]
+
+		if !ok {
+			conn.Send(message.PacketMessageRedText("Could not find field ID"))
+			return
+		}
+		inst, err := field.GetInstance(plr.InstanceID())
+		pool := inst.DropPool()
+		pool.RemoveDrop(false, id)
 	default:
 		conn.Send(message.PacketMessageRedText("Unkown gm command " + command[0]))
 	}

@@ -31,12 +31,12 @@ type controller interface {
 type Data struct {
 	instance field
 	poolID   int32
-	drops    []drop
+	drops map[int32]drop
 }
 
 // CreateNewPool for drops
 func CreateNewPool(inst field) Data {
-	return Data{instance: inst}
+	return Data{instance: inst, drops: make(map[int32]drop)}
 }
 
 func (pool *Data) nextID() int32 {
@@ -63,17 +63,24 @@ func (pool Data) PlayerShowDrops(plr controller) {
 	}
 }
 
+func (pool *Data) RemoveDrop(instant bool, id ...int32) {
+	for _, id := range id {
+		pool.instance.Send(packetRemoveDrop(instant, id))
+
+		if _, ok := pool.drops[id]; ok {
+			delete(pool.drops, id)
+		}
+	}
+}
+
 // PlayerAttemptPickup of item
 func (pool *Data) PlayerAttemptPickup(dropID int32, position pos.Data) (bool, item.Data) {
 	return false, item.Data{}
 }
 
-// CreateMobDrop from a mobID from a player at a given location
-func (pool *Data) CreateMobDrop(mesos int32, dropFrom pos.Data, itemID ...int32) {
-
-}
-
 const itemDistance = 20 // Between 15 and 20?
+const itemDisppearTimeout = time.Minute * 2
+const itemLootableByAllTimeout = time.Minute * 1
 
 // CreateDrop into field
 func (pool *Data) CreateDrop(spawnType byte, dropType byte, mesos int32, dropFrom pos.Data, expire bool, ownerID, partyID int32, items ...item.Data) {
@@ -89,6 +96,14 @@ func (pool *Data) CreateDrop(spawnType byte, dropType byte, mesos int32, dropFro
 		offset = int16(itemDistance * (iCount / 2))
 	}
 
+	currentTime := time.Now()
+	expireTime := currentTime.Add(itemDisppearTimeout).Unix()
+	var timeoutTime int64 = 0
+
+	if dropType == DropTimeoutNonOwner || dropType == DropTimeoutNonOwnerParty {
+		timeoutTime =  currentTime.Add(itemLootableByAllTimeout).Unix()
+	}
+
 	for i, item := range items {
 		finalPos := pool.instance.CalculateFinalDropPos(dropFrom) // (dropFrom, xShift)
 
@@ -101,8 +116,8 @@ func (pool *Data) CreateDrop(spawnType byte, dropType byte, mesos int32, dropFro
 			mesos:   0,
 			item:    item,
 
-			expireTime:  0,
-			timeoutTime: 0,
+			expireTime:  expireTime,
+			timeoutTime: timeoutTime,
 			neverExpire: false,
 
 			originPos: dropFrom,
@@ -111,7 +126,7 @@ func (pool *Data) CreateDrop(spawnType byte, dropType byte, mesos int32, dropFro
 			dropType: dropType,
 		}
 
-		pool.drops = append(pool.drops, drop)
+		pool.drops[drop.ID] = drop
 
 		pool.instance.Send(packetShowDrop(spawnType, drop))
 	}
@@ -129,8 +144,8 @@ func (pool *Data) CreateDrop(spawnType byte, dropType byte, mesos int32, dropFro
 			partyID: partyID,
 			mesos:   mesos,
 
-			expireTime:  0,
-			timeoutTime: 0,
+			expireTime:  expireTime,
+			timeoutTime: timeoutTime,
 			neverExpire: false,
 
 			originPos: dropFrom,
@@ -139,7 +154,7 @@ func (pool *Data) CreateDrop(spawnType byte, dropType byte, mesos int32, dropFro
 			dropType: dropType,
 		}
 
-		pool.drops = append(pool.drops, drop)
+		pool.drops[drop.ID] = drop
 
 		pool.instance.Send(packetShowDrop(spawnType, drop))
 	}
@@ -148,4 +163,17 @@ func (pool *Data) CreateDrop(spawnType byte, dropType byte, mesos int32, dropFro
 
 // Update logic for the pool e.g. drops disappear
 func (pool *Data) Update(t time.Time) {
+	id := make([]int32, 0, len(pool.drops))
+
+	currentTime := time.Now().Unix()
+
+	for _, v := range pool.drops {
+		if v.expireTime <= currentTime {
+			id = append(id, v.ID)
+		}
+	}
+
+	if len(id) > 0 {
+		pool.RemoveDrop(false, id...)
+	}
 }
