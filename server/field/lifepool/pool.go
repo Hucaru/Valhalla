@@ -2,6 +2,7 @@ package lifepool
 
 import (
 	"fmt"
+	"log"
 	"math"
 	"math/rand"
 	"time"
@@ -84,6 +85,8 @@ type Data struct {
 	activeMobCtrl map[controller]bool
 
 	dropPool dropPool
+
+	rNumber *rand.Rand
 }
 
 // CreatNewPool for life
@@ -114,6 +117,9 @@ func CreatNewPool(inst field, npcData, mobData []nx.Life, mobCapMin, mobCapMax i
 
 	pool.mobCapMin = mobCapMin
 	pool.mobCapMax = mobCapMax
+
+	randomSource := rand.NewSource(time.Now().UTC().UnixNano())
+	pool.rNumber = rand.New(randomSource)
 
 	return pool
 }
@@ -298,7 +304,7 @@ func (pool *Data) MobDamaged(poolID int32, damager player, prty party, dmg ...in
 					newMob, err := mob.CreateFromID(pool.nextID(), int32(id), v.Pos(), nil, true, true)
 
 					if err != nil {
-						fmt.Println(err)
+						log.Println(err)
 						continue
 					}
 
@@ -308,22 +314,47 @@ func (pool *Data) MobDamaged(poolID int32, damager player, prty party, dmg ...in
 					pool.spawnReviveMob(newMob, damager)
 				}
 
-				// TODO: Change into drop table lookup
-				var mesos int32 = 500
-				items := []int32{1372010, 1402005}
-				drops := make([]item.Data, len(items))
+				if dropEntry, ok := item.DropTable[v.ID()]; ok {
+					chance := pool.rNumber.Int31n(100000)
 
-				for i, v := range items {
-					item, err := item.CreatePerfectFromID(v, 1)
+					var mesos int32
+					drops := make([]item.Data, 0, len(dropEntry))
 
-					if err != nil {
-						fmt.Println(err.Error())
+					for _, entry := range dropEntry {
+						if entry.Chance < chance {
+							continue
+						}
+
+						if entry.IsMesos {
+							mesos = pool.rNumber.Int31n(entry.Max-entry.Min) + entry.Min
+						} else {
+							var amount int16 = 1
+
+							if entry.Max != 1 {
+								val := pool.rNumber.Int31n(entry.Max-entry.Min) + entry.Min
+
+								if val > math.MaxInt16 {
+									amount = math.MaxInt16
+								} else {
+									amount = int16(val)
+								}
+							}
+
+							newItem, err := item.CreateFromID(entry.ItemID, amount)
+
+							if err != nil {
+								log.Println("Failed to create drop for mobID:", v.ID(), "with error:", err)
+								continue
+							}
+
+							drops = append(drops, newItem)
+						}
 					}
 
-					drops[i] = item
+					// TODO: droppool type determination between DropTimeoutNonOwner and DropTimeoutNonOwnerParty
+					pool.dropPool.CreateDrop(droppool.SpawnNormal, droppool.DropFreeForAll, mesos, v.Pos(), true, 0, 0, drops...)
 				}
 
-				pool.dropPool.CreateDrop(droppool.SpawnNormal, droppool.DropFreeForAll, mesos, v.Pos(), true, 0, 0, drops...)
 				pool.removeMob(v.SpawnID(), 0x1)
 
 				if v.SpawnInterval() > 0 {
