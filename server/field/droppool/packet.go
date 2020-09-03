@@ -44,13 +44,12 @@ func packetShowDrop(spawnType byte, drop drop) mpacket.Packet {
 			p.WriteInt32(400967355)
 			p.WriteByte(2)
 		} else {
-			// p.WriteInt32(int32(drop.expireTime-946681229830) / 1000 / 60)
-			p.WriteInt32(int32(drop.expireTime))
-			p.WriteByte(0)
+			p.WriteInt32(int32((drop.expireTime - 946681229830) / 1000 / 60)) // TODO: figure out what time this is for
+			p.WriteByte(1)
 		}
 	}
 
-	p.WriteByte(0) // pet pickup?
+	p.WriteByte(0) // Did player drop it, used by pet with equip?
 
 	return p
 }

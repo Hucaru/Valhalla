@@ -91,7 +91,6 @@ const itemLootableByAllTimeout = time.Minute * 1
 
 // CreateDrop into field
 func (pool *Data) CreateDrop(spawnType byte, dropType byte, mesos int32, dropFrom pos.Data, expire bool, ownerID, partyID int32, items ...item.Data) {
-	// TODO: Clean up separation logic, should pass in drop struct
 	iCount := len(items)
 	var offset int16 = 0
 
