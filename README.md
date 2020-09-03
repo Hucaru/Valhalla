@@ -75,7 +75,7 @@ Channel server:
 - [x] Mob death
 - [x] Mob respawn
 - [x] Mob spawns mob(s) on death
-- [ ] Mob drops
+- [x] Mob drops
 - [x] Mob boss HP bar
 - [ ] Trade
 - [x] Minigames
