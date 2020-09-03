@@ -5,6 +5,8 @@ import (
 	"log"
 	"strconv"
 
+	"github.com/Hucaru/Valhalla/server/player"
+
 	"github.com/Hucaru/Valhalla/constant"
 	"github.com/Hucaru/Valhalla/constant/opcode"
 	"github.com/Hucaru/Valhalla/mnet"
@@ -13,7 +15,6 @@ import (
 	"github.com/Hucaru/Valhalla/server/message"
 	"github.com/Hucaru/Valhalla/server/metrics"
 	"github.com/Hucaru/Valhalla/server/movement"
-	"github.com/Hucaru/Valhalla/server/player"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -647,4 +648,34 @@ func (server ChannelServer) playerMoveInventoryItem(conn mnet.Client, reader mpa
 	if err != nil {
 		log.Println(err)
 	}
+}
+
+func (server ChannelServer) playerTakeDamage(conn mnet.Client, reader mpacket.Reader) {
+	// 21 FF  or -1 is mob
+	// 21 FE  or -2 is bump
+	// Anything bigger than -1 is magic
+
+	dmgType := int8(reader.ReadByte())
+
+	if dmgType >= 0 {
+		log.Println("Magic Attack")
+	} else if dmgType == -1 {
+		server.mobDamagePlayer(conn, reader)
+	} else if dmgType == -2 {
+		server.playerBumpDamage(conn, reader)
+	} else {
+		log.Printf("\nUNKNOWN DAMAGE PACKET: %v", reader.String())
+	}
+}
+
+func (server ChannelServer) playerBumpDamage(conn mnet.Client, reader mpacket.Reader) {
+	damage := reader.ReadInt32() // Damage amount
+
+	plr, err := server.players.getFromConn(conn)
+	if err != nil {
+		return
+	}
+
+	plr.DamagePlayer(int16(damage))
+
 }

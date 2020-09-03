@@ -1058,3 +1058,19 @@ func (d Data) Save(db *sql.DB) error {
 func (d *Data) UpdateGuildInfo() {
 	d.Send(packetGuildInfo(0, "[Admins]", 0))
 }
+
+// DamagePlayer reduces character HP based on damage
+func (d *Data) DamagePlayer(damage int16) {
+	if damage < -1 {
+		return
+	}
+	newHP := d.hp - damage
+
+	if newHP <= -1 {
+		d.hp = 0
+	} else {
+		d.hp = newHP
+	}
+
+	d.Send(packetPlayerStatChange(true, constant.HpID, int32(d.hp)))
+}

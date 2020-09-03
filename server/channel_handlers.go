@@ -17,6 +17,7 @@ func (server *ChannelServer) HandleClientPacket(conn mnet.Client, reader mpacket
 	case opcode.RecvCHannelChangeChannel:
 		server.playerChangeChannel(conn, reader)
 	case opcode.RecvChannelUserPortal:
+		// This opcode is used for revival UI as well.
 		server.playerUsePortal(conn, reader)
 	case opcode.RecvChannelEnterCashShop:
 	case opcode.RecvChannelPlayerMovement:
@@ -32,7 +33,7 @@ func (server *ChannelServer) HandleClientPacket(conn mnet.Client, reader mpacket
 	case opcode.RecvChannelMagicSkill:
 		// server.playerMagicSkill(conn, reader)
 	case opcode.RecvChannelDmgRecv:
-		// server.playerTakeDamage(conn, reader)
+		server.playerTakeDamage(conn, reader)
 	case opcode.RecvChannelPlayerSendAllChat:
 		server.chatSendAll(conn, reader)
 	case opcode.RecvChannelSlashCommands:
