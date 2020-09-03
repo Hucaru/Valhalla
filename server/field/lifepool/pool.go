@@ -2,6 +2,7 @@ package lifepool
 
 import (
 	"fmt"
+	"log"
 	"math"
 	"math/rand"
 	"time"
@@ -303,7 +304,7 @@ func (pool *Data) MobDamaged(poolID int32, damager player, prty party, dmg ...in
 					newMob, err := mob.CreateFromID(pool.nextID(), int32(id), v.Pos(), nil, true, true)
 
 					if err != nil {
-						fmt.Println(err)
+						log.Println(err)
 						continue
 					}
 
@@ -342,7 +343,7 @@ func (pool *Data) MobDamaged(poolID int32, damager player, prty party, dmg ...in
 							newItem, err := item.CreateFromID(entry.ItemID, amount)
 
 							if err != nil {
-								fmt.Println("Failed to create drop for mobID:", v.ID(), "with error:", err)
+								log.Println("Failed to create drop for mobID:", v.ID(), "with error:", err)
 								continue
 							}
 
