@@ -53,7 +53,13 @@ func (r *memory) SelectCard(turn, cardID byte, plr player) bool {
 		win, draw := r.checkCardWin()
 
 		if win || draw {
-			r.gameEnd(draw, false, nil)
+			var winningSlot byte = 0x00
+
+			if r.matches[1] > r.matches[0] {
+				winningSlot = 0x01
+			}
+
+			r.gameEnd(draw, false, nil, winningSlot)
 
 			if r.Closed() { // If owner exit as part of game leave
 				return false
@@ -82,7 +88,7 @@ func (r *memory) checkCardWin() (bool, bool) {
 		if totalMatches == 6 {
 			if r.matches[0] == r.matches[1] {
 				draw = true
-			} else { // current player must have won
+			} else {
 				win = true
 			}
 		}

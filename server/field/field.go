@@ -8,6 +8,7 @@ import (
 	"github.com/Hucaru/Valhalla/server/field/droppool"
 	"github.com/Hucaru/Valhalla/server/field/lifepool"
 	"github.com/Hucaru/Valhalla/server/field/rectangle"
+	"github.com/Hucaru/Valhalla/server/field/roompool"
 )
 
 // Field data
@@ -44,6 +45,7 @@ func (f *Field) CreateInstance() int {
 		timeLimit:   f.Data.TimeLimit,
 	}
 
+	inst.roomPool = roompool.CreateNewPool(inst)
 	inst.dropPool = droppool.CreateNewPool(inst)
 	inst.lifePool = lifepool.CreatNewPool(inst, f.Data.NPCs, f.Data.Mobs, f.mobCapacityMin, f.mobCapacityMax)
 	inst.lifePool.SetDropPool(&inst.dropPool)

@@ -403,7 +403,7 @@ func packetGuildInfo(id int32, name string, memberCount byte) mpacket.Packet {
 	p.WriteString("rank4")
 	p.WriteString("rank5")
 
-	capacity := 200
+	capacity := 250             // maximum
 	p.WriteByte(byte(capacity)) // member count
 
 	// iterate over all members and output ids
@@ -423,7 +423,12 @@ func packetGuildInfo(id int32, name string, memberCount byte) mpacket.Packet {
 			p.WriteInt32(int32(i + 1)) // rank starts at 1
 		}
 
-		p.WriteInt32(1)        // online or not
+		if i%2 == 0 {
+			p.WriteInt32(1) // online or not
+		} else {
+			p.WriteInt32(0)
+		}
+
 		p.WriteInt32(int32(i)) // ?
 	}
 

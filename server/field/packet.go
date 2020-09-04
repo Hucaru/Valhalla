@@ -57,21 +57,6 @@ func packetPlayerMove(charID int32, bytes []byte) mpacket.Packet {
 	return p
 }
 
-func packetMapShowGameBox(displayBytes []byte) mpacket.Packet {
-	p := mpacket.CreateWithOpcode(opcode.SendChannelRoomBox)
-	p.WriteBytes(displayBytes)
-
-	return p
-}
-
-func packetMapRemoveGameBox(charID int32) mpacket.Packet {
-	p := mpacket.CreateWithOpcode(opcode.SendChannelRoomBox)
-	p.WriteInt32(charID)
-	p.WriteInt32(0)
-
-	return p
-}
-
 func packetMapSpawnMysticDoor(spawnID int32, pos pos.Data, instant bool) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelSpawnDoor)
 	p.WriteBool(instant)

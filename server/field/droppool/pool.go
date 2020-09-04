@@ -41,7 +41,7 @@ func CreateNewPool(inst field) Data {
 }
 
 func (pool *Data) nextID() (int32, error) {
-	for {
+	for i := 0; i < 100; i++ { // Try 99 times to generate an id if first time fails
 		pool.poolID++
 
 		if pool.poolID == math.MaxInt32-1 {
