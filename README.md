@@ -1,5 +1,7 @@
 # Valhalla
 
+[![Actions Status](https://github.com/Hucaru/Valhalla/workflows/Go/badge.svg)](https://github.com/Hucaru/Valhalla/actions)
+
 ## What is this?
 
 This project exists to preserve and archive an early version of the game (v28 of global)
