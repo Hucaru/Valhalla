@@ -502,13 +502,14 @@ func (server ChannelServer) playerUsePortal(conn mnet.Client, reader mpacket.Rea
 
 			portal, err := srcInst.GetRandomSpawnPortal()
 
-			if err == nil {
+			if err != nil {
 				conn.Send(packetPlayerNoChange())
 				return
 			}
 
 			server.warpPlayer(plr, dstField, portal)
 			plr.SetHP(50)
+			// TODO: reduce exp
 		}
 	case -1:
 		portalName := reader.ReadString(reader.ReadInt16())
