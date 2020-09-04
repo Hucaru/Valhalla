@@ -266,6 +266,10 @@ func (m *Data) GiveDamage(damager controller, dmg ...int32) {
 
 		m.hp -= v
 
+		if damager == nil {
+			return
+		}
+
 		if _, ok := m.dmgTaken[damager]; ok {
 			m.dmgTaken[damager] += v
 		} else {

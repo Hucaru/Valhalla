@@ -262,6 +262,8 @@ func (pool *Data) MobDamaged(poolID int32, damager player, prty party, dmg ...in
 				pool.mobs[i].SetController(damager, true)
 				pool.activeMobCtrl[damager] = true
 				pool.mobs[i].GiveDamage(damager, dmg...)
+			} else {
+				pool.mobs[i].GiveDamage(nil, dmg...)
 			}
 
 			pool.showMobBossHPBar(v)
