@@ -56,8 +56,7 @@ func (server ChannelServer) mobControl(conn mnet.Client, reader mpacket.Reader) 
 	// inst.UpdateMob(mobSpawnID, skillPossible, byte(action), skillData, moveBytes)
 }
 
-func (server ChannelServer) mobDamagePlayer(conn mnet.Client, reader mpacket.Reader) {
-	mobAttack := int8(-1)
+func (server ChannelServer) mobDamagePlayer(conn mnet.Client, reader mpacket.Reader, mobAttack int8) {
 	damage := reader.ReadInt32() // Damage amount
 	healSkillID := int32(0)
 
@@ -136,5 +135,34 @@ func (server ChannelServer) mobDamagePlayer(conn mnet.Client, reader mpacket.Rea
 	if mobSkillID != 0 && mobSkillLevel != 0 {
 		// new skill
 	}
+
+}
+
+func (server ChannelServer) mobEffect(conn mnet.Client, reader mpacket.Reader) {
+	/*
+		id := reader.ReadInt32()
+		attack := reader.ReadInt32()
+
+		plr, err := server.players.getFromConn(conn)
+		if err != nil {
+			return
+		}
+
+		field, ok := server.fields[plr.MapID()]
+		if !ok {
+			return
+		}
+
+		inst, err := field.GetInstance(plr.InstanceID())
+		if err != nil {
+			return
+		}
+
+		mob, err := inst.LifePool().GetMobFromID(id)
+		if err != nil {
+			log.Println(err)
+		}
+
+	*/
 
 }
