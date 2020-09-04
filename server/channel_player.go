@@ -657,10 +657,8 @@ func (server ChannelServer) playerTakeDamage(conn mnet.Client, reader mpacket.Re
 
 	dmgType := int8(reader.ReadByte())
 
-	if dmgType >= 0 {
-		log.Println("Magic Attack")
-	} else if dmgType == -1 {
-		server.mobDamagePlayer(conn, reader)
+	if dmgType >= -1 {
+		server.mobDamagePlayer(conn, reader, dmgType)
 	} else if dmgType == -2 {
 		server.playerBumpDamage(conn, reader)
 	} else {
