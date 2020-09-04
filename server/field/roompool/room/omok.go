@@ -71,7 +71,13 @@ func (r *omok) PlacePiece(x, y int32, piece byte, plr player) bool {
 	draw := checkOmokDraw(r.board)
 
 	if win || draw {
-		r.gameEnd(draw, false, nil)
+		var winningSlot byte = 0x00
+
+		if !r.p1Turn {
+			winningSlot = 0x01
+		}
+
+		r.gameEnd(draw, false, nil, winningSlot)
 
 		if r.Closed() { // If owner exit as part of game leave
 			return false

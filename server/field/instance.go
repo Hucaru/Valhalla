@@ -10,7 +10,7 @@ import (
 	"github.com/Hucaru/Valhalla/mpacket"
 	"github.com/Hucaru/Valhalla/server/field/droppool"
 	"github.com/Hucaru/Valhalla/server/field/lifepool"
-	"github.com/Hucaru/Valhalla/server/field/room"
+	"github.com/Hucaru/Valhalla/server/field/roompool"
 	"github.com/Hucaru/Valhalla/server/pos"
 )
 
@@ -52,11 +52,12 @@ type Instance struct {
 
 	lifePool lifepool.Data
 	dropPool droppool.Data
+	roomPool roompool.Data
 
 	portals []Portal
 	players []player
 
-	rooms []room.Room
+	// rooms []room.Room
 
 	idCounter int32
 	town      bool
@@ -98,6 +99,11 @@ func (inst *Instance) DropPool() *droppool.Data {
 	return &inst.dropPool
 }
 
+// RoomPool pointer for instance
+func (inst *Instance) RoomPool() *roompool.Data {
+	return &inst.roomPool
+}
+
 // FindController in instance, need to return interface for casting
 func (inst Instance) FindController() interface{} {
 	for _, v := range inst.players {
@@ -118,13 +124,7 @@ func (inst *Instance) AddPlayer(plr player) error {
 
 	inst.lifePool.AddPlayer(plr)
 	inst.dropPool.PlayerShowDrops(plr)
-
-	// show all the rooms
-	for _, v := range inst.rooms {
-		if game, valid := v.(room.Game); valid {
-			plr.Send(packetMapShowGameBox(game.DisplayBytes()))
-		}
-	}
+	inst.roomPool.PlayerShowRooms(plr)
 
 	// Play map animations e.g. ship arriving to dock
 
@@ -165,16 +165,7 @@ func (inst *Instance) RemovePlayer(plr player) error {
 	}
 
 	inst.lifePool.RemovePlayer(plr)
-
-	for _, v := range inst.rooms {
-		if game, valid := v.(room.Game); valid {
-			game.KickPlayer(plr, 0x0)
-
-			if v.Closed() {
-				inst.RemoveRoom(v)
-			}
-		}
-	}
+	inst.roomPool.RemovePlayer(plr)
 
 	return nil
 }
@@ -199,60 +190,6 @@ func (inst Instance) MovePlayer(id int32, moveBytes []byte, plr player) {
 func (inst *Instance) NextID() int32 {
 	inst.idCounter++
 	return inst.idCounter
-}
-
-// AddRoom to the instance
-func (inst *Instance) AddRoom(r room.Room) {
-	inst.rooms = append(inst.rooms, r)
-
-	if game, valid := r.(room.Game); valid {
-		inst.Send(packetMapShowGameBox(game.DisplayBytes()))
-	}
-}
-
-// UpdateGameBox above player head in map
-func (inst *Instance) UpdateGameBox(r room.Room) {
-	if game, valid := r.(room.Game); valid {
-		inst.Send(packetMapShowGameBox(game.DisplayBytes()))
-	}
-}
-
-// RemoveRoom from instance
-func (inst *Instance) RemoveRoom(r room.Room) error {
-	for i, v := range inst.rooms {
-		if v.ID() == r.ID() {
-			inst.rooms[i] = inst.rooms[len(inst.rooms)-1]
-			inst.rooms = inst.rooms[:len(inst.rooms)-1]
-
-			if _, valid := r.(room.Game); valid {
-				inst.Send(packetMapRemoveGameBox(r.OwnerID()))
-			}
-			return nil
-		}
-	}
-
-	return fmt.Errorf("Could not find room to delete")
-}
-
-// GetPlayerRoom the room the player belongs to
-func (inst *Instance) GetPlayerRoom(id int32) (room.Room, error) {
-	for _, v := range inst.rooms {
-		if v.Present(id) {
-			return v, nil
-		}
-	}
-
-	return nil, fmt.Errorf("Player does not belong to a room")
-}
-
-// GetRoomID the room with the passed in id
-func (inst *Instance) GetRoomID(id int32) (room.Room, error) {
-	for _, v := range inst.rooms {
-		if v.ID() == id {
-			return v, nil
-		}
-	}
-	return nil, fmt.Errorf("no room with id")
 }
 
 // Send packet to instance

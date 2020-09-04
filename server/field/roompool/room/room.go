@@ -29,6 +29,7 @@ type player interface {
 // Room base behaviours
 type Room interface {
 	ID() int32
+	SetID(int32)
 	AddPlayer(player) bool
 	Closed() bool
 	Present(int32) bool
@@ -45,6 +46,10 @@ type room struct {
 
 func (r room) ID() int32 {
 	return r.id
+}
+
+func (r *room) SetID(id int32) {
+	r.id = id
 }
 
 // OwnerID of the room
@@ -170,7 +175,7 @@ func (r *game) AddPlayer(plr player) bool {
 func (r game) CheckPassword(password string, plr player) bool {
 	if password != r.password {
 		plr.Send(packetRoomIncorrectPassword())
-		return true
+		return false
 	}
 	return true
 }
@@ -180,7 +185,7 @@ func (r *game) KickPlayer(plr player, reason byte) bool {
 	for i, v := range r.players {
 		if v.Conn() == plr.Conn() {
 			if r.inProgress {
-				r.gameEnd(false, true, plr)
+				r.gameEnd(false, true, plr, 0)
 			}
 
 			if !r.room.removePlayer(plr) {
@@ -242,14 +247,8 @@ func (r *game) ChangeTurn() {
 	r.send(packetRoomGameSkip(r.p1Turn))
 }
 
-func (r *game) gameEnd(draw, forfeit bool, plr player) {
+func (r *game) gameEnd(draw, forfeit bool, plr player, winningSlot byte) {
 	r.inProgress = false
-
-	var winningSlot byte = 0x00
-
-	if !r.p1Turn {
-		winningSlot = 0x01
-	}
 
 	if forfeit {
 		if plr.Conn() == r.players[0].Conn() {
@@ -329,7 +328,7 @@ func (r *game) RequestTie(plr player) {
 // RequestTieResult of the choice the other player mode
 func (r *game) RequestTieResult(tie bool, plr player) {
 	if tie == true {
-		r.gameEnd(true, false, nil)
+		r.gameEnd(true, false, nil, 0)
 	} else {
 		for _, v := range r.players {
 			if v.Conn() != plr.Conn() {
@@ -344,7 +343,7 @@ func (r *game) RequestTieResult(tie bool, plr player) {
 func (r *game) Forfeit(plr player) {
 	for _, v := range r.players {
 		if v.Conn() == plr.Conn() {
-			r.gameEnd(false, true, plr)
+			r.gameEnd(false, true, plr, 0)
 			return
 		}
 	}
