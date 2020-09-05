@@ -138,31 +138,12 @@ func (server ChannelServer) mobDamagePlayer(conn mnet.Client, reader mpacket.Rea
 
 }
 
-func (server ChannelServer) mobEffect(conn mnet.Client, reader mpacket.Reader) {
+func (server ChannelServer) mobDistance(conn mnet.Client, reader mpacket.Reader) {
 	/*
 		id := reader.ReadInt32()
-		attack := reader.ReadInt32()
+		distance := reader.ReadInt32()
 
-		plr, err := server.players.getFromConn(conn)
-		if err != nil {
-			return
-		}
-
-		field, ok := server.fields[plr.MapID()]
-		if !ok {
-			return
-		}
-
-		inst, err := field.GetInstance(plr.InstanceID())
-		if err != nil {
-			return
-		}
-
-		mob, err := inst.LifePool().GetMobFromID(id)
-		if err != nil {
-			log.Println(err)
-		}
-
+		Unknown what this packet is for
 	*/
 
 }
