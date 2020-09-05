@@ -57,7 +57,7 @@ func packetShowDrop(spawnType byte, drop drop) mpacket.Packet {
 // PacketRemoveDrop on field
 func packetRemoveDrop(instant bool, dropID int32) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelDropExitMap)
-	p.WriteBool(instant)
+	p.WriteBool(instant) // 0 - fade away, 1 - instant, 2,3,5 - player id? , 4 - int16
 	p.WriteInt32(dropID)
 
 	return p

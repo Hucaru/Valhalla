@@ -7,7 +7,7 @@ import (
 	"github.com/Hucaru/Valhalla/server/field/lifepool/npc"
 )
 
-func packetNpcShow(npc npc.Data) mpacket.Packet {
+func packetNpcShow(npc *npc.Data) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelNpcShow)
 	p.WriteInt32(npc.SpawnID())
 	p.WriteInt32(npc.ID())
@@ -30,7 +30,7 @@ func packetNpcRemove(npcID int32) mpacket.Packet {
 	return p
 }
 
-func packetMobShow(mob mob.Data) mpacket.Packet {
+func packetMobShow(mob *mob.Data) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelShowMob)
 	p.Append(mob.DisplayBytes())
 
@@ -58,8 +58,8 @@ func packetMobRemove(spawnID int32, deathType byte) mpacket.Packet {
 }
 
 func packetMobShowBossHP(mobID, hp, maxHP int32, colourFg, colourBg byte) mpacket.Packet {
-	p := mpacket.CreateWithOpcode(opcode.SendChannelMapEffect)
-	p.WriteByte(5)
+	p := mpacket.CreateWithOpcode(opcode.SendChannelMapEffect) // field effect
+	p.WriteByte(5)                                             // 1, tremble effect, 3 - mapEffect (string), 4 - mapSound (string), arbitary - environemnt change int32 followed by string
 	p.WriteInt32(mobID)
 	p.WriteInt32(hp)
 	p.WriteInt32(maxHP)

@@ -73,12 +73,12 @@ func (r rectangle) pointInRect(x, y int16) bool {
 type Data struct {
 	instance field
 
-	npcs []npc.Data
-	mobs []mob.Data
+	npcs map[int32]*npc.Data
+	mobs map[int32]*mob.Data
 
 	spawnableMobs []mob.Data
 
-	poolID               int32
+	mobID, npcID         int32
 	lastMobSpawnTime     time.Time
 	mobCapMin, mobCapMax int
 
@@ -93,13 +93,20 @@ type Data struct {
 func CreatNewPool(inst field, npcData, mobData []nx.Life, mobCapMin, mobCapMax int) Data {
 	pool := Data{instance: inst, activeMobCtrl: make(map[controller]bool)}
 
-	pool.npcs = make([]npc.Data, len(npcData))
+	pool.npcs = make(map[int32]*npc.Data)
 
-	for i, l := range npcData {
-		pool.npcs[i] = npc.CreateFromData(pool.nextID(), l)
+	for _, l := range npcData {
+		id, err := pool.nextNpcID()
+
+		if err != nil {
+			continue
+		}
+
+		val := npc.CreateFromData(id, l)
+		pool.npcs[id] = &val
 	}
 
-	pool.mobs = make([]mob.Data, len(mobData))
+	pool.mobs = make(map[int32]*mob.Data)
 	pool.spawnableMobs = make([]mob.Data, len(mobData))
 
 	for i, v := range mobData {
@@ -109,10 +116,17 @@ func CreatNewPool(inst field, npcData, mobData []nx.Life, mobCapMin, mobCapMax i
 			continue
 		}
 
-		pool.mobs[i] = mob.CreateFromData(pool.nextID(), v, m, true, true)
-		pool.mobs[i].SetSummonType(-1)
+		id, err := pool.nextMobID()
 
-		pool.spawnableMobs[i] = mob.CreateFromData(pool.nextID(), v, m, true, true)
+		if err != nil {
+			continue
+		}
+
+		val := mob.CreateFromData(id, v, m, true, true)
+		pool.mobs[id] = &val
+		pool.mobs[id].SetSummonType(-1)
+
+		pool.spawnableMobs[i] = mob.CreateFromData(id, v, m, true, true)
 	}
 
 	pool.mobCapMin = mobCapMin
@@ -129,16 +143,40 @@ func (pool *Data) SetDropPool(drop *droppool.Data) {
 	pool.dropPool = drop
 }
 
-func (pool *Data) nextID() int32 {
-	pool.poolID++
+func (pool *Data) nextMobID() (int32, error) {
+	for i := 0; i < 100; i++ { // Try 99 times to generate an id if first time fails
+		pool.mobID++
 
-	if pool.poolID == math.MaxInt32-1 {
-		pool.poolID = math.MaxInt32 / 2
-	} else if pool.poolID == 0 {
-		pool.poolID = 1
+		if pool.mobID == math.MaxInt32-1 {
+			pool.mobID = math.MaxInt32 / 2
+		} else if pool.mobID == 0 {
+			pool.mobID = 1
+		}
+
+		if _, ok := pool.mobs[pool.mobID]; !ok {
+			return pool.mobID, nil
+		}
 	}
 
-	return pool.poolID
+	return 0, fmt.Errorf("No space to generate id in drop pool")
+}
+
+func (pool *Data) nextNpcID() (int32, error) {
+	for i := 0; i < 100; i++ { // Try 99 times to generate an id if first time fails
+		pool.npcID++
+
+		if pool.npcID == math.MaxInt32-1 {
+			pool.npcID = math.MaxInt32 / 2
+		} else if pool.npcID == 0 {
+			pool.npcID = 1
+		}
+
+		if _, ok := pool.npcs[pool.npcID]; !ok {
+			return pool.npcID, nil
+		}
+	}
+
+	return 0, fmt.Errorf("No space to generate id in drop pool")
 }
 
 // CanClose the pool down
@@ -150,7 +188,7 @@ func (pool Data) CanClose() bool {
 func (pool Data) GetNPCFromSpawnID(id int32) (npc.Data, error) {
 	for _, v := range pool.npcs {
 		if v.SpawnID() == id {
-			return v, nil
+			return *v, nil
 		}
 	}
 
@@ -174,7 +212,7 @@ func (pool *Data) AddPlayer(plr controller) {
 			pool.mobs[i].SetController(plr, false)
 		}
 
-		pool.showMobBossHPBar(m)
+		pool.showMobBossHPBar(m, plr)
 	}
 }
 
@@ -262,9 +300,11 @@ func (pool *Data) MobDamaged(poolID int32, damager player, prty party, dmg ...in
 				pool.mobs[i].SetController(damager, true)
 				pool.activeMobCtrl[damager] = true
 				pool.mobs[i].GiveDamage(damager, dmg...)
+			} else {
+				pool.mobs[i].GiveDamage(nil, dmg...)
 			}
 
-			pool.showMobBossHPBar(v)
+			pool.showMobBossHPBar(v, nil)
 
 			if pool.mobs[i].HP() < 1 {
 				for cont, dmg := range pool.mobs[i].GetDamage() {
@@ -301,7 +341,13 @@ func (pool *Data) MobDamaged(poolID int32, damager player, prty party, dmg ...in
 
 				// on die logic
 				for _, id := range v.Revives() {
-					newMob, err := mob.CreateFromID(pool.nextID(), int32(id), v.Pos(), nil, true, true)
+					spawnID, err := pool.nextMobID()
+
+					if err != nil {
+						continue
+					}
+
+					newMob, err := mob.CreateFromID(spawnID, int32(id), v.Pos(), nil, true, true)
 
 					if err != nil {
 						log.Println(err)
@@ -311,7 +357,7 @@ func (pool *Data) MobDamaged(poolID int32, damager player, prty party, dmg ...in
 					newMob.SetFaceLeft(v.FaceLeft())
 					newMob.SetSummonType(-3)
 					newMob.SetSummonOption(v.SpawnID())
-					pool.spawnReviveMob(newMob, damager)
+					pool.spawnReviveMob(&newMob, damager)
 				}
 
 				if dropEntry, ok := item.DropTable[v.ID()]; ok {
@@ -353,6 +399,8 @@ func (pool *Data) MobDamaged(poolID int32, damager player, prty party, dmg ...in
 
 					// TODO: droppool type determination between DropTimeoutNonOwner and DropTimeoutNonOwnerParty
 					pool.dropPool.CreateDrop(droppool.SpawnNormal, droppool.DropFreeForAll, mesos, v.Pos(), true, 0, 0, drops...)
+
+					// If has hp bar: remove
 				}
 
 				pool.removeMob(v.SpawnID(), 0x1)
@@ -373,64 +421,85 @@ func (pool *Data) MobDamaged(poolID int32, damager player, prty party, dmg ...in
 
 // KillMobs in the pool
 func (pool *Data) KillMobs(deathType byte) {
-	for _, v := range pool.mobs {
-		pool.MobDamaged(v.SpawnID(), nil, nil, v.HP())
+	// Need to collect keys first as when iterating over the map and killing we will kill any subsequent spawns depending on map iteration order
+	keys := make([]int32, 0, len(pool.mobs))
+
+	for key := range pool.mobs {
+		keys = append(keys, key)
+	}
+
+	for _, key := range keys {
+		pool.MobDamaged(pool.mobs[key].SpawnID(), nil, nil, pool.mobs[key].HP())
 	}
 }
 
-func (pool *Data) spawnMob(m mob.Data, hasAgro bool) bool {
-	pool.mobs = append(pool.mobs, m)
+func (pool *Data) spawnMob(m *mob.Data, hasAgro bool) bool {
+	pool.mobs[m.SpawnID()] = m
 	pool.instance.Send(packetMobShow(m))
 
 	if plr := pool.instance.FindController(); plr != nil {
 		if cont, ok := plr.(controller); ok {
-			pool.mobs[len(pool.mobs)-1].SetController(cont, hasAgro)
+			for _, v := range pool.mobs {
+				v.SetController(cont, hasAgro)
+			}
 		}
 	}
 
-	pool.showMobBossHPBar(m)
+	pool.showMobBossHPBar(m, nil)
+	m.SetSummonType(-1)
 
 	return false
 }
 
 // SpawnMobFromID into the pool
 func (pool *Data) SpawnMobFromID(mobID int32, location pos.Data, hasAgro, items, mesos bool) error {
-	m, err := mob.CreateFromID(pool.nextID(), mobID, location, nil, items, mesos)
+	id, err := pool.nextMobID()
 
 	if err != nil {
 		return err
 	}
 
-	pool.spawnMob(m, hasAgro)
+	m, err := mob.CreateFromID(id, mobID, location, nil, items, mesos)
+
+	if err != nil {
+		return err
+	}
+
+	pool.spawnMob(&m, hasAgro)
 
 	return nil
 }
 
-func (pool *Data) spawnReviveMob(m mob.Data, cont controller) {
+func (pool *Data) spawnReviveMob(m *mob.Data, cont controller) {
 	pool.spawnMob(m, true)
 
-	pool.mobs[len(pool.mobs)-1].SetSummonType(-2)
-	pool.mobs[len(pool.mobs)-1].SetSummonOption(0)
+	pool.mobs[m.SpawnID()].SetSummonType(-2)
+	pool.mobs[m.SpawnID()].SetSummonOption(0)
 
 	if cont != nil {
-		pool.mobs[len(pool.mobs)-1].SetController(cont, true)
+		pool.mobs[m.SpawnID()].SetController(cont, true)
 	}
 }
 
 func (pool *Data) removeMob(poolID int32, deathType byte) {
-	for i, v := range pool.mobs {
-		if v.SpawnID() == poolID {
-			pool.mobs = append(pool.mobs[:i], pool.mobs[i+1:]...)
-			pool.instance.Send(packetMobRemove(poolID, deathType))
-			return
-		}
+	if _, ok := pool.mobs[poolID]; !ok {
+		return
 	}
+
+	delete(pool.mobs, poolID)
+	pool.instance.Send(packetMobRemove(poolID, deathType))
 }
 
 // ShowMobBossHPBar to instance if possible
-func (pool Data) showMobBossHPBar(mob mob.Data) {
-	if show, mobID, hp, maxHP, hpFgColour, hpBgColour := mob.HasHPBar(); show {
-		pool.instance.Send(packetMobShowBossHP(mobID, hp, maxHP, hpFgColour, hpBgColour))
+func (pool Data) showMobBossHPBar(mob *mob.Data, plr controller) {
+	if plr != nil {
+		if show, mobID, hp, maxHP, hpFgColour, hpBgColour := mob.HasHPBar(); show {
+			plr.Send(packetMobShowBossHP(mobID, hp, maxHP, hpFgColour, hpBgColour))
+		}
+	} else {
+		if show, mobID, hp, maxHP, hpFgColour, hpBgColour := mob.HasHPBar(); show {
+			pool.instance.Send(packetMobShowBossHP(mobID, hp, maxHP, hpFgColour, hpBgColour))
+		}
 	}
 }
 
@@ -471,8 +540,10 @@ func (pool *Data) attemptMobSpawn(poolReset bool) {
 		boundaryCheck := false
 		count := 0
 
-		for i, v := range pool.mobs {
-			activePos[i] = v.Pos()
+		index := 0
+		for _, v := range pool.mobs {
+			activePos[index] = v.Pos()
+			index++
 		}
 
 		for _, spwnMob := range pool.spawnableMobs {
@@ -510,8 +581,12 @@ func (pool *Data) attemptMobSpawn(poolReset bool) {
 				}
 
 				if add {
-					spwnMob.SetSpawnID(pool.nextID())
-					mobsToSpawn = append(mobsToSpawn, spwnMob)
+					id, err := pool.nextMobID()
+
+					if err == nil {
+						spwnMob.SetSpawnID(id)
+						mobsToSpawn = append(mobsToSpawn, spwnMob)
+					}
 				}
 
 				boundaryCheck = false
@@ -525,7 +600,8 @@ func (pool *Data) attemptMobSpawn(poolReset bool) {
 
 		for mobCount > 0 && len(mobsToSpawn) > 0 {
 			ind := rand.Intn(len(mobsToSpawn))
-			pool.spawnMob(mobsToSpawn[ind], false)
+			newMob := mobsToSpawn[ind]
+			pool.spawnMob(&newMob, false)
 
 			mobsToSpawn[ind] = mobsToSpawn[len(mobsToSpawn)-1]
 			mobsToSpawn = mobsToSpawn[:len(mobsToSpawn)-1]
@@ -539,10 +615,8 @@ func (pool *Data) attemptMobSpawn(poolReset bool) {
 
 // GetMobFromID returns the mob data from mobID
 func (pool *Data) GetMobFromID(mobID int32) (mob.Data, error) {
-	for _, m := range pool.mobs {
-		if m.SpawnID() == mobID {
-			return m, nil
-		}
+	if m, ok := pool.mobs[mobID]; ok {
+		return *m, nil
 	}
 
 	return mob.Data{}, fmt.Errorf("Could not find mob with id %d", mobID)
