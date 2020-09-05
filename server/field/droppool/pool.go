@@ -32,7 +32,7 @@ type controller interface {
 type Data struct {
 	instance field
 	poolID   int32
-	drops    map[int32]drop
+	drops    map[int32]drop // If this struct doesn't stay static change to a ptr
 }
 
 // CreateNewPool for drops

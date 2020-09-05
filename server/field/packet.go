@@ -85,6 +85,17 @@ func packetMapRemoveMysticDoor(spawnID int32, instant bool) mpacket.Packet {
 	return p
 }
 
+func packetMapBoat(show bool) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelBoat)
+	if show {
+		p.WriteInt16(0x01)
+	} else {
+		p.WriteInt16(0x02)
+	}
+
+	return p
+}
+
 // func packetMapPortal(srcMap, dstmap int32, pos pos.Data) mpacket.Packet {
 // 	p := mpacket.CreateWithOpcode(0x2d)
 // 	p.WriteByte(26)
