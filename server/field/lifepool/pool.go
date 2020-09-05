@@ -171,7 +171,7 @@ func (pool *Data) nextNpcID() (int32, error) {
 			pool.npcID = 1
 		}
 
-		if _, ok := pool.mobs[pool.npcID]; !ok {
+		if _, ok := pool.npcs[pool.npcID]; !ok {
 			return pool.npcID, nil
 		}
 	}
