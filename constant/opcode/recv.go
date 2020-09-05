@@ -44,6 +44,6 @@ const (
 	RecvChannelAddBuddy            byte = 0x55
 	RecvChannelUseMysticDoor       byte = 0x58
 	RecvChannelMobControl          byte = 0x6A
-	RecvChannelMobEffect           byte = 0x6B
+	RecvChannelDistance            byte = 0x6B
 	RecvChannelNpcMovement         byte = 0x6F
 )

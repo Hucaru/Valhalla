@@ -68,8 +68,8 @@ func (server *ChannelServer) HandleClientPacket(conn mnet.Client, reader mpacket
 		server.playerUseMysticDoor(conn, reader)
 	case opcode.RecvChannelMobControl:
 		server.mobControl(conn, reader)
-	case opcode.RecvChannelMobEffect:
-		server.mobEffect(conn, reader)
+	case opcode.RecvChannelDistance:
+		server.mobDistance(conn, reader)
 	case opcode.RecvChannelNpcMovement:
 		server.npcMovement(conn, reader)
 	default:
