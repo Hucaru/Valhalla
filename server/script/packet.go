@@ -158,18 +158,19 @@ func packetShopResult(code byte) mpacket.Packet {
 	return p
 }
 
-func packetShopContinue() mpacket.Packet {
+func PacketShopContinue() mpacket.Packet {
 	return packetShopResult(0x08)
 }
 
-func packetShopNotEnoughStock() mpacket.Packet {
+func PacketShopNotEnoughStock() mpacket.Packet {
 	return packetShopResult(0x09)
 }
 
-func packetShopNotEnoughMesos() mpacket.Packet {
+func PacketShopNotEnoughMesos() mpacket.Packet {
 	return packetShopResult(0x0A)
 }
 
+// TODO: Move this into rooms?
 func packetTradeError() mpacket.Packet {
 	return packetShopResult(0xFF)
 }

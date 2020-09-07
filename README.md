@@ -64,7 +64,7 @@ Channel server:
 - [x] NPC visible
 - [x] NPC movement
 - [x] NPC basic chat
-- [ ] NPC shops
+- [x] NPC shops
 - [ ] NPC stylist
 - [ ] NPC storage
 - [ ] PQ scripts
@@ -101,6 +101,7 @@ Metrics:
 - [ ] Monster kill rate
 - [ ] Ongoing trades
 - [ ] Ongoing minigames
+- [ ] Ongoing npc script interactions
 
 See screenshots section for an example Grafana dashboard
 

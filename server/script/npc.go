@@ -16,6 +16,8 @@ type npcState struct {
 
 	// flags
 	yes, no, next, back bool
+
+	goods [][]int32
 }
 
 func (state *npcState) SendBackNext(msg string, back, next bool) {
@@ -47,8 +49,8 @@ func (state *npcState) SendStyles(msg string, styles []int32) {
 }
 
 func (state *npcState) SendShop(goods [][]int32) {
+	state.goods = goods
 	state.conn.Send(packetShop(state.npcID, goods))
-	state.terminate = true
 }
 
 func (state *npcState) Terminate() {
@@ -81,6 +83,10 @@ func (state npcState) Next() bool {
 
 func (state npcState) Back() bool {
 	return state.back
+}
+
+func (state npcState) Goods() [][]int32 {
+	return state.goods
 }
 
 // NpcChatController of the conversation
@@ -122,6 +128,11 @@ func (controller *NpcChatController) Run(p *player.Data) bool {
 	controller.runFunc(&controller.state, p)
 
 	return controller.state.terminate
+}
+
+// State struct of the npc
+func (controller *NpcChatController) State() npcState {
+	return controller.state
 }
 
 // ClearFlags within the state

@@ -6,6 +6,8 @@ import (
 
 	"github.com/Hucaru/Valhalla/mnet"
 	"github.com/Hucaru/Valhalla/mpacket"
+	"github.com/Hucaru/Valhalla/nx"
+	"github.com/Hucaru/Valhalla/server/item"
 	"github.com/Hucaru/Valhalla/server/script"
 	"github.com/dop251/goja"
 )
@@ -234,18 +236,73 @@ func (server *ChannelServer) npcChatContinue(conn mnet.Client, reader mpacket.Re
 }
 
 func (server *ChannelServer) npcShop(conn mnet.Client, reader mpacket.Reader) {
+	plr, err := server.players.getFromConn(conn)
+
+	if err != nil {
+		return
+	}
+
 	operation := reader.ReadByte()
 	switch operation {
 	case 0: // buy
 		index := reader.ReadInt16()
 		itemID := reader.ReadInt32()
 		amount := reader.ReadInt16()
-		fmt.Println("Buying:", itemID, "[", index, "], amount:", amount)
+
+		newItem, err := item.CreateAverageFromID(itemID, amount)
+
+		if err != nil {
+			return
+		}
+
+		if controller, ok := server.npcChat[conn]; ok {
+			goods := controller.State().Goods()
+
+			if int(index) < len(goods) && index > -1 {
+				if len(goods[index]) == 1 { // Default price
+					item, err := nx.GetItem(itemID)
+
+					if err != nil {
+						return
+					}
+
+					plr.GiveMesos(-1 * item.Price)
+				} else if len(goods[index]) == 2 { // Custom price
+					plr.GiveMesos(-1 * goods[index][1])
+				} else {
+					return // bad shop slice
+				}
+
+				plr.GiveItem(newItem, server.db)
+				plr.Send(script.PacketShopContinue())
+			}
+
+		}
 	case 1: // sell
 		slotPos := reader.ReadInt16()
 		itemID := reader.ReadInt32()
 		amount := reader.ReadInt16()
+
 		fmt.Println("Selling:", itemID, "[", slotPos, "], amount:", amount)
+
+		item, err := nx.GetItem(itemID)
+
+		if err != nil {
+			return
+		}
+
+		_, err = plr.TakeItem(itemID, amount)
+
+		if err != nil {
+			return
+		}
+
+		plr.GiveMesos(item.Price)
+		plr.Send(script.PacketShopContinue())
+	case 3: // exit
+		if _, ok := server.npcChat[conn]; ok {
+			delete(server.npcChat, conn) // delete here as we need access to shop goods
+		}
 	default:
 		log.Println("Unkown shop operation packet:", reader)
 	}
