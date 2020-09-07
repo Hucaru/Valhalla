@@ -1,4 +1,4 @@
-package npc
+package script
 
 import (
 	"math"
@@ -9,7 +9,7 @@ import (
 	"github.com/Hucaru/Valhalla/server/item"
 )
 
-func PacketChatBackNext(npcID int32, msg string, front, back bool) mpacket.Packet {
+func packetChatBackNext(npcID int32, msg string, front, back bool) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelNpcDialogueBox)
 	p.WriteByte(4)
 	p.WriteInt32(npcID)
@@ -21,7 +21,11 @@ func PacketChatBackNext(npcID int32, msg string, front, back bool) mpacket.Packe
 	return p
 }
 
-func PacketChatYesNo(npcID int32, msg string) mpacket.Packet {
+func packetChatOk(npcID int32, msg string) mpacket.Packet {
+	return packetChatBackNext(npcID, msg, false, false)
+}
+
+func packetChatYesNo(npcID int32, msg string) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelNpcDialogueBox)
 	p.WriteByte(4)
 	p.WriteInt32(npcID)
@@ -31,7 +35,7 @@ func PacketChatYesNo(npcID int32, msg string) mpacket.Packet {
 	return p
 }
 
-func PacketChatUserString(npcID int32, msg string, defaultInput string, minLength, maxLength int16) mpacket.Packet {
+func packetChatUserString(npcID int32, msg string, defaultInput string, minLength, maxLength int16) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelNpcDialogueBox)
 	p.WriteByte(4)
 	p.WriteInt32(npcID)
@@ -44,7 +48,7 @@ func PacketChatUserString(npcID int32, msg string, defaultInput string, minLengt
 	return p
 }
 
-func PacketChatUserNumber(npcID int32, msg string, defaultInput, minLength, maxLength int32) mpacket.Packet {
+func packetChatUserNumber(npcID int32, msg string, defaultInput, minLength, maxLength int32) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelNpcDialogueBox)
 	p.WriteByte(4)
 	p.WriteInt32(npcID)
@@ -57,7 +61,7 @@ func PacketChatUserNumber(npcID int32, msg string, defaultInput, minLength, maxL
 	return p
 }
 
-func PacketChatSelection(npcID int32, msg string) mpacket.Packet {
+func packetChatSelection(npcID int32, msg string) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelNpcDialogueBox)
 	p.WriteByte(4)
 	p.WriteInt32(npcID)
@@ -67,7 +71,7 @@ func PacketChatSelection(npcID int32, msg string) mpacket.Packet {
 	return p
 }
 
-func PacketChatStyleWindow(npcID int32, msg string, styles []int32) mpacket.Packet {
+func packetChatStyleWindow(npcID int32, msg string, styles []int32) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelNpcDialogueBox)
 	p.WriteByte(4)
 	p.WriteInt32(npcID)
@@ -82,21 +86,37 @@ func PacketChatStyleWindow(npcID int32, msg string, styles []int32) mpacket.Pack
 	return p
 }
 
-func PacketChatUnkown(npcID int32, msg string) mpacket.Packet {
+func PacketChatPet(npcID int32, msg string, pets map[int64]byte) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelNpcDialogueBox)
 	p.WriteByte(4)
 	p.WriteInt32(npcID)
 	p.WriteByte(6)
 	p.WriteString(msg)
-	// Unkown from here
-	p.WriteByte(0)
-	p.WriteBytes([]byte{}) // buffer for something to be memcopy in client
-	p.WriteByte(0)
+	p.WriteByte(byte(len(pets)))
+
+	for cashID, invSlot := range pets {
+		p.WriteInt64(cashID)
+		p.WriteByte(invSlot)
+	}
 
 	return p
 }
 
-func PacketShop(npcID int32, items [][]int32) mpacket.Packet {
+func PacketChatUnkown(npcID int32, msg string) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelNpcDialogueBox)
+	p.WriteByte(4)
+	p.WriteInt32(npcID)
+	p.WriteByte(7)
+	p.WriteString(msg)
+	p.WriteByte(1)
+	p.WriteByte(1)
+	p.WriteInt32(0) // decode buffer
+	p.WriteByte(1)
+
+	return p
+}
+
+func packetShop(npcID int32, items [][]int32) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelNpcShop)
 	p.WriteInt32(npcID)
 	p.WriteInt16(int16(len(items)))
@@ -131,35 +151,44 @@ func PacketShop(npcID int32, items [][]int32) mpacket.Packet {
 	return p
 }
 
-func PacketShopResult(code byte) mpacket.Packet {
+func packetShopResult(code byte) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelNpcShopResult)
 	p.WriteByte(code)
 
 	return p
 }
 
-func PacketShopContinue() mpacket.Packet {
-	return PacketShopResult(0x08)
+func packetShopContinue() mpacket.Packet {
+	return packetShopResult(0x08)
 }
 
-func PacketShopNotEnoughStock() mpacket.Packet {
-	return PacketShopResult(0x09)
+func packetShopNotEnoughStock() mpacket.Packet {
+	return packetShopResult(0x09)
 }
 
-func PacketShopNotEnoughMesos() mpacket.Packet {
-	return PacketShopResult(0x0A)
+func packetShopNotEnoughMesos() mpacket.Packet {
+	return packetShopResult(0x0A)
 }
 
-func PacketTradeError() mpacket.Packet {
-	return PacketShopResult(0xFF)
+func packetTradeError() mpacket.Packet {
+	return packetShopResult(0xFF)
 }
 
 func PacketStorageShow(npcID, storageMesos int32, storageSlots byte, items []item.Data) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelNpcStorage)
 	p.WriteInt32(npcID)
 	p.WriteByte(storageSlots)
-	p.WriteInt16(0x7e)
+	// flag for if to show mesos, and item tabs 1 - 5
+	// mesos = 0x02
+	// equip = 0x04
+	// use = 0x08
+	// setup = 0x10
+	// etc = equip (old version bug)/0x20
+	// pet = 0x40
+	p.WriteInt16(0x7e) // allow everything
 	p.WriteInt32(storageMesos)
+	// loop over valid tabs and show items
+	// p.WriteByte(length of items in this inventory slot)
 	for _, item := range items {
 		p.WriteBytes(item.ShortBytes())
 	}
