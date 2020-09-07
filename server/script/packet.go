@@ -9,14 +9,14 @@ import (
 	"github.com/Hucaru/Valhalla/server/item"
 )
 
-func packetChatBackNext(npcID int32, msg string, front, back bool) mpacket.Packet {
+func packetChatBackNext(npcID int32, msg string, next, back bool) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelNpcDialogueBox)
 	p.WriteByte(4)
 	p.WriteInt32(npcID)
 	p.WriteByte(0)
 	p.WriteString(msg)
-	p.WriteBool(front)
 	p.WriteBool(back)
+	p.WriteBool(next)
 
 	return p
 }

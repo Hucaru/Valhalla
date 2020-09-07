@@ -18,6 +18,7 @@ import (
 	"github.com/Hucaru/Valhalla/server/message"
 	"github.com/Hucaru/Valhalla/server/metrics"
 	"github.com/Hucaru/Valhalla/server/player"
+	"github.com/Hucaru/Valhalla/server/script"
 )
 
 type players []*player.Data
@@ -90,11 +91,14 @@ type ChannelServer struct {
 	channels  [20]channel
 	fields    map[int32]*field.Field
 	header    string
+	npcChat   map[mnet.Client]*script.NpcChatController
 }
 
 // Initialise the server
 func (server *ChannelServer) Initialise(work chan func(), dbuser, dbpassword, dbaddress, dbport, dbdatabase string) {
 	server.dispatch = work
+
+	server.npcChat = make(map[mnet.Client]*script.NpcChatController)
 
 	var err error
 	server.db, err = sql.Open("mysql", dbuser+":"+dbpassword+"@tcp("+dbaddress+":"+dbport+")/"+dbdatabase)
@@ -276,6 +280,10 @@ func (server *ChannelServer) ClientDisconnected(conn mnet.Client) {
 
 	if err != nil {
 		log.Println(err)
+	}
+
+	if _, ok := server.npcChat[conn]; ok {
+		delete(server.npcChat, conn)
 	}
 
 	server.players.removeFromConn(conn)
