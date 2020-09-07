@@ -47,6 +47,7 @@ func (server *ChannelServer) HandleClientPacket(conn mnet.Client, reader mpacket
 	case opcode.RecvChannelNpcDialogueContinue:
 		server.npcChatContinue(conn, reader)
 	case opcode.RecvChannelNpcShop:
+		server.npcShop(conn, reader)
 	case opcode.RecvChannelInvMoveItem:
 		server.playerMoveInventoryItem(conn, reader)
 	case opcode.RecvChannelAddStatPoint:

@@ -2,6 +2,7 @@ package server
 
 import (
 	"fmt"
+	"log"
 
 	"github.com/Hucaru/Valhalla/mnet"
 	"github.com/Hucaru/Valhalla/mpacket"
@@ -61,12 +62,11 @@ func (server *ChannelServer) npcChatStart(conn mnet.Client, reader mpacket.Reade
 		return
 	}
 
-	// conn.Send(script.PacketChatSelection(npcData.ID(), "#e#h ##n the NPC #bchat #dsystem #gis #r#enot #k#nimplemented\r\n#L1#Option 1 #l#L2#Option 2 #l#L3#Option 3 #l"))
-	// conn.Send(script.PacketChatStyleWindow(npcData.ID(), "styles", []int32{31050, 31040, 31000, 31060, 31090, 31020, 31130, 31120, 31140, 31330, 31010}))
-
 	// test script
 	const tmp = `
 	var state = 0
+	var styles = [31050, 31040, 31000, 31060, 31090, 31020, 31130, 31120, 31140, 31330, 31010]
+	var goods = [ [1332020],[1332020, 1],[1332009, 0] ]
 
 	function run(npc, player) {
 		if (npc.next()) {
@@ -75,14 +75,59 @@ func (server *ChannelServer) npcChatStart(conn mnet.Client, reader mpacket.Reade
 			state--
 		}
 
-		if (state == 0) {
+		if (state == 2) {
+			if (npc.yes()) {
+				state = 3
+			} else if (npc.no()) {
+				state = 4
+			}
+		} else if (state == 4) {
+			if (npc.selection() == 1) {
+				state = 0
+			} else if (npc.selection() == 2) {
+				state = 5
+			} else if (npc.selection() == 3) {
+				state = 6
+			} else if (npc.selection() == 4) {
+				state = 7
+			} else if (npc.selection() == 5) {
+				state = 8
+			}
+		}
+
+		switch(state) {
+		case 0:
 			npc.sendBackNext("first", false, true)
-		} else if (state == 1) {
+			break
+		case 1:
 			npc.sendBackNext("second", true, false)
-		} else if (state == 2 ) {
-			npc.sendOK("finished")
+			break
+		case 2:
+			npc.sendYesNo("finished")
+			break
+		case 3:
+			npc.sendOK("selection:" + npc.selection() + ", input number:" + npc.inputNumber() + ", input text: " + npc.inputString())
 			npc.terminate()
-		} else {
+			break
+		case 4:
+			npc.sendSelection("Select from one of the following:\r\n#L1#Back to start #l\r\n#L2#Styles#l\r\n#L3#Input number#l#L4#Input text#l\r\n#L5#Shop#l")
+			break
+		case 5:
+			npc.sendStyles("Select from the following", styles)
+			state = 3
+			break
+		case 6:
+			npc.sendInputNumber("Input a number:", 100, 0, 100)
+			state = 3
+			break
+		case 7:
+			npc.sendInputText("Input text:", "default", 0, 100)
+			state = 3
+			break
+		case 8:
+			npc.sendShop(goods)
+			break
+		default:
 			npc.sendOK("state " + state)
 			npc.terminate()
 		}
@@ -99,13 +144,12 @@ func (server *ChannelServer) npcChatStart(conn mnet.Client, reader mpacket.Reade
 	controller, err := script.CreateNewNpcController(npcData.ID(), conn, npcProgram)
 
 	if err != nil {
-		fmt.Println("script init:", err)
+		log.Println("script init:", err)
 	}
 
 	server.npcChat[conn] = controller
 	if controller.Run(plr) {
 		delete(server.npcChat, conn)
-		fmt.Println("deleted on first run")
 	}
 }
 
@@ -123,47 +167,86 @@ func (server *ChannelServer) npcChatContinue(conn mnet.Client, reader mpacket.Re
 
 	switch msgType {
 	case 0: // next/back
-		opcode := reader.ReadByte()
+		value := reader.ReadByte()
 
-		if opcode == 0 { //back
+		switch value {
+		case 0: // back
 			controller.SetNextBack(false, true)
-		} else if opcode == 1 { // next
+		case 1: // next
 			controller.SetNextBack(true, false)
-		} else if opcode == 0xff { // 255/0xff end chat
+		case 255: // 255/0xff end chat
 			terminate = true
-		} else {
-			fmt.Println("unknown next/back:", opcode)
+		default:
+			terminate = true
+			log.Println("unknown next/back:", value)
 		}
 	case 1: // yes/no, ok
-		fmt.Println("yes/no:", reader.ReadByte())
+		value := reader.ReadByte()
+
+		switch value {
+		case 0: // no
+			controller.SetYesNo(false, true)
+		case 1: // yes, ok
+			controller.SetYesNo(true, false)
+		default:
+			log.Println("unknown yes/no:", value)
+		}
 	case 2: // string input
-		fmt.Println("text input - input made:", reader.ReadBool(), "text:", reader.ReadString(reader.ReadInt16()))
-		// no input is end chat button
+		if reader.ReadBool() {
+			controller.SetTextInput(reader.ReadString(reader.ReadInt16()))
+		} else {
+			terminate = true
+		}
 	case 3: // number input
-		fmt.Println("number input - input made:", reader.ReadBool(), "number:", reader.ReadInt32())
-		// no input is end chat button
+		if reader.ReadBool() {
+			controller.SetNumberInput(reader.ReadInt32())
+		} else {
+			terminate = true
+		}
 	case 4: // select option
-		fmt.Println("select option - option selected:", reader.ReadBool(), "option index:", reader.ReadInt32())
-		// no selection is end chat button
-	case 5:
-		fmt.Println("style selection - option selected:", reader.ReadBool(), "option index:", reader.ReadByte())
-		// no selection is end chat button
+		if reader.ReadBool() {
+			controller.SetOptionSelect(reader.ReadInt32())
+		} else {
+			terminate = true
+		}
+	case 5: // style window (no way to discern between cancel button and end chat selection)
+		if reader.ReadBool() {
+			controller.SetOptionSelect(int32(reader.ReadByte()))
+		} else {
+			terminate = true
+		}
 	case 6:
 		fmt.Println("pet window:", reader)
 	default:
-		fmt.Println("Unkown npc chat continue packet:", reader)
+		log.Println("Unkown npc chat continue packet:", reader)
 	}
 
 	plr, err := server.players.getFromConn(conn)
 
 	if err != nil {
 		delete(server.npcChat, conn)
-		fmt.Println("deleted in player get error")
 		return
 	}
 
 	if terminate || controller.Run(plr) {
 		delete(server.npcChat, conn)
-		fmt.Println("deleted in continue")
+	}
+}
+
+func (server *ChannelServer) npcShop(conn mnet.Client, reader mpacket.Reader) {
+	operation := reader.ReadByte()
+	switch operation {
+	case 0: // buy
+		index := reader.ReadInt16()
+		itemID := reader.ReadInt32()
+		amount := reader.ReadInt16()
+		fmt.Println("Buying:", itemID, "[", index, "], amount:", amount)
+	case 1: // sell
+		slotPos := reader.ReadInt16()
+		itemID := reader.ReadInt32()
+		amount := reader.ReadInt16()
+		fmt.Println("Selling:", itemID, "[", slotPos, "], amount:", amount)
+	default:
+		log.Println("Unkown shop operation packet:", reader)
 	}
 }

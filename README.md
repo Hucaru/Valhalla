@@ -63,12 +63,13 @@ Channel server:
 - [x] Player stats
 - [x] NPC visible
 - [x] NPC movement
-- [ ] NPC basic chat
+- [x] NPC basic chat
 - [ ] NPC shops
 - [ ] NPC stylist
 - [ ] NPC storage
 - [ ] PQ scripts
 - [ ] Event scripts
+- [ ] Load scripts from folder (incl. hot loading)
 - [x] Map instancing
 - [x] Mob visible
 - [x] Mob movement

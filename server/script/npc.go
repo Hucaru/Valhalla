@@ -6,7 +6,6 @@ import (
 	"github.com/dop251/goja"
 )
 
-// NpcState of the controlled npc
 type npcState struct {
 	npcID       int32
 	conn        mnet.Client
@@ -25,6 +24,31 @@ func (state *npcState) SendBackNext(msg string, back, next bool) {
 
 func (state *npcState) SendOK(msg string) {
 	state.conn.Send(packetChatOk(state.npcID, msg))
+}
+
+func (state *npcState) SendYesNo(msg string) {
+	state.conn.Send(packetChatYesNo(state.npcID, msg))
+}
+
+func (state *npcState) SendInputText(msg, defaultInput string, minLength, maxLength int16) {
+	state.conn.Send(packetChatUserString(state.npcID, msg, defaultInput, minLength, maxLength))
+}
+
+func (state *npcState) SendInputNumber(msg string, defaultInput, minLength, maxLength int32) {
+	state.conn.Send(packetChatUserNumber(state.npcID, msg, defaultInput, minLength, maxLength))
+}
+
+func (state *npcState) SendSelection(msg string) {
+	state.conn.Send(packetChatSelection(state.npcID, msg))
+}
+
+func (state *npcState) SendStyles(msg string, styles []int32) {
+	state.conn.Send(packetChatStyleWindow(state.npcID, msg, styles))
+}
+
+func (state *npcState) SendShop(goods [][]int32) {
+	state.conn.Send(packetShop(state.npcID, goods))
+	state.terminate = true
 }
 
 func (state *npcState) Terminate() {
@@ -57,10 +81,6 @@ func (state npcState) Next() bool {
 
 func (state npcState) Back() bool {
 	return state.back
-}
-
-func (state *npcState) Warp(mapID int32) {
-
 }
 
 // NpcChatController of the conversation
@@ -104,6 +124,7 @@ func (controller *NpcChatController) Run(p *player.Data) bool {
 	return controller.state.terminate
 }
 
+// ClearFlags within the state
 func (controller *NpcChatController) ClearFlags() {
 	controller.state.next = false
 	controller.state.back = false
@@ -114,23 +135,29 @@ func (controller *NpcChatController) ClearFlags() {
 	controller.state.no = false
 }
 
+// SetNextBack flags
 func (controller *NpcChatController) SetNextBack(next, back bool) {
 	controller.state.next = next
 	controller.state.back = back
 }
 
+// SetYesNo flags
 func (controller *NpcChatController) SetYesNo(yes, no bool) {
-
+	controller.state.yes = yes
+	controller.state.no = no
 }
 
+// SetTextInput option
 func (controller *NpcChatController) SetTextInput(input string) {
-
+	controller.state.inputString = input
 }
 
+// SetNumberInput option
 func (controller *NpcChatController) SetNumberInput(input int32) {
-
+	controller.state.inputNumber = input
 }
 
-func (controller *NpcChatController) SetOptionSelect(index int32) {
-
+// SetOptionSelect index
+func (controller *NpcChatController) SetOptionSelect(selection int32) {
+	controller.state.selection = selection
 }
