@@ -37,8 +37,11 @@ func (s *Store) Get(name string) (*goja.Program, bool) {
 // Monitor the script directory and hot load scripts
 func (s *Store) Monitor() {
 	err := filepath.Walk(s.folder, func(path string, info os.FileInfo, err error) error {
+		if info.IsDir() {
+			return nil
+		}
+
 		s.dispatch <- func() {
-			log.Println("Script: Loaded", path)
 			name, program, err := createProgramFromFilename(path)
 
 			if err == nil {
