@@ -34,30 +34,29 @@ func (s *Store) Get(name string) (*goja.Program, bool) {
 	return program, ok
 }
 
-// Monitor the script directory and hot load scripts
-func (s *Store) Monitor() {
+// LoadScripts from folder
+func (s *Store) LoadScripts() error {
 	err := filepath.Walk(s.folder, func(path string, info os.FileInfo, err error) error {
 		if info.IsDir() {
 			return nil
 		}
 
-		s.dispatch <- func() {
-			name, program, err := createProgramFromFilename(path)
+		name, program, err := createProgramFromFilename(path)
 
-			if err == nil {
-				s.scripts[name] = program
-			} else {
-				log.Println("Script compiling:", err)
-			}
+		if err == nil {
+			s.scripts[name] = program
+		} else {
+			log.Println("Script compiling:", err)
 		}
 
 		return nil
 	})
 
-	if err != nil {
-		return
-	}
+	return err
+}
 
+// Monitor the script directory and hot load scripts
+func (s *Store) Monitor() {
 	watcher, err := fsnotify.NewWatcher()
 
 	if err != nil {

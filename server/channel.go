@@ -102,6 +102,10 @@ func (server *ChannelServer) Initialise(work chan func(), dbuser, dbpassword, db
 	server.npcChat = make(map[mnet.Client]*script.NpcChatController)
 
 	server.npcScriptStore = script.CreateStore("scripts/npc", server.dispatch) // make folder a config param
+	start := time.Now()
+	server.npcScriptStore.LoadScripts()
+	elapsed := time.Since(start)
+	log.Println("Loaded npc scripts in", elapsed)
 	go server.npcScriptStore.Monitor()
 
 	var err error
