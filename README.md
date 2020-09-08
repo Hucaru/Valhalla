@@ -69,7 +69,7 @@ Channel server:
 - [ ] NPC storage
 - [ ] PQ scripts
 - [ ] Event scripts
-- [ ] Load scripts from folder (incl. hot loading)
+- [x] Load scripts from folder (incl. hot loading)
 - [x] Map instancing
 - [x] Mob visible
 - [x] Mob movement
