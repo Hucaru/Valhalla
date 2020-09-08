@@ -78,20 +78,21 @@ func (p *players) removeFromConn(conn mnet.Client) error {
 
 // ChannelServer state
 type ChannelServer struct {
-	id        byte
-	worldName string
-	db        *sql.DB
-	dispatch  chan func()
-	world     mnet.Server
-	ip        []byte
-	port      int16
-	maxPop    int16
-	migrating []mnet.Client
-	players   players
-	channels  [20]channel
-	fields    map[int32]*field.Field
-	header    string
-	npcChat   map[mnet.Client]*script.NpcChatController
+	id             byte
+	worldName      string
+	db             *sql.DB
+	dispatch       chan func()
+	world          mnet.Server
+	ip             []byte
+	port           int16
+	maxPop         int16
+	migrating      []mnet.Client
+	players        players
+	channels       [20]channel
+	fields         map[int32]*field.Field
+	header         string
+	npcChat        map[mnet.Client]*script.NpcChatController
+	npcScriptStore *script.Store
 }
 
 // Initialise the server
@@ -99,6 +100,9 @@ func (server *ChannelServer) Initialise(work chan func(), dbuser, dbpassword, db
 	server.dispatch = work
 
 	server.npcChat = make(map[mnet.Client]*script.NpcChatController)
+
+	server.npcScriptStore = script.CreateStore("scripts/npc", server.dispatch) // make folder a config param
+	go server.npcScriptStore.Monitor()
 
 	var err error
 	server.db, err = sql.Open("mysql", dbuser+":"+dbpassword+"@tcp("+dbaddress+":"+dbport+")/"+dbdatabase)

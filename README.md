@@ -65,7 +65,7 @@ Channel server:
 - [x] NPC movement
 - [x] NPC basic chat
 - [x] NPC shops
-- [ ] NPC stylist
+- [x] NPC stylist
 - [ ] NPC storage
 - [ ] PQ scripts
 - [ ] Event scripts

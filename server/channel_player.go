@@ -500,7 +500,17 @@ func (server ChannelServer) playerUsePortal(conn mnet.Client, reader mpacket.Rea
 				return
 			}
 
-			portal, err := srcInst.GetRandomSpawnPortal()
+			dstInst, err := dstField.GetInstance(plr.InstanceID())
+
+			if err != nil {
+				dstInst, err = dstField.GetInstance(0)
+
+				if err != nil {
+					return
+				}
+			}
+
+			portal, err := dstInst.GetRandomSpawnPortal()
 
 			if err != nil {
 				conn.Send(packetPlayerNoChange())

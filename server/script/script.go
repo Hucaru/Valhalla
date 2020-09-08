@@ -1,116 +1,105 @@
 package script
 
 import (
+	"fmt"
 	"io/ioutil"
 	"log"
-	"os"
 	"path/filepath"
 	"strings"
 
+	"github.com/dop251/goja"
 	"github.com/fsnotify/fsnotify"
 )
 
-type scriptFile struct {
-	name     string
-	contents string
-	remove   bool
+// Store container
+type Store struct {
+	folder   string
+	scripts  map[string]*goja.Program
+	dispatch chan func()
 }
 
-var fileChan = make(chan scriptFile)
-
-func init() {
-	go collector()
+func (s Store) String() string {
+	return fmt.Sprintf("%v", s.scripts)
 }
 
-func collector() {
-	for {
-		script := <-fileChan
-
-		if script.remove {
-			loadedScripts.remove(strings.TrimSuffix(script.name, filepath.Ext(script.name)))
-		} else {
-			loadedScripts.add(script)
-		}
-	}
+// CreateStore for scripts
+func CreateStore(folder string, dispatch chan func()) *Store {
+	return &Store{folder: folder, dispatch: dispatch, scripts: make(map[string]*goja.Program)}
 }
 
-func readScript(file string) scriptFile {
-	data, err := ioutil.ReadFile(file)
-
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	script := scriptFile{name: file, contents: string(data), remove: false}
-
-	return script
+// Get script from store
+func (s *Store) Get(name string) (*goja.Program, bool) {
+	program, ok := s.scripts[name]
+	return program, ok
 }
 
-func loadScripts(directory string) {
-	scripts := []scriptFile{}
-
-	err := filepath.Walk(directory, func(path string, info os.FileInfo, err error) error {
-		if !info.IsDir() {
-			scripts = append(scripts, readScript(path))
-		}
-
-		return nil
-	})
-
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	for _, s := range scripts {
-		fileChan <- s
-	}
-}
-
-func WatchScriptDirectory(directory string) {
-	loadScripts(directory)
-
+// Monitor the script directory and hot load scripts
+func (s *Store) Monitor() {
 	watcher, err := fsnotify.NewWatcher()
 
 	if err != nil {
-		log.Fatal(err)
+		log.Println(err)
 	}
 
 	defer watcher.Close()
 
-	done := make(chan bool)
-
-	go func() {
-		for {
-			select {
-			case event, ok := <-watcher.Events:
-				if !ok {
-					done <- true
-					return
-				}
-
-				if event.Op&fsnotify.Write == fsnotify.Write || event.Op&fsnotify.Create == fsnotify.Create {
-					script := readScript(event.Name)
-					fileChan <- script
-				} else if event.Op&fsnotify.Remove == fsnotify.Remove {
-					script := scriptFile{name: event.Name, remove: true}
-					fileChan <- script
-				}
-			case err, ok := <-watcher.Errors:
-				if !ok {
-					done <- true
-					return
-				}
-
-				log.Fatal(err)
-			}
-		}
-	}()
-
-	err = watcher.Add(directory)
+	err = watcher.Add(s.folder)
 
 	if err != nil {
-		log.Fatal(err)
+		log.Println(err)
 	}
 
-	<-done
+	for {
+		select {
+		case event, ok := <-watcher.Events:
+			if !ok {
+				return
+			}
+
+			if event.Op&fsnotify.Write == fsnotify.Write || event.Op&fsnotify.Create == fsnotify.Create {
+				s.dispatch <- func() {
+					log.Println("Script:", event.Name, "modified/created")
+					name, program, err := createProgramFromFilename(event.Name)
+
+					if err == nil {
+						s.scripts[name] = program
+					} else {
+						log.Println("Script compiling:", err)
+					}
+				}
+			} else if event.Op&fsnotify.Remove == fsnotify.Remove {
+				s.dispatch <- func() {
+					if _, ok := s.scripts[event.Name]; ok {
+						log.Println("Script:", event.Name, "removed")
+						delete(s.scripts, strings.TrimSuffix(event.Name, filepath.Ext(event.Name)))
+					}
+				}
+			}
+		case err, ok := <-watcher.Errors:
+			if !ok {
+				return
+			}
+
+			log.Println(err)
+		}
+	}
+}
+
+func createProgramFromFilename(filename string) (string, *goja.Program, error) {
+	data, err := ioutil.ReadFile(filename)
+
+	if err != nil {
+		return "", nil, err
+	}
+
+	program, err := goja.Compile(filename, string(data), false)
+
+	if err != nil {
+		return "", nil, err
+	}
+
+	filename = filepath.Base(filename)
+	name := strings.TrimSuffix(filename, filepath.Ext(filename))
+
+	return name, program, nil
 }

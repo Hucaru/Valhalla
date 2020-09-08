@@ -158,6 +158,7 @@ func packetShopResult(code byte) mpacket.Packet {
 	return p
 }
 
+// PacketShopContinue tells the shop to carry on
 func PacketShopContinue() mpacket.Packet {
 	return packetShopResult(0x08)
 }
