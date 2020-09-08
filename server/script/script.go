@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -35,6 +36,25 @@ func (s *Store) Get(name string) (*goja.Program, bool) {
 
 // Monitor the script directory and hot load scripts
 func (s *Store) Monitor() {
+	err := filepath.Walk(s.folder, func(path string, info os.FileInfo, err error) error {
+		s.dispatch <- func() {
+			log.Println("Script: Loaded", path)
+			name, program, err := createProgramFromFilename(path)
+
+			if err == nil {
+				s.scripts[name] = program
+			} else {
+				log.Println("Script compiling:", err)
+			}
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		return
+	}
+
 	watcher, err := fsnotify.NewWatcher()
 
 	if err != nil {
@@ -69,9 +89,14 @@ func (s *Store) Monitor() {
 				}
 			} else if event.Op&fsnotify.Remove == fsnotify.Remove {
 				s.dispatch <- func() {
-					if _, ok := s.scripts[event.Name]; ok {
+					name := filepath.Base(event.Name)
+					name = strings.TrimSuffix(name, filepath.Ext(name))
+
+					if _, ok := s.scripts[name]; ok {
 						log.Println("Script:", event.Name, "removed")
-						delete(s.scripts, strings.TrimSuffix(event.Name, filepath.Ext(event.Name)))
+						delete(s.scripts, name)
+					} else {
+						log.Println("Script: could not find:", name, "to delete")
 					}
 				}
 			}
