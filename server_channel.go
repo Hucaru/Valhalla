@@ -16,7 +16,6 @@ import (
 	"github.com/Hucaru/Valhalla/mnet"
 	"github.com/Hucaru/Valhalla/mpacket"
 	"github.com/Hucaru/Valhalla/server/item"
-	"github.com/Hucaru/Valhalla/server/script"
 )
 
 type channelServer struct {
@@ -49,16 +48,14 @@ func (cs *channelServer) run() {
 	start := time.Now()
 	nx.LoadFile("Data.nx")
 	elapsed := time.Since(start)
-
-	item.PopulateDropTable("drops.json")
-
 	log.Println("Loaded and parsed Wizet data (NX) in", elapsed)
 
-	cs.gameState.Initialise(cs.wRecv, cs.dbConfig.User, cs.dbConfig.Password, cs.dbConfig.Address, cs.dbConfig.Port, cs.dbConfig.Database)
+	start = time.Now()
+	item.PopulateDropTable("drops.json")
+	elapsed = time.Since(start)
+	log.Println("Loaded and parsed drop data in", elapsed)
 
-	go script.WatchScriptDirectory("scripts/npc/")
-	go script.WatchScriptDirectory("scripts/event/")
-	go script.WatchScriptDirectory("scripts/admin/")
+	cs.gameState.Initialise(cs.wRecv, cs.dbConfig.User, cs.dbConfig.Password, cs.dbConfig.Address, cs.dbConfig.Port, cs.dbConfig.Database)
 
 	cs.wg.Add(1)
 	go cs.acceptNewConnections()

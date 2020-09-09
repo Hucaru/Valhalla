@@ -151,19 +151,37 @@ func LoadInventoryFromDb(db *sql.DB, charID int32) ([]Data, []Data, []Data, []Da
 }
 
 // CreatePerfectFromID creates an item with bis stats
-func CreatePerfectFromID(id int32, amount int16) (Data, error) { return createItemFromID(id, amount, 1) }
+func CreatePerfectFromID(id int32, amount int16) (Data, error) {
+	return createItemFromID(id, amount, 1, false)
+}
 
 // CreateFromID creates an item with randomised stats within a predefined percentage range
-func CreateFromID(id int32, amount int16) (Data, error) { return createItemFromID(id, amount, 0) }
+func CreateFromID(id int32, amount int16) (Data, error) {
+	return createItemFromID(id, amount, 0, false)
+}
 
 // CreateWorstFromID creates an item with wis stats
-func CreateWorstFromID(id int32, amount int16) (Data, error) { return createItemFromID(id, amount, -1) }
+func CreateWorstFromID(id int32, amount int16) (Data, error) {
+	return createItemFromID(id, amount, -1, false)
+}
 
-func createItemFromID(id int32, amount int16, bias int8) (Data, error) {
-	randomStat := func(min, max int) int16 {
-		if bias > 0 {
+// CreateAverageFromID creates an item with average stats, typically used by shops
+func CreateAverageFromID(id int32, amount int16) (Data, error) {
+	return createItemFromID(id, amount, 0, true)
+}
+
+func createItemFromID(id int32, amount int16, bias int8, average bool) (Data, error) {
+	randomStat := func(stat float64, average bool) int16 {
+		if average {
+			return int16(stat)
+		}
+
+		max := int(math.Ceil(stat * 1.1))
+		min := int(math.Floor(stat * 0.9))
+
+		if bias == 1 {
 			return int16(max)
-		} else if bias < 1 {
+		} else if bias == -1 {
 			return int16(min)
 		}
 
@@ -187,14 +205,14 @@ func createItemFromID(id int32, amount int16, bias int8) (Data, error) {
 	newItem.cash = nxInfo.Cash
 	newItem.invID = byte(id / 1e6)
 	newItem.id = id
-	newItem.accuracy = randomStat(int(math.Floor(nxInfo.IncACC*0.9)), int(math.Ceil(nxInfo.IncACC*1.1)))
-	newItem.avoid = randomStat(int(math.Floor(nxInfo.IncEVA*0.9)), int(math.Ceil(nxInfo.IncEVA*1.1)))
-	newItem.speed = randomStat(int(math.Floor(nxInfo.IncSpeed*0.9)), int(math.Ceil(nxInfo.IncSpeed*1.1)))
+	newItem.accuracy = randomStat(nxInfo.IncACC, average)
+	newItem.avoid = randomStat(nxInfo.IncEVA, average)
+	newItem.speed = randomStat(nxInfo.IncSpeed, average)
 
-	newItem.matk = randomStat(int(math.Floor(nxInfo.IncMAD*0.9)), int(math.Ceil(nxInfo.IncMAD*1.1)))
-	newItem.mdef = randomStat(int(math.Floor(nxInfo.IncMDD*0.9)), int(math.Ceil(nxInfo.IncMDD*1.1)))
-	newItem.watk = randomStat(int(math.Floor(nxInfo.IncPAD*0.9)), int(math.Ceil(nxInfo.IncPAD*1.1)))
-	newItem.wdef = randomStat(int(math.Floor(nxInfo.IncPDD*0.9)), int(math.Ceil(nxInfo.IncPDD*1.1)))
+	newItem.matk = randomStat(nxInfo.IncMAD, average)
+	newItem.mdef = randomStat(nxInfo.IncMDD, average)
+	newItem.watk = randomStat(nxInfo.IncPAD, average)
+	newItem.wdef = randomStat(nxInfo.IncPDD, average)
 
 	newItem.str = nxInfo.IncSTR
 	newItem.dex = nxInfo.IncDEX

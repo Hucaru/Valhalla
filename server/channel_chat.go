@@ -859,6 +859,19 @@ func (server *ChannelServer) gmCommand(conn mnet.Client, msg string) {
 		inst, err := field.GetInstance(plr.InstanceID())
 		pool := inst.DropPool()
 		pool.RemoveDrop(false, id)
+	case "npco":
+		// This isn't working, either incorrect opcode or script string is invalid
+		p := mpacket.CreateWithOpcode(0x9F)
+		p.WriteByte(2)        // amount
+		p.WriteInt32(9200000) // npc id
+		p.WriteString("cody") // string
+		var startDate uint32 = 1 + (1 * 100) + (2001 * 10000)
+		var endDate uint32 = 1 + (1 * 100) + (2099 * 10000)
+		p.WriteUint32(startDate)
+		p.WriteUint32(endDate)
+
+		fmt.Println(p)
+		conn.Send(p)
 	default:
 		conn.Send(message.PacketMessageRedText("Unkown gm command " + command[0]))
 	}

@@ -63,12 +63,13 @@ Channel server:
 - [x] Player stats
 - [x] NPC visible
 - [x] NPC movement
-- [ ] NPC basic chat
-- [ ] NPC shops
-- [ ] NPC stylist
+- [x] NPC basic chat
+- [x] NPC shops
+- [x] NPC stylist
 - [ ] NPC storage
 - [ ] PQ scripts
 - [ ] Event scripts
+- [x] Load scripts from folder (incl. hot loading)
 - [x] Map instancing
 - [x] Mob visible
 - [x] Mob movement
@@ -100,6 +101,7 @@ Metrics:
 - [ ] Monster kill rate
 - [ ] Ongoing trades
 - [ ] Ongoing minigames
+- [ ] Ongoing npc script interactions
 
 See screenshots section for an example Grafana dashboard
 
