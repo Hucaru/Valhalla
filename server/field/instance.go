@@ -57,8 +57,6 @@ type Instance struct {
 	portals []Portal
 	players []player
 
-	// rooms []room.Room
-
 	idCounter int32
 	town      bool
 
@@ -66,6 +64,9 @@ type Instance struct {
 
 	fieldTimer *time.Ticker
 	runUpdate  bool
+
+	showBoat   bool
+	properties map[string]interface{} // this is used to share state between npc and system scripts
 }
 
 // ID of the instance within the field
@@ -79,7 +80,7 @@ func (inst *Instance) delete() error {
 
 func (inst Instance) String() string {
 	var info string
-
+	info += "field ID: " + strconv.Itoa(int(inst.fieldID)) + ", "
 	info += "players(" + strconv.Itoa(len(inst.players)) + "): "
 
 	for _, v := range inst.players {
@@ -126,7 +127,9 @@ func (inst *Instance) AddPlayer(plr player) error {
 	inst.dropPool.PlayerShowDrops(plr)
 	inst.roomPool.PlayerShowRooms(plr)
 
-	// Play map animations e.g. ship arriving to dock
+	if inst.showBoat {
+		plr.Send(packetMapBoat(inst.showBoat))
+	}
 
 	inst.players = append(inst.players, plr)
 
@@ -306,4 +309,10 @@ func (inst *Instance) fieldUpdate(t time.Time) {
 // CalculateFinalDropPos from a starting position
 func (inst *Instance) CalculateFinalDropPos(from pos.Data) pos.Data {
 	return from
+}
+
+// ShowBoat to instance if input bool is set to true
+func (inst *Instance) ShowBoat(show bool) {
+	inst.Send(packetMapBoat(show))
+	inst.showBoat = show
 }

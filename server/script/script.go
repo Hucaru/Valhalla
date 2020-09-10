@@ -19,13 +19,17 @@ type Store struct {
 	dispatch chan func()
 }
 
+// CreateStore for scripts
+func CreateStore(folder string, dispatch chan func()) *Store {
+	return &Store{folder: folder, dispatch: dispatch, scripts: make(map[string]*goja.Program)}
+}
+
 func (s Store) String() string {
 	return fmt.Sprintf("%v", s.scripts)
 }
 
-// CreateStore for scripts
-func CreateStore(folder string, dispatch chan func()) *Store {
-	return &Store{folder: folder, dispatch: dispatch, scripts: make(map[string]*goja.Program)}
+func (s *Store) Scripts() map[string]*goja.Program {
+	return s.scripts
 }
 
 // Get script from store

@@ -78,21 +78,23 @@ func (p *players) removeFromConn(conn mnet.Client) error {
 
 // ChannelServer state
 type ChannelServer struct {
-	id             byte
-	worldName      string
-	db             *sql.DB
-	dispatch       chan func()
-	world          mnet.Server
-	ip             []byte
-	port           int16
-	maxPop         int16
-	migrating      []mnet.Client
-	players        players
-	channels       [20]channel
-	fields         map[int32]*field.Field
-	header         string
-	npcChat        map[mnet.Client]*script.NpcChatController
-	npcScriptStore *script.Store
+	id                byte
+	worldName         string
+	db                *sql.DB
+	dispatch          chan func()
+	world             mnet.Server
+	ip                []byte
+	port              int16
+	maxPop            int16
+	migrating         []mnet.Client
+	players           players
+	channels          [20]channel
+	fields            map[int32]*field.Field
+	header            string
+	npcChat           map[mnet.Client]*script.NpcChatController
+	npcScriptStore    *script.Store
+	systemCntrl       map[string]*script.SystemController
+	systemScriptStore *script.Store
 }
 
 // Initialise the server
@@ -100,6 +102,7 @@ func (server *ChannelServer) Initialise(work chan func(), dbuser, dbpassword, db
 	server.dispatch = work
 
 	server.npcChat = make(map[mnet.Client]*script.NpcChatController)
+	server.systemCntrl = make(map[string]*script.SystemController)
 
 	server.npcScriptStore = script.CreateStore("scripts/npc", server.dispatch) // make folder a config param
 	start := time.Now()
@@ -107,6 +110,13 @@ func (server *ChannelServer) Initialise(work chan func(), dbuser, dbpassword, db
 	elapsed := time.Since(start)
 	log.Println("Loaded npc scripts in", elapsed)
 	go server.npcScriptStore.Monitor()
+
+	server.systemScriptStore = script.CreateStore("scripts/system", server.dispatch) // make folder a config param
+	start = time.Now()
+	server.systemScriptStore.LoadScripts()
+	elapsed = time.Since(start)
+	log.Println("Loaded system scripts in", elapsed)
+	// go server.systemScriptStore.Monitor() // system controller takes script as a 1 time event and cannot be hotloaded
 
 	var err error
 	server.db, err = sql.Open("mysql", dbuser+":"+dbpassword+"@tcp("+dbaddress+":"+dbport+")/"+dbdatabase)
@@ -181,6 +191,17 @@ func (server *ChannelServer) Initialise(work chan func(), dbuser, dbpassword, db
 	prometheus.MustRegister(metrics.Gauges["player_count"])
 	metrics.StartMetrics()
 	log.Println("Started serving metrics on :" + metrics.Port)
+
+	for name, program := range server.systemScriptStore.Scripts() {
+		controller, err := script.CreateNewSystemController(name, program, server.fields, server.dispatch)
+
+		if err != nil {
+			continue
+		}
+
+		server.systemCntrl[name] = controller
+		controller.Start()
+	}
 }
 
 // SendCountdownToPlayers - Send a countdown to players that appears as a clock

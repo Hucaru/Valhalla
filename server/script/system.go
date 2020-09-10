@@ -1,0 +1,102 @@
+package script
+
+import (
+	"log"
+	"time"
+
+	"github.com/Hucaru/Valhalla/server/field"
+	"github.com/Hucaru/Valhalla/server/player"
+	"github.com/dop251/goja"
+)
+
+// SystemController is the controller for scripts that are responsible for certain parts of the game e.g. boat rides
+type SystemController struct {
+	name    string
+	vm      *goja.Runtime
+	program *goja.Program
+
+	fields   map[int32]*field.Field
+	dispatch chan func()
+	runFunc  func(*SystemController)
+}
+
+// CreateNewSystemController for a specific system
+func CreateNewSystemController(name string, program *goja.Program, fields map[int32]*field.Field, dispatch chan func()) (*SystemController, error) {
+	vm := goja.New()
+	vm.SetFieldNameMapper(goja.UncapFieldNameMapper())
+
+	_, err := vm.RunProgram(program)
+
+	if err != nil {
+		return nil, err
+	}
+
+	controller := &SystemController{name: name, vm: vm, program: program, fields: fields, dispatch: dispatch}
+
+	err = vm.ExportTo(vm.Get("run"), &controller.runFunc)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return controller, nil
+}
+
+// Start the system script
+func (controller *SystemController) Start() {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Println("Error in running script:", controller.name, r)
+		}
+	}()
+
+	controller.runFunc(controller)
+}
+
+// Schedule a function in vm to run at another point
+func (controller *SystemController) Schedule(functionName string, scheduledTime int64) {
+	var scheduleFn func(*SystemController)
+
+	err := controller.vm.ExportTo(controller.vm.Get(functionName), &scheduleFn)
+
+	if err != nil {
+		log.Println("Error in getting function", functionName, " from VM via scheduler in script", controller.name)
+		return
+	}
+
+	go func(fnc func(*SystemController), scheduledTime int64, controller *SystemController) {
+		timer := time.NewTimer(time.Duration(scheduledTime) * time.Millisecond)
+		<-timer.C
+
+		controller.dispatch <- func() {
+			defer func() {
+				if r := recover(); r != nil {
+					log.Println("Error in running script:", controller.name, r)
+				}
+			}()
+
+			fnc(controller)
+		}
+
+	}(scheduleFn, scheduledTime, controller)
+}
+
+// Log that is safe to use by script
+func (controller SystemController) Log(v ...interface{}) {
+	log.Println(v...)
+}
+
+// WarpPlayer to map and random spawn portal
+func (controller SystemController) WarpPlayer(p *player.Data, mapID int32) bool {
+	return true
+}
+
+// WarpPlayerToPortal in map
+func (controller SystemController) WarpPlayerToPortal(p *player.Data, mapID int32, portalID byte) bool {
+	return true
+}
+
+// Fields in the game
+func (controller *SystemController) Fields() map[int32]*field.Field {
+	return controller.fields
+}
