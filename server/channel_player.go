@@ -688,3 +688,26 @@ func (server ChannelServer) playerBumpDamage(conn mnet.Client, reader mpacket.Re
 	plr.DamagePlayer(int16(damage))
 
 }
+
+func (server *ChannelServer) getPlayerInstance(conn mnet.Client, reader mpacket.Reader) (*field.Instance, error) {
+
+	plr, err := server.players.getFromConn(conn)
+
+	if err != nil {
+		return nil, err
+	}
+
+	field, ok := server.fields[plr.MapID()]
+
+	if !ok {
+		return nil, err
+	}
+
+	inst, err := field.GetInstance(plr.InstanceID())
+
+	if err != nil {
+		return nil, err
+	}
+
+	return inst, nil
+}

@@ -1,8 +1,13 @@
 package server
 
 import (
+	"time"
+
+	skills "github.com/Hucaru/Valhalla/constant/skill"
+
 	"github.com/Hucaru/Valhalla/mnet"
 	"github.com/Hucaru/Valhalla/mpacket"
+	"github.com/Hucaru/Valhalla/nx"
 	"github.com/Hucaru/Valhalla/server/field/lifepool/mob"
 	"github.com/Hucaru/Valhalla/server/movement"
 	"github.com/Hucaru/Valhalla/server/player"
@@ -17,20 +22,26 @@ func (server ChannelServer) mobControl(conn mnet.Client, reader mpacket.Reader) 
 
 	skillPossible := (bits & 0x0F) != 0
 
-	plr, err := server.players.getFromConn(conn)
+	var actualAction int8
 
+	if action < 0 {
+		actualAction = -1
+	} else {
+		actualAction = action >> 1
+	}
+
+	plr, err := server.players.getFromConn(conn)
 	if err != nil {
 		return
 	}
 
-	field, ok := server.fields[plr.MapID()]
-
-	if !ok {
+	inst, err := server.getPlayerInstance(conn, reader)
+	if err != nil {
 		return
 	}
 
-	inst, err := field.GetInstance(plr.InstanceID())
-
+	var mob mob.Data
+	mob, err = inst.LifePool().GetMobFromID(mobSpawnID)
 	if err != nil {
 		return
 	}
@@ -39,21 +50,50 @@ func (server ChannelServer) mobControl(conn mnet.Client, reader mpacket.Reader) 
 
 	moveBytes := movement.GenerateMovementBytes(moveData)
 
-	inst.LifePool().MobAcknowledge(mobSpawnID, plr, moveID, skillPossible, byte(action), skillData, moveData, finalData, moveBytes)
+	skillDelay := int16(skillData >> 16)
+	skillLevel := byte(skillData >> 8)
+	skillID := byte(skillData)
 
-	// skillDelay := int16(skillData >> 16)
-	// skillID := byte(skillData)
-	// skillLevel := byte(skillData >> 8)
+	if actualAction >= 21 && actualAction <= 25 {
+		mob.PerformSkill(skillDelay, skillLevel, skillID)
+	} else if actualAction > 12 && actualAction < 20 {
+		attackID := byte(actualAction - 12)
 
-	// if actualAction >= 21 && actualAction <= 25 {
-	// 	mob.PerformSkill(skillDelay, skillLevel, skillID)
-	// } else if actualAction > 12 && actualAction < 20 {
-	// 	mob.PerformAttack(byte(actualAction - 12))
-	// }
+		// check mob can use attack
+		if level, valid := mob.Skills[attackID]; valid {
+			levels, err := nx.GetMobSkill(attackID)
 
-	// mob.AcknowledgeController(moveID, finalData, skillPossible, skillID, skillLevel)
-	// moveBytes := movement.GenerateMovementBytes(moveData)
-	// inst.UpdateMob(mobSpawnID, skillPossible, byte(action), skillData, moveBytes)
+			if err != nil {
+				return
+			}
+
+			if int(level) < len(levels) {
+				skill := levels[level]
+				mob.SetMP(mob.MP() - skill.MpCon)
+				if mob.MP() < 0 {
+					mob.SetMP(0)
+				}
+			}
+
+		}
+
+		mob.SetLastAttackTime(time.Now().Unix())
+		mob.PerformAttack(attackID)
+	}
+
+	// Calculate the next action
+	mob.CanUseSkill = skillPossible
+
+	if !mob.CanUseSkill || (mob.StatBuff()&skills.MobStat.SealSkill > 0) {
+		// there are more reasons as to why a mob cannot use a skill
+		skillID = 0
+	} else {
+		skillID, skillLevel = mob.GetNextSkill()
+	}
+
+	newSkillData := uint32(skillID + skillLevel>>8 + byte(skillDelay)>>16)
+
+	inst.LifePool().MobAcknowledge(mobSpawnID, plr, moveID, skillPossible, byte(action), newSkillData, moveData, finalData, moveBytes)
 }
 
 func (server ChannelServer) mobDamagePlayer(conn mnet.Client, reader mpacket.Reader, mobAttack int8) {
