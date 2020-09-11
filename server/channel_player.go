@@ -689,7 +689,7 @@ func (server ChannelServer) playerBumpDamage(conn mnet.Client, reader mpacket.Re
 
 }
 
-func (server *ChannelServer) getPlayerInstance(conn mnet.Client, reader mpacket.Reader) (*field.Instance, error) {
+func (server ChannelServer) getPlayerInstance(conn mnet.Client, reader mpacket.Reader) (*field.Instance, error) {
 
 	plr, err := server.players.getFromConn(conn)
 

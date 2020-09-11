@@ -74,10 +74,9 @@ type Data struct {
 	lastSkillTime  int64
 	skillTimes     map[byte]int64
 
-	CanUseSkill bool
-	skillID     byte
-	skillLevel  byte
-	statBuff    int32
+	skillID    byte
+	skillLevel byte
+	statBuff   int32
 
 	dmgTaken map[controller]int32
 
@@ -110,6 +109,7 @@ func CreateFromData(spawnID int32, life nx.Life, m nx.Mob, dropsItems, dropsMeso
 		spawnInterval: life.MobTime,
 		dmgTaken:      make(map[controller]int32),
 		Skills:        nx.GetMobSkills(life.ID),
+		skillTimes:    make(map[byte]int64),
 	}
 }
 
@@ -218,7 +218,7 @@ func (m Data) MaxHP() int32 {
 }
 
 // SetHP of mob
-func (m Data) SetHP(hp int32) {
+func (m *Data) SetHP(hp int32) {
 	m.hp = hp
 }
 
@@ -233,7 +233,7 @@ func (m Data) MaxMP() int32 {
 }
 
 // SetMP of mob
-func (m Data) SetMP(mp int32) {
+func (m *Data) SetMP(mp int32) {
 	m.mp = mp
 }
 
@@ -267,6 +267,16 @@ func (m Data) LastSkillTime() int64 {
 	return m.lastSkillTime
 }
 
+// SetLastAttackTime of mob
+func (m *Data) SetLastAttackTime(newTime int64) {
+	m.lastAttackTime = newTime
+}
+
+// SetLastSkillTime of mob
+func (m *Data) SetLastSkillTime(newTime int64) {
+	m.lastSkillTime = newTime
+}
+
 // HasHPBar that can be shown
 func (m Data) HasHPBar() (bool, int32, int32, int32, byte, byte) {
 	return (m.boss && m.hpBgColour > 0), m.id, m.hp, m.maxHP, m.hpFgColour, m.hpBgColour
@@ -291,6 +301,7 @@ func (m *Data) SetTimeToSpawn(t time.Time) {
 func (mob *Data) PerformSkill(delay int16, skillLevel, skillID byte) {
 	currentTime := time.Now().Unix()
 	mob.lastSkillTime = currentTime
+	mob.skillTimes[skillID] = currentTime
 
 	if skillID != mob.skillID || (mob.statBuff&skills.MobStat.SealSkill > 0) {
 		skillID = 0
@@ -315,8 +326,6 @@ func (mob *Data) PerformSkill(delay int16, skillLevel, skillID byte) {
 	if mob.mp < 0 {
 		mob.mp = 0
 	}
-
-	mob.skillTimes[skillID] = currentTime
 
 	// Handle all the different skills!
 	switch skillID {
@@ -465,6 +474,9 @@ func (m *Data) Update(t time.Time) {
 
 }
 
+// GetNextSkill returns the value of function chooseNextSkill
+// The function chooseNextSkill identifies a random skill for the mob to use
+// Various checks include MP consumption, cooldown, etc
 func (m *Data) GetNextSkill() (byte, byte) {
 	return chooseNextSkill(m)
 }
@@ -474,7 +486,7 @@ func chooseNextSkill(mob *Data) (byte, byte) {
 
 	skillsToChooseFrom := []byte{}
 
-	for id, _ := range mob.Skills {
+	for id := range mob.Skills {
 
 		levels, err := nx.GetMobSkill(id)
 
@@ -493,10 +505,11 @@ func chooseNextSkill(mob *Data) (byte, byte) {
 			continue
 		}
 
-		// Skill cooldown check, 10 seconds for now. Need to put in actual logic
-		cooldown := mob.lastSkillTime + 10
-		if cooldown > time.Now().Unix() {
-			continue
+		// Skill cooldown check
+		if val, ok := mob.skillTimes[id]; ok {
+			if (val + skillData.Interval) > time.Now().Unix() {
+				continue
+			}
 		}
 
 		// Check summon limit
@@ -573,10 +586,13 @@ func chooseNextSkill(mob *Data) (byte, byte) {
 	return skillID, skillLevel
 }
 
-func (m Data) SetLastAttackTime(newTime int64) {
-	m.lastAttackTime = newTime
-}
+// CanUseSkill returns new skill for mob to use
+func (m Data) CanUseSkill(skillPossible bool) (byte, byte) {
+	// 10 second default cooldown
+	if !skillPossible || (m.statBuff&skills.MobStat.SealSkill > 0) || (time.Now().Unix()-m.lastSkillTime) < 10 {
+		return 0, 0
+	}
+	skillID, skillLevel := m.GetNextSkill()
+	return skillID, skillLevel
 
-func (m Data) SetLastSkillTime(newTime int64) {
-	m.lastSkillTime = newTime
 }
