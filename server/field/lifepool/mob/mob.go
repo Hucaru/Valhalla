@@ -69,6 +69,7 @@ type Data struct {
 	Skills                 map[byte]byte
 	revives                []int32
 	stance                 byte
+	poison                 bool
 
 	lastAttackTime int64
 	lastSkillTime  int64
@@ -88,6 +89,9 @@ type Data struct {
 
 	spawnInterval int64
 	timeToSpawn   time.Time
+
+	lastStatusUpdate int64
+	lastHeal         int64
 }
 
 // CreateFromData - creates a mob from nx data
@@ -110,6 +114,8 @@ func CreateFromData(spawnID int32, life nx.Life, m nx.Mob, dropsItems, dropsMeso
 		dmgTaken:      make(map[controller]int32),
 		Skills:        nx.GetMobSkills(life.ID),
 		skillTimes:    make(map[byte]int64),
+		poison:        false,
+		lastHeal:      time.Now().Unix(),
 	}
 }
 
@@ -471,6 +477,25 @@ func (m Data) String() string {
 
 // Update mob for status changes e.g. posion, hp/mp recover, finding a new controller after inactivity
 func (m *Data) Update(t time.Time) {
+	checkTime := t.Unix()
+	m.lastStatusUpdate = checkTime
+
+	if m.hp <= 0 {
+		return
+	}
+
+	if m.poison {
+		// Handle poison
+		m.hp = m.hp - 10 // Need to adjust to poison amount based on poison level
+	}
+
+	// Update mob status if one is applied
+	if (checkTime - m.lastHeal) > 30 {
+		// Heal the mob
+		regenhp, regenmp := int32(10), int32(10) // Need to figure out how to find these values? Are they set in nx file for mob?
+		m.HealMob(regenhp, regenmp)
+		m.lastHeal = checkTime
+	}
 
 }
 
@@ -595,4 +620,23 @@ func (m Data) CanUseSkill(skillPossible bool) (byte, byte) {
 	skillID, skillLevel := m.GetNextSkill()
 	return skillID, skillLevel
 
+}
+
+// HealMob heals the mobs HP or MP
+func (m *Data) HealMob(hp, mp int32) {
+	if hp > 0 && m.hp < m.maxHP {
+		newHP := m.hp + hp
+		if newHP < 0 || newHP > m.maxHP {
+			newHP = m.maxHP
+		}
+		m.hp = newHP
+	}
+
+	if mp > 0 && m.mp < m.maxMP {
+		newMP := m.mp + mp
+		if newMP < 0 || newMP > m.maxMP {
+			newMP = m.maxMP
+		}
+		mp = newMP
+	}
 }
