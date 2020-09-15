@@ -92,6 +92,7 @@ type Data struct {
 
 	lastStatusUpdate int64
 	lastHeal         int64
+	lastTimeAttacked int64
 }
 
 // CreateFromData - creates a mob from nx data
@@ -399,6 +400,7 @@ func (m *Data) GiveDamage(damager controller, dmg ...int32) {
 			m.dmgTaken[damager] = v
 		}
 	}
+	m.lastTimeAttacked = time.Now().Unix() // Is there a better place to put this?
 }
 
 // GetDamage done to mob
@@ -492,7 +494,8 @@ func (m *Data) Update(t time.Time) {
 	// Update mob status if one is applied
 	if (checkTime - m.lastHeal) > 30 {
 		// Heal the mob
-		regenhp, regenmp := int32(10), int32(10) // Need to figure out how to find these values? Are they set in nx file for mob?
+		regenhp, regenmp := m.calculateHeal()
+
 		m.HealMob(regenhp, regenmp)
 		m.lastHeal = checkTime
 	}
@@ -639,4 +642,24 @@ func (m *Data) HealMob(hp, mp int32) {
 		}
 		mp = newMP
 	}
+}
+
+func (m Data) calculateHeal() (hp int32, mp int32) {
+	hp, mp = 0, 0
+
+	// Calculate HP regen amount
+	hp = m.maxHP / 100
+
+	// Calculate MP regen amount
+	mp = m.maxMP / 100
+
+	// Always return MP because attack time does not matter for regen.
+	// If someone is bossing the boss will always need MP available to attack
+	// Because of this we should always return MP
+	if m.lastTimeAttacked-time.Now().Unix() < 60 {
+		return 0, mp
+	}
+
+	// We are healing 1% of hp/mp.
+	return hp, mp
 }
