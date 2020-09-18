@@ -263,22 +263,51 @@ func (pool *Data) NpcAcknowledge(poolID int32, plr controller, data []byte) {
 // MobAcknowledge bytes to be applied to the pool
 func (pool *Data) MobAcknowledge(poolID int32, plr controller, moveID int16, skillPossible bool, action byte, skillData uint32, moveData movement.Data, finalData movement.Frag, moveBytes []byte) {
 	for i, v := range pool.mobs {
+		mob := pool.mobs[i]
+
 		if poolID == v.SpawnID() && v.Controller().Conn() == plr.Conn() {
 			skillID := byte(skillData)
 			skillLevel := byte(skillData >> 8)
 			skillDelay := int16(skillData >> 16)
 
-			actualAction := int(byte(action >> 1))
+			var actualAction int8
 
 			if action < 0 {
 				actualAction = -1
+			} else {
+				actualAction = int8(action) >> 1
 			}
 
+			// Perform either skill or attack
 			if actualAction >= 21 && actualAction <= 25 {
 				pool.mobs[i].PerformSkill(skillDelay, skillLevel, skillID)
 			} else if actualAction > 12 && actualAction < 20 {
-				pool.mobs[i].PerformAttack(byte(actualAction - 12))
+				attackID := byte(actualAction - 12)
+
+				mobSkills := mob.Skills()
+
+				// check mob can use attack
+				if level, valid := mobSkills[attackID]; valid {
+					levels, err := nx.GetMobSkill(attackID)
+
+					if err != nil {
+						return
+					}
+
+					if int(level) < len(levels) {
+						skill := levels[level]
+						mob.SetMP(mob.MP() - skill.MpCon)
+						if mob.MP() < 0 {
+							mob.SetMP(0)
+						}
+					}
+
+				}
+
+				pool.mobs[i].PerformAttack(attackID)
 			}
+
+			skillID, skillLevel = mob.CanUseSkill(skillPossible)
 
 			if !moveData.ValidateMob(v) {
 				return

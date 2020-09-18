@@ -23,14 +23,7 @@ func (server ChannelServer) mobControl(conn mnet.Client, reader mpacket.Reader) 
 		return
 	}
 
-	field, ok := server.fields[plr.MapID()]
-
-	if !ok {
-		return
-	}
-
-	inst, err := field.GetInstance(plr.InstanceID())
-
+	inst, err := server.getPlayerInstance(conn, reader)
 	if err != nil {
 		return
 	}
@@ -41,19 +34,6 @@ func (server ChannelServer) mobControl(conn mnet.Client, reader mpacket.Reader) 
 
 	inst.LifePool().MobAcknowledge(mobSpawnID, plr, moveID, skillPossible, byte(action), skillData, moveData, finalData, moveBytes)
 
-	// skillDelay := int16(skillData >> 16)
-	// skillID := byte(skillData)
-	// skillLevel := byte(skillData >> 8)
-
-	// if actualAction >= 21 && actualAction <= 25 {
-	// 	mob.PerformSkill(skillDelay, skillLevel, skillID)
-	// } else if actualAction > 12 && actualAction < 20 {
-	// 	mob.PerformAttack(byte(actualAction - 12))
-	// }
-
-	// mob.AcknowledgeController(moveID, finalData, skillPossible, skillID, skillLevel)
-	// moveBytes := movement.GenerateMovementBytes(moveData)
-	// inst.UpdateMob(mobSpawnID, skillPossible, byte(action), skillData, moveBytes)
 }
 
 func (server ChannelServer) mobDamagePlayer(conn mnet.Client, reader mpacket.Reader, mobAttack int8) {
