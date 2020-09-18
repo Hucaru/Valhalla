@@ -66,7 +66,7 @@ type Data struct {
 	link                   int32
 	flySpeed               int32
 	noRegen                int32
-	Skills                 map[byte]byte
+	skills                 map[byte]byte
 	revives                []int32
 	stance                 byte
 	poison                 bool
@@ -113,7 +113,7 @@ func CreateFromData(spawnID int32, life nx.Life, m nx.Mob, dropsItems, dropsMeso
 		hpFgColour:    byte(m.HPTagColor),
 		spawnInterval: life.MobTime,
 		dmgTaken:      make(map[controller]int32),
-		Skills:        nx.GetMobSkills(life.ID),
+		skills:        nx.GetMobSkills(life.ID),
 		skillTimes:    make(map[byte]int64),
 		poison:        false,
 		lastHeal:      time.Now().Unix(),
@@ -282,6 +282,11 @@ func (m *Data) SetLastAttackTime(newTime int64) {
 // SetLastSkillTime of mob
 func (m *Data) SetLastSkillTime(newTime int64) {
 	m.lastSkillTime = newTime
+}
+
+// Skills returns skills of mob
+func (m Data) Skills() map[byte]byte {
+	return m.skills
 }
 
 // HasHPBar that can be shown
@@ -514,7 +519,7 @@ func chooseNextSkill(mob *Data) (byte, byte) {
 
 	skillsToChooseFrom := []byte{}
 
-	for id := range mob.Skills {
+	for id := range mob.skills {
 
 		levels, err := nx.GetMobSkill(id)
 
@@ -600,7 +605,7 @@ func chooseNextSkill(mob *Data) (byte, byte) {
 
 		skillID = nextID
 
-		for id, level := range mob.Skills {
+		for id, level := range mob.skills {
 			if id == nextID {
 				skillLevel = level
 			}

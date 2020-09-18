@@ -284,8 +284,10 @@ func (pool *Data) MobAcknowledge(poolID int32, plr controller, moveID int16, ski
 			} else if actualAction > 12 && actualAction < 20 {
 				attackID := byte(actualAction - 12)
 
+				mobSkills := mob.Skills()
+
 				// check mob can use attack
-				if level, valid := mob.Skills[attackID]; valid {
+				if level, valid := mobSkills[attackID]; valid {
 					levels, err := nx.GetMobSkill(attackID)
 
 					if err != nil {
