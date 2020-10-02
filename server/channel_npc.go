@@ -228,11 +228,9 @@ func (server *ChannelServer) npcShop(conn mnet.Client, reader mpacket.Reader) {
 			return
 		}
 
-		_, err = plr.TakeItem(itemID, amount)
+		invID := byte(2) // Need to adjust this to find the inventory ID for selling
 
-		if err != nil {
-			return
-		}
+		plr.TakeItem(itemID, slotPos, amount, invID)
 
 		plr.GiveMesos(item.Price)
 		plr.Send(script.PacketShopContinue()) // check if needed

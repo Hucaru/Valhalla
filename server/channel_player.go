@@ -661,6 +661,19 @@ func (server ChannelServer) playerMoveInventoryItem(conn mnet.Client, reader mpa
 	}
 }
 
+func (server ChannelServer) playerUseInventoryItem(conn mnet.Client, reader mpacket.Reader) {
+	plr, err := server.players.getFromConn(conn)
+	if err != nil {
+		return
+	}
+
+	slot := reader.ReadInt16()
+	itemid := reader.ReadInt32()
+
+	plr.UseItem(slot, itemid)
+
+}
+
 func (server ChannelServer) playerTakeDamage(conn mnet.Client, reader mpacket.Reader) {
 	// 21 FF  or -1 is mob
 	// 21 FE  or -2 is bump

@@ -442,6 +442,39 @@ func (d *Data) SetMapPosID(pos byte) {
 	d.mapPos = pos
 }
 
+func (d Data) noChange() {
+	d.Send(packetInventoryNoChange())
+}
+
+// UseItem of Data
+func (d *Data) UseItem(slot int16, id int32) {
+	if d.hp < 1 {
+		d.noChange()
+		return
+	}
+
+	item, err := d.getItem(2, slot)
+
+	if err != nil {
+		return
+	}
+
+	if item.ID() != id {
+		return
+	}
+
+	if item.Hp() > 0 {
+		d.GiveHP(item.Hp())
+	}
+
+	if item.Mp() > 0 {
+		d.GiveMP(item.Mp())
+	}
+
+	d.TakeItem(id, slot, 1, 2)
+
+}
+
 // GiveItem to Data
 func (d *Data) GiveItem(newItem item.Data, db *sql.DB) error { // TODO: Refactor
 	findFirstEmptySlot := func(items []item.Data, size byte) (int16, error) {
@@ -637,10 +670,13 @@ func (d *Data) GiveItem(newItem item.Data, db *sql.DB) error { // TODO: Refactor
 }
 
 // TakeItem from Data
-func (d *Data) TakeItem(itemID int32, amount int16) (item.Data, error) {
-	log.Println("player.Data.TakeItem not implemented")
-	// removeItem if item.Amount() == 0
-	return item.Data{}, nil
+func (d *Data) TakeItem(id int32, slot int16, amount int16, invID byte) {
+
+	item, err := d.getItem(invID, slot)
+	if err != nil {
+		return
+	}
+	d.Send(packetInventoryRemoveItem(item))
 }
 
 func (d *Data) updateItem(new item.Data) {
