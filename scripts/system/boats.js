@@ -12,14 +12,23 @@ function showBoats(controller, maps, show) {
         var instances = controller.fields()[maps[i]].instances()
         for (var j = 0; j < instances.length; j++) {
             instances[j].showBoat(show)
-            controller.log("sending boat", show, "on", maps[i])
+        }
+    }
+}
+
+function allowTicketSales(controller, maps, allow) {
+    for (var i = 0; i < maps.length; i++) {
+        var instances = controller.fields()[maps[i]].instances()
+        for (var j = 0; j < instances.length; j++) {
+            instances[j].properties()["canSellTickets"] = allow
         }
     }
 }
 
 function run(controller) {
-    controller.log("run")
+    controller.log("showBoats")
     showBoats(controller, stations, true)
+    allowTicketSales(controller, stations, true)
 
     controller.schedule("closeGate", closeGateTime)
     controller.schedule("takeoff", takeoffTime)
@@ -27,12 +36,13 @@ function run(controller) {
 
 function closeGate(controller) {
     controller.log("closeGate")
-    // needs to set a property in the map that is then used by npc to not sell tickets
+    allowTicketSales(controller, stations, false)
 }
 
 function takeoff(controller) {
     controller.log("takeoff")
     showBoats(controller, stations, false)
+    
     // move characters from boat waiting maps to boat flying map in all instances
 
     controller.schedule("invasion", invasionTime)

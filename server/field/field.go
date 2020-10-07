@@ -43,6 +43,7 @@ func (f *Field) CreateInstance() int {
 		town:        f.Data.Town,
 		returnMapID: f.Data.ReturnMap,
 		timeLimit:   f.Data.TimeLimit,
+		properties:  make(map[string]interface{}),
 	}
 
 	inst.roomPool = roompool.CreateNewPool(inst)

@@ -90,6 +90,11 @@ func (inst Instance) String() string {
 	return info
 }
 
+// Properties that can be set via scripts, e.g. allows cross script state
+func (inst *Instance) Properties() map[string]interface{} {
+	return inst.properties
+}
+
 // LifePool pointer for instance
 func (inst *Instance) LifePool() *lifepool.Data {
 	return &inst.lifePool
