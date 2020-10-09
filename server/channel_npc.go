@@ -228,7 +228,7 @@ func (server *ChannelServer) npcShop(conn mnet.Client, reader mpacket.Reader) {
 			return
 		}
 
-		invID := byte(2) // Need to adjust this to find the inventory ID for selling
+		invID := getInventoryID(itemID)
 
 		plr.TakeItem(itemID, slotPos, amount, invID)
 
@@ -241,4 +241,8 @@ func (server *ChannelServer) npcShop(conn mnet.Client, reader mpacket.Reader) {
 	default:
 		log.Println("Unkown shop operation packet:", reader)
 	}
+}
+
+func getInventoryID(id int32) byte {
+	return byte(id / 1000000)
 }
