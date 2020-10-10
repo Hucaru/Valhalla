@@ -230,7 +230,7 @@ func (server *ChannelServer) npcShop(conn mnet.Client, reader mpacket.Reader) {
 
 		invID := getInventoryID(itemID)
 
-		plr.TakeItem(itemID, slotPos, amount, invID)
+		plr.TakeItem(itemID, slotPos, amount, invID, server.db)
 
 		plr.GiveMesos(item.Price)
 		plr.Send(script.PacketShopContinue()) // check if needed

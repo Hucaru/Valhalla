@@ -442,37 +442,8 @@ func (d *Data) SetMapPosID(pos byte) {
 	d.mapPos = pos
 }
 
-func (d Data) noChange() {
+func (d Data) NoChange() {
 	d.Send(packetInventoryNoChange())
-}
-
-// UseItem of Data
-func (d *Data) UseItem(slot int16, id int32) {
-	if d.hp < 1 {
-		d.noChange()
-		return
-	}
-
-	item, err := d.getItem(2, slot)
-
-	if err != nil {
-		return
-	}
-
-	if item.ID() != id {
-		return
-	}
-
-	if item.Hp() > 0 {
-		d.GiveHP(item.Hp())
-	}
-
-	if item.Mp() > 0 {
-		d.GiveMP(item.Mp())
-	}
-
-	d.TakeItem(id, slot, 1, 2)
-
 }
 
 // GiveItem to Data
@@ -670,13 +641,25 @@ func (d *Data) GiveItem(newItem item.Data, db *sql.DB) error { // TODO: Refactor
 }
 
 // TakeItem from Data
-func (d *Data) TakeItem(id int32, slot int16, amount int16, invID byte) {
-
+func (d *Data) TakeItem(id int32, slot int16, amount int16, invID byte, db *sql.DB) item.Data {
 	item, err := d.getItem(invID, slot)
 	if err != nil {
-		return
+		log.Println(err)
 	}
-	d.Send(packetInventoryRemoveItem(item))
+
+	maxRemove := math.Min(float64(item.Amount()), float64(amount))
+
+	item.UpdateAmount(item.Amount() - int16(maxRemove))
+
+	if item.Amount() == 0 {
+		// Delete item
+		d.removeItem(item, db)
+	} else {
+		//Update item with new amount
+	}
+
+	return item
+
 }
 
 func (d *Data) updateItem(new item.Data) {
