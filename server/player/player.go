@@ -641,25 +641,35 @@ func (d *Data) GiveItem(newItem item.Data, db *sql.DB) error { // TODO: Refactor
 }
 
 // TakeItem from Data
-func (d *Data) TakeItem(id int32, slot int16, amount int16, invID byte, db *sql.DB) item.Data {
+func (d *Data) TakeItem(id int32, slot int16, amount int16, invID byte, db *sql.DB) (item.Data, error) {
 	item, err := d.getItem(invID, slot)
 	if err != nil {
-		log.Println(err)
+		return item, err
+	}
+
+	if item.ID() != id {
+		return item, fmt.Errorf("item.ID(%d) does not match ID(%d) provided", item.ID(), id)
 	}
 
 	maxRemove := math.Min(float64(item.Amount()), float64(amount))
-
 	item.UpdateAmount(item.Amount() - int16(maxRemove))
 
 	if item.Amount() == 0 {
 		// Delete item
 		d.removeItem(item, db)
 	} else {
-		//Update item with new amount
+		// Update item with new stack size
+		d.updateItemStack(item, db)
+
 	}
 
-	return item
+	return item, nil
 
+}
+
+func (d *Data) updateItemStack(item item.Data, db *sql.DB) {
+	item.UpdateStack(db)
+	d.Send(packetInventoryAddItem(item, false))
 }
 
 func (d *Data) updateItem(new item.Data) {

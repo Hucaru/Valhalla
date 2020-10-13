@@ -383,6 +383,18 @@ func (v Data) Delete(db *sql.DB) error {
 	return nil
 }
 
+// UpdateStack updates item amount in DB
+func (v Data) UpdateStack(db *sql.DB) error {
+	query := "UPDATE `items` SET amount=? WHERE id=?"
+	_, err := db.Exec(query, v.amount, v.dbID)
+
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // InventoryBytes to display in character inventory window
 func (v Data) InventoryBytes() []byte {
 	return v.bytes(false)
@@ -480,5 +492,8 @@ func (v Data) Use(plr player) {
 	if v.mp > 0 {
 		plr.GiveMP(v.mp)
 	}
+
+	// Need to add stat buffs (W.ATT, M.ATT, etc)
+	// This will require timers to ensure buffs are removed once finished
 
 }

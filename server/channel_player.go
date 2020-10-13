@@ -670,11 +670,10 @@ func (server ChannelServer) playerUseInventoryItem(conn mnet.Client, reader mpac
 	slot := reader.ReadInt16()
 	itemid := reader.ReadInt32()
 
-	item := plr.TakeItem(itemid, slot, 1, 2, server.db)
-	if item.ID() != itemid {
-		return
+	item, err := plr.TakeItem(itemid, slot, 1, 2, server.db)
+	if err != nil {
+		log.Println(err)
 	}
-
 	item.Use(plr)
 
 }
