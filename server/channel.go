@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/dop251/goja"
 	_ "github.com/go-sql-driver/mysql" // don't need full import
 	"github.com/prometheus/client_golang/prometheus"
 
@@ -93,7 +94,7 @@ type ChannelServer struct {
 	header            string
 	npcChat           map[mnet.Client]*script.NpcChatController
 	npcScriptStore    *script.Store
-	systemCntrl       map[string]*script.SystemController
+	systemCtrl        map[string]*script.SystemController
 	systemScriptStore *script.Store
 }
 
@@ -102,21 +103,47 @@ func (server *ChannelServer) Initialise(work chan func(), dbuser, dbpassword, db
 	server.dispatch = work
 
 	server.npcChat = make(map[mnet.Client]*script.NpcChatController)
-	server.systemCntrl = make(map[string]*script.SystemController)
+	server.systemCtrl = make(map[string]*script.SystemController)
 
 	server.npcScriptStore = script.CreateStore("scripts/npc", server.dispatch) // make folder a config param
 	start := time.Now()
 	server.npcScriptStore.LoadScripts()
 	elapsed := time.Since(start)
 	log.Println("Loaded npc scripts in", elapsed)
-	go server.npcScriptStore.Monitor()
+	go server.npcScriptStore.Monitor(func(name string, program *goja.Program) {})
 
 	server.systemScriptStore = script.CreateStore("scripts/system", server.dispatch) // make folder a config param
 	start = time.Now()
 	server.systemScriptStore.LoadScripts()
 	elapsed = time.Since(start)
 	log.Println("Loaded system scripts in", elapsed)
-	// go server.systemScriptStore.Monitor() // system controller takes script as a 1 time event and cannot be hotloaded
+
+	go server.systemScriptStore.Monitor(func(name string, program *goja.Program) {
+		if controller, ok := server.systemCtrl[name]; ok && controller != nil {
+			controller.Terminate()
+		}
+
+		if program == nil {
+			if _, ok := server.systemCtrl[name]; ok {
+				delete(server.systemCtrl, name)
+			}
+
+			return
+		}
+
+		controller, start, err := script.CreateNewSystemController(name, program, server.fields, server.dispatch)
+
+		if err != nil || controller == nil {
+			return
+		}
+
+		server.systemCtrl[name] = controller
+
+		if start {
+			controller.Start()
+		}
+
+	})
 
 	var err error
 	server.db, err = sql.Open("mysql", dbuser+":"+dbpassword+"@tcp("+dbaddress+":"+dbport+")/"+dbdatabase)
@@ -193,14 +220,17 @@ func (server *ChannelServer) Initialise(work chan func(), dbuser, dbpassword, db
 	log.Println("Started serving metrics on :" + metrics.Port)
 
 	for name, program := range server.systemScriptStore.Scripts() {
-		controller, err := script.CreateNewSystemController(name, program, server.fields, server.dispatch)
+		controller, start, err := script.CreateNewSystemController(name, program, server.fields, server.dispatch)
 
 		if err != nil {
 			continue
 		}
 
-		server.systemCntrl[name] = controller
-		controller.Start()
+		server.systemCtrl[name] = controller
+
+		if start {
+			controller.Start()
+		}
 	}
 }
 

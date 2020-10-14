@@ -1,6 +1,7 @@
 package script
 
 import (
+	"fmt"
 	"log"
 	"time"
 
@@ -15,31 +16,38 @@ type SystemController struct {
 	vm      *goja.Runtime
 	program *goja.Program
 
-	fields   map[int32]*field.Field
-	dispatch chan func()
-	runFunc  func(*SystemController)
+	fields    map[int32]*field.Field
+	dispatch  chan func()
+	runFunc   func(*SystemController)
+	terminate bool
 }
 
 // CreateNewSystemController for a specific system
-func CreateNewSystemController(name string, program *goja.Program, fields map[int32]*field.Field, dispatch chan func()) (*SystemController, error) {
+func CreateNewSystemController(name string, program *goja.Program, fields map[int32]*field.Field, dispatch chan func()) (*SystemController, bool, error) {
 	vm := goja.New()
 	vm.SetFieldNameMapper(goja.UncapFieldNameMapper())
 
 	_, err := vm.RunProgram(program)
 
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 
 	controller := &SystemController{name: name, vm: vm, program: program, fields: fields, dispatch: dispatch}
 
+	defer func() {
+		if r := recover(); r != nil {
+			err = fmt.Errorf("No run function")
+		}
+	}()
+
 	err = vm.ExportTo(vm.Get("run"), &controller.runFunc)
 
 	if err != nil {
-		return nil, err
+		return controller, false, nil
 	}
 
-	return controller, nil
+	return controller, true, nil
 }
 
 // Start the system script
@@ -51,6 +59,11 @@ func (controller *SystemController) Start() {
 	}()
 
 	controller.runFunc(controller)
+}
+
+// Terminate the running script
+func (controller *SystemController) Terminate() {
+	controller.terminate = true
 }
 
 // Schedule a function in vm to run at another point
@@ -67,6 +80,11 @@ func (controller *SystemController) Schedule(functionName string, scheduledTime 
 	go func(fnc func(*SystemController), scheduledTime int64, controller *SystemController) {
 		timer := time.NewTimer(time.Duration(scheduledTime) * time.Millisecond)
 		<-timer.C
+
+		if controller.terminate {
+			log.Println("Script:", controller.name, "has been terminated")
+			return
+		}
 
 		controller.dispatch <- func() {
 			defer func() {

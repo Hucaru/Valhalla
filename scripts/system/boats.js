@@ -1,4 +1,4 @@
-//Time Setting is in millisecond
+//Time Setting is in milliseconds
 var closeGateTime = 240000; //The time to close the gate
 var takeoffTime = 300000; //The time at which takeoff occurs
 var landTime = 600000; //The time required to land everyone
@@ -27,6 +27,9 @@ function allowTicketSales(controller, maps, allow) {
 
 function run(controller) {
     controller.log("showBoats")
+
+    // remove balrog ship, change bgm back to normal, kill any existing crogs
+
     showBoats(controller, stations, true)
     allowTicketSales(controller, stations, true)
 
