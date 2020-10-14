@@ -275,10 +275,16 @@ func (d *Data) SetHP(amount int16) {
 
 // GiveHP to Data
 func (d *Data) GiveHP(amount int16) {
-	d.SetHP(d.hp + amount)
-	if d.hp < 0 {
+	newHP := d.hp + amount
+	if newHP < 0 {
 		d.SetHP(0)
+		return
 	}
+	if newHP > d.MaxHP() {
+		d.SetHP(d.MaxHP())
+		return
+	}
+	d.SetHP(newHP)
 }
 
 // SetMaxHP of Data
@@ -295,10 +301,16 @@ func (d *Data) SetMP(amount int16) {
 
 // GiveMP to Data
 func (d *Data) GiveMP(amount int16) {
-	d.SetMP(d.mp + amount)
-	if d.mp < 0 {
+	newMP := d.mp + amount
+	if newMP < 0 {
 		d.SetMP(0)
+		return
 	}
+	if newMP > d.MaxMP() {
+		d.SetMP(d.MaxMP())
+		return
+	}
+	d.SetMP(newMP)
 }
 
 // SetMaxMP of Data
@@ -653,7 +665,6 @@ func (d *Data) TakeItem(id int32, slot int16, amount int16, invID byte, db *sql.
 
 	maxRemove := math.Min(float64(item.Amount()), float64(amount))
 	item.UpdateAmount(item.Amount() - int16(maxRemove))
-
 	if item.Amount() == 0 {
 		// Delete item
 		d.removeItem(item, db)
@@ -667,8 +678,9 @@ func (d *Data) TakeItem(id int32, slot int16, amount int16, invID byte, db *sql.
 
 }
 
-func (d *Data) updateItemStack(item item.Data, db *sql.DB) {
-	item.UpdateStack(db)
+func (d Data) updateItemStack(item item.Data, db *sql.DB) {
+	item.Save(db, d.id)
+	d.updateItem(item)
 	d.Send(packetInventoryAddItem(item, false))
 }
 
