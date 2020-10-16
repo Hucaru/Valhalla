@@ -67,6 +67,8 @@ type Instance struct {
 
 	showBoat   bool
 	properties map[string]interface{} // this is used to share state between npc and system scripts
+
+	bgm string
 }
 
 // ID of the instance within the field
@@ -93,6 +95,16 @@ func (inst Instance) String() string {
 // Properties that can be set via scripts, e.g. allows cross script state
 func (inst *Instance) Properties() map[string]interface{} {
 	return inst.properties
+}
+
+// ChangeBgm in instance
+func (inst *Instance) ChangeBgm(path string) {
+	inst.bgm = path
+}
+
+// Players in instance
+func (inst Instance) Players() []player {
+	return inst.players
 }
 
 // LifePool pointer for instance

@@ -7,6 +7,7 @@ import (
 
 	"github.com/Hucaru/Valhalla/server/field"
 	"github.com/Hucaru/Valhalla/server/player"
+	"github.com/Hucaru/Valhalla/server/pos"
 	"github.com/dop251/goja"
 )
 
@@ -16,14 +17,16 @@ type SystemController struct {
 	vm      *goja.Runtime
 	program *goja.Program
 
-	fields    map[int32]*field.Field
-	dispatch  chan func()
+	fields   map[int32]*field.Field
+	dispatch chan func()
+	warpFunc warpFn
+
 	runFunc   func(*SystemController)
 	terminate bool
 }
 
 // CreateNewSystemController for a specific system
-func CreateNewSystemController(name string, program *goja.Program, fields map[int32]*field.Field, dispatch chan func()) (*SystemController, bool, error) {
+func CreateNewSystemController(name string, program *goja.Program, fields map[int32]*field.Field, dispatch chan func(), warpFunc warpFn) (*SystemController, bool, error) {
 	vm := goja.New()
 	vm.SetFieldNameMapper(goja.UncapFieldNameMapper())
 
@@ -33,7 +36,7 @@ func CreateNewSystemController(name string, program *goja.Program, fields map[in
 		return nil, false, err
 	}
 
-	controller := &SystemController{name: name, vm: vm, program: program, fields: fields, dispatch: dispatch}
+	controller := &SystemController{name: name, vm: vm, program: program, fields: fields, dispatch: dispatch, warpFunc: warpFunc}
 
 	defer func() {
 		if r := recover(); r != nil {
@@ -106,15 +109,48 @@ func (controller SystemController) Log(v ...interface{}) {
 
 // WarpPlayer to map and random spawn portal
 func (controller SystemController) WarpPlayer(p *player.Data, mapID int32) bool {
-	return true
+	if field, ok := controller.fields[mapID]; ok {
+		inst, err := field.GetInstance(0)
+
+		if err != nil {
+			return false
+		}
+
+		portal, err := inst.GetRandomSpawnPortal()
+
+		controller.warpFunc(p, field, portal)
+
+		return true
+	}
+
+	return false
 }
 
 // WarpPlayerToPortal in map
 func (controller SystemController) WarpPlayerToPortal(p *player.Data, mapID int32, portalID byte) bool {
-	return true
+	if field, ok := controller.fields[mapID]; ok {
+		inst, err := field.GetInstance(0)
+
+		if err != nil {
+			return false
+		}
+
+		portal, err := inst.GetPortalFromID(portalID)
+
+		controller.warpFunc(p, field, portal)
+
+		return true
+	}
+
+	return false
 }
 
 // Fields in the game
 func (controller *SystemController) Fields() map[int32]*field.Field {
 	return controller.fields
+}
+
+// CreatePos from x,y co-ords
+func (controller *SystemController) CreatePos(x int16, y int16) pos.Data {
+	return pos.New(x, y, 0)
 }

@@ -433,6 +433,19 @@ func (pool *Data) KillMobs(deathType byte) {
 	}
 }
 
+// EraseMobs from pool
+func (pool *Data) EraseMobs() {
+	keys := make([]int32, 0, len(pool.mobs))
+
+	for key := range pool.mobs {
+		keys = append(keys, key)
+	}
+	for _, key := range keys {
+		pool.removeMob(key, 0)
+		delete(pool.mobs, key)
+	}
+}
+
 func (pool *Data) spawnMob(m *mob.Data, hasAgro bool) bool {
 	pool.mobs[m.SpawnID()] = m
 	pool.instance.Send(packetMobShow(m))

@@ -145,10 +145,6 @@ func (server *ChannelServer) gmCommand(conn mnet.Client, msg string) {
 		}
 
 		player.SetHP(player.MaxHP())
-	case "cody":
-	case "admin":
-	case "shop":
-	case "style":
 	case "createInstance":
 		player, err := server.players.getFromConn(conn)
 

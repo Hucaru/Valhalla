@@ -80,6 +80,11 @@ func (pool *Data) RemoveDrop(instant bool, id ...int32) {
 	}
 }
 
+// EraseDrops from the pool
+func (pool *Data) EraseDrops() {
+	pool.drops = make(map[int32]drop)
+}
+
 // PlayerAttemptPickup of item
 func (pool *Data) PlayerAttemptPickup(dropID int32, position pos.Data) (bool, item.Data) {
 	return false, item.Data{}
