@@ -89,7 +89,7 @@ function invasion(controller) {
     chance = Math.random()
 
     if (chance <= 0.5) {
-        // return
+        return
     }
 
     controller.log("cRog boat invasion started")
