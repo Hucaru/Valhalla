@@ -11,8 +11,8 @@ import (
 	"github.com/dop251/goja"
 )
 
-// SystemController is the controller for scripts that are responsible for certain parts of the game e.g. boat rides
-type SystemController struct {
+// EventController is the controller for scripts that are responsible for certain parts of the game e.g. boat rides
+type EventController struct {
 	name    string
 	vm      *goja.Runtime
 	program *goja.Program
@@ -21,12 +21,12 @@ type SystemController struct {
 	dispatch chan func()
 	warpFunc warpFn
 
-	runFunc   func(*SystemController)
+	initFunc  func(*EventController)
 	terminate bool
 }
 
-// CreateNewSystemController for a specific system
-func CreateNewSystemController(name string, program *goja.Program, fields map[int32]*field.Field, dispatch chan func(), warpFunc warpFn) (*SystemController, bool, error) {
+// CreateNewEventController for a specific system
+func CreateNewEventController(name string, program *goja.Program, fields map[int32]*field.Field, dispatch chan func(), warpFunc warpFn) (*EventController, bool, error) {
 	vm := goja.New()
 	vm.SetFieldNameMapper(goja.UncapFieldNameMapper())
 
@@ -36,7 +36,7 @@ func CreateNewSystemController(name string, program *goja.Program, fields map[in
 		return nil, false, err
 	}
 
-	controller := &SystemController{name: name, vm: vm, program: program, fields: fields, dispatch: dispatch, warpFunc: warpFunc}
+	controller := &EventController{name: name, vm: vm, program: program, fields: fields, dispatch: dispatch, warpFunc: warpFunc}
 
 	defer func() {
 		if r := recover(); r != nil {
@@ -44,7 +44,7 @@ func CreateNewSystemController(name string, program *goja.Program, fields map[in
 		}
 	}()
 
-	err = vm.ExportTo(vm.Get("run"), &controller.runFunc)
+	err = vm.ExportTo(vm.Get("init"), &controller.initFunc)
 
 	if err != nil {
 		return controller, false, nil
@@ -53,25 +53,26 @@ func CreateNewSystemController(name string, program *goja.Program, fields map[in
 	return controller, true, nil
 }
 
-// Start the system script
-func (controller *SystemController) Start() {
+// Init the system script, this is run once per event script when a controller is made for it.
+// Controllers are copied for event scripts into the event manager (use init to declare global variables or schedule a function).
+func (controller *EventController) Init() {
 	defer func() {
 		if r := recover(); r != nil {
 			log.Println("Error in running script:", controller.name, r)
 		}
 	}()
 
-	controller.runFunc(controller)
+	controller.initFunc(controller)
 }
 
 // Terminate the running script
-func (controller *SystemController) Terminate() {
+func (controller *EventController) Terminate() {
 	controller.terminate = true
 }
 
 // Schedule a function in vm to run at another point
-func (controller *SystemController) Schedule(functionName string, scheduledTime int64) {
-	var scheduleFn func(*SystemController)
+func (controller *EventController) Schedule(functionName string, scheduledTime int64) {
+	var scheduleFn func(*EventController)
 
 	err := controller.vm.ExportTo(controller.vm.Get(functionName), &scheduleFn)
 
@@ -80,7 +81,7 @@ func (controller *SystemController) Schedule(functionName string, scheduledTime 
 		return
 	}
 
-	go func(fnc func(*SystemController), scheduledTime int64, controller *SystemController) {
+	go func(fnc func(*EventController), scheduledTime int64, controller *EventController) {
 		timer := time.NewTimer(time.Duration(scheduledTime) * time.Millisecond)
 		<-timer.C
 
@@ -103,12 +104,22 @@ func (controller *SystemController) Schedule(functionName string, scheduledTime 
 }
 
 // Log that is safe to use by script
-func (controller SystemController) Log(v ...interface{}) {
+func (controller EventController) Log(v ...interface{}) {
 	log.Println(v...)
 }
 
+// ExtractFunction from program
+func (controller *EventController) ExtractFunction(name string, ptr *interface{}) error {
+
+	if err := controller.vm.ExportTo(controller.vm.Get(name), ptr); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // WarpPlayer to map and random spawn portal
-func (controller SystemController) WarpPlayer(p *player.Data, mapID int32) bool {
+func (controller EventController) WarpPlayer(p *player.Data, mapID int32) bool {
 	if field, ok := controller.fields[mapID]; ok {
 		inst, err := field.GetInstance(0)
 
@@ -127,7 +138,7 @@ func (controller SystemController) WarpPlayer(p *player.Data, mapID int32) bool 
 }
 
 // WarpPlayerToPortal in map
-func (controller SystemController) WarpPlayerToPortal(p *player.Data, mapID int32, portalID byte) bool {
+func (controller EventController) WarpPlayerToPortal(p *player.Data, mapID int32, portalID byte) bool {
 	if field, ok := controller.fields[mapID]; ok {
 		inst, err := field.GetInstance(0)
 
@@ -146,11 +157,11 @@ func (controller SystemController) WarpPlayerToPortal(p *player.Data, mapID int3
 }
 
 // Fields in the game
-func (controller *SystemController) Fields() map[int32]*field.Field {
+func (controller *EventController) Fields() map[int32]*field.Field {
 	return controller.fields
 }
 
 // CreatePos from x,y co-ords
-func (controller *SystemController) CreatePos(x int16, y int16) pos.Data {
+func (controller *EventController) CreatePos(x int16, y int16) pos.Data {
 	return pos.New(x, y, 0)
 }

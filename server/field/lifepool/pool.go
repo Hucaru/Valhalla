@@ -143,6 +143,11 @@ func (pool *Data) SetDropPool(drop *droppool.Data) {
 	pool.dropPool = drop
 }
 
+// MobCount in pool
+func (pool Data) MobCount() int {
+	return len(pool.mobs)
+}
+
 func (pool *Data) nextMobID() (int32, error) {
 	for i := 0; i < 100; i++ { // Try 99 times to generate an id if first time fails
 		pool.mobID++

@@ -79,23 +79,23 @@ func (p *players) removeFromConn(conn mnet.Client) error {
 
 // ChannelServer state
 type ChannelServer struct {
-	id                byte
-	worldName         string
-	db                *sql.DB
-	dispatch          chan func()
-	world             mnet.Server
-	ip                []byte
-	port              int16
-	maxPop            int16
-	migrating         []mnet.Client
-	players           players
-	channels          [20]channel
-	fields            map[int32]*field.Field
-	header            string
-	npcChat           map[mnet.Client]*script.NpcChatController
-	npcScriptStore    *script.Store
-	systemCtrl        map[string]*script.SystemController
-	systemScriptStore *script.Store
+	id               byte
+	worldName        string
+	db               *sql.DB
+	dispatch         chan func()
+	world            mnet.Server
+	ip               []byte
+	port             int16
+	maxPop           int16
+	migrating        []mnet.Client
+	players          players
+	channels         [20]channel
+	fields           map[int32]*field.Field
+	header           string
+	npcChat          map[mnet.Client]*script.NpcChatController
+	npcScriptStore   *script.Store
+	eventCtrl        map[string]*script.EventController
+	eventScriptStore *script.Store
 }
 
 // Initialise the server
@@ -181,7 +181,7 @@ func (server *ChannelServer) Initialise(work chan func(), dbuser, dbpassword, db
 
 func (server *ChannelServer) loadScripts() {
 	server.npcChat = make(map[mnet.Client]*script.NpcChatController)
-	server.systemCtrl = make(map[string]*script.SystemController)
+	server.eventCtrl = make(map[string]*script.EventController)
 
 	server.npcScriptStore = script.CreateStore("scripts/npc", server.dispatch) // make folder a config param
 	start := time.Now()
@@ -190,50 +190,50 @@ func (server *ChannelServer) loadScripts() {
 	log.Println("Loaded npc scripts in", elapsed)
 	go server.npcScriptStore.Monitor(func(name string, program *goja.Program) {})
 
-	server.systemScriptStore = script.CreateStore("scripts/system", server.dispatch) // make folder a config param
+	server.eventScriptStore = script.CreateStore("scripts/event", server.dispatch) // make folder a config param
 	start = time.Now()
-	server.systemScriptStore.LoadScripts()
+	server.eventScriptStore.LoadScripts()
 	elapsed = time.Since(start)
-	log.Println("Loaded system scripts in", elapsed)
+	log.Println("Loaded event scripts in", elapsed)
 
-	go server.systemScriptStore.Monitor(func(name string, program *goja.Program) {
-		if controller, ok := server.systemCtrl[name]; ok && controller != nil {
+	go server.eventScriptStore.Monitor(func(name string, program *goja.Program) {
+		if controller, ok := server.eventCtrl[name]; ok && controller != nil {
 			controller.Terminate()
 		}
 
 		if program == nil {
-			if _, ok := server.systemCtrl[name]; ok {
-				delete(server.systemCtrl, name)
+			if _, ok := server.eventCtrl[name]; ok {
+				delete(server.eventCtrl, name)
 			}
 
 			return
 		}
 
-		controller, start, err := script.CreateNewSystemController(name, program, server.fields, server.dispatch, server.warpPlayer)
+		controller, start, err := script.CreateNewEventController(name, program, server.fields, server.dispatch, server.warpPlayer)
 
 		if err != nil || controller == nil {
 			return
 		}
 
-		server.systemCtrl[name] = controller
+		server.eventCtrl[name] = controller
 
 		if start {
-			controller.Start()
+			controller.Init()
 		}
 
 	})
 
-	for name, program := range server.systemScriptStore.Scripts() {
-		controller, start, err := script.CreateNewSystemController(name, program, server.fields, server.dispatch, server.warpPlayer)
+	for name, program := range server.eventScriptStore.Scripts() {
+		controller, start, err := script.CreateNewEventController(name, program, server.fields, server.dispatch, server.warpPlayer)
 
 		if err != nil {
 			continue
 		}
 
-		server.systemCtrl[name] = controller
+		server.eventCtrl[name] = controller
 
 		if start {
-			controller.Start()
+			controller.Init()
 		}
 	}
 }

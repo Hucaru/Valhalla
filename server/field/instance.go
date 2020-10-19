@@ -2,6 +2,7 @@ package field
 
 import (
 	"fmt"
+	"log"
 	"math/rand"
 	"strconv"
 	"time"
@@ -66,6 +67,7 @@ type Instance struct {
 	runUpdate  bool
 
 	showBoat   bool
+	boatType   byte
 	properties map[string]interface{} // this is used to share state between npc and system scripts
 
 	bgm string
@@ -100,6 +102,7 @@ func (inst *Instance) Properties() map[string]interface{} {
 // ChangeBgm in instance
 func (inst *Instance) ChangeBgm(path string) {
 	inst.bgm = path
+	packetBgmChange(path)
 }
 
 // Players in instance
@@ -145,7 +148,7 @@ func (inst *Instance) AddPlayer(plr player) error {
 	inst.roomPool.PlayerShowRooms(plr)
 
 	if inst.showBoat {
-		plr.Send(packetMapBoat(inst.showBoat))
+		displayBoat(plr, inst.showBoat, inst.boatType)
 	}
 
 	inst.players = append(inst.players, plr)
@@ -157,6 +160,10 @@ func (inst *Instance) AddPlayer(plr player) error {
 	// life pool, max number of mobs spawned and no dot attacks in field
 	if !inst.runUpdate {
 		inst.startFieldTimer()
+	}
+
+	if len(inst.bgm) > 0 {
+		plr.Send(packetBgmChange(inst.bgm))
 	}
 
 	return nil
@@ -329,7 +336,22 @@ func (inst *Instance) CalculateFinalDropPos(from pos.Data) pos.Data {
 }
 
 // ShowBoat to instance if input bool is set to true
-func (inst *Instance) ShowBoat(show bool) {
-	inst.Send(packetMapBoat(show))
+func (inst *Instance) ShowBoat(show bool, boatType byte) {
 	inst.showBoat = show
+	inst.boatType = boatType
+
+	for _, v := range inst.players {
+		displayBoat(v, show, boatType)
+	}
+}
+
+func displayBoat(plr player, show bool, boatType byte) {
+	switch boatType {
+	case 0: // docked boat in station
+		plr.Send(packetMapBoat(show))
+	case 1: // crog
+		plr.Send(packetShowMovingObject(show))
+	default:
+		log.Println("Unkown docked boat type:", boatType)
+	}
 }

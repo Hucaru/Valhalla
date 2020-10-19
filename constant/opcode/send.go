@@ -32,6 +32,7 @@ const (
 	SendChannelEmployee             byte = 0x43
 	SendChannelQuizQAndA            byte = 0x44
 	SendChannelCountdown            byte = 0x46
+	SendChannelMovingObj            byte = 0x47
 	SendChannelBoat                 byte = 0x48
 	SendChannelCharacterEnterField  byte = 0x4E
 	SendChannelCharacterLeaveField  byte = 0x4F

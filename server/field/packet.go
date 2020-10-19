@@ -96,6 +96,39 @@ func packetMapBoat(show bool) mpacket.Packet {
 	return p
 }
 
+func packetShowMovingObject(docked bool) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelMovingObj)
+
+	p.WriteByte(0x0a)
+
+	if docked {
+		p.WriteByte(4)
+	} else {
+		p.WriteByte(5)
+	}
+
+	return p
+}
+
+func packetShowEffect(path string) mpacket.Packet {
+	return packetEnvironmentChange(3, path)
+}
+
+func packetPlaySound(path string) mpacket.Packet {
+	return packetEnvironmentChange(4, path)
+}
+
+func packetBgmChange(path string) mpacket.Packet {
+	return packetEnvironmentChange(6, path)
+}
+
+func packetEnvironmentChange(setting int32, value string) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelMapEffect)
+	p.WriteInt32(setting)
+	p.WriteString(value)
+	return p
+}
+
 // func packetMapPortal(srcMap, dstmap int32, pos pos.Data) mpacket.Packet {
 // 	p := mpacket.CreateWithOpcode(0x2d)
 // 	p.WriteByte(26)
