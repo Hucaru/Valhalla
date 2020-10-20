@@ -269,6 +269,10 @@ func (d *Data) GiveLuk(amount int16) {
 
 // SetHP of Data
 func (d *Data) SetHP(amount int16) {
+	if amount > constant.MaxHpValue {
+		amount = constant.MaxHpValue
+	}
+
 	d.hp = amount
 	d.Send(packetPlayerStatChange(true, constant.HpID, int32(amount)))
 }
@@ -283,12 +287,20 @@ func (d *Data) GiveHP(amount int16) {
 
 // SetMaxHP of Data
 func (d *Data) SetMaxHP(amount int16) {
+	if amount > constant.MaxHpValue {
+		amount = constant.MaxHpValue
+	}
+
 	d.maxHP = amount
 	d.Send(packetPlayerStatChange(true, constant.MaxHpID, int32(amount)))
 }
 
 // SetMP of Data
 func (d *Data) SetMP(amount int16) {
+	if amount > constant.MaxMpValue {
+		amount = constant.MaxMpValue
+	}
+
 	d.mp = amount
 	d.Send(packetPlayerStatChange(true, constant.MpID, int32(amount)))
 }
@@ -303,6 +315,10 @@ func (d *Data) GiveMP(amount int16) {
 
 // SetMaxMP of Data
 func (d *Data) SetMaxMP(amount int16) {
+	if amount > constant.MaxMpValue {
+		amount = constant.MaxMpValue
+	}
+
 	d.maxMP = amount
 	d.Send(packetPlayerStatChange(true, constant.MaxMpID, int32(amount)))
 }

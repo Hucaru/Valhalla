@@ -1,7 +1,6 @@
 package script
 
 import (
-	"fmt"
 	"log"
 	"time"
 
@@ -38,13 +37,13 @@ func CreateNewEventController(name string, program *goja.Program, fields map[int
 
 	controller := &EventController{name: name, vm: vm, program: program, fields: fields, dispatch: dispatch, warpFunc: warpFunc}
 
-	defer func() {
-		if r := recover(); r != nil {
-			err = fmt.Errorf("No run function")
-		}
-	}()
+	ptr := vm.Get("init")
 
-	err = vm.ExportTo(vm.Get("init"), &controller.initFunc)
+	if ptr == nil {
+		return controller, false, nil
+	}
+
+	err = vm.ExportTo(ptr, &controller.initFunc)
 
 	if err != nil {
 		return controller, false, nil

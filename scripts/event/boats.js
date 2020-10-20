@@ -3,8 +3,8 @@ var closeGateTime = 240000; //The time to close the gate
 var takeoffTime = 300000; //The time at which takeoff occurs
 var landTime = 600000; //The time required to land everyone
 var invasionTime = 60000; //The time that balrog invasion starts from takeoffTime between ellinia and orbis
-var rogSummonTime = 5000 //The time to spawn the rogs
-var rogCheckTime = 10000
+var rogSummonTime = 5000 //The time to spawn the rogs after the boat spawn
+var rogCheckTime = 10000 //The period to check to see if rogs have died and boat needs to despawn
 
 var platforms = [101000300, 200000111, 200000121, 220000110] // Ellinia, Orbis (E), Orbis (L) , Ludi
 
