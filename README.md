@@ -114,7 +114,7 @@ See screenshots section for an example Grafana dashboard
 
 ## NPC chat display info (use this when scripting NPCs)
 
-NPCs are scripted in [gomacro](https://github.com/cosmos72/gomacro)
+NPCs are scripted in javscript powered by [goja](https://github.com/dop251/goja)
 
 Taken from [here](http://forum.ragezone.com/f428/add-learning-npcs-start-finish-643364/)
 

@@ -19,13 +19,17 @@ type Store struct {
 	dispatch chan func()
 }
 
+// CreateStore for scripts
+func CreateStore(folder string, dispatch chan func()) *Store {
+	return &Store{folder: folder, dispatch: dispatch, scripts: make(map[string]*goja.Program)}
+}
+
 func (s Store) String() string {
 	return fmt.Sprintf("%v", s.scripts)
 }
 
-// CreateStore for scripts
-func CreateStore(folder string, dispatch chan func()) *Store {
-	return &Store{folder: folder, dispatch: dispatch, scripts: make(map[string]*goja.Program)}
+func (s *Store) Scripts() map[string]*goja.Program {
+	return s.scripts
 }
 
 // Get script from store
@@ -56,7 +60,7 @@ func (s *Store) LoadScripts() error {
 }
 
 // Monitor the script directory and hot load scripts
-func (s *Store) Monitor() {
+func (s *Store) Monitor(task func(name string, program *goja.Program)) {
 	watcher, err := fsnotify.NewWatcher()
 
 	if err != nil {
@@ -85,6 +89,7 @@ func (s *Store) Monitor() {
 
 					if err == nil {
 						s.scripts[name] = program
+						task(name, program)
 					} else {
 						log.Println("Script compiling:", err)
 					}
@@ -96,6 +101,7 @@ func (s *Store) Monitor() {
 
 					if _, ok := s.scripts[name]; ok {
 						log.Println("Script:", event.Name, "removed")
+						task(name, nil)
 						delete(s.scripts, name)
 					} else {
 						log.Println("Script: could not find:", name, "to delete")

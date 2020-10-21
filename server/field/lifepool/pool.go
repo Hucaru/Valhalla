@@ -143,6 +143,11 @@ func (pool *Data) SetDropPool(drop *droppool.Data) {
 	pool.dropPool = drop
 }
 
+// MobCount in pool
+func (pool Data) MobCount() int {
+	return len(pool.mobs)
+}
+
 func (pool *Data) nextMobID() (int32, error) {
 	for i := 0; i < 100; i++ { // Try 99 times to generate an id if first time fails
 		pool.mobID++
@@ -459,6 +464,19 @@ func (pool *Data) KillMobs(deathType byte) {
 
 	for _, key := range keys {
 		pool.MobDamaged(pool.mobs[key].SpawnID(), nil, nil, pool.mobs[key].HP())
+	}
+}
+
+// EraseMobs from pool
+func (pool *Data) EraseMobs() {
+	keys := make([]int32, 0, len(pool.mobs))
+
+	for key := range pool.mobs {
+		keys = append(keys, key)
+	}
+	for _, key := range keys {
+		pool.removeMob(key, 0)
+		delete(pool.mobs, key)
 	}
 }
 

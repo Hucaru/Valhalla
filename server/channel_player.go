@@ -525,7 +525,7 @@ func (server ChannelServer) playerUsePortal(conn mnet.Client, reader mpacket.Rea
 		portalName := reader.ReadString(reader.ReadInt16())
 		srcPortal, err := srcInst.GetPortalFromName(portalName)
 
-		if !plr.CheckPos(srcPortal.Pos(), 100, 10) { // trying to account for lag
+		if !plr.CheckPos(srcPortal.Pos(), 100, 100) { // trying to account for lag whilst preventing teleporting
 			if conn.GetAdminLevel() > 0 {
 				conn.Send(message.PacketMessageRedText("Portal - " + srcPortal.Pos().String() + " Player - " + plr.Pos().String()))
 			}

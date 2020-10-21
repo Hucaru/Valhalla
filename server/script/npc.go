@@ -171,6 +171,21 @@ func (state npcState) WarpPlayer(p *player.Data, mapID int32) bool {
 	return false
 }
 
+// GetInstance that the passed in player belongs to
+func (state npcState) GetInstance(p *player.Data) *field.Instance {
+	if field, ok := state.fields[p.MapID()]; ok {
+		inst, err := field.GetInstance(p.InstanceID())
+
+		if err != nil {
+			return nil
+		}
+
+		return inst
+	}
+
+	return nil
+}
+
 // NpcChatController of the conversation
 type NpcChatController struct {
 	state npcState
