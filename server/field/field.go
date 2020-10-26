@@ -6,6 +6,7 @@ import (
 
 	"github.com/Hucaru/Valhalla/nx"
 	"github.com/Hucaru/Valhalla/server/field/droppool"
+	"github.com/Hucaru/Valhalla/server/field/foothold"
 	"github.com/Hucaru/Valhalla/server/field/lifepool"
 	"github.com/Hucaru/Valhalla/server/field/rectangle"
 	"github.com/Hucaru/Valhalla/server/field/roompool"
@@ -23,6 +24,8 @@ type Field struct {
 
 	vrLimit                        rectangle.Data
 	mobCapacityMin, mobCapacityMax int
+
+	footholds []foothold.Foothold
 }
 
 // CreateInstance for this field
@@ -44,6 +47,7 @@ func (f *Field) CreateInstance() int {
 		returnMapID: f.Data.ReturnMap,
 		timeLimit:   f.Data.TimeLimit,
 		properties:  make(map[string]interface{}),
+		footholds:   f.footholds,
 	}
 
 	inst.roomPool = roompool.CreateNewPool(inst)
@@ -54,6 +58,15 @@ func (f *Field) CreateInstance() int {
 	f.instances = append(f.instances, inst)
 
 	return id
+}
+
+// FormatFootholds data into a searchable structure
+func (f *Field) FormatFootholds() {
+	f.footholds = make([]foothold.Foothold, len(f.Data.Footholds))
+
+	for i, v := range f.Data.Footholds {
+		f.footholds[i] = foothold.CreateFoothold(v.ID, v.X1, v.Y1, v.X2, v.Y2, v.Next, v.Prev)
+	}
 }
 
 // CalculateFieldLimits for mob spawning

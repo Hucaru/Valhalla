@@ -46,7 +46,9 @@ type Reactor struct {
 
 // Foothold in map
 type Foothold struct {
-	X1, X2, Y1, Y2 int
+	ID             int16
+	X1, X2, Y1, Y2 int16
+	Prev, Next     int
 }
 
 // Map data from nx
@@ -375,21 +377,31 @@ func getMapFootholds(node *gonx.Node, nodes []gonx.Node, textLookup []string) []
 				fh := nodes[inner.ChildID+k]
 
 				foothold := Foothold{}
+				fhID, err := strconv.Atoi(textLookup[fh.NameID])
+
+				if err != nil {
+					fmt.Println("Error in foothold id conversion")
+					continue
+				}
+
+				foothold.ID = int16(fhID)
 
 				for u := uint32(0); u < uint32(fh.ChildCount); u++ {
 					option := nodes[fh.ChildID+u]
 					optionName := textLookup[option.NameID]
 					switch optionName {
 					case "x1":
-						foothold.X1 = int(gonx.DataToInt64(option.Data))
+						foothold.X1 = int16(gonx.DataToInt64(option.Data))
 					case "x2":
-						foothold.X2 = int(gonx.DataToInt64(option.Data))
+						foothold.X2 = int16(gonx.DataToInt64(option.Data))
 					case "y1":
-						foothold.Y1 = int(gonx.DataToInt64(option.Data))
+						foothold.Y1 = int16(gonx.DataToInt64(option.Data))
 					case "y2":
-						foothold.Y2 = int(gonx.DataToInt64(option.Data))
+						foothold.Y2 = int16(gonx.DataToInt64(option.Data))
 					case "next":
+						foothold.Next = int(gonx.DataToInt64(option.Data))
 					case "prev":
+						foothold.Prev = int(gonx.DataToInt64(option.Data))
 					case "force":
 					default:
 						fmt.Println("Unsupported NX foothold option:", optionName, "->", option.Data)

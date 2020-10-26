@@ -17,6 +17,7 @@ const (
 	SendChannelStatChange           byte = 0x1A
 	SendChannelSkillRecordUpdate    byte = 0x1D
 	SendChannelInfoMessage          byte = 0x20
+	SendChannelMapTransferResult    byte = 0x22
 	SendChannelLieDetectorTest      byte = 0x23
 	SendChannelAvatarInfoWindow     byte = 0x2c
 	SendChannelPartyInfo            byte = 0x2D

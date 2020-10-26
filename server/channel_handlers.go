@@ -73,6 +73,8 @@ func (server *ChannelServer) HandleClientPacket(conn mnet.Client, reader mpacket
 		server.mobDistance(conn, reader)
 	case opcode.RecvChannelNpcMovement:
 		server.npcMovement(conn, reader)
+	case opcode.RecvChannelBoatMap:
+		// [mapID int32][? byte]
 	default:
 		log.Println("UNKNOWN CLIENT PACKET:", reader)
 	}

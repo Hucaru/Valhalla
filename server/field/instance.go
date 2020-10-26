@@ -10,6 +10,7 @@ import (
 	"github.com/Hucaru/Valhalla/mnet"
 	"github.com/Hucaru/Valhalla/mpacket"
 	"github.com/Hucaru/Valhalla/server/field/droppool"
+	"github.com/Hucaru/Valhalla/server/field/foothold"
 	"github.com/Hucaru/Valhalla/server/field/lifepool"
 	"github.com/Hucaru/Valhalla/server/field/roompool"
 	"github.com/Hucaru/Valhalla/server/pos"
@@ -71,6 +72,8 @@ type Instance struct {
 	properties map[string]interface{} // this is used to share state between npc and system scripts
 
 	bgm string
+
+	footholds []foothold.Foothold
 }
 
 // ID of the instance within the field
@@ -332,7 +335,38 @@ func (inst *Instance) fieldUpdate(t time.Time) {
 
 // CalculateFinalDropPos from a starting position
 func (inst *Instance) CalculateFinalDropPos(from pos.Data) pos.Data {
-	return from
+	// ToDo: Iterate over a binary tree as interating over all footholds is highly ineficient!
+
+	from.SetY(from.Y() - 80) // This distance might need to be configurable depending on drop type?
+
+	possible := []pos.Data{}
+
+	for _, v := range inst.footholds {
+		if !v.Wall() && v.Above(from) {
+			pos := v.FindPos(from)
+
+			if pos.Y() >= from.Y() {
+				possible = append(possible, pos)
+			}
+		}
+	}
+
+	if len(possible) == 0 {
+		fmt.Println("Could not find foothold")
+		return from // find nearest foothold
+	} else if len(possible) == 1 {
+		return possible[0]
+	}
+
+	lowest := possible[0]
+
+	for _, v := range possible[1:] {
+		if v.Y() < lowest.Y() {
+			lowest = v
+		}
+	}
+
+	return lowest
 }
 
 // ShowBoat to instance if input bool is set to true

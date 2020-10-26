@@ -116,9 +116,9 @@ func (pool *Data) CreateDrop(spawnType byte, dropType byte, mesos int32, dropFro
 	}
 
 	for i, item := range items {
-		finalPos := pool.instance.CalculateFinalDropPos(dropFrom) // (dropFrom, xShift)
-
-		finalPos.SetX(finalPos.X() - offset + int16(i*itemDistance)) // This calculation needs to be interpolated to be placed on correct position on ledge
+		tmp := dropFrom
+		tmp.SetX(dropFrom.X() - offset + int16(i*itemDistance))
+		finalPos := pool.instance.CalculateFinalDropPos(tmp)
 
 		if poolID, err := pool.nextID(); err == nil {
 			drop := drop{
