@@ -54,6 +54,13 @@ type Data struct {
 	pet        bool
 }
 
+type player interface {
+	HP() int16
+	NoChange()
+	GiveHP(int16)
+	GiveMP(int16)
+}
+
 func (v Data) DbID() int64         { return v.dbID }
 func (v Data) ID() int32           { return v.id }
 func (v Data) Cash() bool          { return v.cash }
@@ -454,4 +461,27 @@ func (v Data) bytes(shortSlot bool) []byte {
 	}
 
 	return p
+}
+
+// UpdateAmount updates item amount to newAmount
+func (v *Data) UpdateAmount(newAmount int16) {
+	v.amount = newAmount
+}
+
+// Use applies stat changes for items
+func (v Data) Use(plr player) {
+	if plr.HP() < 1 {
+		plr.NoChange()
+		return
+	}
+	if v.hp > 0 {
+		plr.GiveHP(v.hp)
+	}
+	if v.mp > 0 {
+		plr.GiveMP(v.mp)
+	}
+
+	// Need to add stat buffs (W.ATT, M.ATT, etc)
+	// This will require timers to ensure buffs are removed once finished
+
 }

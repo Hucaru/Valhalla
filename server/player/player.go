@@ -279,10 +279,16 @@ func (d *Data) SetHP(amount int16) {
 
 // GiveHP to Data
 func (d *Data) GiveHP(amount int16) {
-	d.SetHP(d.hp + amount)
-	if d.hp < 0 {
+	newHP := d.hp + amount
+	if newHP < 0 {
 		d.SetHP(0)
+		return
 	}
+	if newHP > d.MaxHP() {
+		d.SetHP(d.MaxHP())
+		return
+	}
+	d.SetHP(newHP)
 }
 
 // SetMaxHP of Data
@@ -307,10 +313,16 @@ func (d *Data) SetMP(amount int16) {
 
 // GiveMP to Data
 func (d *Data) GiveMP(amount int16) {
-	d.SetMP(d.mp + amount)
-	if d.mp < 0 {
+	newMP := d.mp + amount
+	if newMP < 0 {
 		d.SetMP(0)
+		return
 	}
+	if newMP > d.MaxMP() {
+		d.SetMP(d.MaxMP())
+		return
+	}
+	d.SetMP(newMP)
 }
 
 // SetMaxMP of Data
@@ -456,6 +468,10 @@ func (d *Data) SetMapID(id int32) {
 // SetMapPosID of Data
 func (d *Data) SetMapPosID(pos byte) {
 	d.mapPos = pos
+}
+
+func (d Data) NoChange() {
+	d.Send(packetInventoryNoChange())
 }
 
 // GiveItem to Data
@@ -653,10 +669,35 @@ func (d *Data) GiveItem(newItem item.Data, db *sql.DB) error { // TODO: Refactor
 }
 
 // TakeItem from Data
-func (d *Data) TakeItem(itemID int32, amount int16) (item.Data, error) {
-	log.Println("player.Data.TakeItem not implemented")
-	// removeItem if item.Amount() == 0
-	return item.Data{}, nil
+func (d *Data) TakeItem(id int32, slot int16, amount int16, invID byte, db *sql.DB) (item.Data, error) {
+	item, err := d.getItem(invID, slot)
+	if err != nil {
+		return item, err
+	}
+
+	if item.ID() != id {
+		return item, fmt.Errorf("item.ID(%d) does not match ID(%d) provided", item.ID(), id)
+	}
+
+	maxRemove := math.Min(float64(item.Amount()), float64(amount))
+	item.UpdateAmount(item.Amount() - int16(maxRemove))
+	if item.Amount() == 0 {
+		// Delete item
+		d.removeItem(item, db)
+	} else {
+		// Update item with new stack size
+		d.updateItemStack(item, db)
+
+	}
+
+	return item, nil
+
+}
+
+func (d Data) updateItemStack(item item.Data, db *sql.DB) {
+	item.Save(db, d.id)
+	d.updateItem(item)
+	d.Send(packetInventoryAddItem(item, false))
 }
 
 func (d *Data) updateItem(new item.Data) {

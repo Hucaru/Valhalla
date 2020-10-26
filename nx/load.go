@@ -2,6 +2,7 @@ package nx
 
 import (
 	"fmt"
+	"log"
 
 	"github.com/Hucaru/gonx"
 )
@@ -74,4 +75,15 @@ func GetMobSkill(id byte) ([]MobSkill, error) {
 	}
 
 	return mobSkills[id], nil
+}
+
+// GetMobSkills from loaded nx
+func GetMobSkills(id int32) map[byte]byte {
+	mob, err := GetMob(id)
+	if err != nil {
+		log.Println(err)
+		return nil
+	}
+
+	return mob.Skills
 }

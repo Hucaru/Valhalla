@@ -2,8 +2,11 @@ package mob
 
 import (
 	"fmt"
+	"math/rand"
 	"strconv"
 	"time"
+
+	skills "github.com/Hucaru/Valhalla/constant/skill"
 
 	"github.com/Hucaru/Valhalla/mnet"
 	"github.com/Hucaru/Valhalla/mpacket"
@@ -66,10 +69,15 @@ type Data struct {
 	skills                 map[byte]byte
 	revives                []int32
 	stance                 byte
+	poison                 bool
 
 	lastAttackTime int64
 	lastSkillTime  int64
 	skillTimes     map[byte]int64
+
+	skillID    byte
+	skillLevel byte
+	statBuff   int32
 
 	dmgTaken map[controller]int32
 
@@ -81,6 +89,10 @@ type Data struct {
 
 	spawnInterval int64
 	timeToSpawn   time.Time
+
+	lastStatusUpdate int64
+	lastHeal         int64
+	lastTimeAttacked int64
 }
 
 // CreateFromData - creates a mob from nx data
@@ -101,6 +113,10 @@ func CreateFromData(spawnID int32, life nx.Life, m nx.Mob, dropsItems, dropsMeso
 		hpFgColour:    byte(m.HPTagColor),
 		spawnInterval: life.MobTime,
 		dmgTaken:      make(map[controller]int32),
+		skills:        nx.GetMobSkills(life.ID),
+		skillTimes:    make(map[byte]int64),
+		poison:        false,
+		lastHeal:      time.Now().Unix(),
 	}
 }
 
@@ -114,6 +130,7 @@ func CreateFromID(spawnID, id int32, p pos.Data, controller controller, dropsIte
 
 	// If this isn't working with regards to position make the foothold equal to player? nearest to pos?
 	mob := CreateFromData(spawnID, nx.Life{ID: id, Foothold: p.Foothold(), X: p.X(), Y: p.Y(), FaceLeft: true}, m, dropsItems, dropsMesos)
+
 	mob.summoner = controller
 
 	return mob, nil
@@ -207,6 +224,26 @@ func (m Data) MaxHP() int32 {
 	return m.maxHP
 }
 
+// SetHP of mob
+func (m *Data) SetHP(hp int32) {
+	m.hp = hp
+}
+
+// MP of mob
+func (m Data) MP() int32 {
+	return m.mp
+}
+
+// MaxMP of mob
+func (m Data) MaxMP() int32 {
+	return m.maxMP
+}
+
+// SetMP of mob
+func (m *Data) SetMP(mp int32) {
+	m.mp = mp
+}
+
 // Exp of mob
 func (m Data) Exp() int32 {
 	return m.exp
@@ -225,6 +262,31 @@ func (m Data) Pos() pos.Data {
 // Boss value of mob
 func (m Data) Boss() bool {
 	return m.boss
+}
+
+// StatBuff value of mob
+func (m Data) StatBuff() int32 {
+	return m.statBuff
+}
+
+// LastSkillTime value of mob
+func (m Data) LastSkillTime() int64 {
+	return m.lastSkillTime
+}
+
+// SetLastAttackTime of mob
+func (m *Data) SetLastAttackTime(newTime int64) {
+	m.lastAttackTime = newTime
+}
+
+// SetLastSkillTime of mob
+func (m *Data) SetLastSkillTime(newTime int64) {
+	m.lastSkillTime = newTime
+}
+
+// Skills returns skills of mob
+func (m Data) Skills() map[byte]byte {
+	return m.skills
 }
 
 // HasHPBar that can be shown
@@ -248,13 +310,80 @@ func (m *Data) SetTimeToSpawn(t time.Time) {
 }
 
 // PerformSkill - mob skill action
-func (m *Data) PerformSkill(delay int16, skillLevel, skillID byte) {
+func (mob *Data) PerformSkill(delay int16, skillLevel, skillID byte) {
+	currentTime := time.Now().Unix()
+	mob.lastSkillTime = currentTime
+	mob.skillTimes[skillID] = currentTime
+
+	if skillID != mob.skillID || (mob.statBuff&skills.MobStat.SealSkill > 0) {
+		skillID = 0
+		return
+	}
+
+	levels, err := nx.GetMobSkill(skillID)
+
+	if err != nil {
+		mob.skillID = 0
+		return
+	}
+
+	var skillData nx.MobSkill
+	for i, v := range levels {
+		if i == int(skillLevel) {
+			skillData = v
+		}
+	}
+
+	mob.mp = mob.mp - skillData.MpCon
+	if mob.mp < 0 {
+		mob.mp = 0
+	}
+
+	// Handle all the different skills!
+	switch skillID {
+	case skills.Mob.WeaponAttackUpAoe:
+	case skills.Mob.MagicAttackUp:
+	case skills.Mob.MagicAttackUpAoe:
+	case skills.Mob.WeaponDefenceUp:
+	case skills.Mob.WeaponDefenceUpAoe:
+	case skills.Mob.MagicDefenceUp:
+	case skills.Mob.MagicDefenceUpAoe:
+	case skills.Mob.HealAoe:
+	case skills.Mob.Seal:
+	case skills.Mob.Darkness:
+	case skills.Mob.Weakness:
+	case skills.Mob.Stun:
+	case skills.Mob.Curse:
+	case skills.Mob.Poison:
+	case skills.Mob.Slow:
+	case skills.Mob.Dispel:
+	case skills.Mob.Seduce:
+	case skills.Mob.SendToTown:
+	case skills.Mob.PoisonMist:
+	case skills.Mob.CrazySkull:
+	case skills.Mob.Zombify:
+	case skills.Mob.WeaponImmunity:
+	case skills.Mob.MagicImmunity:
+	case skills.Mob.ArmorSkill:
+	case skills.Mob.WeaponDamageReflect:
+	case skills.Mob.MagicDamageReflect:
+	case skills.Mob.AnyDamageReflect:
+	case skills.Mob.McWeaponAttackUp:
+	case skills.Mob.McMagicAttackUp:
+	case skills.Mob.McWeaponDefenseUp:
+	case skills.Mob.McMagicDefenseUp:
+	case skills.Mob.McAccuracyUp:
+	case skills.Mob.McAvoidUp:
+	case skills.Mob.McSpeedUp:
+	case skills.Mob.McSeal:
+	case skills.Mob.Summon:
+	}
 
 }
 
 // PerformAttack - mob attack action
 func (m *Data) PerformAttack(attackID byte) {
-
+	// do stuff
 }
 
 // GiveDamage to mob
@@ -276,6 +405,7 @@ func (m *Data) GiveDamage(damager controller, dmg ...int32) {
 			m.dmgTaken[damager] = v
 		}
 	}
+	m.lastTimeAttacked = time.Now().Unix() // Is there a better place to put this?
 }
 
 // GetDamage done to mob
@@ -354,5 +484,187 @@ func (m Data) String() string {
 
 // Update mob for status changes e.g. posion, hp/mp recover, finding a new controller after inactivity
 func (m *Data) Update(t time.Time) {
+	checkTime := t.Unix()
+	m.lastStatusUpdate = checkTime
 
+	if m.hp <= 0 {
+		return
+	}
+
+	if m.poison {
+		// Handle poison
+		m.hp = m.hp - 10 // Need to adjust to poison amount based on poison level
+	}
+
+	// Update mob status if one is applied
+	if (checkTime - m.lastHeal) > 30 {
+		// Heal the mob
+		regenhp, regenmp := m.calculateHeal()
+
+		m.HealMob(regenhp, regenmp)
+		m.lastHeal = checkTime
+	}
+
+}
+
+// GetNextSkill returns the value of function chooseNextSkill
+// The function chooseNextSkill identifies a random skill for the mob to use
+// Various checks include MP consumption, cooldown, etc
+func (m *Data) GetNextSkill() (byte, byte) {
+	return chooseNextSkill(m)
+}
+
+func chooseNextSkill(mob *Data) (byte, byte) {
+	var skillID, skillLevel byte
+
+	skillsToChooseFrom := []byte{}
+
+	for id := range mob.skills {
+
+		levels, err := nx.GetMobSkill(id)
+
+		if err != nil {
+			continue
+		}
+
+		if int(skillLevel) >= len(levels) {
+			continue
+		}
+
+		skillData := levels[skillLevel]
+
+		// Skill MP check
+		if mob.mp < skillData.MpCon {
+			continue
+		}
+
+		// Skill cooldown check
+		if val, ok := mob.skillTimes[id]; ok {
+			if (val + skillData.Interval) > time.Now().Unix() {
+				continue
+			}
+		}
+
+		// Check summon limit
+		// if skillData.Limit {
+
+		// }
+
+		// Determine if stats can be buffed
+		if mob.statBuff > 0 {
+			alreadySet := false
+
+			switch id {
+			case skills.Mob.WeaponAttackUp:
+				fallthrough
+			case skills.Mob.WeaponAttackUpAoe:
+				alreadySet = mob.statBuff&skills.MobStat.PowerUp > 0
+
+			case skills.Mob.MagicAttackUp:
+				fallthrough
+			case skills.Mob.MagicAttackUpAoe:
+				alreadySet = mob.statBuff&skills.MobStat.MagicUp > 0
+
+			case skills.Mob.WeaponDefenceUp:
+				fallthrough
+			case skills.Mob.WeaponDefenceUpAoe:
+				alreadySet = mob.statBuff&skills.MobStat.PowerGuardUp > 0
+
+			case skills.Mob.MagicDefenceUp:
+				fallthrough
+			case skills.Mob.MagicDefenceUpAoe:
+				alreadySet = mob.statBuff&skills.MobStat.MagicGuardUp > 0
+
+			case skills.Mob.WeaponImmunity:
+				alreadySet = mob.statBuff&skills.MobStat.PhysicalImmune > 0
+
+			case skills.Mob.MagicImmunity:
+				alreadySet = mob.statBuff&skills.MobStat.MagicImmune > 0
+
+			// case skills.Mob.WeaponDamageReflect:
+
+			// case skills.Mob.MagicDamageReflect:
+
+			case skills.Mob.McSpeedUp:
+				alreadySet = mob.statBuff&skills.MobStat.Speed > 0
+
+			default:
+			}
+
+			if alreadySet {
+				continue
+			}
+
+		}
+
+		skillsToChooseFrom = append(skillsToChooseFrom, id)
+	}
+
+	if len(skillsToChooseFrom) > 0 {
+		nextID := skillsToChooseFrom[rand.Intn(len(skillsToChooseFrom))]
+
+		skillID = nextID
+
+		for id, level := range mob.skills {
+			if id == nextID {
+				skillLevel = level
+			}
+		}
+	}
+
+	if skillLevel == 0 {
+		skillID = 0
+	}
+
+	return skillID, skillLevel
+}
+
+// CanUseSkill returns new skill for mob to use
+func (m Data) CanUseSkill(skillPossible bool) (byte, byte) {
+	// 10 second default cooldown
+	if !skillPossible || (m.statBuff&skills.MobStat.SealSkill > 0) || (time.Now().Unix()-m.lastSkillTime) < 10 {
+		return 0, 0
+	}
+	skillID, skillLevel := m.GetNextSkill()
+	return skillID, skillLevel
+
+}
+
+// HealMob heals the mobs HP or MP
+func (m *Data) HealMob(hp, mp int32) {
+	if hp > 0 && m.hp < m.maxHP {
+		newHP := m.hp + hp
+		if newHP < 0 || newHP > m.maxHP {
+			newHP = m.maxHP
+		}
+		m.hp = newHP
+	}
+
+	if mp > 0 && m.mp < m.maxMP {
+		newMP := m.mp + mp
+		if newMP < 0 || newMP > m.maxMP {
+			newMP = m.maxMP
+		}
+		mp = newMP
+	}
+}
+
+func (m Data) calculateHeal() (hp int32, mp int32) {
+	hp, mp = 0, 0
+
+	// Calculate HP regen amount
+	hp = m.maxHP / 100
+
+	// Calculate MP regen amount
+	mp = m.maxMP / 100
+
+	// Always return MP because attack time does not matter for regen.
+	// If someone is bossing the boss will always need MP available to attack
+	// Because of this we should always return MP
+	if m.lastTimeAttacked-time.Now().Unix() < 60 {
+		return 0, mp
+	}
+
+	// We are healing 1% of hp/mp.
+	return hp, mp
 }
