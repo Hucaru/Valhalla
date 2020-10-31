@@ -394,6 +394,8 @@ func (pool *Data) MobDamaged(poolID int32, damager player, prty party, dmg ...in
 					pool.spawnReviveMob(&newMob, damager)
 				}
 
+				pool.removeMob(v.SpawnID(), 0x1)
+
 				if dropEntry, ok := item.DropTable[v.ID()]; ok {
 					chance := pool.rNumber.Int31n(100000)
 
@@ -436,8 +438,6 @@ func (pool *Data) MobDamaged(poolID int32, damager player, prty party, dmg ...in
 
 					// If has hp bar: remove
 				}
-
-				pool.removeMob(v.SpawnID(), 0x1)
 
 				if v.SpawnInterval() > 0 {
 					for i, k := range pool.spawnableMobs {

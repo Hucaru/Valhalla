@@ -73,7 +73,7 @@ type Instance struct {
 
 	bgm string
 
-	footholds []foothold.Foothold
+	fhHist foothold.Histogram
 }
 
 // ID of the instance within the field
@@ -335,38 +335,8 @@ func (inst *Instance) fieldUpdate(t time.Time) {
 
 // CalculateFinalDropPos from a starting position
 func (inst *Instance) CalculateFinalDropPos(from pos.Data) pos.Data {
-	// ToDo: Iterate over a binary tree as interating over all footholds is highly ineficient!
-
 	from.SetY(from.Y() - 80) // This distance might need to be configurable depending on drop type?
-
-	possible := []pos.Data{}
-
-	for _, v := range inst.footholds {
-		if !v.Wall() && v.Above(from) {
-			pos := v.FindPos(from)
-
-			if pos.Y() >= from.Y() {
-				possible = append(possible, pos)
-			}
-		}
-	}
-
-	if len(possible) == 0 {
-		fmt.Println("Could not find foothold")
-		return from // find nearest foothold
-	} else if len(possible) == 1 {
-		return possible[0]
-	}
-
-	lowest := possible[0]
-
-	for _, v := range possible[1:] {
-		if v.Y() < lowest.Y() {
-			lowest = v
-		}
-	}
-
-	return lowest
+	return inst.fhHist.GetFinalPosition(from)
 }
 
 // ShowBoat to instance if input bool is set to true

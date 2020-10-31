@@ -145,11 +145,13 @@ func (pool *Data) CreateDrop(spawnType byte, dropType byte, mesos int32, dropFro
 	}
 
 	if mesos > 0 {
-		finalPos := pool.instance.CalculateFinalDropPos(dropFrom)
+		tmp := dropFrom
 
 		if iCount > 1 {
-			finalPos.SetX(finalPos.X() - offset + int16((iCount-1)*itemDistance))
+			tmp.SetX(tmp.X() - offset + int16((iCount-1)*itemDistance))
 		}
+
+		finalPos := pool.instance.CalculateFinalDropPos(tmp)
 
 		if poolID, err := pool.nextID(); err == nil {
 			drop := drop{

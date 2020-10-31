@@ -26,6 +26,7 @@ type Field struct {
 	mobCapacityMin, mobCapacityMax int
 
 	footholds []foothold.Foothold
+	fhHist    foothold.Histogram
 }
 
 // CreateInstance for this field
@@ -47,7 +48,7 @@ func (f *Field) CreateInstance() int {
 		returnMapID: f.Data.ReturnMap,
 		timeLimit:   f.Data.TimeLimit,
 		properties:  make(map[string]interface{}),
-		footholds:   f.footholds,
+		fhHist:      f.fhHist,
 	}
 
 	inst.roomPool = roompool.CreateNewPool(inst)
@@ -67,6 +68,8 @@ func (f *Field) FormatFootholds() {
 	for i, v := range f.Data.Footholds {
 		f.footholds[i] = foothold.CreateFoothold(v.ID, v.X1, v.Y1, v.X2, v.Y2, v.Next, v.Prev)
 	}
+
+	f.fhHist = foothold.CreateHistogram(f.footholds)
 }
 
 // CalculateFieldLimits for mob spawning
