@@ -28,6 +28,10 @@ type controller interface {
 	Conn() mnet.Client
 }
 
+type player interface {
+	Send(mpacket.Packet)
+}
+
 // Data structure for the pool
 type Data struct {
 	instance field
@@ -70,6 +74,7 @@ func (pool Data) PlayerShowDrops(plr controller) {
 	}
 }
 
+// RemoveDrop from pool
 func (pool *Data) RemoveDrop(instant bool, id ...int32) {
 	for _, id := range id {
 		pool.instance.Send(packetRemoveDrop(instant, id))
@@ -174,6 +179,13 @@ func (pool *Data) CreateDrop(spawnType byte, dropType byte, mesos int32, dropFro
 
 			pool.instance.Send(packetShowDrop(spawnType, drop))
 		}
+	}
+}
+
+// HideDrops in the pool to the player
+func (pool Data) HideDrops(plr player) {
+	for id := range pool.drops {
+		plr.Send(packetRemoveDrop(true, id))
 	}
 }
 

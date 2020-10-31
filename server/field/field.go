@@ -230,6 +230,8 @@ func (f *Field) ChangePlayerInstance(player player, id int) error {
 			return err
 		}
 
+		f.instances[player.InstanceID()].dropPool.HideDrops(player)
+
 		player.SetInstance(f.instances[id])
 		err = f.instances[id].AddPlayer(player)
 

@@ -18,12 +18,12 @@ func CreateFoothold(id, x1, y1, x2, y2 int16, prev, next int) Foothold {
 }
 
 // Slope if y1 == y2
-func (data Foothold) Slope() bool {
+func (data Foothold) slope() bool {
 	return data.y1 != data.y2
 }
 
 // Wall if x1 == x2
-func (data Foothold) Wall() bool {
+func (data Foothold) wall() bool {
 	return data.x1 == data.x2
 }
 
@@ -35,7 +35,7 @@ func withinX(check, x1, x2 int16) bool {
 	return false
 }
 
-func crossProduct(x, x1, x2, y, y1, y2 int16) int16 {
+func crossProduct(x, x1, x2, y, y1, y2 int16) float64 {
 	/*
 		cp = |a||b|sin(theta)
 
@@ -54,35 +54,19 @@ func crossProduct(x, x1, x2, y, y1, y2 int16) int16 {
 		if theta lies between 0 and pi crossing pi/2 then it is above the line resulting in a positive value
 		if theta lies between 0 and pi crossing 3pi/2 then it is below the line resulting in a negative value
 	*/
-	return (x-x1)*(y2-y1) - (y-y1)*(x2-x1) // 0 is on the line, > 0 is above, < 0 is below
+	return float64(x-x1)*float64(y2-y1) - float64(y-y1)*float64(x2-x1) // 0 is on the line, > 0 is above, < 0 is below
 }
 
-// Above the current foothold
-func (data Foothold) Above(p pos.Data) bool {
-	if !withinX(p.X(), data.x1, data.x2) {
+func (data Foothold) above(p pos.Data, ignoreX bool) bool {
+	if !withinX(p.X(), data.x1, data.x2) && !ignoreX {
 		return false
 	}
 
 	return crossProduct(p.X(), data.x1, data.x2, p.Y(), data.y1, data.y2) >= 0
 }
 
-// Below the current foothold
-func (data Foothold) Below(p pos.Data) bool {
-	if !withinX(p.X(), data.x1, data.x2) {
-		return false
-	}
-
-	return crossProduct(p.X(), data.x1, data.x2, p.Y(), data.y1, data.y2) <= 0
-}
-
-// FootholdBelow below the other foothold
-func (data Foothold) FootholdBelow(other Foothold) bool {
-	return data.centreY < other.centreY // this method is dodgy I think
-}
-
-// FindPos on foothold
-func (data Foothold) FindPos(p pos.Data) pos.Data {
-	if !data.Slope() {
+func (data Foothold) findPos(p pos.Data) pos.Data {
+	if !data.slope() {
 		return pos.New(p.X(), data.y1, data.id)
 	}
 
@@ -102,4 +86,19 @@ func (data Foothold) FindPos(p pos.Data) pos.Data {
 	newY := data.y1 + int16((float64(p.X()-data.x1)/float64(data.x1-data.x2))*float64(data.y1-data.y2))
 
 	return pos.New(p.X(), newY, data.id)
+}
+
+func (data Foothold) distanceFromPosSquare(point pos.Data) (int16, int16, int16) {
+	deltaX := point.X() - data.centreX
+	deltaY := point.Y() - data.centreY
+
+	clampX := data.x1 + 30
+	clampY := data.y1
+
+	if deltaX > 0 {
+		clampX = data.x2 - 30
+		clampY = data.y2
+	}
+
+	return (deltaX * deltaX) + (deltaY * deltaY), clampX, clampY
 }

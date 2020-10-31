@@ -18,10 +18,14 @@ type Histogram struct {
 
 // CreateHistogram data for a given set of footholds
 func CreateHistogram(footholds []Foothold) Histogram {
-	minX := footholds[0].x1
-	maxX := footholds[0].x2
+	var minX int16
+	var maxX int16
 
-	for _, v := range footholds[1:] {
+	for _, v := range footholds {
+		if v.x1 == v.x2 { // Ignore walls as it scuffs the offsets for some narrow maps
+			continue
+		}
+
 		if v.x1 < minX {
 			minX = v.x1
 		}
@@ -39,6 +43,10 @@ func CreateHistogram(footholds []Foothold) Histogram {
 	result := Histogram{footholds: footholds, binSize: binSize, minX: minX, bins: bins}
 
 	for i, v := range result.footholds {
+		if v.x1 == v.x2 { // Ignore walls
+			continue
+		}
+
 		first := result.calculateBinIndex(v.x1)
 		last := result.calculateBinIndex(v.x2)
 
@@ -50,6 +58,7 @@ func CreateHistogram(footholds []Foothold) Histogram {
 	return result
 }
 
+// MarshalJSON interface conformality for debug purposes
 func (data Histogram) MarshalJSON() ([]byte, error) {
 	bins := make([]int, len(data.bins))
 
@@ -100,8 +109,8 @@ func (data Histogram) retrivePosition(ind int, point pos.Data) pos.Data {
 	set := false
 
 	for _, v := range data.bins[ind] {
-		if !v.Wall() && v.Above(point) {
-			pos := v.FindPos(point)
+		if !v.wall() && v.above(point, false) {
+			pos := v.findPos(point)
 
 			if pos.Y() >= point.Y() {
 				if !set {
@@ -114,9 +123,27 @@ func (data Histogram) retrivePosition(ind int, point pos.Data) pos.Data {
 		}
 	}
 
+	if !set {
+		minimum = data.findNearestPoint(ind, point)
+	}
+
 	return minimum
 }
 
 func (data Histogram) findNearestPoint(ind int, point pos.Data) pos.Data {
-	return point
+	nearest := point
+
+	var dist int16 = math.MaxInt16
+
+	for _, v := range data.bins[ind] {
+		if !v.wall() && v.above(point, true) {
+			if d, clampX, clampY := v.distanceFromPosSquare(point); d < dist {
+				dist = d
+				nearest.SetX(clampX)
+				nearest.SetY(clampY)
+			}
+		}
+	}
+
+	return nearest
 }
