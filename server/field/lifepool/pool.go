@@ -397,12 +397,11 @@ func (pool *Data) MobDamaged(poolID int32, damager player, prty party, dmg ...in
 				pool.removeMob(v.SpawnID(), 0x1)
 
 				if dropEntry, ok := item.DropTable[v.ID()]; ok {
-					chance := pool.rNumber.Int31n(100000)
-
 					var mesos int32
 					drops := make([]item.Data, 0, len(dropEntry))
 
 					for _, entry := range dropEntry {
+						chance := pool.rNumber.Int31n(100000)
 						if entry.Chance < chance {
 							continue
 						}

@@ -335,7 +335,7 @@ func (inst *Instance) fieldUpdate(t time.Time) {
 
 // CalculateFinalDropPos from a starting position
 func (inst *Instance) CalculateFinalDropPos(from pos.Data) pos.Data {
-	from.SetY(from.Y() - 80) // This distance might need to be configurable depending on drop type?
+	from.SetY(from.Y() - 90) // This distance might need to be configurable depending on drop type?
 	return inst.fhHist.GetFinalPosition(from)
 }
 
