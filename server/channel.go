@@ -127,6 +127,7 @@ func (server *ChannelServer) Initialise(work chan func(), dbuser, dbpassword, db
 			Dispatch: server.dispatch,
 		}
 
+		server.fields[fieldID].FormatFootholds()
 		server.fields[fieldID].CalculateFieldLimits()
 		server.fields[fieldID].CreateInstance()
 	}

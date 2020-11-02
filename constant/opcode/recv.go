@@ -47,4 +47,5 @@ const (
 	RecvChannelMobControl          byte = 0x6A
 	RecvChannelDistance            byte = 0x6B
 	RecvChannelNpcMovement         byte = 0x6F
+	RecvChannelBoatMap             byte = 0x80
 )

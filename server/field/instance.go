@@ -10,6 +10,7 @@ import (
 	"github.com/Hucaru/Valhalla/mnet"
 	"github.com/Hucaru/Valhalla/mpacket"
 	"github.com/Hucaru/Valhalla/server/field/droppool"
+	"github.com/Hucaru/Valhalla/server/field/foothold"
 	"github.com/Hucaru/Valhalla/server/field/lifepool"
 	"github.com/Hucaru/Valhalla/server/field/roompool"
 	"github.com/Hucaru/Valhalla/server/pos"
@@ -71,6 +72,8 @@ type Instance struct {
 	properties map[string]interface{} // this is used to share state between npc and system scripts
 
 	bgm string
+
+	fhHist foothold.Histogram
 }
 
 // ID of the instance within the field
@@ -332,7 +335,8 @@ func (inst *Instance) fieldUpdate(t time.Time) {
 
 // CalculateFinalDropPos from a starting position
 func (inst *Instance) CalculateFinalDropPos(from pos.Data) pos.Data {
-	return from
+	from.SetY(from.Y() - 90) // This distance might need to be configurable depending on drop type?
+	return inst.fhHist.GetFinalPosition(from)
 }
 
 // ShowBoat to instance if input bool is set to true

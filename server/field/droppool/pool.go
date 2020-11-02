@@ -28,6 +28,10 @@ type controller interface {
 	Conn() mnet.Client
 }
 
+type player interface {
+	Send(mpacket.Packet)
+}
+
 // Data structure for the pool
 type Data struct {
 	instance field
@@ -70,6 +74,7 @@ func (pool Data) PlayerShowDrops(plr controller) {
 	}
 }
 
+// RemoveDrop from pool
 func (pool *Data) RemoveDrop(instant bool, id ...int32) {
 	for _, id := range id {
 		pool.instance.Send(packetRemoveDrop(instant, id))
@@ -116,9 +121,9 @@ func (pool *Data) CreateDrop(spawnType byte, dropType byte, mesos int32, dropFro
 	}
 
 	for i, item := range items {
-		finalPos := pool.instance.CalculateFinalDropPos(dropFrom) // (dropFrom, xShift)
-
-		finalPos.SetX(finalPos.X() - offset + int16(i*itemDistance)) // This calculation needs to be interpolated to be placed on correct position on ledge
+		tmp := dropFrom
+		tmp.SetX(dropFrom.X() - offset + int16(i*itemDistance))
+		finalPos := pool.instance.CalculateFinalDropPos(tmp)
 
 		if poolID, err := pool.nextID(); err == nil {
 			drop := drop{
@@ -145,11 +150,13 @@ func (pool *Data) CreateDrop(spawnType byte, dropType byte, mesos int32, dropFro
 	}
 
 	if mesos > 0 {
-		finalPos := pool.instance.CalculateFinalDropPos(dropFrom)
+		tmp := dropFrom
 
 		if iCount > 1 {
-			finalPos.SetX(finalPos.X() - offset + int16((iCount-1)*itemDistance))
+			tmp.SetX(tmp.X() - offset + int16((iCount-1)*itemDistance))
 		}
+
+		finalPos := pool.instance.CalculateFinalDropPos(tmp)
 
 		if poolID, err := pool.nextID(); err == nil {
 			drop := drop{
@@ -172,6 +179,13 @@ func (pool *Data) CreateDrop(spawnType byte, dropType byte, mesos int32, dropFro
 
 			pool.instance.Send(packetShowDrop(spawnType, drop))
 		}
+	}
+}
+
+// HideDrops in the pool to the player
+func (pool Data) HideDrops(plr player) {
+	for id := range pool.drops {
+		plr.Send(packetRemoveDrop(true, id))
 	}
 }
 
