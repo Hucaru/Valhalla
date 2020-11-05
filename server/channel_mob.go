@@ -109,7 +109,10 @@ func (server ChannelServer) mobDamagePlayer(conn mnet.Client, reader mpacket.Rea
 
 		// Meso guard
 
-		plr.DamagePlayer(int16(damage))
+		if !plr.Admin() {
+			plr.DamagePlayer(int16(damage))
+		}
+
 		inst.Send(player.PlayerReceivedDmg(plr.ID(), mobAttack, damage, reducedDamage, spawnID, mobID, healSkillID, stance, reflectAction, reflected, reflectX, reflectY))
 	}
 	if mobSkillID != 0 && mobSkillLevel != 0 {

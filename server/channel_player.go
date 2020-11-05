@@ -5,6 +5,7 @@ import (
 	"log"
 	"strconv"
 
+	"github.com/Hucaru/Valhalla/server/db"
 	"github.com/Hucaru/Valhalla/server/player"
 
 	"github.com/Hucaru/Valhalla/constant"
@@ -22,7 +23,7 @@ func (server *ChannelServer) playerConnect(conn mnet.Client, reader mpacket.Read
 	charID := reader.ReadInt32()
 
 	var migrationID byte
-	err := server.db.QueryRow("SELECT migrationID FROM characters WHERE id=?", charID).Scan(&migrationID)
+	err := db.DB.QueryRow("SELECT migrationID FROM characters WHERE id=?", charID).Scan(&migrationID)
 
 	if err != nil {
 		log.Println(err)
@@ -34,7 +35,7 @@ func (server *ChannelServer) playerConnect(conn mnet.Client, reader mpacket.Read
 	}
 
 	var accountID int32
-	err = server.db.QueryRow("SELECT accountID FROM characters WHERE id=?", charID).Scan(&accountID)
+	err = db.DB.QueryRow("SELECT accountID FROM characters WHERE id=?", charID).Scan(&accountID)
 
 	if err != nil {
 		log.Println(err)
@@ -44,7 +45,7 @@ func (server *ChannelServer) playerConnect(conn mnet.Client, reader mpacket.Read
 	conn.SetAccountID(accountID)
 
 	var adminLevel int
-	err = server.db.QueryRow("SELECT adminLevel FROM accounts WHERE accountID=?", conn.GetAccountID()).Scan(&adminLevel)
+	err = db.DB.QueryRow("SELECT adminLevel FROM accounts WHERE accountID=?", conn.GetAccountID()).Scan(&adminLevel)
 
 	if err != nil {
 		log.Println(err)
@@ -53,21 +54,21 @@ func (server *ChannelServer) playerConnect(conn mnet.Client, reader mpacket.Read
 
 	conn.SetAdminLevel(adminLevel)
 
-	_, err = server.db.Exec("UPDATE characters SET migrationID=? WHERE id=?", -1, charID)
+	_, err = db.DB.Exec("UPDATE characters SET migrationID=? WHERE id=?", -1, charID)
 
 	if err != nil {
 		log.Println(err)
 		return
 	}
 
-	_, err = server.db.Exec("UPDATE characters SET channelID=? WHERE id=?", server.id, charID)
+	_, err = db.DB.Exec("UPDATE characters SET channelID=? WHERE id=?", server.id, charID)
 
 	if err != nil {
 		log.Println(err)
 		return
 	}
 
-	plr := player.LoadFromID(server.db, charID, conn)
+	plr := player.LoadFromID(charID, conn)
 
 	server.players = append(server.players, &plr)
 
@@ -114,7 +115,7 @@ func (server *ChannelServer) playerChangeChannel(conn mnet.Client, reader mpacke
 		if server.channels[id].port == 0 {
 			conn.Send(message.PacketCannotChangeChannel())
 		} else {
-			_, err := server.db.Exec("UPDATE characters SET migrationID=? WHERE id=?", id, player.ID())
+			_, err := db.DB.Exec("UPDATE characters SET migrationID=? WHERE id=?", id, player.ID())
 
 			if err != nil {
 				log.Println(err)
@@ -654,7 +655,7 @@ func (server ChannelServer) playerMoveInventoryItem(conn mnet.Client, reader mpa
 
 	inst, err := field.GetInstance(plr.InstanceID())
 
-	err = plr.MoveItem(pos1, pos2, amount, inv, inst, server.db)
+	err = plr.MoveItem(pos1, pos2, amount, inv, inst)
 
 	if err != nil {
 		log.Println(err)
@@ -670,7 +671,7 @@ func (server ChannelServer) playerUseInventoryItem(conn mnet.Client, reader mpac
 	slot := reader.ReadInt16()
 	itemid := reader.ReadInt32()
 
-	item, err := plr.TakeItem(itemid, slot, 1, 2, server.db)
+	item, err := plr.TakeItem(itemid, slot, 1, 2)
 	if err != nil {
 		log.Println(err)
 	}

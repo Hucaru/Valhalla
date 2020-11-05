@@ -1,10 +1,10 @@
 package player
 
 import (
-	"database/sql"
 	"fmt"
 
 	"github.com/Hucaru/Valhalla/nx"
+	"github.com/Hucaru/Valhalla/server/db"
 )
 
 // Skill data
@@ -36,12 +36,12 @@ func CreateSkillFromData(ID int32, level byte) (Skill, error) {
 		TimeLastUsed: 0}, nil
 }
 
-func getSkillsFromCharID(db *sql.DB, id int32) []Skill {
+func getSkillsFromCharID(id int32) []Skill {
 	skills := []Skill{}
 
 	filter := "skillID, level, cooldown"
 
-	row, err := db.Query("SELECT "+filter+" FROM skills where characterID=?", id)
+	row, err := db.DB.Query("SELECT "+filter+" FROM skills where characterID=?", id)
 
 	if err != nil {
 		panic(err)

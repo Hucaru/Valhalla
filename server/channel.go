@@ -1,7 +1,6 @@
 package server
 
 import (
-	"database/sql"
 	"fmt"
 	"log"
 	"strconv"
@@ -15,6 +14,7 @@ import (
 	"github.com/Hucaru/Valhalla/mnet"
 	"github.com/Hucaru/Valhalla/mpacket"
 	"github.com/Hucaru/Valhalla/nx"
+	"github.com/Hucaru/Valhalla/server/db"
 	"github.com/Hucaru/Valhalla/server/field"
 	"github.com/Hucaru/Valhalla/server/message"
 	"github.com/Hucaru/Valhalla/server/metrics"
@@ -79,9 +79,9 @@ func (p *players) removeFromConn(conn mnet.Client) error {
 
 // ChannelServer state
 type ChannelServer struct {
-	id               byte
-	worldName        string
-	db               *sql.DB
+	id        byte
+	worldName string
+	// db               *sql.DB
 	dispatch         chan func()
 	world            mnet.Server
 	ip               []byte
@@ -102,17 +102,10 @@ type ChannelServer struct {
 func (server *ChannelServer) Initialise(work chan func(), dbuser, dbpassword, dbaddress, dbport, dbdatabase string) {
 	server.dispatch = work
 
-	var err error
-	server.db, err = sql.Open("mysql", dbuser+":"+dbpassword+"@tcp("+dbaddress+":"+dbport+")/"+dbdatabase)
+	err := db.Connect(dbuser, dbpassword, dbaddress, dbport, dbdatabase)
 
 	if err != nil {
-		log.Fatal(err.Error())
-	}
-
-	err = server.db.Ping()
-
-	if err != nil {
-		log.Fatal(err.Error())
+		log.Fatal(err)
 	}
 
 	log.Println("Connected to database")
@@ -134,7 +127,7 @@ func (server *ChannelServer) Initialise(work chan func(), dbuser, dbpassword, db
 
 	log.Println("Initialised game state")
 
-	accountIDs, err := server.db.Query("SELECT accountID from characters where channelID = ?", server.id)
+	accountIDs, err := db.DB.Query("SELECT accountID from characters where channelID = ?", server.id)
 
 	if err != nil {
 		log.Println(err)
@@ -149,7 +142,7 @@ func (server *ChannelServer) Initialise(work chan func(), dbuser, dbpassword, db
 			continue
 		}
 
-		_, err = server.db.Exec("UPDATE accounts SET isLogedIn=? WHERE accountID=?", 0, accountID)
+		_, err = db.DB.Exec("UPDATE accounts SET isLogedIn=? WHERE accountID=?", 0, accountID)
 
 		if err != nil {
 			log.Println(err)
@@ -159,7 +152,7 @@ func (server *ChannelServer) Initialise(work chan func(), dbuser, dbpassword, db
 
 	accountIDs.Close()
 
-	_, err = server.db.Exec("UPDATE characters SET channelID=? WHERE channelID=?", -1, server.id)
+	_, err = db.DB.Exec("UPDATE characters SET channelID=? WHERE channelID=?", -1, server.id)
 
 	if err != nil {
 		log.Println(err)
@@ -334,13 +327,13 @@ func (server *ChannelServer) ClientDisconnected(conn mnet.Client) {
 		log.Println(err)
 	}
 
-	err = plr.Save(server.db)
+	err = plr.Save()
 
 	if err != nil {
 		log.Println(err)
 	}
 
-	_, err = server.db.Exec("UPDATE characters SET channelID=? WHERE id=?", -1, plr.ID())
+	_, err = db.DB.Exec("UPDATE characters SET channelID=? WHERE id=?", -1, plr.ID())
 
 	if err != nil {
 		log.Println(err)
@@ -363,7 +356,7 @@ func (server *ChannelServer) ClientDisconnected(conn mnet.Client) {
 	if index > -1 {
 		server.migrating = append(server.migrating[:index], server.migrating[index+1:]...)
 	} else {
-		_, err := server.db.Exec("UPDATE accounts SET isLogedIn=0 WHERE accountID=?", conn.GetAccountID())
+		_, err := db.DB.Exec("UPDATE accounts SET isLogedIn=0 WHERE accountID=?", conn.GetAccountID())
 
 		if err != nil {
 			log.Println("Unable to complete logout for ", conn.GetAccountID())

@@ -9,6 +9,7 @@ import (
 	"github.com/Hucaru/Valhalla/constant/opcode"
 	"github.com/Hucaru/Valhalla/mnet"
 	"github.com/Hucaru/Valhalla/mpacket"
+	"github.com/Hucaru/Valhalla/server/db"
 	"github.com/Hucaru/Valhalla/server/item"
 	"github.com/Hucaru/Valhalla/server/message"
 	"github.com/Hucaru/Valhalla/server/player"
@@ -56,7 +57,7 @@ func (server *LoginServer) handleLoginRequest(conn mnet.Client, reader mpacket.R
 	var isBanned int
 	var adminLevel int
 
-	err := server.db.QueryRow("SELECT accountID, username, password, gender, isLogedIn, isBanned, adminLevel FROM accounts WHERE username=?", username).
+	err := db.DB.QueryRow("SELECT accountID, username, password, gender, isLogedIn, isBanned, adminLevel FROM accounts WHERE username=?", username).
 		Scan(&accountID, &user, &databasePassword, &gender, &isLogedIn, &isBanned, &adminLevel)
 
 	result := byte(0x00)
@@ -80,7 +81,7 @@ func (server *LoginServer) handleLoginRequest(conn mnet.Client, reader mpacket.R
 		conn.SetAdminLevel(adminLevel)
 		conn.SetAccountID(accountID)
 
-		_, err := server.db.Exec("UPDATE accounts set isLogedIn=1 WHERE accountID=?", accountID)
+		_, err := db.DB.Exec("UPDATE accounts set isLogedIn=1 WHERE accountID=?", accountID)
 
 		if err != nil {
 			log.Println("Database error with approving login of accountID", accountID, err)
@@ -98,7 +99,7 @@ func (server *LoginServer) handleGoodLogin(conn mnet.Client, reader mpacket.Read
 
 	accountID := conn.GetAccountID()
 
-	err := server.db.QueryRow("SELECT username, password FROM accounts WHERE accountID=?", accountID).
+	err := db.DB.QueryRow("SELECT username, password FROM accounts WHERE accountID=?", accountID).
 		Scan(&username, &password)
 
 	if err != nil {
@@ -151,7 +152,7 @@ func (server *LoginServer) handleChannelSelect(conn mnet.Client, reader mpacket.
 	}
 
 	if selectedWorld == conn.GetWorldID() {
-		characters := player.GetCharactersFromAccountWorldID(server.db, conn.GetAccountID(), conn.GetWorldID())
+		characters := player.GetCharactersFromAccountWorldID(conn.GetAccountID(), conn.GetWorldID())
 		conn.Send(packetLoginDisplayCharacters(characters))
 	}
 }
@@ -160,7 +161,7 @@ func (server *LoginServer) handleNameCheck(conn mnet.Client, reader mpacket.Read
 	newCharName := reader.ReadString(reader.ReadInt16())
 
 	var nameFound int
-	err := server.db.QueryRow("SELECT count(*) name FROM characters WHERE name=?", newCharName).
+	err := db.DB.QueryRow("SELECT count(*) name FROM characters WHERE name=?", newCharName).
 		Scan(&nameFound)
 
 	if err != nil {
@@ -190,7 +191,7 @@ func (server *LoginServer) handleNewCharacter(conn mnet.Client, reader mpacket.R
 
 	var counter int
 
-	err := server.db.QueryRow("SELECT count(*) FROM characters where name=? and worldID=?", name, conn.GetWorldID()).Scan(&counter)
+	err := db.DB.QueryRow("SELECT count(*) FROM characters where name=? and worldID=?", name, conn.GetWorldID()).Scan(&counter)
 
 	if err != nil {
 		panic(err)
@@ -227,7 +228,7 @@ func (server *LoginServer) handleNewCharacter(conn mnet.Client, reader mpacket.R
 	}
 
 	if valid {
-		res, err := server.db.Exec("INSERT INTO characters (name, accountID, worldID, face, hair, skin, gender, str, dex, intt, luk) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+		res, err := db.DB.Exec("INSERT INTO characters (name, accountID, worldID, face, hair, skin, gender, str, dex, intt, luk) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
 			name, conn.GetAccountID(), conn.GetWorldID(), face, hair+hairColour, skin, conn.GetGender(), str, dex, intelligence, luk)
 
 		if err != nil {
@@ -240,7 +241,7 @@ func (server *LoginServer) handleNewCharacter(conn mnet.Client, reader mpacket.R
 			log.Println(err)
 		}
 
-		char := player.LoadFromID(server.db, int32(characterID), conn)
+		char := player.LoadFromID(int32(characterID), conn)
 
 		if conn.GetAdminLevel() > 0 {
 			items := map[int32]int16{
@@ -265,7 +266,7 @@ func (server *LoginServer) handleNewCharacter(conn mnet.Client, reader mpacket.R
 
 				item.SetSlotID(pos)
 				item.SetCreatorName(name)
-				item.Save(server.db, int32(characterID))
+				item.Save(int32(characterID))
 				char.AddEquip(item)
 			}
 
@@ -287,12 +288,12 @@ func (server *LoginServer) handleNewCharacter(conn mnet.Client, reader mpacket.R
 				}
 
 				item.SetSlotID(pos)
-				item.Save(server.db, int32(characterID))
+				item.Save(int32(characterID))
 				char.AddEquip(item)
 			}
 		}
 
-		char.Save(server.db)
+		char.Save()
 		newCharacter = char
 	}
 
@@ -306,8 +307,8 @@ func (server *LoginServer) handleDeleteCharacter(conn mnet.Client, reader mpacke
 	var storedDob int32
 	var charCount int
 
-	err := server.db.QueryRow("SELECT dob FROM accounts where accountID=?", conn.GetAccountID()).Scan(&storedDob)
-	err = server.db.QueryRow("SELECT count(*) FROM characters where accountID=? AND id=?", conn.GetAccountID(), charID).Scan(&charCount)
+	err := db.DB.QueryRow("SELECT dob FROM accounts where accountID=?", conn.GetAccountID()).Scan(&storedDob)
+	err = db.DB.QueryRow("SELECT count(*) FROM characters where accountID=? AND id=?", conn.GetAccountID(), charID).Scan(&charCount)
 
 	if err != nil {
 		panic(err)
@@ -322,7 +323,7 @@ func (server *LoginServer) handleDeleteCharacter(conn mnet.Client, reader mpacke
 	}
 
 	if dob == storedDob {
-		records, err := server.db.Query("DELETE FROM characters where id=?", charID)
+		records, err := db.DB.Query("DELETE FROM characters where id=?", charID)
 
 		defer records.Close()
 
@@ -342,7 +343,7 @@ func (server *LoginServer) handleSelectCharacter(conn mnet.Client, reader mpacke
 
 	var charCount int
 
-	err := server.db.QueryRow("SELECT count(*) FROM characters where accountID=? AND id=?", conn.GetAccountID(), charID).Scan(&charCount)
+	err := db.DB.QueryRow("SELECT count(*) FROM characters where accountID=? AND id=?", conn.GetAccountID(), charID).Scan(&charCount)
 
 	if err != nil {
 		panic(err)
@@ -350,7 +351,7 @@ func (server *LoginServer) handleSelectCharacter(conn mnet.Client, reader mpacke
 
 	if charCount == 1 {
 		channel := server.worlds[conn.GetWorldID()].channels[conn.GetChannelID()]
-		_, err := server.db.Exec("UPDATE characters SET migrationID=? WHERE id=?", conn.GetChannelID(), charID)
+		_, err := db.DB.Exec("UPDATE characters SET migrationID=? WHERE id=?", conn.GetChannelID(), charID)
 
 		if err != nil {
 			panic(err)
@@ -363,7 +364,7 @@ func (server *LoginServer) handleSelectCharacter(conn mnet.Client, reader mpacke
 }
 
 func (server *LoginServer) addCharacterItem(characterID int64, itemID int32, slot int32, creatorName string) {
-	_, err := server.db.Exec("INSERT INTO items (characterID, itemID, slotNumber, creatorName) VALUES (?, ?, ?, ?)", characterID, itemID, slot, creatorName)
+	_, err := db.DB.Exec("INSERT INTO items (characterID, itemID, slotNumber, creatorName) VALUES (?, ?, ?, ?)", characterID, itemID, slot, creatorName)
 
 	if err != nil {
 		panic(err)

@@ -1,7 +1,6 @@
 package player
 
 import (
-	"database/sql"
 	"fmt"
 	"log"
 	"math"
@@ -10,6 +9,7 @@ import (
 	"github.com/Hucaru/Valhalla/constant"
 	"github.com/Hucaru/Valhalla/mnet"
 	"github.com/Hucaru/Valhalla/mpacket"
+	"github.com/Hucaru/Valhalla/server/db"
 	"github.com/Hucaru/Valhalla/server/item"
 	"github.com/Hucaru/Valhalla/server/pos"
 )
@@ -475,7 +475,7 @@ func (d Data) NoChange() {
 }
 
 // GiveItem to Data
-func (d *Data) GiveItem(newItem item.Data, db *sql.DB) error { // TODO: Refactor
+func (d *Data) GiveItem(newItem item.Data) error { // TODO: Refactor
 	findFirstEmptySlot := func(items []item.Data, size byte) (int16, error) {
 		slotsUsed := make([]bool, size)
 
@@ -515,7 +515,7 @@ func (d *Data) GiveItem(newItem item.Data, db *sql.DB) error { // TODO: Refactor
 
 		newItem.SetSlotID(slotID)
 		newItem.SetAmount(1) // just in case
-		newItem.Save(db, d.id)
+		newItem.Save(d.id)
 		d.equip = append(d.equip, newItem)
 		d.Send(packetInventoryAddItem(newItem, true))
 	case 2: // Use
@@ -551,7 +551,7 @@ func (d *Data) GiveItem(newItem item.Data, db *sql.DB) error { // TODO: Refactor
 				}
 
 				newItem.SetSlotID(slotID)
-				newItem.Save(db, d.id)
+				newItem.Save(d.id)
 				d.use = append(d.use, newItem)
 				d.Send(packetInventoryAddItem(newItem, true))
 			} else {
@@ -566,14 +566,14 @@ func (d *Data) GiveItem(newItem item.Data, db *sql.DB) error { // TODO: Refactor
 
 					newItem.SetAmount(value)
 					newItem.SetSlotID(slotID)
-					newItem.Save(db, d.id)
+					newItem.Save(d.id)
 
 					d.use = append(d.use, newItem)
 					d.Send(packetInventoryAddItems([]item.Data{d.use[index], newItem}, []bool{false, true}))
 				} else { // full merge
 					d.use[index].SetAmount(d.use[index].Amount() + newItem.Amount())
 					d.Send(packetInventoryAddItem(d.use[index], false))
-					d.use[index].Save(db, d.id)
+					d.use[index].Save(d.id)
 				}
 			}
 
@@ -586,7 +586,7 @@ func (d *Data) GiveItem(newItem item.Data, db *sql.DB) error { // TODO: Refactor
 		}
 
 		newItem.SetSlotID(slotID)
-		newItem.Save(db, d.id)
+		newItem.Save(d.id)
 		d.setUp = append(d.setUp, newItem)
 		d.Send(packetInventoryAddItem(newItem, true))
 	case 4: // Etc
@@ -622,7 +622,7 @@ func (d *Data) GiveItem(newItem item.Data, db *sql.DB) error { // TODO: Refactor
 				}
 
 				newItem.SetSlotID(slotID)
-				newItem.Save(db, d.id)
+				newItem.Save(d.id)
 				d.etc = append(d.etc, newItem)
 				d.Send(packetInventoryAddItem(newItem, true))
 			} else {
@@ -637,14 +637,14 @@ func (d *Data) GiveItem(newItem item.Data, db *sql.DB) error { // TODO: Refactor
 
 					newItem.SetAmount(value)
 					newItem.SetSlotID(slotID)
-					newItem.Save(db, d.id)
+					newItem.Save(d.id)
 
 					d.etc = append(d.etc, newItem)
 					d.Send(packetInventoryAddItems([]item.Data{d.etc[index], newItem}, []bool{false, true}))
 				} else { // full merge
 					d.etc[index].SetAmount(d.etc[index].Amount() + newItem.Amount())
 					d.Send(packetInventoryAddItem(d.etc[index], false))
-					d.etc[index].Save(db, d.id)
+					d.etc[index].Save(d.id)
 				}
 			}
 
@@ -658,7 +658,7 @@ func (d *Data) GiveItem(newItem item.Data, db *sql.DB) error { // TODO: Refactor
 		}
 
 		newItem.SetSlotID(slotID)
-		newItem.Save(db, d.id)
+		newItem.Save(d.id)
 		d.cash = append(d.cash, newItem)
 		d.Send(packetInventoryAddItem(newItem, true))
 	default:
@@ -669,7 +669,7 @@ func (d *Data) GiveItem(newItem item.Data, db *sql.DB) error { // TODO: Refactor
 }
 
 // TakeItem from Data
-func (d *Data) TakeItem(id int32, slot int16, amount int16, invID byte, db *sql.DB) (item.Data, error) {
+func (d *Data) TakeItem(id int32, slot int16, amount int16, invID byte) (item.Data, error) {
 	item, err := d.getItem(invID, slot)
 	if err != nil {
 		return item, err
@@ -683,10 +683,10 @@ func (d *Data) TakeItem(id int32, slot int16, amount int16, invID byte, db *sql.
 	item.UpdateAmount(item.Amount() - int16(maxRemove))
 	if item.Amount() == 0 {
 		// Delete item
-		d.removeItem(item, db)
+		d.removeItem(item)
 	} else {
 		// Update item with new stack size
-		d.updateItemStack(item, db)
+		d.updateItemStack(item)
 
 	}
 
@@ -694,8 +694,8 @@ func (d *Data) TakeItem(id int32, slot int16, amount int16, invID byte, db *sql.
 
 }
 
-func (d Data) updateItemStack(item item.Data, db *sql.DB) {
-	item.Save(db, d.id)
+func (d Data) updateItemStack(item item.Data) {
+	item.Save(d.id)
 	d.updateItem(item)
 	d.Send(packetInventoryAddItem(item, false))
 }
@@ -749,19 +749,19 @@ func (d Data) getItem(invID byte, slotID int16) (item.Data, error) {
 	return item.Data{}, fmt.Errorf("Could not find item")
 }
 
-func (d *Data) swapItems(item1, item2 item.Data, start, end int16, db *sql.DB) {
+func (d *Data) swapItems(item1, item2 item.Data, start, end int16) {
 	item1.SetSlotID(end)
-	item1.Save(db, d.id)
+	item1.Save(d.id)
 	d.updateItem(item1)
 
 	item2.SetSlotID(start)
-	item2.Save(db, d.id)
+	item2.Save(d.id)
 	d.updateItem(item2)
 
 	d.Send(packetInventoryChangeItemSlot(item1.InvID(), start, end))
 }
 
-func (d *Data) removeItem(item item.Data, db *sql.DB) {
+func (d *Data) removeItem(item item.Data) {
 	switch item.InvID() {
 	case 1:
 		for i, v := range d.equip {
@@ -805,12 +805,12 @@ func (d *Data) removeItem(item item.Data, db *sql.DB) {
 		}
 	}
 
-	item.Delete(db)
+	item.Delete()
 	d.Send(packetInventoryRemoveItem(item))
 }
 
 // MoveItem from one slot to another, if the final slot is zero then this is a drop action
-func (d *Data) MoveItem(start, end, amount int16, invID byte, inst instance, db *sql.DB) error {
+func (d *Data) MoveItem(start, end, amount int16, invID byte, inst instance) error {
 	if end == 0 { //drop item
 		fmt.Println("Drop item amount:", amount)
 		item, err := d.getItem(invID, start)
@@ -819,7 +819,7 @@ func (d *Data) MoveItem(start, end, amount int16, invID byte, inst instance, db 
 			return fmt.Errorf("Item to move doesn't exist")
 		}
 
-		d.removeItem(item, db)
+		d.removeItem(item)
 		// inst.AddDrop()
 	} else if end < 0 { // Move to equip slot
 		item1, err := d.getItem(invID, start)
@@ -844,12 +844,12 @@ func (d *Data) MoveItem(start, end, amount int16, invID byte, inst instance, db 
 
 		if err == nil {
 			item2.SetSlotID(start)
-			item2.Save(db, d.id)
+			item2.Save(d.id)
 			d.updateItem(item2)
 		}
 
 		item1.SetSlotID(end)
-		item1.Save(db, d.id)
+		item1.Save(d.id)
 		d.updateItem(item1)
 
 		d.Send(packetInventoryChangeItemSlot(invID, start, end))
@@ -865,28 +865,28 @@ func (d *Data) MoveItem(start, end, amount int16, invID byte, inst instance, db 
 
 		if err != nil { // empty slot
 			item1.SetSlotID(end)
-			item1.Save(db, d.id)
+			item1.Save(d.id)
 			d.updateItem(item1)
 
 			d.Send(packetInventoryChangeItemSlot(invID, start, end))
 		} else { // moved onto item
 			if (item1.IsStackable() && item2.IsStackable()) && (item1.ID() == item2.ID()) {
 				if item1.Amount() == constant.MaxItemStack || item2.Amount() == constant.MaxItemStack { // swap items
-					d.swapItems(item1, item2, start, end, db)
+					d.swapItems(item1, item2, start, end)
 				} else if item2.Amount() < constant.MaxItemStack { // full merge
 					if item2.Amount()+item1.Amount() <= constant.MaxItemStack {
 						item2.SetAmount(item2.Amount() + item1.Amount())
-						item2.Save(db, d.id)
+						item2.Save(d.id)
 						d.updateItem(item2)
 						d.Send(packetInventoryAddItem(item2, false))
 
-						d.removeItem(item1, db)
+						d.removeItem(item1)
 					} else { // partial merge is just a swap
-						d.swapItems(item1, item2, start, end, db)
+						d.swapItems(item1, item2, start, end)
 					}
 				}
 			} else {
-				d.swapItems(item1, item2, start, end, db)
+				d.swapItems(item1, item2, start, end)
 			}
 		}
 
@@ -908,6 +908,9 @@ func (d *Data) UpdateSkill(updatedSkill Skill) {
 	d.skills[updatedSkill.ID] = updatedSkill
 	d.Send(packetPlayerSkillBookUpdate(updatedSkill.ID, int32(updatedSkill.Level)))
 }
+
+// Admin status of player
+func (d Data) Admin() bool { return d.conn.GetAdminLevel() > 0 }
 
 // ID of Data
 func (d Data) ID() int32 { return d.id }
@@ -1069,7 +1072,7 @@ func (d Data) DisplayBytes() []byte {
 }
 
 // Save data
-func (d Data) Save(db *sql.DB) error {
+func (d Data) Save() error {
 	query := `UPDATE characters set skin=?, hair=?, face=?, level=?,
 	job=?, str=?, dex=?, intt=?, luk=?, hp=?, maxHP=?, mp=?, maxMP=?,
 	ap=?, sp=?, exp=?, fame=?, mapID=?, mapPos=?, mesos=?, miniGameWins=?,
@@ -1090,7 +1093,7 @@ func (d Data) Save(db *sql.DB) error {
 
 	// TODO: Move mesos, to instances of it changing, otherwise items and mesos can become out of sync from
 	// any crashes
-	_, err = db.Exec(query,
+	_, err = db.DB.Exec(query,
 		d.skin, d.hair, d.face, d.level, d.job, d.str, d.dex, d.intt, d.luk, d.hp, d.maxHP, d.mp,
 		d.maxMP, d.ap, d.sp, d.exp, d.fame, d.mapID, d.mapPos, d.mesos, d.miniGameWins,
 		d.miniGameDraw, d.miniGameLoss, d.miniGamePoints, d.id)
@@ -1101,7 +1104,7 @@ func (d Data) Save(db *sql.DB) error {
 
 	query = `INSERT INTO skills(characterID,skillID,level,cooldown) VALUES(?,?,?,?) ON DUPLICATE KEY UPDATE characterID=?, skillID=?`
 	for skillID, skill := range d.skills {
-		_, err := db.Exec(query, d.id, skillID, skill.Level, skill.Cooldown, d.id, skillID)
+		_, err := db.DB.Exec(query, d.id, skillID, skill.Level, skill.Cooldown, d.id, skillID)
 
 		if err != nil {
 			return err
