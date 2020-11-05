@@ -8,6 +8,7 @@ import (
 	"github.com/Hucaru/Valhalla/constant/opcode"
 	"github.com/Hucaru/Valhalla/mnet"
 	"github.com/Hucaru/Valhalla/mpacket"
+	"github.com/Hucaru/Valhalla/server/db"
 )
 
 // LoginServer state
@@ -22,13 +23,13 @@ func (server *LoginServer) Initialise(dbuser, dbpassword, dbaddress, dbport, dbd
 	server.migrating = make(map[mnet.Client]bool)
 
 	var err error
-	server.db, err = sql.Open("mysql", dbuser+":"+dbpassword+"@tcp("+dbaddress+":"+dbport+")/"+dbdatabase)
+	db.DB, err = sql.Open("mysql", dbuser+":"+dbpassword+"@tcp("+dbaddress+":"+dbport+")/"+dbdatabase)
 
 	if err != nil {
 		log.Fatal(err.Error())
 	}
 
-	err = server.db.Ping()
+	err = db.DB.Ping()
 
 	if err != nil {
 		log.Fatal(err.Error())
@@ -43,7 +44,7 @@ func (server *LoginServer) Initialise(dbuser, dbpassword, dbaddress, dbport, dbd
 
 // CleanupDB sets all accounts isLogedIn to 0
 func (server *LoginServer) CleanupDB() {
-	res, err := server.db.Exec("UPDATE accounts AS a INNER JOIN characters c ON a.accountID = c.accountID SET a.isLogedIn = 0 WHERE isLogedIn = 1 AND a.accountID != ALL (SELECT c.accountID FROM characters c WHERE c.channelID != -1);")
+	res, err := db.DB.Exec("UPDATE accounts AS a INNER JOIN characters c ON a.accountID = c.accountID SET a.isLogedIn = 0 WHERE isLogedIn = 1 AND a.accountID != ALL (SELECT c.accountID FROM characters c WHERE c.channelID != -1);")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -158,7 +159,7 @@ func (server *LoginServer) ClientDisconnected(conn mnet.Client) {
 	if isMigrating, ok := server.migrating[conn]; ok && isMigrating {
 		delete(server.migrating, conn)
 	} else {
-		_, err := server.db.Exec("UPDATE accounts SET isLogedIn=0 WHERE accountID=?", conn.GetAccountID())
+		_, err := db.DB.Exec("UPDATE accounts SET isLogedIn=0 WHERE accountID=?", conn.GetAccountID())
 
 		if err != nil {
 			log.Println("Unable to complete logout for ", conn.GetAccountID())

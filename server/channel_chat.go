@@ -427,7 +427,7 @@ func (server *ChannelServer) gmCommand(conn mnet.Client, msg string) {
 		}
 
 		item.SetCreatorName(player.Name())
-		err = player.GiveItem(item, server.db)
+		err = player.GiveItem(item)
 
 		if err != nil {
 			conn.Send(message.PacketMessageRedText(err.Error()))
@@ -541,7 +541,7 @@ func (server *ChannelServer) gmCommand(conn mnet.Client, msg string) {
 			}
 
 			item.SetCreatorName(player.Name())
-			err = player.GiveItem(item, server.db)
+			err = player.GiveItem(item)
 
 			if err != nil {
 				conn.Send(message.PacketMessageRedText(err.Error()))

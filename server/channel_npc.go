@@ -210,7 +210,7 @@ func (server *ChannelServer) npcShop(conn mnet.Client, reader mpacket.Reader) {
 					return // bad shop slice
 				}
 
-				plr.GiveItem(newItem, server.db)
+				plr.GiveItem(newItem)
 				plr.Send(script.PacketShopContinue()) //check if needed
 			}
 
@@ -230,7 +230,7 @@ func (server *ChannelServer) npcShop(conn mnet.Client, reader mpacket.Reader) {
 
 		invID := getInventoryID(itemID)
 
-		plr.TakeItem(itemID, slotPos, amount, invID, server.db)
+		plr.TakeItem(itemID, slotPos, amount, invID)
 
 		plr.GiveMesos(item.Price)
 		plr.Send(script.PacketShopContinue()) // check if needed

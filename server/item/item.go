@@ -1,7 +1,6 @@
 package item
 
 import (
-	"database/sql"
 	"fmt"
 	"math"
 	"math/rand"
@@ -10,6 +9,7 @@ import (
 	"github.com/Hucaru/Valhalla/constant"
 	"github.com/Hucaru/Valhalla/mpacket"
 	"github.com/Hucaru/Valhalla/nx"
+	"github.com/Hucaru/Valhalla/server/db"
 	"github.com/google/uuid"
 )
 
@@ -90,9 +90,9 @@ func (v Data) ExpireTime() int64   { return v.expireTime }
 func (v Data) Amount() int16       { return v.amount }
 
 // LoadInventoryFromDb gets the inventory for a given database connection and character id, returning equip, use, set-up, etc and cash slices
-func LoadInventoryFromDb(db *sql.DB, charID int32) ([]Data, []Data, []Data, []Data, []Data) {
+func LoadInventoryFromDb(charID int32) ([]Data, []Data, []Data, []Data, []Data) {
 	filter := "id,inventoryID,itemID,slotNumber,amount,flag,upgradeSlots,level,str,dex,intt,luk,hp,mp,watk,matk,wdef,mdef,accuracy,avoid,hands,speed,jump,expireTime,creatorName"
-	row, err := db.Query("SELECT "+filter+" FROM items WHERE characterID=?", charID)
+	row, err := db.DB.Query("SELECT "+filter+" FROM items WHERE characterID=?", charID)
 
 	if err != nil {
 		panic(err)
@@ -330,7 +330,7 @@ func (v Data) Shield() bool {
 }
 
 // Save item to database
-func (v Data) Save(db *sql.DB, charID int32) (bool, error) {
+func (v Data) Save(charID int32) (bool, error) {
 	if v.dbID == 0 {
 		props := `characterID,inventoryID,itemID,slotNumber,amount,flag,upgradeSlots,level,
 				str,dex,intt,luk,hp,mp,watk,matk,wdef,mdef,accuracy,avoid,hands,speed,jump,
@@ -338,7 +338,7 @@ func (v Data) Save(db *sql.DB, charID int32) (bool, error) {
 
 		query := "INSERT into items (" + props + ") VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
 
-		res, err := db.Exec(query,
+		res, err := db.DB.Exec(query,
 			charID, v.invID, v.id, v.slotID, v.amount, v.flag, v.upgradeSlots, v.scrollLevel,
 			v.str, v.dex, v.intt, v.luk, v.hp, v.mp, v.watk, v.matk, v.wdef, v.mdef, v.accuracy, v.avoid, v.hands, v.speed, v.jump,
 			v.expireTime, v.creatorName)
@@ -359,7 +359,7 @@ func (v Data) Save(db *sql.DB, charID int32) (bool, error) {
 
 		query := "UPDATE items SET " + props + " WHERE id=?"
 
-		_, err := db.Exec(query,
+		_, err := db.DB.Exec(query,
 			v.slotID, v.amount, v.flag, v.upgradeSlots, v.scrollLevel,
 			v.str, v.dex, v.intt, v.luk, v.hp, v.mp, v.watk, v.matk, v.wdef, v.mdef, v.accuracy, v.avoid, v.hands, v.speed, v.jump,
 			v.expireTime, v.dbID)
@@ -372,9 +372,9 @@ func (v Data) Save(db *sql.DB, charID int32) (bool, error) {
 }
 
 // Delete item from database
-func (v Data) Delete(db *sql.DB) error {
+func (v Data) Delete() error {
 	query := "DELETE FROM `items` WHERE id=?"
-	_, err := db.Exec(query, v.dbID)
+	_, err := db.DB.Exec(query, v.dbID)
 
 	if err != nil {
 		return err

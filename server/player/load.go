@@ -1,23 +1,23 @@
 package player
 
 import (
-	"database/sql"
 	"log"
 
 	"github.com/Hucaru/Valhalla/mnet"
 	"github.com/Hucaru/Valhalla/nx"
+	"github.com/Hucaru/Valhalla/server/db"
 	"github.com/Hucaru/Valhalla/server/item"
 )
 
 // GetCharactersFromAccountWorldID - characters under a specific account
-func GetCharactersFromAccountWorldID(db *sql.DB, accountID int32, worldID byte) []Data {
+func GetCharactersFromAccountWorldID(accountID int32, worldID byte) []Data {
 	c := []Data{}
 
 	filter := "id,accountID,worldID,name,gender,skin,hair,face,level,job,str,dex,intt," +
 		"luk,hp,maxHP,mp,maxMP,ap,sp, exp,fame,mapID,mapPos,previousMapID,mesos," +
 		"equipSlotSize,useSlotSize,setupSlotSize,etcSlotSize,cashSlotSize"
 
-	chars, err := db.Query("SELECT "+filter+" FROM characters WHERE accountID=? AND worldID=?", accountID, worldID)
+	chars, err := db.DB.Query("SELECT "+filter+" FROM characters WHERE accountID=? AND worldID=?", accountID, worldID)
 
 	if err != nil {
 		log.Println(err)
@@ -38,7 +38,7 @@ func GetCharactersFromAccountWorldID(db *sql.DB, accountID int32, worldID byte) 
 			log.Println(err)
 		}
 
-		char.equip, char.use, char.setUp, char.etc, char.cash = item.LoadInventoryFromDb(db, char.id)
+		char.equip, char.use, char.setUp, char.etc, char.cash = item.LoadInventoryFromDb(char.id)
 
 		c = append(c, char)
 	}
@@ -47,14 +47,14 @@ func GetCharactersFromAccountWorldID(db *sql.DB, accountID int32, worldID byte) 
 }
 
 // LoadFromID - player id to load from database
-func LoadFromID(db *sql.DB, id int32, conn mnet.Client) Data {
+func LoadFromID(id int32, conn mnet.Client) Data {
 	c := Data{}
 	filter := "id,accountID,worldID,name,gender,skin,hair,face,level,job,str,dex,intt," +
 		"luk,hp,maxHP,mp,maxMP,ap,sp, exp,fame,mapID,mapPos,previousMapID,mesos," +
 		"equipSlotSize,useSlotSize,setupSlotSize,etcSlotSize,cashSlotSize,miniGameWins," +
 		"miniGameDraw,miniGameLoss,miniGamePoints"
 
-	err := db.QueryRow("SELECT "+filter+" FROM characters where id=?", id).Scan(&c.id,
+	err := db.DB.QueryRow("SELECT "+filter+" FROM characters where id=?", id).Scan(&c.id,
 		&c.accountID, &c.worldID, &c.name, &c.gender, &c.skin, &c.hair, &c.face,
 		&c.level, &c.job, &c.str, &c.dex, &c.intt, &c.luk, &c.hp, &c.maxHP, &c.mp,
 		&c.maxMP, &c.ap, &c.sp, &c.exp, &c.fame, &c.mapID, &c.mapPos,
@@ -68,7 +68,7 @@ func LoadFromID(db *sql.DB, id int32, conn mnet.Client) Data {
 
 	c.skills = make(map[int32]Skill)
 
-	for _, s := range getSkillsFromCharID(db, c.id) {
+	for _, s := range getSkillsFromCharID(c.id) {
 		c.skills[s.ID] = s
 	}
 
@@ -81,7 +81,7 @@ func LoadFromID(db *sql.DB, id int32, conn mnet.Client) Data {
 	c.pos.SetX(nxMap.Portals[c.mapPos].X)
 	c.pos.SetY(nxMap.Portals[c.mapPos].Y)
 
-	c.equip, c.use, c.setUp, c.etc, c.cash = item.LoadInventoryFromDb(db, c.id)
+	c.equip, c.use, c.setUp, c.etc, c.cash = item.LoadInventoryFromDb(c.id)
 	c.conn = conn
 	return c
 }
