@@ -98,6 +98,8 @@ func (server *ChannelServer) playerConnect(conn mnet.Client, reader mpacket.Read
 	newPlr.UpdateGuildInfo()
 
 	metrics.Gauges["player_count"].With(prometheus.Labels{"channel": strconv.Itoa(int(server.id)), "world": server.worldName}).Inc()
+
+	server.world.Send(channelPopUpdate(server.id, int16(len(server.players))))
 }
 
 func (server *ChannelServer) playerChangeChannel(conn mnet.Client, reader mpacket.Reader) {

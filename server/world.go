@@ -39,6 +39,8 @@ func (server *WorldServer) HandleServerPacket(conn mnet.Server, reader mpacket.R
 		server.handleRequestBad(conn, reader)
 	case opcode.ChannelNew:
 		server.handleNewChannel(conn, reader)
+	case opcode.ChannelInfo:
+		server.handleChannelUpdate(conn, reader)
 	default:
 		log.Println("UNKNOWN SERVER PACKET:", reader)
 	}
@@ -136,4 +138,16 @@ func (server *WorldServer) sendChannelInfo() {
 
 		v.conn.Send(p)
 	}
+}
+
+func (server *WorldServer) handleChannelUpdate(conn mnet.Server, reader mpacket.Reader) {
+	id := reader.ReadByte()
+	op := reader.ReadByte()
+	switch op {
+	case 0: //population
+		server.info.channels[id].pop = reader.ReadInt16()
+	default:
+		log.Println("Unkown channel update type", op)
+	}
+	server.login.Send(server.info.generateInfoPacket())
 }

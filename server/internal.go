@@ -65,3 +65,12 @@ func (c *channel) serialisePacket(reader *mpacket.Reader) {
 	c.maxPop = reader.ReadInt16()
 	c.pop = reader.ReadInt16()
 }
+
+func channelPopUpdate(id byte, pop int16) mpacket.Packet {
+	p := mpacket.CreateInternal(opcode.ChannelInfo)
+	p.WriteByte(id)
+	p.WriteByte(0) // 0 is population
+	p.WriteInt16(pop)
+
+	return p
+}
