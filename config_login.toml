@@ -12,5 +12,5 @@ serverListenAddress = "0.0.0.0"
 serverListenPort = "8485"
 packetQueueSize = 512
 # The following should be set to zero when not testing on a local network environment
-latency = 250
-jitter = 250
+latency = 0
+jitter = 0

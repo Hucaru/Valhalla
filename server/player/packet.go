@@ -442,3 +442,51 @@ func packetGuildInfo(id int32, name string, memberCount byte) mpacket.Packet {
 
 	return p
 }
+
+func packetFriendInfo() mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelFriendInfo)
+	p.WriteByte(22)
+
+	return p
+}
+
+func packetFriendUnkownError() mpacket.Packet {
+	return packetFriendRequestResult(0x16)
+}
+
+func packetFriendPlayerFullList() mpacket.Packet {
+	return packetFriendRequestResult(0x0b)
+}
+
+func packetFriendOtherFullList() mpacket.Packet {
+	return packetFriendRequestResult(0x0c)
+}
+
+func packetFriendAlreadyAdded() mpacket.Packet {
+	return packetFriendRequestResult(0x0d)
+}
+
+func packetFriendIsGM() mpacket.Packet {
+	return packetFriendRequestResult(0x0e)
+}
+
+func packetFriendInvalidName() mpacket.Packet {
+	return packetFriendRequestResult(0x0f)
+}
+
+func packetFriendRequestResult(code byte) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelFriendInfo)
+	p.WriteByte(code)
+
+	return p
+}
+
+func packetFriendListSizeUpdate(size byte) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelFriendInfo)
+	p.WriteByte(0x15)
+	p.WriteByte(size)
+
+	return p
+}
+
+// buddy operations left - 0x8, 0x9, 0x12, 0x14

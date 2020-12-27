@@ -96,6 +96,7 @@ func (server *ChannelServer) playerConnect(conn mnet.Client, reader mpacket.Read
 
 	inst.AddPlayer(newPlr)
 	newPlr.UpdateGuildInfo()
+	newPlr.UpdateFriendInfo()
 
 	metrics.Gauges["player_count"].With(prometheus.Labels{"channel": strconv.Itoa(int(server.id)), "world": server.worldName}).Inc()
 
@@ -710,7 +711,6 @@ func (server ChannelServer) playerBumpDamage(conn mnet.Client, reader mpacket.Re
 }
 
 func (server ChannelServer) getPlayerInstance(conn mnet.Client, reader mpacket.Reader) (*field.Instance, error) {
-
 	plr, err := server.players.getFromConn(conn)
 
 	if err != nil {
@@ -730,4 +730,18 @@ func (server ChannelServer) getPlayerInstance(conn mnet.Client, reader mpacket.R
 	}
 
 	return inst, nil
+}
+
+// This function and associated opcode is most likely playerBuddyOperation
+func (server *ChannelServer) playerAddBuddy(conn mnet.Client, reader mpacket.Reader) {
+	op := reader.ReadByte()
+
+	switch op {
+	case 1: // Add
+		// Search database for name if exists
+		name := reader.ReadString(reader.ReadInt16())
+		fmt.Println("Add", name)
+	default:
+		log.Println("Unknown buddy operation:", op)
+	}
 }

@@ -52,7 +52,7 @@ func LoadFromID(id int32, conn mnet.Client) Data {
 	filter := "id,accountID,worldID,name,gender,skin,hair,face,level,job,str,dex,intt," +
 		"luk,hp,maxHP,mp,maxMP,ap,sp, exp,fame,mapID,mapPos,previousMapID,mesos," +
 		"equipSlotSize,useSlotSize,setupSlotSize,etcSlotSize,cashSlotSize,miniGameWins," +
-		"miniGameDraw,miniGameLoss,miniGamePoints"
+		"miniGameDraw,miniGameLoss,miniGamePoints,friendListSize"
 
 	err := db.DB.QueryRow("SELECT "+filter+" FROM characters where id=?", id).Scan(&c.id,
 		&c.accountID, &c.worldID, &c.name, &c.gender, &c.skin, &c.hair, &c.face,
@@ -60,7 +60,7 @@ func LoadFromID(id int32, conn mnet.Client) Data {
 		&c.maxMP, &c.ap, &c.sp, &c.exp, &c.fame, &c.mapID, &c.mapPos,
 		&c.previousMap, &c.mesos, &c.equipSlotSize, &c.useSlotSize, &c.setupSlotSize,
 		&c.etcSlotSize, &c.cashSlotSize, &c.miniGameWins, &c.miniGameDraw, &c.miniGameLoss,
-		&c.miniGamePoints)
+		&c.miniGamePoints, &c.friendListSize)
 
 	if err != nil {
 		panic(err)
