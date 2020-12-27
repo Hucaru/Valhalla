@@ -103,6 +103,9 @@ Metrics:
 - [ ] Ongoing minigames
 - [ ] Ongoing npc script interactions
 
+General:
+- [x] Simulated latency with jitter (set in config) to make dev environment simulate a real world connection
+
 See screenshots section for an example Grafana dashboard
 
 ## Acknowledgements

@@ -13,3 +13,6 @@ listenPort = "8685"
 ClientConnectionAddress = "127.0.0.1"
 packetQueueSize = 512
 MaxPop = 250
+# The following should be set to zero when not testing on a local network environment
+Latency = 250
+Jitter = 250

@@ -20,6 +20,8 @@ type loginConfig struct {
 	ServerListenAddress string
 	ServerListenPort    string
 	PacketQueueSize     int
+	Latency             int
+	Jitter              int
 }
 
 type worldConfig struct {
@@ -40,6 +42,8 @@ type channelConfig struct {
 	ListenPort              string
 	PacketQueueSize         int
 	MaxPop                  int16
+	Latency                 int
+	Jitter                  int
 }
 
 type fullConfig struct {
