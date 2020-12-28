@@ -456,40 +456,23 @@ func packetBuddyInfo(buddyList []buddy) mpacket.Packet {
 	}
 
 	for _, v := range buddyList {
-		p.WriteInt32(v.cashShop)
+		p.WriteInt32(v.cashShop) // wizet mistake and this should be a bool?
 	}
 
 	return p
 }
 
-// Move this messages into the messages package
-func packetBuddyUnkownError() mpacket.Packet {
-	return packetBuddyRequestResult(0x16)
-}
-
-func packetBuddyPlayerFullList() mpacket.Packet {
-	return packetBuddyRequestResult(0x0b)
-}
-
-func packetBuddyOtherFullList() mpacket.Packet {
-	return packetBuddyRequestResult(0x0c)
-}
-
-func packetBuddyAlreadyAdded() mpacket.Packet {
-	return packetBuddyRequestResult(0x0d)
-}
-
-func packetBuddyIsGM() mpacket.Packet {
-	return packetBuddyRequestResult(0x0e)
-}
-
-func packetBuddyInvalidName() mpacket.Packet {
-	return packetBuddyRequestResult(0x0f)
-}
-
-func packetBuddyRequestResult(code byte) mpacket.Packet {
+// It is possible to change id's using this packet, however if the id is a request it will crash the users
+// client when selecting an option in notification, therefore the id has not been allowed to change to
+func packetBuddyUpdate(id int32, name string, status byte, channelID int32, cashShop bool) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelBuddyInfo)
-	p.WriteByte(code)
+	p.WriteByte(0x08)
+	p.WriteInt32(id) // original id
+	p.WriteInt32(id)
+	p.WritePaddedString(name, 13)
+	p.WriteByte(status)
+	p.WriteInt32(channelID)
+	p.WriteBool(cashShop)
 
 	return p
 }
@@ -501,16 +484,3 @@ func packetBuddyListSizeUpdate(size byte) mpacket.Packet {
 
 	return p
 }
-
-func packetBuddyReceiveRequest(from string) mpacket.Packet {
-	p := mpacket.CreateWithOpcode(opcode.SendChannelBuddyInfo)
-	p.WriteByte(0x9)
-	p.WriteInt32(0) // ?
-	p.WriteString(from)
-
-	// Missing more data
-
-	return p
-}
-
-// buddy operations left - 0x8 (int32, int8), 0x14

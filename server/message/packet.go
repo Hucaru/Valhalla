@@ -298,3 +298,67 @@ func PacketHideCountdown() mpacket.Packet {
 
 	return p
 }
+
+// PacketBuddyUnkownError - error diolog message box
+func PacketBuddyUnkownError() mpacket.Packet {
+	return packetBuddyRequestResult(0x16)
+}
+
+// PacketBuddyPlayerFullList - shows full buddy list dialog box
+func PacketBuddyPlayerFullList() mpacket.Packet {
+	return packetBuddyRequestResult(0x0b)
+}
+
+// PacketBuddyOtherFullList - other player has full buddy list dialog box
+func PacketBuddyOtherFullList() mpacket.Packet {
+	return packetBuddyRequestResult(0x0c)
+}
+
+// PacketBuddyAlreadyAdded - already added buddy dialog box
+func PacketBuddyAlreadyAdded() mpacket.Packet {
+	return packetBuddyRequestResult(0x0d)
+}
+
+// PacketBuddyIsGM - cannot add gm to buddy list dialog box
+func PacketBuddyIsGM() mpacket.Packet {
+	return packetBuddyRequestResult(0x0e)
+}
+
+// PacketBuddyNameNotRegistered - name not regsitered dialog box
+func PacketBuddyNameNotRegistered() mpacket.Packet {
+	return packetBuddyRequestResult(0x0f)
+}
+
+func packetBuddyRequestResult(code byte) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelBuddyInfo)
+	p.WriteByte(code)
+
+	return p
+}
+
+// PacketBuddyReceiveRequest - buddy request notice card
+func PacketBuddyReceiveRequest(fromID int32, fromName string, fromChannelID int32, cashShop bool) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelBuddyInfo)
+	p.WriteByte(0x9)
+	p.WriteInt32(fromID)
+	p.WriteString(fromName)
+	p.WriteInt32(fromID)
+	p.WritePaddedString(fromName, 13)
+	p.WriteByte(1)
+	p.WriteInt32(fromChannelID)
+
+	p.WriteBool(cashShop)
+
+	return p
+}
+
+// PacketBuddyOnlineStatus - buddy online status notice card
+func PacketBuddyOnlineStatus(id int32, channelID int32) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelBuddyInfo)
+	p.WriteByte(0x14)
+	p.WriteInt32(id)
+	p.WriteInt8(0) // ?
+	p.WriteInt32(channelID)
+
+	return p
+}

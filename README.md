@@ -86,7 +86,7 @@ Channel server:
 - [ ] Party
 - [ ] Guild
 - [ ] Quests
-- [ ] Buddys list
+- [x] Buddy list
 - [ ] Reactors
 - [ ] Whisphers
 - [ ] Buddy chat
@@ -103,10 +103,17 @@ Metrics:
 - [ ] Ongoing minigames
 - [ ] Ongoing npc script interactions
 
+See screenshots section for an example Grafana dashboard
+
 General:
 - [x] Simulated latency with jitter (set in config) to make dev environment simulate a real world connection
 
-See screenshots section for an example Grafana dashboard
+## TODOs
+
+- Profile the channel server and do the following:
+    - Reduce branches in frequent paths
+    - Determine which pieces of data if any provide any benefit in being converted SOAs
+- Implement AES crypt (ontop of the shanda) and determine how to enable it in the client
 
 ## Acknowledgements
 

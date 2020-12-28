@@ -24,7 +24,7 @@ CREATE TABLE `buddy` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `characterID` int(11) NOT NULL,
   `friendID` int(11) NOT NULL,
-  `status` tinyint(4) NOT NULL DEFAULT '0' COMMENT '0 is accepted, 1 is request pending',
+  `accepted` tinyint(4) NOT NULL DEFAULT '0' COMMENT '0 is accepted, 1 is request pending',
   PRIMARY KEY (`id`),
   KEY `characterID` (`characterID`),
   KEY `friendID` (`friendID`),
@@ -128,4 +128,4 @@ CREATE TABLE `skills` (
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 
 
--- 2020-12-28 00:30:01
+-- 2020-12-28 19:08:59

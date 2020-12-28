@@ -63,7 +63,8 @@ func LoadFromID(id int32, conn mnet.Client) Data {
 		&c.miniGamePoints, &c.buddyListSize)
 
 	if err != nil {
-		panic(err)
+		log.Println(err)
+		return c
 	}
 
 	c.skills = make(map[int32]Skill)
@@ -76,6 +77,7 @@ func LoadFromID(id int32, conn mnet.Client) Data {
 
 	if err != nil {
 		log.Println(err)
+		return c
 	}
 
 	c.pos.SetX(nxMap.Portals[c.mapPos].X)
@@ -89,28 +91,41 @@ func LoadFromID(id int32, conn mnet.Client) Data {
 }
 
 func getBuddyList(playerID int32, buddySize byte) []buddy {
-	buddies := make([]buddy, buddySize)
-	filter := "friendID,status"
+	buddies := make([]buddy, 0, buddySize)
+	filter := "friendID,accepted"
 	rows, err := db.DB.Query("SELECT "+filter+" FROM buddy where characterID=?", playerID)
 
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
+		return buddies
 	}
+
+	defer rows.Close()
 
 	i := 0
 	for rows.Next() {
-		rows.Scan(&buddies[i].id, &buddies[i].status)
+		newBuddy := buddy{}
+
+		var accepted bool
+		rows.Scan(&newBuddy.id, &accepted)
 
 		filter := "channelID,name,inCashShop"
-		err := db.DB.QueryRow("SELECT "+filter+" FROM characters where id=?", buddies[i].id).Scan(&buddies[i].channelID, &buddies[i].name, &buddies[i].cashShop)
+		err := db.DB.QueryRow("SELECT "+filter+" FROM characters where id=?", newBuddy.id).Scan(&newBuddy.channelID, &newBuddy.name, &newBuddy.cashShop)
 
 		if err != nil {
-			panic(err)
+			log.Fatal(err)
+			return buddies
 		}
 
-		if buddies[i].channelID == -1 && buddies[i].status != 1 {
-			buddies[i].status = 2
+		if !accepted {
+			newBuddy.status = 1 // pending buddy request
+		} else if newBuddy.channelID == -1 {
+			newBuddy.status = 2 // offline
+		} else {
+			newBuddy.status = 0 // online
 		}
+
+		buddies = append(buddies, newBuddy)
 
 		i++
 	}

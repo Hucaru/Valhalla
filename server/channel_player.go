@@ -737,12 +737,46 @@ func (server *ChannelServer) playerBuddyOperation(conn mnet.Client, reader mpack
 
 	switch op {
 	case 1: // Add
-		// Search database for name if exists
 		name := reader.ReadString(reader.ReadInt16())
-		fmt.Println("Add", name)
+
+		var charID int32
+		var accountID int32
+
+		err := db.DB.QueryRow("SELECT id,accountID FROM characters WHERE name=? and worldID=?", name, conn.GetWorldID()).Scan(&charID, &accountID)
+
+		if err != nil || accountID == conn.GetAccountID() {
+			conn.Send(message.PacketBuddyNameNotRegistered())
+			return
+		}
+
+		if conn.GetAdminLevel() == 0 {
+			var gm bool
+			err = db.DB.QueryRow("SELECT adminLevel from accounts where accountID=?", accountID).Scan(&gm)
+
+			if err != nil {
+				log.Fatal(err)
+				return
+			}
+
+			if gm {
+				conn.Send(message.PacketBuddyIsGM())
+				return
+			}
+		}
+
+		fmt.Println("Add", name, "id", charID)
+
+		// Add to database as accepted false
+		// Check if on current channel otherwise emit a friend request event to all channels
 	case 2: // Accept request
+		fmt.Println("accept", reader)
+		// Change database entry accept to true
+		// update player buddy list
+		// Check if on current channel otherwise emit a friend accepted event to channels
 	case 3: // Delete/reject friend
-		fmt.Println(reader)
+		fmt.Println("Delete", reader)
+		// Delete both sides of the friends list from the database, retreive the friendID and use in subsequent event broadcast
+		// Check if on current channel otherwise emit a friend delete event to the channels
 	default:
 		log.Println("Unknown buddy operation:", op)
 	}
