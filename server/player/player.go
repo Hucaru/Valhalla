@@ -1213,3 +1213,14 @@ func (d *Data) AddOfflineBuddy(id int32, name string) {
 
 	return
 }
+
+// HasBuddy with given id
+func (d Data) HasBuddy(id int32) bool {
+	for _, v := range d.buddyList {
+		if v.id == id {
+			return true
+		}
+	}
+
+	return false
+}

@@ -74,3 +74,21 @@ func channelPopUpdate(id byte, pop int16) mpacket.Packet {
 
 	return p
 }
+
+func channelPlayerConnected(id int32, name string, channelID byte, channelChange bool) mpacket.Packet {
+	p := mpacket.CreateInternal(opcode.ChannePlayerConnect)
+	p.WriteInt32(id)
+	p.WriteString(name)
+	p.WriteByte(channelID)
+	p.WriteBool(channelChange)
+
+	return p
+}
+
+func channelPlayerDisconnect(id int32, name string) mpacket.Packet {
+	p := mpacket.CreateInternal(opcode.ChannePlayerDisconnect)
+	p.WriteInt32(id)
+	p.WriteString(name)
+
+	return p
+}

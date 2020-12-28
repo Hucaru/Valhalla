@@ -41,6 +41,10 @@ func (server *WorldServer) HandleServerPacket(conn mnet.Server, reader mpacket.R
 		server.handleNewChannel(conn, reader)
 	case opcode.ChannelInfo:
 		server.handleChannelUpdate(conn, reader)
+	case opcode.ChannePlayerConnect:
+		server.handlePlayerConnect(conn, reader)
+	case opcode.ChannePlayerDisconnect:
+		server.handlePlayerDisconnect(conn, reader)
 	default:
 		log.Println("UNKNOWN SERVER PACKET:", reader)
 	}
@@ -150,4 +154,22 @@ func (server *WorldServer) handleChannelUpdate(conn mnet.Server, reader mpacket.
 		log.Println("Unkown channel update type", op)
 	}
 	server.login.Send(server.info.generateInfoPacket())
+}
+
+func (server WorldServer) channelBroadcast(p mpacket.Packet) {
+	for _, v := range server.info.channels {
+		if v.conn != nil {
+			v.conn.Send(p)
+		}
+	}
+}
+
+func (server WorldServer) handlePlayerConnect(conn mnet.Server, reader mpacket.Reader) {
+	msg := channelPlayerConnected(reader.ReadInt32(), reader.ReadString(reader.ReadInt16()), reader.ReadByte(), reader.ReadBool())
+	server.channelBroadcast(msg)
+}
+
+func (server WorldServer) handlePlayerDisconnect(conn mnet.Server, reader mpacket.Reader) {
+	msg := channelPlayerDisconnect(reader.ReadInt32(), reader.ReadString(reader.ReadInt16()))
+	server.channelBroadcast(msg)
 }

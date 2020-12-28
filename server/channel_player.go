@@ -23,7 +23,9 @@ func (server *ChannelServer) playerConnect(conn mnet.Client, reader mpacket.Read
 	charID := reader.ReadInt32()
 
 	var migrationID byte
-	err := db.DB.QueryRow("SELECT migrationID FROM characters WHERE id=?", charID).Scan(&migrationID)
+	var channelID int8
+
+	err := db.DB.QueryRow("SELECT channelID,migrationID FROM characters WHERE id=?", charID).Scan(&channelID, &migrationID)
 
 	if err != nil {
 		log.Println(err)
@@ -101,6 +103,8 @@ func (server *ChannelServer) playerConnect(conn mnet.Client, reader mpacket.Read
 	metrics.Gauges["player_count"].With(prometheus.Labels{"channel": strconv.Itoa(int(server.id)), "world": server.worldName}).Inc()
 
 	server.world.Send(channelPopUpdate(server.id, int16(len(server.players))))
+	// Emit server message that user has connected (used to update buddy, guild and party notifications)
+	server.world.Send(channelPlayerConnected(plr.ID(), plr.Name(), server.id, channelID > -1))
 }
 
 func (server *ChannelServer) playerChangeChannel(conn mnet.Client, reader mpacket.Reader) {

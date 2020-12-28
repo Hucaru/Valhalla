@@ -127,40 +127,6 @@ func (server *ChannelServer) Initialise(work chan func(), dbuser, dbpassword, db
 
 	log.Println("Initialised game state")
 
-	accountIDs, err := db.DB.Query("SELECT accountID from characters where channelID = ?", server.id)
-
-	if err != nil {
-		log.Println(err)
-		return
-	}
-
-	for accountIDs.Next() {
-		var accountID int
-		err := accountIDs.Scan(&accountID)
-
-		if err != nil {
-			continue
-		}
-
-		_, err = db.DB.Exec("UPDATE accounts SET isLogedIn=? WHERE accountID=?", 0, accountID)
-
-		if err != nil {
-			log.Println(err)
-			return
-		}
-	}
-
-	accountIDs.Close()
-
-	_, err = db.DB.Exec("UPDATE characters SET channelID=? WHERE channelID=?", -1, server.id)
-
-	if err != nil {
-		log.Println(err)
-		return
-	}
-
-	log.Println("Loged out any accounts still connected to this channel")
-
 	metrics.Gauges["player_count"] = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "player_count",
 		Help: "Number of players in this channel",
@@ -277,6 +243,10 @@ func (server *ChannelServer) HandleServerPacket(conn mnet.Server, reader mpacket
 		server.handleNewChannelOK(conn, reader)
 	case opcode.ChannelConnectionInfo:
 		server.handleChannelConnectionInfo(conn, reader)
+	case opcode.ChannePlayerConnect:
+		server.handlePlayerConnectedNotifications(conn, reader)
+	case opcode.ChannePlayerDisconnect:
+		server.handlePlayerDisconnectNotifications(conn, reader)
 	default:
 		log.Println("UNKNOWN SERVER PACKET:", reader)
 	}
@@ -295,6 +265,40 @@ func (server *ChannelServer) handleNewChannelOK(conn mnet.Server, reader mpacket
 	server.worldName = reader.ReadString(reader.ReadInt16())
 	server.id = reader.ReadByte()
 	log.Println("Registered as channel", server.id, "on world", server.worldName)
+
+	accountIDs, err := db.DB.Query("SELECT accountID from characters where channelID = ? and migrationID = -1", server.id)
+
+	if err != nil {
+		log.Println(err)
+		return
+	}
+
+	for accountIDs.Next() {
+		var accountID int
+		err := accountIDs.Scan(&accountID)
+
+		if err != nil {
+			continue
+		}
+
+		_, err = db.DB.Exec("UPDATE accounts SET isLogedIn=? WHERE accountID=?", 0, accountID)
+
+		if err != nil {
+			log.Println(err)
+			return
+		}
+	}
+
+	accountIDs.Close()
+
+	_, err = db.DB.Exec("UPDATE characters SET channelID=? WHERE channelID=?", -1, server.id)
+
+	if err != nil {
+		log.Println(err)
+		return
+	}
+
+	log.Println("Loged out any accounts still connected to this channel")
 }
 
 func (server *ChannelServer) handleChannelConnectionInfo(conn mnet.Server, reader mpacket.Reader) {
@@ -303,6 +307,40 @@ func (server *ChannelServer) handleChannelConnectionInfo(conn mnet.Server, reade
 	for i := byte(0); i < total; i++ {
 		server.channels[i].ip = reader.ReadBytes(4)
 		server.channels[i].port = reader.ReadInt16()
+	}
+}
+
+func (server *ChannelServer) handlePlayerConnectedNotifications(conn mnet.Server, reader mpacket.Reader) {
+	id := reader.ReadInt32()
+	name := reader.ReadString(reader.ReadInt16())
+	channelID := reader.ReadByte()
+	changeChannel := reader.ReadBool()
+
+	for _, v := range server.players {
+		if v.ID() == id {
+			continue
+		} else if v.HasBuddy(id) {
+			if changeChannel {
+				v.Send(message.PacketBuddyChangeChannel(id, int32(channelID)))
+			} else {
+				// send online message, then update buddy list
+				v.Send(message.PacketBuddyOnlineStatus(id, int32(channelID)))
+				v.AddOnlineBuddy(id, name, int32(channelID))
+			}
+		}
+	}
+}
+
+func (server *ChannelServer) handlePlayerDisconnectNotifications(conn mnet.Server, reader mpacket.Reader) {
+	id := reader.ReadInt32()
+	name := reader.ReadString(reader.ReadInt16())
+
+	for _, v := range server.players {
+		if v.ID() == id {
+			continue
+		} else if v.HasBuddy(id) {
+			v.AddOfflineBuddy(id, name)
+		}
 	}
 }
 
@@ -333,12 +371,6 @@ func (server *ChannelServer) ClientDisconnected(conn mnet.Client) {
 		log.Println(err)
 	}
 
-	_, err = db.DB.Exec("UPDATE characters SET channelID=? WHERE id=?", -1, plr.ID())
-
-	if err != nil {
-		log.Println(err)
-	}
-
 	if _, ok := server.npcChat[conn]; ok {
 		delete(server.npcChat, conn)
 	}
@@ -356,6 +388,13 @@ func (server *ChannelServer) ClientDisconnected(conn mnet.Client) {
 	if index > -1 {
 		server.migrating = append(server.migrating[:index], server.migrating[index+1:]...)
 	} else {
+		server.world.Send(channelPlayerDisconnect(plr.ID(), plr.Name()))
+		_, err = db.DB.Exec("UPDATE characters SET channelID=? WHERE id=?", -1, plr.ID())
+
+		if err != nil {
+			log.Println(err)
+		}
+
 		_, err := db.DB.Exec("UPDATE accounts SET isLogedIn=0 WHERE accountID=?", conn.GetAccountID())
 
 		if err != nil {
