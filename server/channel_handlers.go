@@ -66,8 +66,8 @@ func (server *ChannelServer) HandleClientPacket(conn mnet.Client, reader mpacket
 	case opcode.RecvChannelPartyInfo:
 	case opcode.RecvChannelGuildManagement:
 	case opcode.RecvChannelGuildReject:
-	case opcode.RecvChannelAddBuddy:
-		server.playerAddBuddy(conn, reader)
+	case opcode.RecvChannelBuddyOperation:
+		server.playerBuddyOperation(conn, reader)
 	case opcode.RecvChannelUseMysticDoor:
 		server.playerUseMysticDoor(conn, reader)
 	case opcode.RecvChannelMobControl:

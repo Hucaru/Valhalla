@@ -443,50 +443,85 @@ func packetGuildInfo(id int32, name string, memberCount byte) mpacket.Packet {
 	return p
 }
 
-func packetFriendInfo() mpacket.Packet {
-	p := mpacket.CreateWithOpcode(opcode.SendChannelFriendInfo)
-	p.WriteByte(22)
+func packetBuddyInfo(buddyList []buddy) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelBuddyInfo)
+	p.WriteByte(0x12)
+	p.WriteByte(byte(len(buddyList)))
+
+	for _, v := range buddyList {
+		p.WriteInt32(v.id)
+		p.WritePaddedString(v.name, 13)
+		p.WriteByte(v.status)
+		p.WriteInt32(v.channelID)
+	}
+
+	for _, v := range buddyList {
+		p.WriteInt32(v.cashShop)
+	}
+
+	// for i := 0; i < 10; i++ {
+	// 	p.WriteInt32(int32(i + 1))
+	// 	p.WritePaddedString("test"+strconv.Itoa(i), 13)
+	// 	p.WriteByte(0)  // 0 - online, 1 - buddy request, 2 - offline
+	// 	p.WriteInt32(0) // channel id
+	// }
+
+	// for i := 0; i < 10; i++ {
+	// 	p.WriteInt32(0) // > 0 means is in cash shop?
+	// }
 
 	return p
 }
 
-func packetFriendUnkownError() mpacket.Packet {
-	return packetFriendRequestResult(0x16)
+// Move this messages into the messages package
+func packetBuddyUnkownError() mpacket.Packet {
+	return packetBuddyRequestResult(0x16)
 }
 
-func packetFriendPlayerFullList() mpacket.Packet {
-	return packetFriendRequestResult(0x0b)
+func packetBuddyPlayerFullList() mpacket.Packet {
+	return packetBuddyRequestResult(0x0b)
 }
 
-func packetFriendOtherFullList() mpacket.Packet {
-	return packetFriendRequestResult(0x0c)
+func packetBuddyOtherFullList() mpacket.Packet {
+	return packetBuddyRequestResult(0x0c)
 }
 
-func packetFriendAlreadyAdded() mpacket.Packet {
-	return packetFriendRequestResult(0x0d)
+func packetBuddyAlreadyAdded() mpacket.Packet {
+	return packetBuddyRequestResult(0x0d)
 }
 
-func packetFriendIsGM() mpacket.Packet {
-	return packetFriendRequestResult(0x0e)
+func packetBuddyIsGM() mpacket.Packet {
+	return packetBuddyRequestResult(0x0e)
 }
 
-func packetFriendInvalidName() mpacket.Packet {
-	return packetFriendRequestResult(0x0f)
+func packetBuddyInvalidName() mpacket.Packet {
+	return packetBuddyRequestResult(0x0f)
 }
 
-func packetFriendRequestResult(code byte) mpacket.Packet {
-	p := mpacket.CreateWithOpcode(opcode.SendChannelFriendInfo)
+func packetBuddyRequestResult(code byte) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelBuddyInfo)
 	p.WriteByte(code)
 
 	return p
 }
 
-func packetFriendListSizeUpdate(size byte) mpacket.Packet {
-	p := mpacket.CreateWithOpcode(opcode.SendChannelFriendInfo)
+func packetBuddyListSizeUpdate(size byte) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelBuddyInfo)
 	p.WriteByte(0x15)
 	p.WriteByte(size)
 
 	return p
 }
 
-// buddy operations left - 0x8, 0x9, 0x12, 0x14
+func packetBuddyReceiveRequest(from string) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelBuddyInfo)
+	p.WriteByte(0x9)
+	p.WriteInt32(0) // ?
+	p.WriteString(from)
+
+	// Missing more data
+
+	return p
+}
+
+// buddy operations left - 0x8 (int32, int8), 0x14

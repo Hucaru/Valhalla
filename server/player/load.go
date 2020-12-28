@@ -52,7 +52,7 @@ func LoadFromID(id int32, conn mnet.Client) Data {
 	filter := "id,accountID,worldID,name,gender,skin,hair,face,level,job,str,dex,intt," +
 		"luk,hp,maxHP,mp,maxMP,ap,sp, exp,fame,mapID,mapPos,previousMapID,mesos," +
 		"equipSlotSize,useSlotSize,setupSlotSize,etcSlotSize,cashSlotSize,miniGameWins," +
-		"miniGameDraw,miniGameLoss,miniGamePoints,friendListSize"
+		"miniGameDraw,miniGameLoss,miniGamePoints,buddyListSize"
 
 	err := db.DB.QueryRow("SELECT "+filter+" FROM characters where id=?", id).Scan(&c.id,
 		&c.accountID, &c.worldID, &c.name, &c.gender, &c.skin, &c.hair, &c.face,
@@ -60,7 +60,7 @@ func LoadFromID(id int32, conn mnet.Client) Data {
 		&c.maxMP, &c.ap, &c.sp, &c.exp, &c.fame, &c.mapID, &c.mapPos,
 		&c.previousMap, &c.mesos, &c.equipSlotSize, &c.useSlotSize, &c.setupSlotSize,
 		&c.etcSlotSize, &c.cashSlotSize, &c.miniGameWins, &c.miniGameDraw, &c.miniGameLoss,
-		&c.miniGamePoints, &c.friendListSize)
+		&c.miniGamePoints, &c.buddyListSize)
 
 	if err != nil {
 		panic(err)
@@ -82,6 +82,38 @@ func LoadFromID(id int32, conn mnet.Client) Data {
 	c.pos.SetY(nxMap.Portals[c.mapPos].Y)
 
 	c.equip, c.use, c.setUp, c.etc, c.cash = item.LoadInventoryFromDb(c.id)
+
+	c.buddyList = getBuddyList(c.id, c.buddyListSize)
 	c.conn = conn
 	return c
+}
+
+func getBuddyList(playerID int32, buddySize byte) []buddy {
+	buddies := make([]buddy, buddySize)
+	filter := "friendID,status"
+	rows, err := db.DB.Query("SELECT "+filter+" FROM buddy where characterID=?", playerID)
+
+	if err != nil {
+		panic(err)
+	}
+
+	i := 0
+	for rows.Next() {
+		rows.Scan(&buddies[i].id, &buddies[i].status)
+
+		filter := "channelID,name,inCashShop"
+		err := db.DB.QueryRow("SELECT "+filter+" FROM characters where id=?", buddies[i].id).Scan(&buddies[i].channelID, &buddies[i].name, &buddies[i].cashShop)
+
+		if err != nil {
+			panic(err)
+		}
+
+		if buddies[i].channelID == -1 && buddies[i].status != 1 {
+			buddies[i].status = 2
+		}
+
+		i++
+	}
+
+	return buddies
 }

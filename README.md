@@ -86,7 +86,7 @@ Channel server:
 - [ ] Party
 - [ ] Guild
 - [ ] Quests
-- [ ] Friends list
+- [ ] Buddys list
 - [ ] Reactors
 - [ ] Whisphers
 - [ ] Buddy chat

@@ -42,7 +42,7 @@ const (
 	RecvChannelPartyInfo           byte = 0x4F
 	RecvChannelGuildManagement     byte = 0x51
 	RecvChannelGuildReject         byte = 0x52
-	RecvChannelAddBuddy            byte = 0x55
+	RecvChannelBuddyOperation      byte = 0x55
 	RecvChannelUseMysticDoor       byte = 0x58
 	RecvChannelMobControl          byte = 0x6A
 	RecvChannelDistance            byte = 0x6B

@@ -24,6 +24,14 @@ type instance interface {
 	ID() int
 }
 
+type buddy struct {
+	id        int32
+	name      string
+	channelID int32
+	status    byte  // 0 - online, 1 - buddy request, 2 - offline
+	cashShop  int32 // > 0 means is in cash shop
+}
+
 // Data connected to server
 type Data struct {
 	conn       mnet.Client
@@ -85,7 +93,8 @@ type Data struct {
 
 	lastAttackPacketTime int64
 
-	friendListSize byte
+	buddyListSize byte
+	buddyList     []buddy
 }
 
 // Conn - client connection associated with this Data
@@ -1078,7 +1087,7 @@ func (d Data) Save() error {
 	query := `UPDATE characters set skin=?, hair=?, face=?, level=?,
 	job=?, str=?, dex=?, intt=?, luk=?, hp=?, maxHP=?, mp=?, maxMP=?,
 	ap=?, sp=?, exp=?, fame=?, mapID=?, mapPos=?, mesos=?, miniGameWins=?,
-	miniGameDraw=?, miniGameLoss=?, miniGamePoints=?, friendListSize=? WHERE id=?`
+	miniGameDraw=?, miniGameLoss=?, miniGamePoints=?, buddyListSize=? WHERE id=?`
 
 	var mapPos byte
 	var err error
@@ -1098,7 +1107,7 @@ func (d Data) Save() error {
 	_, err = db.DB.Exec(query,
 		d.skin, d.hair, d.face, d.level, d.job, d.str, d.dex, d.intt, d.luk, d.hp, d.maxHP, d.mp,
 		d.maxMP, d.ap, d.sp, d.exp, d.fame, d.mapID, d.mapPos, d.mesos, d.miniGameWins,
-		d.miniGameDraw, d.miniGameLoss, d.miniGamePoints, d.friendListSize, d.id)
+		d.miniGameDraw, d.miniGameLoss, d.miniGamePoints, d.buddyListSize, d.id)
 
 	if err != nil {
 		return err
@@ -1121,10 +1130,10 @@ func (d *Data) UpdateGuildInfo() {
 	d.Send(packetGuildInfo(0, "[Admins]", 0))
 }
 
-// UpdateFriendInfo for the player
-func (d *Data) UpdateFriendInfo() {
-	d.Send(packetFriendListSizeUpdate(d.friendListSize)) // The initial friends packet probably contains this as well
-	d.Send(packetFriendInfo())
+// UpdateBuddyInfo for the player
+func (d *Data) UpdateBuddyInfo() {
+	d.Send(packetBuddyListSizeUpdate(d.buddyListSize))
+	d.Send(packetBuddyInfo(d.buddyList))
 }
 
 // DamagePlayer reduces character HP based on damage
