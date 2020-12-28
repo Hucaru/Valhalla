@@ -459,17 +459,6 @@ func packetBuddyInfo(buddyList []buddy) mpacket.Packet {
 		p.WriteInt32(v.cashShop)
 	}
 
-	// for i := 0; i < 10; i++ {
-	// 	p.WriteInt32(int32(i + 1))
-	// 	p.WritePaddedString("test"+strconv.Itoa(i), 13)
-	// 	p.WriteByte(0)  // 0 - online, 1 - buddy request, 2 - offline
-	// 	p.WriteInt32(0) // channel id
-	// }
-
-	// for i := 0; i < 10; i++ {
-	// 	p.WriteInt32(0) // > 0 means is in cash shop?
-	// }
-
 	return p
 }
 
