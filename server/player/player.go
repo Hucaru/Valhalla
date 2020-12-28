@@ -1125,17 +1125,6 @@ func (d Data) Save() error {
 	return err
 }
 
-// UpdateGuildInfo for the player
-func (d *Data) UpdateGuildInfo() {
-	d.Send(packetGuildInfo(0, "[Admins]", 0))
-}
-
-// UpdateBuddyInfo for the player
-func (d *Data) UpdateBuddyInfo() {
-	d.Send(packetBuddyListSizeUpdate(d.buddyListSize))
-	d.Send(packetBuddyInfo(d.buddyList))
-}
-
 // DamagePlayer reduces character HP based on damage
 func (d *Data) DamagePlayer(damage int16) {
 	if damage < -1 {
@@ -1150,4 +1139,77 @@ func (d *Data) DamagePlayer(damage int16) {
 	}
 
 	d.Send(packetPlayerStatChange(true, constant.HpID, int32(d.hp)))
+}
+
+// UpdateGuildInfo for the player
+func (d *Data) UpdateGuildInfo() {
+	d.Send(packetGuildInfo(0, "[Admins]", 0))
+}
+
+// UpdateBuddyInfo for the player
+func (d *Data) UpdateBuddyInfo() {
+	d.Send(packetBuddyListSizeUpdate(d.buddyListSize))
+	d.Send(packetBuddyInfo(d.buddyList))
+}
+
+// BuddyListFull checks if buddy list is full
+func (d Data) BuddyListFull() bool {
+	count := 0
+	for _, v := range d.buddyList {
+		if v.status != 1 {
+			count++
+		}
+	}
+
+	if count < int(d.buddyListSize) {
+		return false
+	}
+
+	return true
+}
+
+// AddOnlineBuddy to client
+func (d *Data) AddOnlineBuddy(id int32, name string, channel int32) {
+	if d.BuddyListFull() {
+		return
+	}
+
+	for _, v := range d.buddyList {
+		if v.id == id {
+			v.status = 0
+			v.channelID = channel
+			d.Send(packetBuddyUpdate(id, name, v.status, channel, false))
+			return
+		}
+	}
+
+	newBuddy := buddy{id: id, name: name, status: 0, channelID: channel}
+
+	d.buddyList = append(d.buddyList, newBuddy)
+	d.Send(packetBuddyInfo(d.buddyList))
+
+	return
+}
+
+// AddOfflineBuddy to client
+func (d *Data) AddOfflineBuddy(id int32, name string) {
+	if d.BuddyListFull() {
+		return
+	}
+
+	for _, v := range d.buddyList {
+		if v.id == id {
+			v.status = 2
+			v.channelID = -1
+			d.Send(packetBuddyUpdate(id, name, v.status, -1, false))
+			return
+		}
+	}
+
+	newBuddy := buddy{id: id, name: name, status: 2, channelID: -1}
+
+	d.buddyList = append(d.buddyList, newBuddy)
+	d.Send(packetBuddyInfo(d.buddyList))
+
+	return
 }

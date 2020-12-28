@@ -337,7 +337,7 @@ func packetBuddyRequestResult(code byte) mpacket.Packet {
 }
 
 // PacketBuddyReceiveRequest - buddy request notice card
-func PacketBuddyReceiveRequest(fromID int32, fromName string, fromChannelID int32, cashShop bool) mpacket.Packet {
+func PacketBuddyReceiveRequest(fromID int32, fromName string, fromChannelID int32) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelBuddyInfo)
 	p.WriteByte(0x9)
 	p.WriteInt32(fromID)
@@ -346,8 +346,7 @@ func PacketBuddyReceiveRequest(fromID int32, fromName string, fromChannelID int3
 	p.WritePaddedString(fromName, 13)
 	p.WriteByte(1)
 	p.WriteInt32(fromChannelID)
-
-	p.WriteBool(cashShop)
+	p.WriteBool(false) // sender in cash shop
 
 	return p
 }
@@ -357,7 +356,18 @@ func PacketBuddyOnlineStatus(id int32, channelID int32) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelBuddyInfo)
 	p.WriteByte(0x14)
 	p.WriteInt32(id)
-	p.WriteInt8(0) // ?
+	p.WriteInt8(0)
+	p.WriteInt32(channelID)
+
+	return p
+}
+
+// PacketBuddyChangeChannel - buddy ui change channel change
+func PacketBuddyChangeChannel(id int32, channelID int32) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelBuddyInfo)
+	p.WriteByte(0x14)
+	p.WriteInt32(id)
+	p.WriteInt8(1)
 	p.WriteInt32(channelID)
 
 	return p

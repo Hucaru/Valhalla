@@ -737,15 +737,41 @@ func (server *ChannelServer) playerBuddyOperation(conn mnet.Client, reader mpack
 
 	switch op {
 	case 1: // Add
+		plr, err := server.players.getFromConn(conn)
+
+		if err != nil {
+			log.Fatal(err)
+			return
+		}
+
+		if plr.BuddyListFull() {
+			conn.Send(message.PacketBuddyPlayerFullList())
+			return
+		}
+
 		name := reader.ReadString(reader.ReadInt16())
 
 		var charID int32
 		var accountID int32
+		var buddyListSize int32
 
-		err := db.DB.QueryRow("SELECT id,accountID FROM characters WHERE name=? and worldID=?", name, conn.GetWorldID()).Scan(&charID, &accountID)
+		err = db.DB.QueryRow("SELECT id,accountID,buddyListSize FROM characters WHERE name=? and worldID=?", name, conn.GetWorldID()).Scan(&charID, &accountID, &buddyListSize)
 
 		if err != nil || accountID == conn.GetAccountID() {
 			conn.Send(message.PacketBuddyNameNotRegistered())
+			return
+		}
+
+		var recepientBuddyCount int32
+		err = db.DB.QueryRow("SELECT COUNT(*) FROM buddy WHERE characterID=1 and accepted=1").Scan(&recepientBuddyCount)
+
+		if err != nil {
+			log.Fatal(err)
+			return
+		}
+
+		if recepientBuddyCount >= buddyListSize {
+			conn.Send(message.PacketBuddyOtherFullList())
 			return
 		}
 
@@ -764,17 +790,70 @@ func (server *ChannelServer) playerBuddyOperation(conn mnet.Client, reader mpack
 			}
 		}
 
-		fmt.Println("Add", name, "id", charID)
+		query := "INSERT INTO buddy(characterID,friendID) VALUES(?,?)"
 
-		// Add to database as accepted false
-		// Check if on current channel otherwise emit a friend request event to all channels
+		if _, err = db.DB.Exec(query, charID, plr.ID()); err != nil {
+			log.Fatal(err)
+			return
+		}
+
+		if recepient, err := server.players.getFromID(charID); err != nil {
+			// emit a friend request event to all channels
+		} else {
+			recepient.Send(message.PacketBuddyReceiveRequest(plr.ID(), plr.Name(), int32(server.id)))
+		}
 	case 2: // Accept request
-		fmt.Println("accept", reader)
-		// Change database entry accept to true
-		// update player buddy list
-		// Check if on current channel otherwise emit a friend accepted event to channels
+		plr, err := server.players.getFromConn(conn)
+
+		if err != nil {
+			log.Fatal(err)
+			return
+		}
+
+		friendID := reader.ReadInt32()
+
+		var friendName string
+		var friendChannel int32
+		var cashShop bool
+
+		err = db.DB.QueryRow("SELECT name,channelID,inCashShop FROM characters WHERE id=?", friendID).Scan(&friendName, &friendChannel, &cashShop)
+
+		if err != nil {
+			log.Fatal(err)
+			return
+		}
+
+		query := "UPDATE buddy set accepted=1 WHERE characterID=? and friendID=?"
+
+		if _, err := db.DB.Exec(query, plr.ID(), friendID); err != nil {
+			log.Fatal(err)
+			return
+		}
+
+		query = "INSERT INTO buddy(characterID,friendID,accepted) VALUES(?,?,?)"
+
+		if _, err := db.DB.Exec(query, friendID, plr.ID(), 1); err != nil {
+			log.Fatal(err)
+			return
+		}
+
+		if friendChannel == -1 {
+			plr.AddOfflineBuddy(friendID, friendName)
+		} else {
+			plr.AddOnlineBuddy(friendID, friendName, friendChannel)
+		}
+
+		if recepient, err := server.players.getFromID(friendID); err != nil {
+			// emit friend request accepted, along with channel id
+		} else {
+			// Need to set the buddy to be offline for the logged in message to appear before setting online
+			recepient.AddOfflineBuddy(plr.ID(), plr.Name())
+			recepient.Send(message.PacketBuddyOnlineStatus(plr.ID(), int32(server.id)))
+			recepient.AddOnlineBuddy(plr.ID(), plr.Name(), int32(server.id))
+		}
 	case 3: // Delete/reject friend
 		fmt.Println("Delete", reader)
+
 		// Delete both sides of the friends list from the database, retreive the friendID and use in subsequent event broadcast
 		// Check if on current channel otherwise emit a friend delete event to the channels
 	default:
