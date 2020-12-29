@@ -45,7 +45,39 @@ func (server ChannelServer) chatSlashCommand(conn mnet.Client, reader mpacket.Re
 
 	switch op {
 	case 5: // find / map button in friend
-		fmt.Println(reader)
+		plr, err := server.players.getFromConn(conn)
+
+		if err != nil {
+			return
+		}
+		name := reader.ReadString(reader.ReadInt16())
+
+		var accountID int32
+		var channelID int8
+		var mapID int32 = -1
+		var inCashShop bool
+
+		err = db.DB.QueryRow("SELECT accountID,channelID,mapID,inCashShop FROM characters WHERE BINARY name=? AND worldID=?", name, conn.GetWorldID()).Scan(&accountID, &channelID, &mapID, &inCashShop)
+
+		if err != nil || channelID == -1 {
+			plr.Send(message.PacketMessageFindResult(name, false, false, false, -1))
+			return
+		}
+
+		var isGM bool
+
+		err = db.DB.QueryRow("SELECT adminLevel from accounts where accountID=?", accountID).Scan(&isGM)
+
+		if err != nil {
+			log.Fatal(err)
+			return
+		}
+
+		if isGM {
+			plr.Send(message.PacketMessageFindResult(name, false, inCashShop, false, mapID))
+		} else {
+			plr.Send(message.PacketMessageFindResult(name, true, inCashShop, byte(channelID) == server.id, mapID))
+		}
 	case 6: // whispher
 		recepientName := reader.ReadString(reader.ReadInt16())
 		msg := reader.ReadString(reader.ReadInt16())
