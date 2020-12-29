@@ -45,6 +45,7 @@ func (server ChannelServer) chatSlashCommand(conn mnet.Client, reader mpacket.Re
 
 	switch op {
 	case 5: // find / map button in friend
+		fmt.Println(reader)
 	case 6: // whispher
 		recepientName := reader.ReadString(reader.ReadInt16())
 		msg := reader.ReadString(reader.ReadInt16())
