@@ -325,7 +325,6 @@ func (server *ChannelServer) handlePlayerConnectedNotifications(conn mnet.Server
 			continue
 		} else if v.HasBuddy(id) {
 			if changeChannel {
-				v.Send(message.PacketBuddyChangeChannel(id, int32(channelID)))
 				v.AddOnlineBuddy(id, name, int32(channelID))
 			} else {
 				// send online message card, then update buddy list
