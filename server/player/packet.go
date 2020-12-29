@@ -442,3 +442,45 @@ func packetGuildInfo(id int32, name string, memberCount byte) mpacket.Packet {
 
 	return p
 }
+
+func packetBuddyInfo(buddyList []buddy) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelBuddyInfo)
+	p.WriteByte(0x12)
+	p.WriteByte(byte(len(buddyList)))
+
+	for _, v := range buddyList {
+		p.WriteInt32(v.id)
+		p.WritePaddedString(v.name, 13)
+		p.WriteByte(v.status)
+		p.WriteInt32(v.channelID)
+	}
+
+	for _, v := range buddyList {
+		p.WriteInt32(v.cashShop) // wizet mistake and this should be a bool?
+	}
+
+	return p
+}
+
+// It is possible to change id's using this packet, however if the id is a request it will crash the users
+// client when selecting an option in notification, therefore the id has not been allowed to change
+func packetBuddyUpdate(id int32, name string, status byte, channelID int32, cashShop bool) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelBuddyInfo)
+	p.WriteByte(0x08)
+	p.WriteInt32(id) // original id
+	p.WriteInt32(id)
+	p.WritePaddedString(name, 13)
+	p.WriteByte(status)
+	p.WriteInt32(channelID)
+	p.WriteBool(cashShop)
+
+	return p
+}
+
+func packetBuddyListSizeUpdate(size byte) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelBuddyInfo)
+	p.WriteByte(0x15)
+	p.WriteByte(size)
+
+	return p
+}

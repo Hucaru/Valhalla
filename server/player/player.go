@@ -24,6 +24,14 @@ type instance interface {
 	ID() int
 }
 
+type buddy struct {
+	id        int32
+	name      string
+	channelID int32
+	status    byte  // 0 - online, 1 - buddy request, 2 - offline
+	cashShop  int32 // > 0 means is in cash shop
+}
+
 // Data connected to server
 type Data struct {
 	conn       mnet.Client
@@ -84,6 +92,9 @@ type Data struct {
 	miniGameWins, miniGameDraw, miniGameLoss, miniGamePoints int32
 
 	lastAttackPacketTime int64
+
+	buddyListSize byte
+	buddyList     []buddy
 }
 
 // Conn - client connection associated with this Data
@@ -1071,12 +1082,12 @@ func (d Data) DisplayBytes() []byte {
 	return pkt
 }
 
-// Save data
+// Save data - this needs to be split to occur at relevant points in time
 func (d Data) Save() error {
 	query := `UPDATE characters set skin=?, hair=?, face=?, level=?,
 	job=?, str=?, dex=?, intt=?, luk=?, hp=?, maxHP=?, mp=?, maxMP=?,
 	ap=?, sp=?, exp=?, fame=?, mapID=?, mapPos=?, mesos=?, miniGameWins=?,
-	miniGameDraw=?, miniGameLoss=?, miniGamePoints=? WHERE id=?`
+	miniGameDraw=?, miniGameLoss=?, miniGamePoints=?, buddyListSize=? WHERE id=?`
 
 	var mapPos byte
 	var err error
@@ -1096,7 +1107,7 @@ func (d Data) Save() error {
 	_, err = db.DB.Exec(query,
 		d.skin, d.hair, d.face, d.level, d.job, d.str, d.dex, d.intt, d.luk, d.hp, d.maxHP, d.mp,
 		d.maxMP, d.ap, d.sp, d.exp, d.fame, d.mapID, d.mapPos, d.mesos, d.miniGameWins,
-		d.miniGameDraw, d.miniGameLoss, d.miniGamePoints, d.id)
+		d.miniGameDraw, d.miniGameLoss, d.miniGamePoints, d.buddyListSize, d.id)
 
 	if err != nil {
 		return err
@@ -1114,11 +1125,6 @@ func (d Data) Save() error {
 	return err
 }
 
-// UpdateGuildInfo for the player
-func (d *Data) UpdateGuildInfo() {
-	d.Send(packetGuildInfo(0, "[Admins]", 0))
-}
-
 // DamagePlayer reduces character HP based on damage
 func (d *Data) DamagePlayer(damage int16) {
 	if damage < -1 {
@@ -1133,4 +1139,100 @@ func (d *Data) DamagePlayer(damage int16) {
 	}
 
 	d.Send(packetPlayerStatChange(true, constant.HpID, int32(d.hp)))
+}
+
+// UpdateGuildInfo for the player
+func (d *Data) UpdateGuildInfo() {
+	d.Send(packetGuildInfo(0, "[Admins]", 0))
+}
+
+// UpdateBuddyInfo for the player
+func (d *Data) UpdateBuddyInfo() {
+	d.Send(packetBuddyListSizeUpdate(d.buddyListSize))
+	d.Send(packetBuddyInfo(d.buddyList))
+}
+
+// BuddyListFull checks if buddy list is full
+func (d Data) BuddyListFull() bool {
+	count := 0
+	for _, v := range d.buddyList {
+		if v.status != 1 {
+			count++
+		}
+	}
+
+	if count < int(d.buddyListSize) {
+		return false
+	}
+
+	return true
+}
+
+// AddOnlineBuddy to client
+func (d *Data) AddOnlineBuddy(id int32, name string, channel int32) {
+	if d.BuddyListFull() {
+		return
+	}
+
+	for i, v := range d.buddyList {
+		if v.id == id {
+			d.buddyList[i].status = 0
+			d.buddyList[i].channelID = channel
+			d.Send(packetBuddyUpdate(id, name, d.buddyList[i].status, channel, false))
+			return
+		}
+	}
+
+	newBuddy := buddy{id: id, name: name, status: 0, channelID: channel}
+
+	d.buddyList = append(d.buddyList, newBuddy)
+	d.Send(packetBuddyInfo(d.buddyList))
+
+	return
+}
+
+// AddOfflineBuddy to client
+func (d *Data) AddOfflineBuddy(id int32, name string) {
+	if d.BuddyListFull() {
+		return
+	}
+
+	for i, v := range d.buddyList {
+		if v.id == id {
+			d.buddyList[i].status = 2
+			d.buddyList[i].channelID = -1
+			d.Send(packetBuddyUpdate(id, name, d.buddyList[i].status, -1, false))
+			return
+		}
+	}
+
+	newBuddy := buddy{id: id, name: name, status: 2, channelID: -1}
+
+	d.buddyList = append(d.buddyList, newBuddy)
+	d.Send(packetBuddyInfo(d.buddyList))
+
+	return
+}
+
+// HasBuddy with given id
+func (d Data) HasBuddy(id int32) bool {
+	for _, v := range d.buddyList {
+		if v.id == id {
+			return true
+		}
+	}
+
+	return false
+}
+
+// RemoveBuddy from list
+func (d *Data) RemoveBuddy(id int32) {
+	for i, v := range d.buddyList {
+		if v.id == id {
+			d.buddyList[i] = d.buddyList[len(d.buddyList)-1]
+			d.buddyList = d.buddyList[:len(d.buddyList)-1]
+			d.Send(packetBuddyInfo(d.buddyList))
+			return
+		}
+	}
 }

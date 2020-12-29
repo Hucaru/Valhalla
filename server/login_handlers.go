@@ -132,7 +132,7 @@ func (server *LoginServer) handleWorldSelect(conn mnet.Client, reader mpacket.Re
 
 		if currentPlayers >= maxPlayers {
 			warning = 2
-		} else if float64(currentPlayers)/float64(maxPlayers) > 0.95 { // I'm not sure if this warning is even worth it
+		} else if float64(currentPlayers)/float64(maxPlayers) > 0.90 { // I'm not sure if this warning is even worth it
 			warning = 1
 		}
 

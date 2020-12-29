@@ -16,6 +16,9 @@ This project exists to preserve and archive an early version of the game (v28 of
 
 ## Features
 
+General:
+- [x] Simulated latency with jitter (set in config) to make dev environment simulate a real world connections when within network
+
 Login server:
 - [x] Login user
 - [ ] Pin
@@ -35,10 +38,12 @@ World server:
 - [x] Keep track of player count
 - [x] Send information to login server
 - [x] Send IP, port to channel for change channel requests
+- [x] Forward player connects to channels
+- [x] Forward player leaves game to channels
+- [x] Broadcast buddy events
+- [ ] Broadvast party events
+- [ ] Broadcast guild events
 - [ ] Forward whisphers
-- [ ] Forward buddy chat
-- [ ] Forward party chat
-- [ ] Forward guild chat
 - [ ] Allow gm command to actiavate exp/drop changes accross all channels
 - [ ] Allow gm commands to update information displayed at login
 
@@ -73,7 +78,7 @@ Channel server:
 - [x] Map instancing
 - [x] Mob visible
 - [x] Mob movement
-- [ ] Mob attack
+- [x] Mob attack
 - [ ] Mob skills that cause stat changes
 - [x] Mob death
 - [x] Mob respawn
@@ -86,10 +91,10 @@ Channel server:
 - [ ] Party
 - [ ] Guild
 - [ ] Quests
-- [ ] Friends list
+- [x] Buddy list
 - [ ] Reactors
 - [ ] Whisphers
-- [ ] Buddy chat
+- [x] Buddy chat
 - [ ] Chat commands (/find etc.)
 - [x] Server resets login status upon restart for dangling characters
 - [ ] Autonomous GM commands which can be started and stopped at will
@@ -105,11 +110,19 @@ Metrics:
 
 See screenshots section for an example Grafana dashboard
 
+## TODOs
+
+- Profile the channel server and do the following:
+    - Reduce branches in frequent paths
+    - Determine which pieces of data if any provide any benefit in being converted SOAs
+- Implement AES crypt (ontop of the shanda) and determine how to enable it in the client
+
 ## Acknowledgements
 
 - Sunnyboy for providing a [list](http://forum.ragezone.com/f921/library-idbs-versions-named-addresses-987815/) of idbs for which this project would not have started
-- [Vana](https://github.com/retep998/Vana)
-- [WvsGlobal](https://github.com/diamondo25/WvsGlobal)
+- The following projects were used to help reverse packet structures that were not clearly shown in the idb
+    - [Vana](https://github.com/retep998/Vana)
+    - [WvsGlobal](https://github.com/diamondo25/WvsGlobal)
 - [NX](https://nxformat.github.io/) file format (see acknowledgements at link)
 
 ## NPC chat display info (use this when scripting NPCs)

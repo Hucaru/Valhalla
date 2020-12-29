@@ -10,6 +10,9 @@ worldAddress = "127.0.0.1"
 worldPort = "8584"
 listenAddress = "0.0.0.0"
 listenPort = "8685"
-ClientConnectionAddress = "127.0.0.1"
+clientConnectionAddress = "127.0.0.1"
 packetQueueSize = 512
-MaxPop = 250
+maxPop = 250
+# The following should be set to zero when not testing on a local network environment
+latency = 0
+jitter = 0

@@ -23,7 +23,9 @@ func (server *ChannelServer) playerConnect(conn mnet.Client, reader mpacket.Read
 	charID := reader.ReadInt32()
 
 	var migrationID byte
-	err := db.DB.QueryRow("SELECT migrationID FROM characters WHERE id=?", charID).Scan(&migrationID)
+	var channelID int8
+
+	err := db.DB.QueryRow("SELECT channelID,migrationID FROM characters WHERE id=?", charID).Scan(&channelID, &migrationID)
 
 	if err != nil {
 		log.Println(err)
@@ -96,8 +98,13 @@ func (server *ChannelServer) playerConnect(conn mnet.Client, reader mpacket.Read
 
 	inst.AddPlayer(newPlr)
 	newPlr.UpdateGuildInfo()
+	newPlr.UpdateBuddyInfo()
 
 	metrics.Gauges["player_count"].With(prometheus.Labels{"channel": strconv.Itoa(int(server.id)), "world": server.worldName}).Inc()
+
+	server.world.Send(channelPopUpdate(server.id, int16(len(server.players))))
+	// Emit server message that user has connected (used to update buddy, guild and party notifications)
+	server.world.Send(channelPlayerConnected(plr.ID(), plr.Name(), server.id, channelID > -1))
 }
 
 func (server *ChannelServer) playerChangeChannel(conn mnet.Client, reader mpacket.Reader) {
@@ -708,7 +715,6 @@ func (server ChannelServer) playerBumpDamage(conn mnet.Client, reader mpacket.Re
 }
 
 func (server ChannelServer) getPlayerInstance(conn mnet.Client, reader mpacket.Reader) (*field.Instance, error) {
-
 	plr, err := server.players.getFromConn(conn)
 
 	if err != nil {
@@ -728,4 +734,165 @@ func (server ChannelServer) getPlayerInstance(conn mnet.Client, reader mpacket.R
 	}
 
 	return inst, nil
+}
+
+func (server *ChannelServer) playerBuddyOperation(conn mnet.Client, reader mpacket.Reader) {
+	op := reader.ReadByte()
+
+	switch op {
+	case 1: // Add
+		plr, err := server.players.getFromConn(conn)
+
+		if err != nil {
+			return
+		}
+
+		if plr.BuddyListFull() {
+			conn.Send(message.PacketBuddyPlayerFullList())
+			return
+		}
+
+		name := reader.ReadString(reader.ReadInt16())
+
+		var charID int32
+		var accountID int32
+		var buddyListSize int32
+
+		err = db.DB.QueryRow("SELECT id,accountID,buddyListSize FROM characters WHERE name=? and worldID=?", name, conn.GetWorldID()).Scan(&charID, &accountID, &buddyListSize)
+
+		if err != nil || accountID == conn.GetAccountID() {
+			conn.Send(message.PacketBuddyNameNotRegistered())
+			return
+		}
+
+		if plr.HasBuddy(charID) {
+			conn.Send(message.PacketBuddyAlreadyAdded())
+			return
+		}
+
+		var recepientBuddyCount int32
+		err = db.DB.QueryRow("SELECT COUNT(*) FROM buddy WHERE characterID=1 and accepted=1").Scan(&recepientBuddyCount)
+
+		if err != nil {
+			log.Fatal(err)
+			return
+		}
+
+		if recepientBuddyCount >= buddyListSize {
+			conn.Send(message.PacketBuddyOtherFullList())
+			return
+		}
+
+		if conn.GetAdminLevel() == 0 {
+			var gm bool
+			err = db.DB.QueryRow("SELECT adminLevel from accounts where accountID=?", accountID).Scan(&gm)
+
+			if err != nil {
+				log.Fatal(err)
+				return
+			}
+
+			if gm {
+				conn.Send(message.PacketBuddyIsGM())
+				return
+			}
+		}
+
+		query := "INSERT INTO buddy(characterID,friendID) VALUES(?,?)"
+
+		if _, err = db.DB.Exec(query, charID, plr.ID()); err != nil {
+			log.Fatal(err)
+			return
+		}
+
+		if recepient, err := server.players.getFromID(charID); err != nil {
+			server.world.Send(channelBuddyEvent(1, charID, plr.ID(), plr.Name(), server.id))
+		} else {
+			recepient.Send(message.PacketBuddyReceiveRequest(plr.ID(), plr.Name(), int32(server.id)))
+		}
+	case 2: // Accept request
+		plr, err := server.players.getFromConn(conn)
+
+		if err != nil {
+			return
+		}
+
+		friendID := reader.ReadInt32()
+
+		var friendName string
+		var friendChannel int32
+		var cashShop bool
+
+		err = db.DB.QueryRow("SELECT name,channelID,inCashShop FROM characters WHERE id=?", friendID).Scan(&friendName, &friendChannel, &cashShop)
+
+		if err != nil {
+			log.Fatal(err)
+			return
+		}
+
+		query := "UPDATE buddy set accepted=1 WHERE characterID=? and friendID=?"
+
+		if _, err := db.DB.Exec(query, plr.ID(), friendID); err != nil {
+			log.Fatal(err)
+			return
+		}
+
+		query = "INSERT INTO buddy(characterID,friendID,accepted) VALUES(?,?,?)"
+
+		if _, err := db.DB.Exec(query, friendID, plr.ID(), 1); err != nil {
+			log.Fatal(err)
+			return
+		}
+
+		if friendChannel == -1 {
+			plr.AddOfflineBuddy(friendID, friendName)
+		} else {
+			plr.AddOnlineBuddy(friendID, friendName, friendChannel)
+		}
+
+		if recepient, err := server.players.getFromID(friendID); err != nil {
+			server.world.Send(channelBuddyEvent(2, friendID, plr.ID(), plr.Name(), server.id))
+		} else {
+			// Need to set the buddy to be offline for the logged in message to appear before setting online
+			recepient.AddOfflineBuddy(plr.ID(), plr.Name())
+			recepient.Send(message.PacketBuddyOnlineStatus(plr.ID(), int32(server.id)))
+			recepient.AddOnlineBuddy(plr.ID(), plr.Name(), int32(server.id))
+		}
+	case 3: // Delete/reject friend
+		plr, err := server.players.getFromConn(conn)
+
+		if err != nil {
+			return
+		}
+
+		id := reader.ReadInt32()
+
+		query := "DELETE FROM buddy WHERE (characterID=? AND friendID=?) OR (characterID=? AND friendID=?)"
+
+		if _, err = db.DB.Exec(query, id, plr.ID(), plr.ID(), id); err != nil {
+			log.Fatal(err)
+			return
+		}
+
+		plr.RemoveBuddy(id)
+
+		if recepient, err := server.players.getFromID(id); err != nil {
+			server.world.Send(channelBuddyEvent(3, id, plr.ID(), "", server.id))
+		} else {
+			recepient.RemoveBuddy(plr.ID())
+		}
+	default:
+		log.Println("Unknown buddy operation:", op)
+	}
+}
+
+func (server *ChannelServer) playerBuddyChat(conn mnet.Client, reader mpacket.Reader) {
+	plr, err := server.players.getFromConn(conn)
+
+	if err != nil {
+		return
+	}
+
+	buffer := reader.GetRestAsBytes()
+	server.world.Send(channelBuddyChat(plr.Name(), buffer))
 }

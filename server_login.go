@@ -113,7 +113,7 @@ func (ls *loginServer) acceptNewClientConnections() {
 		keyRecv := [4]byte{}
 		rand.Read(keyRecv[:])
 
-		client := mnet.NewClient(conn, ls.eRecv, ls.config.PacketQueueSize, keySend, keyRecv)
+		client := mnet.NewClient(conn, ls.eRecv, ls.config.PacketQueueSize, keySend, keyRecv, ls.config.Latency, ls.config.Jitter)
 
 		go client.Reader()
 		go client.Writer()

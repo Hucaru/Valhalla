@@ -1,7 +1,9 @@
 package mnet
 
 import (
+	"math/rand"
 	"net"
+	"time"
 
 	"github.com/Hucaru/Valhalla/mnet/crypt"
 
@@ -80,6 +82,10 @@ type baseConn struct {
 	cryptRecv *crypt.Maple
 
 	interServer bool
+
+	latency int
+	jitter  int
+	pSend   chan func()
 }
 
 func (bc *baseConn) Reader() {
@@ -104,7 +110,22 @@ func (bc *baseConn) Writer() {
 			tmp[0] = byte(len(tmp) - 1)
 		}
 
-		bc.Conn.Write(tmp)
+		if bc.latency > 0 {
+			now := time.Now().UnixNano()
+			sendTime := now + int64(rand.Intn(bc.jitter)+bc.latency)*1000000
+			bc.pSend <- func() {
+				now := time.Now().UnixNano()
+				delta := sendTime - now
+
+				if delta > 0 {
+					time.Sleep(time.Duration(delta))
+				}
+
+				bc.Conn.Write(tmp)
+			}
+		} else {
+			bc.Conn.Write(tmp)
+		}
 	}
 }
 

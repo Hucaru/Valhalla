@@ -1,4 +1,4 @@
--- Adminer 4.7.1 MySQL dump
+-- Adminer 4.7.7 MySQL dump
 
 SET NAMES utf8;
 SET time_zone = '+00:00';
@@ -16,6 +16,20 @@ CREATE TABLE `accounts` (
   `gender` tinyint(4) NOT NULL DEFAULT '0',
   `dob` int(11) NOT NULL,
   PRIMARY KEY (`accountID`)
+) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+
+
+DROP TABLE IF EXISTS `buddy`;
+CREATE TABLE `buddy` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `characterID` int(11) NOT NULL,
+  `friendID` int(11) NOT NULL,
+  `accepted` tinyint(4) NOT NULL DEFAULT '0' COMMENT '0 is accepted, 1 is request pending',
+  PRIMARY KEY (`id`),
+  KEY `characterID` (`characterID`),
+  KEY `friendID` (`friendID`),
+  CONSTRAINT `buddy_ibfk_1` FOREIGN KEY (`characterID`) REFERENCES `characters` (`id`),
+  CONSTRAINT `buddy_ibfk_2` FOREIGN KEY (`friendID`) REFERENCES `characters` (`id`) ON DELETE NO ACTION
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 
 
@@ -58,6 +72,8 @@ CREATE TABLE `characters` (
   `miniGameDraw` int(11) NOT NULL DEFAULT '0',
   `miniGameLoss` int(11) NOT NULL DEFAULT '0',
   `miniGamePoints` int(11) NOT NULL DEFAULT '2000',
+  `buddyListSize` tinyint(3) unsigned NOT NULL DEFAULT '20',
+  `inCashShop` int(11) NOT NULL DEFAULT '0',
   PRIMARY KEY (`id`),
   KEY `userID` (`accountID`),
   CONSTRAINT `characters_ibfk_1` FOREIGN KEY (`accountID`) REFERENCES `accounts` (`accountID`)
@@ -112,4 +128,4 @@ CREATE TABLE `skills` (
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 
 
--- 2020-04-25 23:28:50
+-- 2020-12-28 19:08:59

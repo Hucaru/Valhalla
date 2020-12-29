@@ -1,6 +1,8 @@
 package server
 
 import (
+	"log"
+
 	"github.com/Hucaru/Valhalla/constant/opcode"
 	"github.com/Hucaru/Valhalla/mnet"
 	"github.com/Hucaru/Valhalla/mpacket"
@@ -64,4 +66,63 @@ func (c *channel) serialisePacket(reader *mpacket.Reader) {
 	c.port = reader.ReadInt16()
 	c.maxPop = reader.ReadInt16()
 	c.pop = reader.ReadInt16()
+}
+
+func channelPopUpdate(id byte, pop int16) mpacket.Packet {
+	p := mpacket.CreateInternal(opcode.ChannelInfo)
+	p.WriteByte(id)
+	p.WriteByte(0) // 0 is population
+	p.WriteInt16(pop)
+
+	return p
+}
+
+func channelPlayerConnected(id int32, name string, channelID byte, channelChange bool) mpacket.Packet {
+	p := mpacket.CreateInternal(opcode.ChannePlayerConnect)
+	p.WriteInt32(id)
+	p.WriteString(name)
+	p.WriteByte(channelID)
+	p.WriteBool(channelChange)
+
+	return p
+}
+
+func channelPlayerDisconnect(id int32, name string) mpacket.Packet {
+	p := mpacket.CreateInternal(opcode.ChannePlayerDisconnect)
+	p.WriteInt32(id)
+	p.WriteString(name)
+
+	return p
+}
+
+func channelBuddyEvent(op byte, recepientID, fromID int32, fromName string, channelID byte) mpacket.Packet {
+	p := mpacket.CreateInternal(opcode.ChannelPlayerBuddyEvent)
+	p.WriteByte(op)
+
+	switch op {
+	case 1: // add
+		fallthrough
+	case 2: // accept
+		p.WriteInt32(recepientID)
+		p.WriteInt32(fromID)
+		p.WriteString(fromName)
+		p.WriteByte(channelID)
+	case 3: // delete / reject
+		p.WriteInt32(recepientID)
+		p.WriteInt32(fromID)
+		p.WriteByte(channelID)
+	default:
+		log.Println("unkown internal buddy event type:", op)
+	}
+
+	return p
+}
+
+func channelBuddyChat(fromName string, buffer []byte) mpacket.Packet {
+	p := mpacket.CreateInternal(opcode.ChannelPlayerChatEvent)
+	p.WriteByte(1) // buddy
+	p.WriteString(fromName)
+	p.WriteBytes(buffer)
+
+	return p
 }

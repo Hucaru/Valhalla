@@ -52,7 +52,7 @@ func LoadFromID(id int32, conn mnet.Client) Data {
 	filter := "id,accountID,worldID,name,gender,skin,hair,face,level,job,str,dex,intt," +
 		"luk,hp,maxHP,mp,maxMP,ap,sp, exp,fame,mapID,mapPos,previousMapID,mesos," +
 		"equipSlotSize,useSlotSize,setupSlotSize,etcSlotSize,cashSlotSize,miniGameWins," +
-		"miniGameDraw,miniGameLoss,miniGamePoints"
+		"miniGameDraw,miniGameLoss,miniGamePoints,buddyListSize"
 
 	err := db.DB.QueryRow("SELECT "+filter+" FROM characters where id=?", id).Scan(&c.id,
 		&c.accountID, &c.worldID, &c.name, &c.gender, &c.skin, &c.hair, &c.face,
@@ -60,10 +60,11 @@ func LoadFromID(id int32, conn mnet.Client) Data {
 		&c.maxMP, &c.ap, &c.sp, &c.exp, &c.fame, &c.mapID, &c.mapPos,
 		&c.previousMap, &c.mesos, &c.equipSlotSize, &c.useSlotSize, &c.setupSlotSize,
 		&c.etcSlotSize, &c.cashSlotSize, &c.miniGameWins, &c.miniGameDraw, &c.miniGameLoss,
-		&c.miniGamePoints)
+		&c.miniGamePoints, &c.buddyListSize)
 
 	if err != nil {
-		panic(err)
+		log.Println(err)
+		return c
 	}
 
 	c.skills = make(map[int32]Skill)
@@ -76,12 +77,58 @@ func LoadFromID(id int32, conn mnet.Client) Data {
 
 	if err != nil {
 		log.Println(err)
+		return c
 	}
 
 	c.pos.SetX(nxMap.Portals[c.mapPos].X)
 	c.pos.SetY(nxMap.Portals[c.mapPos].Y)
 
 	c.equip, c.use, c.setUp, c.etc, c.cash = item.LoadInventoryFromDb(c.id)
+
+	c.buddyList = getBuddyList(c.id, c.buddyListSize)
 	c.conn = conn
 	return c
+}
+
+func getBuddyList(playerID int32, buddySize byte) []buddy {
+	buddies := make([]buddy, 0, buddySize)
+	filter := "friendID,accepted"
+	rows, err := db.DB.Query("SELECT "+filter+" FROM buddy where characterID=?", playerID)
+
+	if err != nil {
+		log.Fatal(err)
+		return buddies
+	}
+
+	defer rows.Close()
+
+	i := 0
+	for rows.Next() {
+		newBuddy := buddy{}
+
+		var accepted bool
+		rows.Scan(&newBuddy.id, &accepted)
+
+		filter := "channelID,name,inCashShop"
+		err := db.DB.QueryRow("SELECT "+filter+" FROM characters where id=?", newBuddy.id).Scan(&newBuddy.channelID, &newBuddy.name, &newBuddy.cashShop)
+
+		if err != nil {
+			log.Fatal(err)
+			return buddies
+		}
+
+		if !accepted {
+			newBuddy.status = 1 // pending buddy request
+		} else if newBuddy.channelID == -1 {
+			newBuddy.status = 2 // offline
+		} else {
+			newBuddy.status = 0 // online
+		}
+
+		buddies = append(buddies, newBuddy)
+
+		i++
+	}
+
+	return buddies
 }
