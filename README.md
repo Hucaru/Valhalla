@@ -95,7 +95,7 @@ Channel server:
 - [ ] Reactors
 - [x] Whisphers
 - [x] Buddy chat
-- [ ] Chat commands (/find etc.)
+- [x] Find / Map in buddy window
 - [x] Server resets login status upon restart for dangling characters
 - [ ] Autonomous GM commands which can be started and stopped at will
 
