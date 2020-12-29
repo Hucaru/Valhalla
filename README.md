@@ -43,7 +43,7 @@ World server:
 - [x] Broadcast buddy events
 - [ ] Broadvast party events
 - [ ] Broadcast guild events
-- [ ] Forward whisphers
+- [x] Forward whisphers
 - [ ] Allow gm command to actiavate exp/drop changes accross all channels
 - [ ] Allow gm commands to update information displayed at login
 
@@ -93,7 +93,7 @@ Channel server:
 - [ ] Quests
 - [x] Buddy list
 - [ ] Reactors
-- [ ] Whisphers
+- [x] Whisphers
 - [x] Buddy chat
 - [ ] Chat commands (/find etc.)
 - [x] Server resets login status upon restart for dangling characters
