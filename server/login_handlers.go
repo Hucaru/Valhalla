@@ -161,7 +161,7 @@ func (server *LoginServer) handleNameCheck(conn mnet.Client, reader mpacket.Read
 	newCharName := reader.ReadString(reader.ReadInt16())
 
 	var nameFound int
-	err := db.DB.QueryRow("SELECT count(*) name FROM characters WHERE name=?", newCharName).
+	err := db.DB.QueryRow("SELECT count(*) name FROM characters WHERE BINARY name=?", newCharName).
 		Scan(&nameFound)
 
 	if err != nil {

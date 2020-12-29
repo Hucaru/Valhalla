@@ -758,7 +758,7 @@ func (server *ChannelServer) playerBuddyOperation(conn mnet.Client, reader mpack
 		var accountID int32
 		var buddyListSize int32
 
-		err = db.DB.QueryRow("SELECT id,accountID,buddyListSize FROM characters WHERE name=? and worldID=?", name, conn.GetWorldID()).Scan(&charID, &accountID, &buddyListSize)
+		err = db.DB.QueryRow("SELECT id,accountID,buddyListSize FROM characters WHERE BINARY name=? and worldID=?", name, conn.GetWorldID()).Scan(&charID, &accountID, &buddyListSize)
 
 		if err != nil || accountID == conn.GetAccountID() {
 			conn.Send(message.PacketBuddyNameNotRegistered())
@@ -884,15 +884,4 @@ func (server *ChannelServer) playerBuddyOperation(conn mnet.Client, reader mpack
 	default:
 		log.Println("Unknown buddy operation:", op)
 	}
-}
-
-func (server *ChannelServer) playerBuddyChat(conn mnet.Client, reader mpacket.Reader) {
-	plr, err := server.players.getFromConn(conn)
-
-	if err != nil {
-		return
-	}
-
-	buffer := reader.GetRestAsBytes()
-	server.world.Send(channelBuddyChat(plr.Name(), buffer))
 }
