@@ -320,16 +320,17 @@ func (server *ChannelServer) handlePlayerConnectedNotifications(conn mnet.Server
 	channelID := reader.ReadByte()
 	changeChannel := reader.ReadBool()
 
-	for _, v := range server.players {
+	for i, v := range server.players {
 		if v.ID() == id {
 			continue
 		} else if v.HasBuddy(id) {
 			if changeChannel {
-				v.AddOnlineBuddy(id, name, int32(channelID))
+				server.players[i].Send(message.PacketBuddyChangeChannel(id, int32(channelID)))
+				server.players[i].AddOnlineBuddy(id, name, int32(channelID))
 			} else {
 				// send online message card, then update buddy list
-				v.Send(message.PacketBuddyOnlineStatus(id, int32(channelID)))
-				v.AddOnlineBuddy(id, name, int32(channelID))
+				server.players[i].Send(message.PacketBuddyOnlineStatus(id, int32(channelID)))
+				server.players[i].AddOnlineBuddy(id, name, int32(channelID))
 			}
 		}
 	}
@@ -339,11 +340,11 @@ func (server *ChannelServer) handlePlayerDisconnectNotifications(conn mnet.Serve
 	id := reader.ReadInt32()
 	name := reader.ReadString(reader.ReadInt16())
 
-	for _, v := range server.players {
+	for i, v := range server.players {
 		if v.ID() == id {
 			continue
 		} else if v.HasBuddy(id) {
-			v.AddOfflineBuddy(id, name)
+			server.players[i].AddOfflineBuddy(id, name)
 		}
 	}
 }
