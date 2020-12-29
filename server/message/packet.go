@@ -180,34 +180,32 @@ func PacketMessageWhisper(sender string, message string, channel byte) mpacket.P
 }
 
 // PacketMessageFindResult - send the result of using the /find comand
-func PacketMessageFindResult(character string, isAdmin, inCashShop, sameChannel bool, mapID int32) mpacket.Packet {
+func PacketMessageFindResult(character string, is, inCashShop, sameChannel bool, mapID int32) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelWhisper)
 
-	if isAdmin {
-		p.WriteByte(0x05)
-		p.WriteString("User not found")
-
-	} else if mapID > 0 {
+	if mapID >= 0 {
 		p.WriteByte(0x9)
 		p.WriteString(character)
 
 		if inCashShop {
 			p.WriteByte(0x02)
 			p.WriteInt32(0) // ?
+			p.WriteInt32(0) // ?
 		} else if sameChannel {
 			p.WriteByte(0x01)
 			p.WriteInt32(mapID)
 			p.WriteInt32(0) // ?
+			p.WriteInt32(0) // ?
 		} else {
-			p.WriteByte(0x01)
+			p.WriteByte(0x03)
 			p.WriteInt32(mapID)
+			p.WriteInt32(0) // ?
+			p.WriteInt32(0) // ?
 		}
-
-		p.WriteInt32(0) // ?
 	} else {
 		p.WriteByte(0x0A)
 		p.WriteString(character)
-		p.WriteByte(0) // ?
+		p.WriteBool(is)
 	}
 
 	return p

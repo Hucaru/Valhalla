@@ -118,6 +118,17 @@ func channelBuddyEvent(op byte, recepientID, fromID int32, fromName string, chan
 	return p
 }
 
+func channelWhispherChat(recepientName, fromName, msg string, channelID byte) mpacket.Packet {
+	p := mpacket.CreateInternal(opcode.ChannelPlayerChatEvent)
+	p.WriteByte(0) // whispher
+	p.WriteString(recepientName)
+	p.WriteString(fromName)
+	p.WriteString(msg)
+	p.WriteByte(channelID)
+
+	return p
+}
+
 func channelBuddyChat(fromName string, buffer []byte) mpacket.Packet {
 	p := mpacket.CreateInternal(opcode.ChannelPlayerChatEvent)
 	p.WriteByte(1) // buddy

@@ -415,9 +415,21 @@ func (server ChannelServer) handleChatEvent(conn mnet.Server, reader mpacket.Rea
 
 	switch op {
 	case 0: // whispher
+		recepientName := reader.ReadString(reader.ReadInt16())
+		fromName := reader.ReadString(reader.ReadInt16())
+		msg := reader.ReadString(reader.ReadInt16())
+		channelID := reader.ReadByte()
+
+		plr, err := server.players.getFromName(recepientName)
+
+		if err != nil {
+			return
+		}
+
+		plr.Send(message.PacketMessageWhisper(fromName, msg, channelID))
+
 	case 1: // buddy
 		fromName := reader.ReadString(reader.ReadInt16())
-		reader.ReadByte() // ?
 		idCount := reader.ReadByte()
 
 		ids := make([]int32, int(idCount))

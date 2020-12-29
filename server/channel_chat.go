@@ -11,10 +11,108 @@ import (
 	"github.com/Hucaru/Valhalla/mnet"
 	"github.com/Hucaru/Valhalla/mpacket"
 	"github.com/Hucaru/Valhalla/nx"
+	"github.com/Hucaru/Valhalla/server/db"
 	"github.com/Hucaru/Valhalla/server/field/droppool"
 	"github.com/Hucaru/Valhalla/server/item"
 	"github.com/Hucaru/Valhalla/server/message"
 )
+
+func (server ChannelServer) chatGroup(conn mnet.Client, reader mpacket.Reader) {
+	plr, err := server.players.getFromConn(conn)
+
+	if err != nil {
+		return
+	}
+
+	op := reader.ReadByte()
+
+	switch op {
+	case 0: // buddy
+		buffer := reader.GetRestAsBytes()
+		server.world.Send(channelBuddyChat(plr.Name(), buffer))
+	case 2: // guild
+		fmt.Println(reader)
+		// id count
+		// ids
+		// text msg
+	default:
+		log.Println("Unknown group chat type:", op, reader)
+	}
+}
+
+func (server ChannelServer) chatSlashCommand(conn mnet.Client, reader mpacket.Reader) {
+	op := reader.ReadByte()
+
+	switch op {
+	case 5: // find / map button in friend
+		plr, err := server.players.getFromConn(conn)
+
+		if err != nil {
+			return
+		}
+		name := reader.ReadString(reader.ReadInt16())
+
+		var accountID int32
+		var channelID int8
+		var mapID int32 = -1
+		var inCashShop bool
+
+		err = db.DB.QueryRow("SELECT accountID,channelID,mapID,inCashShop FROM characters WHERE BINARY name=? AND worldID=?", name, conn.GetWorldID()).Scan(&accountID, &channelID, &mapID, &inCashShop)
+
+		if err != nil || channelID == -1 {
+			plr.Send(message.PacketMessageFindResult(name, false, false, false, -1))
+			return
+		}
+
+		var isGM bool
+
+		err = db.DB.QueryRow("SELECT adminLevel from accounts where accountID=?", accountID).Scan(&isGM)
+
+		if err != nil {
+			log.Fatal(err)
+			return
+		}
+
+		if isGM {
+			plr.Send(message.PacketMessageFindResult(name, false, inCashShop, false, mapID))
+		} else {
+			plr.Send(message.PacketMessageFindResult(name, true, inCashShop, byte(channelID) == server.id, mapID))
+		}
+	case 6: // whispher
+		recepientName := reader.ReadString(reader.ReadInt16())
+		msg := reader.ReadString(reader.ReadInt16())
+
+		if receiver, err := server.players.getFromName(recepientName); err != nil {
+			var online bool
+			err := db.DB.QueryRow("SELECT COUNT(*) FROM characters WHERE BINARY name=? AND worldID=? AND channelID != -1", recepientName, conn.GetWorldID()).Scan(&online)
+
+			if err != nil || !online {
+				conn.Send(message.PacketMessageRedText("Incorrect character name"))
+				return
+			}
+
+			plr, err := server.players.getFromConn(conn)
+
+			if err != nil {
+				return
+			}
+
+			plr.Send(message.PacketMessageWhisper(plr.Name(), msg, server.id))
+			server.world.Send(channelWhispherChat(recepientName, plr.Name(), msg, server.id))
+		} else {
+			plr, err := server.players.getFromConn(conn)
+
+			if err != nil {
+				return
+			}
+
+			plr.Send(message.PacketMessageWhisper(plr.Name(), msg, server.id))
+			receiver.Send(message.PacketMessageWhisper(plr.Name(), msg, server.id))
+		}
+	default:
+		log.Println("Unkown slash command type:", op, reader)
+	}
+}
 
 func (server *ChannelServer) chatSendAll(conn mnet.Client, reader mpacket.Reader) {
 	msg := reader.ReadString(reader.ReadInt16())

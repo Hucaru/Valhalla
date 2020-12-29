@@ -1,12 +1,12 @@
 package server
 
 import (
-	"fmt"
 	"log"
 
 	"github.com/Hucaru/Valhalla/constant/opcode"
 	"github.com/Hucaru/Valhalla/mnet"
 	"github.com/Hucaru/Valhalla/mpacket"
+	"github.com/Hucaru/Valhalla/server/message"
 )
 
 // HandleClientPacket data
@@ -21,6 +21,7 @@ func (server *ChannelServer) HandleClientPacket(conn mnet.Client, reader mpacket
 		// This opcode is used for revival UI as well.
 		server.playerUsePortal(conn, reader)
 	case opcode.RecvChannelEnterCashShop:
+		conn.Send(message.PacketMessageDialogueBox("Shop not implemented"))
 	case opcode.RecvChannelPlayerMovement:
 		server.playerMovement(conn, reader)
 	case opcode.RecvChannelPlayerStand:
@@ -37,11 +38,10 @@ func (server *ChannelServer) HandleClientPacket(conn mnet.Client, reader mpacket
 		server.playerTakeDamage(conn, reader)
 	case opcode.RecvChannelPlayerSendAllChat:
 		server.chatSendAll(conn, reader)
-	case opcode.RecvChannelBuddyChat:
-		server.playerBuddyChat(conn, reader)
+	case opcode.RecvChannelGroupChat:
+		server.chatGroup(conn, reader)
 	case opcode.RecvChannelSlashCommands:
-		fmt.Println("slash command", reader)
-		// server.chatSlashCommand(conn, reader)
+		server.chatSlashCommand(conn, reader)
 	case opcode.RecvChannelCharacterUIWindow:
 		server.roomWindow(conn, reader)
 	case opcode.RecvChannelEmote:
