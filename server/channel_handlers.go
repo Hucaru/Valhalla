@@ -1,6 +1,7 @@
 package server
 
 import (
+	"fmt"
 	"log"
 
 	"github.com/Hucaru/Valhalla/constant/opcode"
@@ -36,7 +37,10 @@ func (server *ChannelServer) HandleClientPacket(conn mnet.Client, reader mpacket
 		server.playerTakeDamage(conn, reader)
 	case opcode.RecvChannelPlayerSendAllChat:
 		server.chatSendAll(conn, reader)
+	case opcode.RecvChannelBuddyChat:
+		server.playerBuddyChat(conn, reader)
 	case opcode.RecvChannelSlashCommands:
+		fmt.Println("slash command", reader)
 		// server.chatSlashCommand(conn, reader)
 	case opcode.RecvChannelCharacterUIWindow:
 		server.roomWindow(conn, reader)

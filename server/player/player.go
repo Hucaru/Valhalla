@@ -1174,11 +1174,11 @@ func (d *Data) AddOnlineBuddy(id int32, name string, channel int32) {
 		return
 	}
 
-	for _, v := range d.buddyList {
+	for i, v := range d.buddyList {
 		if v.id == id {
-			v.status = 0
-			v.channelID = channel
-			d.Send(packetBuddyUpdate(id, name, v.status, channel, false))
+			d.buddyList[i].status = 0
+			d.buddyList[i].channelID = channel
+			d.Send(packetBuddyUpdate(id, name, d.buddyList[i].status, channel, false))
 			return
 		}
 	}
@@ -1197,11 +1197,11 @@ func (d *Data) AddOfflineBuddy(id int32, name string) {
 		return
 	}
 
-	for _, v := range d.buddyList {
+	for i, v := range d.buddyList {
 		if v.id == id {
-			v.status = 2
-			v.channelID = -1
-			d.Send(packetBuddyUpdate(id, name, v.status, -1, false))
+			d.buddyList[i].status = 2
+			d.buddyList[i].channelID = -1
+			d.Send(packetBuddyUpdate(id, name, d.buddyList[i].status, -1, false))
 			return
 		}
 	}
@@ -1223,4 +1223,16 @@ func (d Data) HasBuddy(id int32) bool {
 	}
 
 	return false
+}
+
+// RemoveBuddy from list
+func (d *Data) RemoveBuddy(id int32) {
+	for i, v := range d.buddyList {
+		if v.id == id {
+			d.buddyList[i] = d.buddyList[len(d.buddyList)-1]
+			d.buddyList = d.buddyList[:len(d.buddyList)-1]
+			d.Send(packetBuddyInfo(d.buddyList))
+			return
+		}
+	}
 }

@@ -247,6 +247,10 @@ func (server *ChannelServer) HandleServerPacket(conn mnet.Server, reader mpacket
 		server.handlePlayerConnectedNotifications(conn, reader)
 	case opcode.ChannePlayerDisconnect:
 		server.handlePlayerDisconnectNotifications(conn, reader)
+	case opcode.ChannelPlayerChatEvent:
+		server.handleChatEvent(conn, reader)
+	case opcode.ChannelPlayerBuddyEvent:
+		server.handleBuddyEvent(conn, reader)
 	default:
 		log.Println("UNKNOWN SERVER PACKET:", reader)
 	}
@@ -322,8 +326,9 @@ func (server *ChannelServer) handlePlayerConnectedNotifications(conn mnet.Server
 		} else if v.HasBuddy(id) {
 			if changeChannel {
 				v.Send(message.PacketBuddyChangeChannel(id, int32(channelID)))
+				v.AddOnlineBuddy(id, name, int32(channelID))
 			} else {
-				// send online message, then update buddy list
+				// send online message card, then update buddy list
 				v.Send(message.PacketBuddyOnlineStatus(id, int32(channelID)))
 				v.AddOnlineBuddy(id, name, int32(channelID))
 			}
@@ -341,6 +346,102 @@ func (server *ChannelServer) handlePlayerDisconnectNotifications(conn mnet.Serve
 		} else if v.HasBuddy(id) {
 			v.AddOfflineBuddy(id, name)
 		}
+	}
+}
+
+func (server *ChannelServer) handleBuddyEvent(conn mnet.Server, reader mpacket.Reader) {
+	op := reader.ReadByte()
+
+	switch op {
+	case 1:
+		recepientID := reader.ReadInt32()
+		fromID := reader.ReadInt32()
+		fromName := reader.ReadString(reader.ReadInt16())
+		channelID := reader.ReadByte()
+
+		if channelID == server.id {
+			return
+		}
+
+		plr, err := server.players.getFromID(recepientID)
+
+		if err != nil {
+			return
+		}
+
+		plr.Send(message.PacketBuddyReceiveRequest(fromID, fromName, int32(channelID)))
+	case 2:
+		recepientID := reader.ReadInt32()
+		fromID := reader.ReadInt32()
+		fromName := reader.ReadString(reader.ReadInt16())
+		channelID := reader.ReadByte()
+
+		if channelID == server.id {
+			return
+		}
+
+		plr, err := server.players.getFromID(recepientID)
+
+		if err != nil {
+			return
+		}
+
+		plr.AddOfflineBuddy(fromID, fromName)
+		plr.Send(message.PacketBuddyOnlineStatus(fromID, int32(channelID)))
+		plr.AddOnlineBuddy(fromID, fromName, int32(channelID))
+	case 3:
+		recepientID := reader.ReadInt32()
+		fromID := reader.ReadInt32()
+		channelID := reader.ReadByte()
+
+		if channelID == server.id {
+			return
+		}
+
+		plr, err := server.players.getFromID(recepientID)
+
+		if err != nil {
+			return
+		}
+
+		plr.RemoveBuddy(fromID)
+	default:
+		log.Println("Unknown buddy event type:", op)
+	}
+}
+
+func (server ChannelServer) handleChatEvent(conn mnet.Server, reader mpacket.Reader) {
+	op := reader.ReadByte()
+
+	switch op {
+	case 0: // whispher
+	case 1: // buddy
+		fromName := reader.ReadString(reader.ReadInt16())
+		reader.ReadByte() // ?
+		idCount := reader.ReadByte()
+
+		ids := make([]int32, int(idCount))
+
+		for i := byte(0); i < idCount; i++ {
+			ids[i] = reader.ReadInt32()
+		}
+
+		msg := reader.ReadString(reader.ReadInt16())
+
+		for _, v := range ids {
+			plr, err := server.players.getFromID(v)
+
+			if err != nil {
+				continue
+			}
+
+			plr.Send(message.PacketMessageBubblessChat(0, fromName, msg))
+		}
+
+	case 2: // party
+	case 3: // guild
+	default:
+		log.Println("Unknown chat event type:", op)
 	}
 }
 

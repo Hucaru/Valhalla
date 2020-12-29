@@ -1,6 +1,8 @@
 package server
 
 import (
+	"log"
+
 	"github.com/Hucaru/Valhalla/constant/opcode"
 	"github.com/Hucaru/Valhalla/mnet"
 	"github.com/Hucaru/Valhalla/mpacket"
@@ -89,6 +91,38 @@ func channelPlayerDisconnect(id int32, name string) mpacket.Packet {
 	p := mpacket.CreateInternal(opcode.ChannePlayerDisconnect)
 	p.WriteInt32(id)
 	p.WriteString(name)
+
+	return p
+}
+
+func channelBuddyEvent(op byte, recepientID, fromID int32, fromName string, channelID byte) mpacket.Packet {
+	p := mpacket.CreateInternal(opcode.ChannelPlayerBuddyEvent)
+	p.WriteByte(op)
+
+	switch op {
+	case 1: // add
+		fallthrough
+	case 2: // accept
+		p.WriteInt32(recepientID)
+		p.WriteInt32(fromID)
+		p.WriteString(fromName)
+		p.WriteByte(channelID)
+	case 3: // delete / reject
+		p.WriteInt32(recepientID)
+		p.WriteInt32(fromID)
+		p.WriteByte(channelID)
+	default:
+		log.Println("unkown internal buddy event type:", op)
+	}
+
+	return p
+}
+
+func channelBuddyChat(fromName string, buffer []byte) mpacket.Packet {
+	p := mpacket.CreateInternal(opcode.ChannelPlayerChatEvent)
+	p.WriteByte(1) // buddy
+	p.WriteString(fromName)
+	p.WriteBytes(buffer)
 
 	return p
 }

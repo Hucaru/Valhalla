@@ -463,7 +463,7 @@ func packetBuddyInfo(buddyList []buddy) mpacket.Packet {
 }
 
 // It is possible to change id's using this packet, however if the id is a request it will crash the users
-// client when selecting an option in notification, therefore the id has not been allowed to change to
+// client when selecting an option in notification, therefore the id has not been allowed to change
 func packetBuddyUpdate(id int32, name string, status byte, channelID int32, cashShop bool) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelBuddyInfo)
 	p.WriteByte(0x08)

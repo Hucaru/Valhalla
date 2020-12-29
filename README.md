@@ -16,6 +16,9 @@ This project exists to preserve and archive an early version of the game (v28 of
 
 ## Features
 
+General:
+- [x] Simulated latency with jitter (set in config) to make dev environment simulate a real world connections when within network
+
 Login server:
 - [x] Login user
 - [ ] Pin
@@ -35,10 +38,12 @@ World server:
 - [x] Keep track of player count
 - [x] Send information to login server
 - [x] Send IP, port to channel for change channel requests
+- [x] Forward player connects to channels
+- [x] Forward player leaves game to channels
+- [x] Broadcast buddy events
+- [ ] Broadvast party events
+- [ ] Broadcast guild events
 - [ ] Forward whisphers
-- [ ] Forward buddy chat
-- [ ] Forward party chat
-- [ ] Forward guild chat
 - [ ] Allow gm command to actiavate exp/drop changes accross all channels
 - [ ] Allow gm commands to update information displayed at login
 
@@ -73,7 +78,7 @@ Channel server:
 - [x] Map instancing
 - [x] Mob visible
 - [x] Mob movement
-- [ ] Mob attack
+- [x] Mob attack
 - [ ] Mob skills that cause stat changes
 - [x] Mob death
 - [x] Mob respawn
@@ -105,9 +110,6 @@ Metrics:
 
 See screenshots section for an example Grafana dashboard
 
-General:
-- [x] Simulated latency with jitter (set in config) to make dev environment simulate a real world connection
-
 ## TODOs
 
 - Profile the channel server and do the following:
@@ -118,8 +120,9 @@ General:
 ## Acknowledgements
 
 - Sunnyboy for providing a [list](http://forum.ragezone.com/f921/library-idbs-versions-named-addresses-987815/) of idbs for which this project would not have started
-- [Vana](https://github.com/retep998/Vana)
-- [WvsGlobal](https://github.com/diamondo25/WvsGlobal)
+- The following projects were used to help reverse packet structures that were not clearly shown in the idb
+    - [Vana](https://github.com/retep998/Vana)
+    - [WvsGlobal](https://github.com/diamondo25/WvsGlobal)
 - [NX](https://nxformat.github.io/) file format (see acknowledgements at link)
 
 ## NPC chat display info (use this when scripting NPCs)

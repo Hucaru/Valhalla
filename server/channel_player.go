@@ -744,7 +744,6 @@ func (server *ChannelServer) playerBuddyOperation(conn mnet.Client, reader mpack
 		plr, err := server.players.getFromConn(conn)
 
 		if err != nil {
-			log.Fatal(err)
 			return
 		}
 
@@ -763,6 +762,11 @@ func (server *ChannelServer) playerBuddyOperation(conn mnet.Client, reader mpack
 
 		if err != nil || accountID == conn.GetAccountID() {
 			conn.Send(message.PacketBuddyNameNotRegistered())
+			return
+		}
+
+		if plr.HasBuddy(charID) {
+			conn.Send(message.PacketBuddyAlreadyAdded())
 			return
 		}
 
@@ -802,7 +806,7 @@ func (server *ChannelServer) playerBuddyOperation(conn mnet.Client, reader mpack
 		}
 
 		if recepient, err := server.players.getFromID(charID); err != nil {
-			// emit a friend request event to all channels
+			server.world.Send(channelBuddyEvent(1, charID, plr.ID(), plr.Name(), server.id))
 		} else {
 			recepient.Send(message.PacketBuddyReceiveRequest(plr.ID(), plr.Name(), int32(server.id)))
 		}
@@ -810,7 +814,6 @@ func (server *ChannelServer) playerBuddyOperation(conn mnet.Client, reader mpack
 		plr, err := server.players.getFromConn(conn)
 
 		if err != nil {
-			log.Fatal(err)
 			return
 		}
 
@@ -848,7 +851,7 @@ func (server *ChannelServer) playerBuddyOperation(conn mnet.Client, reader mpack
 		}
 
 		if recepient, err := server.players.getFromID(friendID); err != nil {
-			// emit friend request accepted, along with channel id
+			server.world.Send(channelBuddyEvent(2, friendID, plr.ID(), plr.Name(), server.id))
 		} else {
 			// Need to set the buddy to be offline for the logged in message to appear before setting online
 			recepient.AddOfflineBuddy(plr.ID(), plr.Name())
@@ -856,11 +859,40 @@ func (server *ChannelServer) playerBuddyOperation(conn mnet.Client, reader mpack
 			recepient.AddOnlineBuddy(plr.ID(), plr.Name(), int32(server.id))
 		}
 	case 3: // Delete/reject friend
-		fmt.Println("Delete", reader)
+		plr, err := server.players.getFromConn(conn)
 
-		// Delete both sides of the friends list from the database, retreive the friendID and use in subsequent event broadcast
-		// Check if on current channel otherwise emit a friend delete event to the channels
+		if err != nil {
+			return
+		}
+
+		id := reader.ReadInt32()
+
+		query := "DELETE FROM buddy WHERE (characterID=? AND friendID=?) OR (characterID=? AND friendID=?)"
+
+		if _, err = db.DB.Exec(query, id, plr.ID(), plr.ID(), id); err != nil {
+			log.Fatal(err)
+			return
+		}
+
+		plr.RemoveBuddy(id)
+
+		if recepient, err := server.players.getFromID(id); err != nil {
+			server.world.Send(channelBuddyEvent(3, id, plr.ID(), "", server.id))
+		} else {
+			recepient.RemoveBuddy(plr.ID())
+		}
 	default:
 		log.Println("Unknown buddy operation:", op)
 	}
+}
+
+func (server *ChannelServer) playerBuddyChat(conn mnet.Client, reader mpacket.Reader) {
+	plr, err := server.players.getFromConn(conn)
+
+	if err != nil {
+		return
+	}
+
+	buffer := reader.GetRestAsBytes()
+	server.world.Send(channelBuddyChat(plr.Name(), buffer))
 }

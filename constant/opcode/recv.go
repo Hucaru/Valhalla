@@ -37,6 +37,7 @@ const (
 	RecvChannelCharacterInfo       byte = 0x3F
 	RecvChannelLieDetectorResult   byte = 0x45
 	RecvChannelCharacterReport     byte = 0x49
+	RecvChannelBuddyChat           byte = 0x4B
 	RecvChannelSlashCommands       byte = 0x4C
 	RecvChannelCharacterUIWindow   byte = 0x4E
 	RecvChannelPartyInfo           byte = 0x4F
