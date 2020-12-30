@@ -484,3 +484,12 @@ func packetBuddyListSizeUpdate(size byte) mpacket.Packet {
 
 	return p
 }
+
+func packetShowHpBar(playerID, hp, maxHP int32) mpacket.Packet {
+	p := mpacket.CreateWithOpcode()
+	p.WriteInt32(playerID)
+	p.WriteInt32(hp)
+	p.WriteInt32(maxHP)
+
+	return p
+}

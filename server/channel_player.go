@@ -100,6 +100,10 @@ func (server *ChannelServer) playerConnect(conn mnet.Client, reader mpacket.Read
 	newPlr.UpdateGuildInfo()
 	newPlr.UpdateBuddyInfo()
 
+	for _, v := range server.parties {
+		v.PlayerLoggedIn(newPlr, int32(server.id))
+	}
+
 	metrics.Gauges["player_count"].With(prometheus.Labels{"channel": strconv.Itoa(int(server.id)), "world": server.worldName}).Inc()
 
 	server.world.Send(channelPopUpdate(server.id, int16(len(server.players))))
@@ -909,8 +913,16 @@ func (server *ChannelServer) playerPartyInfo(conn mnet.Client, reader mpacket.Re
 		// send player left event to world server, if the player is the leader the world server will also send back to destroy the party and will mark the ID as re-useable
 	case 3: // accept
 		partyID := reader.ReadInt32()
-		fmt.Println(reader, "party id:", partyID)
-		// send player joined event to world server
+
+		plr, err := server.players.getFromConn(conn)
+
+		if err != nil {
+			return
+		}
+
+		// send player joined event to world server, for now do the following
+
+		server.parties[partyID].AddPlayer(plr, int32(server.id), plr.ID(), plr.Name(), plr.MapID(), int32(plr.Job()), int32(plr.Level()), plr.HP(), plr.MaxHP())
 	case 4: // invite
 		id := reader.ReadInt32()
 
@@ -943,6 +955,8 @@ func (server *ChannelServer) playerPartyInfo(conn mnet.Client, reader mpacket.Re
 		}
 
 		recipient.Send(message.PacketPartyInviteNotice(plr.Party().ID(), plr.Name()))
+	case 5: // kick
+		fmt.Println("kick", reader.ReadInt32())
 	default:
 		log.Println("Unknown party info type:", op, reader)
 	}

@@ -30,6 +30,8 @@ func (server ChannelServer) chatGroup(conn mnet.Client, reader mpacket.Reader) {
 	case 0: // buddy
 		buffer := reader.GetRestAsBytes()
 		server.world.Send(channelBuddyChat(plr.Name(), buffer))
+	case 1: // party
+		// buffer := reader.GetRestAsBytes() // number of ids, ids, msg
 	case 2: // guild
 		fmt.Println(reader)
 		// id count

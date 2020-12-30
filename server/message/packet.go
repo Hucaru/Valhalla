@@ -488,11 +488,6 @@ i8 - no disband
 i8 - kicked
 name
 
-0x0e: (person has joined the part, you have joined the party)
-i32
-name
-294 bytes - updated party info?
-
 0x01a:
 i32
 

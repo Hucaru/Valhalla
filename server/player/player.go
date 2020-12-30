@@ -477,6 +477,10 @@ func (d Data) CheckPos(pos pos.Data, xRange, yRange int16) bool {
 // SetMapID of Data
 func (d *Data) SetMapID(id int32) {
 	d.mapID = id
+
+	if d.party != nil {
+		d.party.PartyUpdatePlayer(int32(d.conn.GetChannelID()), d.id, d.mapID, int32(d.job), int32(d.level), d.name, d.hp, d.maxHP)
+	}
 }
 
 // SetMapPosID of Data
