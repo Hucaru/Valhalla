@@ -902,11 +902,11 @@ func (server *ChannelServer) playerPartyInfo(conn mnet.Client, reader mpacket.Re
 			return
 		}
 
-		server.world.Send(channelPartyCreateRequest(plr.ID()))
+		server.world.Send(channelPartyCreateRequest(plr.ID(), server.id))
 	case 2: // leave party
-		fmt.Println(reader.ReadByte()) // position in party? 0 is always leader?
+		fmt.Println("leave party:", reader, reader.ReadByte()) // position in party? 0 is always leader?
 
-		// send player left event to world server
+		// send player left event to world server, if the player is the leader the world server will also send back to destroy the party and will mark the ID as re-useable
 	case 3: // accept
 		partyID := reader.ReadInt32()
 		fmt.Println(reader, "party id:", partyID)
@@ -932,9 +932,17 @@ func (server *ChannelServer) playerPartyInfo(conn mnet.Client, reader mpacket.Re
 			return
 		}
 
-		var partyID int32 = 1
+		if plr.Party() == nil {
+			plr.Send(message.PacketPartyUnableToFindPlayer())
+			return
+		}
 
-		recipient.Send(message.PacketPartyInviteNotice(partyID, plr.Name()))
+		if plr.Party().Full() {
+			plr.Send(message.PacketPartyToJoinIsFull())
+			return
+		}
+
+		recipient.Send(message.PacketPartyInviteNotice(plr.Party().ID(), plr.Name()))
 	default:
 		log.Println("Unknown party info type:", op, reader)
 	}

@@ -471,10 +471,14 @@ func (server *ChannelServer) handlePartyEvent(conn mnet.Server, reader mpacket.R
 	case 1: // new party created
 		partyID := reader.ReadInt32()
 		playerID := reader.ReadInt32()
+		channelID := reader.ReadByte()
 
 		plr, err := server.players.getFromID(playerID)
 
 		if err != nil {
+			// Need a record of the party existing on all channels
+			newParty := party.NewParty(partyID, nil, channelID)
+			server.parties[partyID] = &newParty
 			return
 		}
 

@@ -186,6 +186,8 @@ func (server *WorldServer) handlePartyEvent(conn mnet.Server, reader mpacket.Rea
 	switch op {
 	case 0: // new party request
 		playerID := reader.ReadInt32()
+		channelID := reader.ReadByte()
+
 		var partyID int32
 		if len(server.reusablePartyIDs) > 0 {
 			partyID = server.reusablePartyIDs[0]
@@ -201,7 +203,7 @@ func (server *WorldServer) handlePartyEvent(conn mnet.Server, reader mpacket.Rea
 			partyID = server.nextPartyID
 		}
 
-		server.channelBroadcast(channelPartyCreateApproved(partyID, playerID))
+		server.channelBroadcast(channelPartyCreateApproved(partyID, playerID, channelID))
 	default:
 		log.Println("Unkown party event type:", op)
 	}

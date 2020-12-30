@@ -55,3 +55,14 @@ func (d *Data) RemovePlayer(plr player) bool {
 
 	return false
 }
+
+// Full returns false if there is a space in the party
+func (d Data) Full() bool {
+	for _, v := range d.players {
+		if v == nil {
+			return false
+		}
+	}
+
+	return true
+}
