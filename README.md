@@ -41,7 +41,7 @@ World server:
 - [x] Forward player connects to channels
 - [x] Forward player leaves game to channels
 - [x] Broadcast buddy events
-- [ ] Broadvast party events
+- [x] Broadcast party events
 - [ ] Broadcast guild events
 - [x] Forward whisphers
 - [ ] Allow gm command to actiavate exp/drop changes accross all channels
@@ -88,13 +88,14 @@ Channel server:
 - [ ] Trade
 - [x] Minigames
 - [ ] Communication Window
-- [ ] Party
+- [x] Party
+- [x] Party chat
 - [ ] Guild
 - [ ] Quests
 - [x] Buddy list
+- [x] Buddy chat
 - [ ] Reactors
 - [x] Whisphers
-- [x] Buddy chat
 - [x] Find / Map in buddy window
 - [x] Server resets login status upon restart for dangling characters
 - [ ] Autonomous GM commands which can be started and stopped at will

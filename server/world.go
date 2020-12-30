@@ -2,6 +2,7 @@ package server
 
 import (
 	"log"
+	"math"
 	"time"
 
 	"github.com/Hucaru/Valhalla/constant/opcode"
@@ -11,8 +12,10 @@ import (
 
 // WorldServer data
 type WorldServer struct {
-	info  world
-	login mnet.Server
+	info             world
+	login            mnet.Server
+	nextPartyID      int32
+	reusablePartyIDs []int32
 }
 
 // RegisterWithLogin server
@@ -49,6 +52,8 @@ func (server *WorldServer) HandleServerPacket(conn mnet.Server, reader mpacket.R
 		fallthrough
 	case opcode.ChannelPlayerChatEvent:
 		server.forwardPacketToChannels(conn, reader)
+	case opcode.ChannelPlayerPartyEvent:
+		server.handlePartyEvent(conn, reader)
 	default:
 		log.Println("UNKNOWN SERVER PACKET:", reader)
 	}
@@ -173,4 +178,31 @@ func (server WorldServer) forwardPacketToChannels(conn mnet.Server, reader mpack
 	p.WriteByte(0)
 	p.WriteBytes(reader.GetBuffer())
 	server.channelBroadcast(p)
+}
+
+func (server *WorldServer) handlePartyEvent(conn mnet.Server, reader mpacket.Reader) {
+	op := reader.ReadByte()
+
+	switch op {
+	case 0: // new party request
+		playerID := reader.ReadInt32()
+		var partyID int32
+		if len(server.reusablePartyIDs) > 0 {
+			partyID = server.reusablePartyIDs[0]
+			server.reusablePartyIDs[0] = server.reusablePartyIDs[len(server.reusablePartyIDs)-1]
+			server.reusablePartyIDs = server.reusablePartyIDs[:len(server.reusablePartyIDs)-1]
+		} else {
+			server.nextPartyID++
+
+			if server.nextPartyID == math.MaxInt32 {
+				server.nextPartyID = 1
+			}
+
+			partyID = server.nextPartyID
+		}
+
+		server.channelBroadcast(channelPartyCreateApproved(partyID, playerID))
+	default:
+		log.Println("Unkown party event type:", op)
+	}
 }

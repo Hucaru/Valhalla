@@ -11,6 +11,7 @@ import (
 	"github.com/Hucaru/Valhalla/mpacket"
 	"github.com/Hucaru/Valhalla/server/db"
 	"github.com/Hucaru/Valhalla/server/item"
+	"github.com/Hucaru/Valhalla/server/party"
 	"github.com/Hucaru/Valhalla/server/pos"
 )
 
@@ -95,6 +96,8 @@ type Data struct {
 
 	buddyListSize byte
 	buddyList     []buddy
+
+	party *party.Data
 }
 
 // Conn - client connection associated with this Data
@@ -1235,4 +1238,14 @@ func (d *Data) RemoveBuddy(id int32) {
 			return
 		}
 	}
+}
+
+// SetParty of the player
+func (d *Data) SetParty(p *party.Data) {
+	d.party = p
+}
+
+// Party get the ptr to the players party
+func (d Data) Party() *party.Data {
+	return d.party
 }

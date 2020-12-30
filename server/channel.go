@@ -18,7 +18,9 @@ import (
 	"github.com/Hucaru/Valhalla/server/field"
 	"github.com/Hucaru/Valhalla/server/message"
 	"github.com/Hucaru/Valhalla/server/metrics"
+	"github.com/Hucaru/Valhalla/server/party"
 	"github.com/Hucaru/Valhalla/server/player"
+	"github.com/Hucaru/Valhalla/server/pos"
 	"github.com/Hucaru/Valhalla/server/script"
 )
 
@@ -96,6 +98,7 @@ type ChannelServer struct {
 	npcScriptStore   *script.Store
 	eventCtrl        map[string]*script.EventController
 	eventScriptStore *script.Store
+	parties          map[int32]*party.Data
 }
 
 // Initialise the server
@@ -137,6 +140,8 @@ func (server *ChannelServer) Initialise(work chan func(), dbuser, dbpassword, db
 	log.Println("Started serving metrics on :" + metrics.Port)
 
 	server.loadScripts()
+
+	server.parties = make(map[int32]*party.Data)
 }
 
 func (server *ChannelServer) loadScripts() {
@@ -251,6 +256,8 @@ func (server *ChannelServer) HandleServerPacket(conn mnet.Server, reader mpacket
 		server.handleChatEvent(conn, reader)
 	case opcode.ChannelPlayerBuddyEvent:
 		server.handleBuddyEvent(conn, reader)
+	case opcode.ChannelPlayerPartyEvent:
+		server.handlePartyEvent(conn, reader)
 	default:
 		log.Println("UNKNOWN SERVER PACKET:", reader)
 	}
@@ -457,6 +464,32 @@ func (server ChannelServer) handleChatEvent(conn mnet.Server, reader mpacket.Rea
 	}
 }
 
+func (server *ChannelServer) handlePartyEvent(conn mnet.Server, reader mpacket.Reader) {
+	op := reader.ReadByte()
+
+	switch op {
+	case 1: // new party created
+		partyID := reader.ReadInt32()
+		playerID := reader.ReadInt32()
+
+		plr, err := server.players.getFromID(playerID)
+
+		if err != nil {
+			return
+		}
+
+		newParty := party.NewParty(partyID, plr, server.id)
+		server.parties[partyID] = &newParty
+		plr.SetParty(&newParty)
+
+		// TODO: Mystic door information needs to be sent here if the leader has an active door
+
+		plr.Send(message.PacketPartyCreate(1, -1, -1, pos.New(0, 0, 0)))
+	default:
+		log.Println("Unkown party event type:", op)
+	}
+}
+
 // ClientDisconnected from server
 func (server *ChannelServer) ClientDisconnected(conn mnet.Client) {
 	plr, err := server.players.getFromConn(conn)
@@ -502,6 +535,13 @@ func (server *ChannelServer) ClientDisconnected(conn mnet.Client) {
 		server.migrating = append(server.migrating[:index], server.migrating[index+1:]...)
 	} else {
 		server.world.Send(channelPlayerDisconnect(plr.ID(), plr.Name()))
+
+		if party := plr.Party(); party != nil {
+			// party.ID()
+			// plr.ID()
+			// Emit player is offline party message
+		}
+
 		_, err = db.DB.Exec("UPDATE characters SET channelID=? WHERE id=?", -1, plr.ID())
 
 		if err != nil {

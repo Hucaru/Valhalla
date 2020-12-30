@@ -885,3 +885,57 @@ func (server *ChannelServer) playerBuddyOperation(conn mnet.Client, reader mpack
 		log.Println("Unknown buddy operation:", op)
 	}
 }
+
+func (server *ChannelServer) playerPartyInfo(conn mnet.Client, reader mpacket.Reader) {
+	op := reader.ReadByte()
+
+	switch op {
+	case 1: // create party
+		plr, err := server.players.getFromConn(conn)
+
+		if err != nil {
+			return
+		}
+
+		if plr.Party() != nil {
+			plr.Send(message.PacketPartyAlreadyJoined())
+			return
+		}
+
+		server.world.Send(channelPartyCreateRequest(plr.ID()))
+	case 2: // leave party
+		fmt.Println(reader.ReadByte()) // position in party? 0 is always leader?
+
+		// send player left event to world server
+	case 3: // accept
+		partyID := reader.ReadInt32()
+		fmt.Println(reader, "party id:", partyID)
+		// send player joined event to world server
+	case 4: // invite
+		id := reader.ReadInt32()
+
+		recipient, err := server.players.getFromID(id)
+
+		if err != nil {
+			conn.Send(message.PacketPartyUnableToFindPlayer())
+			return
+		}
+
+		if recipient.Party() != nil {
+			conn.Send(message.PacketPartyAlreadyJoined())
+			return
+		}
+
+		plr, err := server.players.getFromConn(conn)
+
+		if err != nil {
+			return
+		}
+
+		var partyID int32 = 1
+
+		recipient.Send(message.PacketPartyInviteNotice(partyID, plr.Name()))
+	default:
+		log.Println("Unknown party info type:", op, reader)
+	}
+}

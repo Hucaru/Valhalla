@@ -137,3 +137,21 @@ func channelBuddyChat(fromName string, buffer []byte) mpacket.Packet {
 
 	return p
 }
+
+// ChannelPartyCreateRequest - request a new party for this id
+func channelPartyCreateRequest(playerID int32) mpacket.Packet {
+	p := mpacket.CreateInternal(opcode.ChannelPlayerPartyEvent)
+	p.WriteByte(0) // new party request
+	p.WriteInt32(playerID)
+
+	return p
+}
+
+func channelPartyCreateApproved(partyID, playerID int32) mpacket.Packet {
+	p := mpacket.CreateInternal(opcode.ChannelPlayerPartyEvent)
+	p.WriteByte(1) // new party id and leader id
+	p.WriteInt32(partyID)
+	p.WriteInt32(playerID)
+
+	return p
+}

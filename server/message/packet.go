@@ -3,6 +3,7 @@ package message
 import (
 	"github.com/Hucaru/Valhalla/constant/opcode"
 	"github.com/Hucaru/Valhalla/mpacket"
+	"github.com/Hucaru/Valhalla/server/pos"
 )
 
 // PacketMessageRedText - sends red error message to client chat window
@@ -370,3 +371,141 @@ func PacketBuddyChangeChannel(id int32, channelID int32) mpacket.Packet {
 
 	return p
 }
+
+// PacketPartyCreateUnkownError - sends the unkown error in creating party message
+func PacketPartyCreateUnkownError() mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelPartyInfo)
+	p.WriteByte(0)
+
+	return p
+}
+
+// PacketPartyInviteNotice - shows the party invite notice
+func PacketPartyInviteNotice(partyID int32, fromName string) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelPartyInfo)
+	p.WriteByte(0x04)
+	p.WriteInt32(partyID)
+	p.WriteString(fromName)
+
+	return p
+}
+
+func packetPartyMessage(op byte) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelPartyInfo)
+	p.WriteByte(op)
+
+	return p
+}
+
+// PacketPartyAlreadyJoined - sends the player has already in a party message
+func PacketPartyAlreadyJoined() mpacket.Packet {
+	return packetPartyMessage(0x08)
+}
+
+// PacketPartyBeginnerCannotCreate - sends a beginner cannot create a party message
+func PacketPartyBeginnerCannotCreate() mpacket.Packet {
+	return packetPartyMessage(0x09)
+}
+
+// PacketPartyNotInParty - sends you have yet to join a party message
+func PacketPartyNotInParty() mpacket.Packet {
+	return packetPartyMessage(0x0c)
+}
+
+// PacketPartyAlreadyJoined2 - sends the player has already in a party message
+func PacketPartyAlreadyJoined2() mpacket.Packet {
+	return packetPartyMessage(0x0f)
+}
+
+// PacketPartyToJoinIsFull - sends the party the player is trying to join is full message
+func PacketPartyToJoinIsFull() mpacket.Packet {
+	return packetPartyMessage(0x10)
+}
+
+// PacketPartyUnableToFindPlayer - sends the unable to find player message
+func PacketPartyUnableToFindPlayer() mpacket.Packet {
+	return packetPartyMessage(0x11)
+}
+
+// PacketPartyAdminNoCreate - sends the gm cannot create party
+func PacketPartyAdminNoCreate() mpacket.Packet {
+	return packetPartyMessage(0x18)
+}
+
+// PacketPartyUnableToFindPlayer2 - sends the unable to find player message
+func PacketPartyUnableToFindPlayer2() mpacket.Packet {
+	return packetPartyMessage(0x19)
+}
+
+func packetPartyMessageName(op byte, name string) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelPartyInfo)
+	p.WriteByte(op)
+	p.WriteString(name)
+
+	return p
+}
+
+// PacketPartyBlockingInvites - sends the player is blocking party invites message
+func PacketPartyBlockingInvites(name string) mpacket.Packet {
+	return packetPartyMessageName(0x13, name)
+}
+
+// PacketPartyHasOtherRequest - sends the player is taking care of another request
+func PacketPartyHasOtherRequest(name string) mpacket.Packet {
+	return packetPartyMessageName(0x14, name)
+}
+
+// PacketPartyRequestDenied - sends the player has denied the party request message
+func PacketPartyRequestDenied(name string) mpacket.Packet {
+	return packetPartyMessageName(0x15, name)
+}
+
+// PacketPartyCreate - created party message
+func PacketPartyCreate(partyID int32, doorMap1, doorMap2 int32, point pos.Data) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelPartyInfo)
+	p.WriteByte(0x07)
+	p.WriteInt32(partyID)
+
+	if doorMap1 > -1 {
+		p.WriteInt32(doorMap1)
+		p.WriteInt32(doorMap2)
+		p.WriteInt16(point.X())
+		p.WriteInt16(point.Y())
+	} else {
+		p.WriteInt32(-1)
+		p.WriteInt32(-1)
+		p.WriteInt32(0) // empty pos
+	}
+
+	return p
+}
+
+/*
+0x0b: (person has been expell, left | you have quit as leader so part expelled, left part since leader quit)
+i32 - party id
+i32 - player id
+i8 - no disband
+i8 - kicked
+name
+
+0x0e: (person has joined the part, you have joined the party)
+i32
+name
+294 bytes - updated party info?
+
+0x01a:
+i32
+
+0x1b:
+i32
+i32
+i32
+
+0x1c:
+i8
+i32
+i32
+i16
+i16
+
+*/
