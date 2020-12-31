@@ -97,3 +97,9 @@ func packetPlayerJoin(partyID int32, name string, party *Data) mpacket.Packet {
 
 	return p
 }
+
+/*
+0x1a: (update party?)
+i32
+buffer
+*/

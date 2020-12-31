@@ -921,7 +921,6 @@ func (server *ChannelServer) playerPartyInfo(conn mnet.Client, reader mpacket.Re
 		}
 
 		// send player joined event to world server, for now do the following
-
 		server.parties[partyID].AddPlayer(plr, int32(server.id), plr.ID(), plr.Name(), plr.MapID(), int32(plr.Job()), int32(plr.Level()), plr.HP(), plr.MaxHP())
 	case 4: // invite
 		id := reader.ReadInt32()

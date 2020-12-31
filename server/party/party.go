@@ -65,6 +65,17 @@ func (d Data) Broadcast(p mpacket.Packet) {
 	}
 }
 
+// BroadcastExcept to all party members
+func (d Data) BroadcastExcept(p mpacket.Packet, id int32) {
+	for i, v := range d.players {
+		if v == nil || d.playerID[i] == id {
+			continue
+		}
+
+		v.Send(p)
+	}
+}
+
 // AddPlayer to party
 func (d *Data) AddPlayer(plr player, channelID int32, id int32, name string, mapID, job, level int32, hp, maxHP int16) {
 	for i, v := range d.playerID {

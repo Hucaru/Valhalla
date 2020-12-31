@@ -488,9 +488,6 @@ i8 - no disband
 i8 - kicked
 name
 
-0x01a:
-i32
-
 0x1b:
 i32
 i32

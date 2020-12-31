@@ -1,4 +1,4 @@
-# Valhalla
+![Alt text](img/logo.png?raw=true "Valhalla")
 
 [![Actions Status](https://github.com/Hucaru/Valhalla/workflows/Go/badge.svg)](https://github.com/Hucaru/Valhalla/actions)
 
