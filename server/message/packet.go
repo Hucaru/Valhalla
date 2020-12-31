@@ -481,13 +481,6 @@ func PacketPartyCreate(partyID int32, doorMap1, doorMap2 int32, point pos.Data) 
 }
 
 /*
-0x0b: (person has been expell, left | you have quit as leader so part expelled, left part since leader quit)
-i32 - party id
-i32 - player id
-i8 - no disband
-i8 - kicked
-name
-
 0x1b:
 i32
 i32

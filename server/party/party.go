@@ -1,6 +1,8 @@
 package party
 
 import (
+	"fmt"
+
 	"github.com/Hucaru/Valhalla/constant"
 	"github.com/Hucaru/Valhalla/mpacket"
 )
@@ -15,6 +17,7 @@ type player interface {
 	HP() int16
 	MaxHP() int16
 	SetParty(*Data)
+	GiveEXP(int32, bool, bool)
 }
 
 // Data containing the party information
@@ -28,23 +31,19 @@ type Data struct {
 	mapID     [constant.MaxPartySize]int32
 	job       [constant.MaxPartySize]int32
 	level     [constant.MaxPartySize]int32
-	hp        [constant.MaxPartySize]int16
-	maxHP     [constant.MaxPartySize]int16
 }
 
 // NewParty with a leader
-func NewParty(id int32, plr player, channelID byte) Data {
+func NewParty(id int32, plr player, channelID byte, playerID, mapID, job, level int32, playerName string) Data {
 	result := Data{id: id}
 	result.players[0] = plr
 
 	result.channelID[0] = int32(channelID)
-	result.playerID[0] = plr.ID()
-	result.name[0] = plr.Name()
-	result.mapID[0] = plr.MapID()
-	result.job[0] = int32(plr.Job())
-	result.level[0] = int32(plr.Level())
-	result.hp[0] = plr.HP()
-	result.maxHP[0] = plr.MaxHP()
+	result.playerID[0] = playerID
+	result.name[0] = playerName
+	result.mapID[0] = mapID
+	result.job[0] = job
+	result.level[0] = level
 
 	return result
 }
@@ -77,18 +76,21 @@ func (d Data) BroadcastExcept(p mpacket.Packet, id int32) {
 }
 
 // AddPlayer to party
-func (d *Data) AddPlayer(plr player, channelID int32, id int32, name string, mapID, job, level int32, hp, maxHP int16) {
+func (d *Data) AddPlayer(plr player, channelID int32, id int32, name string, mapID, job, level int32) {
 	for i, v := range d.playerID {
 		if v == 0 {
+			d.players[i] = plr
+
+			if plr != nil {
+				plr.SetParty(d)
+			}
+
 			d.channelID[i] = channelID
 			d.playerID[i] = id
 			d.name[i] = name
 			d.mapID[i] = mapID
 			d.job[i] = job
 			d.level[i] = level
-			d.players[i] = plr
-			d.hp[i] = hp
-			d.maxHP[i] = maxHP
 
 			d.Broadcast(packetPlayerJoin(d.id, name, d))
 
@@ -98,19 +100,41 @@ func (d *Data) AddPlayer(plr player, channelID int32, id int32, name string, map
 }
 
 // RemovePlayer from party
-func (d *Data) RemovePlayer(plr player) bool {
-	for i, v := range d.players {
-		if v == plr {
+func (d *Data) RemovePlayer(plr player, playerID int32, kick bool) {
+	for i, v := range d.playerID {
+		if v == playerID {
+			if i == 0 {
+				d.Broadcast(packetLeaveParty(d.id, playerID, false, kick, "", d))
+
+				for _, p := range d.players {
+					if p != nil {
+						p.SetParty(nil)
+					}
+				}
+
+				return
+			}
+
+			name := d.name[i]
+
+			d.channelID[i] = 0
+			d.playerID[i] = 0
+			d.name[i] = ""
+			d.mapID[i] = 0
+			d.job[i] = 0
+			d.level[i] = 0
+
+			if plr != nil {
+				plr.SetParty(nil)
+			}
+
+			d.Broadcast(packetLeaveParty(d.id, playerID, true, kick, name, d))
+
 			d.players[i] = nil
 
-			if i == 0 {
-				return true
-			}
-			return false
+			return
 		}
 	}
-
-	return false
 }
 
 // Full returns false if there is a space in the party
@@ -124,43 +148,99 @@ func (d Data) Full() bool {
 	return true
 }
 
-// PlayerLoggedIn will assign the player handle to this channel's party list
-func (d *Data) PlayerLoggedIn(plr player, channelID int32) {
+// UpdatePlayerMap for party window
+func (d *Data) UpdatePlayerMap(playerID, mapID int32) {
 	for i, v := range d.playerID {
-		if v == plr.ID() {
-			d.players[i] = plr
-			d.channelID[i] = channelID
-			d.mapID[i] = plr.MapID()
-			d.job[i] = int32(plr.Job())
-			d.level[i] = int32(plr.Level())
-			d.name[i] = plr.Name()
-			d.hp[i] = plr.HP()
-			d.maxHP[i] = plr.MaxHP()
+		if v == playerID {
+			d.mapID[i] = mapID
 
-			plr.SetParty(d)
-
-			d.Broadcast(packetPlayerJoin(d.id, plr.Name(), d))
+			d.Broadcast(packetUpdateParty(d.id, d))
 
 			return
 		}
 	}
 }
 
-// PartyUpdatePlayer information
-func (d *Data) PartyUpdatePlayer(channelID, playerID, mapID, job, level int32, name string, hp, maxHP int16) {
+// SetPlayerChannel updates the party on what server the player is on or if onffline
+func (d *Data) SetPlayerChannel(plr player, playerID int32, cashshop bool, offline bool, channelID int32) {
 	for i, v := range d.playerID {
 		if v == playerID {
-			d.channelID[i] = channelID
-			d.mapID[i] = mapID
+			if cashshop {
+				d.channelID[i] = -1
+			} else if offline {
+				d.channelID[i] = -2
+			} else {
+				d.channelID[i] = channelID
+			}
+
+			d.players[i] = plr
+
+			fmt.Println(channelID)
+
+			d.Broadcast(packetUpdateParty(d.id, d))
+			return
+		}
+	}
+}
+
+// UpdatePlayerInfo for the party window
+func (d *Data) UpdatePlayerInfo(playerID, job, level int32, name string) {
+	for i, v := range d.playerID {
+		if v == playerID {
+			d.name[i] = name
 			d.job[i] = job
 			d.level[i] = level
-			d.name[i] = name
-			d.hp[i] = hp
-			d.maxHP[i] = maxHP
 
-			d.Broadcast(packetPlayerJoin(d.id, name, d))
-
+			d.Broadcast(packetUpdateParty(d.id, d))
 			return
+		}
+	}
+}
+
+// Leader checks if the provided id is the party leader
+func (d Data) Leader(id int32) bool {
+	return d.playerID[0] == id
+}
+
+// Member checks if id is a party member
+func (d Data) Member(id int32) bool {
+	for _, v := range d.playerID {
+		if v == id {
+			return true
+		}
+	}
+
+	return false
+}
+
+// GiveExp to party members
+func (d Data) GiveExp(playerID, amount int32, sameMap bool) {
+	var mapID int32 = 0
+
+	for i, id := range d.playerID {
+		if id == playerID {
+			mapID = d.mapID[i]
+			break
+		}
+	}
+
+	if sameMap {
+		nPlayers := 0
+
+		for i, id := range d.playerID {
+			if id != playerID && d.players[i] != nil && d.mapID[i] == mapID {
+				nPlayers++
+			}
+
+			if nPlayers == 0 {
+				return
+			}
+		}
+	}
+
+	for _, plr := range d.players {
+		if plr != nil && sameMap && plr.MapID() == mapID {
+			plr.GiveEXP(amount, false, true)
 		}
 	}
 }

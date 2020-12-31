@@ -78,7 +78,7 @@ func (server ChannelServer) playerMeleeSkill(conn mnet.Client, reader mpacket.Re
 	inst.SendExcept(packetSkillMelee(*plr, data), conn)
 
 	for _, attack := range data.attackInfo {
-		inst.LifePool().MobDamaged(attack.spawnID, plr, nil, attack.damages...)
+		inst.LifePool().MobDamaged(attack.spawnID, plr, attack.damages...)
 	}
 }
 

@@ -15,6 +15,7 @@ import (
 	"github.com/Hucaru/Valhalla/server/field/lifepool/npc"
 	"github.com/Hucaru/Valhalla/server/item"
 	"github.com/Hucaru/Valhalla/server/movement"
+	"github.com/Hucaru/Valhalla/server/party"
 	"github.com/Hucaru/Valhalla/server/pos"
 )
 
@@ -31,15 +32,14 @@ type controller interface {
 
 type player interface {
 	controller
+	ID() int32
 	GiveEXP(int32, bool, bool)
 	MapID() int32
+	Party() *party.Data
 }
 
 type dropPool interface {
 	CreateDrop(byte, byte, int32, pos.Data, bool, int32, int32, ...item.Data)
-}
-
-type party interface {
 }
 
 type rectangle struct {
@@ -325,7 +325,7 @@ func (pool *Data) MobAcknowledge(poolID int32, plr controller, moveID int16, ski
 }
 
 // MobDamaged handling
-func (pool *Data) MobDamaged(poolID int32, damager player, prty party, dmg ...int32) {
+func (pool *Data) MobDamaged(poolID int32, damager player, dmg ...int32) {
 	for i, v := range pool.mobs {
 		if v.SpawnID() == poolID {
 			pool.mobs[i].RemoveController()
@@ -352,10 +352,14 @@ func (pool *Data) MobDamaged(poolID int32, damager player, prty party, dmg ...in
 						continue
 					}
 
+					var partyExp int32 = 0
+
 					if dmg == v.MaxHP() {
 						plr.GiveEXP(v.Exp(), true, false)
+						partyExp = int32(float64(v.Exp()) * 0.25) // TODO: party exp needs to be properly calculated
 					} else if float64(dmg)/float64(v.MaxHP()) > 0.60 {
 						plr.GiveEXP(v.Exp(), true, false)
+						partyExp = int32(float64(v.Exp()) * 0.25) // TODO: party exp needs to be properly calculated
 					} else {
 						newExp := int32(float64(v.Exp()) * 0.25)
 
@@ -364,10 +368,12 @@ func (pool *Data) MobDamaged(poolID int32, damager player, prty party, dmg ...in
 						}
 
 						plr.GiveEXP(newExp, true, false)
+						partyExp = int32(float64(newExp) * 0.25) // TODO: party exp needs to be properly calculated
 					}
 
-					if prty != nil {
-						// party exp share logic
+					if plr.Party() != nil {
+						// TODO: check level difference is appropriate
+						plr.Party().GiveExp(plr.ID(), partyExp, true)
 					}
 				}
 
@@ -462,7 +468,7 @@ func (pool *Data) KillMobs(deathType byte) {
 	}
 
 	for _, key := range keys {
-		pool.MobDamaged(pool.mobs[key].SpawnID(), nil, nil, pool.mobs[key].HP())
+		pool.MobDamaged(pool.mobs[key].SpawnID(), nil, pool.mobs[key].HP())
 	}
 }
 

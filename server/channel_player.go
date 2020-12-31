@@ -100,15 +100,22 @@ func (server *ChannelServer) playerConnect(conn mnet.Client, reader mpacket.Read
 	newPlr.UpdateGuildInfo()
 	newPlr.UpdateBuddyInfo()
 
-	for _, v := range server.parties {
-		v.PlayerLoggedIn(newPlr, int32(server.id))
+	for _, party := range server.parties {
+		if party.Member(newPlr.ID()) {
+			newPlr.SetParty(party)
+			break
+		}
+	}
+
+	newPlr.UpdatePartyInfo = func(partyID, playerID, job, level int32, name string) {
+		server.world.Send(channelPartyUpdateInfo(partyID, playerID, job, level, name))
 	}
 
 	metrics.Gauges["player_count"].With(prometheus.Labels{"channel": strconv.Itoa(int(server.id)), "world": server.worldName}).Inc()
 
 	server.world.Send(channelPopUpdate(server.id, int16(len(server.players))))
 	// Emit server message that user has connected (used to update buddy, guild and party notifications)
-	server.world.Send(channelPlayerConnected(plr.ID(), plr.Name(), server.id, channelID > -1))
+	server.world.Send(channelPlayerConnected(plr.ID(), plr.MapID(), int32(plr.Job()), int32(plr.Level()), plr.Name(), server.id, channelID > -1))
 }
 
 func (server *ChannelServer) playerChangeChannel(conn mnet.Client, reader mpacket.Reader) {
@@ -906,11 +913,25 @@ func (server *ChannelServer) playerPartyInfo(conn mnet.Client, reader mpacket.Re
 			return
 		}
 
-		server.world.Send(channelPartyCreateRequest(plr.ID(), server.id))
+		server.world.Send(channelPartyCreateRequest(plr.ID(), server.id, plr.MapID(), int32(plr.Job()), int32(plr.Level()), plr.Name()))
 	case 2: // leave party
-		fmt.Println("leave party:", reader, reader.ReadByte()) // position in party? 0 is always leader?
+		if b := reader.ReadByte(); b != 0 { // Not sure what this byte/bool does
+			log.Println("Leave party byte is not zero:", b)
+		}
 
-		// send player left event to world server, if the player is the leader the world server will also send back to destroy the party and will mark the ID as re-useable
+		plr, err := server.players.getFromConn(conn)
+
+		if err != nil {
+			return
+		}
+
+		if plr.Party() == nil {
+			return
+		}
+
+		partyID := plr.Party().ID()
+
+		server.world.Send(channelPartyLeave(partyID, plr.ID(), plr.Party().Leader(plr.ID())))
 	case 3: // accept
 		partyID := reader.ReadInt32()
 
@@ -920,8 +941,7 @@ func (server *ChannelServer) playerPartyInfo(conn mnet.Client, reader mpacket.Re
 			return
 		}
 
-		// send player joined event to world server, for now do the following
-		server.parties[partyID].AddPlayer(plr, int32(server.id), plr.ID(), plr.Name(), plr.MapID(), int32(plr.Job()), int32(plr.Level()), plr.HP(), plr.MaxHP())
+		server.world.Send(channelPartyAccept(partyID, plr.ID(), int32(server.id), plr.MapID(), int32(plr.Job()), int32(plr.Level()), plr.Name()))
 	case 4: // invite
 		id := reader.ReadInt32()
 
@@ -954,8 +974,21 @@ func (server *ChannelServer) playerPartyInfo(conn mnet.Client, reader mpacket.Re
 		}
 
 		recipient.Send(message.PacketPartyInviteNotice(plr.Party().ID(), plr.Name()))
-	case 5: // kick
-		fmt.Println("kick", reader.ReadInt32())
+	case 5: // expel
+		playerID := reader.ReadInt32()
+
+		plr, err := server.players.getFromConn(conn)
+
+		if err != nil {
+			return
+		}
+
+		if plr.Party() == nil {
+			plr.Send(message.PacketPartyUnableToFindPlayer())
+			return
+		}
+
+		server.world.Send(channelPartyExpel(plr.Party().ID(), playerID))
 	default:
 		log.Println("Unknown party info type:", op, reader)
 	}

@@ -33,6 +33,8 @@ type buddy struct {
 	cashShop  int32 // > 0 means is in cash shop
 }
 
+type updatePartyInfoFunc func(partyID, playerID, job, level int32, name string)
+
 // Data connected to server
 type Data struct {
 	conn       mnet.Client
@@ -98,6 +100,8 @@ type Data struct {
 	buddyList     []buddy
 
 	party *party.Data
+
+	UpdatePartyInfo updatePartyInfoFunc
 }
 
 // Conn - client connection associated with this Data
@@ -117,6 +121,10 @@ func (d *Data) SetInstance(inst interface{}) {
 
 // Send the Data a packet
 func (d Data) Send(packet mpacket.Packet) {
+	if d.conn == nil {
+		return
+	}
+
 	d.conn.Send(packet)
 }
 
@@ -124,6 +132,10 @@ func (d Data) Send(packet mpacket.Packet) {
 func (d *Data) SetJob(id int16) {
 	d.job = id
 	d.conn.Send(packetPlayerStatChange(true, constant.JobID, int32(id)))
+
+	if d.party != nil {
+		d.UpdatePartyInfo(d.party.ID(), d.id, int32(d.job), int32(d.level), d.name)
+	}
 }
 
 func (d *Data) levelUp(inst sender) {
@@ -195,9 +207,11 @@ func (d *Data) SetEXP(amount int32) {
 // GiveEXP to the Data
 func (d *Data) GiveEXP(amount int32, fromMob, fromParty bool) {
 	if fromMob {
-		d.Send(packetMessageExpGained(!fromParty, false, amount))
+		d.Send(packetMessageExpGained(true, false, amount))
+	} else if fromParty {
+		d.Send(packetMessageExpGained(false, false, amount))
 	} else {
-		d.Send(packetMessageExpGained(true, true, amount))
+		d.Send(packetMessageExpGained(false, true, amount))
 	}
 
 	d.SetEXP(d.exp + amount)
@@ -208,6 +222,10 @@ func (d *Data) SetLevel(amount byte) {
 	d.level = amount
 	d.Send(packetPlayerStatChange(false, constant.LevelID, int32(amount)))
 	d.inst.Send(packetPlayerLevelUpAnimation(d.id))
+
+	if d.party != nil {
+		d.UpdatePartyInfo(d.party.ID(), d.id, int32(d.job), int32(d.level), d.name)
+	}
 }
 
 // GiveLevel amount ot the Data
@@ -479,7 +497,7 @@ func (d *Data) SetMapID(id int32) {
 	d.mapID = id
 
 	if d.party != nil {
-		d.party.PartyUpdatePlayer(int32(d.conn.GetChannelID()), d.id, d.mapID, int32(d.job), int32(d.level), d.name, d.hp, d.maxHP)
+		d.party.UpdatePlayerMap(d.id, d.mapID)
 	}
 }
 
