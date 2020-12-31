@@ -331,9 +331,9 @@ func (server *ChannelServer) handlePlayerConnectedNotifications(conn mnet.Server
 	name := reader.ReadString(reader.ReadInt16())
 	channelID := reader.ReadByte()
 	changeChannel := reader.ReadBool()
-	// mapID := reader.ReadInt32()
-	// job := reader.ReadInt32()
-	// level := reader.ReadInt32()
+	reader.ReadInt32() // mapID
+	reader.ReadInt32() // job
+	reader.ReadInt32() // level
 
 	plr, _ := server.players.getFromID(playerID)
 
@@ -540,7 +540,7 @@ func (server *ChannelServer) handlePartyEvent(conn mnet.Server, reader mpacket.R
 
 		// TODO: Mystic door information needs to be sent here if the leader has an active door
 
-		newParty := party.NewParty(partyID, plr, channelID, playerID, mapID, job, level, name)
+		newParty := party.NewParty(partyID, plr, channelID, playerID, mapID, job, level, name, int32(server.id))
 
 		server.parties[partyID] = &newParty
 
@@ -590,9 +590,9 @@ func (server *ChannelServer) handlePartyEvent(conn mnet.Server, reader mpacket.R
 		playerID := reader.ReadInt32()
 		job := reader.ReadInt32()
 		level := reader.ReadInt32()
-		name := reader.ReadString(reader.ReadInt16())
+		reader.ReadString(reader.ReadInt16()) // name
 		if party, ok := server.parties[partyID]; ok {
-			party.UpdatePlayerInfo(playerID, job, level, name)
+			party.UpdateJobLevel(playerID, job, level)
 		}
 	default:
 		log.Println("Unkown party event type:", op)

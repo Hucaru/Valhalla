@@ -56,6 +56,16 @@ func packetDoorUpdate(index byte, townID, mapID int32, point pos.Data) mpacket.P
 	return p
 }
 
+func packetUpdateJobLevel(playerID, job, level int32) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelPartyInfo)
+	p.WriteByte(0x1b)
+	p.WriteInt32(playerID)
+	p.WriteInt32(level)
+	p.WriteInt32(job)
+
+	return p
+}
+
 func updateParty(p *mpacket.Packet, party *Data) {
 	validOffsets := make([]int, 0, constant.MaxPartySize)
 
@@ -108,7 +118,12 @@ func updateParty(p *mpacket.Packet, party *Data) {
 	}
 
 	for _, v := range validOffsets {
-		p.WriteInt32(party.mapID[v])
+		if party.channelID[v] != party.serverChannelID {
+			p.WriteInt32(-1)
+		} else {
+			p.WriteInt32(party.mapID[v])
+		}
+
 	}
 
 	for i := 0; i < paddAmount; i++ {

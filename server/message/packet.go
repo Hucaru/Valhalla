@@ -479,17 +479,3 @@ func PacketPartyCreate(partyID int32, doorMap1, doorMap2 int32, point pos.Data) 
 
 	return p
 }
-
-// PacketPartyHP - Update hp bars
-func PacketPartyHP(partyID, playerID int32, hp, maxHP int16) mpacket.Packet {
-	p := mpacket.CreateWithOpcode(opcode.SendChannelPartyInfo)
-	p.WriteByte(0x1b)
-	// p.WriteInt32(partyID)
-	p.WriteInt32(playerID)
-	// p.WriteInt16(hp)
-	// p.WriteInt16(maxHP)
-	p.WriteInt32(int32(hp))
-	p.WriteInt32(int32(maxHP))
-
-	return p
-}

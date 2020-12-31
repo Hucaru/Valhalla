@@ -1,8 +1,6 @@
 package party
 
 import (
-	"fmt"
-
 	"github.com/Hucaru/Valhalla/constant"
 	"github.com/Hucaru/Valhalla/mpacket"
 )
@@ -22,7 +20,8 @@ type player interface {
 
 // Data containing the party information
 type Data struct {
-	id int32
+	id              int32
+	serverChannelID int32
 
 	players   [constant.MaxPartySize]player
 	channelID [constant.MaxPartySize]int32
@@ -34,8 +33,8 @@ type Data struct {
 }
 
 // NewParty with a leader
-func NewParty(id int32, plr player, channelID byte, playerID, mapID, job, level int32, playerName string) Data {
-	result := Data{id: id}
+func NewParty(id int32, plr player, channelID byte, playerID, mapID, job, level int32, playerName string, serverChannelID int32) Data {
+	result := Data{id: id, serverChannelID: serverChannelID}
 	result.players[0] = plr
 
 	result.channelID[0] = int32(channelID)
@@ -175,23 +174,20 @@ func (d *Data) SetPlayerChannel(plr player, playerID int32, cashshop bool, offli
 
 			d.players[i] = plr
 
-			fmt.Println(channelID)
-
 			d.Broadcast(packetUpdateParty(d.id, d))
 			return
 		}
 	}
 }
 
-// UpdatePlayerInfo for the party window
-func (d *Data) UpdatePlayerInfo(playerID, job, level int32, name string) {
+// UpdateJobLevel for the party window
+func (d *Data) UpdateJobLevel(playerID, job, level int32) {
 	for i, v := range d.playerID {
 		if v == playerID {
-			d.name[i] = name
 			d.job[i] = job
 			d.level[i] = level
 
-			d.Broadcast(packetUpdateParty(d.id, d))
+			d.Broadcast(packetUpdateJobLevel(playerID, job, level))
 			return
 		}
 	}
