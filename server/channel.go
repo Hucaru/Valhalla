@@ -331,9 +331,6 @@ func (server *ChannelServer) handlePlayerConnectedNotifications(conn mnet.Server
 	name := reader.ReadString(reader.ReadInt16())
 	channelID := reader.ReadByte()
 	changeChannel := reader.ReadBool()
-	reader.ReadInt32() // mapID
-	reader.ReadInt32() // job
-	reader.ReadInt32() // level
 
 	plr, _ := server.players.getFromID(playerID)
 

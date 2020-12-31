@@ -115,7 +115,7 @@ func (server *ChannelServer) playerConnect(conn mnet.Client, reader mpacket.Read
 
 	server.world.Send(channelPopUpdate(server.id, int16(len(server.players))))
 	// Emit server message that user has connected (used to update buddy, guild and party notifications)
-	server.world.Send(channelPlayerConnected(plr.ID(), plr.MapID(), int32(plr.Job()), int32(plr.Level()), plr.Name(), server.id, channelID > -1))
+	server.world.Send(channelPlayerConnected(plr.ID(), plr.Name(), server.id, channelID > -1))
 }
 
 func (server *ChannelServer) playerChangeChannel(conn mnet.Client, reader mpacket.Reader) {
