@@ -11,6 +11,7 @@ import (
 	"github.com/Hucaru/Valhalla/mpacket"
 	"github.com/Hucaru/Valhalla/server/db"
 	"github.com/Hucaru/Valhalla/server/item"
+	"github.com/Hucaru/Valhalla/server/message"
 	"github.com/Hucaru/Valhalla/server/party"
 	"github.com/Hucaru/Valhalla/server/pos"
 )
@@ -307,6 +308,10 @@ func (d *Data) SetHP(amount int16) {
 
 	d.hp = amount
 	d.Send(packetPlayerStatChange(true, constant.HpID, int32(amount)))
+
+	if d.party != nil {
+		d.party.Broadcast(message.PacketPartyHP(d.party.ID(), d.id, d.hp, d.maxHP))
+	}
 }
 
 // GiveHP to Data
@@ -331,6 +336,10 @@ func (d *Data) SetMaxHP(amount int16) {
 
 	d.maxHP = amount
 	d.Send(packetPlayerStatChange(true, constant.MaxHpID, int32(amount)))
+
+	if d.party != nil {
+		d.party.Broadcast(message.PacketPartyHP(d.party.ID(), d.id, d.hp, d.maxHP))
+	}
 }
 
 // SetMP of Data

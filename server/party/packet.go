@@ -4,6 +4,7 @@ import (
 	"github.com/Hucaru/Valhalla/constant"
 	"github.com/Hucaru/Valhalla/constant/opcode"
 	"github.com/Hucaru/Valhalla/mpacket"
+	"github.com/Hucaru/Valhalla/server/pos"
 )
 
 func packetPlayerJoin(partyID int32, name string, party *Data) mpacket.Packet {
@@ -39,6 +40,18 @@ func packetLeaveParty(partyID, playerID int32, keepParty, kicked bool, name stri
 		p.WriteString(name)
 		updateParty(&p, party)
 	}
+
+	return p
+}
+
+func packetDoorUpdate(index byte, townID, mapID int32, point pos.Data) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelPartyInfo)
+	p.WriteByte(0x1c)
+	p.WriteByte(index)
+	p.WriteInt32(townID)
+	p.WriteInt32(mapID)
+	p.WriteInt16(point.X())
+	p.WriteInt16(point.Y())
 
 	return p
 }
