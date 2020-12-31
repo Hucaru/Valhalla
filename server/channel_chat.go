@@ -29,12 +29,13 @@ func (server ChannelServer) chatGroup(conn mnet.Client, reader mpacket.Reader) {
 	switch op {
 	case 0: // buddy
 		buffer := reader.GetRestAsBytes()
-		server.world.Send(channelBuddyChat(plr.Name(), buffer))
+		server.world.Send(channelPlayerChat(1, plr.Name(), buffer))
+	case 1: // party
+		buffer := reader.GetRestAsBytes()
+		server.world.Send(channelPlayerChat(2, plr.Name(), buffer))
 	case 2: // guild
-		fmt.Println(reader)
-		// id count
-		// ids
-		// text msg
+		buffer := reader.GetRestAsBytes()
+		server.world.Send(channelPlayerChat(3, plr.Name(), buffer))
 	default:
 		log.Println("Unknown group chat type:", op, reader)
 	}
@@ -680,7 +681,7 @@ func (server *ChannelServer) gmCommand(conn mnet.Client, msg string) {
 			return
 		}
 
-		inst.LifePool().MobDamaged(spawnID, plr, nil, math.MaxInt32)
+		inst.LifePool().MobDamaged(spawnID, plr, math.MaxInt32)
 	case "killmobs":
 		var deathType byte = 1
 		if len(command) > 1 {

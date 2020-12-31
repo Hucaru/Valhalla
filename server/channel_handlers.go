@@ -68,6 +68,7 @@ func (server *ChannelServer) HandleClientPacket(conn mnet.Client, reader mpacket
 		server.playerRequestAvatarInfoWindow(conn, reader)
 	case opcode.RecvChannelLieDetectorResult:
 	case opcode.RecvChannelPartyInfo:
+		server.playerPartyInfo(conn, reader)
 	case opcode.RecvChannelGuildManagement:
 	case opcode.RecvChannelGuildReject:
 	case opcode.RecvChannelBuddyOperation:

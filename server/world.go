@@ -2,6 +2,7 @@ package server
 
 import (
 	"log"
+	"math"
 	"time"
 
 	"github.com/Hucaru/Valhalla/constant/opcode"
@@ -11,8 +12,10 @@ import (
 
 // WorldServer data
 type WorldServer struct {
-	info  world
-	login mnet.Server
+	info             world
+	login            mnet.Server
+	nextPartyID      int32
+	reusablePartyIDs []int32
 }
 
 // RegisterWithLogin server
@@ -49,6 +52,8 @@ func (server *WorldServer) HandleServerPacket(conn mnet.Server, reader mpacket.R
 		fallthrough
 	case opcode.ChannelPlayerChatEvent:
 		server.forwardPacketToChannels(conn, reader)
+	case opcode.ChannelPlayerPartyEvent:
+		server.handlePartyEvent(conn, reader)
 	default:
 		log.Println("UNKNOWN SERVER PACKET:", reader)
 	}
@@ -117,6 +122,8 @@ func (server *WorldServer) handleNewChannel(conn mnet.Server, reader mpacket.Rea
 		}
 	}
 
+	// TODO highest value party id and set the to current party id if it is larger
+
 	newChannel := channel{conn: conn, ip: ip, port: port, maxPop: maxPop, pop: 0}
 	server.info.channels = append(server.info.channels, newChannel)
 
@@ -173,4 +180,62 @@ func (server WorldServer) forwardPacketToChannels(conn mnet.Server, reader mpack
 	p.WriteByte(0)
 	p.WriteBytes(reader.GetBuffer())
 	server.channelBroadcast(p)
+}
+
+func (server *WorldServer) handlePartyEvent(conn mnet.Server, reader mpacket.Reader) {
+	op := reader.ReadByte()
+
+	switch op {
+	case 0: // new party request
+		playerID := reader.ReadInt32()
+		channelID := reader.ReadByte()
+		mapID := reader.ReadInt32()
+		job := reader.ReadInt32()
+		level := reader.ReadInt32()
+		name := reader.ReadString(reader.ReadInt16())
+
+		var partyID int32
+		if len(server.reusablePartyIDs) > 0 {
+			partyID = server.reusablePartyIDs[0]
+			server.reusablePartyIDs[0] = server.reusablePartyIDs[len(server.reusablePartyIDs)-1]
+			server.reusablePartyIDs = server.reusablePartyIDs[:len(server.reusablePartyIDs)-1]
+		} else {
+			server.nextPartyID++
+
+			if server.nextPartyID == math.MaxInt32 {
+				server.nextPartyID = 1
+			}
+
+			partyID = server.nextPartyID
+		}
+
+		server.channelBroadcast(channelPartyCreateApproved(partyID, playerID, channelID, mapID, job, level, name))
+	case 1:
+		log.Println("World server should not receive a party event message type: 1")
+	case 2: // leave party
+		if destroy := reader.ReadBool(); destroy {
+			partyID := reader.ReadInt32()
+
+			for _, v := range server.reusablePartyIDs {
+				if v == partyID {
+					return
+				}
+			}
+
+			server.reusablePartyIDs = append(server.reusablePartyIDs, partyID)
+		}
+
+		fallthrough
+	case 3: // accept invite
+		fallthrough
+	case 4: //expel
+		fallthrough
+	case 5: // update party info
+		p := mpacket.NewPacket()
+		p.WriteByte(0)
+		p.WriteBytes(reader.GetBuffer())
+		server.channelBroadcast(p)
+	default:
+		log.Println("Unkown party event type:", op)
+	}
 }

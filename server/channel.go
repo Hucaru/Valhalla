@@ -18,7 +18,9 @@ import (
 	"github.com/Hucaru/Valhalla/server/field"
 	"github.com/Hucaru/Valhalla/server/message"
 	"github.com/Hucaru/Valhalla/server/metrics"
+	"github.com/Hucaru/Valhalla/server/party"
 	"github.com/Hucaru/Valhalla/server/player"
+	"github.com/Hucaru/Valhalla/server/pos"
 	"github.com/Hucaru/Valhalla/server/script"
 )
 
@@ -31,7 +33,7 @@ func (p players) getFromConn(conn mnet.Client) (*player.Data, error) {
 		}
 	}
 
-	return nil, fmt.Errorf("Could not retrieve Data")
+	return new(player.Data), fmt.Errorf("Could not retrieve Data")
 }
 
 // GetFromName retrieve the Data from the connection
@@ -42,7 +44,7 @@ func (p players) getFromName(name string) (*player.Data, error) {
 		}
 	}
 
-	return nil, fmt.Errorf("Could not retrieve Data")
+	return new(player.Data), fmt.Errorf("Could not retrieve Data")
 }
 
 // GetFromID retrieve the Data from the connection
@@ -53,7 +55,7 @@ func (p players) getFromID(id int32) (*player.Data, error) {
 		}
 	}
 
-	return nil, fmt.Errorf("Could not retrieve Data")
+	return new(player.Data), fmt.Errorf("Could not retrieve Data")
 }
 
 // RemoveFromConn removes the Data based on the connection
@@ -96,6 +98,7 @@ type ChannelServer struct {
 	npcScriptStore   *script.Store
 	eventCtrl        map[string]*script.EventController
 	eventScriptStore *script.Store
+	parties          map[int32]*party.Data
 }
 
 // Initialise the server
@@ -137,6 +140,8 @@ func (server *ChannelServer) Initialise(work chan func(), dbuser, dbpassword, db
 	log.Println("Started serving metrics on :" + metrics.Port)
 
 	server.loadScripts()
+
+	server.parties = make(map[int32]*party.Data)
 }
 
 func (server *ChannelServer) loadScripts() {
@@ -251,6 +256,8 @@ func (server *ChannelServer) HandleServerPacket(conn mnet.Server, reader mpacket
 		server.handleChatEvent(conn, reader)
 	case opcode.ChannelPlayerBuddyEvent:
 		server.handleBuddyEvent(conn, reader)
+	case opcode.ChannelPlayerPartyEvent:
+		server.handlePartyEvent(conn, reader)
 	default:
 		log.Println("UNKNOWN SERVER PACKET:", reader)
 	}
@@ -269,6 +276,11 @@ func (server *ChannelServer) handleNewChannelOK(conn mnet.Server, reader mpacket
 	server.worldName = reader.ReadString(reader.ReadInt16())
 	server.id = reader.ReadByte()
 	log.Println("Registered as channel", server.id, "on world", server.worldName)
+
+	for _, p := range server.players {
+		p.Send(message.PacketMessageNotice("Re-connected to world server as channel " + strconv.Itoa(int(server.id+1))))
+		// TODO send largest party id for world server to compare
+	}
 
 	accountIDs, err := db.DB.Query("SELECT accountID from characters where channelID = ? and migrationID = -1", server.id)
 
@@ -315,36 +327,46 @@ func (server *ChannelServer) handleChannelConnectionInfo(conn mnet.Server, reade
 }
 
 func (server *ChannelServer) handlePlayerConnectedNotifications(conn mnet.Server, reader mpacket.Reader) {
-	id := reader.ReadInt32()
+	playerID := reader.ReadInt32()
 	name := reader.ReadString(reader.ReadInt16())
 	channelID := reader.ReadByte()
 	changeChannel := reader.ReadBool()
 
+	plr, _ := server.players.getFromID(playerID)
+
+	for _, party := range server.parties {
+		party.SetPlayerChannel(plr, playerID, false, false, int32(channelID))
+	}
+
 	for i, v := range server.players {
-		if v.ID() == id {
+		if v.ID() == playerID {
 			continue
-		} else if v.HasBuddy(id) {
+		} else if v.HasBuddy(playerID) {
 			if changeChannel {
-				server.players[i].Send(message.PacketBuddyChangeChannel(id, int32(channelID)))
-				server.players[i].AddOnlineBuddy(id, name, int32(channelID))
+				server.players[i].Send(message.PacketBuddyChangeChannel(playerID, int32(channelID)))
+				server.players[i].AddOnlineBuddy(playerID, name, int32(channelID))
 			} else {
 				// send online message card, then update buddy list
-				server.players[i].Send(message.PacketBuddyOnlineStatus(id, int32(channelID)))
-				server.players[i].AddOnlineBuddy(id, name, int32(channelID))
+				server.players[i].Send(message.PacketBuddyOnlineStatus(playerID, int32(channelID)))
+				server.players[i].AddOnlineBuddy(playerID, name, int32(channelID))
 			}
 		}
 	}
 }
 
 func (server *ChannelServer) handlePlayerDisconnectNotifications(conn mnet.Server, reader mpacket.Reader) {
-	id := reader.ReadInt32()
+	playerID := reader.ReadInt32()
 	name := reader.ReadString(reader.ReadInt16())
 
+	for _, party := range server.parties {
+		party.SetPlayerChannel(new(player.Data), playerID, false, true, 0)
+	}
+
 	for i, v := range server.players {
-		if v.ID() == id {
+		if v.ID() == playerID {
 			continue
-		} else if v.HasBuddy(id) {
-			server.players[i].AddOfflineBuddy(id, name)
+		} else if v.HasBuddy(playerID) {
+			server.players[i].AddOfflineBuddy(playerID, name)
 		}
 	}
 }
@@ -449,11 +471,128 @@ func (server ChannelServer) handleChatEvent(conn mnet.Server, reader mpacket.Rea
 
 			plr.Send(message.PacketMessageBubblessChat(0, fromName, msg))
 		}
-
 	case 2: // party
+		fromName := reader.ReadString(reader.ReadInt16())
+		idCount := reader.ReadByte()
+
+		ids := make([]int32, int(idCount))
+
+		for i := byte(0); i < idCount; i++ {
+			ids[i] = reader.ReadInt32()
+		}
+
+		msg := reader.ReadString(reader.ReadInt16())
+
+		for _, v := range ids {
+			plr, err := server.players.getFromID(v)
+
+			if err != nil {
+				continue
+			}
+
+			plr.Send(message.PacketMessageBubblessChat(1, fromName, msg))
+		}
 	case 3: // guild
+		fromName := reader.ReadString(reader.ReadInt16())
+		idCount := reader.ReadByte()
+
+		ids := make([]int32, int(idCount))
+
+		for i := byte(0); i < idCount; i++ {
+			ids[i] = reader.ReadInt32()
+		}
+
+		msg := reader.ReadString(reader.ReadInt16())
+
+		for _, v := range ids {
+			plr, err := server.players.getFromID(v)
+
+			if err != nil {
+				continue
+			}
+
+			plr.Send(message.PacketMessageBubblessChat(2, fromName, msg))
+		}
 	default:
 		log.Println("Unknown chat event type:", op)
+	}
+}
+
+func (server *ChannelServer) handlePartyEvent(conn mnet.Server, reader mpacket.Reader) {
+	op := reader.ReadByte()
+
+	switch op {
+	case 0:
+		log.Println("Channel server should not receive party event message type: 0")
+	case 1: // new party created
+		channelID := reader.ReadByte()
+		partyID := reader.ReadInt32()
+		playerID := reader.ReadInt32()
+		mapID := reader.ReadInt32()
+		job := reader.ReadInt32()
+		level := reader.ReadInt32()
+		name := reader.ReadString(reader.ReadInt16())
+
+		plr, _ := server.players.getFromID(playerID)
+
+		// TODO: Mystic door information needs to be sent here if the leader has an active door
+
+		newParty := party.NewParty(partyID, plr, channelID, playerID, mapID, job, level, name, int32(server.id))
+
+		server.parties[partyID] = &newParty
+
+		if plr != nil {
+			plr.SetParty(&newParty)
+			plr.Send(message.PacketPartyCreate(1, -1, -1, pos.New(0, 0, 0)))
+		}
+	case 2: // leave party
+		destroy := reader.ReadBool()
+		partyID := reader.ReadInt32()
+		playerID := reader.ReadInt32()
+
+		plr, _ := server.players.getFromID(playerID)
+
+		if party, ok := server.parties[partyID]; ok {
+			party.RemovePlayer(plr, playerID, false)
+
+			if destroy {
+				delete(server.parties, partyID)
+			}
+		}
+	case 3: // accept
+		partyID := reader.ReadInt32()
+		playerID := reader.ReadInt32()
+		channelID := reader.ReadInt32()
+		mapID := reader.ReadInt32()
+		job := reader.ReadInt32()
+		level := reader.ReadInt32()
+		name := reader.ReadString(reader.ReadInt16())
+
+		plr, _ := server.players.getFromID(playerID)
+
+		if party, ok := server.parties[partyID]; ok {
+			party.AddPlayer(plr, channelID, playerID, name, mapID, job, level)
+		}
+	case 4: // expel
+		partyID := reader.ReadInt32()
+		playerID := reader.ReadInt32()
+
+		plr, _ := server.players.getFromID(playerID)
+
+		if party, ok := server.parties[partyID]; ok {
+			party.RemovePlayer(plr, playerID, true)
+		}
+	case 5:
+		partyID := reader.ReadInt32()
+		playerID := reader.ReadInt32()
+		job := reader.ReadInt32()
+		level := reader.ReadInt32()
+		reader.ReadString(reader.ReadInt16()) // name
+		if party, ok := server.parties[partyID]; ok {
+			party.UpdateJobLevel(playerID, job, level)
+		}
+	default:
+		log.Println("Unkown party event type:", op)
 	}
 }
 
@@ -502,6 +641,7 @@ func (server *ChannelServer) ClientDisconnected(conn mnet.Client) {
 		server.migrating = append(server.migrating[:index], server.migrating[index+1:]...)
 	} else {
 		server.world.Send(channelPlayerDisconnect(plr.ID(), plr.Name()))
+
 		_, err = db.DB.Exec("UPDATE characters SET channelID=? WHERE id=?", -1, plr.ID())
 
 		if err != nil {

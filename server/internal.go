@@ -129,11 +129,84 @@ func channelWhispherChat(recepientName, fromName, msg string, channelID byte) mp
 	return p
 }
 
-func channelBuddyChat(fromName string, buffer []byte) mpacket.Packet {
+func channelPlayerChat(code byte, fromName string, buffer []byte) mpacket.Packet {
 	p := mpacket.CreateInternal(opcode.ChannelPlayerChatEvent)
-	p.WriteByte(1) // buddy
+	p.WriteByte(code) // 1 buddy, 2 party, 3 guild
 	p.WriteString(fromName)
 	p.WriteBytes(buffer)
+
+	return p
+}
+
+// ChannelPartyCreateRequest - request a new party for this id
+func channelPartyCreateRequest(playerID int32, channelID byte, mapID, job, level int32, name string) mpacket.Packet {
+	p := mpacket.CreateInternal(opcode.ChannelPlayerPartyEvent)
+	p.WriteByte(0) // new party request
+	p.WriteInt32(playerID)
+	p.WriteByte(channelID)
+	p.WriteInt32(mapID)
+	p.WriteInt32(job)
+	p.WriteInt32(level)
+	p.WriteString(name)
+
+	return p
+}
+
+func channelPartyCreateApproved(partyID, playerID int32, channelID byte, mapID, job, level int32, name string) mpacket.Packet {
+	p := mpacket.CreateInternal(opcode.ChannelPlayerPartyEvent)
+	p.WriteByte(1) // new party
+	p.WriteByte(channelID)
+	p.WriteInt32(partyID)
+	p.WriteInt32(playerID)
+	p.WriteInt32(mapID)
+	p.WriteInt32(job)
+	p.WriteInt32(level)
+	p.WriteString(name)
+
+	return p
+}
+
+func channelPartyLeave(partyID, playerID int32, destory bool) mpacket.Packet {
+	p := mpacket.CreateInternal(opcode.ChannelPlayerPartyEvent)
+	p.WriteByte(2) // leave party
+	p.WriteBool(destory)
+	p.WriteInt32(partyID)
+	p.WriteInt32(playerID)
+
+	return p
+}
+
+func channelPartyAccept(partyID, playerID, channelID, mapID, job, level int32, name string) mpacket.Packet {
+	p := mpacket.CreateInternal(opcode.ChannelPlayerPartyEvent)
+	p.WriteByte(3) // accept invite
+	p.WriteInt32(partyID)
+	p.WriteInt32(playerID)
+	p.WriteInt32(channelID)
+	p.WriteInt32(mapID)
+	p.WriteInt32(job)
+	p.WriteInt32(level)
+	p.WriteString(name)
+
+	return p
+}
+
+func channelPartyExpel(partyID, playerID int32) mpacket.Packet {
+	p := mpacket.CreateInternal(opcode.ChannelPlayerPartyEvent)
+	p.WriteByte(4) // expel
+	p.WriteInt32(partyID)
+	p.WriteInt32(playerID)
+
+	return p
+}
+
+func channelPartyUpdateInfo(partyID, playerID, job, level int32, name string) mpacket.Packet {
+	p := mpacket.CreateInternal(opcode.ChannelPlayerPartyEvent)
+	p.WriteByte(5) // update party window info
+	p.WriteInt32(partyID)
+	p.WriteInt32(playerID)
+	p.WriteInt32(job)
+	p.WriteInt32(level)
+	p.WriteString(name)
 
 	return p
 }

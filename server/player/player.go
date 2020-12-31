@@ -11,6 +11,7 @@ import (
 	"github.com/Hucaru/Valhalla/mpacket"
 	"github.com/Hucaru/Valhalla/server/db"
 	"github.com/Hucaru/Valhalla/server/item"
+	"github.com/Hucaru/Valhalla/server/party"
 	"github.com/Hucaru/Valhalla/server/pos"
 )
 
@@ -31,6 +32,8 @@ type buddy struct {
 	status    byte  // 0 - online, 1 - buddy request, 2 - offline
 	cashShop  int32 // > 0 means is in cash shop
 }
+
+type updatePartyInfoFunc func(partyID, playerID, job, level int32, name string)
 
 // Data connected to server
 type Data struct {
@@ -95,6 +98,10 @@ type Data struct {
 
 	buddyListSize byte
 	buddyList     []buddy
+
+	party *party.Data
+
+	UpdatePartyInfo updatePartyInfoFunc
 }
 
 // Conn - client connection associated with this Data
@@ -114,6 +121,10 @@ func (d *Data) SetInstance(inst interface{}) {
 
 // Send the Data a packet
 func (d Data) Send(packet mpacket.Packet) {
+	if d.conn == nil {
+		return
+	}
+
 	d.conn.Send(packet)
 }
 
@@ -121,6 +132,10 @@ func (d Data) Send(packet mpacket.Packet) {
 func (d *Data) SetJob(id int16) {
 	d.job = id
 	d.conn.Send(packetPlayerStatChange(true, constant.JobID, int32(id)))
+
+	if d.party != nil {
+		d.party.UpdateJobLevel(d.id, int32(d.job), int32(d.level))
+	}
 }
 
 func (d *Data) levelUp(inst sender) {
@@ -192,9 +207,11 @@ func (d *Data) SetEXP(amount int32) {
 // GiveEXP to the Data
 func (d *Data) GiveEXP(amount int32, fromMob, fromParty bool) {
 	if fromMob {
-		d.Send(packetMessageExpGained(!fromParty, false, amount))
+		d.Send(packetMessageExpGained(true, false, amount))
+	} else if fromParty {
+		d.Send(packetMessageExpGained(false, false, amount))
 	} else {
-		d.Send(packetMessageExpGained(true, true, amount))
+		d.Send(packetMessageExpGained(false, true, amount))
 	}
 
 	d.SetEXP(d.exp + amount)
@@ -205,6 +222,10 @@ func (d *Data) SetLevel(amount byte) {
 	d.level = amount
 	d.Send(packetPlayerStatChange(false, constant.LevelID, int32(amount)))
 	d.inst.Send(packetPlayerLevelUpAnimation(d.id))
+
+	if d.party != nil {
+		d.UpdatePartyInfo(d.party.ID(), d.id, int32(d.job), int32(d.level), d.name)
+	}
 }
 
 // GiveLevel amount ot the Data
@@ -474,6 +495,10 @@ func (d Data) CheckPos(pos pos.Data, xRange, yRange int16) bool {
 // SetMapID of Data
 func (d *Data) SetMapID(id int32) {
 	d.mapID = id
+
+	if d.party != nil {
+		d.party.UpdatePlayerMap(d.id, d.mapID)
+	}
 }
 
 // SetMapPosID of Data
@@ -1235,4 +1260,14 @@ func (d *Data) RemoveBuddy(id int32) {
 			return
 		}
 	}
+}
+
+// SetParty of the player
+func (d *Data) SetParty(p *party.Data) {
+	d.party = p
+}
+
+// Party get the ptr to the players party
+func (d Data) Party() *party.Data {
+	return d.party
 }
