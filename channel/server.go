@@ -10,11 +10,6 @@ import (
 	_ "github.com/go-sql-driver/mysql" // don't need full import
 	"github.com/prometheus/client_golang/prometheus"
 
-	"github.com/Hucaru/Valhalla/channel/field"
-	"github.com/Hucaru/Valhalla/channel/message"
-	"github.com/Hucaru/Valhalla/channel/party"
-	"github.com/Hucaru/Valhalla/channel/player"
-	"github.com/Hucaru/Valhalla/channel/script"
 	"github.com/Hucaru/Valhalla/common"
 	"github.com/Hucaru/Valhalla/common/opcode"
 	"github.com/Hucaru/Valhalla/internal"
@@ -23,38 +18,38 @@ import (
 	"github.com/Hucaru/Valhalla/nx"
 )
 
-type players []*player.Data
+type players []*player
 
-func (p players) getFromConn(conn mnet.Client) (*player.Data, error) {
+func (p players) getFromConn(conn mnet.Client) (*player, error) {
 	for _, v := range p {
-		if v.Conn() == conn {
+		if v.conn == conn {
 			return v, nil
 		}
 	}
 
-	return new(player.Data), fmt.Errorf("Could not retrieve Data")
+	return new(player), fmt.Errorf("Could not retrieve Data")
 }
 
 // GetFromName retrieve the Data from the connection
-func (p players) getFromName(name string) (*player.Data, error) {
+func (p players) getFromName(name string) (*player, error) {
 	for _, v := range p {
-		if v.Name() == name {
+		if v.name == name {
 			return v, nil
 		}
 	}
 
-	return new(player.Data), fmt.Errorf("Could not retrieve Data")
+	return new(player), fmt.Errorf("Could not retrieve Data")
 }
 
 // GetFromID retrieve the Data from the connection
-func (p players) getFromID(id int32) (*player.Data, error) {
+func (p players) getFromID(id int32) (*player, error) {
 	for _, v := range p {
-		if v.ID() == id {
+		if v.id == id {
 			return v, nil
 		}
 	}
 
-	return new(player.Data), fmt.Errorf("Could not retrieve Data")
+	return new(player), fmt.Errorf("Could not retrieve Data")
 }
 
 // RemoveFromConn removes the Data based on the connection
@@ -62,7 +57,7 @@ func (p *players) removeFromConn(conn mnet.Client) error {
 	i := -1
 
 	for j, v := range *p {
-		if v.Conn() == conn {
+		if v.conn == conn {
 			i = j
 			break
 		}
@@ -80,9 +75,8 @@ func (p *players) removeFromConn(conn mnet.Client) error {
 
 // Server state
 type Server struct {
-	id        byte
-	worldName string
-	// db               *sql.DB
+	id               byte
+	worldName        string
 	dispatch         chan func()
 	world            mnet.Server
 	ip               []byte
@@ -91,13 +85,13 @@ type Server struct {
 	migrating        []mnet.Client
 	players          players
 	channels         [20]internal.Channel
-	fields           map[int32]*field.Field
+	fields           map[int32]*field
 	header           string
-	npcChat          map[mnet.Client]*script.NpcChatController
-	npcScriptStore   *script.Store
-	eventCtrl        map[string]*script.EventController
-	eventScriptStore *script.Store
-	parties          map[int32]*party.Data
+	npcChat          map[mnet.Client]*npcScriptController
+	npcScriptStore   *scriptStore
+	eventCtrl        map[string]*eventScriptController
+	eventScriptStore *scriptStore
+	parties          map[int32]*party
 }
 
 // Initialise the server
@@ -112,19 +106,19 @@ func (server *Server) Initialise(work chan func(), dbuser, dbpassword, dbaddress
 
 	log.Println("Connected to database")
 
-	server.fields = make(map[int32]*field.Field)
+	server.fields = make(map[int32]*field)
 
 	for fieldID, nxMap := range nx.GetMaps() {
 
-		server.fields[fieldID] = &field.Field{
-			ID:       fieldID,
+		server.fields[fieldID] = &field{
+			id:       fieldID,
 			Data:     nxMap,
 			Dispatch: server.dispatch,
 		}
 
-		server.fields[fieldID].FormatFootholds()
-		server.fields[fieldID].CalculateFieldLimits()
-		server.fields[fieldID].CreateInstance()
+		server.fields[fieldID].formatFootholds()
+		server.fields[fieldID].calculateFieldLimits()
+		server.fields[fieldID].createInstance()
 	}
 
 	log.Println("Initialised game state")
@@ -140,27 +134,27 @@ func (server *Server) Initialise(work chan func(), dbuser, dbpassword, dbaddress
 
 	server.loadScripts()
 
-	server.parties = make(map[int32]*party.Data)
+	server.parties = make(map[int32]*party)
 }
 
 func (server *Server) loadScripts() {
-	server.npcChat = make(map[mnet.Client]*script.NpcChatController)
-	server.eventCtrl = make(map[string]*script.EventController)
+	server.npcChat = make(map[mnet.Client]*npcScriptController)
+	server.eventCtrl = make(map[string]*eventScriptController)
 
-	server.npcScriptStore = script.CreateStore("scripts/npc", server.dispatch) // make folder a config param
+	server.npcScriptStore = createScriptStore("scripts/npc", server.dispatch) // make folder a config param
 	start := time.Now()
-	server.npcScriptStore.LoadScripts()
+	server.npcScriptStore.loadScripts()
 	elapsed := time.Since(start)
 	log.Println("Loaded npc scripts in", elapsed)
-	go server.npcScriptStore.Monitor(func(name string, program *goja.Program) {})
+	go server.npcScriptStore.monitor(func(name string, program *goja.Program) {})
 
-	server.eventScriptStore = script.CreateStore("scripts/event", server.dispatch) // make folder a config param
+	server.eventScriptStore = createScriptStore("scripts/event", server.dispatch) // make folder a config param
 	start = time.Now()
-	server.eventScriptStore.LoadScripts()
+	server.eventScriptStore.loadScripts()
 	elapsed = time.Since(start)
 	log.Println("Loaded event scripts in", elapsed)
 
-	go server.eventScriptStore.Monitor(func(name string, program *goja.Program) {
+	go server.eventScriptStore.monitor(func(name string, program *goja.Program) {
 		if controller, ok := server.eventCtrl[name]; ok && controller != nil {
 			controller.Terminate()
 		}
@@ -173,7 +167,7 @@ func (server *Server) loadScripts() {
 			return
 		}
 
-		controller, start, err := script.CreateNewEventController(name, program, server.fields, server.dispatch, server.warpPlayer)
+		controller, start, err := createNewEventScriptController(name, program, server.fields, server.dispatch, server.warpPlayer)
 
 		if err != nil || controller == nil {
 			return
@@ -182,13 +176,13 @@ func (server *Server) loadScripts() {
 		server.eventCtrl[name] = controller
 
 		if start {
-			controller.Init()
+			controller.init()
 		}
 
 	})
 
-	for name, program := range server.eventScriptStore.Scripts() {
-		controller, start, err := script.CreateNewEventController(name, program, server.fields, server.dispatch, server.warpPlayer)
+	for name, program := range server.eventScriptStore.scripts {
+		controller, start, err := createNewEventScriptController(name, program, server.fields, server.dispatch, server.warpPlayer)
 
 		if err != nil {
 			continue
@@ -197,7 +191,7 @@ func (server *Server) loadScripts() {
 		server.eventCtrl[name] = controller
 
 		if start {
-			controller.Init()
+			controller.init()
 		}
 	}
 }
@@ -206,9 +200,9 @@ func (server *Server) loadScripts() {
 func (server Server) SendCountdownToPlayers(time int32) {
 	for _, p := range server.players {
 		if time == 0 {
-			p.Send(message.PacketHideCountdown())
+			p.send(packetHideCountdown())
 		} else {
-			p.Send(message.PacketShowCountdown(time))
+			p.send(packetShowCountdown(time))
 		}
 	}
 }
@@ -216,7 +210,7 @@ func (server Server) SendCountdownToPlayers(time int32) {
 // SendLostWorldConnectionMessage - Send message to players alerting them of whatever they do it won't be saved
 func (server *Server) SendLostWorldConnectionMessage() {
 	for _, p := range server.players {
-		p.Send(message.PacketMessageNotice("Cannot connect to world server, any action from the point until the countdown disappears won't be processed"))
+		p.send(packetMessageNotice("Cannot connect to world server, any action from the point until the countdown disappears won't be processed"))
 	}
 }
 
@@ -246,20 +240,20 @@ func (server *Server) ClientDisconnected(conn mnet.Client) {
 		return
 	}
 
-	field, ok := server.fields[plr.MapID()]
+	field, ok := server.fields[plr.mapID]
 
 	if !ok {
 		return
 	}
 
-	inst, err := field.GetInstance(plr.InstanceID())
-	err = inst.RemovePlayer(plr)
+	inst, err := field.getInstance(plr.inst.id)
+	err = inst.removePlayer(plr)
 
 	if err != nil {
 		log.Println(err)
 	}
 
-	err = plr.Save()
+	err = plr.save()
 
 	if err != nil {
 		log.Println(err)
@@ -282,9 +276,9 @@ func (server *Server) ClientDisconnected(conn mnet.Client) {
 	if index > -1 {
 		server.migrating = append(server.migrating[:index], server.migrating[index+1:]...)
 	} else {
-		server.world.Send(internal.PacketChannelPlayerDisconnect(plr.ID(), plr.Name()))
+		server.world.Send(internal.PacketChannelPlayerDisconnect(plr.id, plr.name))
 
-		_, err = common.DB.Exec("UPDATE characters SET channelID=? WHERE id=?", -1, plr.ID())
+		_, err = common.DB.Exec("UPDATE characters SET channelID=? WHERE id=?", -1, plr.id)
 
 		if err != nil {
 			log.Println(err)
@@ -303,9 +297,9 @@ func (server *Server) ClientDisconnected(conn mnet.Client) {
 }
 
 // SetScrollingHeaderMessage that appears at the top of game window
-func (server *Server) SetScrollingHeaderMessage(msg string) {
-	server.header = msg
-	for _, v := range server.players {
-		v.Send(message.PacketMessageScrollingHeader(msg))
-	}
-}
+// func (server *Server) SetScrollingHeaderMessage(msg string) {
+// 	server.header = msg
+// 	for _, v := range server.players {
+// 		v.send(message.PacketMessageScrollingHeader(msg))
+// 	}
+// }

@@ -1,248 +1,252 @@
 package channel
 
 import (
-	"fmt"
-	"log"
-	"strconv"
+	"math"
 
-	"github.com/Hucaru/Valhalla/channel/item"
-	"github.com/Hucaru/Valhalla/channel/script"
-	"github.com/Hucaru/Valhalla/mnet"
+	"github.com/Hucaru/Valhalla/common/opcode"
 	"github.com/Hucaru/Valhalla/mpacket"
 	"github.com/Hucaru/Valhalla/nx"
 )
 
-func (server *Server) npcMovement(conn mnet.Client, reader mpacket.Reader) {
-	data := reader.GetRestAsBytes()
-	id := reader.ReadInt32()
-
-	plr, err := server.players.getFromConn(conn)
-
-	if err != nil {
-		return
-	}
-
-	field, ok := server.fields[plr.MapID()]
-
-	if !ok {
-		return
-	}
-
-	inst, err := field.GetInstance(plr.InstanceID())
-
-	if err != nil {
-		return
-	}
-
-	inst.LifePool().NpcAcknowledge(id, plr, data)
+type npc struct {
+	controller *player
+	id         int32
+	spawnID    int32
+	pos        pos
+	faceLeft   bool
+	rx0, rx1   int16
 }
 
-func (server *Server) npcChatStart(conn mnet.Client, reader mpacket.Reader) {
-	npcSpawnID := reader.ReadInt32()
+func createNpcFromData(spawnID int32, life nx.Life) npc {
+	return npc{id: life.ID,
+		spawnID:  spawnID,
+		pos:      newPos(life.X, life.Y, life.Foothold),
+		faceLeft: life.FaceLeft,
+		rx0:      life.Rx0,
+		rx1:      life.Rx1}
+}
 
-	plr, err := server.players.getFromConn(conn)
+func (d *npc) setController(controller *player) {
+	d.controller = controller
+	controller.send(packetNpcSetController(d.spawnID, true))
+}
 
-	if err != nil {
-		return
-	}
-
-	field, ok := server.fields[plr.MapID()]
-
-	if !ok {
-		return
-	}
-
-	inst, err := field.GetInstance(plr.InstanceID())
-
-	if err != nil {
-		return
-	}
-
-	npcData, err := inst.LifePool().GetNPCFromSpawnID(npcSpawnID)
-
-	if err != nil {
-		return
-	}
-
-	// Start npc session
-	var controller *script.NpcChatController
-
-	if program, ok := server.npcScriptStore.Get(strconv.Itoa(int(npcData.ID()))); ok {
-		controller, err = script.CreateNewNpcController(npcData.ID(), conn, program, server.warpPlayer, server.fields)
-	} else {
-		if program, ok := server.npcScriptStore.Get("default"); ok {
-			controller, err = script.CreateNewNpcController(npcData.ID(), conn, program, server.warpPlayer, server.fields)
-		}
-	}
-
-	if controller == nil {
-		log.Println("Unable to find npc script for:", npcData.ID(), ".... default.js not found")
-		return
-	}
-
-	if err != nil {
-		log.Println("script init:", err)
-	}
-
-	server.npcChat[conn] = controller
-	if controller.Run(plr) {
-		delete(server.npcChat, conn)
+func (d *npc) removeController() {
+	if d.controller != nil {
+		d.controller.send(packetNpcSetController(d.spawnID, false))
+		d.controller = nil
 	}
 }
 
-func (server *Server) npcChatContinue(conn mnet.Client, reader mpacket.Reader) {
-	if _, ok := server.npcChat[conn]; !ok {
+func (d npc) acknowledgeController(plr *player, inst *fieldInstance, data []byte) {
+	if d.controller.conn != plr.conn {
+		plr.send(packetNpcSetController(d.spawnID, false))
 		return
 	}
 
-	controller := server.npcChat[conn]
-	controller.State().ClearFlags()
-
-	terminate := false
-
-	msgType := reader.ReadByte()
-
-	switch msgType {
-	case 0: // next/back
-		value := reader.ReadByte()
-
-		switch value {
-		case 0: // back
-			controller.State().SetNextBack(false, true)
-		case 1: // next
-			controller.State().SetNextBack(true, false)
-		case 255: // 255/0xff end chat
-			terminate = true
-		default:
-			terminate = true
-			log.Println("unknown next/back:", value)
-		}
-	case 1: // yes/no, ok
-		value := reader.ReadByte()
-
-		switch value {
-		case 0: // no
-			controller.State().SetYesNo(false, true)
-		case 1: // yes, ok
-			controller.State().SetYesNo(true, false)
-		case 255: // 255/0xff end chat
-			terminate = true
-		default:
-			log.Println("unknown yes/no:", value)
-		}
-	case 2: // string input
-		if reader.ReadBool() {
-			controller.State().SetTextInput(reader.ReadString(reader.ReadInt16()))
-		} else {
-			terminate = true
-		}
-	case 3: // number input
-		if reader.ReadBool() {
-			controller.State().SetNumberInput(reader.ReadInt32())
-		} else {
-			terminate = true
-		}
-	case 4: // select option
-		if reader.ReadBool() {
-			controller.State().SetOptionSelect(reader.ReadInt32())
-		} else {
-			terminate = true
-		}
-	case 5: // style window (no way to discern between cancel button and end chat selection)
-		if reader.ReadBool() {
-			controller.State().SetOptionSelect(int32(reader.ReadByte()))
-		} else {
-			terminate = true
-		}
-	case 6:
-		fmt.Println("pet window:", reader)
-	default:
-		log.Println("Unkown npc chat continue packet:", reader)
-	}
-
-	plr, err := server.players.getFromConn(conn)
-
-	if err != nil {
-		delete(server.npcChat, conn)
-		return
-	}
-
-	if terminate || controller.Run(plr) {
-		delete(server.npcChat, conn)
-	}
+	plr.send(packetNpcSetController(d.spawnID, true))
+	inst.send(packetNpcMovement(data))
 }
 
-func (server *Server) npcShop(conn mnet.Client, reader mpacket.Reader) {
-	plr, err := server.players.getFromConn(conn)
+func packetNpcSetController(npcID int32, isLocal bool) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelNpcControl)
+	p.WriteBool(isLocal)
+	p.WriteInt32(npcID)
 
-	if err != nil {
-		return
+	return p
+}
+
+func packetNpcMovement(bytes []byte) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelNpcMovement)
+	p.WriteBytes(bytes)
+
+	return p
+}
+
+func packetNpcChatBackNext(npcID int32, msg string, next, back bool) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelNpcDialogueBox)
+	p.WriteByte(4)
+	p.WriteInt32(npcID)
+	p.WriteByte(0)
+	p.WriteString(msg)
+	p.WriteBool(back)
+	p.WriteBool(next)
+
+	return p
+}
+
+func packetNpcChatOk(npcID int32, msg string) mpacket.Packet {
+	return packetNpcChatBackNext(npcID, msg, false, false)
+}
+
+func packetNpcChatYesNo(npcID int32, msg string) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelNpcDialogueBox)
+	p.WriteByte(4)
+	p.WriteInt32(npcID)
+	p.WriteByte(1)
+	p.WriteString(msg)
+
+	return p
+}
+
+func packetNpcChatUserString(npcID int32, msg string, defaultInput string, minLength, maxLength int16) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelNpcDialogueBox)
+	p.WriteByte(4)
+	p.WriteInt32(npcID)
+	p.WriteByte(2)
+	p.WriteString(msg)
+	p.WriteString(defaultInput)
+	p.WriteInt16(minLength)
+	p.WriteInt16(maxLength)
+
+	return p
+}
+
+func packetNpcChatUserNumber(npcID int32, msg string, defaultInput, minLength, maxLength int32) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelNpcDialogueBox)
+	p.WriteByte(4)
+	p.WriteInt32(npcID)
+	p.WriteByte(3)
+	p.WriteString(msg)
+	p.WriteInt32(defaultInput)
+	p.WriteInt32(minLength)
+	p.WriteInt32(maxLength)
+
+	return p
+}
+
+func packetNpcChatSelection(npcID int32, msg string) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelNpcDialogueBox)
+	p.WriteByte(4)
+	p.WriteInt32(npcID)
+	p.WriteByte(4)
+	p.WriteString(msg)
+
+	return p
+}
+
+func packetNpcChatStyleWindow(npcID int32, msg string, styles []int32) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelNpcDialogueBox)
+	p.WriteByte(4)
+	p.WriteInt32(npcID)
+	p.WriteByte(5)
+	p.WriteString(msg)
+	p.WriteByte(byte(len(styles)))
+
+	for _, style := range styles {
+		p.WriteInt32(style)
 	}
 
-	operation := reader.ReadByte()
-	switch operation {
-	case 0: // buy
-		index := reader.ReadInt16()
-		itemID := reader.ReadInt32()
-		amount := reader.ReadInt16()
+	return p
+}
 
-		newItem, err := item.CreateAverageFromID(itemID, amount)
+func packetNpcChatPet(npcID int32, msg string, pets map[int64]byte) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelNpcDialogueBox)
+	p.WriteByte(4)
+	p.WriteInt32(npcID)
+	p.WriteByte(6)
+	p.WriteString(msg)
+	p.WriteByte(byte(len(pets)))
 
-		if err != nil {
-			return
-		}
+	for cashID, invSlot := range pets {
+		p.WriteInt64(cashID)
+		p.WriteByte(invSlot)
+	}
 
-		if controller, ok := server.npcChat[conn]; ok {
-			goods := controller.State().Goods()
+	return p
+}
 
-			if int(index) < len(goods) && index > -1 {
-				if len(goods[index]) == 1 { // Default price
-					item, err := nx.GetItem(itemID)
+func packetNpcChatUnkown(npcID int32, msg string) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelNpcDialogueBox)
+	p.WriteByte(4)
+	p.WriteInt32(npcID)
+	p.WriteByte(7)
+	p.WriteString(msg)
+	p.WriteByte(1)
+	p.WriteByte(1)
+	p.WriteInt32(0) // decode buffer
+	p.WriteByte(1)
 
-					if err != nil {
-						return
-					}
+	return p
+}
 
-					plr.GiveMesos(-1 * item.Price)
-				} else if len(goods[index]) == 2 { // Custom price
-					plr.GiveMesos(-1 * goods[index][1])
-				} else {
-					return // bad shop slice
-				}
+func packetNpcShop(npcID int32, items [][]int32) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelNpcShop)
+	p.WriteInt32(npcID)
+	p.WriteInt16(int16(len(items)))
 
-				plr.GiveItem(newItem)
-				plr.Send(script.PacketShopContinue()) //check if needed
+	for _, currentItem := range items {
+		p.WriteInt32(currentItem[0])
+
+		item, err := nx.GetItem(currentItem[0])
+
+		if len(currentItem) == 2 {
+			p.WriteInt32(currentItem[1])
+
+		} else {
+			if err != nil {
+				p.WriteInt32(math.MaxInt32)
+			} else {
+				p.WriteInt32(item.Price)
 			}
-
-		}
-	case 1: // sell
-		slotPos := reader.ReadInt16()
-		itemID := reader.ReadInt32()
-		amount := reader.ReadInt16()
-
-		fmt.Println("Selling:", itemID, "[", slotPos, "], amount:", amount)
-
-		item, err := nx.GetItem(itemID)
-
-		if err != nil {
-			return
 		}
 
-		invID := getInventoryID(itemID)
-
-		plr.TakeItem(itemID, slotPos, amount, invID)
-
-		plr.GiveMesos(item.Price)
-		plr.Send(script.PacketShopContinue()) // check if needed
-	case 3: // exit
-		if _, ok := server.npcChat[conn]; ok {
-			delete(server.npcChat, conn) // delete here as we need access to shop goods
+		if math.Floor(float64(currentItem[0]/10000)) == 207 {
+			p.WriteUint64(uint64(item.UnitPrice * float64(item.SlotMax)))
 		}
-	default:
-		log.Println("Unkown shop operation packet:", reader)
+
+		if item.SlotMax == 0 {
+			p.WriteInt16(100)
+		} else {
+			p.WriteInt16(item.SlotMax)
+		}
 	}
+
+	return p
 }
 
-func getInventoryID(id int32) byte {
-	return byte(id / 1000000)
+func packetNpcShopResult(code byte) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelNpcShopResult)
+	p.WriteByte(code)
+
+	return p
+}
+
+func packetNpcShopContinue() mpacket.Packet {
+	return packetNpcShopResult(0x08)
+}
+
+func packetShopNotEnoughStock() mpacket.Packet {
+	return packetNpcShopResult(0x09)
+}
+
+func PacketShopNotEnoughMesos() mpacket.Packet {
+	return packetNpcShopResult(0x0A)
+}
+
+// TODO: Move this into rooms?
+func packetTradeError() mpacket.Packet {
+	return packetNpcShopResult(0xFF)
+}
+
+func packetNpcStorageShow(npcID, storageMesos int32, storageSlots byte, items []item) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelNpcStorage)
+	p.WriteInt32(npcID)
+	p.WriteByte(storageSlots)
+	// flag for if to show mesos, and item tabs 1 - 5
+	// mesos = 0x02
+	// equip = 0x04
+	// use = 0x08
+	// setup = 0x10
+	// etc = equip (old version bug)/0x20
+	// pet = 0x40
+	p.WriteInt16(0x7e) // allow everything
+	p.WriteInt32(storageMesos)
+	// loop over valid tabs and show items
+	// p.WriteByte(length of items in this inventory slot)
+	for _, item := range items {
+		p.WriteBytes(item.shortBytes())
+	}
+
+	return p
 }

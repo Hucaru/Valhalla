@@ -6,9 +6,6 @@ import (
 	"log"
 	"strings"
 
-	"github.com/Hucaru/Valhalla/channel/item"
-	"github.com/Hucaru/Valhalla/channel/message"
-	"github.com/Hucaru/Valhalla/channel/player"
 	"github.com/Hucaru/Valhalla/common"
 	"github.com/Hucaru/Valhalla/common/opcode"
 	"github.com/Hucaru/Valhalla/constant"
@@ -150,12 +147,12 @@ func (server *Server) handleChannelSelect(conn mnet.Client, reader mpacket.Reade
 	conn.SetChannelID(reader.ReadByte()) // Channel
 
 	if server.worlds[selectedWorld].Channels[conn.GetChannelID()].MaxPop == 0 {
-		conn.Send(message.PacketMessageDialogueBox("Channel currently unavailable"))
+		conn.Send(packetLoginReturnFromChannel())
 		return
 	}
 
 	if selectedWorld == conn.GetWorldID() {
-		characters := player.GetCharactersFromAccountWorldID(conn.GetAccountID(), conn.GetWorldID())
+		characters := getCharactersFromAccountWorldID(conn.GetAccountID(), conn.GetWorldID())
 		conn.Send(packetLoginDisplayCharacters(characters))
 	}
 }
@@ -222,7 +219,7 @@ func (server *Server) handleNewCharacter(conn mnet.Client, reader mpacket.Reader
 		inSlice(bottom, allowedBottom) && inSlice(top, allowedTop) && inSlice(shoes, allowedShoes) &&
 		inSlice(weapon, allowedWeapons) && inSlice(skin, allowedSkinColour) && (counter == 0)
 
-	newCharacter := player.Data{}
+	newCharacter := player{}
 
 	if conn.GetAdminLevel() > 0 {
 		name = "[GM]" + name
@@ -244,7 +241,7 @@ func (server *Server) handleNewCharacter(conn mnet.Client, reader mpacket.Reader
 			log.Println(err)
 		}
 
-		char := player.LoadFromID(int32(characterID), conn)
+		char := loadPlayerFromID(int32(characterID))
 
 		if conn.GetAdminLevel() > 0 {
 			items := map[int32]int16{
@@ -260,17 +257,17 @@ func (server *Server) handleNewCharacter(conn mnet.Client, reader mpacket.Reader
 			}
 
 			for id, pos := range items {
-				item, err := item.CreateFromID(id, 1)
+				item := newAdminItem(id, char.name)
 
 				if err != nil {
 					log.Println(err)
 					return
 				}
 
-				item.SetSlotID(pos)
-				item.SetCreatorName(name)
-				item.Save(int32(characterID))
-				char.AddEquip(item)
+				item.slotID = pos
+				item.creatorName = name
+				item.save(int32(characterID))
+				char.equip = append(char.equip, item)
 			}
 
 			// TODO: Give GM all skils maxed
@@ -283,20 +280,20 @@ func (server *Server) handleNewCharacter(conn mnet.Client, reader mpacket.Reader
 			}
 
 			for id, pos := range items {
-				item, err := item.CreateFromID(id, 1)
+				item := newBeginnerItem(id)
 
 				if err != nil {
 					log.Println(err)
 					return
 				}
 
-				item.SetSlotID(pos)
-				item.Save(int32(characterID))
-				char.AddEquip(item)
+				item.slotID = pos
+				item.save(int32(characterID))
+				char.equip = append(char.equip, item)
 			}
 		}
 
-		char.Save()
+		char.save()
 		newCharacter = char
 	}
 

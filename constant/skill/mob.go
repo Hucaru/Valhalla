@@ -1,4 +1,4 @@
-package skills
+package skill
 
 var Mob mob
 

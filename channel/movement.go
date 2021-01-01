@@ -1,4 +1,4 @@
-package movement
+package channel
 
 import (
 	"fmt"
@@ -6,37 +6,15 @@ import (
 	"github.com/Hucaru/Valhalla/mpacket"
 )
 
-// Frag data asociated with a movement
-type Frag struct {
+type movementFrag struct {
 	x, y, vx, vy, foothold, duration int16
 	stance, mType                    byte
 	posSet                           bool
 }
 
-// X axis position of the object for the fragment
-func (f Frag) X() int16 {
-	return f.x
-}
-
-// Y axis position of the object for the fragment
-func (f Frag) Y() int16 {
-	return f.y
-}
-
-// Foothold of the object for the fragment
-func (f Frag) Foothold() int16 {
-	return f.foothold
-}
-
-// Stance of object for the fragment
-func (f Frag) Stance() byte {
-	return f.stance
-}
-
-// Data for movement
-type Data struct {
+type movement struct {
 	origX, origY int16
-	frags        []Frag
+	frags        []movementFrag
 }
 
 // values from WvsGlobal
@@ -68,23 +46,22 @@ var movementType = struct {
 	normalMovement3:  17,
 }
 
-// ParseMovement data
-func ParseMovement(reader mpacket.Reader) (Data, Frag) {
+func parseMovement(reader mpacket.Reader) (movement, movementFrag) {
 	// http://mapleref.wikia.com/wiki/Movement
 
-	mData := Data{}
+	mData := movement{}
 
 	mData.origX = reader.ReadInt16()
 	mData.origY = reader.ReadInt16()
 
 	nFrags := reader.ReadByte()
 
-	mData.frags = make([]Frag, nFrags)
+	mData.frags = make([]movementFrag, nFrags)
 
-	final := Frag{}
+	final := movementFrag{}
 
 	for i := byte(0); i < nFrags; i++ {
-		frag := Frag{posSet: false}
+		frag := movementFrag{posSet: false}
 
 		frag.mType = reader.ReadByte()
 
@@ -155,8 +132,7 @@ func ParseMovement(reader mpacket.Reader) (Data, Frag) {
 	return mData, final
 }
 
-// GenerateMovementBytes from movement data
-func GenerateMovementBytes(moveData Data) mpacket.Packet {
+func generateMovementBytes(moveData movement) mpacket.Packet {
 	p := mpacket.NewPacket()
 
 	p.WriteInt16(moveData.origX)
@@ -212,11 +188,7 @@ func GenerateMovementBytes(moveData Data) mpacket.Packet {
 	return p
 }
 
-type player interface {
-}
-
-// ValidateChar movement
-func (data Data) ValidateChar(player player) bool {
+func (data movement) validateChar(player *player) bool {
 	// run through the movement data and make sure characters are not moving too fast (going to have to take into account gear and buffs "-_- )
 
 	return true
@@ -226,7 +198,7 @@ type mob interface {
 }
 
 // ValidateMob movement
-func (data Data) ValidateMob(mob mob) bool {
+func (data movement) validateMob(mob mob) bool {
 	// run through the movement data and make sure monsters are not moving too fast
 
 	return true

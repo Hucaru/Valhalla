@@ -13,7 +13,6 @@ import (
 	"github.com/Hucaru/Valhalla/constant"
 	"github.com/Hucaru/Valhalla/nx"
 
-	"github.com/Hucaru/Valhalla/channel/item"
 	"github.com/Hucaru/Valhalla/mnet"
 	"github.com/Hucaru/Valhalla/mpacket"
 )
@@ -51,7 +50,7 @@ func (cs *channelServer) run() {
 	log.Println("Loaded and parsed Wizet data (NX) in", elapsed)
 
 	start = time.Now()
-	item.PopulateDropTable("drops.json")
+	channel.PopulateDropTable("drops.json")
 	elapsed = time.Since(start)
 	log.Println("Loaded and parsed drop data in", elapsed)
 

@@ -1,9 +1,12 @@
-package item
+package channel
 
 import (
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"math"
 	"math/rand"
+	"os"
 	"time"
 
 	"github.com/Hucaru/Valhalla/common"
@@ -13,7 +16,36 @@ import (
 	"github.com/google/uuid"
 )
 
-type Data struct {
+type dropTableEntry struct {
+	IsMesos bool  `json:"isMesos"`
+	ItemID  int32 `json:"itemId"`
+	Min     int32 `json:"min"`
+	Max     int32 `json:"max"`
+	QuestID int32 `json:"questId"` // TODO: Validate this
+	Chance  int32 `json:"chance"`
+}
+
+// DropTable is the global lookup table for drops
+var dropTable map[int32][]dropTableEntry
+
+// PopulateDropTable from json file
+func PopulateDropTable(dropJSON string) error {
+	jsonFile, err := os.Open(dropJSON)
+
+	if err != nil {
+		return fmt.Errorf(err.Error())
+	}
+
+	defer jsonFile.Close()
+
+	jsonBytes, _ := ioutil.ReadAll(jsonFile)
+
+	json.Unmarshal(jsonBytes, &dropTable)
+
+	return nil
+}
+
+type item struct {
 	dbID         int64
 	uuid         uuid.UUID
 	cash         bool
@@ -47,50 +79,14 @@ type Data struct {
 	speed        int16
 	jump         int16
 	attackSpeed  int16
-	stand        byte
+	stand        byte // TODO: Investigate this, it doesn't appear to be saved or used anywhere
 
 	weaponType byte
 	twoHanded  bool
 	pet        bool
 }
 
-type player interface {
-	HP() int16
-	NoChange()
-	GiveHP(int16)
-	GiveMP(int16)
-}
-
-func (v Data) DbID() int64         { return v.dbID }
-func (v Data) ID() int32           { return v.id }
-func (v Data) Cash() bool          { return v.cash }
-func (v Data) SlotID() int16       { return v.slotID }
-func (v Data) InvID() byte         { return v.invID }
-func (v Data) Pet() bool           { return v.pet }
-func (v Data) UpgradeSlots() byte  { return v.upgradeSlots }
-func (v Data) ScrollLevel() byte   { return v.scrollLevel }
-func (v Data) Str() int16          { return v.str }
-func (v Data) Dex() int16          { return v.dex }
-func (v Data) Int() int16          { return v.intt }
-func (v Data) Luk() int16          { return v.luk }
-func (v Data) Hp() int16           { return v.hp }
-func (v Data) Mp() int16           { return v.mp }
-func (v Data) Watk() int16         { return v.watk }
-func (v Data) Matk() int16         { return v.matk }
-func (v Data) Wdef() int16         { return v.wdef }
-func (v Data) Mdef() int16         { return v.mdef }
-func (v Data) Accuracy() int16     { return v.accuracy }
-func (v Data) Avoid() int16        { return v.avoid }
-func (v Data) Hands() int16        { return v.hands }
-func (v Data) Speed() int16        { return v.speed }
-func (v Data) Jump() int16         { return v.jump }
-func (v Data) CreatorName() string { return v.creatorName }
-func (v Data) Flag() int16         { return v.flag }
-func (v Data) ExpireTime() int64   { return v.expireTime }
-func (v Data) Amount() int16       { return v.amount }
-
-// LoadInventoryFromDb gets the inventory for a given database connection and character id, returning equip, use, set-up, etc and cash slices
-func LoadInventoryFromDb(charID int32) ([]Data, []Data, []Data, []Data, []Data) {
+func loadInventoryFromDb(charID int32) ([]item, []item, []item, []item, []item) {
 	filter := "id,inventoryID,itemID,slotNumber,amount,flag,upgradeSlots,level,str,dex,intt,luk,hp,mp,watk,matk,wdef,mdef,accuracy,avoid,hands,speed,jump,expireTime,creatorName"
 	row, err := common.DB.Query("SELECT "+filter+" FROM items WHERE characterID=?", charID)
 
@@ -98,17 +94,17 @@ func LoadInventoryFromDb(charID int32) ([]Data, []Data, []Data, []Data, []Data) 
 		panic(err)
 	}
 
-	equip := []Data{}
-	use := []Data{}
-	setUp := []Data{}
-	etc := []Data{}
-	cash := []Data{}
+	equip := []item{}
+	use := []item{}
+	setUp := []item{}
+	etc := []item{}
+	cash := []item{}
 
 	defer row.Close()
 
 	for row.Next() {
 
-		item := Data{uuid: uuid.New()}
+		item := item{uuid: uuid.New()}
 
 		row.Scan(&item.dbID,
 			&item.invID,
@@ -157,27 +153,23 @@ func LoadInventoryFromDb(charID int32) ([]Data, []Data, []Data, []Data, []Data) 
 	return equip, use, setUp, etc, cash
 }
 
-// CreatePerfectFromID creates an item with bis stats
-func CreatePerfectFromID(id int32, amount int16) (Data, error) {
-	return createItemFromID(id, amount, 1, false)
+func createPerfectItemFromID(id int32, amount int16) (item, error) {
+	return createBiasItemFromID(id, amount, 1, false)
 }
 
-// CreateFromID creates an item with randomised stats within a predefined percentage range
-func CreateFromID(id int32, amount int16) (Data, error) {
-	return createItemFromID(id, amount, 0, false)
+func createItemFromID(id int32, amount int16) (item, error) {
+	return createBiasItemFromID(id, amount, 0, false)
 }
 
-// CreateWorstFromID creates an item with wis stats
-func CreateWorstFromID(id int32, amount int16) (Data, error) {
-	return createItemFromID(id, amount, -1, false)
+func createItemWorstFromID(id int32, amount int16) (item, error) {
+	return createBiasItemFromID(id, amount, -1, false)
 }
 
-// CreateAverageFromID creates an item with average stats, typically used by shops
-func CreateAverageFromID(id int32, amount int16) (Data, error) {
-	return createItemFromID(id, amount, 0, true)
+func createAverageItemFromID(id int32, amount int16) (item, error) {
+	return createBiasItemFromID(id, amount, 0, true)
 }
 
-func createItemFromID(id int32, amount int16, bias int8, average bool) (Data, error) {
+func createBiasItemFromID(id int32, amount int16, bias int8, average bool) (item, error) {
 	randomStat := func(stat float64, average bool) int16 {
 		if average {
 			return int16(stat)
@@ -201,12 +193,12 @@ func createItemFromID(id int32, amount int16, bias int8, average bool) (Data, er
 		return int16(rand.Intn(max-min) + min)
 	}
 
-	newItem := Data{dbID: 0, uuid: uuid.New()}
+	newItem := item{dbID: 0, uuid: uuid.New()}
 
 	nxInfo, err := nx.GetItem(id)
 
 	if err != nil {
-		return Data{}, fmt.Errorf("Unable to generate item of id: %v", id)
+		return item{}, fmt.Errorf("Unable to generate item of id: %v", id)
 	}
 
 	newItem.cash = nxInfo.Cash
@@ -242,7 +234,7 @@ func createItemFromID(id int32, amount int16, bias int8, average bool) (Data, er
 	return newItem, nil
 }
 
-func (v *Data) calculateWeaponType() {
+func (v *item) calculateWeaponType() {
 	switch v.id / 10000 % 100 {
 	case 30:
 		v.weaponType = 1 // Sword1H
@@ -287,23 +279,7 @@ func (v *Data) calculateWeaponType() {
 	}
 }
 
-func (v *Data) SetDbID(id int64) {
-	v.dbID = id
-}
-
-func (v *Data) SetCreatorName(name string) {
-	v.creatorName = name
-}
-
-func (v *Data) SetSlotID(id int16) {
-	v.slotID = id
-}
-
-func (v *Data) SetAmount(value int16) {
-	v.amount = value
-}
-
-func (v Data) IsStackable() bool {
+func (v item) isStackable() bool {
 	bullet := v.id / 1e4
 
 	if v.invID != 5.0 && // pet item
@@ -317,20 +293,15 @@ func (v Data) IsStackable() bool {
 	return false
 }
 
-func (v Data) IsRechargeable() bool {
+func (v item) isRechargeable() bool {
 	return (math.Floor(float64(v.id/10000)) == 207) // Taken from cliet
 }
 
-func (v Data) TwoHanded() bool {
-	return v.twoHanded
-}
-
-func (v Data) Shield() bool {
+func (v item) shield() bool {
 	return v.weaponType == 17
 }
 
-// Save item to database
-func (v Data) Save(charID int32) (bool, error) {
+func (v item) save(charID int32) (bool, error) {
 	if v.dbID == 0 {
 		props := `characterID,inventoryID,itemID,slotNumber,amount,flag,upgradeSlots,level,
 				str,dex,intt,luk,hp,mp,watk,matk,wdef,mdef,accuracy,avoid,hands,speed,jump,
@@ -371,8 +342,7 @@ func (v Data) Save(charID int32) (bool, error) {
 	return true, nil
 }
 
-// Delete item from database
-func (v Data) Delete() error {
+func (v item) delete() error {
 	query := "DELETE FROM `items` WHERE id=?"
 	_, err := common.DB.Exec(query, v.dbID)
 
@@ -384,16 +354,16 @@ func (v Data) Delete() error {
 }
 
 // InventoryBytes to display in character inventory window
-func (v Data) InventoryBytes() []byte {
+func (v item) inventoryBytes() []byte {
 	return v.bytes(false)
 }
 
 // ShortBytes e.g. inventory operation, storage window
-func (v Data) ShortBytes() []byte {
+func (v item) shortBytes() []byte {
 	return v.bytes(true)
 }
 
-func (v Data) bytes(shortSlot bool) []byte {
+func (v item) bytes(shortSlot bool) []byte {
 	p := mpacket.NewPacket()
 
 	if !shortSlot {
@@ -455,7 +425,7 @@ func (v Data) bytes(shortSlot bool) []byte {
 		p.WriteString(v.creatorName)
 		p.WriteInt16(v.flag) // even (normal), odd (sealed) ?
 
-		if v.IsRechargeable() {
+		if v.isRechargeable() {
 			p.WriteInt32(0) // ?
 		}
 	}
@@ -463,22 +433,17 @@ func (v Data) bytes(shortSlot bool) []byte {
 	return p
 }
 
-// UpdateAmount updates item amount to newAmount
-func (v *Data) UpdateAmount(newAmount int16) {
-	v.amount = newAmount
-}
-
 // Use applies stat changes for items
-func (v Data) Use(plr player) {
-	if plr.HP() < 1 {
-		plr.NoChange()
+func (v item) use(plr *player) {
+	if plr.hp < 1 {
+		plr.noChange()
 		return
 	}
 	if v.hp > 0 {
-		plr.GiveHP(v.hp)
+		plr.giveHP(v.hp)
 	}
 	if v.mp > 0 {
-		plr.GiveMP(v.mp)
+		plr.giveMP(v.mp)
 	}
 
 	// Need to add stat buffs (W.ATT, M.ATT, etc)
