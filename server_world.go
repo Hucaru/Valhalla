@@ -9,7 +9,7 @@ import (
 
 	"github.com/Hucaru/Valhalla/mnet"
 	"github.com/Hucaru/Valhalla/mpacket"
-	"github.com/Hucaru/Valhalla/server"
+	"github.com/Hucaru/Valhalla/world"
 )
 
 type worldServer struct {
@@ -18,7 +18,7 @@ type worldServer struct {
 	eRecv    chan *mnet.Event
 	wg       *sync.WaitGroup
 	lconn    mnet.Server
-	state    server.WorldServer
+	state    world.Server
 }
 
 func newWorldServer(configFile string) *worldServer {
