@@ -278,7 +278,7 @@ func (state *npcScriptState) SetOptionSelect(selection int32) {
 }
 
 // WarpPlayer to specific field
-func (state npcScriptState) WarpPlayer(p *player, mapID int32) bool {
+func (state npcScriptState) WarpPlayer(p *playerWrapper, mapID int32) bool {
 	if field, ok := state.fields[mapID]; ok {
 		inst, err := field.getInstance(0)
 
@@ -288,7 +288,7 @@ func (state npcScriptState) WarpPlayer(p *player, mapID int32) bool {
 
 		portal, err := inst.getRandomSpawnPortal()
 
-		state.warpFunc(p, field, portal)
+		state.warpFunc(p.player, field, portal)
 
 		return true
 	}
@@ -329,7 +329,7 @@ type npcScriptController struct {
 	vm      *goja.Runtime
 	program *goja.Program
 
-	runFunc func(*npcScriptState, *player)
+	runFunc func(*npcScriptState, *playerWrapper)
 }
 
 func createNewnpcScriptController(npcID int32, conn mnet.Client, program *goja.Program, warpFunc warpFn, fields map[int32]*field) (*npcScriptController, error) {
@@ -369,7 +369,7 @@ func (controller *npcScriptController) run(p *player) bool {
 		}
 	}()
 
-	controller.runFunc(&controller.state, p)
+	controller.runFunc(&controller.state, &playerWrapper{player: p})
 
 	return controller.state.terminate
 }
@@ -628,4 +628,16 @@ func (f *fieldWrapper) MobCount(id int) int {
 	}
 
 	return i.lifePool.mobCount()
+}
+
+type playerWrapper struct {
+	*player
+}
+
+func (p *playerWrapper) Mesos() int32 {
+	return p.mesos
+}
+
+func (p *playerWrapper) GiveMesos(amount int32) {
+	p.giveMesos(amount)
 }
