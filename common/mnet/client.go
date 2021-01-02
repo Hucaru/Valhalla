@@ -3,9 +3,9 @@ package mnet
 import (
 	"net"
 
+	"github.com/Hucaru/Valhalla/common/mnet/crypt"
+	"github.com/Hucaru/Valhalla/common/mpacket"
 	"github.com/Hucaru/Valhalla/constant"
-	"github.com/Hucaru/Valhalla/mnet/crypt"
-	"github.com/Hucaru/Valhalla/mpacket"
 )
 
 type Client interface {

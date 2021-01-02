@@ -10,11 +10,11 @@ import (
 	"time"
 
 	"github.com/Hucaru/Valhalla/channel"
+	"github.com/Hucaru/Valhalla/common/nx"
 	"github.com/Hucaru/Valhalla/constant"
-	"github.com/Hucaru/Valhalla/nx"
 
-	"github.com/Hucaru/Valhalla/mnet"
-	"github.com/Hucaru/Valhalla/mpacket"
+	"github.com/Hucaru/Valhalla/common/mnet"
+	"github.com/Hucaru/Valhalla/common/mpacket"
 )
 
 type channelServer struct {

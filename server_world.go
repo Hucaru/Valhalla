@@ -7,8 +7,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Hucaru/Valhalla/mnet"
-	"github.com/Hucaru/Valhalla/mpacket"
+	"github.com/Hucaru/Valhalla/common/mnet"
+	"github.com/Hucaru/Valhalla/common/mpacket"
 	"github.com/Hucaru/Valhalla/world"
 )
 

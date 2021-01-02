@@ -3,7 +3,7 @@ package mnet
 import (
 	"net"
 
-	"github.com/Hucaru/Valhalla/mpacket"
+	"github.com/Hucaru/Valhalla/common/mpacket"
 )
 
 type Server interface {

@@ -1,9 +1,9 @@
 package channel
 
 import (
+	"github.com/Hucaru/Valhalla/common/mpacket"
 	"github.com/Hucaru/Valhalla/common/opcode"
 	"github.com/Hucaru/Valhalla/constant"
-	"github.com/Hucaru/Valhalla/mpacket"
 )
 
 type party struct {

@@ -6,10 +6,10 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/Hucaru/Valhalla/common/mpacket"
+	"github.com/Hucaru/Valhalla/common/nx"
 	"github.com/Hucaru/Valhalla/common/opcode"
 	"github.com/Hucaru/Valhalla/constant/skill"
-	"github.com/Hucaru/Valhalla/mpacket"
-	"github.com/Hucaru/Valhalla/nx"
 )
 
 type monster struct {

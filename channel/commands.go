@@ -8,9 +8,9 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/Hucaru/Valhalla/mnet"
-	"github.com/Hucaru/Valhalla/mpacket"
-	"github.com/Hucaru/Valhalla/nx"
+	"github.com/Hucaru/Valhalla/common/mnet"
+	"github.com/Hucaru/Valhalla/common/mpacket"
+	"github.com/Hucaru/Valhalla/common/nx"
 )
 
 // TODO: Split these into ranks/levels (each rank can do everything the previous can):

@@ -3,10 +3,10 @@ package world
 import (
 	"log"
 
+	"github.com/Hucaru/Valhalla/common/mnet"
+	"github.com/Hucaru/Valhalla/common/mpacket"
 	"github.com/Hucaru/Valhalla/common/opcode"
 	"github.com/Hucaru/Valhalla/internal"
-	"github.com/Hucaru/Valhalla/mnet"
-	"github.com/Hucaru/Valhalla/mpacket"
 )
 
 // Server data
