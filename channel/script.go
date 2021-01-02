@@ -148,6 +148,11 @@ type npcScriptState struct {
 	fields   map[int32]*field
 }
 
+// Id of npc
+func (state *npcScriptState) Id() int32 {
+	return state.npcID
+}
+
 // SendBackNext packet to player
 func (state *npcScriptState) SendBackNext(msg string, back, next bool) {
 	state.conn.Send(packetNpcChatBackNext(state.npcID, msg, next, back))
@@ -292,7 +297,7 @@ func (state npcScriptState) WarpPlayer(p *player, mapID int32) bool {
 }
 
 // GetInstance that the passed in player belongs to
-func (state npcScriptState) GetInstance(p *player) *fieldInstance {
+func (state npcScriptState) GetInstance(p *player) *fieldInstanceWrapper {
 	if field, ok := state.fields[p.mapID]; ok {
 		inst, err := field.getInstance(p.inst.id)
 
@@ -300,10 +305,22 @@ func (state npcScriptState) GetInstance(p *player) *fieldInstance {
 			return nil
 		}
 
-		return inst
+		return &fieldInstanceWrapper{inst}
 	}
 
-	return nil
+	return &fieldInstanceWrapper{}
+}
+
+type fieldInstanceWrapper struct {
+	*fieldInstance
+}
+
+func (f *fieldInstanceWrapper) Properties(inst int) map[string]interface{} {
+	if f.fieldInstance == nil {
+		return make(map[string]interface{})
+	}
+
+	return f.properties
 }
 
 type npcScriptController struct {
@@ -481,31 +498,134 @@ func (controller eventScriptController) WarpPlayer(p *player, mapID int32) bool 
 	return false
 }
 
-// WarpPlayerToPortal in map
-func (controller eventScriptController) WarpPlayerToPortal(p *player, mapID int32, portalID byte) bool {
-	if field, ok := controller.fields[mapID]; ok {
-		inst, err := field.getInstance(0)
-
-		if err != nil {
-			return false
-		}
-
-		portal, err := inst.getPortalFromID(portalID)
-
-		controller.warpFunc(p, field, portal)
-
-		return true
+// Field wrapper
+func (controller *eventScriptController) Field(id int32) *fieldWrapper {
+	if field, ok := controller.fields[id]; ok {
+		return &fieldWrapper{field: field, controller: controller}
 	}
 
-	return false
+	return &fieldWrapper{}
 }
 
-// Fields in the game
-func (controller *eventScriptController) Fields() map[int32]*field {
-	return controller.fields
+type fieldWrapper struct {
+	*field
+	controller *eventScriptController
 }
 
-// CreatePos from x,y co-ords
-func (controller *eventScriptController) CreatePos(x int16, y int16) pos {
-	return newPos(x, y, 0)
+func (f *fieldWrapper) InstanceCount() int {
+	if f.field == nil {
+		return 0
+	}
+
+	return len(f.instances)
+}
+
+func (f *fieldWrapper) GetProperties(inst int) map[string]interface{} {
+	if f.field == nil {
+		return make(map[string]interface{})
+	}
+
+	i, err := f.getInstance(inst)
+
+	if err != nil {
+		return nil
+	}
+
+	return i.properties
+}
+
+func (f *fieldWrapper) ShowBoat(id int, show bool, boatType byte) {
+	if f.field == nil {
+		return
+	}
+
+	i, err := f.getInstance(id)
+
+	if err != nil {
+		return
+	}
+
+	i.showBoats(show, boatType)
+}
+
+func (f *fieldWrapper) ChangeBgm(id int, path string) {
+	if f.field == nil {
+		return
+	}
+
+	i, err := f.getInstance(id)
+
+	if err != nil {
+		return
+	}
+
+	i.changeBgm(path)
+}
+
+func (f *fieldWrapper) SpawnMonster(inst int, mobID int32, x, y int16, hasAgro, items, mesos bool) {
+	if f.field == nil {
+		return
+	}
+
+	i, err := f.getInstance(inst)
+
+	if err != nil {
+		return
+	}
+
+	i.lifePool.spawnMobFromID(mobID, newPos(x, y, 0), hasAgro, items, mesos)
+}
+
+func (f *fieldWrapper) Clear(id int, mobs, items bool) {
+	if f.field == nil {
+		return
+	}
+
+	i, err := f.getInstance(id)
+
+	if err != nil {
+		return
+	}
+
+	if mobs {
+		i.lifePool.eraseMobs()
+	}
+
+	if items {
+		i.dropPool.eraseDrops()
+	}
+}
+
+func (f *fieldWrapper) WarpPlayersToPortal(mapID int32, portalID byte) {
+	if f.field == nil {
+		return
+	}
+
+	if field, ok := f.controller.fields[mapID]; ok {
+		portal, err := field.instances[0].getPortalFromID(portalID)
+
+		if err != nil {
+			return
+		}
+
+		for _, i := range f.instances {
+			for _, p := range i.players {
+				f.controller.warpFunc(p, field, portal)
+			}
+		}
+	}
+}
+
+func (f *fieldWrapper) MobCount(id int) int {
+	if f.field == nil {
+		return 0
+	}
+
+	i, err := f.getInstance(id)
+
+	if err != nil {
+		return 0
+	}
+
+	return i.lifePool.mobCount()
 }

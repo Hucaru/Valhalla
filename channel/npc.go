@@ -220,7 +220,7 @@ func packetShopNotEnoughStock() mpacket.Packet {
 	return packetNpcShopResult(0x09)
 }
 
-func PacketShopNotEnoughMesos() mpacket.Packet {
+func packetShopNotEnoughMesos() mpacket.Packet {
 	return packetNpcShopResult(0x0A)
 }
 

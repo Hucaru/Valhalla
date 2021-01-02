@@ -6,6 +6,14 @@ var invasionTime = 60000; //The time that balrog invasion starts from takeoffTim
 var rogSummonTime = 5000 //The time to spawn the rogs after the boat spawn
 var rogCheckTime = 10000 //The period to check to see if rogs have died and boat needs to despawn
 
+// DEBUG timings for sanity
+// var closeGateTime = 10000; //The time to close the gate
+// var takeoffTime = 1000; //The time at which takeoff occurs
+// var landTime = 60000; //The time required to land everyone
+// var invasionTime = 6000; //The time that balrog invasion starts from takeoffTime between ellinia and orbis
+// var rogSummonTime = 500 //The time to spawn the rogs after the boat spawn
+// var rogCheckTime = 10000 //The period to check to see if rogs have died and boat needs to despawn
+
 var platforms = [101000300, 200000111, 200000121, 220000110] // Ellinia, Orbis (E), Orbis (L) , Ludi
 
 var departureWarps = [
@@ -30,31 +38,27 @@ var rogBoat = 1
 
 function showBoats(controller, maps, show, type) {
     for (var i = 0; i < maps.length; i++) {
-        var instances = controller.fields()[maps[i]].instances()
-        for (var j = 0; j < instances.length; j++) {
-            instances[j].showBoat(show, type)
+        var field = controller.field(maps[i])
+        for (var j = 0; j < field.instanceCount(); j++) {
+            field.showBoat(j,show, type)
         }
     }
 }
 
 function allowTicketSales(controller, maps, allow) {
     for (var i = 0; i < maps.length; i++) {
-        var instances = controller.fields()[maps[i]].instances()
-        for (var j = 0; j < instances.length; j++) {
-            instances[j].properties()["canSellTickets"] = allow
+        var field = controller.field(maps[i])
+        for (var j = 0; j < field.instanceCount(); j++) {
+            field.getProperties(j)["canSellTickets"] = allow
         }
     }
+    
 }
 
 function movePlayers(controller, source, destination) {
-    var sourceInstances = controller.fields()[source].instances()
-
-    for (var i = 0; i < sourceInstances.length; i++) {
-        var players = controller.fields()[source].instances()[i].players()
-
-        for (var j = 0; j < players.length; j++) {
-            controller.warpPlayerToPortal(players[j], destination, 0)
-        }
+    var field = controller.field(source)
+    for (var j = 0; j < field.instanceCount(); j++) {
+        field.warpPlayersToPortal(destination, 0)
     }
 }
 
@@ -96,9 +100,9 @@ function invasion(controller) {
     showBoats(controller, cRogMaps, true, rogBoat)
 
     for (var i = 0; i < cRogs.length; i++) {
-        var instances = controller.fields()[cRogs[i].map].instances()
-        for (var j = 0; j < instances.length; j++) {
-            instances[j].changeBgm("Bgm04/ArabPirate")
+        var field = controller.field(cRogs[i].map)
+        for (var j = 0; j < field.instanceCount(); j++) {
+            field.changeBgm(j, "Bgm04/ArabPirate")
         }
     }
 
@@ -107,12 +111,10 @@ function invasion(controller) {
 
 function summonRogs(controller) {
     for (var i = 0; i < cRogs.length; i++) {
-        var instances = controller.fields()[cRogs[i].map].instances()
-        var pos = controller.createPos(cRogs[i].x, cRogs[i].y)
-
-        for (var j = 0; j < instances.length; j++) {
-            instances[j].lifePool().spawnMobFromID(8150000, pos, false, true, true)
-            instances[j].lifePool().spawnMobFromID(8150000, pos, false, true, true)
+        var field = controller.field(cRogs[i].map)
+        for (var j = 0; j < field.instanceCount(); j++) {
+            field.spawnMonster(j, 8150000, cRogs[i].x, cRogs[i].y, false, true, true)
+            field.spawnMonster(j, 8150000, cRogs[i].x, cRogs[i].y, false, true, true)
         }
     }
 
@@ -121,17 +123,17 @@ function summonRogs(controller) {
 
 function checkRogs(controller) {
     var scheduled = false
-    for (var i = 0; i < cRogs.length; i++) {
-        var instances = controller.fields()[cRogs[i].map].instances()
 
-        for (var j = 0; j < instances.length; j++) {
-            if (instances[j].lifePool().mobCount() > 0) {
+    for (var i = 0; i < cRogs.length; i++) {
+        var field = controller.field(cRogs[i].map)
+        for (var j = 0; j < field.instanceCount(); j++) {
+            if (field.mobCount(j) > 0) {
                 if (!scheduled) {
                     controller.schedule("checkRogs", rogCheckTime)
                     scheduled = true
                 }
             } else {
-                instances[j].showBoat(false, rogBoat)
+                field.showBoat(j, false, rogBoat)
             }
         }
     }
@@ -148,11 +150,9 @@ function land(controller) {
     showBoats(controller, cRogMaps, false, rogBoat)
 
     for (var i = 0; i < cRogs.length; i++) {
-        var instances = controller.fields()[cRogs[i].map].instances()
-
-        for (var j = 0; j < instances.length; j++) {
-            instances[j].lifePool().eraseMobs()
-            instances[j].dropPool().eraseDrops()
+        var field = controller.field(cRogs[i].map)
+        for (var j = 0; j < field.instanceCount(); j++) {
+            field.clear(j, true, true)
         }
     }
 

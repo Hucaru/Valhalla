@@ -1053,45 +1053,7 @@ func (d *player) removeBuddy(id int32) {
 	}
 }
 
-// GetCharactersFromAccountWorldID - characters under a specific account
-func GetCharactersFromAccountWorldID(accountID int32, worldID byte) []player {
-	c := []player{}
-
-	filter := "id,accountID,worldID,name,gender,skin,hair,face,level,job,str,dex,intt," +
-		"luk,hp,maxHP,mp,maxMP,ap,sp, exp,fame,mapID,mapPos,previousMapID,mesos," +
-		"equipSlotSize,useSlotSize,setupSlotSize,etcSlotSize,cashSlotSize"
-
-	chars, err := common.DB.Query("SELECT "+filter+" FROM characters WHERE accountID=? AND worldID=?", accountID, worldID)
-
-	if err != nil {
-		log.Println(err)
-	}
-
-	defer chars.Close()
-
-	for chars.Next() {
-		var char player
-
-		err = chars.Scan(&char.id, &char.accountID, &char.worldID, &char.name, &char.gender, &char.skin, &char.hair,
-			&char.face, &char.level, &char.job, &char.str, &char.dex, &char.intt, &char.luk, &char.hp, &char.maxHP,
-			&char.mp, &char.maxMP, &char.ap, &char.sp, &char.exp, &char.fame, &char.mapID, &char.mapPos,
-			&char.previousMap, &char.mesos, &char.equipSlotSize, &char.useSlotSize, &char.setupSlotSize,
-			&char.etcSlotSize, &char.cashSlotSize)
-
-		if err != nil {
-			log.Println(err)
-		}
-
-		char.equip, char.use, char.setUp, char.etc, char.cash = loadInventoryFromDb(char.id)
-
-		c = append(c, char)
-	}
-
-	return c
-}
-
-// LoadPlayerFromID - player id to load from database
-func LoadPlayerFromID(id int32, conn mnet.Client) player {
+func loadPlayerFromID(id int32, conn mnet.Client) player {
 	c := player{}
 	filter := "id,accountID,worldID,name,gender,skin,hair,face,level,job,str,dex,intt," +
 		"luk,hp,maxHP,mp,maxMP,ap,sp, exp,fame,mapID,mapPos,previousMapID,mesos," +

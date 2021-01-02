@@ -147,7 +147,7 @@ func (server *Server) playerConnect(conn mnet.Client, reader mpacket.Reader) {
 		return
 	}
 
-	plr := LoadPlayerFromID(charID, conn)
+	plr := loadPlayerFromID(charID, conn)
 
 	server.players = append(server.players, &plr)
 
