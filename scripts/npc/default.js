@@ -33,7 +33,7 @@ function run(npc, player) {
 
     switch(state) {
     case 0:
-        npc.sendBackNext("first", false, true)
+        npc.sendBackNext("first, npc id: " + npc.id(), false, true)
         break
     case 1:
         npc.sendBackNext("second", true, false)

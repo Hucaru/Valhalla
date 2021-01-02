@@ -9,9 +9,9 @@ import (
 	"time"
 
 	"github.com/Hucaru/Valhalla/constant"
+	"github.com/Hucaru/Valhalla/login"
 	"github.com/Hucaru/Valhalla/mpacket"
 	"github.com/Hucaru/Valhalla/nx"
-	"github.com/Hucaru/Valhalla/server"
 
 	"github.com/Hucaru/Valhalla/mnet"
 )
@@ -21,7 +21,21 @@ type loginServer struct {
 	dbConfig  dbConfig
 	eRecv     chan *mnet.Event
 	wg        *sync.WaitGroup
-	gameState server.LoginServer
+	gameState login.Server
+}
+
+func packetClientHandshake(mapleVersion int16, recv, send []byte) mpacket.Packet {
+	p := mpacket.NewPacket()
+
+	p.WriteInt16(13)
+	p.WriteInt16(mapleVersion)
+	p.WriteString("")
+	p.Append(recv)
+	p.Append(send)
+	p.WriteByte(8)
+
+	return p
+
 }
 
 func newLoginServer(configFile string) *loginServer {
@@ -118,7 +132,7 @@ func (ls *loginServer) acceptNewClientConnections() {
 		go client.Reader()
 		go client.Writer()
 
-		conn.Write(server.PacketClientHandshake(constant.MapleVersion, keyRecv[:], keySend[:]))
+		conn.Write(packetClientHandshake(constant.MapleVersion, keyRecv[:], keySend[:]))
 	}
 }
 

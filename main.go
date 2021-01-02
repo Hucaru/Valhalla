@@ -4,7 +4,7 @@ import (
 	"flag"
 	"log"
 
-	"github.com/Hucaru/Valhalla/server/metrics"
+	"github.com/Hucaru/Valhalla/common"
 )
 
 var typePtr, configPtr, metricPtr *string
@@ -17,7 +17,7 @@ func init() {
 }
 
 func main() {
-	metrics.Port = *metricPtr
+	common.MetricsPort = *metricPtr
 
 	switch *typePtr {
 	case "login":

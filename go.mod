@@ -10,7 +10,8 @@ require (
 	github.com/go-sql-driver/mysql v1.4.1
 	github.com/google/uuid v1.1.1
 	github.com/prometheus/client_golang v1.6.0
-	github.com/rivo/tview v0.0.0-20200915114512-42866ecf6ca6 // indirect
+	golang.org/x/sys v0.0.0-20200817155316-9781c653f443 // indirect
+	golang.org/x/text v0.3.2 // indirect
 	google.golang.org/appengine v1.4.0 // indirect
 )
 
