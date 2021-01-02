@@ -6,6 +6,25 @@ import (
 )
 
 type guild struct {
+	id       int32
+	capacity int32
+	notice   string
+	name     string
+
+	rank1 string
+	rank2 string
+	rank3 string
+	rank4 string
+	rank5 string
+
+	names  []string
+	jobs   []int32
+	levels []int32
+	online []bool
+	ranks  []int32
+
+	logoBg, logoBgColour, logo int16
+	logoColour                 byte
 }
 
 func packetGuildInfo(id int32, name string, memberCount byte) mpacket.Packet {

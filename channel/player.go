@@ -16,6 +16,58 @@ import (
 	"github.com/Hucaru/Valhalla/constant"
 )
 
+type players []*player
+
+func (p players) getFromConn(conn mnet.Client) (*player, error) {
+	for _, v := range p {
+		if v.conn == conn {
+			return v, nil
+		}
+	}
+
+	return new(player), fmt.Errorf("Could not retrieve Data")
+}
+
+func (p players) getFromName(name string) (*player, error) {
+	for _, v := range p {
+		if v.name == name {
+			return v, nil
+		}
+	}
+
+	return new(player), fmt.Errorf("Could not retrieve Data")
+}
+
+func (p players) getFromID(id int32) (*player, error) {
+	for _, v := range p {
+		if v.id == id {
+			return v, nil
+		}
+	}
+
+	return new(player), fmt.Errorf("Could not retrieve Data")
+}
+
+func (p *players) removeFromConn(conn mnet.Client) error {
+	i := -1
+
+	for j, v := range *p {
+		if v.conn == conn {
+			i = j
+			break
+		}
+	}
+
+	if i == -1 {
+		return fmt.Errorf("Could not find Data")
+	}
+
+	(*p)[i] = (*p)[len((*p))-1]
+	(*p) = (*p)[:len((*p))-1]
+
+	return nil
+}
+
 type buddy struct {
 	id        int32
 	name      string

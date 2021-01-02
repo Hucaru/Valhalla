@@ -1,7 +1,6 @@
 package channel
 
 import (
-	"fmt"
 	"log"
 	"strconv"
 	"time"
@@ -17,61 +16,6 @@ import (
 	"github.com/Hucaru/Valhalla/common/opcode"
 	"github.com/Hucaru/Valhalla/internal"
 )
-
-type players []*player
-
-func (p players) getFromConn(conn mnet.Client) (*player, error) {
-	for _, v := range p {
-		if v.conn == conn {
-			return v, nil
-		}
-	}
-
-	return new(player), fmt.Errorf("Could not retrieve Data")
-}
-
-// GetFromName retrieve the Data from the connection
-func (p players) getFromName(name string) (*player, error) {
-	for _, v := range p {
-		if v.name == name {
-			return v, nil
-		}
-	}
-
-	return new(player), fmt.Errorf("Could not retrieve Data")
-}
-
-// GetFromID retrieve the Data from the connection
-func (p players) getFromID(id int32) (*player, error) {
-	for _, v := range p {
-		if v.id == id {
-			return v, nil
-		}
-	}
-
-	return new(player), fmt.Errorf("Could not retrieve Data")
-}
-
-// RemoveFromConn removes the Data based on the connection
-func (p *players) removeFromConn(conn mnet.Client) error {
-	i := -1
-
-	for j, v := range *p {
-		if v.conn == conn {
-			i = j
-			break
-		}
-	}
-
-	if i == -1 {
-		return fmt.Errorf("Could not find Data")
-	}
-
-	(*p)[i] = (*p)[len((*p))-1]
-	(*p) = (*p)[:len((*p))-1]
-
-	return nil
-}
 
 // Server state
 type Server struct {
@@ -92,6 +36,7 @@ type Server struct {
 	eventCtrl        map[string]*eventScriptController
 	eventScriptStore *scriptStore
 	parties          map[int32]*party
+	guilds           map[int32]*guild
 }
 
 // Initialise the server
@@ -135,6 +80,7 @@ func (server *Server) Initialise(work chan func(), dbuser, dbpassword, dbaddress
 	server.loadScripts()
 
 	server.parties = make(map[int32]*party)
+	server.guilds = make(map[int32]*guild)
 }
 
 func (server *Server) loadScripts() {
@@ -295,11 +241,3 @@ func (server *Server) ClientDisconnected(conn mnet.Client) {
 
 	common.MetricsGauges["player_count"].With(prometheus.Labels{"channel": strconv.Itoa(int(server.id)), "world": server.worldName}).Dec()
 }
-
-// SetScrollingHeaderMessage that appears at the top of game window
-// func (server *Server) SetScrollingHeaderMessage(msg string) {
-// 	server.header = msg
-// 	for _, v := range server.players {
-// 		v.send(message.PacketMessageScrollingHeader(msg))
-// 	}
-// }
