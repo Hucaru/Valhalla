@@ -151,13 +151,14 @@ func PacketWorldPartyAccept(partyID, playerID, index int32, party *Party) mpacke
 	return p
 }
 
-func PacketChannelPartyUpdateInfo(partyID, playerID, job, level int32, name string) mpacket.Packet {
+func PacketChannelPartyUpdateInfo(partyID, playerID, job, level, mapID int32, name string) mpacket.Packet {
 	p := mpacket.CreateInternal(opcode.ChannelPlayerPartyEvent)
 	p.WriteByte(4) // update party window info
 	p.WriteInt32(partyID)
 	p.WriteInt32(playerID)
 	p.WriteInt32(job)
 	p.WriteInt32(level)
+	p.WriteInt32(mapID)
 	p.WriteString(name)
 
 	return p

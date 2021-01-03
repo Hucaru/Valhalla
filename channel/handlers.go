@@ -183,15 +183,8 @@ func (server *Server) playerConnect(conn mnet.Client, reader mpacket.Reader) {
 	newPlr.sendGuildInfo()
 	newPlr.sendBuddyList()
 
-	for _, party := range server.parties {
-		if party.member(newPlr.id) {
-			newPlr.party = party
-			break
-		}
-	}
-
-	newPlr.UpdatePartyInfo = func(partyID, playerID, job, level int32, name string) {
-		server.world.Send(internal.PacketChannelPartyUpdateInfo(partyID, playerID, job, level, name))
+	newPlr.UpdatePartyInfo = func(partyID, playerID, job, level, mapID int32, name string) {
+		server.world.Send(internal.PacketChannelPartyUpdateInfo(partyID, playerID, job, level, mapID, name))
 	}
 
 	common.MetricsGauges["player_count"].With(prometheus.Labels{"channel": strconv.Itoa(int(server.id)), "world": server.worldName}).Inc()
@@ -1317,8 +1310,6 @@ func (server Server) playerMeleeSkill(conn mnet.Client, reader mpacket.Reader) {
 		return
 	}
 
-	// if player in party extract
-
 	packetSkillMelee := func(char player, ad attackData) mpacket.Packet {
 		p := mpacket.CreateWithOpcode(opcode.SendChannelPlayerUseMeleeSkill)
 		p.WriteInt32(char.id)
@@ -2146,6 +2137,8 @@ func (server *Server) HandleServerPacket(conn mnet.Server, reader mpacket.Reader
 		server.handleBuddyEvent(conn, reader)
 	case opcode.ChannelPlayerPartyEvent:
 		server.handlePartyEvent(conn, reader)
+	case opcode.ChannelPlayerGuildEvent:
+		server.handleGuildEvent(conn, reader)
 	default:
 		log.Println("UNKNOWN SERVER PACKET:", reader)
 	}
@@ -2364,7 +2357,7 @@ func (server *Server) handlePartyEvent(conn mnet.Server, reader mpacket.Reader) 
 				plr, _ := server.players.getFromID(playerID)
 				party.updateOnlineStatus(index, plr, &reader)
 			} else {
-				party.updateJobLevel(index, &reader)
+				party.updateInfo(index, &reader)
 			}
 		}
 	default:
@@ -2455,5 +2448,15 @@ func (server Server) handleChatEvent(conn mnet.Server, reader mpacket.Reader) {
 		}
 	default:
 		log.Println("Unknown chat event type:", op)
+	}
+}
+
+func (server Server) handleGuildEvent(conn mnet.Server, reader mpacket.Reader) {
+
+	op := reader.ReadByte()
+
+	switch op {
+	default:
+		log.Println("Unkown guild event type:", op)
 	}
 }

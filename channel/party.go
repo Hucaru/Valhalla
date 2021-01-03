@@ -1,8 +1,6 @@
 package channel
 
 import (
-	"fmt"
-
 	"github.com/Hucaru/Valhalla/common/mpacket"
 	"github.com/Hucaru/Valhalla/common/opcode"
 	"github.com/Hucaru/Valhalla/constant"
@@ -73,43 +71,30 @@ func (d party) full() bool {
 	return true
 }
 
-func (d *party) updatePlayerMap(playerID, mapID int32) {
-	for i, v := range d.PlayerID {
-		if v == playerID {
-			d.MapID[i] = mapID
-
-			d.broadcast(packetPartyUpdate(d.ID, d))
-
-			return
-		}
-	}
-}
-
 func (d *party) updateOnlineStatus(index int32, plr *player, reader *mpacket.Reader) {
 	d.SerialisePacket(reader)
 	d.players[index] = plr
-	fmt.Println("party update for:", d.Name[index], d.ChannelID[index])
+
+	if plr != nil {
+		plr.party = d
+	}
+
 	d.broadcast(packetPartyUpdate(d.ID, d))
 }
 
-func (d *party) updateJobLevel(index int32, reader *mpacket.Reader) {
+func (d *party) updateInfo(index int32, reader *mpacket.Reader) {
+	mapID := d.MapID[index]
 	d.SerialisePacket(reader)
 
-	playerID := d.PlayerID[index]
-	job := d.Job[index]
-	level := d.Level[index]
+	if mapID != d.MapID[index] {
+		d.broadcast(packetPartyUpdate(d.ID, d))
+	} else {
+		playerID := d.PlayerID[index]
+		job := d.Job[index]
+		level := d.Level[index]
 
-	d.broadcast(packetPartyUpdateJobLevel(playerID, job, level))
-}
-
-func (d party) member(id int32) bool {
-	for _, v := range d.PlayerID {
-		if v == id {
-			return true
-		}
+		d.broadcast(packetPartyUpdateJobLevel(playerID, job, level))
 	}
-
-	return false
 }
 
 func (d party) giveExp(playerID, amount int32, sameMap bool) {

@@ -140,7 +140,7 @@ func getSkillsFromCharID(id int32) []playerSkill {
 	return skills
 }
 
-type updatePartyInfoFunc func(partyID, playerID, job, level int32, name string)
+type updatePartyInfoFunc func(partyID, playerID, job, level, mapID int32, name string)
 
 type player struct {
 	conn mnet.Client
@@ -223,7 +223,7 @@ func (d *player) setJob(id int16) {
 	d.conn.Send(packetPlayerStatChange(true, constant.JobID, int32(id)))
 
 	if d.party != nil {
-		d.UpdatePartyInfo(d.party.ID, d.id, int32(d.job), int32(d.level), d.name)
+		d.UpdatePartyInfo(d.party.ID, d.id, int32(d.job), int32(d.level), d.mapID, d.name)
 	}
 }
 
@@ -310,7 +310,7 @@ func (d *player) setLevel(amount byte) {
 	d.inst.send(packetPlayerLevelUpAnimation(d.id))
 
 	if d.party != nil {
-		d.UpdatePartyInfo(d.party.ID, d.id, int32(d.job), int32(d.level), d.name)
+		d.UpdatePartyInfo(d.party.ID, d.id, int32(d.job), int32(d.level), d.mapID, d.name)
 	}
 }
 
@@ -484,7 +484,7 @@ func (d *player) setMapID(id int32) {
 	d.mapID = id
 
 	if d.party != nil {
-		d.party.updatePlayerMap(d.id, d.mapID)
+		d.UpdatePartyInfo(d.party.ID, d.id, int32(d.job), int32(d.level), d.mapID, d.name)
 	}
 }
 
@@ -1581,7 +1581,7 @@ func packetPlayerAvatarSummaryWindow(charID int32, plr player) mpacket.Packet {
 	p.WriteInt16(plr.fame)
 
 	if plr.guild != nil {
-		p.WriteString(plr.guild.name)
+		p.WriteString(plr.guild.Name)
 	} else {
 		p.WriteString("")
 	}

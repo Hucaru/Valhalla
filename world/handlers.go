@@ -32,6 +32,8 @@ func (server *Server) HandleServerPacket(conn mnet.Server, reader mpacket.Reader
 		server.forwardPacketToChannels(conn, reader)
 	case opcode.ChannelPlayerPartyEvent:
 		server.handlePartyEvent(conn, reader)
+	case opcode.ChannelPlayerGuildEvent:
+		server.handleGuildEvent(conn, reader)
 	default:
 		log.Println("UNKNOWN SERVER PACKET:", reader)
 	}
@@ -147,6 +149,9 @@ func (server *Server) handlePlayerConnect(conn mnet.Server, reader mpacket.Reade
 			break
 		}
 	}
+
+	// search db for player is in guild, if in guld send a guild connected message
+	// channel server will need to display guild to players
 }
 
 func (server *Server) handlePlayerDisconnect(conn mnet.Server, reader mpacket.Reader) {
@@ -162,6 +167,21 @@ func (server *Server) handlePlayerDisconnect(conn mnet.Server, reader mpacket.Re
 
 				server.channelBroadcast(internal.PacketWorldPartyUpdate(party.ID, party.PlayerID[i], int32(i), true, party))
 				end = true
+				break
+			}
+		}
+
+		if end {
+			break
+		}
+	}
+
+	for _, guild := range server.guilds {
+		end := false
+		for i, v := range guild.PlayerID {
+			if v == playerID {
+				guild.Online[i] = false
+				// send guild connection message
 				break
 			}
 		}
@@ -270,6 +290,7 @@ func (server *Server) handlePartyEvent(conn mnet.Server, reader mpacket.Reader) 
 		playerID := reader.ReadInt32()
 		job := reader.ReadInt32()
 		level := reader.ReadInt32()
+		mapID := reader.ReadInt32()
 		name := reader.ReadString(reader.ReadInt16())
 
 		if party, ok := server.parties[partyID]; ok {
@@ -278,6 +299,7 @@ func (server *Server) handlePartyEvent(conn mnet.Server, reader mpacket.Reader) 
 					party.Job[i] = job
 					party.Level[i] = level
 					party.Name[i] = name
+					party.MapID[i] = mapID
 
 					server.channelBroadcast(internal.PacketWorldPartyUpdate(partyID, playerID, int32(i), false, party))
 
@@ -287,5 +309,15 @@ func (server *Server) handlePartyEvent(conn mnet.Server, reader mpacket.Reader) 
 		}
 	default:
 		log.Println("Unkown party event type:", op)
+	}
+}
+
+func (server *Server) handleGuildEvent(conn mnet.Server, reader mpacket.Reader) {
+	op := reader.ReadByte()
+
+	switch op {
+	case 0: // new guild
+	default:
+		log.Println("Unkown guild event type:", op)
 	}
 }

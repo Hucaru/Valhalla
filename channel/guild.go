@@ -5,43 +5,34 @@ import (
 
 	"github.com/Hucaru/Valhalla/common/mpacket"
 	"github.com/Hucaru/Valhalla/common/opcode"
+	"github.com/Hucaru/Valhalla/internal"
 )
 
-// TODO: World server needs to be authorative. The shared parts of the struct need to be composed into this struct
 // TODO: login server needs to send a deleted character event so that they can leave the guild for playing players
 
 type guild struct {
 	players []*player
+	internal.Guild
 
-	id       int32
-	capacity int32
-	notice   string
-	name     string
+	// id       int32
+	// capacity int32
+	// notice   string
+	// name     string
 
-	master   string
-	jrMaster string
-	member1  string
-	member2  string
-	member3  string
+	// master   string
+	// jrMaster string
+	// member1  string
+	// member2  string
+	// member3  string
 
-	logoBg, logoBgColour, logo int16
-	logoColour                 byte
+	// logoBg, logoBgColour, logo int16
+	// logoColour                 byte
 
-	names  []string
-	jobs   []int32
-	levels []int32
-	online []bool
-	ranks  []int32
-}
-
-func newGuild(capacity int32, name string, logoBg, logoBgColour, logo int16, logoColour byte) *guild {
-	return &guild{
-		capacity:     capacity,
-		name:         name,
-		logoBg:       logoBg,
-		logoBgColour: logoBgColour,
-		logo:         logo,
-		logoColour:   logoColour}
+	// names  []string
+	// jobs   []int32
+	// levels []int32
+	// online []bool
+	// ranks  []int32
 }
 
 func packetGuildInfo(id int32, name string, memberCount byte) mpacket.Packet {

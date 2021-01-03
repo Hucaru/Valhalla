@@ -108,3 +108,85 @@ func (party *Party) SerialisePacket(reader *mpacket.Reader) {
 		party.Level[i] = reader.ReadInt32()
 	}
 }
+
+type Guild struct {
+	ID       int32
+	Capacity int32
+	Name     string
+	Notice   string
+
+	Master   string
+	JrMaster string
+	Member1  string
+	Member2  string
+	Member3  string
+
+	LogoBg, LogoBgColour, Logo int16
+	LogoColour                 byte
+
+	PlayerID [constant.MaxGuildSize]int32
+	Names    [constant.MaxGuildSize]string
+	Jobs     [constant.MaxGuildSize]int32
+	Levels   [constant.MaxGuildSize]int32
+	Online   [constant.MaxGuildSize]bool
+	Ranks    [constant.MaxGuildSize]byte
+}
+
+func (guild *Guild) GeneratePacket() mpacket.Packet {
+	p := mpacket.NewPacket()
+	p.WriteInt32(guild.ID)
+	p.WriteInt32(guild.Capacity)
+	p.WriteString(guild.Name)
+	p.WriteString(guild.Notice)
+	p.WriteString(guild.Master)
+	p.WriteString(guild.JrMaster)
+	p.WriteString(guild.Member1)
+	p.WriteString(guild.Member2)
+	p.WriteString(guild.Member3)
+	p.WriteInt16(guild.LogoBg)
+	p.WriteInt16(guild.LogoBgColour)
+	p.WriteInt16(guild.Logo)
+	p.WriteByte(guild.LogoColour)
+
+	p.WriteByte(byte(len(guild.PlayerID)))
+
+	for i := 0; i < len(guild.PlayerID); i++ {
+		p.WriteInt32(guild.PlayerID[i])
+		p.WriteString(guild.Names[i])
+		p.WriteInt32(guild.Jobs[i])
+		p.WriteInt32(guild.Levels[i])
+		p.WriteBool(guild.Online[i])
+		p.WriteByte(guild.Ranks[i])
+	}
+
+	return p
+}
+
+func (guild *Guild) SerialisePacket(reader *mpacket.Reader) {
+	guild.ID = reader.ReadInt32()
+	guild.Capacity = reader.ReadInt32()
+	guild.Name = reader.ReadString(reader.ReadInt16())
+	guild.Notice = reader.ReadString(reader.ReadInt16())
+
+	guild.Master = reader.ReadString(reader.ReadInt16())
+	guild.JrMaster = reader.ReadString(reader.ReadInt16())
+	guild.Member1 = reader.ReadString(reader.ReadInt16())
+	guild.Member2 = reader.ReadString(reader.ReadInt16())
+	guild.Member3 = reader.ReadString(reader.ReadInt16())
+
+	guild.LogoBg = reader.ReadInt16()
+	guild.LogoBgColour = reader.ReadInt16()
+	guild.Logo = reader.ReadInt16()
+	guild.LogoColour = reader.ReadByte()
+
+	amount := reader.ReadByte()
+
+	for i := byte(0); i < amount; i++ {
+		guild.PlayerID[i] = reader.ReadInt32()
+		guild.Names[i] = reader.ReadString(reader.ReadInt16())
+		guild.Jobs[i] = reader.ReadInt32()
+		guild.Levels[i] = reader.ReadInt32()
+		guild.Online[i] = reader.ReadBool()
+		guild.Ranks[i] = reader.ReadByte()
+	}
+}

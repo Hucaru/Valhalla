@@ -46,6 +46,8 @@ World server:
 - [x] Forward whisphers
 - [ ] Allow gm command to actiavate exp/drop changes accross all channels
 - [ ] Allow gm commands to update information displayed at login
+- [ ] Party sync when channel or world server are restarted
+- [ ] Guild sync when channel or world server are restarted
 
 Cashshop server:
 - [ ] List items
@@ -99,7 +101,6 @@ Channel server:
 - [ ] Communication Window
 - [ ] Quests
 - [ ] Reactors
-- [ ] Autonomous GM commands which can be started and stopped at will
 - [x] Server resets login status upon restart for dangling characters
 
 Metrics:
@@ -110,6 +111,7 @@ Metrics:
 - [ ] Ongoing trades
 - [ ] Ongoing minigames
 - [ ] Ongoing npc script interactions
+- [ ] Number of parties
 
 See screenshots section for an example Grafana dashboard
 
@@ -121,7 +123,7 @@ See screenshots section for an example Grafana dashboard
 - Implement AES crypt (ontop of the shanda) and determine how to enable it in the client
 - Move player save database operations into relevant systems
 - Player inventory needs a re-write
-- When channel server joins world, channel needs to send parties and guilds it has, world needs to compare and send agrigated active parties and guilds to prevent de-sync from restarted channels/worlds
+- Investigate party reject invite packet from client (it looks like garbage)
 
 ## Acknowledgements
 

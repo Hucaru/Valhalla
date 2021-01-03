@@ -88,6 +88,7 @@ const (
 	MaxMpValue = 32767
 
 	MaxPartySize = 6
+	MaxGuildSize = 255
 )
 
 var ExpTable = [...]int32{15, 34, 57, 92, 135, 372, 560, 840, 1242, 1144, // Beginner
