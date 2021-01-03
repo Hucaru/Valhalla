@@ -124,6 +124,8 @@ type Guild struct {
 	LogoBg, Logo             int16
 	LogoBgColour, LogoColour byte
 
+	Points int32
+
 	PlayerID [constant.MaxGuildSize]int32
 	Names    [constant.MaxGuildSize]string
 	Jobs     [constant.MaxGuildSize]int32
@@ -147,6 +149,7 @@ func (guild *Guild) GeneratePacket() mpacket.Packet {
 	p.WriteByte(guild.LogoBgColour)
 	p.WriteInt16(guild.Logo)
 	p.WriteByte(guild.LogoColour)
+	p.WriteInt32(guild.Points)
 
 	validIndexes := make([]int32, 0, constant.MaxGuildSize)
 	for i, v := range guild.PlayerID {
@@ -185,6 +188,7 @@ func (guild *Guild) SerialisePacket(reader *mpacket.Reader) {
 	guild.LogoBgColour = reader.ReadByte()
 	guild.Logo = reader.ReadInt16()
 	guild.LogoColour = reader.ReadByte()
+	guild.Points = reader.ReadInt32()
 
 	amount := reader.ReadByte()
 

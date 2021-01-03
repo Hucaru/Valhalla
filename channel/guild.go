@@ -91,13 +91,13 @@ func packetGuildInfo(guild *guild) mpacket.Packet {
 		p.WriteInt32(0) // ?
 	}
 
-	p.WriteInt32(int32(guild.Capacity)) // capacity
-	p.WriteInt16(guild.LogoBg)          // logo background
-	p.WriteByte(guild.LogoBgColour)     // logo bg colour
-	p.WriteInt16(guild.Logo)            // logo
-	p.WriteByte(guild.LogoColour)       // logo colour
-	p.WriteString(guild.Notice)         // notice
-	p.WriteInt32(9999)                  // ?
+	p.WriteInt32(int32(guild.Capacity))
+	p.WriteInt16(guild.LogoBg)
+	p.WriteByte(guild.LogoBgColour)
+	p.WriteInt16(guild.Logo)
+	p.WriteByte(guild.LogoColour)
+	p.WriteString(guild.Notice)
+	p.WriteInt32(guild.Points)
 
 	return p
 }

@@ -1,7 +1,6 @@
 package world
 
 import (
-	"database/sql"
 	"log"
 	"math"
 	"time"
@@ -184,11 +183,11 @@ func (server *Server) handlePlayerConnect(conn mnet.Server, reader mpacket.Reade
 					i++
 				}
 
-				query := "capacity,name,notice,master,jrMaster,member1,member2,member3,logoBg,logoBgColour,logo,logoColour"
+				query := "capacity,name,notice,master,jrMaster,member1,member2,member3,logoBg,logoBgColour,logo,logoColour,points"
 				err := common.DB.QueryRow("SELECT "+query+" FROM guilds WHERE id=?", guildID).Scan(&loadedGuild.Capacity,
 					&loadedGuild.Name, &loadedGuild.Notice, &loadedGuild.Master, &loadedGuild.JrMaster, &loadedGuild.Member1,
 					&loadedGuild.Member2, &loadedGuild.Member3, &loadedGuild.LogoBg, &loadedGuild.LogoBgColour, &loadedGuild.Logo,
-					&loadedGuild.LogoColour)
+					&loadedGuild.LogoColour, &loadedGuild.Points)
 
 				if err != nil {
 					log.Println(err)
@@ -204,10 +203,7 @@ func (server *Server) handlePlayerConnect(conn mnet.Server, reader mpacket.Reade
 				guild.Online[i] = true
 			}
 		}
-	} else if err != sql.ErrNoRows {
-		log.Println(err)
 	}
-	// channel server will need to display guild to players
 }
 
 func (server *Server) handlePlayerDisconnect(conn mnet.Server, reader mpacket.Reader) {
