@@ -191,7 +191,7 @@ func packetNpcShop(npcID int32, items [][]int32) mpacket.Packet {
 			}
 		}
 
-		if math.Floor(float64(currentItem[0]/10000)) == 207 {
+		if float64(currentItem[0]/10000) == 207 {
 			p.WriteUint64(uint64(item.UnitPrice * float64(item.SlotMax)))
 		}
 

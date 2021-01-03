@@ -89,14 +89,18 @@ func (server *Server) loadScripts() {
 
 	server.npcScriptStore = createScriptStore("scripts/npc", server.dispatch) // make folder a config param
 	start := time.Now()
-	server.npcScriptStore.loadScripts()
+	if err := server.npcScriptStore.loadScripts(); err != nil {
+		log.Fatal(err)
+	}
 	elapsed := time.Since(start)
 	log.Println("Loaded npc scripts in", elapsed)
 	go server.npcScriptStore.monitor(func(name string, program *goja.Program) {})
 
 	server.eventScriptStore = createScriptStore("scripts/event", server.dispatch) // make folder a config param
 	start = time.Now()
-	server.eventScriptStore.loadScripts()
+	if err := server.eventScriptStore.loadScripts(); err != nil {
+		log.Fatal(err)
+	}
 	elapsed = time.Since(start)
 	log.Println("Loaded event scripts in", elapsed)
 
@@ -106,9 +110,7 @@ func (server *Server) loadScripts() {
 		}
 
 		if program == nil {
-			if _, ok := server.eventCtrl[name]; ok {
-				delete(server.eventCtrl, name)
-			}
+			delete(server.eventCtrl, name)
 
 			return
 		}
@@ -193,6 +195,11 @@ func (server *Server) ClientDisconnected(conn mnet.Client) {
 	}
 
 	inst, err := field.getInstance(plr.inst.id)
+
+	if err != nil {
+		return
+	}
+
 	err = inst.removePlayer(plr)
 
 	if err != nil {
@@ -205,11 +212,7 @@ func (server *Server) ClientDisconnected(conn mnet.Client) {
 		log.Println(err)
 	}
 
-	if _, ok := server.npcChat[conn]; ok {
-		delete(server.npcChat, conn)
-	}
-
-	server.players.removeFromConn(conn)
+	delete(server.npcChat, conn)
 
 	index := -1
 
@@ -235,6 +238,12 @@ func (server *Server) ClientDisconnected(conn mnet.Client) {
 		if err != nil {
 			log.Println("Unable to complete logout for ", conn.GetAccountID())
 		}
+	}
+
+	err = server.players.removeFromConn(conn)
+
+	if err != nil {
+		log.Println(err)
 	}
 
 	conn.Cleanup()

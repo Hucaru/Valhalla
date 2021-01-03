@@ -121,11 +121,7 @@ func (r room) sendExcept(p mpacket.Packet, plr *player) {
 }
 
 func (r room) closed() bool {
-	if len(r.players) == 0 {
-		return true
-	}
-
-	return false
+	return len(r.players) == 0
 }
 
 func (r room) chatMsg(plr *player, msg string) {
@@ -273,11 +269,11 @@ func (r *gameRoom) gameEnd(draw, forfeit bool, plr *player, winningSlot byte) {
 	r.assignWinLossDraw(draw, winningSlot)
 	r.send(packetRoomGameResult(draw, winningSlot, forfeit, r.players))
 
-	if r.exit[0] == true {
+	if r.exit[0] {
 		for _, v := range r.players {
 			r.kickPlayer(v, 0)
 		}
-	} else if r.exit[1] == true {
+	} else if r.exit[1] {
 		r.kickPlayer(r.players[1], 0)
 		r.exit[1] = false // no need to clear owner entry, if they leave room closes
 	}
@@ -336,7 +332,7 @@ func (r *gameRoom) requestTie(plr *player) {
 }
 
 func (r *gameRoom) requestTieResult(tie bool, plr *player) {
-	if tie == true {
+	if tie {
 		r.gameEnd(true, false, nil, 0)
 	} else {
 		for _, v := range r.players {
@@ -450,11 +446,7 @@ func (r *omokRoom) placePiece(x, y int32, piece byte, plr *player) bool {
 
 		r.gameEnd(draw, false, nil, winningSlot)
 
-		if r.closed() { // If owner exit as part of game leave
-			return false
-		}
-
-		return true
+		return !r.closed()
 	}
 
 	r.p1Turn = !r.p1Turn
@@ -661,11 +653,7 @@ func (r *memoryRoom) selectCard(turn, cardID byte, plr *player) bool {
 
 			r.gameEnd(draw, false, nil, winningSlot)
 
-			if r.closed() { // If owner exit as part of game leave
-				return false
-			}
-
-			return true
+			return !r.closed()
 		}
 
 	} else if r.p1Turn {

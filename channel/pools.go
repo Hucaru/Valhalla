@@ -39,6 +39,12 @@ func (r lifePoolRectangle) pointInRect(x, y int16) bool {
 	return true
 }
 
+/*
+	TODO: The monster should only care about the summoner as a int32 not as a plr ptr
+	start out by having one controller per pool, then expand into spliting the map
+	between players in the field
+*/
+
 type lifePool struct {
 	instance *fieldInstance
 
@@ -150,7 +156,8 @@ func (pool *lifePool) nextNpcID() (int32, error) {
 	return 0, fmt.Errorf("No space to generate id in drop pool")
 }
 
-func (pool lifePool) canClose() bool {
+func (pool lifePool) canPause() bool {
+	// TODO: Need to check if any status effects are on monsters, if none are present then this pool can pause
 	return false
 }
 
@@ -226,7 +233,7 @@ func (pool *lifePool) npcAcknowledge(poolID int32, plr *player, data []byte) {
 
 }
 
-func (pool *lifePool) mobAcknowledge(poolID int32, plr *player, moveID int16, skillPossible bool, action byte, skillData uint32, moveData movement, finalData movementFrag, moveBytes []byte) {
+func (pool *lifePool) mobAcknowledge(poolID int32, plr *player, moveID int16, skillPossible bool, action int8, skillData uint32, moveData movement, finalData movementFrag, moveBytes []byte) {
 	for i, v := range pool.mobs {
 		mob := pool.mobs[i]
 
@@ -305,7 +312,7 @@ func (pool *lifePool) mobDamaged(poolID int32, damager *player, dmg ...int32) {
 						continue
 					}
 
-					var partyExp int32 = 0
+					var partyExp int32
 
 					if dmg == v.maxHP {
 						plr.giveEXP(v.exp, true, false)
@@ -340,7 +347,7 @@ func (pool *lifePool) mobDamaged(poolID int32, damager *player, dmg ...int32) {
 						continue
 					}
 
-					newMob, err := createMonsterFromID(spawnID, int32(id), v.pos, nil, true, true)
+					newMob, err := createMonsterFromID(spawnID, int32(id), v.pos, nil, true, true, 0)
 
 					if err != nil {
 						log.Println(err)
@@ -454,14 +461,14 @@ func (pool *lifePool) spawnMob(m *monster, hasAgro bool) bool {
 	return false
 }
 
-func (pool *lifePool) spawnMobFromID(mobID int32, location pos, hasAgro, items, mesos bool) error {
+func (pool *lifePool) spawnMobFromID(mobID int32, location pos, hasAgro, items, mesos bool, summoner int32) error {
 	id, err := pool.nextMobID()
 
 	if err != nil {
 		return err
 	}
 
-	m, err := createMonsterFromID(id, mobID, location, nil, items, mesos)
+	m, err := createMonsterFromID(id, mobID, location, nil, items, mesos, summoner)
 
 	if err != nil {
 		return err
@@ -727,8 +734,6 @@ func (pool *roomPool) removePlayer(plr *player) {
 	}
 }
 
-type dropSet byte
-
 const (
 	dropTimeoutNonOwner      = 0
 	dropTimeoutNonOwnerParty = 1
@@ -755,7 +760,7 @@ type fieldDrop struct {
 }
 
 const (
-	dropSpawnDisappears      = 0
+	dropSpawnDisappears      = 0 // disappears as it is thrown in the air
 	dropSpawnNormal          = 1
 	dropSpawnShow            = 2
 	dropSpawnFadeAtTopOfDrop = 3
@@ -789,8 +794,8 @@ func (pool *dropPool) nextID() (int32, error) {
 	return 0, fmt.Errorf("No space to generate id in drop pool")
 }
 
-func (pool dropPool) canClose() bool {
-	return false
+func (pool dropPool) canPause() bool {
+	return len(pool.drops) == 0
 }
 
 func (pool dropPool) playerShowDrops(plr *player) {
@@ -802,10 +807,7 @@ func (pool dropPool) playerShowDrops(plr *player) {
 func (pool *dropPool) removeDrop(instant bool, id ...int32) {
 	for _, id := range id {
 		pool.instance.send(packetRemoveDrop(instant, id))
-
-		if _, ok := pool.drops[id]; ok {
-			delete(pool.drops, id)
-		}
+		delete(pool.drops, id)
 	}
 }
 
@@ -903,7 +905,7 @@ func (pool *dropPool) createDrop(spawnType byte, dropType byte, mesos int32, dro
 	}
 }
 
-func (pool dropPool) HideDrops(plr *player) {
+func (pool dropPool) hideDrops(plr *player) {
 	for id := range pool.drops {
 		plr.send(packetRemoveDrop(true, id))
 	}
@@ -955,11 +957,11 @@ func packetMobShow(mob *monster) mpacket.Packet {
 	return p
 }
 
-func packetMobMove(mobID int32, allowedToUseSkill bool, action byte, skillData uint32, moveBytes []byte) mpacket.Packet {
+func packetMobMove(mobID int32, allowedToUseSkill bool, action int8, skillData uint32, moveBytes []byte) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelMoveMob)
 	p.WriteInt32(mobID)
 	p.WriteBool(allowedToUseSkill)
-	p.WriteByte(action)
+	p.WriteInt8(action)
 	p.WriteUint32(skillData)
 	p.WriteBytes(moveBytes)
 

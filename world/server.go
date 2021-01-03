@@ -15,6 +15,12 @@ type Server struct {
 	login            mnet.Server
 	nextPartyID      int32
 	reusablePartyIDs []int32
+	parties          map[int32]*internal.Party
+}
+
+// Initialise internal state
+func (server *Server) Initialise() {
+	server.parties = make(map[int32]*internal.Party)
 }
 
 // RegisterWithLogin server

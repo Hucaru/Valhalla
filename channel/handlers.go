@@ -173,9 +173,15 @@ func (server *Server) playerConnect(conn mnet.Client, reader mpacket.Reader) {
 		return
 	}
 
-	inst.addPlayer(newPlr)
-	newPlr.UpdateGuildInfo()
-	newPlr.UpdateBuddyInfo()
+	err = inst.addPlayer(newPlr)
+
+	if err != nil {
+		log.Println(err)
+		return
+	}
+
+	newPlr.sendGuildInfo()
+	newPlr.sendBuddyList()
 
 	for _, party := range server.parties {
 		if party.member(newPlr.id) {
@@ -191,7 +197,6 @@ func (server *Server) playerConnect(conn mnet.Client, reader mpacket.Reader) {
 	common.MetricsGauges["player_count"].With(prometheus.Labels{"channel": strconv.Itoa(int(server.id)), "world": server.worldName}).Inc()
 
 	server.world.Send(internal.PacketChannelPopUpdate(server.id, int16(len(server.players))))
-	// Emit server message that user has connected (used to update buddy, guild and party notifications)
 	server.world.Send(internal.PacketChannelPlayerConnected(plr.id, plr.name, server.id, channelID > -1, newPlr.mapID))
 }
 
@@ -588,7 +593,13 @@ func (server Server) playerUsePortal(conn mnet.Client, reader mpacket.Reader) {
 				return
 			}
 
-			server.warpPlayer(plr, dstField, portal)
+			err = server.warpPlayer(plr, dstField, portal)
+
+			if err != nil {
+				log.Println(err)
+				return
+			}
+
 			plr.setHP(50)
 			// TODO: reduce exp
 		}
@@ -632,7 +643,12 @@ func (server Server) playerUsePortal(conn mnet.Client, reader mpacket.Reader) {
 			return
 		}
 
-		server.warpPlayer(plr, dstField, dstPortal)
+		err = server.warpPlayer(plr, dstField, dstPortal)
+
+		if err != nil {
+			log.Println(err)
+			return
+		}
 	default:
 		log.Println("Unknown portal entry type, packet:", reader)
 	}
@@ -659,28 +675,22 @@ func (server Server) warpPlayer(plr *player, dstField *field, dstPortal portal) 
 		}
 	}
 
-	srcInst.removePlayer(plr)
+	err = srcInst.removePlayer(plr)
+
+	if err != nil {
+		return err
+	}
 
 	plr.setMapID(dstField.id)
 	// plr.mapPos = dstPortal.id
 	plr.pos = dstPortal.pos
-	// plr.SetFoothold(0)
-
-	packetMapChange := func(mapID int32, channelID int32, mapPos byte, hp int16) mpacket.Packet {
-		p := mpacket.CreateWithOpcode(opcode.SendChannelWarpToMap)
-		p.WriteInt32(channelID)
-		p.WriteByte(0) // character portal counter
-		p.WriteByte(0) // Is connecting
-		p.WriteInt32(mapID)
-		p.WriteByte(mapPos)
-		p.WriteInt16(hp)
-		p.WriteByte(0) // flag for more reading
-
-		return p
-	}
 
 	plr.send(packetMapChange(dstField.id, int32(server.id), dstPortal.id, plr.hp)) // plr.ChangeMap(dstField.ID, dstPortal.ID(), dstPortal.Pos(), foothold)
-	dstInst.addPlayer(plr)
+	err = dstInst.addPlayer(plr)
+
+	if err != nil {
+		return err
+	}
 
 	return nil
 }
@@ -972,9 +982,9 @@ func (server *Server) playerPartyInfo(conn mnet.Client, reader mpacket.Reader) {
 			return
 		}
 
-		partyID := plr.party.id
+		partyID := plr.party.ID
 
-		server.world.Send(internal.PacketChannelPartyLeave(partyID, plr.id, plr.party.leader(plr.id)))
+		server.world.Send(internal.PacketChannelPartyLeave(partyID, plr.id, false))
 	case 3: // accept
 		partyID := reader.ReadInt32()
 
@@ -1016,7 +1026,7 @@ func (server *Server) playerPartyInfo(conn mnet.Client, reader mpacket.Reader) {
 			return
 		}
 
-		recipient.send(packetPartyInviteNotice(plr.party.id, plr.name))
+		recipient.send(packetPartyInviteNotice(plr.party.ID, plr.name))
 	case 5: // expel
 		playerID := reader.ReadInt32()
 
@@ -1031,7 +1041,7 @@ func (server *Server) playerPartyInfo(conn mnet.Client, reader mpacket.Reader) {
 			return
 		}
 
-		server.world.Send(internal.PacketChannelPartyExpel(plr.party.id, playerID))
+		server.world.Send(internal.PacketChannelPartyLeave(plr.party.ID, playerID, true))
 	default:
 		log.Println("Unknown party info type:", op, reader)
 	}
@@ -1181,7 +1191,7 @@ func (server Server) mobControl(conn mnet.Client, reader mpacket.Reader) {
 
 	moveBytes := generateMovementBytes(moveData)
 
-	inst.lifePool.mobAcknowledge(mobSpawnID, plr, moveID, skillPossible, byte(action), skillData, moveData, finalData, moveBytes)
+	inst.lifePool.mobAcknowledge(mobSpawnID, plr, moveID, skillPossible, action, skillData, moveData, finalData, moveBytes)
 
 }
 
@@ -1322,7 +1332,7 @@ func (server Server) playerMeleeSkill(conn mnet.Client, reader mpacket.Reader) {
 		if ad.facesLeft {
 			p.WriteByte(ad.action | (1 << 7))
 		} else {
-			p.WriteByte(ad.action | 0)
+			p.WriteByte(ad.action)
 		}
 
 		p.WriteByte(ad.attackType)
@@ -1721,9 +1731,7 @@ func (server *Server) npcShop(conn mnet.Client, reader mpacket.Reader) {
 		plr.giveMesos(item.Price)
 		plr.send(packetNpcShopContinue()) // check if needed
 	case 3: // exit
-		if _, ok := server.npcChat[conn]; ok {
-			delete(server.npcChat, conn) // delete here as we need access to shop goods
-		}
+		delete(server.npcChat, conn) // delete here as we need access to shop goods
 	default:
 		log.Println("Unkown shop operation packet:", reader)
 	}
@@ -1771,7 +1779,11 @@ func (server Server) roomWindow(conn mnet.Client, reader mpacket.Reader) {
 			}
 
 			if r.addPlayer(plr) {
-				pool.addRoom(r)
+				err = pool.addRoom(r)
+
+				if err != nil {
+					log.Println(err)
+				}
 			}
 		case roomTypeMemory:
 			name := reader.ReadString(reader.ReadInt16())
@@ -1790,7 +1802,11 @@ func (server Server) roomWindow(conn mnet.Client, reader mpacket.Reader) {
 			}
 
 			if r.addPlayer(plr) {
-				pool.addRoom(r)
+				err = pool.addRoom(r)
+
+				if err != nil {
+					log.Println(err)
+				}
 			}
 		case roomTypeTrade:
 			r, valid := newTradeRoom(inst.nextID()).(roomer)
@@ -1800,7 +1816,11 @@ func (server Server) roomWindow(conn mnet.Client, reader mpacket.Reader) {
 			}
 
 			if r.addPlayer(plr) {
-				pool.addRoom(r)
+				err = pool.addRoom(r)
+
+				if err != nil {
+					log.Println(err)
+				}
 			}
 		case roomTypePersonalShop:
 			log.Println("Personal shop not implemented")
@@ -1887,13 +1907,21 @@ func (server Server) roomWindow(conn mnet.Client, reader mpacket.Reader) {
 			game.kickPlayer(plr, 0x0)
 
 			if r.closed() {
-				pool.removeRoom(r.id())
+				err = pool.removeRoom(r.id())
+
+				if err != nil {
+					log.Println(err)
+				}
 			} else {
 				pool.updateGameBox(r)
 			}
 		} else if trade, valid := r.(*tradeRoom); valid {
 			trade.removePlayer(plr)
-			pool.removeRoom(trade.roomID)
+			err = pool.removeRoom(trade.roomID)
+
+			if err != nil {
+				log.Println(err)
+			}
 		}
 	case roomInsertItem:
 		// invTab := reader.ReadByte()
@@ -1925,7 +1953,11 @@ func (server Server) roomWindow(conn mnet.Client, reader mpacket.Reader) {
 			game.requestTieResult(tie, plr)
 
 			if r.closed() {
-				pool.removeRoom(r.id())
+				err = pool.removeRoom(r.id())
+
+				if err != nil {
+					log.Println(err)
+				}
 			} else {
 				pool.updateGameBox(r)
 			}
@@ -1941,7 +1973,11 @@ func (server Server) roomWindow(conn mnet.Client, reader mpacket.Reader) {
 			game.forfeit(plr)
 
 			if r.closed() {
-				pool.removeRoom(r.id())
+				err = pool.removeRoom(r.id())
+
+				if err != nil {
+					log.Println(err)
+				}
 			} else {
 				pool.updateGameBox(r)
 			}
@@ -2056,7 +2092,11 @@ func (server Server) roomWindow(conn mnet.Client, reader mpacket.Reader) {
 			}
 
 			if r.closed() {
-				pool.removeRoom(game.roomID)
+				err = pool.removeRoom(game.roomID)
+
+				if err != nil {
+					log.Println(err)
+				}
 			}
 		}
 	case roomSelectCard:
@@ -2075,7 +2115,11 @@ func (server Server) roomWindow(conn mnet.Client, reader mpacket.Reader) {
 			}
 
 			if r.closed() {
-				pool.removeRoom(game.roomID)
+				err = pool.removeRoom(game.roomID)
+
+				if err != nil {
+					log.Println(err)
+				}
 			}
 		}
 	default:
@@ -2107,18 +2151,75 @@ func (server *Server) HandleServerPacket(conn mnet.Server, reader mpacket.Reader
 	}
 }
 
+func (server *Server) handleNewChannelBad(conn mnet.Server, reader mpacket.Reader) {
+	log.Println("Rejected by world server at", conn)
+	timer := time.NewTimer(30 * time.Second)
+
+	<-timer.C
+
+	server.registerWithWorld()
+}
+
+func (server *Server) handleNewChannelOK(conn mnet.Server, reader mpacket.Reader) {
+	server.worldName = reader.ReadString(reader.ReadInt16())
+	server.id = reader.ReadByte()
+	log.Println("Registered as channel", server.id, "on world", server.worldName)
+
+	for _, p := range server.players {
+		p.send(packetMessageNotice("Re-connected to world server as channel " + strconv.Itoa(int(server.id+1))))
+		// TODO send largest party id for world server to compare
+	}
+
+	accountIDs, err := common.DB.Query("SELECT accountID from characters where channelID = ? and migrationID = -1", server.id)
+
+	if err != nil {
+		log.Println(err)
+		return
+	}
+
+	for accountIDs.Next() {
+		var accountID int
+		err := accountIDs.Scan(&accountID)
+
+		if err != nil {
+			continue
+		}
+
+		_, err = common.DB.Exec("UPDATE accounts SET isLogedIn=? WHERE accountID=?", 0, accountID)
+
+		if err != nil {
+			log.Println(err)
+			return
+		}
+	}
+
+	accountIDs.Close()
+
+	_, err = common.DB.Exec("UPDATE characters SET channelID=? WHERE channelID=?", -1, server.id)
+
+	if err != nil {
+		log.Println(err)
+		return
+	}
+
+	log.Println("Loged out any accounts still connected to this channel")
+}
+
+func (server *Server) handleChannelConnectionInfo(conn mnet.Server, reader mpacket.Reader) {
+	total := reader.ReadByte()
+
+	for i := byte(0); i < total; i++ {
+		server.channels[i].IP = reader.ReadBytes(4)
+		server.channels[i].Port = reader.ReadInt16()
+	}
+}
+
 func (server *Server) handlePlayerConnectedNotifications(conn mnet.Server, reader mpacket.Reader) {
 	playerID := reader.ReadInt32()
 	name := reader.ReadString(reader.ReadInt16())
 	channelID := reader.ReadByte()
 	changeChannel := reader.ReadBool()
-	mapID := reader.ReadInt32()
-
-	plr, _ := server.players.getFromID(playerID)
-
-	for _, party := range server.parties {
-		party.setPlayerChannel(plr, playerID, false, false, int32(channelID), mapID)
-	}
+	// mapID := reader.ReadInt32()
 
 	for i, v := range server.players {
 		if v.id == playerID {
@@ -2139,10 +2240,6 @@ func (server *Server) handlePlayerConnectedNotifications(conn mnet.Server, reade
 func (server *Server) handlePlayerDisconnectNotifications(conn mnet.Server, reader mpacket.Reader) {
 	playerID := reader.ReadInt32()
 	name := reader.ReadString(reader.ReadInt16())
-
-	for _, party := range server.parties {
-		party.setPlayerChannel(new(player), playerID, false, true, 0, -1)
-	}
 
 	for i, v := range server.players {
 		if v.id == playerID {
@@ -2214,141 +2311,61 @@ func (server *Server) handleBuddyEvent(conn mnet.Server, reader mpacket.Reader) 
 	}
 }
 
-func (server *Server) handleNewChannelBad(conn mnet.Server, reader mpacket.Reader) {
-	log.Println("Rejected by world server at", conn)
-	timer := time.NewTimer(30 * time.Second)
-
-	<-timer.C
-
-	server.registerWithWorld()
-}
-
-func (server *Server) handleNewChannelOK(conn mnet.Server, reader mpacket.Reader) {
-	server.worldName = reader.ReadString(reader.ReadInt16())
-	server.id = reader.ReadByte()
-	log.Println("Registered as channel", server.id, "on world", server.worldName)
-
-	for _, p := range server.players {
-		p.send(packetMessageNotice("Re-connected to world server as channel " + strconv.Itoa(int(server.id+1))))
-		// TODO send largest party id for world server to compare
-	}
-
-	accountIDs, err := common.DB.Query("SELECT accountID from characters where channelID = ? and migrationID = -1", server.id)
-
-	if err != nil {
-		log.Println(err)
-		return
-	}
-
-	for accountIDs.Next() {
-		var accountID int
-		err := accountIDs.Scan(&accountID)
-
-		if err != nil {
-			continue
-		}
-
-		_, err = common.DB.Exec("UPDATE accounts SET isLogedIn=? WHERE accountID=?", 0, accountID)
-
-		if err != nil {
-			log.Println(err)
-			return
-		}
-	}
-
-	accountIDs.Close()
-
-	_, err = common.DB.Exec("UPDATE characters SET channelID=? WHERE channelID=?", -1, server.id)
-
-	if err != nil {
-		log.Println(err)
-		return
-	}
-
-	log.Println("Loged out any accounts still connected to this channel")
-}
-
-func (server *Server) handleChannelConnectionInfo(conn mnet.Server, reader mpacket.Reader) {
-	total := reader.ReadByte()
-
-	for i := byte(0); i < total; i++ {
-		server.channels[i].IP = reader.ReadBytes(4)
-		server.channels[i].Port = reader.ReadInt16()
-	}
-}
-
 func (server *Server) handlePartyEvent(conn mnet.Server, reader mpacket.Reader) {
 	op := reader.ReadByte()
 
 	switch op {
-	case 0:
-		log.Println("Channel server should not receive party event message type: 0")
-	case 1: // new party created
-		channelID := reader.ReadByte()
-		partyID := reader.ReadInt32()
+	case 1: // new party created result
 		playerID := reader.ReadInt32()
-		mapID := reader.ReadInt32()
-		job := reader.ReadInt32()
-		level := reader.ReadInt32()
-		name := reader.ReadString(reader.ReadInt16())
 
-		plr, _ := server.players.getFromID(playerID)
+		plr, err := server.players.getFromID(playerID)
 
-		// TODO: Mystic door information needs to be sent here if the leader has an active door
+		if !reader.ReadBool() {
+			if err != nil {
+				plr.send(packetPartyCreateUnkownError())
+			}
 
-		newParty := newParty(partyID, plr, channelID, playerID, mapID, job, level, name, int32(server.id))
-
-		server.parties[partyID] = &newParty
-
-		if plr != nil {
-			plr.party = &newParty
-			plr.send(packetPartyCreate(1, -1, -1, newPos(0, 0, 0)))
+			return
 		}
-	case 2: // leave party
-		destroy := reader.ReadBool()
-		partyID := reader.ReadInt32()
-		playerID := reader.ReadInt32()
 
-		plr, _ := server.players.getFromID(playerID)
+		newParty := &party{serverChannelID: int32(server.id)}
+		newParty.addPlayer(plr, 0, &reader)
+		server.parties[newParty.ID] = newParty
+	case 2: // leave / expel party
+		partyID := reader.ReadInt32()
+		destroy := reader.ReadBool()
+		kicked := reader.ReadBool()
+		index := reader.ReadInt32()
 
 		if party, ok := server.parties[partyID]; ok {
-			party.removePlayer(plr, playerID, false)
-
-			if destroy {
-				delete(server.parties, partyID)
-			}
+			party.removePlayer(index, kicked, &reader)
 		}
+
+		if destroy {
+			delete(server.parties, partyID)
+		}
+
 	case 3: // accept
 		partyID := reader.ReadInt32()
 		playerID := reader.ReadInt32()
-		channelID := reader.ReadInt32()
-		mapID := reader.ReadInt32()
-		job := reader.ReadInt32()
-		level := reader.ReadInt32()
-		name := reader.ReadString(reader.ReadInt16())
-
-		plr, _ := server.players.getFromID(playerID)
+		index := reader.ReadInt32()
 
 		if party, ok := server.parties[partyID]; ok {
-			party.addPlayer(plr, channelID, playerID, name, mapID, job, level)
+			plr, _ := server.players.getFromID(playerID)
+			party.addPlayer(plr, index, &reader)
 		}
-	case 4: // expel
+	case 4: // party info update
 		partyID := reader.ReadInt32()
 		playerID := reader.ReadInt32()
-
-		plr, _ := server.players.getFromID(playerID)
-
+		index := reader.ReadInt32()
+		onlineStatus := reader.ReadBool()
 		if party, ok := server.parties[partyID]; ok {
-			party.removePlayer(plr, playerID, true)
-		}
-	case 5:
-		partyID := reader.ReadInt32()
-		playerID := reader.ReadInt32()
-		job := reader.ReadInt32()
-		level := reader.ReadInt32()
-		reader.ReadString(reader.ReadInt16()) // name
-		if party, ok := server.parties[partyID]; ok {
-			party.updateJobLevel(playerID, job, level)
+			if onlineStatus {
+				plr, _ := server.players.getFromID(playerID)
+				party.updateOnlineStatus(index, plr, &reader)
+			} else {
+				party.updateJobLevel(index, &reader)
+			}
 		}
 	default:
 		log.Println("Unkown party event type:", op)

@@ -13,8 +13,9 @@ import (
 )
 
 type monster struct {
-	controller, summoner   *player
+	controller             *player
 	id                     int32
+	summoner               int32
 	spawnID                int32
 	pos                    pos
 	faceLeft               bool
@@ -92,7 +93,7 @@ func createMonsterFromData(spawnID int32, life nx.Life, m nx.Mob, dropsItems, dr
 	}
 }
 
-func createMonsterFromID(spawnID, id int32, p pos, controller *player, dropsItems, dropsMesos bool) (monster, error) {
+func createMonsterFromID(spawnID, id int32, p pos, controller *player, dropsItems, dropsMesos bool, summoner int32) (monster, error) {
 	m, err := nx.GetMob(id)
 
 	if err != nil {
@@ -102,7 +103,11 @@ func createMonsterFromID(spawnID, id int32, p pos, controller *player, dropsItem
 	// If this isn't working with regards to position make the foothold equal to player? nearest to pos?
 	mob := createMonsterFromData(spawnID, nx.Life{ID: id, Foothold: p.foothold, X: p.x, Y: p.y, FaceLeft: true}, m, dropsItems, dropsMesos)
 
-	mob.summoner = controller
+	mob.summoner = summoner
+
+	if summoner > 0 {
+		mob.summonType = 0
+	}
 
 	return mob, nil
 }
@@ -147,7 +152,6 @@ func (m *monster) performSkill(delay int16, skillLevel, skillID byte) {
 	m.skillTimes[skillID] = currentTime
 
 	if skillID != m.skillID || (m.statBuff&skill.MobStat.SealSkill > 0) {
-		skillID = 0
 		return
 	}
 
@@ -228,18 +232,9 @@ func (m *monster) giveDamage(damager *player, dmg ...int32) {
 			return
 		}
 
-		if _, ok := m.dmgTaken[damager]; ok {
-			m.dmgTaken[damager] += v
-		} else {
-			m.dmgTaken[damager] = v
-		}
+		m.dmgTaken[damager] += v
 	}
 	m.lastTimeAttacked = time.Now().Unix() // Is there a better place to put this?
-}
-
-func (m *monster) kill(inst fieldInstance, plr *player) {
-	inst.lifePool.removeMob(m.spawnID, 0x0)
-	plr.giveEXP(m.exp, true, false)
 }
 
 func (m monster) displayBytes() []byte {
@@ -256,7 +251,7 @@ func (m monster) displayBytes() []byte {
 
 	var bitfield byte
 
-	if m.summoner != nil {
+	if m.summoner > 0 {
 		bitfield = 0x08
 	} else {
 		bitfield = 0x02
@@ -326,13 +321,6 @@ func (m *monster) update(t time.Time) {
 		m.lastHeal = checkTime
 	}
 
-}
-
-// GetNextSkill returns the value of function chooseNextSkill
-// The function chooseNextSkill identifies a random skill for the mob to use
-// Various checks include MP consumption, cooldown, etc
-func (m *monster) useChooseNextSkill() (byte, byte) {
-	return chooseNextSkill(m)
 }
 
 func chooseNextSkill(mob *monster) (byte, byte) {
@@ -464,7 +452,7 @@ func (m *monster) healMob(hp, mp int32) {
 		if newMP < 0 || newMP > m.maxMP {
 			newMP = m.maxMP
 		}
-		mp = newMP
+		m.mp = newMP
 	}
 }
 

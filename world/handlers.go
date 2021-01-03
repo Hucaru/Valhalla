@@ -23,9 +23,9 @@ func (server *Server) HandleServerPacket(conn mnet.Server, reader mpacket.Reader
 	case opcode.ChannelInfo:
 		server.handleChannelUpdate(conn, reader)
 	case opcode.ChannePlayerConnect:
-		fallthrough
+		server.handlePlayerConnect(conn, reader)
 	case opcode.ChannePlayerDisconnect:
-		fallthrough
+		server.handlePlayerDisconnect(conn, reader)
 	case opcode.ChannelPlayerBuddyEvent:
 		fallthrough
 	case opcode.ChannelPlayerChatEvent:
@@ -122,6 +122,56 @@ func (server *Server) handleChannelUpdate(conn mnet.Server, reader mpacket.Reade
 	server.login.Send(server.info.GenerateInfoPacket())
 }
 
+func (server *Server) handlePlayerConnect(conn mnet.Server, reader mpacket.Reader) {
+	server.forwardPacketToChannels(conn, reader)
+
+	playerID := reader.ReadInt32()
+	_ = reader.ReadString(reader.ReadInt16()) // name
+	channelID := reader.ReadByte()            // this needs to be -1 to show player in cash shop
+	_ = reader.ReadBool()                     // channelChange
+	mapID := reader.ReadInt32()
+
+	for _, party := range server.parties {
+		end := false
+		for i, v := range party.PlayerID {
+			if v == playerID {
+				party.ChannelID[i] = int32(channelID)
+				party.MapID[i] = mapID
+				server.channelBroadcast(internal.PacketWorldPartyUpdate(party.ID, party.PlayerID[i], int32(i), true, party))
+				end = true
+				break
+			}
+		}
+
+		if end {
+			break
+		}
+	}
+}
+
+func (server *Server) handlePlayerDisconnect(conn mnet.Server, reader mpacket.Reader) {
+	server.forwardPacketToChannels(conn, reader)
+
+	playerID := reader.ReadInt32()
+
+	for _, party := range server.parties {
+		end := false
+		for i, v := range party.PlayerID {
+			if v == playerID {
+				party.ChannelID[i] = -2 // means offline
+
+				server.channelBroadcast(internal.PacketWorldPartyUpdate(party.ID, party.PlayerID[i], int32(i), true, party))
+				end = true
+				break
+			}
+		}
+
+		if end {
+			break
+		}
+	}
+}
+
 func (server *Server) handlePartyEvent(conn mnet.Server, reader mpacket.Reader) {
 	op := reader.ReadByte()
 
@@ -149,32 +199,92 @@ func (server *Server) handlePartyEvent(conn mnet.Server, reader mpacket.Reader) 
 			partyID = server.nextPartyID
 		}
 
-		server.channelBroadcast(internal.PacketChannelPartyCreateApproved(partyID, playerID, channelID, mapID, job, level, name))
-	case 1:
-		log.Println("World server should not receive a party event message type: 1")
-	case 2: // leave party
-		if destroy := reader.ReadBool(); destroy {
-			partyID := reader.ReadInt32()
-
-			for _, v := range server.reusablePartyIDs {
-				if v == partyID {
-					return
-				}
+		if partyID == 0 {
+			server.info.Channels[channelID].Conn.Send(internal.PacketChannelPartyCreateApproved(playerID, false, server.parties[partyID]))
+		} else {
+			server.parties[partyID] = &internal.Party{
+				ID: partyID,
 			}
 
-			server.reusablePartyIDs = append(server.reusablePartyIDs, partyID)
+			server.parties[partyID].ChannelID[0] = int32(channelID)
+			server.parties[partyID].PlayerID[0] = playerID
+			server.parties[partyID].Name[0] = name
+			server.parties[partyID].MapID[0] = mapID
+			server.parties[partyID].Job[0] = job
+			server.parties[partyID].Level[0] = level
+
+			server.channelBroadcast(internal.PacketChannelPartyCreateApproved(playerID, true, server.parties[partyID]))
 		}
 
-		fallthrough
+	case 2: // leave party
+		partyID := reader.ReadInt32()
+		playerID := reader.ReadInt32()
+		kicked := reader.ReadBool()
+
+		if party, ok := server.parties[partyID]; ok {
+			for i, v := range party.PlayerID {
+				if v == playerID {
+					destory := i == 0
+
+					party.ChannelID[i] = 0
+					party.PlayerID[i] = 0
+					party.Name[i] = ""
+					party.MapID[i] = 0
+					party.Job[i] = 0
+					party.Level[i] = 0
+
+					server.channelBroadcast(internal.PacketWorldPartyLeave(partyID, destory, kicked, int32(i), party))
+
+					server.reusablePartyIDs = append(server.reusablePartyIDs, partyID)
+					break
+				}
+			}
+		}
 	case 3: // accept invite
-		fallthrough
-	case 4: //expel
-		fallthrough
-	case 5: // update party info
-		p := mpacket.NewPacket()
-		p.WriteByte(0)
-		p.WriteBytes(reader.GetBuffer())
-		server.channelBroadcast(p)
+		partyID := reader.ReadInt32()
+		playerID := reader.ReadInt32()
+		channelID := reader.ReadInt32()
+		mapID := reader.ReadInt32()
+		job := reader.ReadInt32()
+		level := reader.ReadInt32()
+		name := reader.ReadString(reader.ReadInt16())
+
+		if party, ok := server.parties[partyID]; ok {
+			for i, v := range party.PlayerID {
+				if v == 0 { // empty slot
+					party.PlayerID[i] = playerID
+					party.ChannelID[i] = channelID
+					party.MapID[i] = mapID
+					party.Job[i] = job
+					party.Level[i] = level
+					party.Name[i] = name
+
+					server.channelBroadcast(internal.PacketWorldPartyAccept(partyID, playerID, int32(i), party))
+
+					break
+				}
+			}
+		}
+	case 4: // update party info
+		partyID := reader.ReadInt32()
+		playerID := reader.ReadInt32()
+		job := reader.ReadInt32()
+		level := reader.ReadInt32()
+		name := reader.ReadString(reader.ReadInt16())
+
+		if party, ok := server.parties[partyID]; ok {
+			for i, v := range party.PlayerID {
+				if v == playerID {
+					party.Job[i] = job
+					party.Level[i] = level
+					party.Name[i] = name
+
+					server.channelBroadcast(internal.PacketWorldPartyUpdate(partyID, playerID, int32(i), false, party))
+
+					break
+				}
+			}
+		}
 	default:
 		log.Println("Unkown party event type:", op)
 	}

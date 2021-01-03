@@ -62,7 +62,7 @@ Channel server:
 - [x] Player stats
 - [x] Player use skills
 - [ ] Player skill logic (haste etc)
-- [x] Player inventory (needs a re-write)
+- [x] Player inventory
 - [ ] Player use item (scrolls, potions etc)
 - [ ] Player drop item(s)
 - [ ] Player pets
@@ -94,6 +94,7 @@ Channel server:
 - [x] Party chat
 - [ ] Guild
 - [ ] Guild chat
+- [ ] Guild quest
 - [ ] Trade
 - [ ] Communication Window
 - [ ] Quests
@@ -118,8 +119,9 @@ See screenshots section for an example Grafana dashboard
     - Reduce branches in frequent paths
     - Determine which pieces of data if any provide any benefit in being converted SOAs
 - Implement AES crypt (ontop of the shanda) and determine how to enable it in the client
-- Clean up passing nil to interface type function, should be new(type) as this causes nasty to find bugs as the nil value is not the interface itself but the value it holds
 - Move player save database operations into relevant systems
+- Player inventory needs a re-write
+- When channel server joins world, channel needs to send parties and guilds it has, world needs to compare and send agrigated active parties and guilds to prevent de-sync from restarted channels/worlds
 
 ## Acknowledgements
 

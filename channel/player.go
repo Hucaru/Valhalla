@@ -25,7 +25,7 @@ func (p players) getFromConn(conn mnet.Client) (*player, error) {
 		}
 	}
 
-	return new(player), fmt.Errorf("Could not retrieve Data")
+	return nil, fmt.Errorf("Could not retrieve Data")
 }
 
 func (p players) getFromName(name string) (*player, error) {
@@ -35,7 +35,7 @@ func (p players) getFromName(name string) (*player, error) {
 		}
 	}
 
-	return new(player), fmt.Errorf("Could not retrieve Data")
+	return nil, fmt.Errorf("Could not retrieve Data")
 }
 
 func (p players) getFromID(id int32) (*player, error) {
@@ -45,7 +45,7 @@ func (p players) getFromID(id int32) (*player, error) {
 		}
 	}
 
-	return new(player), fmt.Errorf("Could not retrieve Data")
+	return nil, fmt.Errorf("Could not retrieve Data")
 }
 
 func (p *players) removeFromConn(conn mnet.Client) error {
@@ -119,7 +119,12 @@ func getSkillsFromCharID(id int32) []playerSkill {
 	for row.Next() {
 		skill := playerSkill{}
 
-		row.Scan(&skill.ID, &skill.Level, &skill.Cooldown)
+		err = row.Scan(&skill.ID, &skill.Level, &skill.Cooldown)
+
+		if err != nil {
+			log.Println(err)
+			continue
+		}
 
 		skillData, err := nx.GetPlayerSkill(skill.ID)
 
@@ -138,9 +143,8 @@ func getSkillsFromCharID(id int32) []playerSkill {
 type updatePartyInfoFunc func(partyID, playerID, job, level int32, name string)
 
 type player struct {
-	conn       mnet.Client
-	instanceID int
-	inst       *fieldInstance
+	conn mnet.Client
+	inst *fieldInstance
 
 	id        int32 // Unique identifier of the character
 	accountID int32
@@ -175,7 +179,6 @@ type player struct {
 	chairID int32
 	stance  byte
 	pos     pos
-	guild   string
 
 	equipSlotSize byte
 	useSlotSize   byte
@@ -201,6 +204,7 @@ type player struct {
 	buddyList     []buddy
 
 	party *party
+	guild *guild
 
 	UpdatePartyInfo updatePartyInfoFunc
 }
@@ -219,7 +223,7 @@ func (d *player) setJob(id int16) {
 	d.conn.Send(packetPlayerStatChange(true, constant.JobID, int32(id)))
 
 	if d.party != nil {
-		d.party.updateJobLevel(d.id, int32(d.job), int32(d.level))
+		d.UpdatePartyInfo(d.party.ID, d.id, int32(d.job), int32(d.level), d.name)
 	}
 }
 
@@ -306,7 +310,7 @@ func (d *player) setLevel(amount byte) {
 	d.inst.send(packetPlayerLevelUpAnimation(d.id))
 
 	if d.party != nil {
-		d.party.updateJobLevel(d.id, int32(d.job), int32(d.level))
+		d.UpdatePartyInfo(d.party.ID, d.id, int32(d.job), int32(d.level), d.name)
 	}
 }
 
@@ -435,10 +439,6 @@ func (d *player) setFame(amount int16) {
 
 }
 
-func (d *player) addEquip(item item) {
-	d.equip = append(d.equip, item)
-}
-
 func (d *player) setMesos(amount int32) {
 	d.mesos = amount
 	d.send(packetPlayerStatChange(false, constant.MesosID, amount))
@@ -505,7 +505,7 @@ func (d *player) giveItem(newItem item) error { // TODO: Refactor
 		slot := 0
 
 		for i, v := range slotsUsed {
-			if v == false {
+			if !v {
 				slot = i + 1
 				break
 			}
@@ -1013,18 +1013,15 @@ func (d *player) damagePlayer(damage int16) {
 	d.send(packetPlayerStatChange(true, constant.HpID, int32(d.hp)))
 }
 
-// UpdateGuildInfo for the player
-func (d *player) UpdateGuildInfo() {
+func (d *player) sendGuildInfo() {
 	d.send(packetGuildInfo(0, "[Admins]", 0))
 }
 
-// UpdateBuddyInfo for the player
-func (d *player) UpdateBuddyInfo() {
+func (d *player) sendBuddyList() {
 	d.send(packetBuddyListSizeUpdate(d.buddyListSize))
 	d.send(packetBuddyInfo(d.buddyList))
 }
 
-// BuddyListFull checks if buddy list is full
 func (d player) buddyListFull() bool {
 	count := 0
 	for _, v := range d.buddyList {
@@ -1033,11 +1030,7 @@ func (d player) buddyListFull() bool {
 		}
 	}
 
-	if count < int(d.buddyListSize) {
-		return false
-	}
-
-	return true
+	return count >= int(d.buddyListSize)
 }
 
 func (d *player) addOnlineBuddy(id int32, name string, channel int32) {
@@ -1058,8 +1051,6 @@ func (d *player) addOnlineBuddy(id int32, name string, channel int32) {
 
 	d.buddyList = append(d.buddyList, newBuddy)
 	d.send(packetBuddyInfo(d.buddyList))
-
-	return
 }
 
 func (d *player) addOfflineBuddy(id int32, name string) {
@@ -1080,8 +1071,6 @@ func (d *player) addOfflineBuddy(id int32, name string) {
 
 	d.buddyList = append(d.buddyList, newBuddy)
 	d.send(packetBuddyInfo(d.buddyList))
-
-	return
 }
 
 func (d player) hasBuddy(id int32) bool {
@@ -1103,6 +1092,58 @@ func (d *player) removeBuddy(id int32) {
 			return
 		}
 	}
+}
+
+func getGuildInfo(playerID int32) *guild {
+	return nil
+}
+
+func getBuddyList(playerID int32, buddySize byte) []buddy {
+	buddies := make([]buddy, 0, buddySize)
+	filter := "friendID,accepted"
+	rows, err := common.DB.Query("SELECT "+filter+" FROM buddy where characterID=?", playerID)
+
+	if err != nil {
+		log.Fatal(err)
+		return buddies
+	}
+
+	defer rows.Close()
+
+	i := 0
+	for rows.Next() {
+		newBuddy := buddy{}
+
+		var accepted bool
+		err = rows.Scan(&newBuddy.id, &accepted)
+
+		if err != nil {
+			log.Println(err)
+			continue
+		}
+
+		filter := "channelID,name,inCashShop"
+		err := common.DB.QueryRow("SELECT "+filter+" FROM characters where id=?", newBuddy.id).Scan(&newBuddy.channelID, &newBuddy.name, &newBuddy.cashShop)
+
+		if err != nil {
+			log.Fatal(err)
+			return buddies
+		}
+
+		if !accepted {
+			newBuddy.status = 1 // pending buddy request
+		} else if newBuddy.channelID == -1 {
+			newBuddy.status = 2 // offline
+		} else {
+			newBuddy.status = 0 // online
+		}
+
+		buddies = append(buddies, newBuddy)
+
+		i++
+	}
+
+	return buddies
 }
 
 func loadPlayerFromID(id int32, conn mnet.Client) player {
@@ -1144,51 +1185,9 @@ func loadPlayerFromID(id int32, conn mnet.Client) player {
 	c.equip, c.use, c.setUp, c.etc, c.cash = loadInventoryFromDb(c.id)
 
 	c.buddyList = getBuddyList(c.id, c.buddyListSize)
+	c.guild = getGuildInfo(c.id)
 	c.conn = conn
 	return c
-}
-
-func getBuddyList(playerID int32, buddySize byte) []buddy {
-	buddies := make([]buddy, 0, buddySize)
-	filter := "friendID,accepted"
-	rows, err := common.DB.Query("SELECT "+filter+" FROM buddy where characterID=?", playerID)
-
-	if err != nil {
-		log.Fatal(err)
-		return buddies
-	}
-
-	defer rows.Close()
-
-	i := 0
-	for rows.Next() {
-		newBuddy := buddy{}
-
-		var accepted bool
-		rows.Scan(&newBuddy.id, &accepted)
-
-		filter := "channelID,name,inCashShop"
-		err := common.DB.QueryRow("SELECT "+filter+" FROM characters where id=?", newBuddy.id).Scan(&newBuddy.channelID, &newBuddy.name, &newBuddy.cashShop)
-
-		if err != nil {
-			log.Fatal(err)
-			return buddies
-		}
-
-		if !accepted {
-			newBuddy.status = 1 // pending buddy request
-		} else if newBuddy.channelID == -1 {
-			newBuddy.status = 2 // offline
-		} else {
-			newBuddy.status = 0 // online
-		}
-
-		buddies = append(buddies, newBuddy)
-
-		i++
-	}
-
-	return buddies
 }
 
 func packetPlayerReceivedDmg(charID int32, attack int8, initalAmmount, reducedAmmount, spawnID, mobID, healSkillID int32,
@@ -1581,7 +1580,11 @@ func packetPlayerAvatarSummaryWindow(charID int32, plr player) mpacket.Packet {
 	p.WriteInt16(plr.job)
 	p.WriteInt16(plr.fame)
 
-	p.WriteString(plr.guild)
+	if plr.guild != nil {
+		p.WriteString(plr.guild.name)
+	} else {
+		p.WriteString("")
+	}
 
 	p.WriteBool(false) // if has pet
 	p.WriteByte(0)     // wishlist count
@@ -1666,6 +1669,19 @@ func packetBuddyChangeChannel(id int32, channelID int32) mpacket.Packet {
 	p.WriteInt32(id)
 	p.WriteInt8(1)
 	p.WriteInt32(channelID)
+
+	return p
+}
+
+func packetMapChange(mapID int32, channelID int32, mapPos byte, hp int16) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelWarpToMap)
+	p.WriteInt32(channelID)
+	p.WriteByte(0) // character portal counter
+	p.WriteByte(0) // Is connecting
+	p.WriteInt32(mapID)
+	p.WriteByte(mapPos)
+	p.WriteInt16(hp)
+	p.WriteByte(0) // flag for more reading
 
 	return p
 }

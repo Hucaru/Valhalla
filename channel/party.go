@@ -1,36 +1,20 @@
 package channel
 
 import (
+	"fmt"
+
 	"github.com/Hucaru/Valhalla/common/mpacket"
 	"github.com/Hucaru/Valhalla/common/opcode"
 	"github.com/Hucaru/Valhalla/constant"
+	"github.com/Hucaru/Valhalla/internal"
 )
 
+// TODO: login server needs to send a deleted character event so that they can leave the party for playing players
+
 type party struct {
-	id              int32
 	serverChannelID int32
-
-	players   [constant.MaxPartySize]*player
-	channelID [constant.MaxPartySize]int32
-	playerID  [constant.MaxPartySize]int32
-	name      [constant.MaxPartySize]string
-	mapID     [constant.MaxPartySize]int32
-	job       [constant.MaxPartySize]int32
-	level     [constant.MaxPartySize]int32
-}
-
-func newParty(id int32, plr *player, channelID byte, playerID, mapID, job, level int32, playerName string, serverChannelID int32) party {
-	result := party{id: id, serverChannelID: serverChannelID}
-	result.players[0] = plr
-
-	result.channelID[0] = int32(channelID)
-	result.playerID[0] = playerID
-	result.name[0] = playerName
-	result.mapID[0] = mapID
-	result.job[0] = job
-	result.level[0] = level
-
-	return result
+	players         [constant.MaxPartySize]*player
+	internal.Party
 }
 
 func (d party) broadcast(p mpacket.Packet) {
@@ -43,74 +27,40 @@ func (d party) broadcast(p mpacket.Packet) {
 	}
 }
 
-func (d party) broadcastExcept(p mpacket.Packet, id int32) {
-	for i, v := range d.players {
-		if v == nil || d.playerID[i] == id {
-			continue
-		}
-
-		v.send(p)
+func (d *party) addPlayer(plr *player, index int32, reader *mpacket.Reader) {
+	if plr != nil {
+		d.players[index] = plr
+		plr.party = d
 	}
+
+	d.SerialisePacket(reader)
+	d.broadcast(packetPartyPlayerJoin(d.ID, d.Name[index], d))
 }
 
-func (d *party) addPlayer(plr *player, channelID int32, id int32, name string, mapID, job, level int32) {
-	for i, v := range d.playerID {
-		if v == 0 {
-			d.players[i] = plr
+func (d *party) removePlayer(index int32, kick bool, reader *mpacket.Reader) {
+	playerID := d.PlayerID[index]
+	name := d.Name[index]
 
-			if plr != nil {
-				plr.party = d
+	d.SerialisePacket(reader)
+
+	if index == 0 {
+		d.broadcast(packetPartyLeave(d.ID, playerID, false, kick, "", d))
+
+		for _, p := range d.players {
+			if p != nil {
+				p.party = nil
 			}
-
-			d.channelID[i] = channelID
-			d.playerID[i] = id
-			d.name[i] = name
-			d.mapID[i] = mapID
-			d.job[i] = job
-			d.level[i] = level
-
-			d.broadcast(packetPartyPlayerJoin(d.id, name, d))
-
-			return
 		}
-	}
-}
-
-func (d *party) removePlayer(plr *player, playerID int32, kick bool) {
-	for i, v := range d.playerID {
-		if v == playerID {
-			if i == 0 {
-				d.broadcast(packetPartyLeave(d.id, playerID, false, kick, "", d))
-
-				for _, p := range d.players {
-					if p != nil {
-						p.party = nil
-					}
-				}
-
-				return
-			}
-
-			name := d.name[i]
-
-			d.channelID[i] = 0
-			d.playerID[i] = 0
-			d.name[i] = ""
-			d.mapID[i] = 0
-			d.job[i] = 0
-			d.level[i] = 0
-
-			if plr != nil {
-				plr.party = nil
-			}
-
-			d.broadcast(packetPartyLeave(d.id, playerID, true, kick, name, d))
-
-			d.players[i] = nil
-
-			return
+	} else {
+		if d.players[index] != nil {
+			d.players[index].party = nil
 		}
+
+		d.broadcast(packetPartyLeave(d.ID, playerID, true, kick, name, d))
+
+		d.players[index] = nil
 	}
+
 }
 
 func (d party) full() bool {
@@ -124,55 +74,36 @@ func (d party) full() bool {
 }
 
 func (d *party) updatePlayerMap(playerID, mapID int32) {
-	for i, v := range d.playerID {
+	for i, v := range d.PlayerID {
 		if v == playerID {
-			d.mapID[i] = mapID
+			d.MapID[i] = mapID
 
-			d.broadcast(packetPartyUpdate(d.id, d))
+			d.broadcast(packetPartyUpdate(d.ID, d))
 
 			return
 		}
 	}
 }
 
-func (d *party) setPlayerChannel(plr *player, playerID int32, cashshop bool, offline bool, channelID int32, mapID int32) {
-	for i, v := range d.playerID {
-		if v == playerID {
-			if cashshop {
-				d.channelID[i] = -1
-			} else if offline {
-				d.channelID[i] = -2
-			} else {
-				d.channelID[i] = channelID
-			}
-
-			d.mapID[i] = mapID
-			d.players[i] = plr
-
-			d.broadcast(packetPartyUpdate(d.id, d))
-			return
-		}
-	}
+func (d *party) updateOnlineStatus(index int32, plr *player, reader *mpacket.Reader) {
+	d.SerialisePacket(reader)
+	d.players[index] = plr
+	fmt.Println("party update for:", d.Name[index], d.ChannelID[index])
+	d.broadcast(packetPartyUpdate(d.ID, d))
 }
 
-func (d *party) updateJobLevel(playerID, job, level int32) {
-	for i, v := range d.playerID {
-		if v == playerID {
-			d.job[i] = job
-			d.level[i] = level
+func (d *party) updateJobLevel(index int32, reader *mpacket.Reader) {
+	d.SerialisePacket(reader)
 
-			d.broadcast(packetPartyUpdateJobLevel(playerID, job, level))
-			return
-		}
-	}
-}
+	playerID := d.PlayerID[index]
+	job := d.Job[index]
+	level := d.Level[index]
 
-func (d party) leader(id int32) bool {
-	return d.playerID[0] == id
+	d.broadcast(packetPartyUpdateJobLevel(playerID, job, level))
 }
 
 func (d party) member(id int32) bool {
-	for _, v := range d.playerID {
+	for _, v := range d.PlayerID {
 		if v == id {
 			return true
 		}
@@ -184,9 +115,9 @@ func (d party) member(id int32) bool {
 func (d party) giveExp(playerID, amount int32, sameMap bool) {
 	var mapID int32 = 0
 
-	for i, id := range d.playerID {
+	for i, id := range d.PlayerID {
 		if id == playerID {
-			mapID = d.mapID[i]
+			mapID = d.MapID[i]
 			break
 		}
 	}
@@ -194,8 +125,8 @@ func (d party) giveExp(playerID, amount int32, sameMap bool) {
 	if sameMap {
 		nPlayers := 0
 
-		for i, id := range d.playerID {
-			if id != playerID && d.players[i] != nil && d.mapID[i] == mapID && d.players[i].hp > 0 {
+		for i, id := range d.PlayerID {
+			if id != playerID && d.players[i] != nil && d.MapID[i] == mapID && d.players[i].hp > 0 {
 				nPlayers++
 			}
 
@@ -293,7 +224,7 @@ func packetPartyUpdateJobLevel(playerID, job, level int32) mpacket.Packet {
 func updateParty(p *mpacket.Packet, party *party) {
 	validOffsets := make([]int, 0, constant.MaxPartySize)
 
-	for i, v := range party.level {
+	for i, v := range party.Level {
 		if v != 0 {
 			validOffsets = append(validOffsets, i)
 		}
@@ -302,7 +233,7 @@ func updateParty(p *mpacket.Packet, party *party) {
 	paddAmount := constant.MaxPartySize - len(validOffsets)
 
 	for _, v := range validOffsets {
-		p.WriteInt32(party.playerID[v])
+		p.WriteInt32(party.PlayerID[v])
 	}
 
 	for i := 0; i < paddAmount; i++ {
@@ -310,7 +241,7 @@ func updateParty(p *mpacket.Packet, party *party) {
 	}
 
 	for _, v := range validOffsets {
-		p.WritePaddedString(party.name[v], 13)
+		p.WritePaddedString(party.Name[v], 13)
 	}
 
 	for i := 0; i < paddAmount; i++ {
@@ -318,7 +249,7 @@ func updateParty(p *mpacket.Packet, party *party) {
 	}
 
 	for _, v := range validOffsets {
-		p.WriteInt32(party.job[v])
+		p.WriteInt32(party.Job[v])
 	}
 
 	for i := 0; i < paddAmount; i++ {
@@ -326,7 +257,7 @@ func updateParty(p *mpacket.Packet, party *party) {
 	}
 
 	for _, v := range validOffsets {
-		p.WriteInt32(party.level[v])
+		p.WriteInt32(party.Level[v])
 	}
 
 	for i := 0; i < paddAmount; i++ {
@@ -334,7 +265,7 @@ func updateParty(p *mpacket.Packet, party *party) {
 	}
 
 	for _, v := range validOffsets {
-		p.WriteInt32(party.channelID[v]) // -1 - cashshop, -2 - offline
+		p.WriteInt32(party.ChannelID[v]) // -1 - cashshop, -2 - offline
 	}
 
 	for i := 0; i < paddAmount; i++ {
@@ -342,10 +273,10 @@ func updateParty(p *mpacket.Packet, party *party) {
 	}
 
 	for _, v := range validOffsets {
-		if party.channelID[v] != party.serverChannelID {
+		if party.ChannelID[v] != party.serverChannelID {
 			p.WriteInt32(-1)
 		} else {
-			p.WriteInt32(party.mapID[v])
+			p.WriteInt32(party.MapID[v])
 		}
 
 	}
@@ -354,7 +285,7 @@ func updateParty(p *mpacket.Packet, party *party) {
 		p.WriteInt32(0)
 	}
 
-	p.WriteInt32(party.playerID[0])
+	p.WriteInt32(party.PlayerID[0])
 
 	// Mystic door
 	for range validOffsets {

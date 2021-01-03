@@ -149,6 +149,10 @@ func (server *Server) gmCommand(conn mnet.Client, msg string) {
 
 		if len(command) == 2 {
 			instanceID, err = strconv.Atoi(command[1])
+
+			if err != nil {
+				conn.Send(packetMessageRedText(err.Error()))
+			}
 		} else if len(command) == 3 {
 			player, err = server.players.getFromName(command[1])
 
@@ -158,6 +162,10 @@ func (server *Server) gmCommand(conn mnet.Client, msg string) {
 			}
 
 			instanceID, err = strconv.Atoi(command[2])
+
+			if err != nil {
+				conn.Send(packetMessageRedText(err.Error()))
+			}
 		}
 
 		field, ok := server.fields[player.mapID]
@@ -223,6 +231,12 @@ func (server *Server) gmCommand(conn mnet.Client, msg string) {
 
 		if len(command) == 3 {
 			player, err = server.players.getFromName(command[1])
+
+			if err != nil {
+				conn.Send(packetMessageRedText(err.Error()))
+				return
+			}
+
 			amount, err = strconv.Atoi(command[2])
 		} else if len(command) == 2 {
 			amount, err = strconv.Atoi(command[1])
@@ -245,6 +259,12 @@ func (server *Server) gmCommand(conn mnet.Client, msg string) {
 
 		if len(command) == 3 {
 			player, err = server.players.getFromName(command[1])
+
+			if err != nil {
+				conn.Send(packetMessageRedText(err.Error()))
+				return
+			}
+
 			amount, err = strconv.Atoi(command[2])
 		} else if len(command) == 2 {
 			amount, err = strconv.Atoi(command[1])
@@ -267,6 +287,12 @@ func (server *Server) gmCommand(conn mnet.Client, msg string) {
 
 		if len(command) == 3 {
 			player, err = server.players.getFromName(command[1])
+
+			if err != nil {
+				conn.Send(packetMessageRedText(err.Error()))
+				return
+			}
+
 			amount, err = strconv.Atoi(command[2])
 		} else if len(command) == 2 {
 			amount, err = strconv.Atoi(command[1])
@@ -285,6 +311,12 @@ func (server *Server) gmCommand(conn mnet.Client, msg string) {
 
 		if len(command) == 3 {
 			player, err = server.players.getFromName(command[1])
+
+			if err != nil {
+				conn.Send(packetMessageRedText(err.Error()))
+				return
+			}
+
 			amount, err = strconv.Atoi(command[2])
 		} else if len(command) == 2 {
 			amount, err = strconv.Atoi(command[1])
@@ -303,6 +335,12 @@ func (server *Server) gmCommand(conn mnet.Client, msg string) {
 
 		if len(command) == 3 {
 			plr, err = server.players.getFromName(command[1])
+
+			if err != nil {
+				conn.Send(packetMessageRedText(err.Error()))
+				return
+			}
+
 			amount, err = strconv.Atoi(command[2])
 		} else if len(command) == 2 {
 			amount, err = strconv.Atoi(command[1])
@@ -321,6 +359,12 @@ func (server *Server) gmCommand(conn mnet.Client, msg string) {
 
 		if len(command) == 3 {
 			player, err = server.players.getFromName(command[1])
+
+			if err != nil {
+				conn.Send(packetMessageRedText(err.Error()))
+				return
+			}
+
 			amount, err = strconv.Atoi(command[2])
 		} else if len(command) == 2 {
 			amount, err = strconv.Atoi(command[1])
@@ -496,7 +540,11 @@ func (server *Server) gmCommand(conn mnet.Client, msg string) {
 			return
 		}
 
-		server.warpPlayer(plr, dstField, portal)
+		err = server.warpPlayer(plr, dstField, portal)
+
+		if err != nil {
+			conn.Send(packetMessageRedText(err.Error()))
+		}
 	case "loadout":
 		player, err := server.players.getFromConn(conn)
 
@@ -641,7 +689,7 @@ func (server *Server) gmCommand(conn mnet.Client, msg string) {
 		}
 
 		for i := 0; i < count; i++ {
-			err := inst.lifePool.spawnMobFromID(mobID, plr.pos, false, true, true)
+			err := inst.lifePool.spawnMobFromID(mobID, plr.pos, false, true, true, plr.id)
 
 			if err != nil {
 				conn.Send(packetMessageRedText(err.Error()))
@@ -694,7 +742,7 @@ func (server *Server) gmCommand(conn mnet.Client, msg string) {
 
 		for i := 0; i < count; i++ {
 			for _, id := range mobID {
-				err = inst.lifePool.spawnMobFromID(id, plr.pos, false, true, true)
+				err = inst.lifePool.spawnMobFromID(id, plr.pos, false, true, true, plr.id)
 			}
 
 			if err != nil {
@@ -724,7 +772,7 @@ func (server *Server) gmCommand(conn mnet.Client, msg string) {
 			return
 		}
 
-		err = inst.lifePool.spawnMobFromID(5100001, plr.pos, true, true, true)
+		err = inst.lifePool.spawnMobFromID(5100001, plr.pos, true, true, true, plr.id)
 
 		if err != nil {
 			conn.Send(packetMessageRedText(err.Error()))
@@ -776,6 +824,11 @@ func (server *Server) gmCommand(conn mnet.Client, msg string) {
 
 		inst, err := field.getInstance(plr.inst.id)
 
+		if err != nil {
+			conn.Send(packetMessageRedText(err.Error()))
+			return
+		}
+
 		pool := inst.dropPool
 
 		var mesos int32 = 1000
@@ -797,7 +850,7 @@ func (server *Server) gmCommand(conn mnet.Client, msg string) {
 
 		pool.createDrop(dropSpawnNormal, dropFreeForAll, mesos, plr.pos, true, plr.id, 0, drops...)
 	case "dropr":
-		var id int32 = -1
+		var id int32
 		var err error
 
 		if len(command) > 1 {
@@ -828,6 +881,12 @@ func (server *Server) gmCommand(conn mnet.Client, msg string) {
 			return
 		}
 		inst, err := field.getInstance(plr.inst.id)
+
+		if err != nil {
+			conn.Send(packetMessageRedText(err.Error()))
+			return
+		}
+
 		pool := inst.dropPool
 		pool.removeDrop(false, id)
 	case "npco":

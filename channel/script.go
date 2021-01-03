@@ -28,13 +28,12 @@ func (s scriptStore) String() string {
 	return fmt.Sprintf("%v", s.scripts)
 }
 
-func (s *scriptStore) get(name string) (*goja.Program, bool) {
-	program, ok := s.scripts[name]
-	return program, ok
-}
-
 func (s *scriptStore) loadScripts() error {
 	err := filepath.Walk(s.folder, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+
 		if info.IsDir() {
 			return nil
 		}
@@ -288,9 +287,13 @@ func (state npcScriptState) WarpPlayer(p *playerWrapper, mapID int32) bool {
 
 		portal, err := inst.getRandomSpawnPortal()
 
-		state.warpFunc(p.player, field, portal)
+		if err != nil {
+			return false
+		}
 
-		return true
+		err = state.warpFunc(p.player, field, portal)
+
+		return err == nil
 	}
 
 	return false
@@ -490,9 +493,13 @@ func (controller eventScriptController) WarpPlayer(p *player, mapID int32) bool 
 
 		portal, err := inst.getRandomSpawnPortal()
 
-		controller.warpFunc(p, field, portal)
+		if err != nil {
+			return false
+		}
 
-		return true
+		err = controller.warpFunc(p, field, portal)
+
+		return err == nil
 	}
 
 	return false
@@ -573,7 +580,7 @@ func (f *fieldWrapper) SpawnMonster(inst int, mobID int32, x, y int16, hasAgro, 
 		return
 	}
 
-	i.lifePool.spawnMobFromID(mobID, newPos(x, y, 0), hasAgro, items, mesos)
+	_ = i.lifePool.spawnMobFromID(mobID, newPos(x, y, 0), hasAgro, items, mesos, 0)
 }
 
 func (f *fieldWrapper) Clear(id int, mobs, items bool) {
@@ -610,7 +617,11 @@ func (f *fieldWrapper) WarpPlayersToPortal(mapID int32, portalID byte) {
 
 		for _, i := range f.instances {
 			for _, p := range i.players {
-				f.controller.warpFunc(p, field, portal)
+				err = f.controller.warpFunc(p, field, portal)
+
+				if err != nil {
+					return
+				}
 			}
 		}
 	}

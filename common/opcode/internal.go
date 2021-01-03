@@ -1,6 +1,7 @@
 package opcode
 
 const (
+	LoginDeleteCharacter    byte = 0x00
 	WorldNew                byte = 0x01
 	WorldRequestOk          byte = 0x02
 	WorldRequestBad         byte = 0x03

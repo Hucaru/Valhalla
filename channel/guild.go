@@ -1,30 +1,47 @@
 package channel
 
 import (
+	"strconv"
+
 	"github.com/Hucaru/Valhalla/common/mpacket"
 	"github.com/Hucaru/Valhalla/common/opcode"
 )
 
+// TODO: World server needs to be authorative. The shared parts of the struct need to be composed into this struct
+// TODO: login server needs to send a deleted character event so that they can leave the guild for playing players
+
 type guild struct {
+	players []*player
+
 	id       int32
 	capacity int32
 	notice   string
 	name     string
 
-	rank1 string
-	rank2 string
-	rank3 string
-	rank4 string
-	rank5 string
+	master   string
+	jrMaster string
+	member1  string
+	member2  string
+	member3  string
+
+	logoBg, logoBgColour, logo int16
+	logoColour                 byte
 
 	names  []string
 	jobs   []int32
 	levels []int32
 	online []bool
 	ranks  []int32
+}
 
-	logoBg, logoBgColour, logo int16
-	logoColour                 byte
+func newGuild(capacity int32, name string, logoBg, logoBgColour, logo int16, logoColour byte) *guild {
+	return &guild{
+		capacity:     capacity,
+		name:         name,
+		logoBg:       logoBg,
+		logoBgColour: logoBgColour,
+		logo:         logo,
+		logoColour:   logoColour}
 }
 
 func packetGuildInfo(id int32, name string, memberCount byte) mpacket.Packet {
@@ -47,19 +64,19 @@ func packetGuildInfo(id int32, name string, memberCount byte) mpacket.Packet {
 	p.WriteString("rank4")
 	p.WriteString("rank5")
 
-	capacity := 250             // maximum
-	p.WriteByte(byte(capacity)) // member count
+	capacity := 250                  // maximum
+	p.WriteByte(byte(capacity) - 10) // member count
 
 	// iterate over all members and output ids
-	for i := 0; i < capacity; i++ {
+	for i := 0; i < capacity-10; i++ {
 		p.WriteInt32(int32(i + 1))
 	}
 
 	// iterate over all members and input their info
-	for i := 0; i < capacity; i++ {
-		p.WritePaddedString("[GM]Hucaru", 13) // name
-		p.WriteInt32(510)                     // job
-		p.WriteInt32(255)                     // level
+	for i := 0; i < capacity-10; i++ {
+		p.WritePaddedString("Player "+strconv.Itoa(i), 13) // name
+		p.WriteInt32(510)                                  // job
+		p.WriteInt32(255)                                  // level
 
 		if i > 4 {
 			p.WriteInt32(5) // rank starts at 1
@@ -86,3 +103,102 @@ func packetGuildInfo(id int32, name string, memberCount byte) mpacket.Packet {
 
 	return p
 }
+
+func packetGuildPlayerOnlineNotice(guildID, playerIndex int32, online bool) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelGuildInfo)
+	p.WriteByte(0x3d)
+	p.WriteInt32(guildID)
+	p.WriteInt32(playerIndex)
+	p.WriteBool(online)
+
+	return p
+}
+
+func packetGuildInviteNotAccepting(name string) mpacket.Packet {
+	return packetGuildInviteResult(name, 0x35)
+}
+
+func packetGuildInviteHasAnother(name string) mpacket.Packet {
+	return packetGuildInviteResult(name, 0x36)
+}
+
+func packetGuildInviteRejected(name string) mpacket.Packet {
+	return packetGuildInviteResult(name, 0x37)
+}
+
+func packetGuildInviteResult(name string, code byte) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelGuildInfo)
+	p.WriteByte(code)
+	p.WriteString(name)
+
+	return p
+}
+
+/*
+0x32 - guildDisbanded npc dialogue box (updates ui)
+i32 - guildID
+
+0x3a - guild capacity npc dialogue box (ui not updated)
+i32 - guildID
+i8 - capacity
+
+0x3c -
+i32 - guildID
+i32
+i32
+i32
+
+0x34 - npc dialogue box saying problem has occured during disbandon
+
+0x3b - npc dialogue box saying problem has occured during capacity increase
+
+0x38 - admin cannot make guild message
+
+0x49 -
+i32
+i32 - amount
+for amount:
+	name
+	i32
+
+0x4a - less than 5 members remaning, guild quest will end in 5 seconds
+
+0x4b - user that registered has disconnected, quest will end in 5 seconds
+
+0x4c - guild quest status and position in queue
+i8 - channelID
+i32 - position in queue
+
+0x48 -
+i32 - guildID
+i32 - ?
+
+0x3c -
+i32 - guildID
+i32
+i8
+
+0x3b -
+i32 - guildID
+name
+
+between 0x3f - 0x47 -
+i32 - guildID
+i16
+i8
+i16
+i8
+
+0x3e - update rank titles (dialogue box comes up saying it has been saved) ui is updated
+i32 - guildID
+name  - master
+name
+name
+name
+name - member
+
+0x30 - you are not in the guild
+
+0x29 - the guild you are trying to join has reached maximum capacity
+
+*/
