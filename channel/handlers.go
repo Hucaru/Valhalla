@@ -78,7 +78,9 @@ func (server *Server) HandleClientPacket(conn mnet.Client, reader mpacket.Reader
 	case opcode.RecvChannelPartyInfo:
 		server.playerPartyInfo(conn, reader)
 	case opcode.RecvChannelGuildManagement:
+		server.guildManagement(conn, reader)
 	case opcode.RecvChannelGuildReject:
+		server.guildInviteResult(conn, reader)
 	case opcode.RecvChannelBuddyOperation:
 		server.playerBuddyOperation(conn, reader)
 	case opcode.RecvChannelUseMysticDoor:
@@ -2115,6 +2117,45 @@ func (server Server) roomWindow(conn mnet.Client, reader mpacket.Reader) {
 	default:
 		log.Println("Unknown room operation", operation)
 	}
+}
+
+func (server *Server) guildManagement(conn mnet.Server, reader mpacket.Reader) {
+	fmt.Println("Guild management:", reader)
+
+	op := reader.ReadByte()
+
+	switch op {
+	case 0x05: // invite
+		fmt.Println("invite:", reader.ReadString(reader.ReadInt16()))
+	case 0x07: // leave
+		playerID := reader.ReadInt32()
+		name := reader.ReadString(reader.ReadInt16())
+		fmt.Println("leave:", playerID, name)
+	case 0x08: // expel
+		playerID := reader.ReadInt32()
+		name := reader.ReadString(reader.ReadInt16())
+		fmt.Println("expel:", playerID, name)
+	case 0x10: // notice change
+		notice := reader.ReadString(reader.ReadInt16())
+		fmt.Println("notice:", notice)
+	case 0x0D: // update title names
+		master := reader.ReadString(reader.ReadInt16())
+		jrMaster := reader.ReadString(reader.ReadInt16())
+		member1 := reader.ReadString(reader.ReadInt16())
+		member2 := reader.ReadString(reader.ReadInt16())
+		member3 := reader.ReadString(reader.ReadInt16())
+		fmt.Println("rank name change:", master, jrMaster, member1, member2, member3)
+	case 0x0E: // title change
+		playerID := reader.ReadInt32()
+		rank := reader.ReadByte()
+		fmt.Println("rank change:", playerID, rank)
+	default:
+		log.Println("Unknown guild operation", op)
+	}
+}
+
+func (server *Server) guildInviteResult(conn mnet.Server, reader mpacket.Reader) {
+	fmt.Println("Guild invite result:", reader)
 }
 
 // HandleServerPacket from world

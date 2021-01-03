@@ -159,6 +159,15 @@ func (server *Server) handlePlayerConnect(conn mnet.Server, reader mpacket.Reade
 		var guild *internal.Guild
 		if model, ok := server.guilds[guildID]; ok {
 			guild = model
+			var index int32
+			for i, v := range guild.PlayerID {
+				if v == playerID {
+					guild.Online[i] = true
+					index = int32(i)
+					break
+				}
+			}
+			server.channelBroadcast(internal.PacketWorldGuldUpdate(guildID, playerID, index, guild))
 		} else {
 			loadedGuild := &internal.Guild{}
 
@@ -183,8 +192,8 @@ func (server *Server) handlePlayerConnect(conn mnet.Server, reader mpacket.Reade
 					i++
 				}
 
-				query := "capacity,name,notice,master,jrMaster,member1,member2,member3,logoBg,logoBgColour,logo,logoColour,points"
-				err := common.DB.QueryRow("SELECT "+query+" FROM guilds WHERE id=?", guildID).Scan(&loadedGuild.Capacity,
+				query := "id,capacity,name,notice,master,jrMaster,member1,member2,member3,logoBg,logoBgColour,logo,logoColour,points"
+				err := common.DB.QueryRow("SELECT "+query+" FROM guilds WHERE id=?", guildID).Scan(&loadedGuild.ID, &loadedGuild.Capacity,
 					&loadedGuild.Name, &loadedGuild.Notice, &loadedGuild.Master, &loadedGuild.JrMaster, &loadedGuild.Member1,
 					&loadedGuild.Member2, &loadedGuild.Member3, &loadedGuild.LogoBg, &loadedGuild.LogoBgColour, &loadedGuild.Logo,
 					&loadedGuild.LogoColour, &loadedGuild.Points)
@@ -192,15 +201,9 @@ func (server *Server) handlePlayerConnect(conn mnet.Server, reader mpacket.Reade
 				if err != nil {
 					log.Println(err)
 				} else {
-					guild = loadedGuild
-					server.channelBroadcast(internal.PacketWorldGuldUpdate(guildID, playerID, index, guild))
+					server.guilds[guildID] = loadedGuild
+					server.channelBroadcast(internal.PacketWorldGuldUpdate(guildID, playerID, index, loadedGuild))
 				}
-			}
-		}
-
-		for i, v := range guild.PlayerID {
-			if v == playerID {
-				guild.Online[i] = true
 			}
 		}
 	}

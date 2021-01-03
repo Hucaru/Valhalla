@@ -151,16 +151,8 @@ func (guild *Guild) GeneratePacket() mpacket.Packet {
 	p.WriteByte(guild.LogoColour)
 	p.WriteInt32(guild.Points)
 
-	validIndexes := make([]int32, 0, constant.MaxGuildSize)
-	for i, v := range guild.PlayerID {
-		if v != 0 {
-			validIndexes = append(validIndexes, int32(i))
-		}
-	}
-
-	p.WriteByte(byte(len(validIndexes)))
-
-	for _, i := range validIndexes {
+	p.WriteByte(byte(len(guild.PlayerID)))
+	for i := 0; i < len(guild.PlayerID); i++ {
 		p.WriteInt32(guild.PlayerID[i])
 		p.WriteString(guild.Names[i])
 		p.WriteInt32(guild.Jobs[i])

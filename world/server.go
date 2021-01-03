@@ -75,6 +75,7 @@ func (server Server) channelBroadcast(p mpacket.Packet) {
 func (server Server) forwardPacketToChannels(conn mnet.Server, reader mpacket.Reader) {
 	p := mpacket.NewPacket()
 	p.WriteByte(0)
+	p.WriteByte(0)
 	p.WriteBytes(reader.GetBuffer())
 	server.channelBroadcast(p)
 }
