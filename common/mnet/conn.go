@@ -1,7 +1,6 @@
 package mnet
 
 import (
-	"log"
 	"math/rand"
 	"net"
 	"time"
@@ -124,18 +123,10 @@ func (bc *baseConn) Writer() {
 					time.Sleep(time.Duration(delta))
 				}
 
-				bc.Conn.Write(tmp)
+				_, _ = bc.Conn.Write(tmp)
 			}
 		} else {
-			n, err := bc.Conn.Write(tmp)
-
-			if err != nil {
-				log.Println("[conn]", err)
-			}
-
-			if n != len(tmp) {
-				log.Println("[conn] Did not send all bytes. Only sent", n, "out of", len(tmp))
-			}
+			_, _ = bc.Conn.Write(tmp)
 		}
 	}
 }
