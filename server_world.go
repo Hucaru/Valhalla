@@ -35,7 +35,7 @@ func newWorldServer(configFile string) *worldServer {
 func (ws *worldServer) run() {
 	log.Println("World Server")
 
-	ws.state.Initialise()
+	ws.state.Initialise(ws.dbConfig.User, ws.dbConfig.Password, ws.dbConfig.Address, ws.dbConfig.Port, ws.dbConfig.Database)
 
 	ws.establishLoginConnection()
 

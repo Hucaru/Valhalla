@@ -545,6 +545,42 @@ func (server *Server) gmCommand(conn mnet.Client, msg string) {
 		if err != nil {
 			conn.Send(packetMessageRedText(err.Error()))
 		}
+	case "warpTo":
+		playerName := command[1]
+
+		person, err := server.players.getFromName(playerName)
+
+		if err != nil {
+			conn.Send(packetMessageRedText(err.Error()))
+			return
+		}
+
+		dstField, ok := server.fields[person.inst.fieldID]
+
+		if !ok {
+			conn.Send(packetMessageRedText("Invalid map id"))
+			return
+		}
+
+		portalID, err := person.inst.calculateNearestSpawnPortalID(person.pos)
+
+		if err != nil {
+			conn.Send(packetMessageRedText(err.Error()))
+			return
+		}
+
+		plr, err := server.players.getFromConn(conn)
+
+		if err != nil {
+			conn.Send(packetMessageRedText(err.Error()))
+			return
+		}
+
+		err = server.warpPlayer(plr, dstField, person.inst.portals[portalID])
+
+		if err != nil {
+			conn.Send(packetMessageRedText(err.Error()))
+		}
 	case "loadout":
 		player, err := server.players.getFromConn(conn)
 

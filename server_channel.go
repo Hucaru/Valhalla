@@ -50,7 +50,10 @@ func (cs *channelServer) run() {
 	log.Println("Loaded and parsed Wizet data (NX) in", elapsed)
 
 	start = time.Now()
-	channel.PopulateDropTable("drops.json")
+	if err := channel.PopulateDropTable("drops.json"); err != nil {
+		log.Fatal(err)
+	}
+
 	elapsed = time.Since(start)
 	log.Println("Loaded and parsed drop data in", elapsed)
 
@@ -128,16 +131,18 @@ func (cs *channelServer) acceptNewConnections() {
 		}
 
 		keySend := [4]byte{}
-		rand.Read(keySend[:])
+		_, _ = rand.Read(keySend[:])
 		keyRecv := [4]byte{}
-		rand.Read(keyRecv[:])
+		_, _ = rand.Read(keyRecv[:])
 
 		client := mnet.NewClient(conn, cs.eRecv, cs.config.PacketQueueSize, keySend, keyRecv, cs.config.Latency, cs.config.Jitter)
 
 		go client.Reader()
 		go client.Writer()
 
-		conn.Write(packetClientHandshake(constant.MapleVersion, keyRecv[:], keySend[:]))
+		if _, err := conn.Write(packetClientHandshake(constant.MapleVersion, keyRecv[:], keySend[:])); err != nil {
+			log.Println(err)
+		}
 	}
 }
 

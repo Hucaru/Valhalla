@@ -180,7 +180,6 @@ func (server *Server) playerConnect(conn mnet.Client, reader mpacket.Reader) {
 		return
 	}
 
-	newPlr.sendGuildInfo()
 	newPlr.sendBuddyList()
 
 	newPlr.UpdatePartyInfo = func(partyID, playerID, job, level, mapID int32, name string) {
@@ -2456,6 +2455,20 @@ func (server Server) handleGuildEvent(conn mnet.Server, reader mpacket.Reader) {
 	op := reader.ReadByte()
 
 	switch op {
+	case 0: // update
+		guildID := reader.ReadInt32()
+		playerID := reader.ReadInt32()
+		index := reader.ReadInt32()
+
+		if foundGuild, ok := server.guilds[guildID]; ok {
+			plr, _ := server.players.getFromID(playerID)
+			foundGuild.updateInfo(plr, index, &reader)
+		} else {
+			plr, _ := server.players.getFromID(playerID)
+			newGuild := &guild{}
+			newGuild.updateInfo(plr, index, &reader)
+			server.guilds[guildID] = newGuild
+		}
 	default:
 		log.Println("Unkown guild event type:", op)
 	}

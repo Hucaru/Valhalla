@@ -212,6 +212,7 @@ type player struct {
 // Send the Data a packet
 func (d player) send(packet mpacket.Packet) {
 	if d.conn == nil {
+		log.Println("Tried to send:", packet, "to an invalid conn")
 		return
 	}
 
@@ -1011,10 +1012,6 @@ func (d *player) damagePlayer(damage int16) {
 	}
 
 	d.send(packetPlayerStatChange(true, constant.HpID, int32(d.hp)))
-}
-
-func (d *player) sendGuildInfo() {
-	d.send(packetGuildInfo(0, "[Admins]", 0))
 }
 
 func (d *player) sendBuddyList() {

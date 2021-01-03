@@ -3,6 +3,7 @@ package world
 import (
 	"log"
 
+	"github.com/Hucaru/Valhalla/common"
 	"github.com/Hucaru/Valhalla/common/mnet"
 	"github.com/Hucaru/Valhalla/common/mpacket"
 	"github.com/Hucaru/Valhalla/common/opcode"
@@ -20,7 +21,13 @@ type Server struct {
 }
 
 // Initialise internal state
-func (server *Server) Initialise() {
+func (server *Server) Initialise(dbuser, dbpassword, dbaddress, dbport, dbdatabase string) {
+	err := common.ConnectToDB(dbuser, dbpassword, dbaddress, dbport, dbdatabase)
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	server.parties = make(map[int32]*internal.Party)
 	server.guilds = make(map[int32]*internal.Guild)
 }

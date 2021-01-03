@@ -28,8 +28,8 @@ CREATE TABLE `buddy` (
   PRIMARY KEY (`id`),
   KEY `characterID` (`characterID`),
   KEY `friendID` (`friendID`),
-  CONSTRAINT `buddy_ibfk_1` FOREIGN KEY (`characterID`) REFERENCES `characters` (`id`),
-  CONSTRAINT `buddy_ibfk_2` FOREIGN KEY (`friendID`) REFERENCES `characters` (`id`) ON DELETE NO ACTION
+  CONSTRAINT `buddy_ibfk_4` FOREIGN KEY (`characterID`) REFERENCES `characters` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `buddy_ibfk_5` FOREIGN KEY (`friendID`) REFERENCES `characters` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 
 
@@ -37,6 +37,8 @@ DROP TABLE IF EXISTS `characters`;
 CREATE TABLE `characters` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `accountID` int(10) unsigned NOT NULL,
+  `guildID` int(11) DEFAULT NULL,
+  `guildRankID` tinyint(4) NOT NULL DEFAULT '1',
   `worldID` int(11) unsigned NOT NULL,
   `channelID` tinyint(2) NOT NULL DEFAULT '-1',
   `migrationID` tinyint(4) NOT NULL DEFAULT '-1',
@@ -76,7 +78,28 @@ CREATE TABLE `characters` (
   `inCashShop` int(11) NOT NULL DEFAULT '0',
   PRIMARY KEY (`id`),
   KEY `userID` (`accountID`),
-  CONSTRAINT `characters_ibfk_1` FOREIGN KEY (`accountID`) REFERENCES `accounts` (`accountID`)
+  KEY `guildID` (`guildID`),
+  CONSTRAINT `characters_ibfk_2` FOREIGN KEY (`accountID`) REFERENCES `accounts` (`accountID`) ON DELETE CASCADE,
+  CONSTRAINT `characters_ibfk_4` FOREIGN KEY (`guildID`) REFERENCES `guilds` (`id`) ON DELETE SET NULL ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+
+
+DROP TABLE IF EXISTS `guilds`;
+CREATE TABLE `guilds` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `capacity` int(11) NOT NULL DEFAULT '50',
+  `name` tinytext NOT NULL,
+  `notice` text NOT NULL,
+  `master` tinytext NOT NULL,
+  `jrMaster` tinytext NOT NULL,
+  `member1` tinytext NOT NULL,
+  `member2` tinytext NOT NULL,
+  `member3` tinytext NOT NULL,
+  `logoBg` smallint(6) NOT NULL DEFAULT '0',
+  `logoBgColour` smallint(6) NOT NULL DEFAULT '0',
+  `logo` smallint(6) NOT NULL DEFAULT '0',
+  `logoColour` tinyint(3) unsigned NOT NULL DEFAULT '0',
+  PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 
 
@@ -128,4 +151,4 @@ CREATE TABLE `skills` (
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 
 
--- 2020-12-28 19:08:59
+-- 2021-01-03 16:52:58

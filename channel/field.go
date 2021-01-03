@@ -789,12 +789,12 @@ func packetMapPlayerEnter(plr *player) mpacket.Packet {
 	p.WriteInt32(plr.id)
 	p.WriteString(plr.name)
 
-	if true {
-		p.WriteString("[Admins]")
-		p.WriteInt16(1030) // logo background
-		p.WriteByte(3)     // logo bg colour
-		p.WriteInt16(4017) // logo
-		p.WriteByte(2)     // logo colour
+	if plr.guild != nil {
+		p.WriteString(plr.guild.Name)
+		p.WriteInt16(plr.guild.LogoBg)      // logo background
+		p.WriteByte(plr.guild.LogoBgColour) // logo bg colour
+		p.WriteInt16(plr.guild.Logo)        // logo
+		p.WriteByte(plr.guild.LogoColour)   // logo colour
 		p.WriteInt32(0)
 		p.WriteInt32(0)
 	} else {

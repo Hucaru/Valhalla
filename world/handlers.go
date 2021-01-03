@@ -1,10 +1,12 @@
 package world
 
 import (
+	"database/sql"
 	"log"
 	"math"
 	"time"
 
+	"github.com/Hucaru/Valhalla/common"
 	"github.com/Hucaru/Valhalla/common/mnet"
 	"github.com/Hucaru/Valhalla/common/mpacket"
 	"github.com/Hucaru/Valhalla/common/opcode"
@@ -151,6 +153,60 @@ func (server *Server) handlePlayerConnect(conn mnet.Server, reader mpacket.Reade
 	}
 
 	// search db for player is in guild, if in guld send a guild connected message
+	var guildID int32
+	err := common.DB.QueryRow("SELECT guildID FROM characters WHERE id=?", playerID).Scan(&guildID)
+
+	if err == nil {
+		var guild *internal.Guild
+		if model, ok := server.guilds[guildID]; ok {
+			guild = model
+		} else {
+			loadedGuild := &internal.Guild{}
+
+			row, err := common.DB.Query("SELECT id, guildRankID, name, job, level FROM characters WHERE guildID=?", guildID)
+
+			if err == nil {
+				defer row.Close()
+				var index int32
+				var i int32
+				for row.Next() {
+					err = row.Scan(&loadedGuild.PlayerID[i], &loadedGuild.Ranks[i], &loadedGuild.Names[i], &loadedGuild.Jobs[i], &loadedGuild.Levels[i])
+
+					if err != nil {
+						continue
+					}
+
+					if loadedGuild.PlayerID[i] == playerID {
+						index = i
+						loadedGuild.Online[i] = true
+					}
+
+					i++
+				}
+
+				query := "capacity,name,notice,master,jrMaster,member1,member2,member3,logoBg,logoBgColour,logo,logoColour"
+				err := common.DB.QueryRow("SELECT "+query+" FROM guilds WHERE id=?", guildID).Scan(&loadedGuild.Capacity,
+					&loadedGuild.Name, &loadedGuild.Notice, &loadedGuild.Master, &loadedGuild.JrMaster, &loadedGuild.Member1,
+					&loadedGuild.Member2, &loadedGuild.Member3, &loadedGuild.LogoBg, &loadedGuild.LogoBgColour, &loadedGuild.Logo,
+					&loadedGuild.LogoColour)
+
+				if err != nil {
+					log.Println(err)
+				} else {
+					guild = loadedGuild
+					server.channelBroadcast(internal.PacketWorldGuldUpdate(guildID, playerID, index, guild))
+				}
+			}
+		}
+
+		for i, v := range guild.PlayerID {
+			if v == playerID {
+				guild.Online[i] = true
+			}
+		}
+	} else if err != sql.ErrNoRows {
+		log.Println(err)
+	}
 	// channel server will need to display guild to players
 }
 

@@ -176,6 +176,17 @@ func PacketWorldPartyUpdate(partyID, playerID, index int32, onlineStatus bool, p
 	return p
 }
 
+func PacketWorldGuldUpdate(guildID, playerID, index int32, guild *Guild) mpacket.Packet {
+	p := mpacket.CreateInternal(opcode.ChannelPlayerGuildEvent)
+	p.WriteByte(0) // Update
+	p.WriteInt32(guildID)
+	p.WriteInt32(playerID)
+	p.WriteInt32(index)
+	p.WriteBytes(guild.GeneratePacket())
+
+	return p
+}
+
 func PacketLoginDeletedCharacter(playerID int32) mpacket.Packet {
 	p := mpacket.CreateInternal(opcode.LoginDeleteCharacter)
 	p.WriteInt32(playerID)
