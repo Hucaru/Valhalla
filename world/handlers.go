@@ -5,7 +5,6 @@ import (
 	"math"
 	"time"
 
-	"github.com/Hucaru/Valhalla/common"
 	"github.com/Hucaru/Valhalla/common/mnet"
 	"github.com/Hucaru/Valhalla/common/mpacket"
 	"github.com/Hucaru/Valhalla/common/opcode"
@@ -133,6 +132,7 @@ func (server *Server) handlePlayerConnect(conn mnet.Server, reader mpacket.Reade
 	channelID := reader.ReadByte()            // this needs to be -1 to show player in cash shop
 	_ = reader.ReadBool()                     // channelChange
 	mapID := reader.ReadInt32()
+	_ = reader.ReadInt32() // guildID
 
 	for _, party := range server.parties {
 		end := false
@@ -150,69 +150,14 @@ func (server *Server) handlePlayerConnect(conn mnet.Server, reader mpacket.Reade
 			break
 		}
 	}
-
-	// search db for player is in guild, if in guld send a guild connected message
-	var guildID int32
-	err := common.DB.QueryRow("SELECT guildID FROM characters WHERE id=?", playerID).Scan(&guildID)
-
-	if err == nil {
-		var guild *internal.Guild
-		if model, ok := server.guilds[guildID]; ok {
-			guild = model
-			var index int32
-			for i, v := range guild.PlayerID {
-				if v == playerID {
-					guild.Online[i] = true
-					index = int32(i)
-					break
-				}
-			}
-			server.channelBroadcast(internal.PacketWorldGuldUpdate(guildID, playerID, index, guild))
-		} else {
-			loadedGuild := &internal.Guild{}
-
-			row, err := common.DB.Query("SELECT id, guildRankID, name, job, level FROM characters WHERE guildID=?", guildID)
-
-			if err == nil {
-				defer row.Close()
-				var index int32
-				var i int32
-				for row.Next() {
-					err = row.Scan(&loadedGuild.PlayerID[i], &loadedGuild.Ranks[i], &loadedGuild.Names[i], &loadedGuild.Jobs[i], &loadedGuild.Levels[i])
-
-					if err != nil {
-						continue
-					}
-
-					if loadedGuild.PlayerID[i] == playerID {
-						index = i
-						loadedGuild.Online[i] = true
-					}
-
-					i++
-				}
-
-				query := "id,capacity,name,notice,master,jrMaster,member1,member2,member3,logoBg,logoBgColour,logo,logoColour,points"
-				err := common.DB.QueryRow("SELECT "+query+" FROM guilds WHERE id=?", guildID).Scan(&loadedGuild.ID, &loadedGuild.Capacity,
-					&loadedGuild.Name, &loadedGuild.Notice, &loadedGuild.Master, &loadedGuild.JrMaster, &loadedGuild.Member1,
-					&loadedGuild.Member2, &loadedGuild.Member3, &loadedGuild.LogoBg, &loadedGuild.LogoBgColour, &loadedGuild.Logo,
-					&loadedGuild.LogoColour, &loadedGuild.Points)
-
-				if err != nil {
-					log.Println(err)
-				} else {
-					server.guilds[guildID] = loadedGuild
-					server.channelBroadcast(internal.PacketWorldGuldUpdate(guildID, playerID, index, loadedGuild))
-				}
-			}
-		}
-	}
 }
 
 func (server *Server) handlePlayerDisconnect(conn mnet.Server, reader mpacket.Reader) {
 	server.forwardPacketToChannels(conn, reader)
 
 	playerID := reader.ReadInt32()
+	_ = reader.ReadString(reader.ReadInt16()) // name
+	_ = reader.ReadInt32()                    // guildID
 
 	for _, party := range server.parties {
 		end := false
@@ -230,28 +175,13 @@ func (server *Server) handlePlayerDisconnect(conn mnet.Server, reader mpacket.Re
 			break
 		}
 	}
-
-	for _, guild := range server.guilds {
-		end := false
-		for i, v := range guild.PlayerID {
-			if v == playerID {
-				guild.Online[i] = false
-				// send guild connection message
-				break
-			}
-		}
-
-		if end {
-			break
-		}
-	}
 }
 
 func (server *Server) handlePartyEvent(conn mnet.Server, reader mpacket.Reader) {
 	op := reader.ReadByte()
 
 	switch op {
-	case 0: // new party request
+	case internal.OpPartyCreate:
 		playerID := reader.ReadInt32()
 		channelID := reader.ReadByte()
 		mapID := reader.ReadInt32()
@@ -275,7 +205,7 @@ func (server *Server) handlePartyEvent(conn mnet.Server, reader mpacket.Reader) 
 		}
 
 		if partyID == 0 {
-			server.info.Channels[channelID].Conn.Send(internal.PacketChannelPartyCreateApproved(playerID, false, server.parties[partyID]))
+			server.info.Channels[channelID].Conn.Send(internal.PacketWorldPartyCreateApproved(playerID, false, server.parties[partyID]))
 		} else {
 			server.parties[partyID] = &internal.Party{
 				ID: partyID,
@@ -288,10 +218,10 @@ func (server *Server) handlePartyEvent(conn mnet.Server, reader mpacket.Reader) 
 			server.parties[partyID].Job[0] = job
 			server.parties[partyID].Level[0] = level
 
-			server.channelBroadcast(internal.PacketChannelPartyCreateApproved(playerID, true, server.parties[partyID]))
+			server.channelBroadcast(internal.PacketWorldPartyCreateApproved(playerID, true, server.parties[partyID]))
 		}
 
-	case 2: // leave party
+	case internal.OpPartyLeaveExpel:
 		partyID := reader.ReadInt32()
 		playerID := reader.ReadInt32()
 		kicked := reader.ReadBool()
@@ -315,7 +245,7 @@ func (server *Server) handlePartyEvent(conn mnet.Server, reader mpacket.Reader) 
 				}
 			}
 		}
-	case 3: // accept invite
+	case internal.OpPartyAccept:
 		partyID := reader.ReadInt32()
 		playerID := reader.ReadInt32()
 		channelID := reader.ReadInt32()
@@ -340,7 +270,7 @@ func (server *Server) handlePartyEvent(conn mnet.Server, reader mpacket.Reader) 
 				}
 			}
 		}
-	case 4: // update party info
+	case internal.OpPartyInfoUpdate:
 		partyID := reader.ReadInt32()
 		playerID := reader.ReadInt32()
 		job := reader.ReadInt32()
@@ -371,7 +301,26 @@ func (server *Server) handleGuildEvent(conn mnet.Server, reader mpacket.Reader) 
 	op := reader.ReadByte()
 
 	switch op {
-	case 0: // new guild
+	case internal.OpGuildDisband:
+		// Update database
+		server.forwardPacketToChannels(conn, reader)
+	case internal.OpGuildRankUpdate:
+		// update database
+		server.forwardPacketToChannels(conn, reader)
+	case internal.OpGuildAddPlayer:
+		// update database
+	case internal.OpGuildRemovePlayer:
+		// update database
+		server.forwardPacketToChannels(conn, reader)
+	case internal.OpGuildNoticeChange:
+		// update database
+		server.forwardPacketToChannels(conn, reader)
+	case internal.OpGuildEmblemChange:
+		// update database
+		server.forwardPacketToChannels(conn, reader)
+	case internal.OpGuildPointsUpdate:
+		// update database
+		server.forwardPacketToChannels(conn, reader)
 	default:
 		log.Println("Unkown guild event type:", op)
 	}

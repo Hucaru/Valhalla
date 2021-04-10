@@ -2,17 +2,16 @@ module github.com/Hucaru/Valhalla
 
 require (
 	github.com/BurntSushi/toml v0.3.1
-	github.com/Hucaru/gonx v0.0.0-20181222224749-c3d9197c5bdf
-	github.com/dlclark/regexp2 v1.2.1 // indirect
-	github.com/dop251/goja v0.0.0-20200831102558-9af81ddcf0e1
-	github.com/fsnotify/fsnotify v1.4.7
-	github.com/go-sourcemap/sourcemap v2.1.3+incompatible // indirect
-	github.com/go-sql-driver/mysql v1.4.1
-	github.com/google/uuid v1.1.1
-	github.com/prometheus/client_golang v1.6.0
-	golang.org/x/sys v0.0.0-20200817155316-9781c653f443 // indirect
-	golang.org/x/text v0.3.2 // indirect
-	google.golang.org/appengine v1.4.0 // indirect
+	github.com/Hucaru/gonx v0.0.0-20200307175354-50be35945c3b
+	github.com/dop251/goja v0.0.0-20210406175830-1b11a6af686d
+	github.com/fsnotify/fsnotify v1.4.9
+	github.com/go-sql-driver/mysql v1.6.0
+	github.com/golang/protobuf v1.4.3 // indirect
+	github.com/google/uuid v1.2.0
+	github.com/prometheus/client_golang v1.7.1
+	github.com/prometheus/common v0.20.0 // indirect
+	github.com/prometheus/procfs v0.6.0 // indirect
+	golang.org/x/sys v0.0.0-20210403161142-5e06dd20ab57 // indirect
 )
 
-go 1.13
+go 1.16

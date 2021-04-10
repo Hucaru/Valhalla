@@ -1091,10 +1091,6 @@ func (d *player) removeBuddy(id int32) {
 	}
 }
 
-func getGuildInfo(playerID int32) *guild {
-	return nil
-}
-
 func getBuddyList(playerID int32, buddySize byte) []buddy {
 	buddies := make([]buddy, 0, buddySize)
 	filter := "friendID,accepted"
@@ -1182,7 +1178,6 @@ func loadPlayerFromID(id int32, conn mnet.Client) player {
 	c.equip, c.use, c.setUp, c.etc, c.cash = loadInventoryFromDb(c.id)
 
 	c.buddyList = getBuddyList(c.id, c.buddyListSize)
-	c.guild = getGuildInfo(c.id)
 	c.conn = conn
 	return c
 }
@@ -1578,7 +1573,7 @@ func packetPlayerAvatarSummaryWindow(charID int32, plr player) mpacket.Packet {
 	p.WriteInt16(plr.fame)
 
 	if plr.guild != nil {
-		p.WriteString(plr.guild.Name)
+		p.WriteString(plr.guild.name)
 	} else {
 		p.WriteString("")
 	}

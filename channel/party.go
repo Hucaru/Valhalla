@@ -25,6 +25,18 @@ func (d party) broadcast(p mpacket.Packet) {
 	}
 }
 
+func (d *party) addExistingPlayer(plr *player) bool {
+	for i, id := range d.PlayerID {
+		if id == plr.id {
+			d.players[i] = plr
+			plr.party = d
+			return true
+		}
+	}
+
+	return false
+}
+
 func (d *party) addPlayer(plr *player, index int32, reader *mpacket.Reader) {
 	if plr != nil {
 		d.players[index] = plr
@@ -261,7 +273,7 @@ func updateParty(p *mpacket.Packet, party *party) {
 		if party.ChannelID[v] != party.serverChannelID {
 			p.WriteInt32(-1)
 		} else {
-			p.WriteInt32(party.MapID[v])
+			p.WriteInt32(party.players[v].mapID)
 		}
 
 	}

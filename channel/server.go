@@ -225,7 +225,12 @@ func (server *Server) ClientDisconnected(conn mnet.Client) {
 	if index > -1 {
 		server.migrating = append(server.migrating[:index], server.migrating[index+1:]...)
 	} else {
-		server.world.Send(internal.PacketChannelPlayerDisconnect(plr.id, plr.name))
+		var guildID int32 = -1
+
+		if plr.guild != nil {
+			guildID = plr.guild.id
+		}
+		server.world.Send(internal.PacketChannelPlayerDisconnect(plr.id, plr.name, guildID))
 
 		_, err = common.DB.Exec("UPDATE characters SET channelID=? WHERE id=?", -1, plr.id)
 

@@ -17,7 +17,6 @@ type Server struct {
 	nextPartyID      int32
 	reusablePartyIDs []int32
 	parties          map[int32]*internal.Party
-	guilds           map[int32]*internal.Guild
 }
 
 // Initialise internal state
@@ -29,7 +28,6 @@ func (server *Server) Initialise(dbuser, dbpassword, dbaddress, dbport, dbdataba
 	}
 
 	server.parties = make(map[int32]*internal.Party)
-	server.guilds = make(map[int32]*internal.Guild)
 }
 
 // RegisterWithLogin server

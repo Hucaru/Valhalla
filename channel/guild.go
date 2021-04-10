@@ -1,16 +1,70 @@
 package channel
 
 import (
+	"github.com/Hucaru/Valhalla/common"
 	"github.com/Hucaru/Valhalla/common/mpacket"
 	"github.com/Hucaru/Valhalla/common/opcode"
-	"github.com/Hucaru/Valhalla/internal"
+	"github.com/Hucaru/Valhalla/constant"
 )
 
 // TODO: login server needs to send a deleted character event so that they can leave the guild for playing players
 
 type guild struct {
-	players []*player
-	internal.Guild
+	id       int32
+	capacity byte
+	name     string
+	notice   string
+
+	master   string
+	jrMaster string
+	member1  string
+	member2  string
+	member3  string
+
+	logoBg, logo             int16
+	logoBgColour, logoColour byte
+
+	points int32
+
+	players  [constant.MaxGuildSize]*player
+	playerID [constant.MaxGuildSize]int32
+	names    [constant.MaxGuildSize]string
+	jobs     [constant.MaxGuildSize]int32
+	levels   [constant.MaxGuildSize]int32
+	online   [constant.MaxGuildSize]bool
+	ranks    [constant.MaxGuildSize]int32
+}
+
+func loadGuildFromDb(guildID int32) (*guild, error) {
+	loadedGuild := &guild{}
+
+	row, err := common.DB.Query("SELECT id, guildRankID, name, job, level, channelID FROM characters WHERE guildID=?", guildID)
+
+	if err != nil {
+		return nil, err
+	}
+
+	defer row.Close()
+
+	var i int32
+	var channelID int32
+	for row.Next() {
+		err = row.Scan(&loadedGuild.playerID[i], &loadedGuild.ranks[i], &loadedGuild.names[i], &loadedGuild.jobs[i], &loadedGuild.levels[i], &channelID)
+
+		if channelID > -1 {
+			loadedGuild.online[i] = true
+		}
+
+		i++
+	}
+
+	query := "id,capacity,name,notice,master,jrMaster,member1,member2,member3,logoBg,logoBgColour,logo,logoColour,points"
+	common.DB.QueryRow("SELECT "+query+" FROM guilds WHERE id=?", guildID).Scan(&loadedGuild.id, &loadedGuild.capacity,
+		&loadedGuild.name, &loadedGuild.notice, &loadedGuild.master, &loadedGuild.jrMaster, &loadedGuild.member1,
+		&loadedGuild.member2, &loadedGuild.member3, &loadedGuild.logoBg, &loadedGuild.logoBgColour, &loadedGuild.logo,
+		&loadedGuild.logoColour, &loadedGuild.points)
+
+	return loadedGuild, nil
 }
 
 func (g *guild) broadcast(p mpacket.Packet) {
@@ -22,23 +76,52 @@ func (g *guild) broadcast(p mpacket.Packet) {
 	}
 }
 
-func (g *guild) addPlayer() {
-
-}
-
-func (g *guild) removePlayer() {
-
-}
-
-func (g *guild) updateInfo(plr *player, index int32, reader *mpacket.Reader) {
-	// pull out pre update information needed to deduce what type of update this is
-	g.SerialisePacket(reader)
-
-	if plr != nil {
-		plr.guild = g
-		plr.send(packetGuildInfo(g))
-		// plr.inst.send() // Show guild to other players
+func (g *guild) broadcastExcept(p mpacket.Packet, plr *player) {
+	for _, v := range g.players {
+		if v == nil || v == plr {
+			continue
+		}
+		v.send(p)
 	}
+}
+
+func (g *guild) playerOnline(playerID int32, plr *player, online, changeChannel bool) {
+	for i, id := range g.playerID {
+		if id == playerID {
+			g.online[i] = online
+			g.players[i] = plr
+
+			if plr != nil {
+				plr.send(packetGuildInfo(g))
+			}
+
+			if !changeChannel {
+				g.broadcastExcept(packetGuildPlayerOnlineNotice(g.id, id, online), plr)
+			}
+
+			return
+		}
+	}
+}
+
+func (g guild) canUnload() bool {
+	for _, v := range g.online {
+		if v {
+			return false
+		}
+	}
+
+	return true
+}
+
+func (g guild) disband() {
+	// for _, plr := range g.players {
+	// 	if plr != nil {
+	// 		plr.inst.sendExcept(, plr.conn) // remove guild from under player avatar
+	// 	}
+	// }
+
+	g.broadcast(packetGuildInfo(nil))
 }
 
 func packetGuildInfo(guild *guild) mpacket.Packet {
@@ -51,19 +134,19 @@ func packetGuildInfo(guild *guild) mpacket.Packet {
 	}
 
 	p.WriteBool(true) // In guild
-	p.WriteInt32(1)   // guild id (value cannot be zero)
-	p.WriteString(guild.Name)
+	p.WriteInt32(guild.id)
+	p.WriteString(guild.name)
 
 	// 5 ranks each have a title
-	p.WriteString(guild.Master)
-	p.WriteString(guild.JrMaster)
-	p.WriteString(guild.Member1)
-	p.WriteString(guild.Member2)
-	p.WriteString(guild.Member3)
+	p.WriteString(guild.master)
+	p.WriteString(guild.jrMaster)
+	p.WriteString(guild.member1)
+	p.WriteString(guild.member2)
+	p.WriteString(guild.member3)
 
 	var memberCount byte
 
-	for _, v := range guild.PlayerID {
+	for _, v := range guild.playerID {
 		if v > 0 {
 			memberCount++
 		}
@@ -73,17 +156,17 @@ func packetGuildInfo(guild *guild) mpacket.Packet {
 
 	// iterate over all members and output ids
 	for i := byte(0); i < memberCount; i++ {
-		p.WriteInt32(guild.PlayerID[i])
+		p.WriteInt32(guild.playerID[i])
 	}
 
 	// iterate over all members and input their info
 	for i := byte(0); i < memberCount; i++ {
-		p.WritePaddedString(guild.Names[i], 13)
-		p.WriteInt32(guild.Jobs[i])
-		p.WriteInt32(guild.Levels[i])
-		p.WriteInt32(guild.Ranks[i])
+		p.WritePaddedString(guild.names[i], 13)
+		p.WriteInt32(guild.jobs[i])
+		p.WriteInt32(guild.levels[i])
+		p.WriteInt32(guild.ranks[i])
 
-		if guild.Online[i] {
+		if guild.online[i] {
 			p.WriteInt32(1)
 		} else {
 			p.WriteInt32(0)
@@ -91,23 +174,31 @@ func packetGuildInfo(guild *guild) mpacket.Packet {
 		p.WriteInt32(0) // ?
 	}
 
-	p.WriteInt32(int32(guild.Capacity))
-	p.WriteInt16(guild.LogoBg)
-	p.WriteByte(guild.LogoBgColour)
-	p.WriteInt16(guild.Logo)
-	p.WriteByte(guild.LogoColour)
-	p.WriteString(guild.Notice)
-	p.WriteInt32(guild.Points)
+	p.WriteInt32(int32(guild.capacity))
+	p.WriteInt16(guild.logoBg)
+	p.WriteByte(guild.logoBgColour)
+	p.WriteInt16(guild.logo)
+	p.WriteByte(guild.logoColour)
+	p.WriteString(guild.notice)
+	p.WriteInt32(guild.points)
 
 	return p
 }
 
-func packetGuildPlayerOnlineNotice(guildID, playerIndex int32, online bool) mpacket.Packet {
+func packetGuildPlayerOnlineNotice(guildID, playerID int32, online bool) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelGuildInfo)
 	p.WriteByte(0x3d)
 	p.WriteInt32(guildID)
-	p.WriteInt32(playerIndex)
+	p.WriteInt32(playerID)
 	p.WriteBool(online)
+
+	return p
+}
+
+func packetGuildDisbandNpc(guildID int32) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelGuildInfo)
+	p.WriteByte(0x032)
+	p.WriteInt32(guildID)
 
 	return p
 }
@@ -133,12 +224,11 @@ func packetGuildInviteResult(name string, code byte) mpacket.Packet {
 }
 
 /*
-0x32 - guildDisbanded npc dialogue box (updates ui)
-i32 - guildID
-
 0x3a - guild capacity npc dialogue box (ui not updated)
 i32 - guildID
 i8 - capacity
+
+0x3b - guild capacity problem dialogue box
 
 0x3c -
 i32 - guildID
@@ -147,8 +237,6 @@ i32
 i32
 
 0x34 - npc dialogue box saying problem has occured during disbandon
-
-0x3b - npc dialogue box saying problem has occured during capacity increase
 
 0x38 - admin cannot make guild message
 
@@ -175,10 +263,6 @@ i32 - ?
 i32 - guildID
 i32
 i8
-
-0x3b -
-i32 - guildID
-name
 
 between 0x3f - 0x47 -
 i32 - guildID

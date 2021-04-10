@@ -790,11 +790,11 @@ func packetMapPlayerEnter(plr *player) mpacket.Packet {
 	p.WriteString(plr.name)
 
 	if plr.guild != nil {
-		p.WriteString(plr.guild.Name)
-		p.WriteInt16(plr.guild.LogoBg)      // logo background
-		p.WriteByte(plr.guild.LogoBgColour) // logo bg colour
-		p.WriteInt16(plr.guild.Logo)        // logo
-		p.WriteByte(plr.guild.LogoColour)   // logo colour
+		p.WriteString(plr.guild.name)
+		p.WriteInt16(plr.guild.logoBg)
+		p.WriteByte(plr.guild.logoBgColour)
+		p.WriteInt16(plr.guild.logo)
+		p.WriteByte(plr.guild.logoColour)
 		p.WriteInt32(0)
 		p.WriteInt32(0)
 	} else {

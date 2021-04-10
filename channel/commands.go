@@ -11,6 +11,7 @@ import (
 	"github.com/Hucaru/Valhalla/common/mnet"
 	"github.com/Hucaru/Valhalla/common/mpacket"
 	"github.com/Hucaru/Valhalla/common/nx"
+	"github.com/Hucaru/Valhalla/internal"
 )
 
 // TODO: Split these into ranks/levels (each rank can do everything the previous can):
@@ -786,6 +787,20 @@ func (server *Server) gmCommand(conn mnet.Client, msg string) {
 				break
 			}
 		}
+	case "guildCreate":
+	case "guildDisband":
+		plr, err := server.players.getFromConn(conn)
+
+		if err != nil {
+			conn.Send(packetMessageRedText(err.Error()))
+			return
+		}
+
+		if plr.guild == nil {
+			conn.Send(packetMessageRedText("Not in guild, cannot disband"))
+		}
+
+		server.world.Send(internal.PacketGuildDisband(plr.guild.id, plr.id))
 	case "testMob":
 		plr, err := server.players.getFromConn(conn)
 

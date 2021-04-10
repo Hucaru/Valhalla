@@ -1,6 +1,7 @@
 package channel
 
 import (
+	"database/sql"
 	"fmt"
 	"log"
 	"strconv"
@@ -175,6 +176,43 @@ func (server *Server) playerConnect(conn mnet.Client, reader mpacket.Reader) {
 		return
 	}
 
+	newPlr.sendBuddyList()
+
+	for _, party := range server.parties {
+		if party.addExistingPlayer(newPlr) {
+			break
+		}
+	}
+
+	newPlr.UpdatePartyInfo = func(partyID, playerID, job, level, mapID int32, name string) {
+		server.world.Send(internal.PacketChannelPartyUpdateInfo(partyID, playerID, job, level, mapID, name))
+	}
+
+	var guildIdOptional sql.NullInt32
+	err = common.DB.QueryRow("SELECT guildID FROM characters WHERE id=?", newPlr.id).Scan(&guildIdOptional)
+
+	if err != nil {
+		log.Println(err)
+		return
+	}
+
+	var guildID int32 = -1
+
+	if guildIdOptional.Valid {
+		guildID = guildIdOptional.Int32
+
+		if guild, ok := server.guilds[guildIdOptional.Int32]; !ok {
+			guild, err = loadGuildFromDb(guildIdOptional.Int32)
+
+			if err == nil {
+				server.guilds[guildIdOptional.Int32] = guild
+				newPlr.guild = guild
+			}
+		} else {
+			newPlr.guild = server.guilds[guildID]
+		}
+	}
+
 	err = inst.addPlayer(newPlr)
 
 	if err != nil {
@@ -182,16 +220,10 @@ func (server *Server) playerConnect(conn mnet.Client, reader mpacket.Reader) {
 		return
 	}
 
-	newPlr.sendBuddyList()
-
-	newPlr.UpdatePartyInfo = func(partyID, playerID, job, level, mapID int32, name string) {
-		server.world.Send(internal.PacketChannelPartyUpdateInfo(partyID, playerID, job, level, mapID, name))
-	}
-
 	common.MetricsGauges["player_count"].With(prometheus.Labels{"channel": strconv.Itoa(int(server.id)), "world": server.worldName}).Inc()
 
 	server.world.Send(internal.PacketChannelPopUpdate(server.id, int16(len(server.players))))
-	server.world.Send(internal.PacketChannelPlayerConnected(plr.id, plr.name, server.id, channelID > -1, newPlr.mapID))
+	server.world.Send(internal.PacketChannelPlayerConnected(plr.id, plr.name, server.id, channelID > -1, newPlr.mapID, guildID))
 }
 
 func (server *Server) playerChangeChannel(conn mnet.Client, reader mpacket.Reader) {
@@ -1053,13 +1085,13 @@ func (server Server) chatGroup(conn mnet.Client, reader mpacket.Reader) {
 	switch op {
 	case 0: // buddy
 		buffer := reader.GetRestAsBytes()
-		server.world.Send(internal.PacketChannelPlayerChat(1, plr.name, buffer))
+		server.world.Send(internal.PacketChannelPlayerChat(internal.OpChatBuddy, plr.name, buffer))
 	case 1: // party
 		buffer := reader.GetRestAsBytes()
-		server.world.Send(internal.PacketChannelPlayerChat(2, plr.name, buffer))
+		server.world.Send(internal.PacketChannelPlayerChat(internal.OpChatParty, plr.name, buffer))
 	case 2: // guild
 		buffer := reader.GetRestAsBytes()
-		server.world.Send(internal.PacketChannelPlayerChat(3, plr.name, buffer))
+		server.world.Send(internal.PacketChannelPlayerChat(internal.OpChatGuild, plr.name, buffer))
 	default:
 		log.Println("Unknown group chat type:", op, reader)
 	}
@@ -2126,17 +2158,28 @@ func (server *Server) guildManagement(conn mnet.Server, reader mpacket.Reader) {
 
 	switch op {
 	case 0x05: // invite
-		fmt.Println("invite:", reader.ReadString(reader.ReadInt16()))
+		playerName := reader.ReadString(reader.ReadInt16())
+		// check if name exists in db (and get guildID to check they can be invited and get channelID), update invite table, send invite if on same channel, otherwise send world server event
+		fmt.Println("invite:", playerName)
 	case 0x07: // leave
 		playerID := reader.ReadInt32()
 		name := reader.ReadString(reader.ReadInt16())
+
+		// emit to world server
+
 		fmt.Println("leave:", playerID, name)
 	case 0x08: // expel
 		playerID := reader.ReadInt32()
 		name := reader.ReadString(reader.ReadInt16())
+
+		// emit to world server
+
 		fmt.Println("expel:", playerID, name)
 	case 0x10: // notice change
 		notice := reader.ReadString(reader.ReadInt16())
+
+		// emit to world server
+
 		fmt.Println("notice:", notice)
 	case 0x0D: // update title names
 		master := reader.ReadString(reader.ReadInt16())
@@ -2144,10 +2187,20 @@ func (server *Server) guildManagement(conn mnet.Server, reader mpacket.Reader) {
 		member1 := reader.ReadString(reader.ReadInt16())
 		member2 := reader.ReadString(reader.ReadInt16())
 		member3 := reader.ReadString(reader.ReadInt16())
+
+		// emit to world server
+
 		fmt.Println("rank name change:", master, jrMaster, member1, member2, member3)
-	case 0x0E: // title change
+	case 0x0E: // rank change
 		playerID := reader.ReadInt32()
 		rank := reader.ReadByte()
+
+		if rank < 1 || rank > 5 {
+			return
+		}
+
+		// emit to world server
+
 		fmt.Println("rank change:", playerID, rank)
 	default:
 		log.Println("Unknown guild operation", op)
@@ -2252,7 +2305,20 @@ func (server *Server) handlePlayerConnectedNotifications(conn mnet.Server, reade
 	name := reader.ReadString(reader.ReadInt16())
 	channelID := reader.ReadByte()
 	changeChannel := reader.ReadBool()
-	// mapID := reader.ReadInt32()
+	_ = reader.ReadInt32() // mapID
+	guildID := reader.ReadInt32()
+
+	plr, err := server.players.getFromID(playerID)
+
+	if err == nil && plr.guild != nil {
+		plr.guild.playerOnline(playerID, plr, true, changeChannel)
+	} else {
+		if guild, ok := server.guilds[guildID]; ok {
+			guild.playerOnline(playerID, nil, true, changeChannel)
+		} else if guildID > -1 {
+
+		}
+	}
 
 	for i, v := range server.players {
 		if v.id == playerID {
@@ -2273,6 +2339,15 @@ func (server *Server) handlePlayerConnectedNotifications(conn mnet.Server, reade
 func (server *Server) handlePlayerDisconnectNotifications(conn mnet.Server, reader mpacket.Reader) {
 	playerID := reader.ReadInt32()
 	name := reader.ReadString(reader.ReadInt16())
+	guildID := reader.ReadInt32()
+
+	if guild, ok := server.guilds[guildID]; ok {
+		guild.playerOnline(playerID, nil, false, false)
+
+		if guild.canUnload() {
+			delete(server.guilds, guildID)
+		}
+	}
 
 	for i, v := range server.players {
 		if v.id == playerID {
@@ -2348,7 +2423,7 @@ func (server *Server) handlePartyEvent(conn mnet.Server, reader mpacket.Reader) 
 	op := reader.ReadByte()
 
 	switch op {
-	case 1: // new party created result
+	case internal.OpPartyCreate:
 		playerID := reader.ReadInt32()
 
 		plr, err := server.players.getFromID(playerID)
@@ -2364,7 +2439,7 @@ func (server *Server) handlePartyEvent(conn mnet.Server, reader mpacket.Reader) 
 		newParty := &party{serverChannelID: int32(server.id)}
 		newParty.addPlayer(plr, 0, &reader)
 		server.parties[newParty.ID] = newParty
-	case 2: // leave / expel party
+	case internal.OpPartyLeaveExpel:
 		partyID := reader.ReadInt32()
 		destroy := reader.ReadBool()
 		kicked := reader.ReadBool()
@@ -2378,7 +2453,7 @@ func (server *Server) handlePartyEvent(conn mnet.Server, reader mpacket.Reader) 
 			delete(server.parties, partyID)
 		}
 
-	case 3: // accept
+	case internal.OpPartyAccept:
 		partyID := reader.ReadInt32()
 		playerID := reader.ReadInt32()
 		index := reader.ReadInt32()
@@ -2387,7 +2462,7 @@ func (server *Server) handlePartyEvent(conn mnet.Server, reader mpacket.Reader) 
 			plr, _ := server.players.getFromID(playerID)
 			party.addPlayer(plr, index, &reader)
 		}
-	case 4: // party info update
+	case internal.OpPartyInfoUpdate:
 		partyID := reader.ReadInt32()
 		playerID := reader.ReadInt32()
 		index := reader.ReadInt32()
@@ -2409,7 +2484,7 @@ func (server Server) handleChatEvent(conn mnet.Server, reader mpacket.Reader) {
 	op := reader.ReadByte()
 
 	switch op {
-	case 0: // whispher
+	case internal.OpChatWhispher:
 		recepientName := reader.ReadString(reader.ReadInt16())
 		fromName := reader.ReadString(reader.ReadInt16())
 		msg := reader.ReadString(reader.ReadInt16())
@@ -2423,7 +2498,7 @@ func (server Server) handleChatEvent(conn mnet.Server, reader mpacket.Reader) {
 
 		plr.send(packetMessageWhisper(fromName, msg, channelID))
 
-	case 1: // buddy
+	case internal.OpChatBuddy:
 		fromName := reader.ReadString(reader.ReadInt16())
 		idCount := reader.ReadByte()
 
@@ -2444,7 +2519,7 @@ func (server Server) handleChatEvent(conn mnet.Server, reader mpacket.Reader) {
 
 			plr.send(packetMessageBubblessChat(0, fromName, msg))
 		}
-	case 2: // party
+	case internal.OpChatParty:
 		fromName := reader.ReadString(reader.ReadInt16())
 		idCount := reader.ReadByte()
 
@@ -2465,7 +2540,7 @@ func (server Server) handleChatEvent(conn mnet.Server, reader mpacket.Reader) {
 
 			plr.send(packetMessageBubblessChat(1, fromName, msg))
 		}
-	case 3: // guild
+	case internal.OpChatGuild:
 		fromName := reader.ReadString(reader.ReadInt16())
 		idCount := reader.ReadByte()
 
@@ -2492,24 +2567,22 @@ func (server Server) handleChatEvent(conn mnet.Server, reader mpacket.Reader) {
 }
 
 func (server Server) handleGuildEvent(conn mnet.Server, reader mpacket.Reader) {
-
 	op := reader.ReadByte()
 
 	switch op {
-	case 0: // update
+	case internal.OpGuildDisband:
 		guildID := reader.ReadInt32()
-		playerID := reader.ReadInt32()
-		index := reader.ReadInt32()
 
-		if foundGuild, ok := server.guilds[guildID]; ok {
-			plr, _ := server.players.getFromID(playerID)
-			foundGuild.updateInfo(plr, index, &reader)
-		} else {
-			plr, _ := server.players.getFromID(playerID)
-			newGuild := &guild{}
-			newGuild.updateInfo(plr, index, &reader)
-			server.guilds[guildID] = newGuild
+		if guild, ok := server.guilds[guildID]; ok {
+			guild.disband()
+			delete(server.guilds, guildID)
 		}
+	case internal.OpGuildRankUpdate:
+	case internal.OpGuildAddPlayer:
+	case internal.OpGuildRemovePlayer:
+	case internal.OpGuildNoticeChange:
+	case internal.OpGuildEmblemChange:
+	case internal.OpGuildPointsUpdate:
 	default:
 		log.Println("Unkown guild event type:", op)
 	}

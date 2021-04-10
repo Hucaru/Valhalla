@@ -16,21 +16,23 @@ func PacketChannelPopUpdate(id byte, pop int16) mpacket.Packet {
 	return p
 }
 
-func PacketChannelPlayerConnected(playerID int32, name string, channelID byte, channelChange bool, mapID int32) mpacket.Packet {
+func PacketChannelPlayerConnected(playerID int32, name string, channelID byte, channelChange bool, mapID, guildID int32) mpacket.Packet {
 	p := mpacket.CreateInternal(opcode.ChannePlayerConnect)
 	p.WriteInt32(playerID)
 	p.WriteString(name)
 	p.WriteByte(channelID)
 	p.WriteBool(channelChange)
 	p.WriteInt32(mapID)
+	p.WriteInt32(guildID)
 
 	return p
 }
 
-func PacketChannelPlayerDisconnect(id int32, name string) mpacket.Packet {
+func PacketChannelPlayerDisconnect(id int32, name string, guildID int32) mpacket.Packet {
 	p := mpacket.CreateInternal(opcode.ChannePlayerDisconnect)
 	p.WriteInt32(id)
 	p.WriteString(name)
+	p.WriteInt32(guildID)
 
 	return p
 }
@@ -60,7 +62,7 @@ func PacketChannelBuddyEvent(op byte, recepientID, fromID int32, fromName string
 
 func PacketChannelWhispherChat(recepientName, fromName, msg string, channelID byte) mpacket.Packet {
 	p := mpacket.CreateInternal(opcode.ChannelPlayerChatEvent)
-	p.WriteByte(0) // whispher
+	p.WriteByte(OpChatWhispher) // whispher
 	p.WriteString(recepientName)
 	p.WriteString(fromName)
 	p.WriteString(msg)
@@ -80,7 +82,7 @@ func PacketChannelPlayerChat(code byte, fromName string, buffer []byte) mpacket.
 
 func PacketChannelPartyCreateRequest(playerID int32, channelID byte, mapID, job, level int32, name string) mpacket.Packet {
 	p := mpacket.CreateInternal(opcode.ChannelPlayerPartyEvent)
-	p.WriteByte(0) // new party request
+	p.WriteByte(OpPartyCreate)
 	p.WriteInt32(playerID)
 	p.WriteByte(channelID)
 	p.WriteInt32(mapID)
@@ -91,9 +93,9 @@ func PacketChannelPartyCreateRequest(playerID int32, channelID byte, mapID, job,
 	return p
 }
 
-func PacketChannelPartyCreateApproved(playerID int32, success bool, party *Party) mpacket.Packet {
+func PacketWorldPartyCreateApproved(playerID int32, success bool, party *Party) mpacket.Packet {
 	p := mpacket.CreateInternal(opcode.ChannelPlayerPartyEvent)
-	p.WriteByte(1) // new party
+	p.WriteByte(OpPartyCreate)
 	p.WriteInt32(playerID)
 	p.WriteBool(success)
 
@@ -106,7 +108,7 @@ func PacketChannelPartyCreateApproved(playerID int32, success bool, party *Party
 
 func PacketChannelPartyLeave(partyID, playerID int32, kicked bool) mpacket.Packet {
 	p := mpacket.CreateInternal(opcode.ChannelPlayerPartyEvent)
-	p.WriteByte(2) // leave party
+	p.WriteByte(OpPartyLeaveExpel)
 	p.WriteInt32(partyID)
 	p.WriteInt32(playerID)
 	p.WriteBool(kicked)
@@ -116,7 +118,7 @@ func PacketChannelPartyLeave(partyID, playerID int32, kicked bool) mpacket.Packe
 
 func PacketWorldPartyLeave(partyID int32, destroy, kicked bool, index int32, party *Party) mpacket.Packet {
 	p := mpacket.CreateInternal(opcode.ChannelPlayerPartyEvent)
-	p.WriteByte(2) // leave party
+	p.WriteByte(OpPartyLeaveExpel)
 	p.WriteInt32(partyID)
 	p.WriteBool(destroy)
 	p.WriteBool(kicked)
@@ -128,7 +130,7 @@ func PacketWorldPartyLeave(partyID int32, destroy, kicked bool, index int32, par
 
 func PacketChannelPartyAccept(partyID, playerID, channelID, mapID, job, level int32, name string) mpacket.Packet {
 	p := mpacket.CreateInternal(opcode.ChannelPlayerPartyEvent)
-	p.WriteByte(3) // accept invite
+	p.WriteByte(OpPartyAccept)
 	p.WriteInt32(partyID)
 	p.WriteInt32(playerID)
 	p.WriteInt32(channelID)
@@ -142,7 +144,7 @@ func PacketChannelPartyAccept(partyID, playerID, channelID, mapID, job, level in
 
 func PacketWorldPartyAccept(partyID, playerID, index int32, party *Party) mpacket.Packet {
 	p := mpacket.CreateInternal(opcode.ChannelPlayerPartyEvent)
-	p.WriteByte(3) // accept invite
+	p.WriteByte(OpPartyAccept)
 	p.WriteInt32(partyID)
 	p.WriteInt32(playerID)
 	p.WriteInt32(index)
@@ -153,7 +155,7 @@ func PacketWorldPartyAccept(partyID, playerID, index int32, party *Party) mpacke
 
 func PacketChannelPartyUpdateInfo(partyID, playerID, job, level, mapID int32, name string) mpacket.Packet {
 	p := mpacket.CreateInternal(opcode.ChannelPlayerPartyEvent)
-	p.WriteByte(4) // update party window info
+	p.WriteByte(OpPartyInfoUpdate)
 	p.WriteInt32(partyID)
 	p.WriteInt32(playerID)
 	p.WriteInt32(job)
@@ -166,7 +168,7 @@ func PacketChannelPartyUpdateInfo(partyID, playerID, job, level, mapID int32, na
 
 func PacketWorldPartyUpdate(partyID, playerID, index int32, onlineStatus bool, party *Party) mpacket.Packet {
 	p := mpacket.CreateInternal(opcode.ChannelPlayerPartyEvent)
-	p.WriteByte(4) // update party window info
+	p.WriteByte(OpPartyInfoUpdate)
 	p.WriteInt32(partyID)
 	p.WriteInt32(playerID)
 	p.WriteInt32(index)
@@ -176,17 +178,16 @@ func PacketWorldPartyUpdate(partyID, playerID, index int32, onlineStatus bool, p
 	return p
 }
 
-func PacketWorldGuldUpdate(guildID, playerID, index int32, guild *Guild) mpacket.Packet {
+func PacketGuildDisband(guildID int32, playerID int32) mpacket.Packet {
 	p := mpacket.CreateInternal(opcode.ChannelPlayerGuildEvent)
-	p.WriteByte(0) // Update
+	p.WriteByte(OpGuildDisband)
 	p.WriteInt32(guildID)
 	p.WriteInt32(playerID)
-	p.WriteInt32(index)
-	p.WriteBytes(guild.GeneratePacket())
 
 	return p
 }
 
+// TODO: Check if this can be deleted
 func PacketLoginDeletedCharacter(playerID int32) mpacket.Packet {
 	p := mpacket.CreateInternal(opcode.LoginDeleteCharacter)
 	p.WriteInt32(playerID)

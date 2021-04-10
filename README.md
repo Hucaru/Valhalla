@@ -14,6 +14,8 @@ This project exists to preserve and archive an early version of the game (v28 of
 - 00665211 - push to stack resolution in x
 - 0066519c - mov 0x0 instead of 0x10 for windowed mode
 
+To do this in a way that does not involve modifying the client go [here](https://github.com/Hucaru/maplestory-client-hook)
+
 ## Features
 
 General:
@@ -42,7 +44,7 @@ World server:
 - [x] Forward player leaves game to channels
 - [x] Broadcast buddy events
 - [x] Broadcast party events
-- [ ] Broadcast guild events
+- [x] Broadcast guild events
 - [x] Forward whisphers
 - [ ] Allow gm command to actiavate exp/drop changes accross all channels
 - [ ] Allow gm commands to update information displayed at login
@@ -94,8 +96,9 @@ Channel server:
 - [x] Buddy chat
 - [x] Party
 - [x] Party chat
-- [ ] Guild
-- [ ] Guild chat
+- [ ] Party HP bar
+- [x] Guild
+- [x] Guild chat
 - [ ] Guild quest
 - [ ] Trade
 - [ ] Communication Window
