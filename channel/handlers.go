@@ -2572,10 +2572,17 @@ func (server Server) handleGuildEvent(conn mnet.Server, reader mpacket.Reader) {
 	switch op {
 	case internal.OpGuildDisband:
 		guildID := reader.ReadInt32()
+		playerID := reader.ReadInt32()
 
 		if guild, ok := server.guilds[guildID]; ok {
 			guild.disband()
 			delete(server.guilds, guildID)
+
+			plr, err := server.players.getFromID(playerID)
+
+			if err == nil {
+				plr.send(packetGuildDisbandNpc(guildID))
+			}
 		}
 	case internal.OpGuildRankUpdate:
 	case internal.OpGuildAddPlayer:

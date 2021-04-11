@@ -1,6 +1,8 @@
 package channel
 
 import (
+	"fmt"
+
 	"github.com/Hucaru/Valhalla/common"
 	"github.com/Hucaru/Valhalla/common/mpacket"
 	"github.com/Hucaru/Valhalla/common/opcode"
@@ -67,6 +69,37 @@ func loadGuildFromDb(guildID int32) (*guild, error) {
 	return loadedGuild, nil
 }
 
+func createGuild(name string, worldID int32) (*guild, error) {
+	master := "Master"
+	jsMaster := "Jr. Master"
+	member := "Member"
+
+	query := "INSERT INTO guilds (name, worldID, notice, master, jrMaster, member1, member2, member3) VALUES (?, ?, '', ?, ?, ?, ?, ?)"
+	res, err := common.DB.Exec(query, name, worldID, master, jsMaster, member, member, member)
+
+	if err != nil {
+		return nil, err
+	}
+
+	id, err := res.LastInsertId()
+
+	if err != nil {
+		return nil, err
+	}
+
+	newGuild := &guild{
+		id:       int32(id),
+		name:     name,
+		master:   master,
+		jrMaster: jsMaster,
+		member1:  member,
+		member2:  member,
+		member3:  member,
+	}
+
+	return newGuild, nil
+}
+
 func (g *guild) broadcast(p mpacket.Packet) {
 	for _, v := range g.players {
 		if v == nil {
@@ -83,6 +116,42 @@ func (g *guild) broadcastExcept(p mpacket.Packet, plr *player) {
 		}
 		v.send(p)
 	}
+}
+
+func (g *guild) addPlayer(plr *player, playerID int32, name string, jobID, level int32, rank int32) error {
+	index := -1
+	for i, v := range g.levels {
+		if v == 0 {
+			index = i
+			break
+		}
+	}
+
+	if index == -1 {
+		return fmt.Errorf("Guild at capacity")
+	}
+
+	_, err := common.DB.Exec("UPDATE characters SET guildID=? WHERE id=?", g.id, playerID)
+
+	if err != nil {
+		return err
+	}
+
+	g.playerID[index] = playerID
+	g.names[index] = name
+	g.jobs[index] = jobID
+	g.levels[index] = level
+	g.online[index] = true
+	g.ranks[index] = rank
+
+	// broadcast new guild member to guild
+
+	if plr != nil {
+		plr.send(packetGuildInfo(g))
+		// plr.inst.sendExcept(, plr.conn) // show guild nameplate under avatar
+	}
+
+	return nil
 }
 
 func (g *guild) playerOnline(playerID int32, plr *player, online, changeChannel bool) {
@@ -144,6 +213,7 @@ func packetGuildInfo(guild *guild) mpacket.Packet {
 	p.WriteString(guild.member2)
 	p.WriteString(guild.member3)
 
+	// TODO: move this into guild struct to avoid uneeded re-calculations
 	var memberCount byte
 
 	for _, v := range guild.playerID {
@@ -224,6 +294,84 @@ func packetGuildInviteResult(name string, code byte) mpacket.Packet {
 }
 
 /*
+0x01 - type name of guild dialogue box
+
+0x02 - not accepted due to unkown reason
+
+0x03 - guild contract accept decline ui to other people
+
+0x04 - not accepted due to unkown reason
+
+0x05 - guild invite card
+i32 - guild id
+string - inviter name
+
+0x06 - 0x10 - not accepted due to unkown reason
+
+0x11 - create emblem ui
+
+0x12 - 0x19 - not accepted due to unkown reason
+
+0x1a - guild info
+
+0x1b - not accepted due to unkown reason
+
+0x1c - name already in use npc message ui
+
+0x1f - problem in gathering agreements npc message ui
+
+0x20 - ?, dc without packet buffer length error
+
+0x21 - already joined guild
+
+0x22 - not accepted due to unknown reason
+
+0x23 - cannot make guild due to level requirement message
+
+0x24 - someone has diagreed to form guild, come back when you meet the right people npc ui message
+
+0x25 - not accepted due to unkown reason
+
+0x26 - problem has happened during process of forming guild npc ui
+
+0x27 - player joined guild
+
+0x28 - already joined the guild message
+
+0x29 - the guild you are trying to join has reached maximum capacity
+
+0x2a - character cannot be found in current channel
+
+0x2b - not accepted due to unkown reason
+
+0x2c - deleted characters removed from guild
+
+0x2d - you are not in the guild
+
+0x2e - not accepted due to unkown reason
+
+0x2f - deleted character removed from guild
+
+0x30 - you are not in the guild
+
+0x31 - not accepted due to unkown reason
+
+0x32 - disband guild npc ui, removes player from guild as well
+
+0x33 - not accepted due to unkown reason
+
+0x34 - npc dialogue box saying problem has occured during disbandon
+
+0x35 - name is currently not accepted guild request invites
+
+0x36 - name is taking care of another invitation
+
+0x37 - name has denied your invitation
+
+0x38 - admin cannot make guild message
+
+0x39 - not accepted due to unkown reason
+
 0x3a - guild capacity npc dialogue box (ui not updated)
 i32 - guildID
 i8 - capacity
@@ -236,41 +384,6 @@ i32
 i32
 i32
 
-0x34 - npc dialogue box saying problem has occured during disbandon
-
-0x38 - admin cannot make guild message
-
-0x49 -
-i32
-i32 - amount
-for amount:
-	name
-	i32
-
-0x4a - less than 5 members remaning, guild quest will end in 5 seconds
-
-0x4b - user that registered has disconnected, quest will end in 5 seconds
-
-0x4c - guild quest status and position in queue
-i8 - channelID
-i32 - position in queue
-
-0x48 -
-i32 - guildID
-i32 - ?
-
-0x3c -
-i32 - guildID
-i32
-i8
-
-between 0x3f - 0x47 -
-i32 - guildID
-i16
-i8
-i16
-i8
-
 0x3e - update rank titles (dialogue box comes up saying it has been saved) ui is updated
 i32 - guildID
 name  - master
@@ -279,8 +392,43 @@ name
 name
 name - member
 
-0x30 - you are not in the guild
+0x3d - ?
 
-0x29 - the guild you are trying to join has reached maximum capacity
+0x3e - it is saved dialogue message
+
+0x3f - the guild request has not been accepted for unkown reason
+
+0x40 - ?
+
+0x41 - the guild request has not been accepted for unkown reason
+
+0x42 - it is compelete dialogue message, removes the emblem
+
+0x43 - the guild request has not been accepted for unkown reason
+
+0x44 - update notice
+
+0x45 - 0x47 - the guild request has not been accepted for unkown reason
+
+0x48 -
+i32 - guildID
+i32 - ?
+
+0x49 - some ui thing?
+i32 - guildID?
+i32 - amount
+for amount:
+	name
+	i32 - points?
+
+0x4a - less than 5 members remaning, guild quest will end in 5 seconds
+
+0x4b - user that registered has disconnected, quest will end in 5 seconds
+
+0x4c - guild quest status and position in queue
+i8 - channelID
+i32 - position in queue, 1 is enter now, 2 is head to quest map to wait, 3 and up is currently one guild participating and you are n - 1 on waiting list
+
+0x4d - 0x4f - the guild request has not been accepted for unkown reason
 
 */
