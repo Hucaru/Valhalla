@@ -787,6 +787,15 @@ func (server *Server) gmCommand(conn mnet.Client, msg string) {
 				break
 			}
 		}
+	case "partyCreate":
+		plr, err := server.players.getFromConn(conn)
+
+		if err != nil {
+			conn.Send(packetMessageRedText(err.Error()))
+			return
+		}
+
+		server.world.Send(internal.PacketChannelPartyCreateRequest(plr.id, server.id, plr.mapID, int32(plr.job), int32(plr.level), plr.name))
 	case "guildCreate":
 		guildName := command[1:]
 

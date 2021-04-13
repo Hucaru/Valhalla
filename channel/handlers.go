@@ -2151,12 +2151,39 @@ func (server Server) roomWindow(conn mnet.Client, reader mpacket.Reader) {
 	}
 }
 
-func (server *Server) guildManagement(conn mnet.Server, reader mpacket.Reader) {
+func (server *Server) guildManagement(conn mnet.Client, reader mpacket.Reader) {
 	fmt.Println("Guild management:", reader)
 
 	op := reader.ReadByte()
 
 	switch op {
+	case 0x02: // create guild name dialogue
+		guildName := reader.ReadString(reader.ReadInt16())
+
+		// check guild name can be used in current world, check if in party and 5 party members are in same map and instance
+		// send I am sending contract to people dialogue
+		// add entry to the server guild creation variable
+
+		plr, err := server.players.getFromConn(conn)
+
+		if err != nil {
+			return
+		}
+
+		partyID := plr.party.ID
+		contract := createGuildContract(plr, guildName)
+		server.guildContracts[partyID] = contract
+		contract.send()
+
+		go func() {
+			time.Sleep(33 * time.Second)
+			server.dispatch <- func() {
+				if contract, ok := server.guildContracts[partyID]; ok {
+					contract.error()
+					delete(server.guildContracts, partyID)
+				}
+			}
+		}()
 	case 0x05: // invite
 		playerName := reader.ReadString(reader.ReadInt16())
 		// check if name exists in db (and get guildID to check they can be invited and get channelID), update invite table, send invite if on same channel, otherwise send world server event
@@ -2202,6 +2229,37 @@ func (server *Server) guildManagement(conn mnet.Server, reader mpacket.Reader) {
 		// emit to world server
 
 		fmt.Println("rank change:", playerID, rank)
+	case 0x1E: // Guild contract
+		id := reader.ReadInt32()
+		accepted := reader.ReadBool()
+
+		plr, err := server.players.getFromConn(conn)
+
+		if err != nil {
+			return
+		}
+
+		if plr.party == nil {
+			return
+		}
+
+		if contract, ok := server.guildContracts[plr.party.ID]; ok {
+			if contract.sign(id, accepted) {
+				guild, err := createGuild(contract.guildName, int32(conn.GetWorldID()))
+
+				if err != nil {
+					log.Println(err)
+					return
+				}
+
+				if _, ok := server.guilds[guild.id]; !ok {
+					server.guilds[guild.id] = guild
+					contract.addPlayers(guild, &server.players)
+				}
+
+				delete(server.guildContracts, plr.party.ID)
+			}
+		}
 	default:
 		log.Println("Unknown guild operation", op)
 	}

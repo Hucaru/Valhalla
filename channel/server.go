@@ -37,6 +37,7 @@ type Server struct {
 	eventScriptStore *scriptStore
 	parties          map[int32]*party
 	guilds           map[int32]*guild
+	guildContracts   map[int32]*guildContract
 }
 
 // Initialise the server
@@ -81,6 +82,7 @@ func (server *Server) Initialise(work chan func(), dbuser, dbpassword, dbaddress
 
 	server.parties = make(map[int32]*party)
 	server.guilds = make(map[int32]*guild)
+	server.guildContracts = make(map[int32]*guildContract)
 }
 
 func (server *Server) loadScripts() {

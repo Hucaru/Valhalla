@@ -198,6 +198,11 @@ func (state *npcScriptState) Terminate() {
 	state.terminate = true
 }
 
+// Log that is safe to use by script
+func (controller npcScriptState) Log(v ...interface{}) {
+	log.Println(v...)
+}
+
 // Selection value
 func (state npcScriptState) Selection() int32 {
 	return state.selection
@@ -300,7 +305,7 @@ func (state npcScriptState) WarpPlayer(p *playerWrapper, mapID int32) bool {
 }
 
 // GetInstance that the passed in player belongs to
-func (state npcScriptState) GetInstance(p *player) *fieldInstanceWrapper {
+func (state npcScriptState) GetInstance(p *playerWrapper) *fieldInstanceWrapper {
 	if field, ok := state.fields[p.mapID]; ok {
 		inst, err := field.getInstance(p.inst.id)
 
@@ -312,6 +317,11 @@ func (state npcScriptState) GetInstance(p *player) *fieldInstanceWrapper {
 	}
 
 	return &fieldInstanceWrapper{}
+}
+
+// StartGuildCreation
+func (state npcScriptState) StartGuildCreation(p *playerWrapper) {
+	p.send(packetGuildEnterName())
 }
 
 type fieldInstanceWrapper struct {

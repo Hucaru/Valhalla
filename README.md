@@ -98,6 +98,8 @@ Channel server:
 - [x] Party chat
 - [ ] Party HP bar
 - [x] Guild
+- [x] Guild contract
+- [x] Guild emblem
 - [x] Guild chat
 - [ ] Guild quest
 - [ ] Trade

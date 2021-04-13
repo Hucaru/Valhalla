@@ -2,6 +2,7 @@ package channel
 
 import (
 	"fmt"
+	"log"
 
 	"github.com/Hucaru/Valhalla/common"
 	"github.com/Hucaru/Valhalla/common/mpacket"
@@ -9,7 +10,62 @@ import (
 	"github.com/Hucaru/Valhalla/constant"
 )
 
-// TODO: login server needs to send a deleted character event so that they can leave the guild for playing players
+type guildContract struct {
+	leader    *player
+	guildName string
+	signers   map[int32]bool
+	accepted  int
+}
+
+func createGuildContract(plr *player, name string) *guildContract {
+	return &guildContract{leader: plr, guildName: name, signers: make(map[int32]bool)}
+}
+
+func (c *guildContract) send() {
+	for _, v := range c.leader.party.players {
+		if v != nil && v.mapID == c.leader.mapID {
+			if v.id != c.leader.id {
+				c.signers[v.id] = false
+			}
+			v.send(packetGuildContract(c.leader.party.ID, c.leader.name, c.guildName))
+		}
+	}
+}
+
+func (c *guildContract) sign(playerID int32, accept bool) bool {
+	if _, ok := c.signers[playerID]; ok && accept {
+		c.signers[playerID] = true
+		c.accepted++
+	}
+
+	return c.accepted == 1
+}
+
+func (c guildContract) error() {
+	c.leader.send(packetGuildAgreementProblem())
+}
+
+// Note: since players all have to be on same channel and same map when contract signing we don't need to send an interserver message to add players
+func (c guildContract) addPlayers(guild *guild, players *players) {
+	guild.addPlayer(c.leader, c.leader.id, c.leader.name, int32(c.leader.job), int32(c.leader.level), 1)
+
+	for id := range c.signers {
+		plr, err := players.getFromID(id)
+
+		if err != nil {
+			log.Println(err)
+			continue
+		}
+
+		err = guild.addPlayer(plr, plr.id, plr.name, int32(plr.job), int32(plr.level), 5)
+
+		if err != nil {
+			log.Println(err)
+		}
+	}
+}
+
+// TODO: login server needs to send a deleted character event so that world server can update currently playing players
 
 type guild struct {
 	id       int32
@@ -118,6 +174,11 @@ func (g *guild) broadcastExcept(p mpacket.Packet, plr *player) {
 	}
 }
 
+func (g guild) updateAvatar(plr *player) {
+	plr.inst.sendExcept(packetMapPlayerLeft(plr.id), plr.conn)
+	plr.inst.sendExcept(packetMapPlayerEnter(plr), plr.conn)
+}
+
 func (g *guild) addPlayer(plr *player, playerID int32, name string, jobID, level int32, rank int32) error {
 	index := -1
 	for i, v := range g.levels {
@@ -137,6 +198,7 @@ func (g *guild) addPlayer(plr *player, playerID int32, name string, jobID, level
 		return err
 	}
 
+	g.players[index] = plr
 	g.playerID[index] = playerID
 	g.names[index] = name
 	g.jobs[index] = jobID
@@ -144,11 +206,11 @@ func (g *guild) addPlayer(plr *player, playerID int32, name string, jobID, level
 	g.online[index] = true
 	g.ranks[index] = rank
 
-	// broadcast new guild member to guild
-
 	if plr != nil {
+		plr.guild = g
+		g.updateAvatar(plr)
 		plr.send(packetGuildInfo(g))
-		// plr.inst.sendExcept(, plr.conn) // show guild nameplate under avatar
+		g.broadcast(packetGuildPlayerJoined(plr))
 	}
 
 	return nil
@@ -183,14 +245,49 @@ func (g guild) canUnload() bool {
 	return true
 }
 
-func (g guild) disband() {
-	// for _, plr := range g.players {
-	// 	if plr != nil {
-	// 		plr.inst.sendExcept(, plr.conn) // remove guild from under player avatar
-	// 	}
-	// }
+func (g guild) disband() error {
+	for _, plr := range g.players {
+		if plr != nil {
+			plr.guild = nil
+			g.updateAvatar(plr)
+		}
+	}
 
 	g.broadcast(packetGuildInfo(nil))
+	return nil
+}
+
+func packetGuildEnterName() mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelGuildInfo)
+	p.WriteByte(0x01)
+
+	return p
+}
+
+func packetGuildInviteCard(guildID int32, name string) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelGuildInfo)
+	p.WriteByte(0x05)
+	p.WriteInt32(guildID)
+	p.WriteString(name)
+
+	return p
+}
+
+func packetGuildContract(partyID int32, masterName, guildName string) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelGuildInfo)
+	p.WriteByte(0x03)
+	p.WriteInt32(partyID)
+	p.WriteString(masterName)
+	p.WriteString(guildName)
+
+	return p
+}
+
+func packetGuildCreateEmblem() mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelGuildInfo)
+	p.WriteByte(0x11)
+
+	return p
 }
 
 func packetGuildInfo(guild *guild) mpacket.Packet {
@@ -213,10 +310,9 @@ func packetGuildInfo(guild *guild) mpacket.Packet {
 	p.WriteString(guild.member2)
 	p.WriteString(guild.member3)
 
-	// TODO: move this into guild struct to avoid uneeded re-calculations
 	var memberCount byte
 
-	for _, v := range guild.playerID {
+	for _, v := range guild.levels {
 		if v > 0 {
 			memberCount++
 		}
@@ -251,6 +347,28 @@ func packetGuildInfo(guild *guild) mpacket.Packet {
 	p.WriteByte(guild.logoColour)
 	p.WriteString(guild.notice)
 	p.WriteInt32(guild.points)
+
+	return p
+}
+
+func packetGuildAgreementProblem() mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelGuildInfo)
+	p.WriteByte(0x1f)
+
+	return p
+}
+
+func packetGuildPlayerJoined(plr *player) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelGuildInfo)
+	p.WriteByte(0x27)
+	p.WriteInt32(plr.guild.id)
+	p.WriteInt32(plr.id)
+	p.WritePaddedString(plr.name, 13)
+	p.WriteInt32(int32(plr.job))
+	p.WriteInt32(int32(plr.level))
+	p.WriteInt32(5)
+	p.WriteInt32(1) // online
+	p.WriteInt32(0) // ?
 
 	return p
 }
@@ -299,6 +417,7 @@ func packetGuildInviteResult(name string, code byte) mpacket.Packet {
 0x02 - not accepted due to unkown reason
 
 0x03 - guild contract accept decline ui to other people
+/packet 30030000000000000000
 
 0x04 - not accepted due to unkown reason
 
