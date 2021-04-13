@@ -38,7 +38,7 @@ func (c *guildContract) sign(playerID int32, accept bool) bool {
 		c.accepted++
 	}
 
-	return c.accepted == 1
+	return c.accepted == 4 // 5th person is leader
 }
 
 func (c guildContract) error() {
