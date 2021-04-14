@@ -2160,9 +2160,23 @@ func (server *Server) guildManagement(conn mnet.Client, reader mpacket.Reader) {
 	case 0x02: // create guild name dialogue
 		guildName := reader.ReadString(reader.ReadInt16())
 
-		// check guild name can be used in current world, check if in party and 5 party members are in same map and instance
-		// send I am sending contract to people dialogue
-		// add entry to the server guild creation variable
+		if len(guildName) < 4 || len(guildName) > 12 {
+			conn.Send(packetGuildProblemOccurred())
+			return
+		}
+
+		guildCount := 0
+		err := common.DB.QueryRow("SELECT count(*) FROM guilds where name=? AND worldID=?", guildName, conn.GetWorldID()).Scan(&guildCount)
+
+		if err != nil {
+			log.Println(err)
+			return
+		}
+
+		if guildCount > 0 {
+			conn.Send(packetGuildNameInUse())
+			return
+		}
 
 		plr, err := server.players.getFromConn(conn)
 
@@ -2245,18 +2259,23 @@ func (server *Server) guildManagement(conn mnet.Client, reader mpacket.Reader) {
 
 		if contract, ok := server.guildContracts[plr.party.ID]; ok {
 			if contract.sign(id, accepted) {
-				guild, err := createGuild(contract.guildName, int32(conn.GetWorldID()))
+				if contract.canBuild() {
+					guild, err := createGuild(contract.guildName, int32(conn.GetWorldID()))
 
-				if err != nil {
-					log.Println(err)
-					return
+					if err != nil {
+						log.Println(err)
+						return
+					}
+
+					if _, ok := server.guilds[guild.id]; !ok {
+						server.guilds[guild.id] = guild
+						contract.addPlayers(guild, &server.players)
+					}
+
+					delete(server.guildContracts, plr.party.ID)
 				}
-
-				if _, ok := server.guilds[guild.id]; !ok {
-					server.guilds[guild.id] = guild
-					contract.addPlayers(guild, &server.players)
-				}
-
+			} else {
+				// party member declined
 				delete(server.guildContracts, plr.party.ID)
 			}
 		}

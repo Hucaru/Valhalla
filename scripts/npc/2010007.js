@@ -10,8 +10,17 @@ function run(npc, player) {
 
     switch(state) {
         case 0:
-            npc.sendBackNext("Hey...are you interested in GUILDS by any chance?", false, true)
+            if (player.inGuild() && player.isGuildLeader()) {
+                npc.sendSelection("What would you like to do:\r\n#b#L0#Increase guild capacity#l\r\n#L1#Disband guild#l")
+                state = 4
+            } else {
+                npc.sendBackNext("Hey...are you interested in GUILDS by any chance?", false, true)
+            }
+            
             break
+        /*
+         * Guild Creation
+         */
         case 1:
             npc.sendSelection("#b#L0#What's a Guild#l\r\n#L1#What do I do to form a guild?#l\r\n#L2#I want to start a guild#l")
             state++
@@ -22,7 +31,7 @@ function run(npc, player) {
             if (selection == 0) {
                 npc.sendBackNext("A guild is....", true, false)
             } else if (selection == 1) {
-                npc.sendBackNext("In order to form a guild you need to be in a party of 5 people and the party leader and have at least 5,000,000 mesos", true, false)
+                npc.sendBackNext("In order to form a guild you need to be in a party of 5 people and the party leader and have at least 5,000,000 mesos.", true, false)
             } else if (selection == 2) {
                 npc.sendYesNo("Are you sure wish to form a guild?")
                 state++
@@ -34,13 +43,31 @@ function run(npc, player) {
             break
         case 3:
             if (npc.yes()) {
-                npc.startGuildCreation(player)
+                if (player.inGuild()) {
+                    npc.sendOK("You cannot create a guild whilst still being in one.")
+                } else if (!player.inParty()) {
+                    npc.sendOK("In order to form a guild you need to be in a party with at least 5 people and all be in this room.")
+                } else if (!player.isPartyLeader()) {
+                    npc.sendOK("You must be the party leader in order to form a guild.")
+                } else if (player.partyMembersOnMapCount() < 5) {
+                    npc.sendOK("You must have 4 other people in this room in order to form a guild.")
+                } else if (player.mesos() < 5e6) {
+                    npc.sendOK("You need at least 5,000,000 mesos to form a guild. Please come back once you have the required amount.")
+                } else {
+                    npc.startGuildCreation(player)
+                }
             } else {
-                npc.sendOK("Come back when you have decided to form a guild")
+                npc.sendOK("Come back when you have decided to form a guild.")
             }
 
             npc.terminate()
             break
+        /*
+         * Manage Guild
+         */
+        case 4:
+            var selection = npc.selection()
+            break;
         default:
             npc.sendOK("state " + state)
             npc.terminate()

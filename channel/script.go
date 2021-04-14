@@ -662,3 +662,39 @@ func (p *playerWrapper) Mesos() int32 {
 func (p *playerWrapper) GiveMesos(amount int32) {
 	p.giveMesos(amount)
 }
+
+func (p *playerWrapper) InGuild() bool {
+	return p.guild != nil
+}
+
+func (p *playerWrapper) IsGuildLeader() bool {
+	for _, v := range p.guild.players {
+		if v == p.player {
+			return true
+		}
+	}
+	return false
+}
+
+func (p *playerWrapper) InParty() bool {
+	return p.party != nil
+}
+
+func (p *playerWrapper) IsPartyLeader() bool {
+	return p.party.players[0] == p.player
+}
+
+func (p *playerWrapper) PartyMembersOnMapCount() int {
+	if p.party == nil {
+		return 0
+	}
+
+	count := 0
+	for _, v := range p.party.players {
+		if v != nil && v.mapID == p.mapID {
+			count++
+		}
+	}
+
+	return count
+}

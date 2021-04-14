@@ -83,7 +83,7 @@ Channel server:
 - [x] Mob visible
 - [x] Mob movement
 - [x] Mob attack
-- [ ] Mob skills that cause stat changes
+- [ ] Mob skills that cause stat changes or summon other mobs (not on death)
 - [x] Mob death
 - [x] Mob respawn
 - [x] Mob spawns mob(s) on death

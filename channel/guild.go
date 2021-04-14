@@ -14,7 +14,7 @@ type guildContract struct {
 	leader    *player
 	guildName string
 	signers   map[int32]bool
-	accepted  int
+	signed    int
 }
 
 func createGuildContract(plr *player, name string) *guildContract {
@@ -33,12 +33,21 @@ func (c *guildContract) send() {
 }
 
 func (c *guildContract) sign(playerID int32, accept bool) bool {
-	if _, ok := c.signers[playerID]; ok && accept {
-		c.signers[playerID] = true
-		c.accepted++
+	if _, ok := c.signers[playerID]; ok {
+		c.signers[playerID] = accept
+		c.signed++
+		if !accept {
+			fmt.Println("Declined sending decline")
+			c.leader.send(packetGuildContractDisagree())
+			return false
+		}
 	}
 
-	return c.accepted == 4 // 5th person is leader
+	return true
+}
+
+func (c guildContract) canBuild() bool {
+	return c.signed == 4
 }
 
 func (c guildContract) error() {
@@ -47,7 +56,14 @@ func (c guildContract) error() {
 
 // Note: since players all have to be on same channel and same map when contract signing we don't need to send an interserver message to add players
 func (c guildContract) addPlayers(guild *guild, players *players) {
-	guild.addPlayer(c.leader, c.leader.id, c.leader.name, int32(c.leader.job), int32(c.leader.level), 1)
+	err := guild.addPlayer(c.leader, c.leader.id, c.leader.name, int32(c.leader.job), int32(c.leader.level), 1)
+
+	if err != nil {
+		return
+	}
+
+	// TODO: Send the congrats guild created message to the leader
+	c.leader.giveMesos(-5e6)
 
 	for id := range c.signers {
 		plr, err := players.getFromID(id)
@@ -192,7 +208,7 @@ func (g *guild) addPlayer(plr *player, playerID int32, name string, jobID, level
 		return fmt.Errorf("Guild at capacity")
 	}
 
-	_, err := common.DB.Exec("UPDATE characters SET guildID=? WHERE id=?", g.id, playerID)
+	_, err := common.DB.Exec("UPDATE characters SET guildID=?, guildRankID=? WHERE id=?", g.id, rank, playerID)
 
 	if err != nil {
 		return err
@@ -351,9 +367,30 @@ func packetGuildInfo(guild *guild) mpacket.Packet {
 	return p
 }
 
+func packetGuildNameInUse() mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelGuildInfo)
+	p.WriteByte(0x1c)
+
+	return p
+}
+
 func packetGuildAgreementProblem() mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelGuildInfo)
 	p.WriteByte(0x1f)
+
+	return p
+}
+
+func packetGuildContractDisagree() mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelGuildInfo)
+	p.WriteByte(0x24)
+
+	return p
+}
+
+func packetGuildProblemOccurred() mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelGuildInfo)
+	p.WriteByte(0x26)
 
 	return p
 }
@@ -369,16 +406,6 @@ func packetGuildPlayerJoined(plr *player) mpacket.Packet {
 	p.WriteInt32(5)
 	p.WriteInt32(1) // online
 	p.WriteInt32(0) // ?
-
-	return p
-}
-
-func packetGuildPlayerOnlineNotice(guildID, playerID int32, online bool) mpacket.Packet {
-	p := mpacket.CreateWithOpcode(opcode.SendChannelGuildInfo)
-	p.WriteByte(0x3d)
-	p.WriteInt32(guildID)
-	p.WriteInt32(playerID)
-	p.WriteBool(online)
 
 	return p
 }
@@ -407,6 +434,16 @@ func packetGuildInviteResult(name string, code byte) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelGuildInfo)
 	p.WriteByte(code)
 	p.WriteString(name)
+
+	return p
+}
+
+func packetGuildPlayerOnlineNotice(guildID, playerID int32, online bool) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelGuildInfo)
+	p.WriteByte(0x3d)
+	p.WriteInt32(guildID)
+	p.WriteInt32(playerID)
+	p.WriteBool(online)
 
 	return p
 }
@@ -463,19 +500,27 @@ string - inviter name
 
 0x2b - not accepted due to unkown reason
 
-0x2c - deleted characters removed from guild
+0x2c - deleted characters removed from guild, left
+i32 - guild id
+i32 - player id
+string - name
 
 0x2d - you are not in the guild
 
 0x2e - not accepted due to unkown reason
 
-0x2f - deleted character removed from guild
+0x2f - deleted character removed from guild, expelled
+i32 - guild id
+i32 - player id
+string - name
 
 0x30 - you are not in the guild
 
 0x31 - not accepted due to unkown reason
 
-0x32 - disband guild npc ui, removes player from guild as well
+0x32 - disband guild npc ui for leader, removes player from guild as well, send to all players
+i32 - guildID
+i8 - ?
 
 0x33 - not accepted due to unkown reason
 
@@ -497,11 +542,11 @@ i8 - capacity
 
 0x3b - guild capacity problem dialogue box
 
-0x3c -
+0x3c - level , job id change
 i32 - guildID
-i32
-i32
-i32
+i32 - playerID
+i32 - level
+i32 - jobID
 
 0x3e - update rank titles (dialogue box comes up saying it has been saved) ui is updated
 i32 - guildID
@@ -511,17 +556,25 @@ name
 name
 name - member
 
-0x3d - ?
+0x3d - guild player online
 
 0x3e - it is saved dialogue message
 
 0x3f - the guild request has not been accepted for unkown reason
 
-0x40 - ?
+0x40 - rank change
+i32 - guild id
+i32 - player id
+i32 - guild rank
 
 0x41 - the guild request has not been accepted for unkown reason
 
-0x42 - it is compelete dialogue message, removes the emblem
+0x42 - it is compelete dialogue message, removes/changes the emblem
+i32 - gid
+i16 - bg
+i16 - bgcolour
+i16 - logo
+i16 - logocolour
 
 0x43 - the guild request has not been accepted for unkown reason
 
@@ -529,9 +582,9 @@ name - member
 
 0x45 - 0x47 - the guild request has not been accepted for unkown reason
 
-0x48 -
+0x48 - update guild points
 i32 - guildID
-i32 - ?
+i32 - gp points
 
 0x49 - some ui thing?
 i32 - guildID?
