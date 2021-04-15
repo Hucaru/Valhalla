@@ -1601,7 +1601,7 @@ func (server *Server) npcChatStart(conn mnet.Client, reader mpacket.Reader) {
 	}
 
 	server.npcChat[conn] = controller
-	if controller.run(plr) {
+	if controller.run(plr, server) {
 		delete(server.npcChat, conn)
 	}
 }
@@ -1683,7 +1683,7 @@ func (server *Server) npcChatContinue(conn mnet.Client, reader mpacket.Reader) {
 		return
 	}
 
-	if terminate || controller.run(plr) {
+	if terminate || controller.run(plr, server) {
 		delete(server.npcChat, conn)
 	}
 }
@@ -2243,6 +2243,25 @@ func (server *Server) guildManagement(conn mnet.Client, reader mpacket.Reader) {
 		// emit to world server
 
 		fmt.Println("rank change:", playerID, rank)
+	case 0x0F: // emblem change
+		plr, err := server.players.getFromConn(conn)
+
+		if err != nil {
+			return
+		}
+
+		if plr.guild == nil || !plr.guild.isMaster(plr) {
+			return
+		}
+
+		logoBg := reader.ReadInt16()
+		logoBgColour := reader.ReadByte()
+		logo := reader.ReadInt16()
+		logoColour := reader.ReadByte()
+
+		plr.giveMesos(-1e6)
+
+		server.world.Send(internal.PacketGuildUpdateEmblem(plr.guild.id, logoBg, logo, logoBgColour, logoColour))
 	case 0x1E: // Guild contract
 		id := reader.ReadInt32()
 		accepted := reader.ReadBool()
@@ -2269,7 +2288,7 @@ func (server *Server) guildManagement(conn mnet.Client, reader mpacket.Reader) {
 
 					if _, ok := server.guilds[guild.id]; !ok {
 						server.guilds[guild.id] = guild
-						contract.addPlayers(guild, &server.players)
+						contract.authorize(guild, &server.players)
 					}
 
 					delete(server.guildContracts, plr.party.ID)
@@ -2649,23 +2668,26 @@ func (server Server) handleGuildEvent(conn mnet.Server, reader mpacket.Reader) {
 	switch op {
 	case internal.OpGuildDisband:
 		guildID := reader.ReadInt32()
-		playerID := reader.ReadInt32()
 
 		if guild, ok := server.guilds[guildID]; ok {
 			guild.disband()
 			delete(server.guilds, guildID)
-
-			plr, err := server.players.getFromID(playerID)
-
-			if err == nil {
-				plr.send(packetGuildDisbandNpc(guildID))
-			}
 		}
 	case internal.OpGuildRankUpdate:
 	case internal.OpGuildAddPlayer:
 	case internal.OpGuildRemovePlayer:
 	case internal.OpGuildNoticeChange:
 	case internal.OpGuildEmblemChange:
+		guildID := reader.ReadInt32()
+
+		if guild, ok := server.guilds[guildID]; ok {
+			logoBg := reader.ReadInt16()
+			logo := reader.ReadInt16()
+			logoBgColour := reader.ReadByte()
+			logoColour := reader.ReadByte()
+
+			guild.updateEmblem(logoBg, logo, logoBgColour, logoColour)
+		}
 	case internal.OpGuildPointsUpdate:
 	default:
 		log.Println("Unkown guild event type:", op)

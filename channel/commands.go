@@ -842,7 +842,7 @@ func (server *Server) gmCommand(conn mnet.Client, msg string) {
 			conn.Send(packetMessageRedText("Not in guild, cannot disband"))
 		}
 
-		server.world.Send(internal.PacketGuildDisband(plr.guild.id, plr.id))
+		server.world.Send(internal.PacketGuildDisband(plr.guild.id))
 	case "testMob":
 		plr, err := server.players.getFromConn(conn)
 
@@ -1036,6 +1036,8 @@ func convertMapNameToID(name string) int32 {
 	// Misc
 	case "balrog":
 		return 105090900
+	case "guild":
+		return 200000301
 	default:
 		return 180000000
 	}

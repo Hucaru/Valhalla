@@ -5,6 +5,7 @@ import (
 	"math"
 	"time"
 
+	"github.com/Hucaru/Valhalla/common"
 	"github.com/Hucaru/Valhalla/common/mnet"
 	"github.com/Hucaru/Valhalla/common/mpacket"
 	"github.com/Hucaru/Valhalla/common/opcode"
@@ -302,24 +303,36 @@ func (server *Server) handleGuildEvent(conn mnet.Server, reader mpacket.Reader) 
 
 	switch op {
 	case internal.OpGuildDisband:
-		// Update database
-		server.forwardPacketToChannels(conn, reader)
+		guildID := reader.ReadInt32()
+
+		if _, err := common.DB.Exec("DELETE FROM guilds WHERE (id=?)", guildID); err != nil {
+			log.Println(err)
+		} else {
+			server.forwardPacketToChannels(conn, reader)
+		}
+
 	case internal.OpGuildRankUpdate:
-		// update database
 		server.forwardPacketToChannels(conn, reader)
 	case internal.OpGuildAddPlayer:
-		// update database
 	case internal.OpGuildRemovePlayer:
-		// update database
 		server.forwardPacketToChannels(conn, reader)
 	case internal.OpGuildNoticeChange:
-		// update database
 		server.forwardPacketToChannels(conn, reader)
 	case internal.OpGuildEmblemChange:
-		// update database
-		server.forwardPacketToChannels(conn, reader)
+		guildID := reader.ReadInt32()
+		logoBg := reader.ReadInt16()
+		logo := reader.ReadInt16()
+		logoBgColour := reader.ReadByte()
+		logoColour := reader.ReadByte()
+
+		query := "UPDATE guilds SET logoBg=?,logoBgColour=?,logo=?,logoColour=? WHERE id=?"
+
+		if _, err := common.DB.Exec(query, logoBg, logoBgColour, logo, logoColour, guildID); err != nil {
+			log.Println(err)
+		} else {
+			server.forwardPacketToChannels(conn, reader)
+		}
 	case internal.OpGuildPointsUpdate:
-		// update database
 		server.forwardPacketToChannels(conn, reader)
 	default:
 		log.Println("Unkown guild event type:", op)

@@ -55,7 +55,7 @@ func (c guildContract) error() {
 }
 
 // Note: since players all have to be on same channel and same map when contract signing we don't need to send an interserver message to add players
-func (c guildContract) addPlayers(guild *guild, players *players) {
+func (c guildContract) authorize(guild *guild, players *players) {
 	err := guild.addPlayer(c.leader, c.leader.id, c.leader.name, int32(c.leader.job), int32(c.leader.level), 1)
 
 	if err != nil {
@@ -191,8 +191,25 @@ func (g *guild) broadcastExcept(p mpacket.Packet, plr *player) {
 }
 
 func (g guild) updateAvatar(plr *player) {
+	if plr == nil {
+		return
+	}
+
 	plr.inst.sendExcept(packetMapPlayerLeft(plr.id), plr.conn)
 	plr.inst.sendExcept(packetMapPlayerEnter(plr), plr.conn)
+}
+
+func (g *guild) updateEmblem(logoBg, logo int16, logoBgColour, logoColour byte) {
+	g.logoBg = logoBg
+	g.logo = logo
+	g.logoBgColour = logoBgColour
+	g.logoBgColour = logoColour
+
+	for _, v := range g.players {
+		g.updateAvatar(v)
+	}
+
+	g.broadcast(packetUpdateEmblem(g.id, logoBg, logo, logoBgColour, logoColour))
 }
 
 func (g *guild) addPlayer(plr *player, playerID int32, name string, jobID, level int32, rank int32) error {
@@ -261,16 +278,25 @@ func (g guild) canUnload() bool {
 	return true
 }
 
-func (g guild) disband() error {
+func (g guild) disband() {
+	g.broadcast(packetGuildDisbandMessage(g.id))
+
 	for _, plr := range g.players {
 		if plr != nil {
 			plr.guild = nil
 			g.updateAvatar(plr)
 		}
 	}
+}
 
-	g.broadcast(packetGuildInfo(nil))
-	return nil
+func (g guild) isMaster(p *player) bool {
+	for i, v := range g.players {
+		if v == p && g.ranks[i] == 1 {
+			return true
+		}
+	}
+
+	return false
 }
 
 func packetGuildEnterName() mpacket.Packet {
@@ -299,7 +325,7 @@ func packetGuildContract(partyID int32, masterName, guildName string) mpacket.Pa
 	return p
 }
 
-func packetGuildCreateEmblem() mpacket.Packet {
+func packetGuildEmblemEditor() mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelGuildInfo)
 	p.WriteByte(0x11)
 
@@ -410,7 +436,7 @@ func packetGuildPlayerJoined(plr *player) mpacket.Packet {
 	return p
 }
 
-func packetGuildDisbandNpc(guildID int32) mpacket.Packet {
+func packetGuildDisbandMessage(guildID int32) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelGuildInfo)
 	p.WriteByte(0x032)
 	p.WriteInt32(guildID)
@@ -448,6 +474,18 @@ func packetGuildPlayerOnlineNotice(guildID, playerID int32, online bool) mpacket
 	return p
 }
 
+func packetUpdateEmblem(guildID int32, logoBg, logo int16, logoBgColour, logoColour byte) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelGuildInfo)
+	p.WriteByte(0x42)
+	p.WriteInt32(guildID)
+	p.WriteInt16(logoBg)
+	p.WriteByte(logoBgColour)
+	p.WriteInt16(logo)
+	p.WriteByte(logoColour)
+
+	return p
+}
+
 /*
 0x01 - type name of guild dialogue box
 
@@ -476,7 +514,7 @@ string - inviter name
 
 0x1f - problem in gathering agreements npc message ui
 
-0x20 - ?, dc without packet buffer length error
+0x20 - ?, dc
 
 0x21 - already joined guild
 
@@ -600,7 +638,5 @@ for amount:
 0x4c - guild quest status and position in queue
 i8 - channelID
 i32 - position in queue, 1 is enter now, 2 is head to quest map to wait, 3 and up is currently one guild participating and you are n - 1 on waiting list
-
-0x4d - 0x4f - the guild request has not been accepted for unkown reason
 
 */

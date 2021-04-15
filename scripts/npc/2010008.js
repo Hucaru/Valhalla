@@ -24,7 +24,7 @@ function run(npc, player) {
             if (player.mesos() < 1e6) {
                 npc.sendOK("You do not have enough mesos to change your emblem. Please come back when you have the required amount.")
             } else {
-                // start emblem ui
+                npc.sendGuildEmblemEditor()
             }
         } else {
             npc.sendOK("Please come back when you wish to change your emblem.")

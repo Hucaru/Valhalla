@@ -1,6 +1,8 @@
 // Heracle guild npc
 var state = 0
 
+var manageSelection = -1
+
 function run(npc, player) {
     if (npc.next()) {
         state++
@@ -54,7 +56,7 @@ function run(npc, player) {
                 } else if (player.mesos() < 5e6) {
                     npc.sendOK("You need at least 5,000,000 mesos to form a guild. Please come back once you have the required amount.")
                 } else {
-                    npc.startGuildCreation(player)
+                    npc.sendGuildCreation()
                 }
             } else {
                 npc.sendOK("Come back when you have decided to form a guild.")
@@ -66,8 +68,38 @@ function run(npc, player) {
          * Manage Guild
          */
         case 4:
-            var selection = npc.selection()
-            break;
+            manageSelection = npc.selection()
+
+            if (manageSelection == 0) {
+                // increase capacity
+            } else if (manageSelection == 1) {
+                npc.sendYesNo("Are you sure that you wish to disband the guild?")
+            } else {
+                npc.sendOK("Bug in state 4")
+                npc.terminate()
+            }
+
+            state++
+            break
+
+        case 5:
+            if (npc.yes()) {
+                if (manageSelection == 0) {
+                    // increase capacity
+                } else if (manageSelection == 1) {
+                    npc.sendOK("The guild has been disbanded") // I would have though the client would have this pre-baked like other guild management messages
+                    player.disbandGuild()
+                }
+            } else {
+                if (manageSelection == 0) {
+                    npc.sendOK("Please come back when you have decided to increase your guild capacity.")
+                } else if (manageSelection == 1) {
+                    npc.sendOK("Please come back when you wish to disband the guild.")
+                }
+            }
+            
+            npc.terminate()
+            break
         default:
             npc.sendOK("state " + state)
             npc.terminate()

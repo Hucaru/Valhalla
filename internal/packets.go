@@ -178,11 +178,22 @@ func PacketWorldPartyUpdate(partyID, playerID, index int32, onlineStatus bool, p
 	return p
 }
 
-func PacketGuildDisband(guildID int32, playerID int32) mpacket.Packet {
+func PacketGuildDisband(guildID int32) mpacket.Packet {
 	p := mpacket.CreateInternal(opcode.ChannelPlayerGuildEvent)
 	p.WriteByte(OpGuildDisband)
 	p.WriteInt32(guildID)
-	p.WriteInt32(playerID)
+
+	return p
+}
+
+func PacketGuildUpdateEmblem(guildID int32, logoBg, logo int16, logoBgColour, logoColour byte) mpacket.Packet {
+	p := mpacket.CreateInternal(opcode.ChannelPlayerGuildEvent)
+	p.WriteByte(OpGuildEmblemChange)
+	p.WriteInt32(guildID)
+	p.WriteInt16(logoBg)
+	p.WriteInt16(logo)
+	p.WriteByte(logoBgColour)
+	p.WriteByte(logoColour)
 
 	return p
 }

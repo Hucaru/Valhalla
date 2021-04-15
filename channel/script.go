@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/Hucaru/Valhalla/common/mnet"
+	"github.com/Hucaru/Valhalla/internal"
 	"github.com/dop251/goja"
 	"github.com/fsnotify/fsnotify"
 )
@@ -319,9 +320,14 @@ func (state npcScriptState) GetInstance(p *playerWrapper) *fieldInstanceWrapper 
 	return &fieldInstanceWrapper{}
 }
 
-// StartGuildCreation
-func (state npcScriptState) StartGuildCreation(p *playerWrapper) {
-	p.send(packetGuildEnterName())
+// SendGuildCreation
+func (state npcScriptState) SendGuildCreation() {
+	state.conn.Send(packetGuildEnterName())
+}
+
+// SendGuildEmblemEditor
+func (state npcScriptState) SendGuildEmblemEditor() {
+	state.conn.Send(packetGuildEmblemEditor())
 }
 
 type fieldInstanceWrapper struct {
@@ -375,14 +381,14 @@ func createNewnpcScriptController(npcID int32, conn mnet.Client, program *goja.P
 }
 
 // Run the npc script
-func (controller *npcScriptController) run(p *player) bool {
+func (controller *npcScriptController) run(p *player, s *Server) bool {
 	defer func() {
 		if r := recover(); r != nil {
 			log.Println("Error in running script:", r)
 		}
 	}()
 
-	controller.runFunc(&controller.state, &playerWrapper{player: p})
+	controller.runFunc(&controller.state, &playerWrapper{player: p, server: s})
 
 	return controller.state.terminate
 }
@@ -653,6 +659,7 @@ func (f *fieldWrapper) MobCount(id int) int {
 
 type playerWrapper struct {
 	*player
+	server *Server
 }
 
 func (p *playerWrapper) Mesos() int32 {
@@ -668,8 +675,8 @@ func (p *playerWrapper) InGuild() bool {
 }
 
 func (p *playerWrapper) IsGuildLeader() bool {
-	for _, v := range p.guild.players {
-		if v == p.player {
+	for i, v := range p.guild.players {
+		if v == p.player && p.guild.ranks[i] == 1 {
 			return true
 		}
 	}
@@ -697,4 +704,12 @@ func (p *playerWrapper) PartyMembersOnMapCount() int {
 	}
 
 	return count
+}
+
+func (p *playerWrapper) DisbandGuild() {
+	if p.guild == nil {
+		return
+	}
+
+	p.server.world.Send(internal.PacketGuildDisband(p.guild.id))
 }
