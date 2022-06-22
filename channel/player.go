@@ -1,6 +1,7 @@
 package channel
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"math"
@@ -396,6 +397,10 @@ func (d *player) giveMesos(amount int32) {
 	d.setMesos(d.mesos + amount)
 }
 
+func (d *player) takeMesos(amount int32) {
+	d.setMesos(d.mesos - amount)
+}
+
 // UpdateMovement - update Data from position data
 func (d *player) UpdateMovement(frag movementFrag) {
 	d.pos.x = frag.x
@@ -773,6 +778,17 @@ func (d *player) removeItem(item item) {
 	d.send(packetInventoryRemoveItem(item))
 }
 
+func (d *player) dropMesos(amount int32) error {
+	if d.mesos < amount {
+		return errors.New("not enough mesos")
+	}
+
+	d.takeMesos(amount)
+	d.inst.dropPool.createDrop(dropSpawnNormal, dropFreeForAll, amount, d.pos, true, 0, 0)
+
+	return nil
+}
+
 func (d *player) moveItem(start, end, amount int16, invID byte) error {
 	if end == 0 { //drop item
 		fmt.Println("Drop item amount:", amount)
@@ -783,7 +799,8 @@ func (d *player) moveItem(start, end, amount int16, invID byte) error {
 		}
 
 		d.removeItem(item)
-		// inst.AddDrop()
+
+		d.inst.dropPool.createDrop(dropSpawnNormal, dropFreeForAll, 0, d.pos, true, d.id, 0, item)
 	} else if end < 0 { // Move to equip slot
 		item1, err := d.getItem(invID, start)
 

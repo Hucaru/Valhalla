@@ -1,0 +1,11 @@
+Finishing quest with Sara:
+UNKNOWN CLIENT PACKET: [Packet] (12) : 47 02 E8 03 34 08 00 00 FF FF FF FF
+
+Accept quest with Olaf in Lith
+UNKNOWN CLIENT PACKET: [Packet] (8) : 47 01 21 08 75 4A 0F 00
+
+Pickup korean fan
+[Packet] (9) : 73 22 03 B7 FF 00 00 00 00
+
+Drop 10 mesos
+UNKNOWN CLIENT PACKET: [Packet] (5) : 3C 0A 00 00 00

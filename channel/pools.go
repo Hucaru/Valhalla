@@ -841,32 +841,34 @@ func (pool *dropPool) createDrop(spawnType byte, dropType byte, mesos int32, dro
 		timeoutTime = currentTime.Add(itemLootableByAllTimeout).Unix()
 	}
 
-	for i, item := range items {
-		tmp := dropFrom
-		tmp.x = dropFrom.x - offset + int16(i*itemDistance)
-		finalPos := pool.instance.calculateFinalDropPos(tmp)
+	if len(items) > 0 {
+		for i, item := range items {
+			tmp := dropFrom
+			tmp.x = dropFrom.x - offset + int16(i*itemDistance)
+			finalPos := pool.instance.calculateFinalDropPos(tmp)
 
-		if poolID, err := pool.nextID(); err == nil {
-			drop := fieldDrop{
-				ID:      poolID,
-				ownerID: ownerID,
-				partyID: partyID,
-				mesos:   0,
-				item:    item,
+			if poolID, err := pool.nextID(); err == nil {
+				drop := fieldDrop{
+					ID:      poolID,
+					ownerID: ownerID,
+					partyID: partyID,
+					mesos:   0,
+					item:    item,
 
-				expireTime:  expireTime,
-				timeoutTime: timeoutTime,
-				neverExpire: false,
+					expireTime:  expireTime,
+					timeoutTime: timeoutTime,
+					neverExpire: false,
 
-				originPos: dropFrom,
-				finalPos:  finalPos,
+					originPos: dropFrom,
+					finalPos:  finalPos,
 
-				dropType: dropType,
+					dropType: dropType,
+				}
+
+				pool.drops[drop.ID] = drop
+
+				pool.instance.send(packetShowDrop(spawnType, drop))
 			}
-
-			pool.drops[drop.ID] = drop
-
-			pool.instance.send(packetShowDrop(spawnType, drop))
 		}
 	}
 

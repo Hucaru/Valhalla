@@ -62,6 +62,8 @@ func (server *Server) HandleClientPacket(conn mnet.Client, reader mpacket.Reader
 		server.npcShop(conn, reader)
 	case opcode.RecvChannelInvMoveItem:
 		server.playerMoveInventoryItem(conn, reader)
+	case opcode.RecvChannelPlayerDropMesos:
+		server.playerDropMesos(conn, reader)
 	case opcode.RecvChannelInvUseItem:
 		server.playerUseInventoryItem(conn, reader)
 	case opcode.RecvChannelAddStatPoint:
@@ -721,6 +723,21 @@ func (server Server) playerMoveInventoryItem(conn mnet.Client, reader mpacket.Re
 	if err != nil {
 		log.Println(err)
 	}
+}
+
+func (server Server) playerDropMesos(conn mnet.Client, reader mpacket.Reader) {
+	amount := reader.ReadInt32()
+	plr, err := server.players.getFromConn(conn)
+
+	if err != nil {
+		return
+	}
+
+	err = plr.dropMesos(amount)
+	if err != nil {
+		log.Println(err)
+	}
+
 }
 
 func (server Server) playerUseInventoryItem(conn mnet.Client, reader mpacket.Reader) {
