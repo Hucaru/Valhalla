@@ -390,7 +390,7 @@ func (d *player) addEquip(item item) {
 
 func (d *player) setMesos(amount int32) {
 	d.mesos = amount
-	d.send(packetPlayerStatChange(false, constant.MesosID, amount))
+	d.send(packetPlayerStatChange(true, constant.MesosID, amount))
 }
 
 func (d *player) giveMesos(amount int32) {
@@ -784,7 +784,7 @@ func (d *player) dropMesos(amount int32) error {
 	}
 
 	d.takeMesos(amount)
-	d.inst.dropPool.createDrop(dropSpawnNormal, dropFreeForAll, amount, d.pos, true, 0, 0)
+	d.inst.dropPool.createDrop(dropSpawnNormal, dropFreeForAll, amount, d.pos, true, d.id, d.id)
 
 	return nil
 }
@@ -1219,9 +1219,9 @@ func packetPlayerSkillBookUpdate(skillID int32, level int32) mpacket.Packet {
 	return p
 }
 
-func packetPlayerStatChange(unknown bool, stat int32, value int32) mpacket.Packet {
+func packetPlayerStatChange(isMesos bool, stat int32, value int32) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelStatChange)
-	p.WriteBool(unknown)
+	p.WriteBool(isMesos)
 	p.WriteInt32(stat)
 	p.WriteInt32(value)
 

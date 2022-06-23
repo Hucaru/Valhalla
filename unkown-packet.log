@@ -7,5 +7,8 @@ UNKNOWN CLIENT PACKET: [Packet] (8) : 47 01 21 08 75 4A 0F 00
 Pickup korean fan
 [Packet] (9) : 73 22 03 B7 FF 00 00 00 00
 
+Pickup
+UNKNOWN CLIENT PACKET: [Packet] (9) : 73 55 03 05 00 01 00 00 00
+
 Drop 10 mesos
 UNKNOWN CLIENT PACKET: [Packet] (5) : 3C 0A 00 00 00
