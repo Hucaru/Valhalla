@@ -789,6 +789,24 @@ func (d *player) dropMesos(amount int32) error {
 	return nil
 }
 
+func (d *player) pickupItem(pos pos, dropID int32) error {
+	err, drop := d.inst.dropPool.playerAttemptPickup(dropID, pos, d.id)
+
+	if err != nil {
+		return err
+	}
+
+	if drop.mesos > 0 {
+		//mozes
+		d.giveMesos(drop.mesos)
+		return nil
+	}
+
+	d.giveItem(drop.item)
+
+	return nil
+}
+
 func (d *player) moveItem(start, end, amount int16, invID byte) error {
 	if end == 0 { //drop item
 		fmt.Println("Drop item amount:", amount)
@@ -1219,9 +1237,9 @@ func packetPlayerSkillBookUpdate(skillID int32, level int32) mpacket.Packet {
 	return p
 }
 
-func packetPlayerStatChange(isMesos bool, stat int32, value int32) mpacket.Packet {
+func packetPlayerStatChange(unknown bool, stat int32, value int32) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelStatChange)
-	p.WriteBool(isMesos)
+	p.WriteBool(unknown)
 	p.WriteInt32(stat)
 	p.WriteInt32(value)
 

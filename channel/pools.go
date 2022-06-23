@@ -799,9 +799,9 @@ func (pool dropPool) playerShowDrops(plr *player) {
 	}
 }
 
-func (pool *dropPool) removeDrop(instant bool, id ...int32) {
+func (pool *dropPool) removeDrop(dropType int8, id ...int32) {
 	for _, id := range id {
-		pool.instance.send(packetRemoveDrop(instant, id))
+		pool.instance.send(packetRemoveDrop(dropType, id, 0))
 
 		if _, ok := pool.drops[id]; ok {
 			delete(pool.drops, id)
@@ -813,8 +813,19 @@ func (pool *dropPool) eraseDrops() {
 	pool.drops = make(map[int32]fieldDrop)
 }
 
-func (pool *dropPool) playerAttemptPickup(dropID int32, position pos) (bool, item) {
-	return false, item{}
+func (pool *dropPool) playerAttemptPickup(dropID int32, position pos, playerID int32) (error, fieldDrop) {
+	drop := pool.findDropFromID(dropID)
+
+	pool.instance.send(packetRemoveDrop(2, dropID, playerID))
+	delete(pool.drops, dropID)
+
+	//pool.removeDrop(true, dropID)
+
+	return nil, drop
+}
+
+func (pool *dropPool) findDropFromID(dropID int32) fieldDrop {
+	return pool.drops[dropID]
 }
 
 const itemDistance = 20 // Between 15 and 20?
@@ -907,7 +918,7 @@ func (pool *dropPool) createDrop(spawnType byte, dropType byte, mesos int32, dro
 
 func (pool dropPool) HideDrops(plr *player) {
 	for id := range pool.drops {
-		plr.send(packetRemoveDrop(true, id))
+		plr.send(packetRemoveDrop(1, id, 0))
 	}
 }
 
@@ -923,7 +934,7 @@ func (pool *dropPool) update(t time.Time) {
 	}
 
 	if len(id) > 0 {
-		pool.removeDrop(false, id...)
+		pool.removeDrop(0, id...)
 	}
 }
 
@@ -1053,10 +1064,29 @@ func packetShowDrop(spawnType byte, drop fieldDrop) mpacket.Packet {
 	return p
 }
 
-func packetRemoveDrop(instant bool, dropID int32) mpacket.Packet {
+func packetRemoveDrop(dropType int8, dropID int32, lootedBy int32) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelDropExitMap)
-	p.WriteBool(instant) // 0 - fade away, 1 - instant, 2,3,5 - player id? , 4 - int16
+	p.WriteInt8(dropType) // 0 - fade away, 1 - instant, 2 - loot by user, 3 - loot by mob
 	p.WriteInt32(dropID)
+	p.WriteInt32(lootedBy)
+
+	return p
+}
+
+func packetPickupNotice(dropID int32, amount int32, isMesos bool) mpacket.Packet {
+	//not working
+	p := mpacket.CreateWithOpcode(opcode.SendChannelInfoMessage)
+	p.WriteInt8(0)
+	p.WriteBool(isMesos)
+	p.WriteInt32(dropID)
+
+	if isMesos {
+		p.WriteInt16(0)
+	}
+
+	if !isMesos {
+		p.WriteInt32(0)
+	}
 
 	return p
 }

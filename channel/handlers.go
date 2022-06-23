@@ -66,6 +66,8 @@ func (server *Server) HandleClientPacket(conn mnet.Client, reader mpacket.Reader
 		server.playerDropMesos(conn, reader)
 	case opcode.RecvChannelInvUseItem:
 		server.playerUseInventoryItem(conn, reader)
+	case opcode.RecvChannelPlayerPickup:
+		server.playerPickupItem(conn, reader)
 	case opcode.RecvChannelAddStatPoint:
 		server.playerAddStatPoint(conn, reader)
 	case opcode.RecvChannelPassiveRegen:
@@ -754,6 +756,25 @@ func (server Server) playerUseInventoryItem(conn mnet.Client, reader mpacket.Rea
 		log.Println(err)
 	}
 	item.use(plr)
+
+}
+
+func (server Server) playerPickupItem(conn mnet.Client, reader mpacket.Reader) {
+	plr, err := server.players.getFromConn(conn)
+	if err != nil {
+		return
+	}
+
+	posx := reader.ReadInt16()
+	posy := reader.ReadInt16()
+	dropID := reader.ReadInt32()
+
+	pos := pos{
+		x: posx,
+		y: posy,
+	}
+
+	plr.pickupItem(pos, dropID)
 
 }
 

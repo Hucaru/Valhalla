@@ -829,7 +829,7 @@ func (server *Server) gmCommand(conn mnet.Client, msg string) {
 		}
 		inst, err := field.getInstance(plr.inst.id)
 		pool := inst.dropPool
-		pool.removeDrop(false, id)
+		pool.removeDrop(0, id)
 	case "npco":
 		// This isn't working, either incorrect opcode or script string is invalid
 		p := mpacket.CreateWithOpcode(0x9F)
