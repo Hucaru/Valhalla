@@ -817,9 +817,8 @@ func (pool *dropPool) playerAttemptPickup(dropID int32, position pos, playerID i
 	drop := pool.findDropFromID(dropID)
 
 	pool.instance.send(packetRemoveDrop(2, dropID, playerID))
+	pool.instance.send(packetPickupNotice(dropID, drop.item.amount, drop.mesos > 0, drop.item.invID == 1))
 	delete(pool.drops, dropID)
-
-	//pool.removeDrop(true, dropID)
 
 	return nil, drop
 }
@@ -1073,10 +1072,10 @@ func packetRemoveDrop(dropType int8, dropID int32, lootedBy int32) mpacket.Packe
 	return p
 }
 
-func packetPickupNotice(dropID int32, amount int32, isMesos bool) mpacket.Packet {
-	//not working
+func packetPickupNotice(dropID int32, amount int16, isMesos bool, isEquip bool) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelInfoMessage)
-	p.WriteInt8(0)
+	p.WriteInt8(0) //??
+
 	p.WriteBool(isMesos)
 	p.WriteInt32(dropID)
 
@@ -1084,9 +1083,30 @@ func packetPickupNotice(dropID int32, amount int32, isMesos bool) mpacket.Packet
 		p.WriteInt16(0)
 	}
 
+	if !isEquip {
+		p.WriteInt16(amount)
+	}
+
 	if !isMesos {
 		p.WriteInt32(0)
+		p.WriteInt32(0)
 	}
+
+	return p
+}
+
+func packetDropNotAvailable() mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelInfoMessage)
+	p.WriteInt8(0)
+	p.WriteInt8(-2)
+
+	return p
+}
+
+func packetInventoryFull() mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelInfoMessage)
+	p.WriteInt8(0)
+	p.WriteInt8(-1)
 
 	return p
 }
