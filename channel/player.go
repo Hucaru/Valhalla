@@ -793,6 +793,7 @@ func (d *player) pickupItem(pos pos, dropID int32) error {
 	err, drop := d.inst.dropPool.playerAttemptPickup(dropID, pos, d.id)
 
 	if err != nil {
+		d.inst.send(packetDropNotAvailable())
 		return err
 	}
 
@@ -802,8 +803,11 @@ func (d *player) pickupItem(pos pos, dropID int32) error {
 		return nil
 	}
 
-	d.giveItem(drop.item)
-
+	err = d.giveItem(drop.item)
+	if err != nil {
+		d.inst.send(packetDropNotAvailable())
+		return err
+	}
 	return nil
 }
 

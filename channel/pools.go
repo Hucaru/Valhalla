@@ -1,10 +1,12 @@
 package channel
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"math"
 	"math/rand"
+	"reflect"
 	"time"
 
 	"github.com/Hucaru/Valhalla/common/opcode"
@@ -815,6 +817,10 @@ func (pool *dropPool) eraseDrops() {
 
 func (pool *dropPool) playerAttemptPickup(dropID int32, position pos, playerID int32) (error, fieldDrop) {
 	drop := pool.findDropFromID(dropID)
+
+	if reflect.DeepEqual(drop, fieldDrop{}) {
+		return errors.New("unavailable"), fieldDrop{}
+	}
 
 	pool.instance.send(packetRemoveDrop(2, dropID, playerID))
 	pool.instance.send(packetPickupNotice(dropID, drop.item.amount, drop.mesos > 0, drop.item.invID == 1))
