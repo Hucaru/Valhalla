@@ -830,7 +830,15 @@ func (pool *dropPool) playerAttemptPickup(drop fieldDrop, playerID int32) error 
 		return err
 	}
 
-	if err := pool.instance.send(packetPickupNotice(drop.ID, drop.item.amount, drop.mesos > 0, drop.item.invID == 1)); err != nil {
+	var amount int16
+
+	if drop.mesos > 0 {
+		amount = int16(drop.mesos)
+	} else {
+		amount = drop.item.amount
+	}
+
+	if err := pool.instance.send(packetPickupNotice(drop.item.id, amount, drop.mesos > 0, drop.item.invID == 1.0)); err != nil {
 		return err
 	}
 
@@ -1088,15 +1096,15 @@ func packetRemoveDrop(dropType int8, dropID int32, lootedBy int32) mpacket.Packe
 	return p
 }
 
-func packetPickupNotice(dropID int32, amount int16, isMesos bool, isEquip bool) mpacket.Packet {
+func packetPickupNotice(itemID int32, amount int16, isMesos bool, isEquip bool) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelInfoMessage)
 	p.WriteInt8(0) //??
 
 	p.WriteBool(isMesos)
-	p.WriteInt32(dropID)
+	p.WriteInt32(itemID)
 
 	if isMesos {
-		p.WriteInt16(0)
+		p.WriteInt16(0) // Internet Cafe bonus
 	}
 
 	if !isEquip {

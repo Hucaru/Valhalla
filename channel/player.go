@@ -797,11 +797,14 @@ func (d *player) pickupItem(pos pos, dropID int32) {
 		log.Printf("Drop Unavailable: %v\nError: %s", drop, err)
 		return
 	}
-	/*
-		if d.pos.x != pos.x && d.pos.y != pos.y {
-			// Probably need some kind of hacking check. Cant do exact because it will not always be exact
-		}
-	*/
+
+	if d.pos.x-pos.x > 800 || d.pos.y-pos.y > 600 {
+		// Hax
+		log.Printf("player: %s tried to pickup an item from far away", d.name)
+		d.inst.send(packetDropNotAvailable())
+		d.inst.send(packetInventoryDontTake())
+		return
+	}
 
 	if drop.mesos > 0 {
 		//mozes
