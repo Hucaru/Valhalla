@@ -815,18 +815,28 @@ func (pool *dropPool) eraseDrops() {
 	pool.drops = make(map[int32]fieldDrop)
 }
 
-func (pool *dropPool) playerAttemptPickup(dropID int32, position pos, playerID int32) (error, fieldDrop) {
+func (pool *dropPool) getPickupDrop(dropID int32) (error, fieldDrop) {
 	drop := pool.findDropFromID(dropID)
 
 	if reflect.DeepEqual(drop, fieldDrop{}) {
 		return errors.New("unavailable"), fieldDrop{}
 	}
 
-	pool.instance.send(packetRemoveDrop(2, dropID, playerID))
-	pool.instance.send(packetPickupNotice(dropID, drop.item.amount, drop.mesos > 0, drop.item.invID == 1))
-	delete(pool.drops, dropID)
-
 	return nil, drop
+}
+
+func (pool *dropPool) playerAttemptPickup(drop fieldDrop, playerID int32) error {
+	if err := pool.instance.send(packetRemoveDrop(2, drop.ID, playerID)); err != nil {
+		return err
+	}
+
+	if err := pool.instance.send(packetPickupNotice(drop.ID, drop.item.amount, drop.mesos > 0, drop.item.invID == 1)); err != nil {
+		return err
+	}
+
+	delete(pool.drops, drop.ID)
+
+	return nil
 }
 
 func (pool *dropPool) findDropFromID(dropID int32) fieldDrop {

@@ -843,6 +843,15 @@ func (server *Server) gmCommand(conn mnet.Client, msg string) {
 
 		fmt.Println(p)
 		conn.Send(p)
+	case "whereami":
+		player, err := server.players.getFromConn(conn)
+
+		if err != nil {
+			conn.Send(packetMessageRedText(err.Error()))
+			return
+		}
+		conn.Send(packetMessageRedText(fmt.Sprintf("%d", player.mapID)))
+
 	default:
 		conn.Send(packetMessageRedText("Unkown gm command " + command[0]))
 	}

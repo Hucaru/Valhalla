@@ -161,6 +161,7 @@ func (d player) send(packet mpacket.Packet) {
 	}
 
 	d.conn.Send(packet)
+	d.save()
 }
 
 func (d *player) setJob(id int16) {
@@ -789,30 +790,42 @@ func (d *player) dropMesos(amount int32) error {
 	return nil
 }
 
-func (d *player) pickupItem(pos pos, dropID int32) error {
-	err, drop := d.inst.dropPool.playerAttemptPickup(dropID, pos, d.id)
-
+func (d *player) pickupItem(pos pos, dropID int32) {
+	err, drop := d.inst.dropPool.getPickupDrop(dropID)
 	if err != nil {
 		d.inst.send(packetDropNotAvailable())
-		return err
+		log.Printf("Drop Unavailable: %v\nError: %s", drop, err)
+		return
 	}
+	/*
+		if d.pos.x != pos.x && d.pos.y != pos.y {
+			// Probably need some kind of hacking check. Cant do exact because it will not always be exact
+		}
+	*/
 
 	if drop.mesos > 0 {
 		//mozes
 		d.giveMesos(drop.mesos)
-		return nil
+	} else {
+		err = d.giveItem(drop.item)
+		if err != nil {
+			d.inst.send(packetInventoryFull())
+			d.inst.send(packetInventoryDontTake())
+			return
+		}
+
 	}
 
-	err = d.giveItem(drop.item)
-	if err != nil {
-		d.inst.send(packetDropNotAvailable())
-		return err
+	if err := d.inst.dropPool.playerAttemptPickup(drop, d.id); err != nil {
+		d.inst.send(packetInventoryFull())
+		d.inst.send(packetInventoryDontTake())
+		return
 	}
-	return nil
 }
 
 func (d *player) moveItem(start, end, amount int16, invID byte) error {
 	if end == 0 { //drop item
+		// Need to somehow add that popup that asks how much you want to drop.
 		fmt.Println("Drop item amount:", amount)
 		item, err := d.getItem(invID, start)
 
@@ -1515,6 +1528,13 @@ func packetInventoryNoChange() mpacket.Packet {
 	p.WriteByte(0x01)
 	p.WriteByte(0x00)
 	p.WriteByte(0x00)
+
+	return p
+}
+
+func packetInventoryDontTake() mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelInventoryOperation)
+	p.WriteInt16(1)
 
 	return p
 }
