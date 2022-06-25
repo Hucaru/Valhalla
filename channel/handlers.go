@@ -740,6 +740,8 @@ func (server Server) playerDropMesos(conn mnet.Client, reader mpacket.Reader) {
 		log.Println(err)
 	}
 
+	plr.inst.dropPool.createDrop(dropSpawnNormal, dropFreeForAll, amount, plr.pos, true, plr.id, plr.id)
+
 }
 
 func (server Server) playerUseInventoryItem(conn mnet.Client, reader mpacket.Reader) {

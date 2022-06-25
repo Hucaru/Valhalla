@@ -161,7 +161,6 @@ func (d player) send(packet mpacket.Packet) {
 	}
 
 	d.conn.Send(packet)
-	d.save()
 }
 
 func (d *player) setJob(id int16) {
@@ -785,45 +784,39 @@ func (d *player) dropMesos(amount int32) error {
 	}
 
 	d.takeMesos(amount)
-	d.inst.dropPool.createDrop(dropSpawnNormal, dropFreeForAll, amount, d.pos, true, d.id, d.id)
 
 	return nil
 }
 
 func (d *player) pickupItem(pos pos, dropID int32) {
-	err, drop := d.inst.dropPool.getPickupDrop(dropID)
+	err, drop := d.inst.dropPool.findDropFromID(dropID)
 	if err != nil {
-		d.inst.send(packetDropNotAvailable())
-		log.Printf("Drop Unavailable: %v\nError: %s", drop, err)
+		d.send(packetDropNotAvailable())
+		log.Printf("drop Unavailable: %v\nError: %s", drop, err)
 		return
 	}
 
 	if d.pos.x-pos.x > 800 || d.pos.y-pos.y > 600 {
 		// Hax
 		log.Printf("player: %s tried to pickup an item from far away", d.name)
-		d.inst.send(packetDropNotAvailable())
-		d.inst.send(packetInventoryDontTake())
+		d.send(packetDropNotAvailable())
+		d.send(packetInventoryDontTake())
 		return
 	}
 
 	if drop.mesos > 0 {
-		//mozes
 		d.giveMesos(drop.mesos)
 	} else {
 		err = d.giveItem(drop.item)
 		if err != nil {
-			d.inst.send(packetInventoryFull())
-			d.inst.send(packetInventoryDontTake())
+			d.send(packetInventoryFull())
+			d.send(packetInventoryDontTake())
 			return
 		}
 
 	}
 
-	if err := d.inst.dropPool.playerAttemptPickup(drop, d.id); err != nil {
-		d.inst.send(packetInventoryFull())
-		d.inst.send(packetInventoryDontTake())
-		return
-	}
+	d.inst.dropPool.playerAttemptPickup(drop, d)
 }
 
 func (d *player) moveItem(start, end, amount int16, invID byte) error {

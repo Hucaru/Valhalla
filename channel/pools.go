@@ -6,7 +6,6 @@ import (
 	"log"
 	"math"
 	"math/rand"
-	"reflect"
 	"time"
 
 	"github.com/Hucaru/Valhalla/common/opcode"
@@ -815,22 +814,10 @@ func (pool *dropPool) eraseDrops() {
 	pool.drops = make(map[int32]fieldDrop)
 }
 
-func (pool *dropPool) getPickupDrop(dropID int32) (error, fieldDrop) {
-	drop := pool.findDropFromID(dropID)
-
-	if reflect.DeepEqual(drop, fieldDrop{}) {
-		return errors.New("unavailable"), fieldDrop{}
-	}
-
-	return nil, drop
-}
-
-func (pool *dropPool) playerAttemptPickup(drop fieldDrop, playerID int32) error {
-	if err := pool.instance.send(packetRemoveDrop(2, drop.ID, playerID)); err != nil {
-		return err
-	}
-
+func (pool *dropPool) playerAttemptPickup(drop fieldDrop, player *player) {
 	var amount int16
+
+	player.send(packetRemoveDrop(2, drop.ID, player.id))
 
 	if drop.mesos > 0 {
 		amount = int16(drop.mesos)
@@ -838,17 +825,18 @@ func (pool *dropPool) playerAttemptPickup(drop fieldDrop, playerID int32) error 
 		amount = drop.item.amount
 	}
 
-	if err := pool.instance.send(packetPickupNotice(drop.item.id, amount, drop.mesos > 0, drop.item.invID == 1.0)); err != nil {
-		return err
-	}
-
+	player.send(packetPickupNotice(drop.item.id, amount, drop.mesos > 0, drop.item.invID == 1.0))
 	delete(pool.drops, drop.ID)
-
-	return nil
 }
 
-func (pool *dropPool) findDropFromID(dropID int32) fieldDrop {
-	return pool.drops[dropID]
+func (pool *dropPool) findDropFromID(dropID int32) (error, fieldDrop) {
+	drop, ok := pool.drops[dropID]
+
+	if !ok {
+		return errors.New("unavailable drop"), fieldDrop{}
+	}
+
+	return nil, drop
 }
 
 const itemDistance = 20 // Between 15 and 20?
