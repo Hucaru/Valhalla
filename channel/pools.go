@@ -1089,21 +1089,19 @@ func packetPickupNotice(itemID int32, amount int16, isMesos bool, isEquip bool) 
 	p.WriteInt8(0) //??
 
 	p.WriteBool(isMesos)
-	p.WriteInt32(itemID)
 
 	if isMesos {
-		p.WriteInt16(0) // Internet Cafe bonus
-	}
+		p.WriteInt32(int32(amount))
+		p.WriteInt16(0)
+	} else {
+		p.WriteInt32(itemID)
 
-	if !isEquip {
-		p.WriteInt16(amount)
-	}
+		if !isEquip {
+			p.WriteInt16(amount)
+		}
 
-	if !isMesos {
 		p.WriteInt32(0)
-		p.WriteInt32(0)
 	}
-
 	return p
 }
 
