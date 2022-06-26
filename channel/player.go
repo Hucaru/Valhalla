@@ -821,17 +821,24 @@ func (d *player) pickupItem(pos pos, dropID int32) {
 
 func (d *player) moveItem(start, end, amount int16, invID byte) error {
 	if end == 0 { //drop item
-		// Need to somehow add that popup that asks how much you want to drop.
-		fmt.Println("Drop item amount:", amount)
 		item, err := d.getItem(invID, start)
 
 		if err != nil {
 			return fmt.Errorf("Item to move doesn't exist")
 		}
 
-		d.removeItem(item)
+		dropItem := item
+		dropItem.amount = amount
 
-		d.inst.dropPool.createDrop(dropSpawnNormal, dropFreeForAll, 0, d.pos, true, d.id, 0, item)
+		if amount == item.amount {
+			// This is only really for equips, cash, etc.
+			d.removeItem(dropItem)
+		} else {
+			item.amount -= amount
+			d.updateItemStack(item)
+		}
+
+		d.inst.dropPool.createDrop(dropSpawnNormal, dropFreeForAll, 0, d.pos, true, d.id, 0, dropItem)
 	} else if end < 0 { // Move to equip slot
 		item1, err := d.getItem(invID, start)
 

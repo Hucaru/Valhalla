@@ -391,7 +391,8 @@ func (v item) bytes(shortSlot bool) []byte {
 		p.WriteUint64(uint64(v.id)) // I think this is somekind of cashshop transaction ID for the item
 	}
 
-	p.WriteInt64(v.expireTime)
+	//p.WriteInt64(v.expireTime)
+	p.WriteInt64(150842304000000000) // No expiration
 
 	if v.invID == 1 {
 		p.WriteByte(v.upgradeSlots)
@@ -426,7 +427,7 @@ func (v item) bytes(shortSlot bool) []byte {
 		p.WriteInt16(v.flag) // even (normal), odd (sealed) ?
 
 		if v.isRechargeable() {
-			p.WriteInt32(0) // ?
+			p.WriteInt64(0) // ?
 		}
 	}
 
