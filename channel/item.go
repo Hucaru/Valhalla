@@ -86,6 +86,8 @@ type item struct {
 	pet        bool
 }
 
+const neverExpire int64 = 150842304000000000
+
 func loadInventoryFromDb(charID int32) ([]item, []item, []item, []item, []item) {
 	filter := "id,inventoryID,itemID,slotNumber,amount,flag,upgradeSlots,level,str,dex,intt,luk,hp,mp,watk,matk,wdef,mdef,accuracy,avoid,hands,speed,jump,expireTime,creatorName"
 	row, err := common.DB.Query("SELECT "+filter+" FROM items WHERE characterID=?", charID)
@@ -230,6 +232,8 @@ func createBiasItemFromID(id int32, amount int16, bias int8, average bool) (item
 	newItem.amount = amount
 	newItem.stand = byte(nxInfo.Stand)
 	newItem.calculateWeaponType()
+
+	newItem.expireTime = neverExpire
 
 	return newItem, nil
 }
@@ -391,8 +395,7 @@ func (v item) bytes(shortSlot bool) []byte {
 		p.WriteUint64(uint64(v.id)) // I think this is somekind of cashshop transaction ID for the item
 	}
 
-	//p.WriteInt64(v.expireTime)
-	p.WriteInt64(150842304000000000) // No expiration
+	p.WriteInt64(v.expireTime)
 
 	if v.invID == 1 {
 		p.WriteByte(v.upgradeSlots)
