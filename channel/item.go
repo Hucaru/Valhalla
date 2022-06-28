@@ -215,6 +215,9 @@ func createBiasItemFromID(id int32, amount int16, bias int8, average bool) (item
 	newItem.watk = randomStat(nxInfo.IncPAD, average)
 	newItem.wdef = randomStat(nxInfo.IncPDD, average)
 
+	newItem.hp = nxInfo.HP
+	newItem.mp = nxInfo.MP
+
 	newItem.str = nxInfo.IncSTR
 	newItem.dex = nxInfo.IncDEX
 	newItem.intt = nxInfo.IncINT

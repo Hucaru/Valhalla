@@ -21,6 +21,7 @@ type Item struct {
 	ReqSTR, ReqDEX, ReqINT, ReqLUK, IncSTR, IncDEX, IncINT, IncLUK int16
 	IncACC, IncEVA, IncMDD, IncPDD, IncMAD, IncPAD, IncMHP, IncMMP float64
 	Attack, IncJump, IncSpeed, RecoveryHP                          float64
+	HP, MP                                                         int16
 	AttackSpeed                                                    int16
 	Price                                                          int32
 	NotSale                                                        int64
@@ -72,7 +73,7 @@ func extractItems(nodes []gonx.Node, textLookup []string) map[int32]Item {
 				var item Item
 
 				valid := gonx.FindNode(subSearch, nodes, textLookup, func(node *gonx.Node) {
-					item = getItem(node, nodes, textLookup)
+					item.getItem(node, nodes, textLookup)
 				})
 
 				if !valid {
@@ -97,7 +98,7 @@ func extractItems(nodes []gonx.Node, textLookup []string) map[int32]Item {
 		}
 	}
 
-	searches = []string{"/Item/Cash", "/Item/Consume", "/Item/Etc", "/Item/Install"}
+	searches = []string{"/Item/Cash", "/Item/Etc", "/Item/Install"}
 
 	for _, search := range searches {
 		valid := gonx.FindNode(search, nodes, textLookup, func(node *gonx.Node) {
@@ -114,12 +115,61 @@ func extractItems(nodes []gonx.Node, textLookup []string) map[int32]Item {
 					var item Item
 
 					valid := gonx.FindNode(subSearch, nodes, textLookup, func(node *gonx.Node) {
-						item = getItem(node, nodes, textLookup)
+						item.getItem(node, nodes, textLookup)
 					})
 
 					if !valid {
 						log.Println("Invalid node search:", subSearch)
 					}
+
+					name = strings.TrimSuffix(name, filepath.Ext(name))
+					itemID, err := strconv.Atoi(name)
+
+					if err != nil {
+						log.Println(err)
+						continue
+					}
+
+					item.InvTabID = byte(itemID / 1e6)
+					items[int32(itemID)] = item
+				}
+			}
+		})
+
+		if !valid {
+			log.Println("Invalid node search:", search)
+		}
+	}
+
+	searches = []string{"/Item/Consume"}
+
+	for _, search := range searches {
+		valid := gonx.FindNode(search, nodes, textLookup, func(node *gonx.Node) {
+			for i := uint32(0); i < uint32(node.ChildCount); i++ {
+				itemGroupNode := nodes[node.ChildID+i]
+				groupName := textLookup[itemGroupNode.NameID]
+
+				for j := uint32(0); j < uint32(itemGroupNode.ChildCount); j++ {
+					itemNode := nodes[itemGroupNode.ChildID+j]
+					name := textLookup[itemNode.NameID]
+
+					subSearch := search + "/" + groupName + "/" + name + "/info"
+
+					var item Item
+
+					valid := gonx.FindNode(subSearch, nodes, textLookup, func(node *gonx.Node) {
+						item.getItem(node, nodes, textLookup)
+					})
+
+					if !valid {
+						log.Println("Invalid node search:", subSearch)
+					}
+
+					subSearch = search + "/" + groupName + "/" + name + "/spec"
+
+					gonx.FindNode(subSearch, nodes, textLookup, func(node *gonx.Node) {
+						item.getItem(node, nodes, textLookup)
+					})
 
 					name = strings.TrimSuffix(name, filepath.Ext(name))
 					itemID, err := strconv.Atoi(name)
@@ -150,7 +200,7 @@ func extractItems(nodes []gonx.Node, textLookup []string) map[int32]Item {
 			var item Item
 
 			valid := gonx.FindNode(subSearch, nodes, textLookup, func(node *gonx.Node) {
-				item = getItem(node, nodes, textLookup)
+				item.getItem(node, nodes, textLookup)
 			})
 
 			if !valid {
@@ -178,8 +228,7 @@ func extractItems(nodes []gonx.Node, textLookup []string) map[int32]Item {
 	return items
 }
 
-func getItem(node *gonx.Node, nodes []gonx.Node, textLookup []string) Item {
-	item := Item{}
+func (item *Item) getItem(node *gonx.Node, nodes []gonx.Node, textLookup []string) {
 
 	for i := uint32(0); i < uint32(node.ChildCount); i++ {
 		option := nodes[node.ChildID+i]
@@ -232,6 +281,10 @@ func getItem(node *gonx.Node, nodes []gonx.Node, textLookup []string) Item {
 			item.RecoveryHP = float64(gonx.DataToInt16(option.Data))
 		case "incMMP":
 			item.IncMMP = float64(gonx.DataToInt16(option.Data))
+		case "hp":
+			item.HP = gonx.DataToInt16(option.Data)
+		case "mp":
+			item.MP = gonx.DataToInt16(option.Data)
 		case "only":
 			item.Only = gonx.DataToInt64(option.Data)
 		case "attackSpeed":
@@ -336,6 +389,4 @@ func getItem(node *gonx.Node, nodes []gonx.Node, textLookup []string) Item {
 		}
 
 	}
-
-	return item
 }
