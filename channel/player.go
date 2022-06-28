@@ -403,9 +403,7 @@ func (d *player) takeMesos(amount int32) {
 }
 
 func (d *player) saveMesos() error {
-	props := `mesos=?`
-
-	query := "UPDATE characters SET " + props + " WHERE accountID=? and name=?"
+	query := "UPDATE characters SET mesos=? WHERE accountID=? and name=?"
 
 	_, err := common.DB.Exec(query,
 		d.mesos,
@@ -466,9 +464,7 @@ func (d *player) setMapID(id int32) {
 }
 
 func (d *player) saveMapID(newMapId, oldMapId int32) error {
-	props := `mapID=?,previousMapID=?`
-
-	query := "UPDATE characters SET " + props + " WHERE accountID=? and name=?"
+	query := "UPDATE characters SET mapID=?,previousMapID=? WHERE accountID=? and name=?"
 
 	_, err := common.DB.Exec(query,
 		newMapId,
@@ -850,37 +846,6 @@ func (d *player) dropMesos(amount int32) error {
 	return nil
 }
 
-func (d *player) pickupItem(pos pos, dropID int32) {
-	err, drop := d.inst.dropPool.findDropFromID(dropID)
-	if err != nil {
-		d.send(packetDropNotAvailable())
-		log.Printf("drop Unavailable: %v\nError: %s", drop, err)
-		return
-	}
-
-	if d.pos.x-pos.x > 800 || d.pos.y-pos.y > 600 {
-		// Hax
-		log.Printf("player: %s tried to pickup an item from far away", d.name)
-		d.send(packetDropNotAvailable())
-		d.send(packetInventoryDontTake())
-		return
-	}
-
-	if drop.mesos > 0 {
-		d.giveMesos(drop.mesos)
-	} else {
-		err = d.giveItem(drop.item)
-		if err != nil {
-			d.send(packetInventoryFull())
-			d.send(packetInventoryDontTake())
-			return
-		}
-
-	}
-
-	d.inst.dropPool.playerAttemptPickup(drop, d)
-}
-
 func (d *player) moveItem(start, end, amount int16, invID byte) error {
 	if end == 0 { //drop item
 		item, err := d.getItem(invID, start)
@@ -975,6 +940,24 @@ func (d *player) moveItem(start, end, amount int16, invID byte) error {
 func (d *player) updateSkill(updatedSkill playerSkill) {
 	d.skills[updatedSkill.ID] = updatedSkill
 	d.send(packetPlayerSkillBookUpdate(updatedSkill.ID, int32(updatedSkill.Level)))
+}
+
+func (d *player) useSkill(id int32, level byte) error {
+	skillInfo, _ := nx.GetPlayerSkill(id)
+
+	for lvl, skill := range skillInfo {
+		if lvl == int(level) {
+
+			d.giveMP(-int16(skill.MpCon))
+
+			// Use item
+			// d.consumeItem(skill.itemCon, skill.itemConNo)
+
+		}
+
+	}
+
+	return nil
 }
 
 func (d player) admin() bool { return d.conn.GetAdminLevel() > 0 }

@@ -641,3 +641,20 @@ func (p *playerWrapper) Mesos() int32 {
 func (p *playerWrapper) GiveMesos(amount int32) {
 	p.giveMesos(amount)
 }
+
+func (p *playerWrapper) Job() int16 {
+	return p.job
+}
+
+func (p *playerWrapper) Level() int16 {
+	return int16(p.level)
+}
+
+func (p *playerWrapper) GiveJob(id int16) {
+	p.setJob(id)
+}
+
+func (p *playerWrapper) GainItem(id int32, amount int16) {
+	item, _ := createAverageItemFromID(id, amount)
+	p.giveItem(item)
+}

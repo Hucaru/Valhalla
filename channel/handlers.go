@@ -39,9 +39,9 @@ func (server *Server) HandleClientPacket(conn mnet.Client, reader mpacket.Reader
 	case opcode.RecvChannelMeleeSkill:
 		server.playerMeleeSkill(conn, reader)
 	case opcode.RecvChannelRangedSkill:
-		// server.playerRangedSkill(conn, reader)
+		server.playerRangedSkill(conn, reader)
 	case opcode.RecvChannelMagicSkill:
-		// server.playerMagicSkill(conn, reader)
+		server.playerMagicSkill(conn, reader)
 	case opcode.RecvChannelDmgRecv:
 		server.playerTakeDamage(conn, reader)
 	case opcode.RecvChannelPlayerSendAllChat:
@@ -776,7 +776,35 @@ func (server Server) playerPickupItem(conn mnet.Client, reader mpacket.Reader) {
 		y: posy,
 	}
 
-	plr.pickupItem(pos, dropID)
+	err, drop := plr.inst.dropPool.findDropFromID(dropID)
+
+	if err != nil {
+		plr.send(packetDropNotAvailable())
+		log.Printf("drop Unavailable: %v\nError: %s", drop, err)
+		return
+	}
+
+	if plr.pos.x-pos.x > 800 || plr.pos.y-pos.y > 600 {
+		// Hax
+		log.Printf("player: %s tried to pickup an item from far away", plr.name)
+		plr.send(packetDropNotAvailable())
+		plr.send(packetInventoryDontTake())
+		return
+	}
+
+	if drop.mesos > 0 {
+		plr.giveMesos(drop.mesos)
+	} else {
+		err = plr.giveItem(drop.item)
+		if err != nil {
+			plr.send(packetInventoryFull())
+			plr.send(packetInventoryDontTake())
+			return
+		}
+
+	}
+
+	plr.inst.dropPool.playerAttemptPickup(drop, plr)
 
 }
 
@@ -1387,6 +1415,164 @@ func (server Server) playerMeleeSkill(conn mnet.Client, reader mpacket.Reader) {
 	}
 
 	inst.sendExcept(packetSkillMelee(*plr, data), conn)
+
+	for _, attack := range data.attackInfo {
+		inst.lifePool.mobDamaged(attack.spawnID, plr, attack.damages...)
+	}
+}
+
+func (server Server) playerRangedSkill(conn mnet.Client, reader mpacket.Reader) {
+	plr, err := server.players.getFromConn(conn)
+
+	if err != nil {
+		conn.Send(packetMessageRedText(err.Error()))
+		return
+	}
+
+	data, valid := getAttackInfo(reader, *plr, attackRanged)
+
+	if !valid {
+		return
+	}
+
+	field, ok := server.fields[plr.mapID]
+
+	if !ok {
+		return
+	}
+
+	inst, err := field.getInstance(plr.inst.id)
+
+	if err != nil {
+		conn.Send(packetMessageRedText(err.Error()))
+		return
+	}
+
+	err = plr.useSkill(data.skillID, data.skillLevel)
+	if err != nil {
+		// send packet to stop?
+		return
+	}
+
+	// if player in party extract
+
+	packetSkillRanged := func(char player, ad attackData) mpacket.Packet {
+		p := mpacket.CreateWithOpcode(opcode.SendChannelPlayerUseRangedSkill)
+		p.WriteInt32(char.id)
+		p.WriteByte(ad.targets*0x10 + ad.hits)
+		p.WriteByte(ad.skillLevel)
+
+		if ad.skillLevel != 0 {
+			p.WriteInt32(ad.skillID)
+		}
+
+		if ad.facesLeft {
+			p.WriteByte(ad.action | (1 << 7))
+		} else {
+			p.WriteByte(ad.action | 0)
+		}
+
+		p.WriteByte(ad.attackType)
+
+		p.WriteByte(char.skills[ad.skillID].Mastery)
+		p.WriteInt32(ad.projectileID)
+
+		for _, info := range ad.attackInfo {
+			p.WriteInt32(info.spawnID)
+			p.WriteByte(info.hitAction)
+
+			if ad.isMesoExplosion {
+				p.WriteByte(byte(len(info.damages)))
+			}
+
+			for _, dmg := range info.damages {
+				p.WriteInt32(dmg)
+			}
+		}
+
+		return p
+	}
+
+	inst.sendExcept(packetSkillRanged(*plr, data), conn)
+
+	for _, attack := range data.attackInfo {
+		inst.lifePool.mobDamaged(attack.spawnID, plr, attack.damages...)
+	}
+}
+
+func (server Server) playerMagicSkill(conn mnet.Client, reader mpacket.Reader) {
+	plr, err := server.players.getFromConn(conn)
+
+	if err != nil {
+		conn.Send(packetMessageRedText(err.Error()))
+		return
+	}
+
+	data, valid := getAttackInfo(reader, *plr, attackMagic)
+
+	if !valid {
+		return
+	}
+
+	field, ok := server.fields[plr.mapID]
+
+	if !ok {
+		return
+	}
+
+	inst, err := field.getInstance(plr.inst.id)
+
+	if err != nil {
+		conn.Send(packetMessageRedText(err.Error()))
+		return
+	}
+
+	err = plr.useSkill(data.skillID, data.skillLevel)
+	if err != nil {
+		// send packet to stop?
+		return
+	}
+
+	// if player in party extract
+
+	packetSkillMagic := func(char player, ad attackData) mpacket.Packet {
+		p := mpacket.CreateWithOpcode(opcode.SendChannelPlayerUseMagicSkill)
+		p.WriteInt32(char.id)
+		p.WriteByte(ad.targets*0x10 + ad.hits)
+		p.WriteByte(ad.skillLevel)
+
+		if ad.skillLevel != 0 {
+			p.WriteInt32(ad.skillID)
+		}
+
+		if ad.facesLeft {
+			p.WriteByte(ad.action | (1 << 7))
+		} else {
+			p.WriteByte(ad.action | 0)
+		}
+
+		p.WriteByte(ad.attackType)
+
+		p.WriteByte(char.skills[ad.skillID].Mastery)
+		p.WriteInt32(ad.projectileID)
+
+		for _, info := range ad.attackInfo {
+			p.WriteInt32(info.spawnID)
+			p.WriteByte(info.hitAction)
+
+			if ad.isMesoExplosion {
+				p.WriteByte(byte(len(info.damages)))
+			}
+
+			for _, dmg := range info.damages {
+				p.WriteInt32(dmg)
+			}
+		}
+
+		return p
+	}
+
+	inst.sendExcept(packetSkillMagic(*plr, data), conn)
 
 	for _, attack := range data.attackInfo {
 		inst.lifePool.mobDamaged(attack.spawnID, plr, attack.damages...)
