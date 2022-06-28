@@ -391,6 +391,7 @@ func (d *player) addEquip(item item) {
 func (d *player) setMesos(amount int32) {
 	d.mesos = amount
 	d.send(packetPlayerStatChange(true, constant.MesosID, amount))
+	d.saveMesos()
 }
 
 func (d *player) giveMesos(amount int32) {
@@ -399,6 +400,23 @@ func (d *player) giveMesos(amount int32) {
 
 func (d *player) takeMesos(amount int32) {
 	d.setMesos(d.mesos - amount)
+}
+
+func (d *player) saveMesos() error {
+	props := `mesos=?`
+
+	query := "UPDATE characters SET " + props + " WHERE accountID=? and name=?"
+
+	_, err := common.DB.Exec(query,
+		d.mesos,
+		d.accountID,
+		d.name)
+
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // UpdateMovement - update Data from position data
@@ -434,11 +452,35 @@ func (d player) checkPos(pos pos, xRange, yRange int16) bool {
 }
 
 func (d *player) setMapID(id int32) {
+	oldMapID := d.mapID
 	d.mapID = id
 
 	if d.party != nil {
 		d.party.updatePlayerMap(d.id, d.mapID)
 	}
+
+	if err := d.saveMapID(id, oldMapID); err != nil {
+		log.Println(err)
+	}
+
+}
+
+func (d *player) saveMapID(newMapId, oldMapId int32) error {
+	props := `mapID=?,previousMapID=?`
+
+	query := "UPDATE characters SET " + props + " WHERE accountID=? and name=?"
+
+	_, err := common.DB.Exec(query,
+		newMapId,
+		oldMapId,
+		d.accountID,
+		d.name)
+
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (d player) noChange() {
@@ -666,24 +708,11 @@ func (d *player) takeItem(id int32, slot int16, amount int16, invID byte) (item,
 func (d player) updateItemStack(item item) {
 	item.save(d.id)
 	d.updateItem(item)
-	d.send(packetInventoryAddItem(item, false))
+	d.send(packetInventoryModifyItemAmount(item))
 }
 
 func (d *player) updateItem(new item) {
-	var items []item
-
-	switch new.invID {
-	case 1:
-		items = d.equip
-	case 2:
-		items = d.use
-	case 3:
-		items = d.setUp
-	case 4:
-		items = d.etc
-	case 5:
-		items = d.cash
-	}
+	var items = d.findItemInventory(new)
 
 	for i, v := range items {
 		if v.dbID == new.dbID {
@@ -691,6 +720,39 @@ func (d *player) updateItem(new item) {
 			break
 		}
 	}
+	d.updateItemInventory(new.invID, items)
+}
+
+func (d *player) updateItemInventory(invID byte, inventory []item) {
+	switch invID {
+	case 1:
+		d.equip = inventory
+	case 2:
+		d.use = inventory
+	case 3:
+		d.setUp = inventory
+	case 4:
+		d.etc = inventory
+	case 5:
+		d.cash = inventory
+	}
+}
+
+func (d *player) findItemInventory(item item) []item {
+	switch item.invID {
+	case 1:
+		return d.equip
+	case 2:
+		return d.use
+	case 3:
+		return d.setUp
+	case 4:
+		return d.etc
+	case 5:
+		return d.cash
+	}
+
+	return nil
 }
 
 func (d player) getItem(invID byte, slotID int16) (item, error) {
@@ -830,13 +892,7 @@ func (d *player) moveItem(start, end, amount int16, invID byte) error {
 		dropItem := item
 		dropItem.amount = amount
 
-		if amount == item.amount {
-			// This is only really for equips, cash, etc.
-			d.removeItem(dropItem)
-		} else {
-			item.amount -= amount
-			d.updateItemStack(item)
-		}
+		d.takeItem(item.id, item.slotID, amount, item.invID)
 
 		d.inst.dropPool.createDrop(dropSpawnNormal, dropFreeForAll, 0, d.pos, true, d.id, 0, dropItem)
 	} else if end < 0 { // Move to equip slot
@@ -1460,6 +1516,18 @@ func packetInventoryAddItem(item item, newItem bool) mpacket.Packet {
 		p.WriteInt16(item.slotID)
 		p.WriteInt16(item.amount)
 	}
+
+	return p
+}
+
+func packetInventoryModifyItemAmount(item item) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelInventoryOperation)
+	p.WriteByte(0x01)
+	p.WriteByte(0x01)
+	p.WriteByte(0x01)
+	p.WriteByte(item.invID)
+	p.WriteInt16(item.slotID)
+	p.WriteInt16(item.amount)
 
 	return p
 }

@@ -305,7 +305,7 @@ func (v item) shield() bool {
 	return v.weaponType == 17
 }
 
-func (v item) save(charID int32) (bool, error) {
+func (v *item) save(charID int32) (bool, error) {
 	if v.dbID == 0 {
 		props := `characterID,inventoryID,itemID,slotNumber,amount,flag,upgradeSlots,level,
 				str,dex,intt,luk,hp,mp,watk,matk,wdef,mdef,accuracy,avoid,hands,speed,jump,
