@@ -817,7 +817,7 @@ func (pool *dropPool) eraseDrops() {
 func (pool *dropPool) playerAttemptPickup(drop fieldDrop, player *player) {
 	var amount int16
 
-	player.send(packetRemoveDrop(2, drop.ID, player.id))
+	pool.instance.send(packetRemoveDrop(2, drop.ID, player.id))
 
 	if drop.mesos > 0 {
 		amount = int16(drop.mesos)
