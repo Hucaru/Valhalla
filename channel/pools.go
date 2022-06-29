@@ -1,6 +1,7 @@
 package channel
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"math"
@@ -799,9 +800,9 @@ func (pool dropPool) playerShowDrops(plr *player) {
 	}
 }
 
-func (pool *dropPool) removeDrop(instant bool, id ...int32) {
+func (pool *dropPool) removeDrop(dropType int8, id ...int32) {
 	for _, id := range id {
-		pool.instance.send(packetRemoveDrop(instant, id))
+		pool.instance.send(packetRemoveDrop(dropType, id, 0))
 
 		if _, ok := pool.drops[id]; ok {
 			delete(pool.drops, id)
@@ -813,8 +814,29 @@ func (pool *dropPool) eraseDrops() {
 	pool.drops = make(map[int32]fieldDrop)
 }
 
-func (pool *dropPool) playerAttemptPickup(dropID int32, position pos) (bool, item) {
-	return false, item{}
+func (pool *dropPool) playerAttemptPickup(drop fieldDrop, player *player) {
+	var amount int16
+
+	pool.instance.send(packetRemoveDrop(2, drop.ID, player.id))
+
+	if drop.mesos > 0 {
+		amount = int16(drop.mesos)
+	} else {
+		amount = drop.item.amount
+	}
+
+	player.send(packetPickupNotice(drop.item.id, amount, drop.mesos > 0, drop.item.invID == 1.0))
+	delete(pool.drops, drop.ID)
+}
+
+func (pool *dropPool) findDropFromID(dropID int32) (error, fieldDrop) {
+	drop, ok := pool.drops[dropID]
+
+	if !ok {
+		return errors.New("unavailable drop"), fieldDrop{}
+	}
+
+	return nil, drop
 }
 
 const itemDistance = 20 // Between 15 and 20?
@@ -841,32 +863,34 @@ func (pool *dropPool) createDrop(spawnType byte, dropType byte, mesos int32, dro
 		timeoutTime = currentTime.Add(itemLootableByAllTimeout).Unix()
 	}
 
-	for i, item := range items {
-		tmp := dropFrom
-		tmp.x = dropFrom.x - offset + int16(i*itemDistance)
-		finalPos := pool.instance.calculateFinalDropPos(tmp)
+	if len(items) > 0 {
+		for i, item := range items {
+			tmp := dropFrom
+			tmp.x = dropFrom.x - offset + int16(i*itemDistance)
+			finalPos := pool.instance.calculateFinalDropPos(tmp)
 
-		if poolID, err := pool.nextID(); err == nil {
-			drop := fieldDrop{
-				ID:      poolID,
-				ownerID: ownerID,
-				partyID: partyID,
-				mesos:   0,
-				item:    item,
+			if poolID, err := pool.nextID(); err == nil {
+				drop := fieldDrop{
+					ID:      poolID,
+					ownerID: ownerID,
+					partyID: partyID,
+					mesos:   0,
+					item:    item,
 
-				expireTime:  expireTime,
-				timeoutTime: timeoutTime,
-				neverExpire: false,
+					expireTime:  expireTime,
+					timeoutTime: timeoutTime,
+					neverExpire: false,
 
-				originPos: dropFrom,
-				finalPos:  finalPos,
+					originPos: dropFrom,
+					finalPos:  finalPos,
 
-				dropType: dropType,
+					dropType: dropType,
+				}
+
+				pool.drops[drop.ID] = drop
+
+				pool.instance.send(packetShowDrop(spawnType, drop))
 			}
-
-			pool.drops[drop.ID] = drop
-
-			pool.instance.send(packetShowDrop(spawnType, drop))
 		}
 	}
 
@@ -905,7 +929,7 @@ func (pool *dropPool) createDrop(spawnType byte, dropType byte, mesos int32, dro
 
 func (pool dropPool) HideDrops(plr *player) {
 	for id := range pool.drops {
-		plr.send(packetRemoveDrop(true, id))
+		plr.send(packetRemoveDrop(1, id, 0))
 	}
 }
 
@@ -921,7 +945,7 @@ func (pool *dropPool) update(t time.Time) {
 	}
 
 	if len(id) > 0 {
-		pool.removeDrop(false, id...)
+		pool.removeDrop(0, id...)
 	}
 }
 
@@ -1051,10 +1075,48 @@ func packetShowDrop(spawnType byte, drop fieldDrop) mpacket.Packet {
 	return p
 }
 
-func packetRemoveDrop(instant bool, dropID int32) mpacket.Packet {
+func packetRemoveDrop(dropType int8, dropID int32, lootedBy int32) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelDropExitMap)
-	p.WriteBool(instant) // 0 - fade away, 1 - instant, 2,3,5 - player id? , 4 - int16
+	p.WriteInt8(dropType) // 0 - fade away, 1 - instant, 2 - loot by user, 3 - loot by mob
 	p.WriteInt32(dropID)
+	p.WriteInt32(lootedBy)
+
+	return p
+}
+
+func packetPickupNotice(itemID int32, amount int16, isMesos bool, isEquip bool) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelInfoMessage)
+	p.WriteInt8(0) //??
+
+	p.WriteBool(isMesos)
+
+	if isMesos {
+		p.WriteInt32(int32(amount))
+		p.WriteInt16(0)
+	} else {
+		p.WriteInt32(itemID)
+
+		if !isEquip {
+			p.WriteInt16(amount)
+		}
+
+		p.WriteInt32(0)
+	}
+	return p
+}
+
+func packetDropNotAvailable() mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelInfoMessage)
+	p.WriteInt8(0)
+	p.WriteInt8(-2)
+
+	return p
+}
+
+func packetInventoryFull() mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelInfoMessage)
+	p.WriteInt8(0)
+	p.WriteInt8(-1)
 
 	return p
 }

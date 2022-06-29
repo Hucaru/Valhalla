@@ -86,6 +86,8 @@ type item struct {
 	pet        bool
 }
 
+const neverExpire int64 = 150842304000000000
+
 func loadInventoryFromDb(charID int32) ([]item, []item, []item, []item, []item) {
 	filter := "id,inventoryID,itemID,slotNumber,amount,flag,upgradeSlots,level,str,dex,intt,luk,hp,mp,watk,matk,wdef,mdef,accuracy,avoid,hands,speed,jump,expireTime,creatorName"
 	row, err := common.DB.Query("SELECT "+filter+" FROM items WHERE characterID=?", charID)
@@ -213,6 +215,9 @@ func createBiasItemFromID(id int32, amount int16, bias int8, average bool) (item
 	newItem.watk = randomStat(nxInfo.IncPAD, average)
 	newItem.wdef = randomStat(nxInfo.IncPDD, average)
 
+	newItem.hp = nxInfo.HP
+	newItem.mp = nxInfo.MP
+
 	newItem.str = nxInfo.IncSTR
 	newItem.dex = nxInfo.IncDEX
 	newItem.intt = nxInfo.IncINT
@@ -230,6 +235,8 @@ func createBiasItemFromID(id int32, amount int16, bias int8, average bool) (item
 	newItem.amount = amount
 	newItem.stand = byte(nxInfo.Stand)
 	newItem.calculateWeaponType()
+
+	newItem.expireTime = neverExpire
 
 	return newItem, nil
 }
@@ -301,7 +308,7 @@ func (v item) shield() bool {
 	return v.weaponType == 17
 }
 
-func (v item) save(charID int32) (bool, error) {
+func (v *item) save(charID int32) (bool, error) {
 	if v.dbID == 0 {
 		props := `characterID,inventoryID,itemID,slotNumber,amount,flag,upgradeSlots,level,
 				str,dex,intt,luk,hp,mp,watk,matk,wdef,mdef,accuracy,avoid,hands,speed,jump,
@@ -426,7 +433,7 @@ func (v item) bytes(shortSlot bool) []byte {
 		p.WriteInt16(v.flag) // even (normal), odd (sealed) ?
 
 		if v.isRechargeable() {
-			p.WriteInt32(0) // ?
+			p.WriteInt64(0) // ?
 		}
 	}
 

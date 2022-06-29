@@ -1,6 +1,7 @@
 package channel
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"math"
@@ -389,11 +390,31 @@ func (d *player) addEquip(item item) {
 
 func (d *player) setMesos(amount int32) {
 	d.mesos = amount
-	d.send(packetPlayerStatChange(false, constant.MesosID, amount))
+	d.send(packetPlayerStatChange(true, constant.MesosID, amount))
+	d.saveMesos()
 }
 
 func (d *player) giveMesos(amount int32) {
 	d.setMesos(d.mesos + amount)
+}
+
+func (d *player) takeMesos(amount int32) {
+	d.setMesos(d.mesos - amount)
+}
+
+func (d *player) saveMesos() error {
+	query := "UPDATE characters SET mesos=? WHERE accountID=? and name=?"
+
+	_, err := common.DB.Exec(query,
+		d.mesos,
+		d.accountID,
+		d.name)
+
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // UpdateMovement - update Data from position data
@@ -429,11 +450,33 @@ func (d player) checkPos(pos pos, xRange, yRange int16) bool {
 }
 
 func (d *player) setMapID(id int32) {
+	oldMapID := d.mapID
 	d.mapID = id
 
 	if d.party != nil {
 		d.party.updatePlayerMap(d.id, d.mapID)
 	}
+
+	if err := d.saveMapID(id, oldMapID); err != nil {
+		log.Println(err)
+	}
+
+}
+
+func (d *player) saveMapID(newMapId, oldMapId int32) error {
+	query := "UPDATE characters SET mapID=?,previousMapID=? WHERE accountID=? and name=?"
+
+	_, err := common.DB.Exec(query,
+		newMapId,
+		oldMapId,
+		d.accountID,
+		d.name)
+
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (d player) noChange() {
@@ -661,24 +704,11 @@ func (d *player) takeItem(id int32, slot int16, amount int16, invID byte) (item,
 func (d player) updateItemStack(item item) {
 	item.save(d.id)
 	d.updateItem(item)
-	d.send(packetInventoryAddItem(item, false))
+	d.send(packetInventoryModifyItemAmount(item))
 }
 
 func (d *player) updateItem(new item) {
-	var items []item
-
-	switch new.invID {
-	case 1:
-		items = d.equip
-	case 2:
-		items = d.use
-	case 3:
-		items = d.setUp
-	case 4:
-		items = d.etc
-	case 5:
-		items = d.cash
-	}
+	var items = d.findItemInventory(new)
 
 	for i, v := range items {
 		if v.dbID == new.dbID {
@@ -686,6 +716,39 @@ func (d *player) updateItem(new item) {
 			break
 		}
 	}
+	d.updateItemInventory(new.invID, items)
+}
+
+func (d *player) updateItemInventory(invID byte, inventory []item) {
+	switch invID {
+	case 1:
+		d.equip = inventory
+	case 2:
+		d.use = inventory
+	case 3:
+		d.setUp = inventory
+	case 4:
+		d.etc = inventory
+	case 5:
+		d.cash = inventory
+	}
+}
+
+func (d *player) findItemInventory(item item) []item {
+	switch item.invID {
+	case 1:
+		return d.equip
+	case 2:
+		return d.use
+	case 3:
+		return d.setUp
+	case 4:
+		return d.etc
+	case 5:
+		return d.cash
+	}
+
+	return nil
 }
 
 func (d player) getItem(invID byte, slotID int16) (item, error) {
@@ -773,17 +836,31 @@ func (d *player) removeItem(item item) {
 	d.send(packetInventoryRemoveItem(item))
 }
 
+func (d *player) dropMesos(amount int32) error {
+	if d.mesos < amount {
+		return errors.New("not enough mesos")
+	}
+
+	d.takeMesos(amount)
+
+	return nil
+}
+
 func (d *player) moveItem(start, end, amount int16, invID byte) error {
 	if end == 0 { //drop item
-		fmt.Println("Drop item amount:", amount)
 		item, err := d.getItem(invID, start)
 
 		if err != nil {
 			return fmt.Errorf("Item to move doesn't exist")
 		}
 
-		d.removeItem(item)
-		// inst.AddDrop()
+		dropItem := item
+		dropItem.amount = amount
+		dropItem.dbID = 0
+
+		d.takeItem(item.id, item.slotID, amount, item.invID)
+
+		d.inst.dropPool.createDrop(dropSpawnNormal, dropFreeForAll, 0, d.pos, true, d.id, 0, dropItem)
 	} else if end < 0 { // Move to equip slot
 		item1, err := d.getItem(invID, start)
 
@@ -864,6 +941,25 @@ func (d *player) moveItem(start, end, amount int16, invID byte) error {
 func (d *player) updateSkill(updatedSkill playerSkill) {
 	d.skills[updatedSkill.ID] = updatedSkill
 	d.send(packetPlayerSkillBookUpdate(updatedSkill.ID, int32(updatedSkill.Level)))
+}
+
+func (d *player) useSkill(id int32, level byte) error {
+	skillInfo, _ := nx.GetPlayerSkill(id)
+
+	for lvl, skill := range skillInfo {
+		if lvl == int(level) {
+
+			d.giveMP(-int16(skill.MpCon))
+
+			// Use item
+			// d.consumeItem(skill.itemCon, skill.itemConNo)
+
+		}
+
+		// If haste, etc
+	}
+
+	return nil
 }
 
 func (d player) admin() bool { return d.conn.GetAdminLevel() > 0 }
@@ -1409,6 +1505,18 @@ func packetInventoryAddItem(item item, newItem bool) mpacket.Packet {
 	return p
 }
 
+func packetInventoryModifyItemAmount(item item) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelInventoryOperation)
+	p.WriteByte(0x01)
+	p.WriteByte(0x01)
+	p.WriteByte(0x01)
+	p.WriteByte(item.invID)
+	p.WriteInt16(item.slotID)
+	p.WriteInt16(item.amount)
+
+	return p
+}
+
 func packetInventoryAddItems(items []item, newItem []bool) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelInventoryOperation)
 
@@ -1476,6 +1584,13 @@ func packetInventoryNoChange() mpacket.Packet {
 	p.WriteByte(0x01)
 	p.WriteByte(0x00)
 	p.WriteByte(0x00)
+
+	return p
+}
+
+func packetInventoryDontTake() mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelInventoryOperation)
+	p.WriteInt16(1)
 
 	return p
 }

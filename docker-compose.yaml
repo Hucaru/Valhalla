@@ -26,6 +26,8 @@ services:
         volumes:
             - ./docker/docker_config_world.toml:/app/docker/docker_config_world.toml
             - ./Data.nx:/app/Data.nx
+        ports:
+            - 8584:8584
         depends_on:
             - login_server
 
@@ -68,7 +70,6 @@ services:
         environment:
             MYSQL_ROOT_PASSWORD: password
             MYSQL_DATABASE: maplestory
-            MYSQL_USER: root
         ports:
             - 3306:3306
 

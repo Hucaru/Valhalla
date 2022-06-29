@@ -34,6 +34,7 @@ const (
 	RecvChannelPassiveRegen        byte = 0x37
 	RecvChannelAddSkillPoint       byte = 0x38
 	RecvChannelSpecialSkill        byte = 0x39
+	RecvChannelPlayerDropMesos     byte = 0x3C
 	RecvChannelCharacterInfo       byte = 0x3F
 	RecvChannelLieDetectorResult   byte = 0x45
 	RecvChannelCharacterReport     byte = 0x49
@@ -48,5 +49,6 @@ const (
 	RecvChannelMobControl          byte = 0x6A
 	RecvChannelDistance            byte = 0x6B
 	RecvChannelNpcMovement         byte = 0x6F
+	RecvChannelPlayerPickup        byte = 0x73
 	RecvChannelBoatMap             byte = 0x80
 )
