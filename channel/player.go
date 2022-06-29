@@ -856,6 +856,7 @@ func (d *player) moveItem(start, end, amount int16, invID byte) error {
 
 		dropItem := item
 		dropItem.amount = amount
+		dropItem.dbID = 0
 
 		d.takeItem(item.id, item.slotID, amount, item.invID)
 
@@ -955,6 +956,7 @@ func (d *player) useSkill(id int32, level byte) error {
 
 		}
 
+		// If haste, etc
 	}
 
 	return nil
