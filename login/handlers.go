@@ -108,18 +108,17 @@ func (server *Server) handlePinRegistration(conn mnet.Client, reader mpacket.Rea
 
 func (server *Server) handleGoodLogin(conn mnet.Client, reader mpacket.Reader) {
 	server.migrating[conn] = false
-	var pinDB string
-
 	accountID := conn.GetAccountID()
 
-	err := common.DB.QueryRow("SELECT pin FROM accounts WHERE accountID=?", accountID).
-		Scan(&pinDB)
-
-	if err != nil {
-		log.Println("handleCheckLogin database retrieval issue for accountID:", accountID, err)
-	}
-
 	if server.withPin {
+		var pinDB string
+		err := common.DB.QueryRow("SELECT pin FROM accounts WHERE accountID=?", accountID).
+			Scan(&pinDB)
+
+		if err != nil {
+			log.Println("handleCheckLogin database retrieval issue for accountID:", accountID, err)
+		}
+
 		b1 := reader.ReadByte()
 		b2 := reader.ReadByte()
 
@@ -155,7 +154,7 @@ func (server *Server) handleGoodLogin(conn mnet.Client, reader mpacket.Reader) {
 	}
 
 	conn.SetLogedIn(true)
-	_, err = common.DB.Exec("UPDATE accounts set isLogedIn=1 WHERE accountID=?", accountID)
+	_, err := common.DB.Exec("UPDATE accounts set isLogedIn=1 WHERE accountID=?", accountID)
 
 	if err != nil {
 		log.Println("Database error with approving login of accountID", accountID, err)
