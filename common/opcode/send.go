@@ -3,7 +3,7 @@ package opcode
 const (
 	SendLoginResponse               byte = 0x01
 	SendLoginWorldMeta              byte = 0x03
-	SendLoginPinRegister            byte = 0x07 // Add 1 byte, 1 = register byte a pin
+	SendLoginPinOperation           byte = 0x07 // Add 1 byte, 1 = register byte a pin
 	SendLoginPinStuff               byte = 0x08 // Setting byte pin good
 	SendLoginWorldList              byte = 0x09
 	SendLoginCharacterData          byte = 0x0A

@@ -112,6 +112,8 @@ func (server *Server) handleGoodLogin(conn mnet.Client, reader mpacket.Reader) {
 
 	if server.withPin {
 		var pinDB string
+		var authDone bool
+
 		err := common.DB.QueryRow("SELECT pin FROM accounts WHERE accountID=?", accountID).
 			Scan(&pinDB)
 
@@ -128,29 +130,28 @@ func (server *Server) handleGoodLogin(conn mnet.Client, reader mpacket.Reader) {
 			} else {
 				conn.Send(packetRequestPin())
 			}
-			return
-		}
 
-		if b1 == 1 || b1 == 2 { // Client assigned pin
+		} else if b1 == 1 || b1 == 2 { // Client assigned pin
 			reader.Skip(6) // space padding?
 			pin := string(reader.GetRestAsBytes())
 
 			if pin != pinDB {
 				conn.Send(packetRequestPinAfterFailure())
-				return
+
+			} else if b1 == 2 { // Changing pin request
+				conn.Send(packetRegisterPin())
+
+			} else { // Authenticated successfully
+				authDone = true
 			}
 
-			if b1 == 2 { // Changing pin request
-				conn.Send(packetRegisterPin())
-				return
-			}
+		} else if b1 == 0 { // Client cancels pin request
+			conn.Send(packetCancelPin())
 		}
 
-		if b1 == 0 { // Client cancels pin request
-			conn.Send(packetCancelPin())
+		if !authDone {
 			return
 		}
-
 	}
 
 	conn.SetLogedIn(true)

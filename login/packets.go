@@ -34,7 +34,7 @@ func packetLoginResponse(result byte, userID int32, gender byte, isAdmin bool, u
 }
 
 func packetPinOperation(mode byte) mpacket.Packet {
-	pac := mpacket.CreateWithOpcode(opcode.SendLoginPinRegister)
+	pac := mpacket.CreateWithOpcode(opcode.SendLoginPinOperation)
 	pac.WriteByte(mode)
 
 	return pac
