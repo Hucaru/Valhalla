@@ -5,7 +5,7 @@ const (
 	RecvLoginChannelSelect         byte = 0x04
 	RecvLoginWorldSelect           byte = 0x05
 	RecvLoginCheckLogin            byte = 0x08
-	RecvLoginCreateCharacter       byte = 0x09
+	RecvLoginRegisterPin           byte = 0x09
 	RecvLoginSelectCharacter       byte = 0x0B
 	RecvChannelPlayerLoad          byte = 0x0C
 	RecvLoginNameCheck             byte = 0x0D

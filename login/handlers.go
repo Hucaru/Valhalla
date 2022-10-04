@@ -21,6 +21,8 @@ func (server *Server) HandleClientPacket(conn mnet.Client, reader mpacket.Reader
 		server.handleLoginRequest(conn, reader)
 	case opcode.RecvLoginCheckLogin:
 		server.handleGoodLogin(conn, reader)
+	case opcode.RecvLoginRegisterPin:
+		server.handlePinRegistration(conn, reader)
 	case opcode.RecvLoginWorldSelect:
 		server.handleWorldSelect(conn, reader)
 	case opcode.RecvLoginChannelSelect:
@@ -43,7 +45,6 @@ func (server *Server) HandleClientPacket(conn mnet.Client, reader mpacket.Reader
 func (server *Server) handleLoginRequest(conn mnet.Client, reader mpacket.Reader) {
 	username := reader.ReadString(reader.ReadInt16())
 	password := reader.ReadString(reader.ReadInt16())
-
 	// hash the password, cba to salt atm
 	hasher := sha512.New()
 	hasher.Write([]byte(password))
@@ -76,34 +77,90 @@ func (server *Server) handleLoginRequest(conn mnet.Client, reader mpacket.Reader
 	// Already online = 7, System error = 9, Too many requests = 10, Older than 20 = 11, Master cannot login on this IP = 13
 
 	if result <= 0x01 {
-		conn.SetLogedIn(true)
 		conn.SetGender(gender)
 		conn.SetAdminLevel(adminLevel)
 		conn.SetAccountID(accountID)
-
-		_, err := common.DB.Exec("UPDATE accounts set isLogedIn=1 WHERE accountID=?", accountID)
-
-		if err != nil {
-			log.Println("Database error with approving login of accountID", accountID, err)
-		} else {
-			log.Println("User", accountID, "has logged in from", conn)
-		}
 	}
 
-	conn.Send(packetLoginResponce(result, accountID, gender, adminLevel > 0, username, isBanned))
+	conn.Send(packetLoginResponse(result, accountID, gender, adminLevel > 0, username, isBanned))
+}
+
+func (server *Server) handlePinRegistration(conn mnet.Client, reader mpacket.Reader) {
+	b1 := reader.ReadByte()
+
+	if b1 == 0 { // Client canceled pin change request
+		conn.Send(packetCancelPin())
+		return
+	}
+	reader.Skip(2)
+
+	accountID := conn.GetAccountID()
+	pin := string(reader.GetRestAsBytes())
+
+	_, err := common.DB.Exec("UPDATE accounts SET pin=? WHERE accountID=?", pin, accountID)
+	if err != nil {
+		log.Println("handlePinRegistration database pin update issue for accountID:", accountID, err)
+	}
+
+	conn.Send(packetRequestPin())
+
 }
 
 func (server *Server) handleGoodLogin(conn mnet.Client, reader mpacket.Reader) {
 	server.migrating[conn] = false
-	var username, password string
+	var pinDB string
 
 	accountID := conn.GetAccountID()
 
-	err := common.DB.QueryRow("SELECT username, password FROM accounts WHERE accountID=?", accountID).
-		Scan(&username, &password)
+	err := common.DB.QueryRow("SELECT pin FROM accounts WHERE accountID=?", accountID).
+		Scan(&pinDB)
 
 	if err != nil {
 		log.Println("handleCheckLogin database retrieval issue for accountID:", accountID, err)
+	}
+
+	if server.withPin {
+		b1 := reader.ReadByte()
+		b2 := reader.ReadByte()
+
+		if b1 == 1 && b2 == 1 { // First attempt, request for pin
+			if len(pinDB) == 0 {
+				conn.Send(packetRegisterPin())
+			} else {
+				conn.Send(packetRequestPin())
+			}
+			return
+		}
+
+		if b1 == 1 || b1 == 2 { // Client assigned pin
+			reader.Skip(6) // space padding?
+			pin := string(reader.GetRestAsBytes())
+
+			if pin != pinDB {
+				conn.Send(packetRequestPinAfterFailure())
+				return
+			}
+
+			if b1 == 2 { // Changing pin request
+				conn.Send(packetRegisterPin())
+				return
+			}
+		}
+
+		if b1 == 0 { // Client cancels pin request
+			conn.Send(packetCancelPin())
+			return
+		}
+
+	}
+
+	conn.SetLogedIn(true)
+	_, err = common.DB.Exec("UPDATE accounts set isLogedIn=1 WHERE accountID=?", accountID)
+
+	if err != nil {
+		log.Println("Database error with approving login of accountID", accountID, err)
+	} else {
+		log.Println("User", accountID, "has logged in from", conn)
 	}
 
 	const maxNumberOfWorlds = 14

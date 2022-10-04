@@ -19,6 +19,7 @@ type loginConfig struct {
 	ClientListenPort    string
 	ServerListenAddress string
 	ServerListenPort    string
+	WithPin             bool
 	PacketQueueSize     int
 	Latency             int
 	Jitter              int
