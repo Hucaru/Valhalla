@@ -21,7 +21,7 @@ General:
 
 Login server:
 - [x] Login user
-- [ ] Pin
+- [X] Pin
 - [x] Display world ribbons
 - [x] Display world messages
 - [x] Display world status (e.g. overpopulated)
