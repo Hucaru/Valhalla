@@ -3,6 +3,7 @@ package channel
 import (
 	"encoding/hex"
 	"fmt"
+	"github.com/Hucaru/Valhalla/internal"
 	"log"
 	"math"
 	"strconv"
@@ -23,6 +24,35 @@ func (server *Server) gmCommand(conn mnet.Client, msg string) {
 	command := strings.SplitN(msg[ind+1:], " ", -1)
 
 	switch command[0] {
+	case "rate":
+		rates := map[string]func(rate int32) mpacket.Packet{
+			"exp":   internal.PacketChangeExpRate,
+			"drop":  internal.PacketChangeDropRate,
+			"mesos": internal.PacketChangeMesosRate,
+		}
+
+		if len(command) < 3 {
+			conn.Send(packetMessageRedText("Command structure is /rate <exp | drop | mesos> <rate>"))
+			return
+		}
+
+		mode := command[1]
+		mFunc, ok := rates[mode]
+		if !ok {
+			conn.Send(packetMessageRedText("Choose between exp/drop/mesos rates"))
+			return
+		}
+
+		rate := command[2]
+		r, err := strconv.Atoi(rate)
+		if err != nil {
+			log.Println("Failed parsing rate: ", err)
+			conn.Send(packetMessageRedText("<rate> should be a number"))
+			return
+		}
+
+		server.world.Send(mFunc(int32(r)))
+
 	case "packet":
 		if len(command) < 2 {
 			return
