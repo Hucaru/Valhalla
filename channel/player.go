@@ -152,6 +152,8 @@ type player struct {
 	party *party
 
 	UpdatePartyInfo updatePartyInfoFunc
+
+	rates *rates
 }
 
 // Send the Data a packet
@@ -238,15 +240,16 @@ func (d *player) setEXP(amount int32) {
 }
 
 func (d *player) giveEXP(amount int32, fromMob, fromParty bool) {
+	a := int32(d.rates.exp) * amount
 	if fromMob {
-		d.send(packetMessageExpGained(true, false, amount))
+		d.send(packetMessageExpGained(true, false, a))
 	} else if fromParty {
-		d.send(packetMessageExpGained(false, false, amount))
+		d.send(packetMessageExpGained(false, false, a))
 	} else {
-		d.send(packetMessageExpGained(false, true, amount))
+		d.send(packetMessageExpGained(false, true, a))
 	}
 
-	d.setEXP(d.exp + amount)
+	d.setEXP(d.exp + a)
 }
 
 func (d *player) setLevel(amount byte) {
@@ -395,7 +398,7 @@ func (d *player) setMesos(amount int32) {
 }
 
 func (d *player) giveMesos(amount int32) {
-	d.setMesos(d.mesos + amount)
+	d.setMesos(d.mesos + int32(d.rates.mesos)*amount)
 }
 
 func (d *player) takeMesos(amount int32) {

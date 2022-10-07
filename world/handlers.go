@@ -32,6 +32,8 @@ func (server *Server) HandleServerPacket(conn mnet.Server, reader mpacket.Reader
 		server.forwardPacketToChannels(conn, reader)
 	case opcode.ChannelPlayerPartyEvent:
 		server.handlePartyEvent(conn, reader)
+	case opcode.ChangeRate:
+		server.handleChangeRate(conn, reader)
 	default:
 		log.Println("UNKNOWN SERVER PACKET:", reader)
 	}
@@ -176,6 +178,15 @@ func (server *Server) handlePartyEvent(conn mnet.Server, reader mpacket.Reader) 
 		p.WriteBytes(reader.GetBuffer())
 		server.channelBroadcast(p)
 	default:
-		log.Println("Unkown party event type:", op)
+		log.Println("Unknown party event type:", op)
 	}
+}
+
+func (server *Server) handleChangeRate(conn mnet.Server, reader mpacket.Reader) {
+	// Only for propagating the change to all channels
+	p := mpacket.CreateInternal(opcode.ChangeRate)
+	p.Append(reader.GetBuffer()[1:])
+
+	server.channelBroadcast(p)
+
 }

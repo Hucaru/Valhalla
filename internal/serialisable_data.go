@@ -6,12 +6,19 @@ import (
 	"github.com/Hucaru/Valhalla/mpacket"
 )
 
+type Rates struct {
+	Exp   int16
+	Drop  int16
+	Mesos int16
+}
+
 type World struct {
 	Conn          mnet.Server
 	Icon          byte
 	Name, Message string
 	Ribbon        byte
 	Channels      []Channel
+	Rates         Rates
 }
 
 func (w *World) GenerateInfoPacket() mpacket.Packet {

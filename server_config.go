@@ -28,6 +28,9 @@ type loginConfig struct {
 type worldConfig struct {
 	Message         string
 	Ribbon          byte
+	ExpRate         int
+	DropRate        int
+	MesosRate       int
 	LoginAddress    string
 	LoginPort       string
 	ListenAddress   string

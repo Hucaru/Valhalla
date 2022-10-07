@@ -25,7 +25,7 @@ func (server *Server) gmCommand(conn mnet.Client, msg string) {
 
 	switch command[0] {
 	case "rate":
-		rates := map[string]func(rate int32) mpacket.Packet{
+		rates := map[string]func(rate int16) mpacket.Packet{
 			"exp":   internal.PacketChangeExpRate,
 			"drop":  internal.PacketChangeDropRate,
 			"mesos": internal.PacketChangeMesosRate,
@@ -51,7 +51,9 @@ func (server *Server) gmCommand(conn mnet.Client, msg string) {
 			return
 		}
 
-		server.world.Send(mFunc(int32(r)))
+		server.world.Send(mFunc(int16(r)))
+	case "showRates":
+		conn.Send(packetMessageNotice(fmt.Sprintf("Exp: x%d, Drop: x%d, Mesos: x%d", server.rates.exp, server.rates.drop, server.rates.mesos)))
 
 	case "packet":
 		if len(command) < 2 {
@@ -164,7 +166,7 @@ func (server *Server) gmCommand(conn mnet.Client, msg string) {
 			return
 		}
 
-		id := field.createInstance()
+		id := field.createInstance(&server.rates)
 
 		conn.Send(packetMessageNotice("Created instance: " + strconv.Itoa(id)))
 	case "changeInstance":

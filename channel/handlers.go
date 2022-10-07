@@ -152,6 +152,7 @@ func (server *Server) playerConnect(conn mnet.Client, reader mpacket.Reader) {
 	}
 
 	plr := loadPlayerFromID(charID, conn)
+	plr.rates = &server.rates
 
 	server.players = append(server.players, &plr)
 
@@ -2328,6 +2329,8 @@ func (server *Server) HandleServerPacket(conn mnet.Server, reader mpacket.Reader
 		server.handleBuddyEvent(conn, reader)
 	case opcode.ChannelPlayerPartyEvent:
 		server.handlePartyEvent(conn, reader)
+	case opcode.ChangeRate:
+		server.handleChangeRate(conn, reader)
 	default:
 		log.Println("UNKNOWN SERVER PACKET:", reader)
 	}
@@ -2577,15 +2580,42 @@ func (server *Server) handlePartyEvent(conn mnet.Server, reader mpacket.Reader) 
 			party.updateJobLevel(playerID, job, level)
 		}
 	default:
-		log.Println("Unkown party event type:", op)
+		log.Println("Unknown party event type:", op)
 	}
+}
+
+func (server *Server) handleChangeRate(conn mnet.Server, reader mpacket.Reader) {
+	mode := reader.ReadByte()
+	rate := reader.ReadInt16()
+
+	modeMap := map[byte]string{
+		1: "exp",
+		2: "drop",
+		3: "mesos",
+	}
+	switch mode {
+	case 1:
+		server.rates.exp = rate
+	case 2:
+		server.rates.drop = rate
+	case 3:
+		server.rates.mesos = rate
+	default:
+		log.Println("Unknown rate mode")
+		return
+	}
+
+	for _, p := range server.players {
+		p.conn.Send(packetMessageNotice(fmt.Sprintf("%s rate has changed to x%d", modeMap[mode], rate)))
+	}
+
 }
 
 func (server Server) handleChatEvent(conn mnet.Server, reader mpacket.Reader) {
 	op := reader.ReadByte()
 
 	switch op {
-	case 0: // whispher
+	case 0: // whisper
 		recepientName := reader.ReadString(reader.ReadInt16())
 		fromName := reader.ReadString(reader.ReadInt16())
 		msg := reader.ReadString(reader.ReadInt16())

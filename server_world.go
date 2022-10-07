@@ -23,13 +23,16 @@ type worldServer struct {
 
 func newWorldServer(configFile string) *worldServer {
 	config, dbConfig := worldConfigFromFile(configFile)
-
-	return &worldServer{
+	ws := worldServer{
 		eRecv:    make(chan *mnet.Event),
 		config:   config,
 		dbConfig: dbConfig,
 		wg:       &sync.WaitGroup{},
 	}
+
+	ws.state.FillRates(config.ExpRate, config.DropRate, config.MesosRate)
+
+	return &ws
 }
 
 func (ws *worldServer) run() {
