@@ -66,6 +66,18 @@ func (server *Server) handleNewChannel(conn mnet.Server, reader mpacket.Reader) 
 		return
 	}
 
+	pSend := func(id int) {
+		p := mpacket.CreateInternal(opcode.ChannelOk)
+		p.WriteString(server.info.Name)
+		p.WriteByte(byte(id))
+		// Sending the registered channel the world's rates
+		p.WriteInt16(server.info.Rates.Exp)
+		p.WriteInt16(server.info.Rates.Drop)
+		p.WriteInt16(server.info.Rates.Mesos)
+		conn.Send(p)
+		server.login.Send(server.info.GenerateInfoPacket())
+	}
+
 	// check to see if we have lost any channels
 	for i, v := range server.info.Channels {
 		if v.Conn == nil {
@@ -73,11 +85,7 @@ func (server *Server) handleNewChannel(conn mnet.Server, reader mpacket.Reader) 
 			server.info.Channels[i].IP = ip
 			server.info.Channels[i].Port = port
 			server.info.Channels[i].MaxPop = maxPop
-
-			p := mpacket.CreateInternal(opcode.ChannelOk)
-			p.WriteByte(byte(i))
-			conn.Send(p)
-			server.login.Send(server.info.GenerateInfoPacket())
+			pSend(i)
 
 			log.Println("Re-registered channel", i)
 			server.sendChannelInfo()
@@ -90,11 +98,7 @@ func (server *Server) handleNewChannel(conn mnet.Server, reader mpacket.Reader) 
 	newChannel := internal.Channel{Conn: conn, IP: ip, Port: port, MaxPop: maxPop, Pop: 0}
 	server.info.Channels = append(server.info.Channels, newChannel)
 
-	p := mpacket.CreateInternal(opcode.ChannelOk)
-	p.WriteString(server.info.Name)
-	p.WriteByte(byte(len(server.info.Channels) - 1))
-	conn.Send(p)
-	server.login.Send(server.info.GenerateInfoPacket())
+	pSend(len(server.info.Channels) - 1)
 
 	log.Println("Registered channel", len(server.info.Channels)-1)
 	server.sendChannelInfo()
@@ -183,7 +187,18 @@ func (server *Server) handlePartyEvent(conn mnet.Server, reader mpacket.Reader) 
 }
 
 func (server *Server) handleChangeRate(conn mnet.Server, reader mpacket.Reader) {
-	// Only for propagating the change to all channels
+	mode := reader.ReadByte()
+	rate := reader.ReadInt16()
+
+	switch mode {
+	case 1:
+		server.info.Rates.Exp = rate
+	case 2:
+		server.info.Rates.Drop = rate
+	case 3:
+		server.info.Rates.Mesos = rate
+	}
+
 	p := mpacket.CreateInternal(opcode.ChangeRate)
 	p.Append(reader.GetBuffer()[1:])
 

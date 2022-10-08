@@ -2455,6 +2455,10 @@ func (server *Server) handleNewChannelBad(conn mnet.Server, reader mpacket.Reade
 func (server *Server) handleNewChannelOK(conn mnet.Server, reader mpacket.Reader) {
 	server.worldName = reader.ReadString(reader.ReadInt16())
 	server.id = reader.ReadByte()
+	server.rates.exp = reader.ReadInt16()
+	server.rates.drop = reader.ReadInt16()
+	server.rates.mesos = reader.ReadInt16()
+
 	log.Println("Registered as channel", server.id, "on world", server.worldName)
 
 	for _, p := range server.players {
