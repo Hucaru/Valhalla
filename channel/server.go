@@ -122,7 +122,7 @@ func (server *Server) Initialise(work chan func(), dbuser, dbpassword, dbaddress
 			Data:     nxMap,
 			Dispatch: server.dispatch,
 		}
-		// TODO get this from world conf
+		// For safety, as world will override this
 		server.rates = rates{
 			exp:   1,
 			drop:  1,
