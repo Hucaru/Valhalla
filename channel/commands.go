@@ -39,7 +39,7 @@ func (server *Server) gmCommand(conn mnet.Client, msg string) {
 		mode := command[1]
 		mFunc, ok := rates[mode]
 		if !ok {
-			conn.Send(packetMessageRedText("Choose between exp/drop/mesos rates"))
+			conn.Send(packetMessageRedText("Choose between exp/drop/mesos Rates"))
 			return
 		}
 
@@ -53,7 +53,9 @@ func (server *Server) gmCommand(conn mnet.Client, msg string) {
 
 		server.world.Send(mFunc(int16(r)))
 	case "showRates":
-		conn.Send(packetMessageNotice(fmt.Sprintf("Exp: x%d, Drop: x%d, Mesos: x%d", server.rates.exp, server.rates.drop, server.rates.mesos)))
+		if server.rates != nil {
+			conn.Send(packetMessageNotice(fmt.Sprintf("Exp: x%d, Drop: x%d, Mesos: x%d", server.rates.exp, server.rates.drop, server.rates.mesos)))
+		}
 
 	case "packet":
 		if len(command) < 2 {
@@ -166,7 +168,7 @@ func (server *Server) gmCommand(conn mnet.Client, msg string) {
 			return
 		}
 
-		id := field.createInstance(&server.rates)
+		id := field.createInstance(server.rates)
 
 		conn.Send(packetMessageNotice("Created instance: " + strconv.Itoa(id)))
 	case "changeInstance":

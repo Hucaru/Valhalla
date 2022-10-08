@@ -307,7 +307,7 @@ type field struct {
 	fhHist    fhHistogram
 }
 
-func (f *field) createInstance(rates *rates) int {
+func (f *field) createInstance(rates *Rates) int {
 	id := len(f.instances)
 
 	portals := make([]portal, len(f.Data.Portals))

@@ -766,10 +766,10 @@ type dropPool struct {
 	instance *fieldInstance
 	poolID   int32
 	drops    map[int32]fieldDrop // If this struct doesn't stay static change to a ptr
-	rates    *rates
+	rates    *Rates
 }
 
-func createNewDropPool(inst *fieldInstance, rates *rates) dropPool {
+func createNewDropPool(inst *fieldInstance, rates *Rates) dropPool {
 	return dropPool{instance: inst, drops: make(map[int32]fieldDrop), rates: rates}
 }
 

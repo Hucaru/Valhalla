@@ -73,7 +73,7 @@ func (p *players) removeFromConn(conn mnet.Client) error {
 	return nil
 }
 
-type rates struct {
+type Rates struct {
 	exp   int16
 	drop  int16
 	mesos int16
@@ -98,7 +98,7 @@ type Server struct {
 	eventCtrl        map[string]*eventScriptController
 	eventScriptStore *scriptStore
 	parties          map[int32]*party
-	rates            rates
+	rates            *Rates
 }
 
 // Initialise the server
@@ -122,15 +122,10 @@ func (server *Server) Initialise(work chan func(), dbuser, dbpassword, dbaddress
 			Data:     nxMap,
 			Dispatch: server.dispatch,
 		}
-		// TODO get this from world conf
-		server.rates = rates{
-			exp:   1,
-			drop:  1,
-			mesos: 1,
-		}
+
 		server.fields[fieldID].formatFootholds()
 		server.fields[fieldID].calculateFieldLimits()
-		server.fields[fieldID].createInstance(&server.rates)
+		server.fields[fieldID].createInstance(server.rates)
 
 	}
 
