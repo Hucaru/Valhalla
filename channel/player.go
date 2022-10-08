@@ -153,7 +153,7 @@ type player struct {
 
 	UpdatePartyInfo updatePartyInfoFunc
 
-	rates *Rates
+	rates *rates
 }
 
 // Send the Data a packet
