@@ -7,9 +7,9 @@ import (
 )
 
 type Rates struct {
-	Exp   int16
-	Drop  int16
-	Mesos int16
+	Exp   float32
+	Drop  float32
+	Mesos float32
 }
 
 type World struct {

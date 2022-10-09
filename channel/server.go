@@ -74,9 +74,9 @@ func (p *players) removeFromConn(conn mnet.Client) error {
 }
 
 type rates struct {
-	exp   int16
-	drop  int16
-	mesos int16
+	exp   float32
+	drop  float32
+	mesos float32
 }
 
 // Server state

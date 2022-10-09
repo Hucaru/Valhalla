@@ -2455,9 +2455,14 @@ func (server *Server) handleNewChannelBad(conn mnet.Server, reader mpacket.Reade
 func (server *Server) handleNewChannelOK(conn mnet.Server, reader mpacket.Reader) {
 	server.worldName = reader.ReadString(reader.ReadInt16())
 	server.id = reader.ReadByte()
-	server.rates.exp = reader.ReadInt16()
-	server.rates.drop = reader.ReadInt16()
-	server.rates.mesos = reader.ReadInt16()
+	// no checking errors because we've validated couple of times
+	exp, _ := strconv.ParseFloat(reader.ReadString(reader.ReadInt16()), 32)
+	drop, _ := strconv.ParseFloat(reader.ReadString(reader.ReadInt16()), 32)
+	mesos, _ := strconv.ParseFloat(reader.ReadString(reader.ReadInt16()), 32)
+
+	server.rates.exp = float32(exp)
+	server.rates.drop = float32(drop)
+	server.rates.mesos = float32(mesos)
 
 	log.Println("Registered as channel", server.id, "on world", server.worldName)
 
@@ -2590,7 +2595,12 @@ func (server *Server) handlePartyEvent(conn mnet.Server, reader mpacket.Reader) 
 
 func (server *Server) handleChangeRate(conn mnet.Server, reader mpacket.Reader) {
 	mode := reader.ReadByte()
-	rate := reader.ReadInt16()
+	rate := reader.ReadString(reader.ReadInt16())
+	r, err := strconv.ParseFloat(rate, 32)
+	if err != nil {
+		log.Printf("failed parsing rate: %s", err)
+		return
+	}
 
 	modeMap := map[byte]string{
 		1: "exp",
@@ -2599,18 +2609,18 @@ func (server *Server) handleChangeRate(conn mnet.Server, reader mpacket.Reader) 
 	}
 	switch mode {
 	case 1:
-		server.rates.exp = rate
+		server.rates.exp = float32(r)
 	case 2:
-		server.rates.drop = rate
+		server.rates.drop = float32(r)
 	case 3:
-		server.rates.mesos = rate
+		server.rates.mesos = float32(r)
 	default:
 		log.Println("Unknown rate mode")
 		return
 	}
 
 	for _, p := range server.players {
-		p.conn.Send(packetMessageNotice(fmt.Sprintf("%s rate has changed to x%d", modeMap[mode], rate)))
+		p.conn.Send(packetMessageNotice(fmt.Sprintf("%s rate has changed to x%s", modeMap[mode], rate)))
 	}
 
 }

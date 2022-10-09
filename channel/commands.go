@@ -25,7 +25,7 @@ func (server *Server) gmCommand(conn mnet.Client, msg string) {
 
 	switch command[0] {
 	case "rate":
-		rates := map[string]func(rate int16) mpacket.Packet{
+		rates := map[string]func(rate string) mpacket.Packet{
 			"exp":   internal.PacketChangeExpRate,
 			"drop":  internal.PacketChangeDropRate,
 			"mesos": internal.PacketChangeMesosRate,
@@ -44,16 +44,16 @@ func (server *Server) gmCommand(conn mnet.Client, msg string) {
 		}
 
 		rate := command[2]
-		r, err := strconv.Atoi(rate)
+		_, err := strconv.ParseFloat(rate, 32) // Validation
 		if err != nil {
 			log.Println("Failed parsing rate: ", err)
 			conn.Send(packetMessageRedText("<rate> should be a number"))
 			return
 		}
 
-		server.world.Send(mFunc(int16(r)))
+		server.world.Send(mFunc(rate))
 	case "showRates":
-		conn.Send(packetMessageNotice(fmt.Sprintf("Exp: x%d, Drop: x%d, Mesos: x%d", server.rates.exp, server.rates.drop, server.rates.mesos)))
+		conn.Send(packetMessageNotice(fmt.Sprintf("Exp: x%.2f, Drop: x%.2f, Mesos: x%.2f", server.rates.exp, server.rates.drop, server.rates.mesos)))
 
 	case "packet":
 		if len(command) < 2 {

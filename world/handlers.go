@@ -1,8 +1,10 @@
 package world
 
 import (
+	"fmt"
 	"log"
 	"math"
+	"strconv"
 	"time"
 
 	"github.com/Hucaru/Valhalla/common/opcode"
@@ -71,9 +73,9 @@ func (server *Server) handleNewChannel(conn mnet.Server, reader mpacket.Reader) 
 		p.WriteString(server.info.Name)
 		p.WriteByte(byte(id))
 		// Sending the registered channel the world's rates
-		p.WriteInt16(server.info.Rates.Exp)
-		p.WriteInt16(server.info.Rates.Drop)
-		p.WriteInt16(server.info.Rates.Mesos)
+		p.WriteString(fmt.Sprintf("%.2f", server.info.Rates.Exp))
+		p.WriteString(fmt.Sprintf("%.2f", server.info.Rates.Drop))
+		p.WriteString(fmt.Sprintf("%.2f", server.info.Rates.Mesos))
 		conn.Send(p)
 		server.login.Send(server.info.GenerateInfoPacket())
 	}
@@ -188,15 +190,20 @@ func (server *Server) handlePartyEvent(conn mnet.Server, reader mpacket.Reader) 
 
 func (server *Server) handleChangeRate(conn mnet.Server, reader mpacket.Reader) {
 	mode := reader.ReadByte()
-	rate := reader.ReadInt16()
+	rate := reader.ReadString(reader.ReadInt16())
+	rs, err := strconv.ParseFloat(rate, 32)
+
+	if err != nil {
+		log.Printf("failed parsing rate: %s", err)
+	}
 
 	switch mode {
 	case 1:
-		server.info.Rates.Exp = rate
+		server.info.Rates.Exp = float32(rs)
 	case 2:
-		server.info.Rates.Drop = rate
+		server.info.Rates.Drop = float32(rs)
 	case 3:
-		server.info.Rates.Mesos = rate
+		server.info.Rates.Mesos = float32(rs)
 	}
 
 	p := mpacket.CreateInternal(opcode.ChangeRate)

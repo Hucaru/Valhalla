@@ -240,16 +240,16 @@ func (d *player) setEXP(amount int32) {
 }
 
 func (d *player) giveEXP(amount int32, fromMob, fromParty bool) {
-	a := int32(d.rates.exp) * amount
+	amount = int32(math.Ceil(float64(d.rates.exp * float32(amount))))
 	if fromMob {
-		d.send(packetMessageExpGained(true, false, a))
+		d.send(packetMessageExpGained(true, false, amount))
 	} else if fromParty {
-		d.send(packetMessageExpGained(false, false, a))
+		d.send(packetMessageExpGained(false, false, amount))
 	} else {
-		d.send(packetMessageExpGained(false, true, a))
+		d.send(packetMessageExpGained(false, true, amount))
 	}
 
-	d.setEXP(d.exp + a)
+	d.setEXP(d.exp + amount)
 }
 
 func (d *player) setLevel(amount byte) {
@@ -398,7 +398,7 @@ func (d *player) setMesos(amount int32) {
 }
 
 func (d *player) giveMesos(amount int32) {
-	d.setMesos(d.mesos + int32(d.rates.mesos)*amount)
+	d.setMesos(d.mesos + int32(math.Ceil(float64(d.rates.mesos*float32(amount)))))
 }
 
 func (d *player) takeMesos(amount int32) {

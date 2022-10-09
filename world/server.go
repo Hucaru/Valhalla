@@ -49,8 +49,8 @@ func (server *Server) ServerDisconnected(conn mnet.Server) {
 	server.login.Send(server.info.GenerateInfoPacket())
 }
 
-func (server *Server) FillRates(exp, drop, mesos int) {
-	server.info.Rates = internal.Rates{Exp: int16(exp), Drop: int16(drop), Mesos: int16(mesos)}
+func (server *Server) FillRates(exp, drop, mesos float32) {
+	server.info.Rates = internal.Rates{Exp: exp, Drop: drop, Mesos: mesos}
 }
 
 func (server Server) channelBroadcast(p mpacket.Packet) {

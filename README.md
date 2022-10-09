@@ -43,8 +43,8 @@ World server:
 - [x] Broadcast buddy events
 - [x] Broadcast party events
 - [ ] Broadcast guild events
-- [x] Forward whisphers
-- [ ] Allow gm command to actiavate exp/drop changes accross all channels
+- [x] Forward whispers
+- [x] Allow gm command to activate exp/drop changes across all channels
 - [ ] Allow gm commands to update information displayed at login
 
 Cashshop server:
