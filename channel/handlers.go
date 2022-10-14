@@ -2455,7 +2455,7 @@ func (server *Server) handleNewChannelBad(conn mnet.Server, reader mpacket.Reade
 func (server *Server) handleNewChannelOK(conn mnet.Server, reader mpacket.Reader) {
 	server.worldName = reader.ReadString(reader.ReadInt16())
 	server.id = reader.ReadByte()
-	// no checking errors because we've validated couple of times
+	// No checking errors because we've validated a couple of times
 	exp, _ := strconv.ParseFloat(reader.ReadString(reader.ReadInt16()), 32)
 	drop, _ := strconv.ParseFloat(reader.ReadString(reader.ReadInt16()), 32)
 	mesos, _ := strconv.ParseFloat(reader.ReadString(reader.ReadInt16()), 32)
@@ -2464,7 +2464,8 @@ func (server *Server) handleNewChannelOK(conn mnet.Server, reader mpacket.Reader
 	server.rates.drop = float32(drop)
 	server.rates.mesos = float32(mesos)
 
-	log.Println("Registered as channel", server.id, "on world", server.worldName)
+	log.Printf("Registered as channel %d on world %s with rates: Exp - x%.2f, Drop - x%.2f, Mesos - x%.2f",
+		server.id, server.worldName, server.rates.exp, server.rates.drop, server.rates.mesos)
 
 	for _, p := range server.players {
 		p.send(packetMessageNotice("Re-connected to world server as channel " + strconv.Itoa(int(server.id+1))))
@@ -2619,6 +2620,7 @@ func (server *Server) handleChangeRate(conn mnet.Server, reader mpacket.Reader) 
 		return
 	}
 
+	log.Printf("%s rate has changed to x%s", modeMap[mode], rate)
 	for _, p := range server.players {
 		p.conn.Send(packetMessageNotice(fmt.Sprintf("%s rate has changed to x%s", modeMap[mode], rate)))
 	}

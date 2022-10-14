@@ -1,6 +1,10 @@
 package main
 
 import (
+	"crypto/sha512"
+	"encoding/hex"
+	"fmt"
+	"github.com/Hucaru/Valhalla/internal"
 	"log"
 	"net"
 	"os"
@@ -30,7 +34,13 @@ func newWorldServer(configFile string) *worldServer {
 		wg:       &sync.WaitGroup{},
 	}
 
-	ws.state.FillRates(config.ExpRate, config.DropRate, config.MesosRate)
+	ws.state.Info.Rates = internal.Rates{Exp: config.ExpRate, Drop: config.DropRate, Mesos: config.MesosRate}
+	ws.state.Info.Ribbon = config.Ribbon
+	ws.state.Info.Message = config.Message
+
+	h := sha512.New()
+	h.Write([]byte(fmt.Sprintf("exp %.2f drop %.2f mesos %.2f", config.ExpRate, config.DropRate, config.MesosRate)))
+	ws.state.Info.DefaultRatesChecksum = hex.EncodeToString(h.Sum(nil))
 
 	return &ws
 }
@@ -56,7 +66,7 @@ func (ws *worldServer) establishLoginConnection() {
 	}
 	ticker.Stop()
 
-	ws.state.RegisterWithLogin(ws.lconn, ws.config.Message, ws.config.Ribbon)
+	ws.state.RegisterWithLogin(ws.lconn)
 }
 
 func (ws *worldServer) connectToLogin() bool {

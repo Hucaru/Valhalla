@@ -13,12 +13,13 @@ type Rates struct {
 }
 
 type World struct {
-	Conn          mnet.Server
-	Icon          byte
-	Name, Message string
-	Ribbon        byte
-	Channels      []Channel
-	Rates         Rates
+	Conn                 mnet.Server
+	Icon                 byte
+	Name, Message        string
+	Ribbon               byte
+	Channels             []Channel
+	Rates                Rates
+	DefaultRatesChecksum string
 }
 
 func (w *World) GenerateInfoPacket() mpacket.Packet {
