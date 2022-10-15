@@ -2200,22 +2200,34 @@ func (server *Server) guildManagement(conn mnet.Client, reader mpacket.Reader) {
 		}()
 	case 0x05: // invite
 		playerName := reader.ReadString(reader.ReadInt16())
-		// check if name exists in db (and get guildID to check they can be invited and get channelID), update invite table, send invite if on same channel, otherwise send world server event
+		// check if name exists in db with current world id (and get guildID to check they can be invited and get channelID), update invite table, send invite if on same channel, otherwise send world server event
 		fmt.Println("invite:", playerName)
 	case 0x07: // leave
 		playerID := reader.ReadInt32()
 		name := reader.ReadString(reader.ReadInt16())
 
-		// emit to world server
+		plr, err := server.players.getFromConn(conn)
 
-		fmt.Println("leave:", playerID, name)
+		if err != nil {
+			return
+		}
+
+		if plr.guild.isMaster(plr) {
+			server.world.Send(internal.PacketGuildDisband(plr.guild.id))
+		} else {
+			server.world.Send(internal.PacketGuildRemovePlayer(plr.guild.id, playerID, name, 0))
+		}
 	case 0x08: // expel
 		playerID := reader.ReadInt32()
 		name := reader.ReadString(reader.ReadInt16())
 
-		// emit to world server
+		plr, err := server.players.getFromConn(conn)
 
-		fmt.Println("expel:", playerID, name)
+		if err != nil {
+			return
+		}
+
+		server.world.Send(internal.PacketGuildRemovePlayer(plr.guild.id, playerID, name, 1))
 	case 0x10: // notice change
 		notice := reader.ReadString(reader.ReadInt16())
 
@@ -2676,6 +2688,24 @@ func (server Server) handleGuildEvent(conn mnet.Server, reader mpacket.Reader) {
 	case internal.OpGuildRankUpdate:
 	case internal.OpGuildAddPlayer:
 	case internal.OpGuildRemovePlayer:
+		// guildID := reader.ReadInt32()
+		// playerID := reader.ReadInt32()
+		// reason := reader.ReadByte() // 0 left, 1 expelle
+		// playerName := reader.ReadString()
+
+		// guild, ok := server.guilds[guildID]
+
+		// if !ok {
+		// 	return
+		// }
+
+		// switch reason {
+		// case 0: // left
+		// 	guild.broadcast(packetG)
+		// case 1: //expelled
+		// 	guild.broadcast(packetGuild)
+		// }
+
 	case internal.OpGuildNoticeChange:
 	case internal.OpGuildEmblemChange:
 		guildID := reader.ReadInt32()

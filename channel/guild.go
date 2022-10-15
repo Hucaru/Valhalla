@@ -306,21 +306,21 @@ func packetGuildEnterName() mpacket.Packet {
 	return p
 }
 
-func packetGuildInviteCard(guildID int32, name string) mpacket.Packet {
-	p := mpacket.CreateWithOpcode(opcode.SendChannelGuildInfo)
-	p.WriteByte(0x05)
-	p.WriteInt32(guildID)
-	p.WriteString(name)
-
-	return p
-}
-
 func packetGuildContract(partyID int32, masterName, guildName string) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelGuildInfo)
 	p.WriteByte(0x03)
 	p.WriteInt32(partyID)
 	p.WriteString(masterName)
 	p.WriteString(guildName)
+
+	return p
+}
+
+func packetGuildInviteCard(guildID int32, name string) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelGuildInfo)
+	p.WriteByte(0x05)
+	p.WriteInt32(guildID)
+	p.WriteString(name)
 
 	return p
 }
@@ -407,6 +407,20 @@ func packetGuildAgreementProblem() mpacket.Packet {
 	return p
 }
 
+func packetGuildAlreadyJoined() mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelGuildInfo)
+	p.WriteByte(0x21)
+
+	return p
+}
+
+func packetGuildCannotMakeLevel() mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelGuildInfo)
+	p.WriteByte(0x23)
+
+	return p
+}
+
 func packetGuildContractDisagree() mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelGuildInfo)
 	p.WriteByte(0x24)
@@ -436,6 +450,20 @@ func packetGuildPlayerJoined(plr *player) mpacket.Packet {
 	return p
 }
 
+func packetGuildCannotJoinMaxPlayers() mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelGuildInfo)
+	p.WriteByte(0x29)
+
+	return p
+}
+
+func packetGuildNotIn() mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelGuildInfo)
+	p.WriteByte(0x30)
+
+	return p
+}
+
 func packetGuildDisbandMessage(guildID int32) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelGuildInfo)
 	p.WriteByte(0x032)
@@ -460,6 +488,13 @@ func packetGuildInviteResult(name string, code byte) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelGuildInfo)
 	p.WriteByte(code)
 	p.WriteString(name)
+
+	return p
+}
+
+func packetGuildDisbandErrorNPC() mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelGuildInfo)
+	p.WriteByte(0x34)
 
 	return p
 }

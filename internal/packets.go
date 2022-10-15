@@ -186,6 +186,16 @@ func PacketGuildDisband(guildID int32) mpacket.Packet {
 	return p
 }
 
+func PacketGuildRemovePlayer(guildID, playerID int32, playerName string, reason byte) mpacket.Packet {
+	p := mpacket.CreateInternal(OpGuildRemovePlayer)
+	p.WriteInt32(guildID)
+	p.WriteInt32(playerID)
+	p.WriteByte(reason) // 0 left, 1 expelled
+	p.WriteString(playerName)
+
+	return p
+}
+
 func PacketGuildUpdateEmblem(guildID int32, logoBg, logo int16, logoBgColour, logoColour byte) mpacket.Packet {
 	p := mpacket.CreateInternal(opcode.ChannelPlayerGuildEvent)
 	p.WriteByte(OpGuildEmblemChange)
