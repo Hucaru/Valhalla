@@ -11,46 +11,43 @@ import (
 
 // Server data
 type Server struct {
-	info             internal.World
+	Info             internal.World
 	login            mnet.Server
 	nextPartyID      int32
 	reusablePartyIDs []int32
 }
 
 // RegisterWithLogin server
-func (server *Server) RegisterWithLogin(conn mnet.Server, message string, ribbon byte) {
-	server.info.Message = message
-	server.info.Ribbon = ribbon
-
+func (server *Server) RegisterWithLogin(conn mnet.Server) {
 	server.login = conn
 	server.registerWithLogin()
 }
 
 func (server *Server) registerWithLogin() {
 	p := mpacket.CreateInternal(opcode.WorldNew)
-	p.WriteString(server.info.Name)
+	p.WriteString(server.Info.Name)
 	server.login.Send(p)
 }
 
 // ServerDisconnected handler
 func (server *Server) ServerDisconnected(conn mnet.Server) {
-	for i, v := range server.info.Channels {
+	for i, v := range server.Info.Channels {
 		if v.Conn == conn {
-			server.info.Channels[i].Conn = nil
-			server.info.Channels[i].MaxPop = 0
-			server.info.Channels[i].Pop = 0
-			server.info.Channels[i].Port = 0
+			server.Info.Channels[i].Conn = nil
+			server.Info.Channels[i].MaxPop = 0
+			server.Info.Channels[i].Pop = 0
+			server.Info.Channels[i].Port = 0
 			log.Println("Lost channel", i)
 			server.sendChannelInfo()
 			break
 		}
 	}
 
-	server.login.Send(server.info.GenerateInfoPacket())
+	server.login.Send(server.Info.GenerateInfoPacket())
 }
 
 func (server Server) channelBroadcast(p mpacket.Packet) {
-	for _, v := range server.info.Channels {
+	for _, v := range server.Info.Channels {
 		if v.Conn != nil {
 			v.Conn.Send(p)
 		}

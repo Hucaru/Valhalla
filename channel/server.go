@@ -73,6 +73,12 @@ func (p *players) removeFromConn(conn mnet.Client) error {
 	return nil
 }
 
+type rates struct {
+	exp   float32
+	drop  float32
+	mesos float32
+}
+
 // Server state
 type Server struct {
 	id               byte
@@ -92,6 +98,7 @@ type Server struct {
 	eventCtrl        map[string]*eventScriptController
 	eventScriptStore *scriptStore
 	parties          map[int32]*party
+	rates            rates
 }
 
 // Initialise the server
@@ -115,10 +122,16 @@ func (server *Server) Initialise(work chan func(), dbuser, dbpassword, dbaddress
 			Data:     nxMap,
 			Dispatch: server.dispatch,
 		}
-
+		// For safety, as world will override this
+		server.rates = rates{
+			exp:   1,
+			drop:  1,
+			mesos: 1,
+		}
 		server.fields[fieldID].formatFootholds()
 		server.fields[fieldID].calculateFieldLimits()
-		server.fields[fieldID].createInstance()
+		server.fields[fieldID].createInstance(&server.rates)
+
 	}
 
 	log.Println("Initialised game state")

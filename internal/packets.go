@@ -150,3 +150,23 @@ func PacketChannelPartyUpdateInfo(partyID, playerID, job, level int32, name stri
 
 	return p
 }
+
+func PacketRateOperation(mode byte, rate float32) mpacket.Packet {
+	p := mpacket.CreateInternal(opcode.ChangeRate)
+	p.WriteByte(mode)
+	p.WriteFloat32(rate)
+
+	return p
+}
+
+func PacketChangeExpRate(rate float32) mpacket.Packet {
+	return PacketRateOperation(1, rate)
+}
+
+func PacketChangeDropRate(rate float32) mpacket.Packet {
+	return PacketRateOperation(2, rate)
+}
+
+func PacketChangeMesosRate(rate float32) mpacket.Packet {
+	return PacketRateOperation(3, rate)
+}

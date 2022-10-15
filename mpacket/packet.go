@@ -1,7 +1,9 @@
 package mpacket
 
 import (
+	"encoding/binary"
 	"fmt"
+	"math"
 )
 
 // Packet -
@@ -79,6 +81,13 @@ func (p *Packet) WriteUint32(data uint32) {
 func (p *Packet) WriteUint64(data uint64) {
 	*p = append(*p, byte(data), byte(data>>8), byte(data>>16), byte(data>>24),
 		byte(data>>32), byte(data>>40), byte(data>>48), byte(data>>56))
+}
+
+// WriteFloat32 -
+func (p *Packet) WriteFloat32(data float32) {
+	var b [4]byte
+	binary.LittleEndian.PutUint32(b[:], math.Float32bits(data))
+	*p = append(*p, b[:]...)
 }
 
 // WriteBytes -
@@ -182,6 +191,15 @@ func (p *Packet) readUint64(pos *int) uint64 {
 		uint64(p.readByte(pos))<<40 |
 		uint64(p.readByte(pos))<<48 |
 		uint64(p.readByte(pos))<<56
+}
+
+func (p *Packet) readFloat32(pos *int) float32 {
+	bits := binary.LittleEndian.Uint32((*p)[*pos:])
+	f := math.Float32frombits(bits)
+	*pos = *pos + 4
+
+	return f
+
 }
 
 func (p *Packet) readString(pos *int, length int) string {

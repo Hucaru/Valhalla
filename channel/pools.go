@@ -361,8 +361,8 @@ func (pool *lifePool) mobDamaged(poolID int32, damager *player, dmg ...int32) {
 					drops := make([]item, 0, len(dropEntry))
 
 					for _, entry := range dropEntry {
-						chance := pool.rNumber.Int31n(100000)
-						if entry.Chance < chance {
+						chance := pool.rNumber.Int63n(100000)
+						if int64(pool.dropPool.rates.drop*float32(entry.Chance)) < chance {
 							continue
 						}
 
@@ -766,10 +766,11 @@ type dropPool struct {
 	instance *fieldInstance
 	poolID   int32
 	drops    map[int32]fieldDrop // If this struct doesn't stay static change to a ptr
+	rates    *rates
 }
 
-func createNewDropPool(inst *fieldInstance) dropPool {
-	return dropPool{instance: inst, drops: make(map[int32]fieldDrop)}
+func createNewDropPool(inst *fieldInstance, rates *rates) dropPool {
+	return dropPool{instance: inst, drops: make(map[int32]fieldDrop), rates: rates}
 }
 
 func (pool *dropPool) nextID() (int32, error) {
@@ -820,7 +821,7 @@ func (pool *dropPool) playerAttemptPickup(drop fieldDrop, player *player) {
 	pool.instance.send(packetRemoveDrop(2, drop.ID, player.id))
 
 	if drop.mesos > 0 {
-		amount = int16(drop.mesos)
+		amount = int16(pool.rates.mesos * float32(drop.mesos))
 	} else {
 		amount = drop.item.amount
 	}

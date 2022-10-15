@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/Hucaru/Valhalla/internal"
 	"log"
 	"net"
 	"os"
@@ -23,13 +24,19 @@ type worldServer struct {
 
 func newWorldServer(configFile string) *worldServer {
 	config, dbConfig := worldConfigFromFile(configFile)
-
-	return &worldServer{
+	ws := worldServer{
 		eRecv:    make(chan *mnet.Event),
 		config:   config,
 		dbConfig: dbConfig,
 		wg:       &sync.WaitGroup{},
 	}
+
+	ws.state.Info.DefaultRates = internal.Rates{Exp: config.ExpRate, Drop: config.DropRate, Mesos: config.MesosRate}
+	ws.state.Info.Rates = ws.state.Info.DefaultRates
+	ws.state.Info.Ribbon = config.Ribbon
+	ws.state.Info.Message = config.Message
+
+	return &ws
 }
 
 func (ws *worldServer) run() {
@@ -53,7 +60,7 @@ func (ws *worldServer) establishLoginConnection() {
 	}
 	ticker.Stop()
 
-	ws.state.RegisterWithLogin(ws.lconn, ws.config.Message, ws.config.Ribbon)
+	ws.state.RegisterWithLogin(ws.lconn)
 }
 
 func (ws *worldServer) connectToLogin() bool {

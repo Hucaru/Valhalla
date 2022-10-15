@@ -32,15 +32,17 @@ func (server *Server) HandleServerPacket(conn mnet.Server, reader mpacket.Reader
 		server.forwardPacketToChannels(conn, reader)
 	case opcode.ChannelPlayerPartyEvent:
 		server.handlePartyEvent(conn, reader)
+	case opcode.ChangeRate:
+		server.handleChangeRate(conn, reader)
 	default:
 		log.Println("UNKNOWN SERVER PACKET:", reader)
 	}
 }
 
 func (server *Server) handleRequestOk(conn mnet.Server, reader mpacket.Reader) {
-	server.info.Name = reader.ReadString(reader.ReadInt16())
-	log.Println("Registered as", server.info.Name, "with login server at", conn)
-	server.login.Send(server.info.GenerateInfoPacket())
+	server.Info.Name = reader.ReadString(reader.ReadInt16())
+	log.Println("Registered as", server.Info.Name, "with login server at", conn)
+	server.login.Send(server.Info.GenerateInfoPacket())
 }
 
 func (server *Server) handleRequestBad(conn mnet.Server, reader mpacket.Reader) {
@@ -58,24 +60,33 @@ func (server *Server) handleNewChannel(conn mnet.Server, reader mpacket.Reader) 
 	port := reader.ReadInt16()
 	maxPop := reader.ReadInt16()
 
-	if len(server.info.Channels) > 19 {
+	if len(server.Info.Channels) > 19 {
 		p := mpacket.CreateInternal(opcode.ChannelBad)
 		conn.Send(p)
 		return
 	}
 
-	// check to see if we have lost any channels
-	for i, v := range server.info.Channels {
-		if v.Conn == nil {
-			server.info.Channels[i].Conn = conn
-			server.info.Channels[i].IP = ip
-			server.info.Channels[i].Port = port
-			server.info.Channels[i].MaxPop = maxPop
+	pSend := func(id int) {
+		p := mpacket.CreateInternal(opcode.ChannelOk)
+		p.WriteString(server.Info.Name)
+		p.WriteByte(byte(id))
+		// Sending the registered channel the world's rates
+		p.WriteFloat32(server.Info.Rates.Exp)
+		p.WriteFloat32(server.Info.Rates.Drop)
+		p.WriteFloat32(server.Info.Rates.Mesos)
 
-			p := mpacket.CreateInternal(opcode.ChannelOk)
-			p.WriteByte(byte(i))
-			conn.Send(p)
-			server.login.Send(server.info.GenerateInfoPacket())
+		conn.Send(p)
+		server.login.Send(server.Info.GenerateInfoPacket())
+	}
+
+	// check to see if we have lost any channels
+	for i, v := range server.Info.Channels {
+		if v.Conn == nil {
+			server.Info.Channels[i].Conn = conn
+			server.Info.Channels[i].IP = ip
+			server.Info.Channels[i].Port = port
+			server.Info.Channels[i].MaxPop = maxPop
+			pSend(i)
 
 			log.Println("Re-registered channel", i)
 			server.sendChannelInfo()
@@ -86,23 +97,19 @@ func (server *Server) handleNewChannel(conn mnet.Server, reader mpacket.Reader) 
 	// TODO highest value party id and set the to current party id if it is larger
 
 	newChannel := internal.Channel{Conn: conn, IP: ip, Port: port, MaxPop: maxPop, Pop: 0}
-	server.info.Channels = append(server.info.Channels, newChannel)
+	server.Info.Channels = append(server.Info.Channels, newChannel)
 
-	p := mpacket.CreateInternal(opcode.ChannelOk)
-	p.WriteString(server.info.Name)
-	p.WriteByte(byte(len(server.info.Channels) - 1))
-	conn.Send(p)
-	server.login.Send(server.info.GenerateInfoPacket())
+	pSend(len(server.Info.Channels) - 1)
 
-	log.Println("Registered channel", len(server.info.Channels)-1)
+	log.Println("Registered channel", len(server.Info.Channels)-1)
 	server.sendChannelInfo()
 }
 
 func (server Server) sendChannelInfo() {
 	p := mpacket.CreateInternal(opcode.ChannelConnectionInfo)
-	p.WriteByte(byte(len(server.info.Channels)))
+	p.WriteByte(byte(len(server.Info.Channels)))
 
-	for _, v := range server.info.Channels {
+	for _, v := range server.Info.Channels {
 		p.WriteBytes(v.IP)
 		p.WriteInt16(v.Port)
 	}
@@ -115,11 +122,11 @@ func (server *Server) handleChannelUpdate(conn mnet.Server, reader mpacket.Reade
 	op := reader.ReadByte()
 	switch op {
 	case 0: //population
-		server.info.Channels[id].Pop = reader.ReadInt16()
+		server.Info.Channels[id].Pop = reader.ReadInt16()
 	default:
 		log.Println("Unkown channel update type", op)
 	}
-	server.login.Send(server.info.GenerateInfoPacket())
+	server.login.Send(server.Info.GenerateInfoPacket())
 }
 
 func (server *Server) handlePartyEvent(conn mnet.Server, reader mpacket.Reader) {
@@ -176,6 +183,36 @@ func (server *Server) handlePartyEvent(conn mnet.Server, reader mpacket.Reader) 
 		p.WriteBytes(reader.GetBuffer())
 		server.channelBroadcast(p)
 	default:
-		log.Println("Unkown party event type:", op)
+		log.Println("Unknown party event type:", op)
 	}
+}
+
+func (server *Server) handleChangeRate(conn mnet.Server, reader mpacket.Reader) {
+	mode := reader.ReadByte()
+	rate := reader.ReadFloat32()
+
+	switch mode {
+	case 1:
+		server.Info.Rates.Exp = rate
+	case 2:
+		server.Info.Rates.Drop = rate
+	case 3:
+		server.Info.Rates.Mesos = rate
+	}
+
+	if server.Info.Rates.Exp != server.Info.DefaultRates.Exp ||
+		server.Info.Rates.Drop != server.Info.DefaultRates.Drop ||
+		server.Info.Rates.Mesos != server.Info.DefaultRates.Mesos { // Rates event
+		server.Info.Ribbon = 1
+		log.Println("GM triggered rates event")
+	} else {
+		server.Info.Ribbon = 0
+	}
+	server.login.Send(server.Info.GenerateInfoPacket())
+
+	p := mpacket.CreateInternal(opcode.ChangeRate)
+	p.Append(reader.GetBuffer()[1:])
+
+	server.channelBroadcast(p)
+
 }

@@ -22,7 +22,7 @@ type dropTableEntry struct {
 	Min     int32 `json:"min"`
 	Max     int32 `json:"max"`
 	QuestID int32 `json:"questId"` // TODO: Validate this
-	Chance  int32 `json:"chance"`
+	Chance  int64 `json:"chance"`
 }
 
 // DropTable is the global lookup table for drops
