@@ -1,9 +1,6 @@
 package world
 
 import (
-	"crypto/sha512"
-	"encoding/hex"
-	"fmt"
 	"log"
 	"math"
 	"time"
@@ -203,11 +200,9 @@ func (server *Server) handleChangeRate(conn mnet.Server, reader mpacket.Reader) 
 		server.Info.Rates.Mesos = rate
 	}
 
-	h := sha512.New()
-	h.Write([]byte(fmt.Sprintf("exp %.2f drop %.2f mesos %.2f", server.Info.Rates.Exp, server.Info.Rates.Drop, server.Info.Rates.Mesos)))
-	hRates := hex.EncodeToString(h.Sum(nil))
-
-	if hRates != server.Info.DefaultRatesChecksum { // Rates event
+	if server.Info.Rates.Exp != server.Info.DefaultRates.Exp ||
+		server.Info.Rates.Drop != server.Info.DefaultRates.Drop ||
+		server.Info.Rates.Mesos != server.Info.DefaultRates.Mesos { // Rates event
 		server.Info.Ribbon = 1
 		log.Println("GM triggered rates event")
 	} else {
