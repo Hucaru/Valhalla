@@ -240,7 +240,7 @@ func (d *player) setEXP(amount int32) {
 }
 
 func (d *player) giveEXP(amount int32, fromMob, fromParty bool) {
-	amount = int32(math.Ceil(float64(d.rates.exp * float32(amount))))
+	amount = int32(d.rates.exp * float32(amount))
 	if fromMob {
 		d.send(packetMessageExpGained(true, false, amount))
 	} else if fromParty {
@@ -398,7 +398,7 @@ func (d *player) setMesos(amount int32) {
 }
 
 func (d *player) giveMesos(amount int32) {
-	d.setMesos(d.mesos + int32(math.Ceil(float64(d.rates.mesos*float32(amount)))))
+	d.setMesos(d.mesos + int32(d.rates.mesos*float32(amount)))
 }
 
 func (d *player) takeMesos(amount int32) {

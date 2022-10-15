@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"log"
 	"math"
-	"strconv"
 	"time"
 
 	"github.com/Hucaru/Valhalla/common/opcode"
@@ -75,9 +74,10 @@ func (server *Server) handleNewChannel(conn mnet.Server, reader mpacket.Reader) 
 		p.WriteString(server.Info.Name)
 		p.WriteByte(byte(id))
 		// Sending the registered channel the world's rates
-		p.WriteString(fmt.Sprintf("%.2f", server.Info.Rates.Exp))
-		p.WriteString(fmt.Sprintf("%.2f", server.Info.Rates.Drop))
-		p.WriteString(fmt.Sprintf("%.2f", server.Info.Rates.Mesos))
+		p.WriteFloat32(server.Info.Rates.Exp)
+		p.WriteFloat32(server.Info.Rates.Drop)
+		p.WriteFloat32(server.Info.Rates.Mesos)
+
 		conn.Send(p)
 		server.login.Send(server.Info.GenerateInfoPacket())
 	}
@@ -192,20 +192,15 @@ func (server *Server) handlePartyEvent(conn mnet.Server, reader mpacket.Reader) 
 
 func (server *Server) handleChangeRate(conn mnet.Server, reader mpacket.Reader) {
 	mode := reader.ReadByte()
-	rate := reader.ReadString(reader.ReadInt16())
-	rs, err := strconv.ParseFloat(rate, 32)
-
-	if err != nil {
-		log.Printf("failed parsing rate: %s", err)
-	}
+	rate := reader.ReadFloat32()
 
 	switch mode {
 	case 1:
-		server.Info.Rates.Exp = float32(rs)
+		server.Info.Rates.Exp = rate
 	case 2:
-		server.Info.Rates.Drop = float32(rs)
+		server.Info.Rates.Drop = rate
 	case 3:
-		server.Info.Rates.Mesos = float32(rs)
+		server.Info.Rates.Mesos = rate
 	}
 
 	h := sha512.New()

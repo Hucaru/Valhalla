@@ -2455,14 +2455,9 @@ func (server *Server) handleNewChannelBad(conn mnet.Server, reader mpacket.Reade
 func (server *Server) handleNewChannelOK(conn mnet.Server, reader mpacket.Reader) {
 	server.worldName = reader.ReadString(reader.ReadInt16())
 	server.id = reader.ReadByte()
-	// No checking errors because we've validated a couple of times
-	exp, _ := strconv.ParseFloat(reader.ReadString(reader.ReadInt16()), 32)
-	drop, _ := strconv.ParseFloat(reader.ReadString(reader.ReadInt16()), 32)
-	mesos, _ := strconv.ParseFloat(reader.ReadString(reader.ReadInt16()), 32)
-
-	server.rates.exp = float32(exp)
-	server.rates.drop = float32(drop)
-	server.rates.mesos = float32(mesos)
+	server.rates.exp = reader.ReadFloat32()
+	server.rates.drop = reader.ReadFloat32()
+	server.rates.mesos = reader.ReadFloat32()
 
 	log.Printf("Registered as channel %d on world %s with rates: Exp - x%.2f, Drop - x%.2f, Mesos - x%.2f",
 		server.id, server.worldName, server.rates.exp, server.rates.drop, server.rates.mesos)
@@ -2596,12 +2591,7 @@ func (server *Server) handlePartyEvent(conn mnet.Server, reader mpacket.Reader) 
 
 func (server *Server) handleChangeRate(conn mnet.Server, reader mpacket.Reader) {
 	mode := reader.ReadByte()
-	rate := reader.ReadString(reader.ReadInt16())
-	r, err := strconv.ParseFloat(rate, 32)
-	if err != nil {
-		log.Printf("failed parsing rate: %s", err)
-		return
-	}
+	rate := reader.ReadFloat32()
 
 	modeMap := map[byte]string{
 		1: "exp",
@@ -2610,19 +2600,19 @@ func (server *Server) handleChangeRate(conn mnet.Server, reader mpacket.Reader) 
 	}
 	switch mode {
 	case 1:
-		server.rates.exp = float32(r)
+		server.rates.exp = rate
 	case 2:
-		server.rates.drop = float32(r)
+		server.rates.drop = rate
 	case 3:
-		server.rates.mesos = float32(r)
+		server.rates.mesos = rate
 	default:
 		log.Println("Unknown rate mode")
 		return
 	}
 
-	log.Printf("%s rate has changed to x%s", modeMap[mode], rate)
+	log.Printf("%s rate has changed to x%.2f", modeMap[mode], rate)
 	for _, p := range server.players {
-		p.conn.Send(packetMessageNotice(fmt.Sprintf("%s rate has changed to x%s", modeMap[mode], rate)))
+		p.conn.Send(packetMessageNotice(fmt.Sprintf("%s rate has changed to x%.2f", modeMap[mode], rate)))
 	}
 
 }

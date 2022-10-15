@@ -362,7 +362,7 @@ func (pool *lifePool) mobDamaged(poolID int32, damager *player, dmg ...int32) {
 
 					for _, entry := range dropEntry {
 						chance := pool.rNumber.Int63n(100000)
-						if int64(math.Ceil(float64(pool.dropPool.rates.drop*float32(entry.Chance)))) < chance {
+						if int64(pool.dropPool.rates.drop*float32(entry.Chance)) < chance {
 							continue
 						}
 
@@ -821,7 +821,7 @@ func (pool *dropPool) playerAttemptPickup(drop fieldDrop, player *player) {
 	pool.instance.send(packetRemoveDrop(2, drop.ID, player.id))
 
 	if drop.mesos > 0 {
-		amount = int16(math.Ceil(float64(pool.rates.mesos * float32(drop.mesos))))
+		amount = int16(pool.rates.mesos * float32(drop.mesos))
 	} else {
 		amount = drop.item.amount
 	}
