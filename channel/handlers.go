@@ -24,15 +24,6 @@ import (
 func (server *Server) HandleClientPacket(conn mnet.Client, reader mpacket.Reader) {
 
 	log.Println("TEXT", string(reader.GetRestAsBytes()))
-	log.Println("BYTES", reader.GetRestAsBytes())
-
-	return
-	log.Println("CLIENT PACKET:", server.id)
-	//conn.Send(packetMessageScrollingHeader(server.header))
-	//log.Println("END")
-	//var t any
-	//ReadPacket(&t, reader.GetBuffer())
-	//log.Println("CLIENT PACKET:", t)
 
 	switch reader.ReadByte() {
 	case opcode.RecvPing:
@@ -112,11 +103,7 @@ func (server *Server) HandleClientPacket(conn mnet.Client, reader mpacket.Reader
 	case opcode.RecvChannelBoatMap:
 		// [mapID int32][? byte]
 	default:
-		log.Println("HERE")
 		log.Println("UNKNOWN CLIENT PACKET:", reader)
-		var t any
-		ReadPacket(&t, reader.GetRestAsBytes())
-		log.Println("UNKNOWN CLIENT PACKET:", t)
 	}
 }
 
