@@ -1,8 +1,11 @@
 package channel
 
 import (
+	"encoding/binary"
 	"fmt"
 	"log"
+	"math"
+	"reflect"
 	"strconv"
 	"strings"
 	"time"
@@ -19,9 +22,22 @@ import (
 
 // HandleClientPacket data
 func (server *Server) HandleClientPacket(conn mnet.Client, reader mpacket.Reader) {
+
+	log.Println("TEXT", string(reader.GetRestAsBytes()))
+	log.Println("BYTES", reader.GetRestAsBytes())
+
+	return
+	log.Println("CLIENT PACKET:", server.id)
+	//conn.Send(packetMessageScrollingHeader(server.header))
+	//log.Println("END")
+	//var t any
+	//ReadPacket(&t, reader.GetBuffer())
+	//log.Println("CLIENT PACKET:", t)
+
 	switch reader.ReadByte() {
 	case opcode.RecvPing:
 	case opcode.RecvChannelPlayerLoad:
+		fmt.Println("RecvChannelPlayerLoad", conn)
 		server.playerConnect(conn, reader)
 	case opcode.RecvCHannelChangeChannel:
 		server.playerChangeChannel(conn, reader)
@@ -96,8 +112,69 @@ func (server *Server) HandleClientPacket(conn mnet.Client, reader mpacket.Reader
 	case opcode.RecvChannelBoatMap:
 		// [mapID int32][? byte]
 	default:
+		log.Println("HERE")
 		log.Println("UNKNOWN CLIENT PACKET:", reader)
+		var t any
+		ReadPacket(&t, reader.GetRestAsBytes())
+		log.Println("UNKNOWN CLIENT PACKET:", t)
 	}
+}
+
+func ReadPacket[T any](t *T, b []byte) {
+	typ := reflect.TypeOf(t).Elem()
+	value := reflect.ValueOf(t).Elem()
+
+	read(typ, value, b[2:])
+}
+
+func read(typ reflect.Type, value reflect.Value, b []byte) []byte {
+	if typ.Kind() == reflect.Struct {
+		for i := 0; i < typ.NumField(); i++ {
+			b = read(typ.Field(i).Type, value.Field(i), b)
+		}
+	} else if typ.Kind() == reflect.Int16 {
+		value.SetInt(int64(binary.BigEndian.Uint16(b)))
+		b = b[2:]
+	} else if typ.Kind() == reflect.Int32 {
+		value.SetInt(int64(binary.BigEndian.Uint32(b)))
+		b = b[4:]
+	} else if typ.Kind() == reflect.Int64 {
+		value.SetInt(int64(binary.BigEndian.Uint64(b)))
+		b = b[8:]
+	} else if typ.Kind() == reflect.Int8 {
+		value.SetInt(int64(int8(b[0])))
+		b = b[1:]
+	} else if typ.Kind() == reflect.Uint8 {
+		value.SetUint(uint64(b[0]))
+		b = b[1:]
+	} else if typ.Kind() == reflect.Uint16 {
+		value.SetUint(uint64(binary.BigEndian.Uint16(b)))
+		b = b[2:]
+	} else if typ.Kind() == reflect.Uint32 {
+		value.SetUint(uint64(binary.BigEndian.Uint32(b)))
+		b = b[4:]
+	} else if typ.Kind() == reflect.Uint64 {
+		value.SetUint(binary.BigEndian.Uint64(b))
+		b = b[8:]
+	} else if typ.Kind() == reflect.Float32 {
+		f1 := binary.BigEndian.Uint32(b[:4])
+		f2 := math.Float32frombits(f1)
+		value.SetFloat(float64(f2))
+		b = b[4:]
+	} else if typ.Kind() == reflect.Float64 {
+		f1 := binary.BigEndian.Uint32(b[:8])
+		f2 := math.Float32frombits(f1)
+		value.SetFloat(float64(f2))
+		b = b[8:]
+	} else if typ.Kind() == reflect.String {
+		length := binary.BigEndian.Uint16(b)
+		b = b[2:]
+		str := string(b[:length])
+		value.SetString(str)
+		b = b[length:]
+	}
+
+	return b
 }
 
 func (server *Server) playerConnect(conn mnet.Client, reader mpacket.Reader) {

@@ -2,6 +2,7 @@ package main
 
 import (
 	"crypto/rand"
+	"fmt"
 	"log"
 	"net"
 	"os"
@@ -11,8 +12,6 @@ import (
 
 	"github.com/Hucaru/Valhalla/channel"
 	"github.com/Hucaru/Valhalla/constant"
-	"github.com/Hucaru/Valhalla/nx"
-
 	"github.com/Hucaru/Valhalla/mnet"
 	"github.com/Hucaru/Valhalla/mpacket"
 )
@@ -45,7 +44,7 @@ func (cs *channelServer) run() {
 	cs.establishWorldConnection()
 
 	start := time.Now()
-	nx.LoadFile("Data.nx")
+	//nx.LoadFile("Data.nx")
 	elapsed := time.Since(start)
 	log.Println("Loaded and parsed Wizet data (NX) in", elapsed)
 
@@ -86,6 +85,7 @@ func (cs *channelServer) establishWorldConnection() {
 }
 
 func (cs *channelServer) connectToWorld() bool {
+
 	conn, err := net.Dial("tcp", cs.config.WorldAddress+":"+cs.config.WorldPort)
 
 	if err != nil {
@@ -145,6 +145,7 @@ func (cs *channelServer) processEvent() {
 	defer cs.wg.Done()
 
 	for {
+
 		select {
 		case e, ok := <-cs.eRecv:
 
@@ -152,6 +153,8 @@ func (cs *channelServer) processEvent() {
 				log.Println("Stopping event handling due to channel error")
 				return
 			}
+
+			fmt.Println("EVENT", e.Type)
 
 			switch conn := e.Conn.(type) {
 			case mnet.Client:
@@ -175,6 +178,7 @@ func (cs *channelServer) processEvent() {
 				}
 			}
 		case work, ok := <-cs.wRecv:
+			fmt.Println("WORK", work)
 			if ok {
 				work()
 			}

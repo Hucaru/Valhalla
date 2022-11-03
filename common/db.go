@@ -1,6 +1,10 @@
 package common
 
-import "database/sql"
+import (
+	"database/sql"
+	"fmt"
+)
+import _ "github.com/go-sql-driver/mysql"
 
 // DB object used for queries
 var DB *sql.DB
@@ -9,11 +13,11 @@ var DB *sql.DB
 func ConnectToDB(user, password, address, port, database string) error {
 	var err error
 	DB, err = sql.Open("mysql", user+":"+password+"@tcp("+address+":"+port+")/"+database)
-
+	fmt.Println("DB", DB)
+	fmt.Println("PARAMS", user, password, address, port, database)
 	if err != nil {
 		return err
 	}
-
 	err = DB.Ping()
 
 	if err != nil {

@@ -2,22 +2,34 @@ package main
 
 import (
 	"flag"
-	"log"
-
 	"github.com/Hucaru/Valhalla/common"
+	"github.com/spf13/pflag"
+	"log"
+	"sync"
 )
 
-var typePtr, configPtr, metricPtr *string
+var (
+	once           sync.Once
+	typePtr        = pflag.String("type", "", "Denotes what type of server to start: login, world, channel")
+	configPtr      = pflag.String("config", "", "config toml file")
+	configPtrLogin = pflag.String("config_login", "", "config toml file")
+	metricPtr      = pflag.String("metrics-port", "", "Port to serve metrics on")
+)
 
 func init() {
-	typePtr = flag.String("type", "", "Denotes what type of server to start: login, world, channel")
-	configPtr = flag.String("config", "", "config toml file")
-	metricPtr = flag.String("metrics-port", "9000", "Port to serve metrics on")
-	flag.Parse()
+	once.Do(func() {
+		log.Println("Parsing flags")
+		parseFlags()
+	})
 }
 
 func main() {
 	common.MetricsPort = *metricPtr
+	//
+	log.Println("TYPE", *typePtr)
+
+	//s := newChannelServer(*configPtr)
+	//s.run()
 
 	switch *typePtr {
 	case "login":
@@ -30,6 +42,13 @@ func main() {
 		s := newChannelServer(*configPtr)
 		s.run()
 	default:
-		log.Println("Unkown server type:", *typePtr)
+		log.Println("Unknown server type:", typePtr)
 	}
+}
+
+func parseFlags() {
+	pflag.CommandLine.AddGoFlagSet(flag.CommandLine)
+	pflag.Parse()
+
+	//_ = flag.Lookup("logtostderr").Value.Set("true")
 }

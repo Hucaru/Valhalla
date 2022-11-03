@@ -22,7 +22,6 @@ func (server *Server) Initialise(dbuser, dbpassword, dbaddress, dbport, dbdataba
 	server.withPin = withpin
 
 	err := common.ConnectToDB(dbuser, dbpassword, dbaddress, dbport, dbdatabase)
-
 	if err != nil {
 		log.Fatal(err.Error())
 	}

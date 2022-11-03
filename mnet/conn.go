@@ -1,6 +1,8 @@
 package mnet
 
 import (
+	"encoding/binary"
+	"log"
 	"math/rand"
 	"net"
 	"time"
@@ -31,7 +33,7 @@ func clientReader(conn net.Conn, eRecv chan *Event, mapleVersion int16, headerSi
 		}
 
 		if header {
-			readSize = crypt.GetPacketLength(buffer)
+			readSize = int(binary.BigEndian.Uint32(buffer))
 		} else {
 			readSize = headerSize
 
@@ -61,11 +63,13 @@ func serverReader(conn net.Conn, eRecv chan *Event, headerSize int) {
 		}
 
 		if header {
-			readSize = int(buffer[0])
+			readSize = int(binary.BigEndian.Uint32(buffer))
 		} else {
 			readSize = headerSize
 			eRecv <- &Event{Type: MEServerPacket, Conn: conn, Packet: buffer}
 		}
+
+		log.Println("readSize", readSize)
 
 		header = !header
 	}

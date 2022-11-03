@@ -10,10 +10,8 @@ import (
 
 	"github.com/Hucaru/Valhalla/constant"
 	"github.com/Hucaru/Valhalla/login"
-	"github.com/Hucaru/Valhalla/mpacket"
-	"github.com/Hucaru/Valhalla/nx"
-
 	"github.com/Hucaru/Valhalla/mnet"
+	"github.com/Hucaru/Valhalla/mpacket"
 )
 
 type loginServer struct {
@@ -39,6 +37,7 @@ func packetClientHandshake(mapleVersion int16, recv, send []byte) mpacket.Packet
 }
 
 func newLoginServer(configFile string) *loginServer {
+	log.Println("newLoginServer")
 	config, dbConfig := loginConfigFromFile(configFile)
 
 	return &loginServer{
@@ -53,7 +52,7 @@ func (ls *loginServer) run() {
 	log.Println("Login Server")
 
 	start := time.Now()
-	nx.LoadFile("Data.nx")
+	//nx.LoadFile("Data.nx")
 	elapsed := time.Since(start)
 
 	log.Println("Loaded and parsed Wizet data (NX) in", elapsed)

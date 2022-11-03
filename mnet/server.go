@@ -22,7 +22,7 @@ func NewServer(conn net.Conn, eRecv chan *Event, queueSize int) *server {
 	s.eRecv = eRecv
 
 	s.reader = func() {
-		serverReader(s, s.eRecv, 1)
+		serverReader(s, s.eRecv, 4)
 	}
 
 	s.interServer = true
