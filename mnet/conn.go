@@ -37,9 +37,9 @@ func clientReader(conn net.Conn, eRecv chan *Event, mapleVersion int16, headerSi
 		} else {
 			readSize = headerSize
 
-			if cryptRecv != nil {
-				cryptRecv.Decrypt(buffer, true, false)
-			}
+			//if cryptRecv != nil {
+			//	cryptRecv.Decrypt(buffer, true, false)
+			//}
 
 			eRecv <- &Event{Type: MEClientPacket, Conn: conn, Packet: buffer}
 		}
