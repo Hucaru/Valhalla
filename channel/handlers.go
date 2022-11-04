@@ -3,9 +3,11 @@ package channel
 import (
 	"encoding/binary"
 	"fmt"
+	"github.com/Hucaru/Valhalla/internal"
+	"github.com/Hucaru/Valhalla/meta-proto/go/metadata"
+	"google.golang.org/protobuf/proto"
 	"log"
-	"math"
-	"reflect"
+	"net"
 	"strconv"
 	"strings"
 	"time"
@@ -13,255 +15,234 @@ import (
 	"github.com/Hucaru/Valhalla/common"
 	"github.com/Hucaru/Valhalla/common/opcode"
 	"github.com/Hucaru/Valhalla/constant"
-	"github.com/Hucaru/Valhalla/internal"
 	"github.com/Hucaru/Valhalla/mnet"
 	"github.com/Hucaru/Valhalla/mpacket"
 	"github.com/Hucaru/Valhalla/nx"
-	"github.com/prometheus/client_golang/prometheus"
 )
 
 // HandleClientPacket data
-func (server *Server) HandleClientPacket(conn mnet.Client, reader mpacket.Reader) {
+func (server *Server) HandleClientPacket(conn mnet.Client, tcpConn net.Conn, reader mpacket.Reader, msgType uint32) {
 
-	log.Println("TEXT", string(reader.GetRestAsBytes()))
+	log.Println("DATA_BUFFER", reader.GetBuffer())
 
-	switch reader.ReadByte() {
-	case opcode.RecvPing:
-	case opcode.RecvChannelPlayerLoad:
-		fmt.Println("RecvChannelPlayerLoad", conn)
-		server.playerConnect(conn, reader)
-	case opcode.RecvCHannelChangeChannel:
-		server.playerChangeChannel(conn, reader)
-	case opcode.RecvChannelUserPortal:
-		// This opcode is used for revival UI as well.
-		server.playerUsePortal(conn, reader)
-	case opcode.RecvChannelEnterCashShop:
-		conn.Send(packetMessageDialogueBox("Shop not implemented"))
-	case opcode.RecvChannelPlayerMovement:
-		server.playerMovement(conn, reader)
-	case opcode.RecvChannelPlayerStand:
-		server.playerStand(conn, reader)
-	case opcode.RecvChannelPlayerUseChair:
-		server.playerUseChair(conn, reader)
-	case opcode.RecvChannelMeleeSkill:
-		server.playerMeleeSkill(conn, reader)
-	case opcode.RecvChannelRangedSkill:
-		server.playerRangedSkill(conn, reader)
-	case opcode.RecvChannelMagicSkill:
-		server.playerMagicSkill(conn, reader)
-	case opcode.RecvChannelDmgRecv:
-		server.playerTakeDamage(conn, reader)
-	case opcode.RecvChannelPlayerSendAllChat:
-		server.chatSendAll(conn, reader)
-	case opcode.RecvChannelGroupChat:
-		server.chatGroup(conn, reader)
-	case opcode.RecvChannelSlashCommands:
-		server.chatSlashCommand(conn, reader)
-	case opcode.RecvChannelCharacterUIWindow:
-		server.roomWindow(conn, reader)
-	case opcode.RecvChannelEmote:
-		server.playerEmote(conn, reader)
-	case opcode.RecvChannelNpcDialogue:
-		server.npcChatStart(conn, reader)
-	case opcode.RecvChannelNpcDialogueContinue:
-		server.npcChatContinue(conn, reader)
-	case opcode.RecvChannelNpcShop:
-		server.npcShop(conn, reader)
-	case opcode.RecvChannelInvMoveItem:
-		server.playerMoveInventoryItem(conn, reader)
-	case opcode.RecvChannelPlayerDropMesos:
-		server.playerDropMesos(conn, reader)
-	case opcode.RecvChannelInvUseItem:
-		server.playerUseInventoryItem(conn, reader)
-	case opcode.RecvChannelPlayerPickup:
-		server.playerPickupItem(conn, reader)
-	case opcode.RecvChannelAddStatPoint:
-		server.playerAddStatPoint(conn, reader)
-	case opcode.RecvChannelPassiveRegen:
-		server.playerPassiveRegen(conn, reader)
-	case opcode.RecvChannelAddSkillPoint:
-		server.playerAddSkillPoint(conn, reader)
-	case opcode.RecvChannelSpecialSkill:
-		// server.playerSpecialSkill(conn, reader)
-	case opcode.RecvChannelCharacterInfo:
-		server.playerRequestAvatarInfoWindow(conn, reader)
-	case opcode.RecvChannelLieDetectorResult:
-	case opcode.RecvChannelPartyInfo:
-		server.playerPartyInfo(conn, reader)
-	case opcode.RecvChannelGuildManagement:
-	case opcode.RecvChannelGuildReject:
-	case opcode.RecvChannelBuddyOperation:
-		server.playerBuddyOperation(conn, reader)
-	case opcode.RecvChannelUseMysticDoor:
-		server.playerUseMysticDoor(conn, reader)
-	case opcode.RecvChannelMobControl:
-		server.mobControl(conn, reader)
-	case opcode.RecvChannelDistance:
-		server.mobDistance(conn, reader)
-	case opcode.RecvChannelNpcMovement:
-		server.npcMovement(conn, reader)
-	case opcode.RecvChannelBoatMap:
-		// [mapID int32][? byte]
+	switch msgType {
+	case constant.MetaEventLogin:
+		server.playerConnect(conn, tcpConn, reader, msgType)
+		break
+	case constant.MetaEventMovement:
+		//msg = &metadata.Movement{}
+		break
 	default:
-		log.Println("UNKNOWN CLIENT PACKET:", reader)
+		fmt.Println("UNKNOWN MSG", reader)
+		//msg = nil
+		break
 	}
+
+	//switch reader.ReadByte() {
+	//case opcode.RecvPing:
+	//case opcode.RecvChannelPlayerLoad:
+	//	fmt.Println("RecvChannelPlayerLoad", conn)
+	//server.playerConnect(conn, reader)
+	//case opcode.RecvCHannelChangeChannel:
+	//	server.playerChangeChannel(conn, reader)
+	//case opcode.RecvChannelUserPortal:
+	//	// This opcode is used for revival UI as well.
+	//	server.playerUsePortal(conn, reader)
+	//case opcode.RecvChannelEnterCashShop:
+	//	conn.Send(packetMessageDialogueBox("Shop not implemented"))
+	//case opcode.RecvChannelPlayerMovement:
+	//	server.playerMovement(conn, reader)
+	//case opcode.RecvChannelPlayerStand:
+	//	server.playerStand(conn, reader)
+	//case opcode.RecvChannelPlayerUseChair:
+	//	server.playerUseChair(conn, reader)
+	//case opcode.RecvChannelMeleeSkill:
+	//	server.playerMeleeSkill(conn, reader)
+	//case opcode.RecvChannelRangedSkill:
+	//	server.playerRangedSkill(conn, reader)
+	//case opcode.RecvChannelMagicSkill:
+	//	server.playerMagicSkill(conn, reader)
+	//case opcode.RecvChannelDmgRecv:
+	//	server.playerTakeDamage(conn, reader)
+	//case opcode.RecvChannelPlayerSendAllChat:
+	//	server.chatSendAll(conn, reader)
+	//case opcode.RecvChannelGroupChat:
+	//	server.chatGroup(conn, reader)
+	//case opcode.RecvChannelSlashCommands:
+	//	server.chatSlashCommand(conn, reader)
+	//case opcode.RecvChannelCharacterUIWindow:
+	//	server.roomWindow(conn, reader)
+	//case opcode.RecvChannelEmote:
+	//	server.playerEmote(conn, reader)
+	//case opcode.RecvChannelNpcDialogue:
+	//	server.npcChatStart(conn, reader)
+	//case opcode.RecvChannelNpcDialogueContinue:
+	//	server.npcChatContinue(conn, reader)
+	//case opcode.RecvChannelNpcShop:
+	//	server.npcShop(conn, reader)
+	//case opcode.RecvChannelInvMoveItem:
+	//	server.playerMoveInventoryItem(conn, reader)
+	//case opcode.RecvChannelPlayerDropMesos:
+	//	server.playerDropMesos(conn, reader)
+	//case opcode.RecvChannelInvUseItem:
+	//	server.playerUseInventoryItem(conn, reader)
+	//case opcode.RecvChannelPlayerPickup:
+	//	server.playerPickupItem(conn, reader)
+	//case opcode.RecvChannelAddStatPoint:
+	//	server.playerAddStatPoint(conn, reader)
+	//case opcode.RecvChannelPassiveRegen:
+	//	server.playerPassiveRegen(conn, reader)
+	//case opcode.RecvChannelAddSkillPoint:
+	//	server.playerAddSkillPoint(conn, reader)
+	//case opcode.RecvChannelSpecialSkill:
+	//	// server.playerSpecialSkill(conn, reader)
+	//case opcode.RecvChannelCharacterInfo:
+	//	server.playerRequestAvatarInfoWindow(conn, reader)
+	//case opcode.RecvChannelLieDetectorResult:
+	//case opcode.RecvChannelPartyInfo:
+	//	server.playerPartyInfo(conn, reader)
+	//case opcode.RecvChannelGuildManagement:
+	//case opcode.RecvChannelGuildReject:
+	//case opcode.RecvChannelBuddyOperation:
+	//	server.playerBuddyOperation(conn, reader)
+	//case opcode.RecvChannelUseMysticDoor:
+	//	server.playerUseMysticDoor(conn, reader)
+	//case opcode.RecvChannelMobControl:
+	//	server.mobControl(conn, reader)
+	//case opcode.RecvChannelDistance:
+	//	server.mobDistance(conn, reader)
+	//case opcode.RecvChannelNpcMovement:
+	//	server.npcMovement(conn, reader)
+	//case opcode.RecvChannelBoatMap:
+	//	// [mapID int32][? byte]
+	//default:
+	//	log.Println("UNKNOWN CLIENT PACKET:", reader)
+	//}
 }
 
-func ReadPacket[T any](t *T, b []byte) {
-	typ := reflect.TypeOf(t).Elem()
-	value := reflect.ValueOf(t).Elem()
+func (server *Server) makeResponse(mType uint32, out []byte) []byte {
+	result := make([]byte, 0)
+	h := make([]byte, 0)
 
-	read(typ, value, b[2:])
+	h = append(h, binary.BigEndian.AppendUint32(h, uint32(len(out)))...)
+	h = binary.BigEndian.AppendUint32(h, uint32(mType))
+	result = append(result, h...)
+	result = append(result, out...)
+	return result
 }
 
-func read(typ reflect.Type, value reflect.Value, b []byte) []byte {
-	if typ.Kind() == reflect.Struct {
-		for i := 0; i < typ.NumField(); i++ {
-			b = read(typ.Field(i).Type, value.Field(i), b)
-		}
-	} else if typ.Kind() == reflect.Int16 {
-		value.SetInt(int64(binary.BigEndian.Uint16(b)))
-		b = b[2:]
-	} else if typ.Kind() == reflect.Int32 {
-		value.SetInt(int64(binary.BigEndian.Uint32(b)))
-		b = b[4:]
-	} else if typ.Kind() == reflect.Int64 {
-		value.SetInt(int64(binary.BigEndian.Uint64(b)))
-		b = b[8:]
-	} else if typ.Kind() == reflect.Int8 {
-		value.SetInt(int64(int8(b[0])))
-		b = b[1:]
-	} else if typ.Kind() == reflect.Uint8 {
-		value.SetUint(uint64(b[0]))
-		b = b[1:]
-	} else if typ.Kind() == reflect.Uint16 {
-		value.SetUint(uint64(binary.BigEndian.Uint16(b)))
-		b = b[2:]
-	} else if typ.Kind() == reflect.Uint32 {
-		value.SetUint(uint64(binary.BigEndian.Uint32(b)))
-		b = b[4:]
-	} else if typ.Kind() == reflect.Uint64 {
-		value.SetUint(binary.BigEndian.Uint64(b))
-		b = b[8:]
-	} else if typ.Kind() == reflect.Float32 {
-		f1 := binary.BigEndian.Uint32(b[:4])
-		f2 := math.Float32frombits(f1)
-		value.SetFloat(float64(f2))
-		b = b[4:]
-	} else if typ.Kind() == reflect.Float64 {
-		f1 := binary.BigEndian.Uint32(b[:8])
-		f2 := math.Float32frombits(f1)
-		value.SetFloat(float64(f2))
-		b = b[8:]
-	} else if typ.Kind() == reflect.String {
-		length := binary.BigEndian.Uint16(b)
-		b = b[2:]
-		str := string(b[:length])
-		value.SetString(str)
-		b = b[length:]
+func (server *Server) playerConnect(conn mnet.Client, tcpConn net.Conn, reader mpacket.Reader, mType uint32) {
+
+	/***
+	Database will be added soon
+	*/
+
+	//charID := reader.ReadInt32()
+	//
+	//var migrationID byte
+	//var channelID int8
+	//
+	//err := common.DB.QueryRow("SELECT channelID,migrationID FROM characters WHERE id=?", charID).Scan(&channelID, &migrationID)
+	//
+	//if err != nil {
+	//	log.Println(err)
+	//	return
+	//}
+	//
+	//if migrationID != server.id {
+	//	return
+	//}
+	//
+	//var accountID int32
+	//err = common.DB.QueryRow("SELECT accountID FROM characters WHERE id=?", charID).Scan(&accountID)
+	//
+	//if err != nil {
+	//	log.Println(err)
+	//	return
+	//}
+	//
+	//conn.SetAccountID(accountID)
+	//
+	//var adminLevel int
+	//err = common.DB.QueryRow("SELECT adminLevel FROM accounts WHERE accountID=?", conn.GetAccountID()).Scan(&adminLevel)
+	//
+	//if err != nil {
+	//	log.Println(err)
+	//	return
+	//}
+	//
+	//conn.SetAdminLevel(adminLevel)
+	//
+	//_, err = common.DB.Exec("UPDATE characters SET migrationID=? WHERE id=?", -1, charID)
+	//
+	//if err != nil {
+	//	log.Println(err)
+	//	return
+	//}
+	//
+	//_, err = common.DB.Exec("UPDATE characters SET channelID=? WHERE id=?", server.id, charID)
+	//
+	//if err != nil {
+	//	log.Println(err)
+	//	return
+	//}
+
+	msg := &metadata.Login{}
+	if err := proto.Unmarshal(reader.GetBuffer(), msg); err != nil {
+		log.Fatalln("Failed to parse data:", err)
 	}
 
-	return b
-}
-
-func (server *Server) playerConnect(conn mnet.Client, reader mpacket.Reader) {
-	charID := reader.ReadInt32()
-
-	var migrationID byte
-	var channelID int8
-
-	err := common.DB.QueryRow("SELECT channelID,migrationID FROM characters WHERE id=?", charID).Scan(&channelID, &migrationID)
-
-	if err != nil {
-		log.Println(err)
-		return
-	}
-
-	if migrationID != server.id {
-		return
-	}
-
-	var accountID int32
-	err = common.DB.QueryRow("SELECT accountID FROM characters WHERE id=?", charID).Scan(&accountID)
-
-	if err != nil {
-		log.Println(err)
-		return
-	}
-
-	conn.SetAccountID(accountID)
-
-	var adminLevel int
-	err = common.DB.QueryRow("SELECT adminLevel FROM accounts WHERE accountID=?", conn.GetAccountID()).Scan(&adminLevel)
-
-	if err != nil {
-		log.Println(err)
-		return
-	}
-
-	conn.SetAdminLevel(adminLevel)
-
-	_, err = common.DB.Exec("UPDATE characters SET migrationID=? WHERE id=?", -1, charID)
-
-	if err != nil {
-		log.Println(err)
-		return
-	}
-
-	_, err = common.DB.Exec("UPDATE characters SET channelID=? WHERE id=?", server.id, charID)
-
-	if err != nil {
-		log.Println(err)
-		return
-	}
-
-	plr := loadPlayerFromID(charID, conn)
+	plr := loadPlayer(conn, msg)
 	plr.rates = &server.rates
 
 	server.players = append(server.players, &plr)
+	/*
+		SENDING back to USER
+	*/
+	//conn.Send(packetPlayerEnterGame(plr, int32(server.id)))
+	//conn.Send(packetMessageScrollingHeader(server.header))
 
-	conn.Send(packetPlayerEnterGame(plr, int32(server.id)))
-	conn.Send(packetMessageScrollingHeader(server.header))
+	//field, ok := server.fields[plr.mapID]
+	//if !ok {
+	//	return
+	//}
+	//
+	//inst, err := field.getInstance(0)
+	//
+	//if err != nil {
+	//	return
+	//}
 
-	field, ok := server.fields[plr.mapID]
+	//newPlr, err := server.players.getFromConn(conn)
+	//
+	//if err != nil {
+	//	log.Println(err)
+	//	return
+	//}
+	//
+	////inst.addPlayer(newPlr)
+	//newPlr.UpdateGuildInfo()
+	//newPlr.UpdateBuddyInfo()
 
-	if !ok {
-		return
-	}
+	//for _, party := range server.parties {
+	//	if party.member(newPlr.id) {
+	//		newPlr.party = party
+	//		break
+	//	}
+	//}
+	//
+	//newPlr.UpdatePartyInfo = func(partyID, playerID, job, level int32, name string) {
+	//	server.world.Send(internal.PacketChannelPartyUpdateInfo(partyID, playerID, job, level, name))
+	//}
 
-	inst, err := field.getInstance(0)
+	//common.MetricsGauges["player_count"].With(prometheus.Labels{"channel": strconv.Itoa(int(server.id)), "world": server.worldName}).Inc()
 
-	if err != nil {
-		return
-	}
-
-	newPlr, err := server.players.getFromConn(conn)
-
-	if err != nil {
-		log.Println(err)
-		return
-	}
-
-	inst.addPlayer(newPlr)
-	newPlr.UpdateGuildInfo()
-	newPlr.UpdateBuddyInfo()
-
-	for _, party := range server.parties {
-		if party.member(newPlr.id) {
-			newPlr.party = party
-			break
-		}
-	}
-
-	newPlr.UpdatePartyInfo = func(partyID, playerID, job, level int32, name string) {
-		server.world.Send(internal.PacketChannelPartyUpdateInfo(partyID, playerID, job, level, name))
-	}
-
-	common.MetricsGauges["player_count"].With(prometheus.Labels{"channel": strconv.Itoa(int(server.id)), "world": server.worldName}).Inc()
-
-	server.world.Send(internal.PacketChannelPopUpdate(server.id, int16(len(server.players))))
+	//server.world.Send(internal.PacketChannelPopUpdate(server.id, int16(len(server.players))))
 	// Emit server message that user has connected (used to update buddy, guild and party notifications)
-	server.world.Send(internal.PacketChannelPlayerConnected(plr.id, plr.name, server.id, channelID > -1, newPlr.mapID))
+	//server.world.Send(internal.PacketChannelPlayerConnected(plr.id, plr.name, server.id, false, 1))
+
+	log.Println("DATA_RESPONSE", reader.GetBuffer())
+	tcpConn.Write(server.makeResponse(mType, reader.GetBuffer()))
 }
 
 func (server *Server) playerChangeChannel(conn mnet.Client, reader mpacket.Reader) {

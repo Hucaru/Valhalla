@@ -16,7 +16,8 @@ const (
 )
 
 type Event struct {
-	Type   int
-	Packet mpacket.Packet
-	Conn   net.Conn
+	Type        int
+	MessageType uint32
+	Packet      mpacket.Packet
+	Conn        net.Conn
 }

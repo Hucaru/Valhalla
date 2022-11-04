@@ -1,0 +1,3 @@
+[submodule "metaProto"]
+	path = meta-proto
+	url = git@github.com:metacode123/meta-proto.git

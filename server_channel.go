@@ -165,7 +165,11 @@ func (cs *channelServer) processEvent() {
 					log.Println("Client at", conn, "disconnected")
 					cs.gameState.ClientDisconnected(conn)
 				case mnet.MEClientPacket:
-					cs.gameState.HandleClientPacket(conn, mpacket.NewReader(&e.Packet, time.Now().Unix()))
+					cs.gameState.HandleClientPacket(
+						conn,
+						e.Conn,
+						mpacket.NewReader(&e.Packet, time.Now().Unix()),
+						e.MessageType)
 				}
 			case mnet.Server:
 				switch e.Type {

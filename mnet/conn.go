@@ -2,6 +2,8 @@ package mnet
 
 import (
 	"encoding/binary"
+	"fmt"
+	"log"
 	"math/rand"
 	"net"
 	"time"
@@ -20,30 +22,26 @@ type MConn interface {
 func clientReader(conn net.Conn, eRecv chan *Event, mapleVersion int16, headerSize int, cryptRecv *crypt.Maple) {
 	eRecv <- &Event{Type: MEClientConnected, Conn: conn}
 
-	header := true
-	readSize := headerSize
-
 	for {
-		buffer := make([]byte, readSize)
-
-		if _, err := conn.Read(buffer); err != nil {
+		buff := make([]byte, headerSize)
+		if _, err := conn.Read(buff); err != nil {
+			fmt.Println("Error reading:", err.Error())
 			eRecv <- &Event{Type: MEClientDisconnect, Conn: conn}
 			break
 		}
 
-		if header {
-			readSize = int(binary.BigEndian.Uint32(buffer))
-		} else {
-			readSize = headerSize
+		len := binary.BigEndian.Uint32(buff[:4])
+		msgType := binary.BigEndian.Uint32(buff[4:8])
 
-			//if cryptRecv != nil {
-			//	cryptRecv.Decrypt(buffer, true, false)
-			//}
-
-			eRecv <- &Event{Type: MEClientPacket, Conn: conn, Packet: buffer}
+		buff = make([]byte, len)
+		_, err := conn.Read(buff)
+		if err != nil {
+			fmt.Println("Error reading:", err)
+			eRecv <- &Event{Type: MEClientDisconnect, Conn: conn}
 		}
 
-		header = !header
+		log.Println("msgType", headerSize, len, msgType)
+		eRecv <- &Event{Type: MEClientPacket, Conn: conn, Packet: buff, MessageType: msgType}
 	}
 }
 

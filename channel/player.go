@@ -3,6 +3,7 @@ package channel
 import (
 	"errors"
 	"fmt"
+	"github.com/Hucaru/Valhalla/meta-proto/go/metadata"
 	"log"
 	"math"
 	"math/rand"
@@ -93,6 +94,7 @@ type player struct {
 
 	id        int32 // Unique identifier of the character
 	accountID int32
+	playerID  string
 	worldID   byte
 
 	mapID       int32
@@ -1152,8 +1154,19 @@ func (d *player) removeBuddy(id int32) {
 	}
 }
 
+func loadPlayer(conn mnet.Client, msg *metadata.Login) player {
+	c := player{}
+	c.id = rand.Int31n(100000)
+	c.name = fmt.Sprintf("Player#%v", c.id)
+	c.playerID = msg.UdId
+	c.mapID = 888
+	c.conn = conn
+	return c
+}
+
 func loadPlayerFromID(id int32, conn mnet.Client) player {
 	c := player{}
+
 	filter := "id,accountID,worldID,name,gender,skin,hair,face,level,job,str,dex,intt," +
 		"luk,hp,maxHP,mp,maxMP,ap,sp, exp,fame,mapID,mapPos,previousMapID,mesos," +
 		"equipSlotSize,useSlotSize,setupSlotSize,etcSlotSize,cashSlotSize,miniGameWins," +
@@ -1189,8 +1202,8 @@ func loadPlayerFromID(id int32, conn mnet.Client) player {
 	c.pos.y = nxMap.Portals[c.mapPos].Y
 
 	c.equip, c.use, c.setUp, c.etc, c.cash = loadInventoryFromDb(c.id)
-
 	c.buddyList = getBuddyList(c.id, c.buddyListSize)
+
 	c.conn = conn
 	return c
 }

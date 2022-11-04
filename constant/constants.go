@@ -5,9 +5,14 @@ var WORLD_NAMES = [...]string{"Scania", "Bera", "Broa", "Windia", "Khaini", "Bel
 // Generic Constants
 const (
 	MapleVersion          = 28
-	ClientHeaderSize      = 4
+	ClientHeaderSize      = 8
 	InterserverHeaderSize = 4
 	OpcodeLength          = 1
+)
+
+const (
+	MetaEventLogin    = 101
+	MetaEventMovement = 102
 )
 
 const (
