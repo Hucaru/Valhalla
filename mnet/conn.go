@@ -22,6 +22,36 @@ type MConn interface {
 func clientReader(conn net.Conn, eRecv chan *Event, mapleVersion int16, headerSize int, cryptRecv *crypt.Maple) {
 	eRecv <- &Event{Type: MEClientConnected, Conn: conn}
 
+	header := true
+	readSize := headerSize
+
+	for {
+		buffer := make([]byte, readSize)
+
+		if _, err := conn.Read(buffer); err != nil {
+			eRecv <- &Event{Type: MEClientDisconnect, Conn: conn}
+			break
+		}
+
+		if header {
+			readSize = crypt.GetPacketLength(buffer)
+		} else {
+			readSize = headerSize
+
+			if cryptRecv != nil {
+				cryptRecv.Decrypt(buffer, true, false)
+			}
+
+			eRecv <- &Event{Type: MEClientPacket, Conn: conn, Packet: buffer}
+		}
+
+		header = !header
+	}
+}
+
+func clientReaderMeta(conn net.Conn, eRecv chan *Event, mapleVersion int16, headerSize int, cryptRecv *crypt.Maple) {
+	eRecv <- &Event{Type: MEClientConnected, Conn: conn}
+
 	for {
 		buff := make([]byte, headerSize)
 		if _, err := conn.Read(buff); err != nil {
@@ -60,7 +90,7 @@ func serverReader(conn net.Conn, eRecv chan *Event, headerSize int) {
 		}
 
 		if header {
-			readSize = crypt.GetPacketLength(buffer)
+			readSize = int(buffer[0])
 		} else {
 			readSize = headerSize
 			eRecv <- &Event{Type: MEServerPacket, Conn: conn, Packet: buffer}

@@ -132,7 +132,7 @@ func (cs *channelServer) acceptNewConnections() {
 		keyRecv := [4]byte{}
 		rand.Read(keyRecv[:])
 
-		client := mnet.NewClient(conn, cs.eRecv, cs.config.PacketQueueSize, keySend, keyRecv, cs.config.Latency, cs.config.Jitter)
+		client := mnet.NewClientMeta(conn, cs.eRecv, cs.config.PacketQueueSize, keySend, keyRecv, cs.config.Latency, cs.config.Jitter)
 
 		go client.Reader()
 		go client.Writer()

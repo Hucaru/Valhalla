@@ -73,6 +73,43 @@ func NewClient(conn net.Conn, eRecv chan *Event, queueSize int, keySend, keyRecv
 	return c
 }
 
+func NewClientMeta(conn net.Conn, eRecv chan *Event, queueSize int, keySend, keyRecv [4]byte, latency, jitter int) *client {
+	c := &client{}
+	c.Conn = conn
+
+	c.eSend = make(chan mpacket.Packet, queueSize)
+	c.eRecv = eRecv
+
+	c.cryptSend = crypt.New(keySend, constant.MapleVersion)
+	c.cryptRecv = crypt.New(keyRecv, constant.MapleVersion)
+
+	c.reader = func() {
+		clientReaderMeta(c, c.eRecv, constant.MapleVersion, constant.MetaClientHeaderSize, c.cryptRecv)
+	}
+
+	c.interServer = false
+	c.latency = latency
+	c.jitter = jitter
+	c.pSend = make(chan func(), queueSize*10) // Used only when simulating latency
+	if latency > 0 {
+		go func(pSend chan func(), conn net.Conn) {
+			for {
+				select {
+				case p, ok := <-pSend:
+					if !ok {
+						return
+					}
+
+					p()
+				default:
+				}
+			}
+		}(c.pSend, conn)
+	}
+
+	return c
+}
+
 func (c *client) GetLogedIn() bool {
 	return c.logedIn
 }
