@@ -3,7 +3,6 @@ package channel
 import (
 	"encoding/binary"
 	"fmt"
-	mc_metadata "github.com/Hucaru/Valhalla/meta-proto/go/metadata"
 	"log"
 	"net"
 	"strconv"

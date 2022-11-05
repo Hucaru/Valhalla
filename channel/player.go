@@ -3,7 +3,6 @@ package channel
 import (
 	"errors"
 	"fmt"
-	mc_metadata "github.com/Hucaru/Valhalla/meta-proto/go/metadata"
 	"log"
 	"math"
 	"math/rand"
