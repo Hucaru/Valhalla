@@ -19,6 +19,8 @@ import (
 	"github.com/Hucaru/Valhalla/mnet"
 	"github.com/Hucaru/Valhalla/mpacket"
 	"github.com/Hucaru/Valhalla/nx"
+
+	"github.com/Hucaru/Valhalla/meta-proto/go/mc_metadata"
 )
 
 // HandleClientPacket data

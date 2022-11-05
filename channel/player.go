@@ -15,6 +15,8 @@ import (
 	"github.com/Hucaru/Valhalla/constant"
 	"github.com/Hucaru/Valhalla/mnet"
 	"github.com/Hucaru/Valhalla/mpacket"
+
+	"github.com/Hucaru/Valhalla/meta-proto/go/mc_metadata"
 )
 
 type buddy struct {
