@@ -2,16 +2,17 @@ package main
 
 import (
 	"flag"
-	"github.com/Hucaru/Valhalla/common"
-	"github.com/spf13/pflag"
 	"log"
 	"sync"
+
+	"github.com/Hucaru/Valhalla/common"
+	"github.com/spf13/pflag"
 )
 
 var (
 	once           sync.Once
-	typePtr        = pflag.String("type", "", "Denotes what type of server to start: login, world, channel")
-	configPtr      = pflag.String("config", "", "config toml file")
+	typePtr        = pflag.String("type", "channel", "Denotes what type of server to start: login, world, channel")
+	configPtr      = pflag.String("config", "config_channel_1.toml", "config toml file")
 	configPtrLogin = pflag.String("config_login", "", "config toml file")
 	metricPtr      = pflag.String("metrics-port", "", "Port to serve metrics on")
 )
