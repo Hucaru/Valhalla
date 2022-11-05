@@ -134,119 +134,242 @@ func (server *Server) makeResponse(mType uint32, out []byte) []byte {
 	return result
 }
 
+func (server *Server) makeErrorResponse(_err string, uID string) []byte {
+
+	e := &mc_metadata.C2P_RequestLoginUserError{
+		UuId:  uID,
+		Error: _err,
+	}
+
+	out, err := proto.Marshal(e)
+	if err != nil {
+		log.Fatalln("Failed to marshal object:", err)
+		return nil
+	}
+
+	result := make([]byte, 0)
+	h := make([]byte, 0)
+	h = append(h, binary.BigEndian.AppendUint32(h, uint32(len(out)))...)
+	h = binary.BigEndian.AppendUint32(h, uint32(constant.C2P_RequestLoginUserError))
+	result = append(result, h...)
+	result = append(result, out...)
+
+	log.Println("ERROR RESPONSE", result)
+	return result
+}
+
 func (server *Server) playerConnect(conn mnet.Client, tcpConn net.Conn, reader mpacket.Reader, mType uint32) {
 
-	/***
-	Database will be added soon
-	*/
-
-	//charID := reader.ReadInt32()
-	//
-	//var migrationID byte
-	//var channelID int8
-	//
-	//err := common.DB.QueryRow("SELECT channelID,migrationID FROM characters WHERE id=?", charID).Scan(&channelID, &migrationID)
-	//
-	//if err != nil {
-	//	log.Println(err)
-	//	return
-	//}
-	//
-	//if migrationID != server.id {
-	//	return
-	//}
-	//
-	//var accountID int32
-	//err = common.DB.QueryRow("SELECT accountID FROM characters WHERE id=?", charID).Scan(&accountID)
-	//
-	//if err != nil {
-	//	log.Println(err)
-	//	return
-	//}
-	//
-	//conn.SetAccountID(accountID)
-	//
-	//var adminLevel int
-	//err = common.DB.QueryRow("SELECT adminLevel FROM accounts WHERE accountID=?", conn.GetAccountID()).Scan(&adminLevel)
-	//
-	//if err != nil {
-	//	log.Println(err)
-	//	return
-	//}
-	//
-	//conn.SetAdminLevel(adminLevel)
-	//
-	//_, err = common.DB.Exec("UPDATE characters SET migrationID=? WHERE id=?", -1, charID)
-	//
-	//if err != nil {
-	//	log.Println(err)
-	//	return
-	//}
-	//
-	//_, err = common.DB.Exec("UPDATE characters SET channelID=? WHERE id=?", server.id, charID)
-	//
-	//if err != nil {
-	//	log.Println(err)
-	//	return
-	//}
-
 	msg := &mc_metadata.C2P_RequestLoginUser{}
-	if err := proto.Unmarshal(reader.GetBuffer(), msg); err != nil {
+	if err := proto.Unmarshal(reader.GetBuffer(), msg); err != nil || len(msg.UuId) == 0 {
 		log.Fatalln("Failed to parse data:", err)
+	}
+
+	res, err := getLoggedData(msg.UuId, conn)
+
+	if err != nil {
+		tcpConn.Write(server.makeErrorResponse(err.Error(), msg.UuId))
+		return
 	}
 
 	plr := loadPlayer(conn, *msg)
 	plr.rates = &server.rates
+	server.players = append(server.players, &plr)
 
-	// server.players = append(server.players, &plr)
-	/*
-		SENDING back to USER
-	*/
-	//conn.Send(packetPlayerEnterGame(plr, int32(server.id)))
-	//conn.Send(packetMessageScrollingHeader(server.header))
+	log.Println("DATA_RESPONSE", res)
 
-	//field, ok := server.fields[plr.mapID]
-	//if !ok {
-	//	return
-	//}
-	//
-	//inst, err := field.getInstance(0)
-	//
-	//if err != nil {
-	//	return
-	//}
-
-	//newPlr, err := server.players.getFromConn(conn)
-	//
-	//if err != nil {
-	//	log.Println(err)
-	//	return
-	//}
-	//
-	////inst.addPlayer(newPlr)
-	//newPlr.UpdateGuildInfo()
-	//newPlr.UpdateBuddyInfo()
-
-	//for _, party := range server.parties {
-	//	if party.member(newPlr.id) {
-	//		newPlr.party = party
-	//		break
-	//	}
-	//}
-	//
-	//newPlr.UpdatePartyInfo = func(partyID, playerID, job, level int32, name string) {
-	//	server.world.Send(internal.PacketChannelPartyUpdateInfo(partyID, playerID, job, level, name))
-	//}
-
-	//common.MetricsGauges["player_count"].With(prometheus.Labels{"channel": strconv.Itoa(int(server.id)), "world": server.worldName}).Inc()
-
-	//server.world.Send(internal.PacketChannelPopUpdate(server.id, int16(len(server.players))))
-	// Emit server message that user has connected (used to update buddy, guild and party notifications)
-	//server.world.Send(internal.PacketChannelPlayerConnected(plr.id, plr.name, server.id, false, 1))
-
-	log.Println("DATA_RESPONSE", reader.GetBuffer())
-	tcpConn.Write(server.makeResponse(mType, reader.GetBuffer()))
+	for i := 0; i < len(server.players); i++ {
+		log.Println("PLAYER_ID", server.players[i].playerID)
+		server.players[i].conn.Send(res)
+	}
 }
+
+func getLoggedData(uUID string, conn mnet.Client) ([]byte, error) {
+	var accountID int32
+	var characterID int32
+	var time int64
+
+	r := new(mc_metadata.C2P_RequestLoginUser)
+	r.UuId = uUID
+	r.SpawnPosX = 0
+	r.SpawnPosY = 0
+	r.SpawnPosZ = 0
+	r.SpawnRotX = 0
+	r.SpawnRotY = 0
+	r.SpawnRotZ = 0
+
+	err := common.DB.QueryRow(
+		"SELECT a.accountID, a.u_id, c.id as characterID, "+
+			"IFNULL(m.time, 0) as time, "+
+			"IFNULL(m.pos_x, 0) as pos_x, "+
+			"IFNULL(m.pos_y, 0) as pos_y, "+
+			"IFNULL(m.pos_z, 0) as pos_z, "+
+			"IFNULL(m.rot_x, 0) as rot_x, "+
+			"IFNULL(m.rot_y, 0) as rot_y, "+
+			"IFNULL(m.rot_z, 0) as rot_z "+
+			"FROM accounts a "+
+			"LEFT JOIN characters c ON c.accountID = a.accountID "+
+			"LEFT JOIN movement m ON m.characterID = characterID "+
+			"WHERE a.u_id=? "+
+			"ORDER BY time DESC "+
+			"LIMIT 1", uUID).
+		Scan(&accountID, &r.UuId, &characterID, &time, &r.SpawnPosX, &r.SpawnPosY, &r.SpawnPosZ, &r.SpawnRotX, &r.SpawnRotY, &r.SpawnRotZ)
+
+	conn.SetUid(uUID)
+
+	if err != nil {
+		log.Println("Inserting new user", r.UuId)
+		go InsertNewAccount(uUID, conn)
+	} else {
+		conn.SetAccountID(accountID)
+		_, err := common.DB.Exec("UPDATE accounts SET isLogedIn=1 WHERE u_id=?", uUID)
+		if err != nil {
+			log.Println("Unable to complete login for ", uUID)
+		}
+	}
+
+	out, err1 := proto.Marshal(r)
+	if err1 != nil {
+		log.Println("Failed to marshal object:", err)
+		return nil, err1
+	}
+
+	result := make([]byte, 0)
+	h := make([]byte, 0)
+	h = append(h, binary.BigEndian.AppendUint32(h, uint32(len(out)))...)
+	h = binary.BigEndian.AppendUint32(h, uint32(constant.C2P_RequestLoginUser))
+	result = append(result, h...)
+	result = append(result, out...)
+
+	return result, nil
+}
+
+func InsertNewAccount(uUid string, conn mnet.Client) {
+	res, err := common.DB.Exec("INSERT INTO accounts (u_id, username, password, pin, dob, isLogdIn) VALUES (?, ?, ?, ?, ?, ?)",
+		uUid, "test", "password", "1", 1, 1)
+
+	if err != nil {
+		log.Println(err)
+	}
+
+	accountID, err := res.LastInsertId()
+	conn.SetAccountID(int32(accountID))
+
+	res, err = common.DB.Exec("INSERT INTO characters "+
+		"(accountID, worldID, name, gender, skin, hair, face, str, dex, intt, luk) "+
+		"VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+		accountID, 1, "test", 1, 1, 1, 1, 1, 1, 1, 1)
+
+	if err != nil {
+		log.Println("INSERTING ERROR", err)
+	}
+}
+
+//func (server *Server) playerConnect(conn mnet.Client, tcpConn net.Conn, reader mpacket.Reader, mType uint32) {
+
+/***
+Database will be added soon
+*/
+
+//charID := reader.ReadInt32()
+//
+//var migrationID byte
+//var channelID int8
+//
+//err := common.DB.QueryRow("SELECT channelID,migrationID FROM characters WHERE id=?", charID).Scan(&channelID, &migrationID)
+//
+//if err != nil {
+//	log.Println(err)
+//	return
+//}
+//
+//if migrationID != server.id {
+//	return
+//}
+//
+//var accountID int32
+//err = common.DB.QueryRow("SELECT accountID FROM characters WHERE id=?", charID).Scan(&accountID)
+//
+//if err != nil {
+//	log.Println(err)
+//	return
+//}
+//
+//conn.SetAccountID(accountID)
+//
+//var adminLevel int
+//err = common.DB.QueryRow("SELECT adminLevel FROM accounts WHERE accountID=?", conn.GetAccountID()).Scan(&adminLevel)
+//
+//if err != nil {
+//	log.Println(err)
+//	return
+//}
+//
+//conn.SetAdminLevel(adminLevel)
+//
+//_, err = common.DB.Exec("UPDATE characters SET migrationID=? WHERE id=?", -1, charID)
+//
+//if err != nil {
+//	log.Println(err)
+//	return
+//}
+//
+//_, err = common.DB.Exec("UPDATE characters SET channelID=? WHERE id=?", server.id, charID)
+//
+//if err != nil {
+//	log.Println(err)
+//	return
+//}
+
+//plr := loadPlayerFromID(charID, conn)
+//plr.rates = &server.rates
+
+// server.players = append(server.players, &plr)
+/*
+	SENDING back to USER
+*/
+//conn.Send(packetPlayerEnterGame(plr, int32(server.id)))
+//conn.Send(packetMessageScrollingHeader(server.header))
+
+//field, ok := server.fields[plr.mapID]
+//if !ok {
+//	return
+//}
+//
+//inst, err := field.getInstance(0)
+//
+//if err != nil {
+//	return
+//}
+
+//newPlr, err := server.players.getFromConn(conn)
+//
+//if err != nil {
+//	log.Println(err)
+//	return
+//}
+//
+////inst.addPlayer(newPlr)
+//newPlr.UpdateGuildInfo()
+//newPlr.UpdateBuddyInfo()
+
+//for _, party := range server.parties {
+//	if party.member(newPlr.id) {
+//		newPlr.party = party
+//		break
+//	}
+//}
+//
+//newPlr.UpdatePartyInfo = func(partyID, playerID, job, level int32, name string) {
+//	server.world.Send(internal.PacketChannelPartyUpdateInfo(partyID, playerID, job, level, name))
+//}
+
+//common.MetricsGauges["player_count"].With(prometheus.Labels{"channel": strconv.Itoa(int(server.id)), "world": server.worldName}).Inc()
+
+//server.world.Send(internal.PacketChannelPopUpdate(server.id, int16(len(server.players))))
+// Emit server message that user has connected (used to update buddy, guild and party notifications)
+//server.world.Send(internal.PacketChannelPlayerConnected(plr.id, plr.name, server.id, false, 1))
+//}
 
 func (server *Server) playerChangeChannel(conn mnet.Client, reader mpacket.Reader) {
 	id := reader.ReadByte()

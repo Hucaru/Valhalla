@@ -1,10 +1,8 @@
 package mnet
 
 import (
-	"bufio"
 	"encoding/binary"
 	"fmt"
-	"io"
 	"log"
 	"math/rand"
 	"net"
@@ -51,32 +49,29 @@ func clientReader(conn net.Conn, eRecv chan *Event, mapleVersion int16, headerSi
 	}
 }
 
-func clientReaderMeta(conn net.Conn, eRecv chan *Event, mapleVersion int16, headerSize int, cryptRecv *crypt.Maple) {
+func clientReaderMeta(conn net.Conn, eRecv chan *Event, headerSize int) {
 	eRecv <- &Event{Type: MEClientConnected, Conn: conn}
 
 	for {
-		reader := bufio.NewReader(conn)
-
-		buf := make([]byte, headerSize)
-		if _, err := io.ReadFull(reader, buf); err == io.EOF || err != nil {
-			fmt.Println("Error reading:", err.Error())
+		buff := make([]byte, headerSize)
+		if ln, err := conn.Read(buff); err != nil || ln < headerSize {
+			fmt.Println("Error reading data:", err)
 			eRecv <- &Event{Type: MEClientDisconnect, Conn: conn}
 			break
 		}
 
-		msgLen := binary.BigEndian.Uint32(buf[:4])
-		msgType := binary.BigEndian.Uint32(buf[4:8])
+		msgLen := binary.BigEndian.Uint32(buff[:4])
+		msgType := binary.BigEndian.Uint32(buff[4:8])
 
-		buf = make([]byte, msgLen)
-
-		if _, err := io.ReadFull(reader, buf); err == io.EOF || err != nil {
-			fmt.Println("Error reading:", err.Error())
+		buff = make([]byte, msgLen)
+		if ln, err := conn.Read(buff); err != nil || ln < int(msgLen) {
+			fmt.Println("Error reading data:", err)
 			eRecv <- &Event{Type: MEClientDisconnect, Conn: conn}
 			break
 		}
 
 		log.Println("msgType", headerSize, msgLen, msgType)
-		eRecv <- &Event{Type: MEClientPacket, Conn: conn, Packet: buf, MessageType: msgType}
+		eRecv <- &Event{Type: MEClientPacket, Conn: conn, Packet: buff, MessageType: msgType}
 	}
 }
 

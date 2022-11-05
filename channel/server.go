@@ -1,7 +1,11 @@
 package channel
 
 import (
+	"encoding/binary"
 	"fmt"
+	"github.com/Hucaru/Valhalla/constant"
+	"github.com/Hucaru/Valhalla/meta-proto/go/mc_metadata"
+	"google.golang.org/protobuf/proto"
 	"log"
 	"strconv"
 	"time"
@@ -55,7 +59,7 @@ func (p players) getFromID(id int32) (*player, error) {
 // RemoveFromConn removes the Data based on the connection
 func (p *players) removeFromConn(conn mnet.Client) error {
 	i := -1
-
+	log.Println("PPPP", conn)
 	for j, v := range *p {
 		if v.conn == conn {
 			i = j
@@ -253,18 +257,18 @@ func (server *Server) ClientDisconnected(conn mnet.Client) {
 		return
 	}
 
-	field, ok := server.fields[plr.mapID]
-
-	if !ok {
-		return
-	}
-
-	inst, err := field.getInstance(plr.inst.id)
-	err = inst.removePlayer(plr)
-
-	if err != nil {
-		log.Println(err)
-	}
+	//field, ok := server.fields[plr.mapID]
+	//
+	//if !ok {
+	//	return
+	//}
+	//
+	//inst, err := field.getInstance(plr.inst.id)
+	//err = inst.removePlayer(plr)
+	//
+	//if err != nil {
+	//	log.Println(err)
+	//}
 
 	err = plr.save()
 
@@ -278,35 +282,62 @@ func (server *Server) ClientDisconnected(conn mnet.Client) {
 
 	server.players.removeFromConn(conn)
 
-	index := -1
+	//index := -1
+	//
+	//for i, v := range server.migrating {
+	//	if v == conn {
+	//		index = i
+	//	}
+	//}
 
-	for i, v := range server.migrating {
-		if v == conn {
-			index = i
+	//if index > -1 {
+	//	server.migrating = append(server.migrating[:index], server.migrating[index+1:]...)
+	//} else {
+
+	msg, errR := makeDisconnectedResponse(conn.GetUid())
+	if errR == nil {
+		for i := 0; i < len(server.players); i++ {
+			log.Println("PLAYER_ID", server.players[i].playerID)
+			server.players[i].conn.Send(msg)
 		}
 	}
 
-	if index > -1 {
-		server.migrating = append(server.migrating[:index], server.migrating[index+1:]...)
-	} else {
-		server.world.Send(internal.PacketChannelPlayerDisconnect(plr.id, plr.name))
+	//_, err = common.DB.Exec("UPDATE characters SET channelID=? WHERE id=?", -1, plr.id)
+	//
+	//if err != nil {
+	//	log.Println(err)
+	//}
+	log.Println("DISCONNECT", conn.GetAccountID())
+	_, err1 := common.DB.Exec("UPDATE accounts SET isLogedIn=0 WHERE accountID=?", conn.GetAccountID())
 
-		_, err = common.DB.Exec("UPDATE characters SET channelID=? WHERE id=?", -1, plr.id)
-
-		if err != nil {
-			log.Println(err)
-		}
-
-		_, err := common.DB.Exec("UPDATE accounts SET isLogedIn=0 WHERE accountID=?", conn.GetAccountID())
-
-		if err != nil {
-			log.Println("Unable to complete logout for ", conn.GetAccountID())
-		}
+	if err1 != nil {
+		log.Println("Unable to complete logout for ", conn.GetAccountID())
 	}
+	//}
 
 	conn.Cleanup()
 
 	common.MetricsGauges["player_count"].With(prometheus.Labels{"channel": strconv.Itoa(int(server.id)), "world": server.worldName}).Dec()
+}
+
+func makeDisconnectedResponse(uUID string) ([]byte, error) {
+	r := new(mc_metadata.C2P_RequestLogoutUser)
+	r.UuId = uUID
+
+	out, err := proto.Marshal(r)
+	if err != nil {
+		log.Println("Failed to marshal object:", err)
+		return nil, err
+	}
+
+	result := make([]byte, 0)
+	h := make([]byte, 0)
+	h = append(h, binary.BigEndian.AppendUint32(h, uint32(len(out)))...)
+	h = binary.BigEndian.AppendUint32(h, uint32(constant.C2P_RequestLogoutUser))
+	result = append(result, h...)
+	result = append(result, out...)
+
+	return result, nil
 }
 
 // SetScrollingHeaderMessage that appears at the top of game window

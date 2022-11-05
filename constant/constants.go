@@ -18,6 +18,9 @@ const (
 	C2P_RequestLogoutUser = 10
 	P2C_ResultLogoutUser  = 11
 	P2C_ReportLogoutUser  = 12
+
+	//errors
+	C2P_RequestLoginUserError = 90
 )
 
 // Generic Constants

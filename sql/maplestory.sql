@@ -8,6 +8,7 @@ SET sql_mode = 'NO_AUTO_VALUE_ON_ZERO';
 DROP TABLE IF EXISTS `accounts`;
 CREATE TABLE `accounts` (
   `accountID` int(10) unsigned NOT NULL AUTO_INCREMENT,
+  `u_id` tinytext NOT NULL,
   `username` tinytext NOT NULL,
   `password` tinytext NOT NULL,
   `pin` tinytext NOT NULL,
@@ -16,7 +17,8 @@ CREATE TABLE `accounts` (
   `isBanned` int(11) NOT NULL DEFAULT '0',
   `gender` tinyint(4) NOT NULL DEFAULT '0',
   `dob` int(11) NOT NULL,
-  PRIMARY KEY (`accountID`)
+  PRIMARY KEY (`accountID`),
+  UNIQUE KEY `unique_index_uID` (`u_id`),
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 
 
@@ -126,6 +128,23 @@ CREATE TABLE `skills` (
   UNIQUE KEY `unique_index` (`characterID`,`skillID`),
   KEY `characterID` (`characterID`),
   CONSTRAINT `skills_ibfk_2` FOREIGN KEY (`characterID`) REFERENCES `characters` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+
+
+DROP TABLE IF EXISTS `movement`;
+CREATE TABLE `movement` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `characterID` int(11) NOT NULL,
+  `pos_x` float NOT NULL DEFAULT '0',
+  `pos_y` float NOT NULL DEFAULT '0',
+  `pos_z` float NOT NULL DEFAULT '0',
+  `rot_x` float NOT NULL DEFAULT '0',
+  `rot_y` float NOT NULL DEFAULT '0',
+  `rot_z` float NOT NULL DEFAULT '0',
+  `time` bigint(20) NOT NULL DEFAULT '0',
+  PRIMARY KEY (`id`),
+  KEY `characterID` (`characterID`),
+  CONSTRAINT `movement_ibfk_2` FOREIGN KEY (`characterID`) REFERENCES `characters` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 
 

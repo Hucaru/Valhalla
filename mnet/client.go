@@ -23,6 +23,8 @@ type Client interface {
 	SetChannelID(byte)
 	GetAdminLevel() int
 	SetAdminLevel(int)
+	GetUid() string
+	SetUid(string)
 }
 
 type client struct {
@@ -34,6 +36,7 @@ type client struct {
 	worldID    byte
 	channelID  byte
 	adminLevel int
+	uID        string
 }
 
 func NewClient(conn net.Conn, eRecv chan *Event, queueSize int, keySend, keyRecv [4]byte, latency, jitter int) *client {
@@ -84,7 +87,7 @@ func NewClientMeta(conn net.Conn, eRecv chan *Event, queueSize int, keySend, key
 	c.cryptRecv = crypt.New(keyRecv, constant.MapleVersion)
 
 	c.reader = func() {
-		clientReaderMeta(c, c.eRecv, constant.MapleVersion, constant.MetaClientHeaderSize, c.cryptRecv)
+		clientReaderMeta(c, c.eRecv, constant.MetaClientHeaderSize)
 	}
 
 	c.interServer = false
@@ -156,4 +159,12 @@ func (c *client) GetAdminLevel() int {
 
 func (c *client) SetAdminLevel(level int) {
 	c.adminLevel = level
+}
+
+func (c *client) GetUid() string {
+	return c.uID
+}
+
+func (c *client) SetUid(_uid string) {
+	c.uID = _uid
 }
