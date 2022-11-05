@@ -1,8 +1,10 @@
 package mnet
 
 import (
+	"bufio"
 	"encoding/binary"
 	"fmt"
+	"io"
 	"log"
 	"math/rand"
 	"net"
@@ -53,25 +55,44 @@ func clientReaderMeta(conn net.Conn, eRecv chan *Event, mapleVersion int16, head
 	eRecv <- &Event{Type: MEClientConnected, Conn: conn}
 
 	for {
-		buff := make([]byte, headerSize)
-		if _, err := conn.Read(buff); err != nil {
+		reader := bufio.NewReader(conn)
+
+		buf := make([]byte, headerSize)
+		if _, err := io.ReadFull(reader, buf); err == io.EOF || err != nil {
 			fmt.Println("Error reading:", err.Error())
 			eRecv <- &Event{Type: MEClientDisconnect, Conn: conn}
 			break
 		}
 
-		len := binary.BigEndian.Uint32(buff[:4])
-		msgType := binary.BigEndian.Uint32(buff[4:8])
+		msgLen := uint32(0)
+		msgType := uint32(0)
 
-		buff = make([]byte, len)
-		_, err := conn.Read(buff)
-		if err != nil {
-			fmt.Println("Error reading:", err)
+		if lenBytes, err := reader.ReadBytes(4); err == io.EOF || err != nil {
+			fmt.Println("Error reading:", err.Error())
 			eRecv <- &Event{Type: MEClientDisconnect, Conn: conn}
+			break
+		} else {
+			msgLen = binary.BigEndian.Uint32(lenBytes)
 		}
 
-		log.Println("msgType", headerSize, len, msgType)
-		eRecv <- &Event{Type: MEClientPacket, Conn: conn, Packet: buff, MessageType: msgType}
+		if typeBytes, err := reader.ReadBytes(4); err == io.EOF || err != nil {
+			fmt.Println("Error reading:", err.Error())
+			eRecv <- &Event{Type: MEClientDisconnect, Conn: conn}
+			break
+		} else {
+			msgType = binary.BigEndian.Uint32(typeBytes)
+		}
+
+		buf = make([]byte, msgLen)
+
+		if _, err := io.ReadFull(reader, buf); err == io.EOF || err != nil {
+			fmt.Println("Error reading:", err.Error())
+			eRecv <- &Event{Type: MEClientDisconnect, Conn: conn}
+			break
+		}
+
+		log.Println("msgType", headerSize, msgLen, msgType)
+		eRecv <- &Event{Type: MEClientPacket, Conn: conn, Packet: buf, MessageType: msgType}
 	}
 }
 

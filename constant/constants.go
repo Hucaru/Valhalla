@@ -2,6 +2,24 @@ package constant
 
 var WORLD_NAMES = [...]string{"Scania", "Bera", "Broa", "Windia", "Khaini", "Bellocan", "Mardia", "Kradia", "Yellonde", "Demethos", "Galicia", "El Nido", "Zenith", "Arcania", "Chaos", "Nova", "Renegates"}
 
+const (
+	C2P_RequestLoginUser = 1
+	P2C_ResultLoginUser  = 2
+	P2C_ReportLoginUser  = 3
+
+	C2P_RequestMoveStart = 4
+	C2P_RequestMove      = 5
+	C2P_RequestMoveEnd   = 6
+
+	P2C_ReportMoveStart = 7
+	P2C_ReportMove      = 8
+	P2C_ReportMoveEnd   = 9
+
+	C2P_RequestLogoutUser = 10
+	P2C_ResultLogoutUser  = 11
+	P2C_ReportLogoutUser  = 12
+)
+
 // Generic Constants
 const (
 	MapleVersion          = 28
