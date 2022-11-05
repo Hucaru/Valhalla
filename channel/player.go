@@ -3,7 +3,6 @@ package channel
 import (
 	"errors"
 	"fmt"
-	"github.com/Hucaru/Valhalla/meta-proto/go/metadata"
 	"log"
 	"math"
 	"math/rand"
@@ -16,6 +15,8 @@ import (
 	"github.com/Hucaru/Valhalla/constant"
 	"github.com/Hucaru/Valhalla/mnet"
 	"github.com/Hucaru/Valhalla/mpacket"
+
+	"github.com/Hucaru/Valhalla/meta-proto/go/mc_metadata"
 )
 
 type buddy struct {
@@ -442,13 +443,13 @@ func (d player) checkPos(pos pos, xRange, yRange int16) bool {
 	if xRange == 0 {
 		xValid = d.pos.x == pos.x
 	} else {
-		xValid = (pos.x-xRange < d.pos.x && d.pos.x < pos.x+xRange)
+		xValid = pos.x-xRange < d.pos.x && d.pos.x < pos.x+xRange
 	}
 
 	if yRange == 0 {
 		xValid = d.pos.y == pos.y
 	} else {
-		yValid = (pos.y-yRange < d.pos.y && d.pos.y < pos.y+yRange)
+		yValid = pos.y-yRange < d.pos.y && d.pos.y < pos.y+yRange
 	}
 
 	return xValid && yValid
@@ -1154,11 +1155,11 @@ func (d *player) removeBuddy(id int32) {
 	}
 }
 
-func loadPlayer(conn mnet.Client, msg *metadata.Login) player {
+func loadPlayer(conn mnet.Client, msg mc_metadata.C2P_RequestLoginUser) player {
 	c := player{}
 	c.id = rand.Int31n(100000)
 	c.name = fmt.Sprintf("Player#%v", c.id)
-	c.playerID = msg.UdId
+	c.playerID = msg.UuId
 	c.mapID = 888
 	c.conn = conn
 	return c

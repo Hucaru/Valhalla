@@ -3,14 +3,15 @@ package channel
 import (
 	"encoding/binary"
 	"fmt"
-	"github.com/Hucaru/Valhalla/internal"
-	"github.com/Hucaru/Valhalla/meta-proto/go/metadata"
-	"google.golang.org/protobuf/proto"
 	"log"
 	"net"
 	"strconv"
 	"strings"
 	"time"
+
+	"google.golang.org/protobuf/proto"
+
+	"github.com/Hucaru/Valhalla/internal"
 
 	"github.com/Hucaru/Valhalla/common"
 	"github.com/Hucaru/Valhalla/common/opcode"
@@ -18,6 +19,8 @@ import (
 	"github.com/Hucaru/Valhalla/mnet"
 	"github.com/Hucaru/Valhalla/mpacket"
 	"github.com/Hucaru/Valhalla/nx"
+
+	"github.com/Hucaru/Valhalla/meta-proto/go/mc_metadata"
 )
 
 // HandleClientPacket data
@@ -26,7 +29,7 @@ func (server *Server) HandleClientPacket(conn mnet.Client, tcpConn net.Conn, rea
 	log.Println("DATA_BUFFER", reader.GetBuffer())
 
 	switch msgType {
-	case constant.MetaEventLogin:
+	case constant.C2P_RequestLoginUser:
 		server.playerConnect(conn, tcpConn, reader, msgType)
 		break
 	case constant.MetaEventMovement:
@@ -187,15 +190,15 @@ func (server *Server) playerConnect(conn mnet.Client, tcpConn net.Conn, reader m
 	//	return
 	//}
 
-	msg := &metadata.Login{}
+	msg := &mc_metadata.C2P_RequestLoginUser{}
 	if err := proto.Unmarshal(reader.GetBuffer(), msg); err != nil {
 		log.Fatalln("Failed to parse data:", err)
 	}
 
-	plr := loadPlayer(conn, msg)
+	plr := loadPlayer(conn, *msg)
 	plr.rates = &server.rates
 
-	server.players = append(server.players, &plr)
+	// server.players = append(server.players, &plr)
 	/*
 		SENDING back to USER
 	*/
