@@ -64,24 +64,8 @@ func clientReaderMeta(conn net.Conn, eRecv chan *Event, mapleVersion int16, head
 			break
 		}
 
-		msgLen := uint32(0)
-		msgType := uint32(0)
-
-		if lenBytes, err := reader.ReadBytes(4); err == io.EOF || err != nil {
-			fmt.Println("Error reading:", err.Error())
-			eRecv <- &Event{Type: MEClientDisconnect, Conn: conn}
-			break
-		} else {
-			msgLen = binary.BigEndian.Uint32(lenBytes)
-		}
-
-		if typeBytes, err := reader.ReadBytes(4); err == io.EOF || err != nil {
-			fmt.Println("Error reading:", err.Error())
-			eRecv <- &Event{Type: MEClientDisconnect, Conn: conn}
-			break
-		} else {
-			msgType = binary.BigEndian.Uint32(typeBytes)
-		}
+		msgLen := binary.BigEndian.Uint32(buf[:4])
+		msgType := binary.BigEndian.Uint32(buf[4:8])
 
 		buf = make([]byte, msgLen)
 
