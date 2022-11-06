@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/Hucaru/Valhalla/channel"
-	"github.com/Hucaru/Valhalla/constant"
 	"github.com/Hucaru/Valhalla/mnet"
 	"github.com/Hucaru/Valhalla/mpacket"
 )
@@ -137,7 +136,7 @@ func (cs *channelServer) acceptNewConnections() {
 		go client.Reader()
 		go client.Writer()
 
-		conn.Write(packetClientHandshake(constant.MapleVersion, keyRecv[:], keySend[:]))
+		//conn.Write(packetClientHandshake(constant.MapleVersion, keyRecv[:], keySend[:]))
 	}
 }
 
@@ -169,7 +168,7 @@ func (cs *channelServer) processEvent() {
 						conn,
 						e.Conn,
 						mpacket.NewReader(&e.Packet, time.Now().Unix()),
-						e.MessageType)
+						e.Protocol)
 				}
 			case mnet.Server:
 				switch e.Type {

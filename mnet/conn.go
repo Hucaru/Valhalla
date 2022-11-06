@@ -61,7 +61,7 @@ func clientReaderMeta(conn net.Conn, eRecv chan *Event, headerSize int) {
 		}
 
 		msgLen := binary.BigEndian.Uint32(buff[:4])
-		msgType := binary.BigEndian.Uint32(buff[4:8])
+		msgProtocol := binary.BigEndian.Uint32(buff[4:8])
 
 		buff = make([]byte, msgLen)
 		if ln, err := conn.Read(buff); err != nil || ln < int(msgLen) {
@@ -70,8 +70,8 @@ func clientReaderMeta(conn net.Conn, eRecv chan *Event, headerSize int) {
 			break
 		}
 
-		log.Println("msgType", headerSize, msgLen, msgType)
-		eRecv <- &Event{Type: MEClientPacket, Conn: conn, Packet: buff, MessageType: msgType}
+		log.Println("msgType", headerSize, msgLen, msgProtocol)
+		eRecv <- &Event{Type: MEClientPacket, Conn: conn, Packet: buff, Protocol: msgProtocol}
 	}
 }
 

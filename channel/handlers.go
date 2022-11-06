@@ -24,13 +24,13 @@ import (
 )
 
 // HandleClientPacket data
-func (server *Server) HandleClientPacket(conn mnet.Client, tcpConn net.Conn, reader mpacket.Reader, msgType uint32) {
+func (server *Server) HandleClientPacket(conn mnet.Client, tcpConn net.Conn, reader mpacket.Reader, msgProtocolType uint32) {
 
 	log.Println("DATA_BUFFER", reader.GetBuffer())
 
-	switch msgType {
+	switch msgProtocolType {
 	case constant.C2P_RequestLoginUser:
-		server.playerConnect(conn, tcpConn, reader, msgType)
+		server.playerConnect(conn, tcpConn, reader, msgProtocolType)
 		break
 	case constant.MetaEventMovement:
 		//msg = &metadata.Movement{}
