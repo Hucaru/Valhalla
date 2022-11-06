@@ -134,14 +134,8 @@ func (server *Server) makeResponse(mType uint32, out []byte) []byte {
 	return result
 }
 
-func (server *Server) makeErrorResponse(_err string, uID string) []byte {
-
-	e := &mc_metadata.P2C_ResultLoginUserError{
-		UuId:  uID,
-		Error: _err,
-	}
-
-	out, err := proto.Marshal(e)
+func (server *Server) makePacket(M proto.Message, P uint32) mpacket.Packet {
+	out, err := proto.Marshal(M)
 	if err != nil {
 		log.Fatalln("Failed to marshal object:", err)
 		return nil
@@ -150,9 +144,19 @@ func (server *Server) makeErrorResponse(_err string, uID string) []byte {
 	result := make([]byte, 0)
 	h := make([]byte, 0)
 	h = append(h, binary.BigEndian.AppendUint32(h, uint32(len(out)))...)
-	h = binary.BigEndian.AppendUint32(h, uint32(constant.P2C_ResultLoginUserError))
+	h = binary.BigEndian.AppendUint32(h, uint32(P))
 	result = append(result, h...)
 	result = append(result, out...)
+
+	return result
+}
+
+func (server *Server) makeErrorResponse(_err string, uID string) []byte {
+
+	result := server.makePacket(&mc_metadata.P2C_ResultLoginUserError{
+		UuId:  uID,
+		Error: _err,
+	}, constant.P2C_ResultLoginUserError)
 
 	log.Println("ERROR RESPONSE", result)
 	return result
