@@ -136,7 +136,7 @@ func (server *Server) makeResponse(mType uint32, out []byte) []byte {
 
 func (server *Server) makeErrorResponse(_err string, uID string) []byte {
 
-	e := &mc_metadata.C2P_RequestLoginUserError{
+	e := &mc_metadata.P2C_ResultLoginUserError{
 		UuId:  uID,
 		Error: _err,
 	}
@@ -150,7 +150,7 @@ func (server *Server) makeErrorResponse(_err string, uID string) []byte {
 	result := make([]byte, 0)
 	h := make([]byte, 0)
 	h = append(h, binary.BigEndian.AppendUint32(h, uint32(len(out)))...)
-	h = binary.BigEndian.AppendUint32(h, uint32(constant.C2P_RequestLoginUserError))
+	h = binary.BigEndian.AppendUint32(h, uint32(constant.P2C_ResultLoginUserError))
 	result = append(result, h...)
 	result = append(result, out...)
 
