@@ -52,7 +52,7 @@ func (cs *channelServer) run() {
 	elapsed = time.Since(start)
 	log.Println("Loaded and parsed drop data in", elapsed)
 
-	cs.gameState.Initialise(cs.wRecv, cs.dbConfig.User, cs.dbConfig.Password, cs.dbConfig.Address, cs.dbConfig.Port, cs.dbConfig.Database)
+	cs.gameState.Initialize(cs.wRecv, cs.dbConfig.User, cs.dbConfig.Password, cs.dbConfig.Address, cs.dbConfig.Port, cs.dbConfig.Database)
 
 	cs.wg.Add(1)
 	go cs.acceptNewConnections()

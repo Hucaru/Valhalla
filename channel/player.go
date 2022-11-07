@@ -3,12 +3,12 @@ package channel
 import (
 	"errors"
 	"fmt"
+	"github.com/Hucaru/Valhalla/common/db"
 	"log"
 	"math"
 	"math/rand"
 	"time"
 
-	"github.com/Hucaru/Valhalla/common"
 	"github.com/Hucaru/Valhalla/nx"
 
 	"github.com/Hucaru/Valhalla/common/opcode"
@@ -59,7 +59,7 @@ func getSkillsFromCharID(id int32) []playerSkill {
 
 	filter := "skillID, level, cooldown"
 
-	row, err := common.DB.Query("SELECT "+filter+" FROM skills where characterID=?", id)
+	row, err := db.Maria.Query("SELECT "+filter+" FROM skills where characterID=?", id)
 
 	if err != nil {
 		panic(err)
@@ -411,7 +411,7 @@ func (d *player) takeMesos(amount int32) {
 func (d *player) saveMesos() error {
 	query := "UPDATE characters SET mesos=? WHERE accountID=? and name=?"
 
-	_, err := common.DB.Exec(query,
+	_, err := db.Maria.Exec(query,
 		d.mesos,
 		d.accountID,
 		d.name)
@@ -472,7 +472,7 @@ func (d *player) setMapID(id int32) {
 func (d *player) saveMapID(newMapId, oldMapId int32) error {
 	query := "UPDATE characters SET mapID=?,previousMapID=? WHERE accountID=? and name=?"
 
-	_, err := common.DB.Exec(query,
+	_, err := db.Maria.Exec(query,
 		newMapId,
 		oldMapId,
 		d.accountID,
@@ -1027,7 +1027,7 @@ func (d player) save() error {
 
 	// TODO: Move mesos, to instances of it changing, otherwise items and mesos can become out of sync from
 	// any crashes
-	_, err = common.DB.Exec(query,
+	_, err = db.Maria.Exec(query,
 		d.skin, d.hair, d.face, d.level, d.job, d.str, d.dex, d.intt, d.luk, d.hp, d.maxHP, d.mp,
 		d.maxMP, d.ap, d.sp, d.exp, d.fame, d.mapID, d.mapPos, d.mesos, d.miniGameWins,
 		d.miniGameDraw, d.miniGameLoss, d.miniGamePoints, d.buddyListSize, d.id)
@@ -1038,7 +1038,7 @@ func (d player) save() error {
 
 	query = `INSERT INTO skills(characterID,skillID,level,cooldown) VALUES(?,?,?,?) ON DUPLICATE KEY UPDATE characterID=?, skillID=?`
 	for skillID, skill := range d.skills {
-		_, err := common.DB.Exec(query, d.id, skillID, skill.Level, skill.Cooldown, d.id, skillID)
+		_, err := db.Maria.Exec(query, d.id, skillID, skill.Level, skill.Cooldown, d.id, skillID)
 
 		if err != nil {
 			return err
@@ -1173,7 +1173,7 @@ func loadPlayerFromID(id int32, conn mnet.Client) player {
 		"equipSlotSize,useSlotSize,setupSlotSize,etcSlotSize,cashSlotSize,miniGameWins," +
 		"miniGameDraw,miniGameLoss,miniGamePoints,buddyListSize"
 
-	err := common.DB.QueryRow("SELECT "+filter+" FROM characters where id=?", id).Scan(&c.id,
+	err := db.Maria.QueryRow("SELECT "+filter+" FROM characters where id=?", id).Scan(&c.id,
 		&c.accountID, &c.worldID, &c.name, &c.gender, &c.skin, &c.hair, &c.face,
 		&c.level, &c.job, &c.str, &c.dex, &c.intt, &c.luk, &c.hp, &c.maxHP, &c.mp,
 		&c.maxMP, &c.ap, &c.sp, &c.exp, &c.fame, &c.mapID, &c.mapPos,
@@ -1212,7 +1212,7 @@ func loadPlayerFromID(id int32, conn mnet.Client) player {
 func getBuddyList(playerID int32, buddySize byte) []buddy {
 	buddies := make([]buddy, 0, buddySize)
 	filter := "friendID,accepted"
-	rows, err := common.DB.Query("SELECT "+filter+" FROM buddy where characterID=?", playerID)
+	rows, err := db.Maria.Query("SELECT "+filter+" FROM buddy where characterID=?", playerID)
 
 	if err != nil {
 		log.Fatal(err)
@@ -1229,7 +1229,7 @@ func getBuddyList(playerID int32, buddySize byte) []buddy {
 		rows.Scan(&newBuddy.id, &accepted)
 
 		filter := "channelID,name,inCashShop"
-		err := common.DB.QueryRow("SELECT "+filter+" FROM characters where id=?", newBuddy.id).Scan(&newBuddy.channelID, &newBuddy.name, &newBuddy.cashShop)
+		err := db.Maria.QueryRow("SELECT "+filter+" FROM characters where id=?", newBuddy.id).Scan(&newBuddy.channelID, &newBuddy.name, &newBuddy.cashShop)
 
 		if err != nil {
 			log.Fatal(err)

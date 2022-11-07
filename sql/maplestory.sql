@@ -18,7 +18,7 @@ CREATE TABLE `accounts` (
   `gender` tinyint(4) NOT NULL DEFAULT '0',
   `dob` int(11) NOT NULL,
   PRIMARY KEY (`accountID`),
-  UNIQUE KEY `unique_index_uID` (`u_id`),
+  UNIQUE KEY `unique_index_uID` (`u_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 
 

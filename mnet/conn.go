@@ -1,8 +1,10 @@
 package mnet
 
 import (
+	"bufio"
 	"encoding/binary"
 	"fmt"
+	"io"
 	"log"
 	"math/rand"
 	"net"
@@ -53,9 +55,11 @@ func clientReaderMeta(conn net.Conn, eRecv chan *Event, headerSize int) {
 	eRecv <- &Event{Type: MEClientConnected, Conn: conn}
 
 	for {
+		reader := bufio.NewReader(conn)
+
 		buff := make([]byte, headerSize)
-		if ln, err := conn.Read(buff); err != nil || ln < headerSize {
-			fmt.Println("Error reading data:", err)
+		if _, err := io.ReadFull(reader, buff); err == io.EOF || err != nil {
+			fmt.Println("Error reading:", err.Error())
 			eRecv <- &Event{Type: MEClientDisconnect, Conn: conn}
 			break
 		}
@@ -64,8 +68,8 @@ func clientReaderMeta(conn net.Conn, eRecv chan *Event, headerSize int) {
 		msgProtocol := binary.BigEndian.Uint32(buff[4:8])
 
 		buff = make([]byte, msgLen)
-		if ln, err := conn.Read(buff); err != nil || ln < int(msgLen) {
-			fmt.Println("Error reading data:", err)
+		if _, err := io.ReadFull(reader, buff); err == io.EOF || err != nil {
+			fmt.Println("Error reading:", err.Error())
 			eRecv <- &Event{Type: MEClientDisconnect, Conn: conn}
 			break
 		}

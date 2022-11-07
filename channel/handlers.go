@@ -1,26 +1,22 @@
 package channel
 
 import (
-	"encoding/binary"
 	"fmt"
+	"github.com/Hucaru/Valhalla/common/db"
+	"github.com/Hucaru/Valhalla/common/proto"
 	"log"
 	"net"
 	"strconv"
 	"strings"
 	"time"
 
-	"google.golang.org/protobuf/proto"
-
 	"github.com/Hucaru/Valhalla/internal"
 
-	"github.com/Hucaru/Valhalla/common"
 	"github.com/Hucaru/Valhalla/common/opcode"
 	"github.com/Hucaru/Valhalla/constant"
 	"github.com/Hucaru/Valhalla/mnet"
 	"github.com/Hucaru/Valhalla/mpacket"
 	"github.com/Hucaru/Valhalla/nx"
-
-	"github.com/Hucaru/Valhalla/meta-proto/go/mc_metadata"
 )
 
 // HandleClientPacket data
@@ -123,62 +119,38 @@ func (server *Server) HandleClientPacket(conn mnet.Client, tcpConn net.Conn, rea
 	//}
 }
 
-func (server *Server) makeResponse(mType uint32, out []byte) []byte {
-	result := make([]byte, 0)
-	h := make([]byte, 0)
-
-	h = append(h, binary.BigEndian.AppendUint32(h, uint32(len(out)))...)
-	h = binary.BigEndian.AppendUint32(h, uint32(mType))
-	result = append(result, h...)
-	result = append(result, out...)
-	return result
-}
-
-func (server *Server) makePacket(M proto.Message, P uint32) mpacket.Packet {
-	out, err := proto.Marshal(M)
-	if err != nil {
-		log.Fatalln("Failed to marshal object:", err)
-		return nil
-	}
-
-	result := make([]byte, 0)
-	h := make([]byte, 0)
-	h = append(h, binary.BigEndian.AppendUint32(h, uint32(len(out)))...)
-	h = binary.BigEndian.AppendUint32(h, uint32(P))
-	result = append(result, h...)
-	result = append(result, out...)
-
-	return result
-}
-
-func (server *Server) makeErrorResponse(_err string, uID string) []byte {
-
-	result := server.makePacket(&mc_metadata.P2C_ResultLoginUserError{
-		UuId:  uID,
-		Error: _err,
-	}, constant.P2C_ResultLoginUserError)
-
-	log.Println("ERROR RESPONSE", result)
-	return result
-}
-
 func (server *Server) playerConnect(conn mnet.Client, tcpConn net.Conn, reader mpacket.Reader, mType uint32) {
 
-	msg := &mc_metadata.C2P_RequestLoginUser{}
-	if err := proto.Unmarshal(reader.GetBuffer(), msg); err != nil || len(msg.UuId) == 0 {
+	msg, err := proto.GetRequestLoginUser(reader.GetBuffer())
+	if err != nil || len(msg.UuId) == 0 {
 		log.Fatalln("Failed to parse data:", err)
 	}
+	conn.SetUid(msg.UuId)
 
-	res, err := getLoggedData(msg.UuId, conn)
+	acc, err := db.GetLoggedData(msg.UuId)
 
 	if err != nil {
-		tcpConn.Write(server.makeErrorResponse(err.Error(), msg.UuId))
-		return
+		log.Println("Inserting new user", msg.UuId)
+		go db.InsertNewAccount(msg.UuId, conn)
+	} else {
+		conn.SetAccountID(acc.AccountID)
+		err1 := db.UpdateLoginState(msg.UuId, true)
+		if err1 != nil {
+			log.Println("Unable to complete login for ", msg.UuId)
+			m, err2 := proto.ErrorLoginResponse(err.Error(), msg.UuId)
+			if err2 != nil {
+				log.Println("ErrorLoginResponse", err2)
+			}
+			tcpConn.Write(m)
+			return
+		}
 	}
 
-	plr := loadPlayer(conn, *msg)
+	plr := loadPlayer(conn, msg)
 	plr.rates = &server.rates
 	server.players = append(server.players, &plr)
+
+	res, err := proto.AccountResponse(&acc, mType)
 
 	log.Println("DATA_RESPONSE", res)
 
@@ -187,193 +159,6 @@ func (server *Server) playerConnect(conn mnet.Client, tcpConn net.Conn, reader m
 		server.players[i].conn.Send(res)
 	}
 }
-
-func getLoggedData(uUID string, conn mnet.Client) ([]byte, error) {
-	var accountID int32
-	var characterID int32
-	var time int64
-
-	r := new(mc_metadata.C2P_RequestLoginUser)
-	r.UuId = uUID
-	r.SpawnPosX = 0
-	r.SpawnPosY = 0
-	r.SpawnPosZ = 0
-	r.SpawnRotX = 0
-	r.SpawnRotY = 0
-	r.SpawnRotZ = 0
-
-	err := common.DB.QueryRow(
-		"SELECT a.accountID, a.u_id, c.id as characterID, "+
-			"IFNULL(m.time, 0) as time, "+
-			"IFNULL(m.pos_x, 0) as pos_x, "+
-			"IFNULL(m.pos_y, 0) as pos_y, "+
-			"IFNULL(m.pos_z, 0) as pos_z, "+
-			"IFNULL(m.rot_x, 0) as rot_x, "+
-			"IFNULL(m.rot_y, 0) as rot_y, "+
-			"IFNULL(m.rot_z, 0) as rot_z "+
-			"FROM accounts a "+
-			"LEFT JOIN characters c ON c.accountID = a.accountID "+
-			"LEFT JOIN movement m ON m.characterID = characterID "+
-			"WHERE a.u_id=? "+
-			"ORDER BY time DESC "+
-			"LIMIT 1", uUID).
-		Scan(&accountID, &r.UuId, &characterID, &time, &r.SpawnPosX, &r.SpawnPosY, &r.SpawnPosZ, &r.SpawnRotX, &r.SpawnRotY, &r.SpawnRotZ)
-
-	conn.SetUid(uUID)
-
-	if err != nil {
-		log.Println("Inserting new user", r.UuId)
-		go InsertNewAccount(uUID, conn)
-	} else {
-		conn.SetAccountID(accountID)
-		_, err := common.DB.Exec("UPDATE accounts SET isLogedIn=1 WHERE u_id=?", uUID)
-		if err != nil {
-			log.Println("Unable to complete login for ", uUID)
-		}
-	}
-
-	out, err1 := proto.Marshal(r)
-	if err1 != nil {
-		log.Println("Failed to marshal object:", err)
-		return nil, err1
-	}
-
-	result := make([]byte, 0)
-	h := make([]byte, 0)
-	h = append(h, binary.BigEndian.AppendUint32(h, uint32(len(out)))...)
-	h = binary.BigEndian.AppendUint32(h, uint32(constant.C2P_RequestLoginUser))
-	result = append(result, h...)
-	result = append(result, out...)
-
-	return result, nil
-}
-
-func InsertNewAccount(uUid string, conn mnet.Client) {
-	res, err := common.DB.Exec("INSERT INTO accounts (u_id, username, password, pin, dob, isLogdIn) VALUES (?, ?, ?, ?, ?, ?)",
-		uUid, "test", "password", "1", 1, 1)
-
-	if err != nil {
-		log.Println(err)
-	}
-
-	accountID, err := res.LastInsertId()
-	conn.SetAccountID(int32(accountID))
-
-	res, err = common.DB.Exec("INSERT INTO characters "+
-		"(accountID, worldID, name, gender, skin, hair, face, str, dex, intt, luk) "+
-		"VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-		accountID, 1, "test", 1, 1, 1, 1, 1, 1, 1, 1)
-
-	if err != nil {
-		log.Println("INSERTING ERROR", err)
-	}
-}
-
-//func (server *Server) playerConnect(conn mnet.Client, tcpConn net.Conn, reader mpacket.Reader, mType uint32) {
-
-/***
-Database will be added soon
-*/
-
-//charID := reader.ReadInt32()
-//
-//var migrationID byte
-//var channelID int8
-//
-//err := common.DB.QueryRow("SELECT channelID,migrationID FROM characters WHERE id=?", charID).Scan(&channelID, &migrationID)
-//
-//if err != nil {
-//	log.Println(err)
-//	return
-//}
-//
-//if migrationID != server.id {
-//	return
-//}
-//
-//var accountID int32
-//err = common.DB.QueryRow("SELECT accountID FROM characters WHERE id=?", charID).Scan(&accountID)
-//
-//if err != nil {
-//	log.Println(err)
-//	return
-//}
-//
-//conn.SetAccountID(accountID)
-//
-//var adminLevel int
-//err = common.DB.QueryRow("SELECT adminLevel FROM accounts WHERE accountID=?", conn.GetAccountID()).Scan(&adminLevel)
-//
-//if err != nil {
-//	log.Println(err)
-//	return
-//}
-//
-//conn.SetAdminLevel(adminLevel)
-//
-//_, err = common.DB.Exec("UPDATE characters SET migrationID=? WHERE id=?", -1, charID)
-//
-//if err != nil {
-//	log.Println(err)
-//	return
-//}
-//
-//_, err = common.DB.Exec("UPDATE characters SET channelID=? WHERE id=?", server.id, charID)
-//
-//if err != nil {
-//	log.Println(err)
-//	return
-//}
-
-//plr := loadPlayerFromID(charID, conn)
-//plr.rates = &server.rates
-
-// server.players = append(server.players, &plr)
-/*
-	SENDING back to USER
-*/
-//conn.Send(packetPlayerEnterGame(plr, int32(server.id)))
-//conn.Send(packetMessageScrollingHeader(server.header))
-
-//field, ok := server.fields[plr.mapID]
-//if !ok {
-//	return
-//}
-//
-//inst, err := field.getInstance(0)
-//
-//if err != nil {
-//	return
-//}
-
-//newPlr, err := server.players.getFromConn(conn)
-//
-//if err != nil {
-//	log.Println(err)
-//	return
-//}
-//
-////inst.addPlayer(newPlr)
-//newPlr.UpdateGuildInfo()
-//newPlr.UpdateBuddyInfo()
-
-//for _, party := range server.parties {
-//	if party.member(newPlr.id) {
-//		newPlr.party = party
-//		break
-//	}
-//}
-//
-//newPlr.UpdatePartyInfo = func(partyID, playerID, job, level int32, name string) {
-//	server.world.Send(internal.PacketChannelPartyUpdateInfo(partyID, playerID, job, level, name))
-//}
-
-//common.MetricsGauges["player_count"].With(prometheus.Labels{"channel": strconv.Itoa(int(server.id)), "world": server.worldName}).Inc()
-
-//server.world.Send(internal.PacketChannelPopUpdate(server.id, int16(len(server.players))))
-// Emit server message that user has connected (used to update buddy, guild and party notifications)
-//server.world.Send(internal.PacketChannelPlayerConnected(plr.id, plr.name, server.id, false, 1))
-//}
 
 func (server *Server) playerChangeChannel(conn mnet.Client, reader mpacket.Reader) {
 	id := reader.ReadByte()
@@ -390,7 +175,7 @@ func (server *Server) playerChangeChannel(conn mnet.Client, reader mpacket.Reade
 		if server.channels[id].Port == 0 {
 			conn.Send(packetCannotChangeChannel())
 		} else {
-			_, err := common.DB.Exec("UPDATE characters SET migrationID=? WHERE id=?", id, player.id)
+			_, err := db.Maria.Exec("UPDATE characters SET migrationID=? WHERE id=?", id, player.id)
 
 			if err != nil {
 				log.Println(err)
@@ -1056,7 +841,7 @@ func (server *Server) playerBuddyOperation(conn mnet.Client, reader mpacket.Read
 		var accountID int32
 		var buddyListSize int32
 
-		err = common.DB.QueryRow("SELECT id,accountID,buddyListSize FROM characters WHERE BINARY name=? and worldID=?", name, conn.GetWorldID()).Scan(&charID, &accountID, &buddyListSize)
+		err = db.Maria.QueryRow("SELECT id,accountID,buddyListSize FROM characters WHERE BINARY name=? and worldID=?", name, conn.GetWorldID()).Scan(&charID, &accountID, &buddyListSize)
 
 		if err != nil || accountID == conn.GetAccountID() {
 			conn.Send(packetBuddyNameNotRegistered())
@@ -1069,7 +854,7 @@ func (server *Server) playerBuddyOperation(conn mnet.Client, reader mpacket.Read
 		}
 
 		var recepientBuddyCount int32
-		err = common.DB.QueryRow("SELECT COUNT(*) FROM buddy WHERE characterID=1 and accepted=1").Scan(&recepientBuddyCount)
+		err = db.Maria.QueryRow("SELECT COUNT(*) FROM buddy WHERE characterID=1 and accepted=1").Scan(&recepientBuddyCount)
 
 		if err != nil {
 			log.Fatal(err)
@@ -1083,7 +868,7 @@ func (server *Server) playerBuddyOperation(conn mnet.Client, reader mpacket.Read
 
 		if conn.GetAdminLevel() == 0 {
 			var gm bool
-			err = common.DB.QueryRow("SELECT adminLevel from accounts where accountID=?", accountID).Scan(&gm)
+			err = db.Maria.QueryRow("SELECT adminLevel from accounts where accountID=?", accountID).Scan(&gm)
 
 			if err != nil {
 				log.Fatal(err)
@@ -1098,7 +883,7 @@ func (server *Server) playerBuddyOperation(conn mnet.Client, reader mpacket.Read
 
 		query := "INSERT INTO buddy(characterID,friendID) VALUES(?,?)"
 
-		if _, err = common.DB.Exec(query, charID, plr.id); err != nil {
+		if _, err = db.Maria.Exec(query, charID, plr.id); err != nil {
 			log.Fatal(err)
 			return
 		}
@@ -1121,7 +906,7 @@ func (server *Server) playerBuddyOperation(conn mnet.Client, reader mpacket.Read
 		var friendChannel int32
 		var cashShop bool
 
-		err = common.DB.QueryRow("SELECT name,channelID,inCashShop FROM characters WHERE id=?", friendID).Scan(&friendName, &friendChannel, &cashShop)
+		err = db.Maria.QueryRow("SELECT name,channelID,inCashShop FROM characters WHERE id=?", friendID).Scan(&friendName, &friendChannel, &cashShop)
 
 		if err != nil {
 			log.Fatal(err)
@@ -1130,14 +915,14 @@ func (server *Server) playerBuddyOperation(conn mnet.Client, reader mpacket.Read
 
 		query := "UPDATE buddy set accepted=1 WHERE characterID=? and friendID=?"
 
-		if _, err := common.DB.Exec(query, plr.id, friendID); err != nil {
+		if _, err := db.Maria.Exec(query, plr.id, friendID); err != nil {
 			log.Fatal(err)
 			return
 		}
 
 		query = "INSERT INTO buddy(characterID,friendID,accepted) VALUES(?,?,?)"
 
-		if _, err := common.DB.Exec(query, friendID, plr.id, 1); err != nil {
+		if _, err := db.Maria.Exec(query, friendID, plr.id, 1); err != nil {
 			log.Fatal(err)
 			return
 		}
@@ -1167,7 +952,7 @@ func (server *Server) playerBuddyOperation(conn mnet.Client, reader mpacket.Read
 
 		query := "DELETE FROM buddy WHERE (characterID=? AND friendID=?) OR (characterID=? AND friendID=?)"
 
-		if _, err = common.DB.Exec(query, id, plr.id, plr.id, id); err != nil {
+		if _, err = db.Maria.Exec(query, id, plr.id, plr.id, id); err != nil {
 			log.Fatal(err)
 			return
 		}
@@ -1322,7 +1107,7 @@ func (server Server) chatSlashCommand(conn mnet.Client, reader mpacket.Reader) {
 		var mapID int32 = -1
 		var inCashShop bool
 
-		err = common.DB.QueryRow("SELECT accountID,channelID,mapID,inCashShop FROM characters WHERE BINARY name=? AND worldID=?", name, conn.GetWorldID()).Scan(&accountID, &channelID, &mapID, &inCashShop)
+		err = db.Maria.QueryRow("SELECT accountID,channelID,mapID,inCashShop FROM characters WHERE BINARY name=? AND worldID=?", name, conn.GetWorldID()).Scan(&accountID, &channelID, &mapID, &inCashShop)
 
 		if err != nil || channelID == -1 {
 			plr.send(packetMessageFindResult(name, false, false, false, -1))
@@ -1331,7 +1116,7 @@ func (server Server) chatSlashCommand(conn mnet.Client, reader mpacket.Reader) {
 
 		var isGM bool
 
-		err = common.DB.QueryRow("SELECT adminLevel from accounts where accountID=?", accountID).Scan(&isGM)
+		err = db.Maria.QueryRow("SELECT adminLevel from accounts where accountID=?", accountID).Scan(&isGM)
 
 		if err != nil {
 			log.Fatal(err)
@@ -1349,7 +1134,7 @@ func (server Server) chatSlashCommand(conn mnet.Client, reader mpacket.Reader) {
 
 		if receiver, err := server.players.getFromName(recepientName); err != nil {
 			var online bool
-			err := common.DB.QueryRow("SELECT COUNT(*) FROM characters WHERE BINARY name=? AND worldID=? AND channelID != -1", recepientName, conn.GetWorldID()).Scan(&online)
+			err := db.Maria.QueryRow("SELECT COUNT(*) FROM characters WHERE BINARY name=? AND worldID=? AND channelID != -1", recepientName, conn.GetWorldID()).Scan(&online)
 
 			if err != nil || !online {
 				conn.Send(packetMessageRedText("Incorrect character name"))
@@ -2642,7 +2427,7 @@ func (server *Server) handleNewChannelOK(conn mnet.Server, reader mpacket.Reader
 		// TODO send largest party id for world server to compare
 	}
 
-	accountIDs, err := common.DB.Query("SELECT accountID from characters where channelID = ? and migrationID = -1", server.id)
+	accountIDs, err := db.Maria.Query("SELECT accountID from characters where channelID = ? and migrationID = -1", server.id)
 
 	if err != nil {
 		log.Println(err)
@@ -2657,7 +2442,7 @@ func (server *Server) handleNewChannelOK(conn mnet.Server, reader mpacket.Reader
 			continue
 		}
 
-		_, err = common.DB.Exec("UPDATE accounts SET isLogedIn=? WHERE accountID=?", 0, accountID)
+		_, err = db.Maria.Exec("UPDATE accounts SET isLogedIn=? WHERE accountID=?", 0, accountID)
 
 		if err != nil {
 			log.Println(err)
@@ -2667,7 +2452,7 @@ func (server *Server) handleNewChannelOK(conn mnet.Server, reader mpacket.Reader
 
 	accountIDs.Close()
 
-	_, err = common.DB.Exec("UPDATE characters SET channelID=? WHERE channelID=?", -1, server.id)
+	_, err = db.Maria.Exec("UPDATE characters SET channelID=? WHERE channelID=?", -1, server.id)
 
 	if err != nil {
 		log.Println(err)

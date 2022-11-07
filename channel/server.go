@@ -3,6 +3,7 @@ package channel
 import (
 	"encoding/binary"
 	"fmt"
+	"github.com/Hucaru/Valhalla/common/db"
 	"github.com/Hucaru/Valhalla/constant"
 	"github.com/Hucaru/Valhalla/meta-proto/go/mc_metadata"
 	"google.golang.org/protobuf/proto"
@@ -105,14 +106,14 @@ type Server struct {
 	rates            rates
 }
 
-// Initialise the server
-func (server *Server) Initialise(work chan func(), dbuser, dbpassword, dbaddress, dbport, dbdatabase string) {
+// Initialize the server
+func (server *Server) Initialize(work chan func(), dbuser, dbpassword, dbaddress, dbport, dbdatabase string) {
 	server.dispatch = work
 
-	err := common.ConnectToDB(dbuser, dbpassword, dbaddress, dbport, dbdatabase)
+	err := db.ConnectToDB(dbuser, dbpassword, dbaddress, dbport, dbdatabase)
 
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal(err.Error())
 	}
 
 	log.Println("Connected to database")
@@ -297,7 +298,7 @@ func (server *Server) ClientDisconnected(conn mnet.Client) {
 	msg, errR := makeDisconnectedResponse(conn.GetUid())
 	if errR == nil {
 		for i := 0; i < len(server.players); i++ {
-			log.Println("PLAYER_ID", server.players[i].playerID)
+			log.Println("PLAYER_ID", server.players[i].conn.GetUid())
 			server.players[i].conn.Send(msg)
 		}
 	}
@@ -308,7 +309,7 @@ func (server *Server) ClientDisconnected(conn mnet.Client) {
 	//	log.Println(err)
 	//}
 	log.Println("DISCONNECT", conn.GetAccountID())
-	_, err1 := common.DB.Exec("UPDATE accounts SET isLogedIn=0 WHERE accountID=?", conn.GetAccountID())
+	_, err1 := db.Maria.Exec("UPDATE accounts SET isLogedIn=0 WHERE accountID=?", conn.GetAccountID())
 
 	if err1 != nil {
 		log.Println("Unable to complete logout for ", conn.GetAccountID())
