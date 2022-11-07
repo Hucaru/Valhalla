@@ -18,8 +18,17 @@ func GetRequestLoginUser(buff []byte) (mc_metadata.C2P_RequestLoginUser, error) 
 	return *msg, nil
 }
 
+func GetRequestMovement(buff []byte) (mc_metadata.Movement, error) {
+	msg := &mc_metadata.Movement{}
+	if err := proto.Unmarshal(buff, msg); err != nil || len(msg.UuId) == 0 {
+		log.Fatalln("Failed to parse data:", err)
+		return mc_metadata.Movement{}, err
+	}
+	return *msg, nil
+}
+
 func AccountResponse(acc *model.Account, msgType uint32) ([]byte, error) {
-	res, err := response(&mc_metadata.C2P_RequestLoginUser{
+	res, err := MakeResponse(&mc_metadata.C2P_RequestLoginUser{
 		UuId:      acc.UId,
 		SpawnPosX: acc.PosX,
 		SpawnPosY: acc.PosY,
@@ -34,13 +43,13 @@ func AccountResponse(acc *model.Account, msgType uint32) ([]byte, error) {
 }
 
 func ErrorLoginResponse(_err string, uID string) ([]byte, error) {
-	return response(&mc_metadata.P2C_ResultLoginUserError{
+	return MakeResponse(&mc_metadata.P2C_ResultLoginUserError{
 		UuId:  uID,
 		Error: _err,
 	}, constant.P2C_ResultLoginUserError)
 }
 
-func response(msg proto.Message, msgType uint32) ([]byte, error) {
+func MakeResponse(msg proto.Message, msgType uint32) ([]byte, error) {
 	out, err := proto.Marshal(msg)
 	if err != nil {
 		log.Println("Failed to marshal object:", err)

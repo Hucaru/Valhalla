@@ -10,11 +10,10 @@ import (
 )
 
 var (
-	once           sync.Once
-	typePtr        = pflag.String("type", "channel", "Denotes what type of server to start: login, world, channel")
-	configPtr      = pflag.String("config", "config_channel_1.toml", "config toml file")
-	configPtrLogin = pflag.String("config_login", "", "config toml file")
-	metricPtr      = pflag.String("metrics-port", "", "Port to serve metrics on")
+	once      sync.Once
+	typePtr   = pflag.String("type", "channel", "Denotes what type of server to start: login, world, channel")
+	configPtr = pflag.String("config", "config_channel_1.toml", "config toml file")
+	metricPtr = pflag.String("metrics-port", "", "Port to serve metrics on")
 )
 
 func init() {
@@ -29,22 +28,22 @@ func main() {
 	//
 	log.Println("TYPE", *typePtr)
 
-	//s := newChannelServer(*configPtr)
-	//s.run()
+	s := newChannelServer(*configPtr)
+	s.run()
 
-	switch *typePtr {
-	case "login":
-		s := newLoginServer(*configPtr)
-		s.run()
-	case "world":
-		s := newWorldServer(*configPtr)
-		s.run()
-	case "channel":
-		s := newChannelServer(*configPtr)
-		s.run()
-	default:
-		log.Println("Unknown server type:", typePtr)
-	}
+	//switch *typePtr {
+	//case "login":
+	//	s := newLoginServer(*configPtr)
+	//	s.run()
+	//case "world":
+	//	s := newWorldServer(*configPtr)
+	//	s.run()
+	//case "channel":
+	//	s := newChannelServer(*configPtr)
+	//	s.run()
+	//default:
+	//	log.Println("Unknown server type:", typePtr)
+	//}
 }
 
 func parseFlags() {

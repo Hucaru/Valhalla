@@ -28,8 +28,13 @@ func (server *Server) HandleClientPacket(conn mnet.Client, tcpConn net.Conn, rea
 	case constant.C2P_RequestLoginUser:
 		server.playerConnect(conn, tcpConn, reader, msgProtocolType)
 		break
-	case constant.MetaEventMovement:
-		//msg = &metadata.Movement{}
+	case constant.C2P_RequestMoveStart:
+	case constant.C2P_RequestMove:
+	case constant.C2P_RequestMoveEnd:
+	case constant.P2C_ReportMoveStart:
+	case constant.P2C_ReportMove:
+	case constant.P2C_ReportMoveEnd:
+		server.playerMovement(conn, tcpConn, reader, msgProtocolType)
 		break
 	default:
 		fmt.Println("UNKNOWN MSG", reader)
@@ -151,12 +156,30 @@ func (server *Server) playerConnect(conn mnet.Client, tcpConn net.Conn, reader m
 	server.players = append(server.players, &plr)
 
 	res, err := proto.AccountResponse(&acc, mType)
-
+	if err != nil {
+		log.Println("DATA_RESPONSE_ERROR", err)
+	}
 	log.Println("DATA_RESPONSE", res)
+	//server.sendPrivateMsq(res, msg.UuId)
+	server.sendMsgToAll(res, conn)
+}
 
+func (server *Server) sendPrivateMsq(res mpacket.Packet, uID string) {
+	for i := 0; i < len(server.players); i++ {
+		if uID == server.players[i].playerID {
+			log.Println("PLAYER_ID", server.players[i].playerID)
+			server.players[i].conn.Send(res)
+			break
+		}
+	}
+}
+
+func (server *Server) sendMsgToAll(res mpacket.Packet, conn mnet.Client) {
 	for i := 0; i < len(server.players); i++ {
 		log.Println("PLAYER_ID", server.players[i].playerID)
-		server.players[i].conn.Send(res)
+		if conn.GetUid() != server.players[i].conn.GetUid() {
+			server.players[i].conn.Send(res)
+		}
 	}
 }
 
@@ -196,41 +219,54 @@ func (server *Server) playerChangeChannel(conn mnet.Client, reader mpacket.Reade
 	}
 }
 
-func (server Server) playerMovement(conn mnet.Client, reader mpacket.Reader) {
+func (server Server) playerMovement(conn mnet.Client, tcpConn net.Conn, reader mpacket.Reader, mType uint32) {
 	plr, err := server.players.getFromConn(conn)
-
 	if err != nil {
 		log.Println("Unable to get player from connection", conn)
 		return
+	}
+
+	msg, err := proto.GetRequestMovement(reader.GetBuffer())
+	if err != nil || len(msg.UuId) == 0 {
+		log.Fatalln("Failed to parse data:", err)
 	}
 
 	if plr.portalCount != reader.ReadByte() {
 		return
 	}
 
-	moveData, finalData := parseMovement(reader)
+	//moveData, finalData := parseMovement(reader)
+	//
+	//if !moveData.validateChar(plr) {
+	//	return
+	//}
+	//
+	//moveBytes := generateMovementBytes(moveData)
+	//
+	//plr.UpdateMovement(finalData)
+	//
+	//field, ok := server.fields[plr.mapID]
+	//
+	//if !ok {
+	//	return
+	//}
 
-	if !moveData.validateChar(plr) {
-		return
-	}
+	//inst, err := field.getInstance(plr.inst.id)
+	//
+	//if err != nil {
+	//	return
+	//}
+	//
+	//inst.movePlayer(plr.id, moveBytes, plr)
 
-	moveBytes := generateMovementBytes(moveData)
-
-	plr.UpdateMovement(finalData)
-
-	field, ok := server.fields[plr.mapID]
-
-	if !ok {
-		return
-	}
-
-	inst, err := field.getInstance(plr.inst.id)
-
+	res, err := proto.MakeResponse(&msg, mType)
 	if err != nil {
-		return
+		log.Println("DATA_RESPONSE_MOVEMENT_ERROR", err)
 	}
+	log.Println("DATA_RESPONSE_MOVEMENT", res)
 
-	inst.movePlayer(plr.id, moveBytes, plr)
+	server.sendMsgToAll(res, conn)
+
 }
 
 func (server Server) playerEmote(conn mnet.Client, reader mpacket.Reader) {

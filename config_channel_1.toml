@@ -6,12 +6,12 @@ password = "password"
 database = "maplestory"
 
 [channel]
-worldAddress = "192.168.219.103"
+worldAddress = "127.0.0.1"
 worldPort = "8584"
-listenAddress = "192.168.219.103"
+listenAddress = "0.0.0.0"
 listenPort = "8685"
-clientConnectionAddress = "192.168.219.103"
-packetQueueSize = 512
+clientConnectionAddress = "127.0.0.1"
+packetQueueSize = 1024
 maxPop = 250
 # The following should be set to zero when not testing on a local network environment
 latency = 0
