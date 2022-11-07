@@ -169,6 +169,8 @@ func (cs *channelServer) processEvent() {
 						e.Conn,
 						mpacket.NewReader(&e.Packet, time.Now().Unix()),
 						e.Protocol)
+				default:
+					log.Println("UNKNOWN", &e.Packet)
 				}
 			case mnet.Server:
 				switch e.Type {

@@ -2,7 +2,6 @@ package db
 
 import (
 	"database/sql"
-	"fmt"
 	"github.com/Hucaru/Valhalla/common/db/model"
 	"github.com/Hucaru/Valhalla/mnet"
 	"log"
@@ -16,8 +15,6 @@ var Maria *sql.DB
 func ConnectToDB(user, password, address, port, database string) error {
 	var err error
 	Maria, err = sql.Open("mysql", user+":"+password+"@tcp("+address+":"+port+")/"+database)
-	fmt.Println("DB", Maria)
-	fmt.Println("PARAMS", user, password, address, port, database)
 	if err != nil {
 		return err
 	}

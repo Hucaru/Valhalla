@@ -22,18 +22,18 @@ import (
 // HandleClientPacket data
 func (server *Server) HandleClientPacket(conn mnet.Client, tcpConn net.Conn, reader mpacket.Reader, msgProtocolType uint32) {
 
-	log.Println("DATA_BUFFER", reader.GetBuffer())
-
 	switch msgProtocolType {
 	case constant.C2P_RequestLoginUser:
+		log.Println("DATA_BUFFER_LOGIN", reader.GetBuffer())
 		server.playerConnect(conn, tcpConn, reader, msgProtocolType)
 		break
-	case constant.C2P_RequestMoveStart:
-	case constant.C2P_RequestMove:
-	case constant.C2P_RequestMoveEnd:
-	case constant.P2C_ReportMoveStart:
-	case constant.P2C_ReportMove:
-	case constant.P2C_ReportMoveEnd:
+	case constant.C2P_RequestMoveStart,
+		constant.C2P_RequestMove,
+		constant.C2P_RequestMoveEnd,
+		constant.P2C_ReportMoveStart,
+		constant.P2C_ReportMove,
+		constant.P2C_ReportMoveEnd:
+		log.Println("DATA_BUFFER_MOVEMENT", reader.GetBuffer())
 		server.playerMovement(conn, tcpConn, reader, msgProtocolType)
 		break
 	default:
@@ -130,7 +130,11 @@ func (server *Server) playerConnect(conn mnet.Client, tcpConn net.Conn, reader m
 	if err != nil || len(msg.UuId) == 0 {
 		log.Fatalln("Failed to parse data:", err)
 	}
+
 	conn.SetUid(msg.UuId)
+	plr := loadPlayer(conn, msg)
+	plr.rates = &server.rates
+	server.players = append(server.players, &plr)
 
 	acc, err := db.GetLoggedData(msg.UuId)
 
@@ -138,7 +142,6 @@ func (server *Server) playerConnect(conn mnet.Client, tcpConn net.Conn, reader m
 		log.Println("Inserting new user", msg.UuId)
 		go db.InsertNewAccount(msg.UuId, conn)
 	} else {
-		conn.SetAccountID(acc.AccountID)
 		err1 := db.UpdateLoginState(msg.UuId, true)
 		if err1 != nil {
 			log.Println("Unable to complete login for ", msg.UuId)
@@ -151,17 +154,14 @@ func (server *Server) playerConnect(conn mnet.Client, tcpConn net.Conn, reader m
 		}
 	}
 
-	plr := loadPlayer(conn, msg)
-	plr.rates = &server.rates
-	server.players = append(server.players, &plr)
-
 	res, err := proto.AccountResponse(&acc, mType)
 	if err != nil {
 		log.Println("DATA_RESPONSE_ERROR", err)
 	}
-	log.Println("DATA_RESPONSE", res)
+	log.Println("DATA_RESPONSE_LOGIN", res)
+	log.Println("PLAYER_ID_LOGIN", conn.GetUid())
 	//server.sendPrivateMsq(res, msg.UuId)
-	server.sendMsgToAll(res, conn)
+	go server.sendMsgToAll(res, conn)
 }
 
 func (server *Server) sendPrivateMsq(res mpacket.Packet, uID string) {
@@ -176,8 +176,8 @@ func (server *Server) sendPrivateMsq(res mpacket.Packet, uID string) {
 
 func (server *Server) sendMsgToAll(res mpacket.Packet, conn mnet.Client) {
 	for i := 0; i < len(server.players); i++ {
-		log.Println("PLAYER_ID", server.players[i].playerID)
 		if conn.GetUid() != server.players[i].conn.GetUid() {
+			log.Println("PLAYER_ID", server.players[i].playerID)
 			server.players[i].conn.Send(res)
 		}
 	}
@@ -220,44 +220,12 @@ func (server *Server) playerChangeChannel(conn mnet.Client, reader mpacket.Reade
 }
 
 func (server Server) playerMovement(conn mnet.Client, tcpConn net.Conn, reader mpacket.Reader, mType uint32) {
-	plr, err := server.players.getFromConn(conn)
-	if err != nil {
-		log.Println("Unable to get player from connection", conn)
-		return
-	}
+	log.Println("playerMovement")
 
 	msg, err := proto.GetRequestMovement(reader.GetBuffer())
 	if err != nil || len(msg.UuId) == 0 {
 		log.Fatalln("Failed to parse data:", err)
 	}
-
-	if plr.portalCount != reader.ReadByte() {
-		return
-	}
-
-	//moveData, finalData := parseMovement(reader)
-	//
-	//if !moveData.validateChar(plr) {
-	//	return
-	//}
-	//
-	//moveBytes := generateMovementBytes(moveData)
-	//
-	//plr.UpdateMovement(finalData)
-	//
-	//field, ok := server.fields[plr.mapID]
-	//
-	//if !ok {
-	//	return
-	//}
-
-	//inst, err := field.getInstance(plr.inst.id)
-	//
-	//if err != nil {
-	//	return
-	//}
-	//
-	//inst.movePlayer(plr.id, moveBytes, plr)
 
 	res, err := proto.MakeResponse(&msg, mType)
 	if err != nil {
@@ -265,7 +233,7 @@ func (server Server) playerMovement(conn mnet.Client, tcpConn net.Conn, reader m
 	}
 	log.Println("DATA_RESPONSE_MOVEMENT", res)
 
-	server.sendMsgToAll(res, conn)
+	go server.sendMsgToAll(res, conn)
 
 }
 
