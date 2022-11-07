@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"github.com/Hucaru/Valhalla/common/db"
 	"github.com/Hucaru/Valhalla/common/proto"
+	"github.com/Hucaru/Valhalla/meta-proto/go/mc_metadata"
+	proto2 "google.golang.org/protobuf/proto"
 	"log"
 	"net"
 	"strconv"
@@ -27,14 +29,17 @@ func (server *Server) HandleClientPacket(conn mnet.Client, tcpConn net.Conn, rea
 		log.Println("DATA_BUFFER_LOGIN", reader.GetBuffer())
 		server.playerConnect(conn, tcpConn, reader, msgProtocolType)
 		break
-	case constant.C2P_RequestMoveStart,
-		constant.C2P_RequestMove,
-		constant.C2P_RequestMoveEnd,
-		constant.P2C_ReportMoveStart,
-		constant.P2C_ReportMove,
-		constant.P2C_ReportMoveEnd:
+	case constant.C2P_RequestMoveStart:
+		log.Println("DATA_BUFFER_MOVEMENT_START", reader.GetBuffer())
+		server.playerMovementStart(conn, reader, msgProtocolType)
+		break
+	case constant.C2P_RequestMove:
 		log.Println("DATA_BUFFER_MOVEMENT", reader.GetBuffer())
-		server.playerMovement(conn, tcpConn, reader, msgProtocolType)
+		server.playerMovement(conn, reader, msgProtocolType)
+		break
+	case constant.C2P_RequestMoveEnd:
+		log.Println("DATA_BUFFER_MOVEMENT_END", reader.GetBuffer())
+		server.playerMovementEnd(conn, reader, msgProtocolType)
 		break
 	default:
 		fmt.Println("UNKNOWN MSG", reader)
@@ -132,7 +137,7 @@ func (server *Server) playerConnect(conn mnet.Client, tcpConn net.Conn, reader m
 	}
 
 	conn.SetUid(msg.UuId)
-	plr := loadPlayer(conn, msg)
+	plr := loadPlayer(conn, *msg)
 	plr.rates = &server.rates
 	server.players = append(server.players, &plr)
 
@@ -219,22 +224,47 @@ func (server *Server) playerChangeChannel(conn mnet.Client, reader mpacket.Reade
 	}
 }
 
-func (server Server) playerMovement(conn mnet.Client, tcpConn net.Conn, reader mpacket.Reader, mType uint32) {
-	log.Println("playerMovement")
+func (server *Server) playerMovementStart(conn mnet.Client, reader mpacket.Reader, mType uint32) {
 
-	msg, err := proto.GetRequestMovement(reader.GetBuffer())
-	if err != nil || len(msg.UuId) == 0 {
+	msg := mc_metadata.C2P_RequestMoveStart{}
+	err := proto.GetRequestMovement(reader.GetBuffer(), &msg)
+	if err != nil || len(msg.MovementData.UuId) == 0 {
 		log.Fatalln("Failed to parse data:", err)
 	}
 
-	res, err := proto.MakeResponse(&msg, mType)
+	server.makeMovementResponse(conn, &msg, mType)
+}
+
+func (server *Server) playerMovementEnd(conn mnet.Client, reader mpacket.Reader, mType uint32) {
+
+	msg := mc_metadata.C2P_RequestMoveEnd{}
+	err := proto.GetRequestMovement(reader.GetBuffer(), &msg)
+	if err != nil || len(msg.MovementData.UuId) == 0 {
+		log.Fatalln("Failed to parse data:", err)
+	}
+
+	server.makeMovementResponse(conn, &msg, mType)
+}
+
+func (server *Server) playerMovement(conn mnet.Client, reader mpacket.Reader, mType uint32) {
+
+	msg := mc_metadata.C2P_RequestMove{}
+	err := proto.GetRequestMovement(reader.GetBuffer(), &msg)
+	if err != nil || len(msg.MovementData.UuId) == 0 {
+		log.Fatalln("Failed to parse data:", err)
+	}
+
+	server.makeMovementResponse(conn, &msg, mType)
+}
+
+func (server *Server) makeMovementResponse(conn mnet.Client, msg proto2.Message, mType uint32) {
+	res, err := proto.MakeResponse(msg, mType)
 	if err != nil {
 		log.Println("DATA_RESPONSE_MOVEMENT_ERROR", err)
 	}
 	log.Println("DATA_RESPONSE_MOVEMENT", res)
 
 	go server.sendMsgToAll(res, conn)
-
 }
 
 func (server Server) playerEmote(conn mnet.Client, reader mpacket.Reader) {
@@ -269,7 +299,7 @@ func (server Server) playerEmote(conn mnet.Client, reader mpacket.Reader) {
 	inst.sendExcept(packetPlayerEmoticon(plr.id, emote), plr.conn)
 }
 
-func (server Server) playerUseMysticDoor(conn mnet.Client, reader mpacket.Reader) {
+func (server *Server) playerUseMysticDoor(conn mnet.Client, reader mpacket.Reader) {
 	// doorID := reader.ReadInt32()
 	// fromTown := reader.ReadBool()
 }
@@ -301,7 +331,7 @@ func (server Server) playerAddStatPoint(conn mnet.Client, reader mpacket.Reader)
 	}
 }
 
-func (server Server) playerRequestAvatarInfoWindow(conn mnet.Client, reader mpacket.Reader) {
+func (server *Server) playerRequestAvatarInfoWindow(conn mnet.Client, reader mpacket.Reader) {
 	plr, err := server.players.getFromID(reader.ReadInt32())
 
 	if err != nil {
@@ -311,7 +341,7 @@ func (server Server) playerRequestAvatarInfoWindow(conn mnet.Client, reader mpac
 	conn.Send(packetPlayerAvatarSummaryWindow(plr.id, *plr))
 }
 
-func (server Server) playerPassiveRegen(conn mnet.Client, reader mpacket.Reader) {
+func (server *Server) playerPassiveRegen(conn mnet.Client, reader mpacket.Reader) {
 	reader.ReadBytes(4) //?
 
 	hp := reader.ReadInt16()

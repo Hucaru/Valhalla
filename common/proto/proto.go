@@ -9,26 +9,21 @@ import (
 	"log"
 )
 
-func GetRequestLoginUser(buff []byte) (mc_metadata.C2P_RequestLoginUser, error) {
+func GetRequestLoginUser(buff []byte) (*mc_metadata.C2P_RequestLoginUser, error) {
 	msg := &mc_metadata.C2P_RequestLoginUser{}
 	if err := proto.Unmarshal(buff, msg); err != nil || len(msg.UuId) == 0 {
 		log.Fatalln("Failed to parse data:", err)
-		return mc_metadata.C2P_RequestLoginUser{}, err
+		return nil, err
 	}
-	return *msg, nil
+	return msg, nil
 }
 
-func GetRequestMovement(buff []byte) (mc_metadata.Movement, error) {
-	msg := &mc_metadata.Movement{}
-	if err := proto.Unmarshal(buff, msg); err != nil || len(msg.UuId) == 0 {
-		log.Fatalln("Failed to parse data:", err)
-		return mc_metadata.Movement{}, err
-	}
-	return *msg, nil
+func GetRequestMovement(buff []byte, msg proto.Message) error {
+	return proto.Unmarshal(buff, msg)
 }
 
 func AccountResponse(acc *model.Account, msgType uint32) ([]byte, error) {
-	res, err := MakeResponse(&mc_metadata.C2P_RequestLoginUser{
+	res, err := MakeResponse(&mc_metadata.P2C_ResultLoginUser{
 		UuId:      acc.UId,
 		SpawnPosX: acc.PosX,
 		SpawnPosY: acc.PosY,
