@@ -3,10 +3,10 @@ package login
 import (
 	"crypto/sha512"
 	"encoding/hex"
+	"github.com/Hucaru/Valhalla/common/db"
 	"log"
 	"strings"
 
-	"github.com/Hucaru/Valhalla/common"
 	"github.com/Hucaru/Valhalla/common/opcode"
 	"github.com/Hucaru/Valhalla/constant"
 	"github.com/Hucaru/Valhalla/internal"
@@ -58,7 +58,7 @@ func (server *Server) handleLoginRequest(conn mnet.Client, reader mpacket.Reader
 	var isBanned int
 	var adminLevel int
 
-	err := common.DB.QueryRow("SELECT accountID, username, password, gender, isLogedIn, isBanned, adminLevel FROM accounts WHERE username=?", username).
+	err := db.Maria.QueryRow("SELECT accountID, username, password, gender, isLogedIn, isBanned, adminLevel FROM accounts WHERE username=?", username).
 		Scan(&accountID, &user, &databasePassword, &gender, &isLogedIn, &isBanned, &adminLevel)
 
 	result := byte(0x00)
@@ -97,7 +97,7 @@ func (server *Server) handlePinRegistration(conn mnet.Client, reader mpacket.Rea
 	accountID := conn.GetAccountID()
 	pin := string(reader.GetRestAsBytes())
 
-	_, err := common.DB.Exec("UPDATE accounts SET pin=? WHERE accountID=?", pin, accountID)
+	_, err := db.Maria.Exec("UPDATE accounts SET pin=? WHERE accountID=?", pin, accountID)
 	if err != nil {
 		log.Println("handlePinRegistration database pin update issue for accountID:", accountID, err)
 	}
@@ -114,7 +114,7 @@ func (server *Server) handleGoodLogin(conn mnet.Client, reader mpacket.Reader) {
 		var pinDB string
 		var authDone bool
 
-		err := common.DB.QueryRow("SELECT pin FROM accounts WHERE accountID=?", accountID).
+		err := db.Maria.QueryRow("SELECT pin FROM accounts WHERE accountID=?", accountID).
 			Scan(&pinDB)
 
 		if err != nil {
@@ -155,7 +155,7 @@ func (server *Server) handleGoodLogin(conn mnet.Client, reader mpacket.Reader) {
 	}
 
 	conn.SetLogedIn(true)
-	_, err := common.DB.Exec("UPDATE accounts set isLogedIn=1 WHERE accountID=?", accountID)
+	_, err := db.Maria.Exec("UPDATE accounts set isLogedIn=1 WHERE accountID=?", accountID)
 
 	if err != nil {
 		log.Println("Database error with approving login of accountID", accountID, err)
@@ -218,7 +218,7 @@ func (server *Server) handleNameCheck(conn mnet.Client, reader mpacket.Reader) {
 	newCharName := reader.ReadString(reader.ReadInt16())
 
 	var nameFound int
-	err := common.DB.QueryRow("SELECT count(*) name FROM characters WHERE BINARY name=?", newCharName).
+	err := db.Maria.QueryRow("SELECT count(*) name FROM characters WHERE BINARY name=?", newCharName).
 		Scan(&nameFound)
 
 	if err != nil {
@@ -248,7 +248,7 @@ func (server *Server) handleNewCharacter(conn mnet.Client, reader mpacket.Reader
 
 	var counter int
 
-	err := common.DB.QueryRow("SELECT count(*) FROM characters where name=? and worldID=?", name, conn.GetWorldID()).Scan(&counter)
+	err := db.Maria.QueryRow("SELECT count(*) FROM characters where name=? and worldID=?", name, conn.GetWorldID()).Scan(&counter)
 
 	if err != nil {
 		panic(err)
@@ -285,7 +285,7 @@ func (server *Server) handleNewCharacter(conn mnet.Client, reader mpacket.Reader
 	}
 
 	if valid {
-		res, err := common.DB.Exec("INSERT INTO characters (name, accountID, worldID, face, hair, skin, gender, str, dex, intt, luk) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+		res, err := db.Maria.Exec("INSERT INTO characters (name, accountID, worldID, face, hair, skin, gender, str, dex, intt, luk) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
 			name, conn.GetAccountID(), conn.GetWorldID(), face, hair+hairColour, skin, conn.GetGender(), str, dex, intelligence, luk)
 
 		if err != nil {
@@ -364,8 +364,8 @@ func (server *Server) handleDeleteCharacter(conn mnet.Client, reader mpacket.Rea
 	var storedDob int32
 	var charCount int
 
-	err := common.DB.QueryRow("SELECT dob FROM accounts where accountID=?", conn.GetAccountID()).Scan(&storedDob)
-	err = common.DB.QueryRow("SELECT count(*) FROM characters where accountID=? AND id=?", conn.GetAccountID(), charID).Scan(&charCount)
+	err := db.Maria.QueryRow("SELECT dob FROM accounts where accountID=?", conn.GetAccountID()).Scan(&storedDob)
+	err = db.Maria.QueryRow("SELECT count(*) FROM characters where accountID=? AND id=?", conn.GetAccountID(), charID).Scan(&charCount)
 
 	if err != nil {
 		panic(err)
@@ -380,7 +380,7 @@ func (server *Server) handleDeleteCharacter(conn mnet.Client, reader mpacket.Rea
 	}
 
 	if dob == storedDob {
-		records, err := common.DB.Query("DELETE FROM characters where id=?", charID)
+		records, err := db.Maria.Query("DELETE FROM characters where id=?", charID)
 
 		defer records.Close()
 
@@ -400,7 +400,7 @@ func (server *Server) handleSelectCharacter(conn mnet.Client, reader mpacket.Rea
 
 	var charCount int
 
-	err := common.DB.QueryRow("SELECT count(*) FROM characters where accountID=? AND id=?", conn.GetAccountID(), charID).Scan(&charCount)
+	err := db.Maria.QueryRow("SELECT count(*) FROM characters where accountID=? AND id=?", conn.GetAccountID(), charID).Scan(&charCount)
 
 	if err != nil {
 		panic(err)
@@ -408,7 +408,7 @@ func (server *Server) handleSelectCharacter(conn mnet.Client, reader mpacket.Rea
 
 	if charCount == 1 {
 		channel := server.worlds[conn.GetWorldID()].Channels[conn.GetChannelID()]
-		_, err := common.DB.Exec("UPDATE characters SET migrationID=? WHERE id=?", conn.GetChannelID(), charID)
+		_, err := db.Maria.Exec("UPDATE characters SET migrationID=? WHERE id=?", conn.GetChannelID(), charID)
 
 		if err != nil {
 			panic(err)
@@ -421,7 +421,7 @@ func (server *Server) handleSelectCharacter(conn mnet.Client, reader mpacket.Rea
 }
 
 func (server *Server) addCharacterItem(characterID int64, itemID int32, slot int32, creatorName string) {
-	_, err := common.DB.Exec("INSERT INTO items (characterID, itemID, slotNumber, creatorName) VALUES (?, ?, ?, ?)", characterID, itemID, slot, creatorName)
+	_, err := db.Maria.Exec("INSERT INTO items (characterID, itemID, slotNumber, creatorName) VALUES (?, ?, ?, ?)", characterID, itemID, slot, creatorName)
 
 	if err != nil {
 		panic(err)

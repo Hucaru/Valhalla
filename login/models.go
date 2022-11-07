@@ -1,10 +1,10 @@
 package login
 
 import (
+	"github.com/Hucaru/Valhalla/common/db"
 	"log"
 	"math"
 
-	"github.com/Hucaru/Valhalla/common"
 	"github.com/Hucaru/Valhalla/mpacket"
 	"github.com/Hucaru/Valhalla/nx"
 )
@@ -87,7 +87,7 @@ func (d player) save() error {
 
 	d.mapPos = 0
 
-	_, err := common.DB.Exec(query,
+	_, err := db.Maria.Exec(query,
 		d.skin, d.hair, d.face, d.level, d.job, d.str, d.dex, d.intt, d.luk, d.hp, d.maxHP, d.mp,
 		d.maxMP, d.ap, d.sp, d.exp, d.fame, d.mapID, d.mapPos, d.id)
 
@@ -104,7 +104,7 @@ func getCharactersFromAccountWorldID(accountID int32, worldID byte) []player {
 	filter := "id,accountID,worldID,name,gender,skin,hair,face,level,job,str,dex,intt," +
 		"luk,hp,maxHP,mp,maxMP,ap,sp,exp,fame,mapID,mapPos"
 
-	chars, err := common.DB.Query("SELECT "+filter+" FROM characters WHERE accountID=? AND worldID=?", accountID, worldID)
+	chars, err := db.Maria.Query("SELECT "+filter+" FROM characters WHERE accountID=? AND worldID=?", accountID, worldID)
 
 	if err != nil {
 		log.Println(err)
@@ -136,7 +136,7 @@ func loadPlayerFromID(id int32) player {
 	filter := "id,accountID,worldID,name,gender,skin,hair,face,level,job,str,dex,intt," +
 		"luk,hp,maxHP,mp,maxMP,ap,sp,exp,fame,mapID,mapPos"
 
-	err := common.DB.QueryRow("SELECT "+filter+" FROM characters where id=?", id).Scan(&c.id,
+	err := db.Maria.QueryRow("SELECT "+filter+" FROM characters where id=?", id).Scan(&c.id,
 		&c.accountID, &c.worldID, &c.name, &c.gender, &c.skin, &c.hair, &c.face,
 		&c.level, &c.job, &c.str, &c.dex, &c.intt, &c.luk, &c.hp, &c.maxHP, &c.mp,
 		&c.maxMP, &c.ap, &c.sp, &c.exp, &c.fame, &c.mapID, &c.mapPos)
@@ -231,7 +231,7 @@ func (v item) save(charID int32) (bool, error) {
 
 	query := "INSERT into items (" + props + ") VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
 
-	_, err := common.DB.Exec(query,
+	_, err := db.Maria.Exec(query,
 		charID, v.invID, v.id, v.slotID, v.amount, v.flag, v.upgradeSlots, v.scrollLevel,
 		v.str, v.dex, v.intt, v.luk, v.hp, v.mp, v.watk, v.matk, v.wdef, v.mdef, v.accuracy, v.avoid, v.hands, v.speed, v.jump,
 		v.expireTime, v.creatorName)
@@ -245,7 +245,7 @@ func (v item) save(charID int32) (bool, error) {
 
 func loadEquipsFromDb(charID int32) []item {
 	filter := "inventoryID,itemID,slotNumber,amount,flag,upgradeSlots,level,str,dex,intt,luk,hp,mp,watk,matk,wdef,mdef,accuracy,avoid,hands,speed,jump,expireTime,creatorName"
-	row, err := common.DB.Query("SELECT "+filter+" FROM items WHERE characterID=?", charID)
+	row, err := db.Maria.Query("SELECT "+filter+" FROM items WHERE characterID=?", charID)
 
 	if err != nil {
 		panic(err)

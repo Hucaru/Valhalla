@@ -3,13 +3,13 @@ package channel
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/Hucaru/Valhalla/common/db"
 	"io/ioutil"
 	"math"
 	"math/rand"
 	"os"
 	"time"
 
-	"github.com/Hucaru/Valhalla/common"
 	"github.com/Hucaru/Valhalla/constant"
 	"github.com/Hucaru/Valhalla/mpacket"
 	"github.com/Hucaru/Valhalla/nx"
@@ -90,7 +90,7 @@ const neverExpire int64 = 150842304000000000
 
 func loadInventoryFromDb(charID int32) ([]item, []item, []item, []item, []item) {
 	filter := "id,inventoryID,itemID,slotNumber,amount,flag,upgradeSlots,level,str,dex,intt,luk,hp,mp,watk,matk,wdef,mdef,accuracy,avoid,hands,speed,jump,expireTime,creatorName"
-	row, err := common.DB.Query("SELECT "+filter+" FROM items WHERE characterID=?", charID)
+	row, err := db.Maria.Query("SELECT "+filter+" FROM items WHERE characterID=?", charID)
 
 	if err != nil {
 		panic(err)
@@ -316,7 +316,7 @@ func (v *item) save(charID int32) (bool, error) {
 
 		query := "INSERT into items (" + props + ") VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
 
-		res, err := common.DB.Exec(query,
+		res, err := db.Maria.Exec(query,
 			charID, v.invID, v.id, v.slotID, v.amount, v.flag, v.upgradeSlots, v.scrollLevel,
 			v.str, v.dex, v.intt, v.luk, v.hp, v.mp, v.watk, v.matk, v.wdef, v.mdef, v.accuracy, v.avoid, v.hands, v.speed, v.jump,
 			v.expireTime, v.creatorName)
@@ -337,7 +337,7 @@ func (v *item) save(charID int32) (bool, error) {
 
 		query := "UPDATE items SET " + props + " WHERE id=?"
 
-		_, err := common.DB.Exec(query,
+		_, err := db.Maria.Exec(query,
 			v.slotID, v.amount, v.flag, v.upgradeSlots, v.scrollLevel,
 			v.str, v.dex, v.intt, v.luk, v.hp, v.mp, v.watk, v.matk, v.wdef, v.mdef, v.accuracy, v.avoid, v.hands, v.speed, v.jump,
 			v.expireTime, v.dbID)
@@ -351,7 +351,7 @@ func (v *item) save(charID int32) (bool, error) {
 
 func (v item) delete() error {
 	query := "DELETE FROM `items` WHERE id=?"
-	_, err := common.DB.Exec(query, v.dbID)
+	_, err := db.Maria.Exec(query, v.dbID)
 
 	if err != nil {
 		return err
