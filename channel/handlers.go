@@ -244,7 +244,7 @@ func (server *Server) playerMovementStart(conn mnet.Client, reader mpacket.Reade
 			InterpTime:           msg.MovementData.InterpTime,
 		},
 	}
-	server.makeMovementResponse(conn, &res, mType)
+	server.makeMovementResponse(conn, &res, constant.P2C_ReportMoveStart)
 }
 
 func (server *Server) playerMovementEnd(conn mnet.Client, reader mpacket.Reader, mType uint32) {
@@ -268,7 +268,7 @@ func (server *Server) playerMovementEnd(conn mnet.Client, reader mpacket.Reader,
 		},
 	}
 
-	server.makeMovementResponse(conn, &res, mType)
+	server.makeMovementResponse(conn, &res, constant.P2C_ReportMoveEnd)
 }
 
 func (server *Server) playerMovement(conn mnet.Client, reader mpacket.Reader, mType uint32) {
@@ -292,7 +292,7 @@ func (server *Server) playerMovement(conn mnet.Client, reader mpacket.Reader, mT
 		},
 	}
 
-	server.makeMovementResponse(conn, &res, mType)
+	server.makeMovementResponse(conn, &res, constant.P2C_ReportMove)
 }
 
 func (server *Server) makeMovementResponse(conn mnet.Client, msg proto2.Message, mType uint32) {
