@@ -166,7 +166,7 @@ func (server *Server) playerConnect(conn mnet.Client, tcpConn net.Conn, reader m
 	log.Println("DATA_RESPONSE_LOGIN", res)
 	log.Println("PLAYER_ID_LOGIN", conn.GetUid())
 	//server.sendPrivateMsq(res, msg.UuId)
-	go server.sendMsgToAll(res, conn)
+	//go server.sendMsgToAll(res, conn)
 }
 
 func (server *Server) sendPrivateMsq(res mpacket.Packet, uID string) {
