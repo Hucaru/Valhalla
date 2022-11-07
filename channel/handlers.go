@@ -226,35 +226,73 @@ func (server *Server) playerChangeChannel(conn mnet.Client, reader mpacket.Reade
 
 func (server *Server) playerMovementStart(conn mnet.Client, reader mpacket.Reader, mType uint32) {
 
-	msg := mc_metadata.P2C_ReportMoveStart{}
+	msg := mc_metadata.C2P_RequestMoveStart{}
 	err := proto.GetRequestMovement(reader.GetBuffer(), &msg)
 	if err != nil || len(msg.MovementData.UuId) == 0 {
 		log.Fatalln("Failed to parse data:", err)
 	}
 
-	server.makeMovementResponse(conn, &msg, mType)
+	res := mc_metadata.P2C_ReportMoveStart{
+		MovementData: &mc_metadata.Movement{
+			UuId:                 msg.MovementData.UuId,
+			DestinationX:         msg.MovementData.DestinationX,
+			DestinationY:         msg.MovementData.DestinationY,
+			DestinationZ:         msg.MovementData.DestinationZ,
+			DeatinationRotationX: msg.MovementData.DeatinationRotationX,
+			DeatinationRotationY: msg.MovementData.DeatinationRotationY,
+			DeatinationRotationZ: msg.MovementData.DeatinationRotationZ,
+			InterpTime:           msg.MovementData.InterpTime,
+		},
+	}
+	server.makeMovementResponse(conn, &res, mType)
 }
 
 func (server *Server) playerMovementEnd(conn mnet.Client, reader mpacket.Reader, mType uint32) {
 
-	msg := mc_metadata.P2C_ReportMoveEnd{}
+	msg := mc_metadata.C2P_RequestMoveEnd{}
 	err := proto.GetRequestMovement(reader.GetBuffer(), &msg)
 	if err != nil || len(msg.MovementData.UuId) == 0 {
 		log.Fatalln("Failed to parse data:", err)
 	}
 
-	server.makeMovementResponse(conn, &msg, mType)
+	res := mc_metadata.P2C_ReportMoveEnd{
+		MovementData: &mc_metadata.Movement{
+			UuId:                 msg.MovementData.UuId,
+			DestinationX:         msg.MovementData.DestinationX,
+			DestinationY:         msg.MovementData.DestinationY,
+			DestinationZ:         msg.MovementData.DestinationZ,
+			DeatinationRotationX: msg.MovementData.DeatinationRotationX,
+			DeatinationRotationY: msg.MovementData.DeatinationRotationY,
+			DeatinationRotationZ: msg.MovementData.DeatinationRotationZ,
+			InterpTime:           msg.MovementData.InterpTime,
+		},
+	}
+
+	server.makeMovementResponse(conn, &res, mType)
 }
 
 func (server *Server) playerMovement(conn mnet.Client, reader mpacket.Reader, mType uint32) {
 
-	msg := mc_metadata.P2C_ReportMove{}
+	msg := mc_metadata.C2P_RequestMove{}
 	err := proto.GetRequestMovement(reader.GetBuffer(), &msg)
 	if err != nil || len(msg.MovementData.UuId) == 0 {
 		log.Fatalln("Failed to parse data:", err)
 	}
 
-	server.makeMovementResponse(conn, &msg, mType)
+	res := mc_metadata.P2C_ReportMove{
+		MovementData: &mc_metadata.Movement{
+			UuId:                 msg.MovementData.UuId,
+			DestinationX:         msg.MovementData.DestinationX,
+			DestinationY:         msg.MovementData.DestinationY,
+			DestinationZ:         msg.MovementData.DestinationZ,
+			DeatinationRotationX: msg.MovementData.DeatinationRotationX,
+			DeatinationRotationY: msg.MovementData.DeatinationRotationY,
+			DeatinationRotationZ: msg.MovementData.DeatinationRotationZ,
+			InterpTime:           msg.MovementData.InterpTime,
+		},
+	}
+
+	server.makeMovementResponse(conn, &res, mType)
 }
 
 func (server *Server) makeMovementResponse(conn mnet.Client, msg proto2.Message, mType uint32) {
