@@ -226,7 +226,7 @@ func (server *Server) playerChangeChannel(conn mnet.Client, reader mpacket.Reade
 
 func (server *Server) playerMovementStart(conn mnet.Client, reader mpacket.Reader, mType uint32) {
 
-	msg := mc_metadata.C2P_RequestMoveStart{}
+	msg := mc_metadata.P2C_ReportMoveStart{}
 	err := proto.GetRequestMovement(reader.GetBuffer(), &msg)
 	if err != nil || len(msg.MovementData.UuId) == 0 {
 		log.Fatalln("Failed to parse data:", err)
@@ -237,7 +237,7 @@ func (server *Server) playerMovementStart(conn mnet.Client, reader mpacket.Reade
 
 func (server *Server) playerMovementEnd(conn mnet.Client, reader mpacket.Reader, mType uint32) {
 
-	msg := mc_metadata.C2P_RequestMoveEnd{}
+	msg := mc_metadata.P2C_ReportMoveEnd{}
 	err := proto.GetRequestMovement(reader.GetBuffer(), &msg)
 	if err != nil || len(msg.MovementData.UuId) == 0 {
 		log.Fatalln("Failed to parse data:", err)
@@ -248,7 +248,7 @@ func (server *Server) playerMovementEnd(conn mnet.Client, reader mpacket.Reader,
 
 func (server *Server) playerMovement(conn mnet.Client, reader mpacket.Reader, mType uint32) {
 
-	msg := mc_metadata.C2P_RequestMove{}
+	msg := mc_metadata.P2C_ReportMove{}
 	err := proto.GetRequestMovement(reader.GetBuffer(), &msg)
 	if err != nil || len(msg.MovementData.UuId) == 0 {
 		log.Fatalln("Failed to parse data:", err)
