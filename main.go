@@ -28,22 +28,22 @@ func main() {
 	//
 	log.Println("TYPE", *typePtr)
 
-	s := newChannelServer(*configPtr)
-	s.run()
+	//s := newChannelServer(*configPtr)
+	//s.run()
 
-	//switch *typePtr {
-	//case "login":
-	//	s := newLoginServer(*configPtr)
-	//	s.run()
-	//case "world":
-	//	s := newWorldServer(*configPtr)
-	//	s.run()
-	//case "channel":
-	//	s := newChannelServer(*configPtr)
-	//	s.run()
-	//default:
-	//	log.Println("Unknown server type:", typePtr)
-	//}
+	switch *typePtr {
+	case "login":
+		s := newLoginServer(*configPtr)
+		s.run()
+	case "world":
+		s := newWorldServer(*configPtr)
+		s.run()
+	case "channel":
+		s := newChannelServer(*configPtr)
+		s.run()
+	default:
+		log.Println("Unknown server type:", typePtr)
+	}
 }
 
 func parseFlags() {
