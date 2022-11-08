@@ -164,6 +164,20 @@ func (bc *baseConn) Writer() {
 	}
 }
 
+func (bc *baseConn) MetaWriter() {
+	for {
+		p, ok := <-bc.eSend
+		if !ok {
+			return
+		}
+
+		tmp := make(mpacket.Packet, len(p))
+		copy(tmp, p)
+
+		bc.Conn.Write(tmp)
+	}
+}
+
 func (bc *baseConn) Send(p mpacket.Packet) {
 	if bc.closed {
 		return

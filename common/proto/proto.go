@@ -23,7 +23,7 @@ func GetRequestMovement(buff []byte, msg proto.Message) error {
 }
 
 func AccountResponse(acc *model.Account, msgType uint32) ([]byte, error) {
-	res, err := MakeResponse(&mc_metadata.P2C_ResultLoginUser{
+	res, err := MakeResponse(&mc_metadata.P2C_ReportLoginUser{
 		UuId:      acc.UId,
 		SpawnPosX: acc.PosX,
 		SpawnPosY: acc.PosY,

@@ -31,15 +31,15 @@ func (server *Server) HandleClientPacket(conn mnet.Client, tcpConn net.Conn, rea
 		break
 	case constant.C2P_RequestMoveStart:
 		log.Println("DATA_BUFFER_MOVEMENT_START", reader.GetBuffer())
-		server.playerMovementStart(conn, reader, msgProtocolType)
+		server.playerMovementStart(conn, reader)
 		break
 	case constant.C2P_RequestMove:
 		log.Println("DATA_BUFFER_MOVEMENT", reader.GetBuffer())
-		server.playerMovement(conn, reader, msgProtocolType)
+		server.playerMovement(conn, reader)
 		break
 	case constant.C2P_RequestMoveEnd:
 		log.Println("DATA_BUFFER_MOVEMENT_END", reader.GetBuffer())
-		server.playerMovementEnd(conn, reader, msgProtocolType)
+		server.playerMovementEnd(conn, reader)
 		break
 	default:
 		fmt.Println("UNKNOWN MSG", reader)
@@ -165,8 +165,8 @@ func (server *Server) playerConnect(conn mnet.Client, tcpConn net.Conn, reader m
 	}
 	log.Println("DATA_RESPONSE_LOGIN", res)
 	log.Println("PLAYER_ID_LOGIN", conn.GetUid())
-	//server.sendPrivateMsq(res, msg.UuId)
-	//go server.sendMsgToAll(res, conn)
+
+	server.sendMsgToAll(res, conn)
 }
 
 func (server *Server) sendPrivateMsq(res mpacket.Packet, uID string) {
@@ -224,7 +224,7 @@ func (server *Server) playerChangeChannel(conn mnet.Client, reader mpacket.Reade
 	}
 }
 
-func (server *Server) playerMovementStart(conn mnet.Client, reader mpacket.Reader, mType uint32) {
+func (server *Server) playerMovementStart(conn mnet.Client, reader mpacket.Reader) {
 
 	msg := mc_metadata.C2P_RequestMoveStart{}
 	err := proto.GetRequestMovement(reader.GetBuffer(), &msg)
@@ -247,7 +247,7 @@ func (server *Server) playerMovementStart(conn mnet.Client, reader mpacket.Reade
 	server.makeMovementResponse(conn, &res, constant.P2C_ReportMoveStart)
 }
 
-func (server *Server) playerMovementEnd(conn mnet.Client, reader mpacket.Reader, mType uint32) {
+func (server *Server) playerMovementEnd(conn mnet.Client, reader mpacket.Reader) {
 
 	msg := mc_metadata.C2P_RequestMoveEnd{}
 	err := proto.GetRequestMovement(reader.GetBuffer(), &msg)
@@ -271,7 +271,7 @@ func (server *Server) playerMovementEnd(conn mnet.Client, reader mpacket.Reader,
 	server.makeMovementResponse(conn, &res, constant.P2C_ReportMoveEnd)
 }
 
-func (server *Server) playerMovement(conn mnet.Client, reader mpacket.Reader, mType uint32) {
+func (server *Server) playerMovement(conn mnet.Client, reader mpacket.Reader) {
 
 	msg := mc_metadata.C2P_RequestMove{}
 	err := proto.GetRequestMovement(reader.GetBuffer(), &msg)
@@ -302,7 +302,7 @@ func (server *Server) makeMovementResponse(conn mnet.Client, msg proto2.Message,
 	}
 	log.Println("DATA_RESPONSE_MOVEMENT", res)
 
-	go server.sendMsgToAll(res, conn)
+	server.sendMsgToAll(res, conn)
 }
 
 func (server Server) playerEmote(conn mnet.Client, reader mpacket.Reader) {

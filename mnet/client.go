@@ -76,15 +76,12 @@ func NewClient(conn net.Conn, eRecv chan *Event, queueSize int, keySend, keyRecv
 	return c
 }
 
-func NewClientMeta(conn net.Conn, eRecv chan *Event, queueSize int, keySend, keyRecv [4]byte, latency, jitter int) *client {
+func NewClientMeta(conn net.Conn, eRecv chan *Event, queueSize int, latency, jitter int) *client {
 	c := &client{}
 	c.Conn = conn
 
 	c.eSend = make(chan mpacket.Packet, queueSize)
 	c.eRecv = eRecv
-
-	c.cryptSend = crypt.New(keySend, constant.MapleVersion)
-	c.cryptRecv = crypt.New(keyRecv, constant.MapleVersion)
 
 	c.reader = func() {
 		clientReaderMeta(c, c.eRecv, constant.MetaClientHeaderSize)
