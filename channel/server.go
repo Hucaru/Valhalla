@@ -4,6 +4,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"github.com/Hucaru/Valhalla/common/db"
+	"github.com/Hucaru/Valhalla/common/db/model"
 	"github.com/Hucaru/Valhalla/constant"
 	"github.com/Hucaru/Valhalla/meta-proto/go/mc_metadata"
 	"google.golang.org/protobuf/proto"
@@ -104,6 +105,7 @@ type Server struct {
 	eventScriptStore *scriptStore
 	parties          map[int32]*party
 	rates            rates
+	account          *model.Account
 }
 
 // Initialize the server

@@ -23,6 +23,15 @@ const (
 	P2C_ResultLoginUserError = 90
 )
 
+const (
+	PosX = 2000.0
+	PosY = -3441.0
+	PosZ = 664.9
+	RotX = 0.0
+	RotY = 0.0
+	RotZ = 0.0
+)
+
 // Generic Constants
 const (
 	MapleVersion          = 28

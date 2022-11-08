@@ -22,7 +22,7 @@ func GetRequestMovement(buff []byte, msg proto.Message) error {
 	return proto.Unmarshal(buff, msg)
 }
 
-func AccountResponse(acc *model.Account, msgType uint32) ([]byte, error) {
+func AccountResponseToAll(acc *model.Account, msgType uint32) ([]byte, error) {
 	res, err := MakeResponse(&mc_metadata.P2C_ReportLoginUser{
 		UuId:      acc.UId,
 		SpawnPosX: acc.PosX,
@@ -35,6 +35,31 @@ func AccountResponse(acc *model.Account, msgType uint32) ([]byte, error) {
 
 	acc = nil
 	return res, err
+}
+
+func GetResultUser(acc *model.Account) *mc_metadata.P2C_ResultLoginUser {
+	return &mc_metadata.P2C_ResultLoginUser{
+		UuId:        acc.UId,
+		SpawnPosX:   acc.PosX,
+		SpawnPosY:   acc.PosY,
+		SpawnPosZ:   acc.PosZ,
+		SpawnRotX:   acc.RotX,
+		SpawnRotY:   acc.RotY,
+		SpawnRotZ:   acc.RotZ,
+		LoggedUsers: []*mc_metadata.P2C_ReportLoginUser{},
+	}
+}
+
+func GetLoggedUsers(acc *model.Account) *mc_metadata.P2C_ReportLoginUser {
+	return &mc_metadata.P2C_ReportLoginUser{
+		UuId:      acc.UId,
+		SpawnPosX: acc.PosX,
+		SpawnPosY: acc.PosY,
+		SpawnPosZ: acc.PosZ,
+		SpawnRotX: acc.RotX,
+		SpawnRotY: acc.RotY,
+		SpawnRotZ: acc.RotZ,
+	}
 }
 
 func ErrorLoginResponse(_err string, uID string) ([]byte, error) {
@@ -52,6 +77,7 @@ func MakeResponse(msg proto.Message, msgType uint32) ([]byte, error) {
 	}
 
 	result := make([]byte, 0)
+
 	h := make([]byte, 0)
 	h = append(h, binary.BigEndian.AppendUint32(h, uint32(len(out)))...)
 	h = binary.BigEndian.AppendUint32(h, msgType)

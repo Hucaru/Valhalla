@@ -3,8 +3,10 @@ package db
 import (
 	"database/sql"
 	"github.com/Hucaru/Valhalla/common/db/model"
+	"github.com/Hucaru/Valhalla/constant"
 	"github.com/Hucaru/Valhalla/mnet"
 	"log"
+	"time"
 )
 import _ "github.com/go-sql-driver/mysql"
 
@@ -36,12 +38,12 @@ func GetLoggedData(uUID string) (model.Account, error) {
 		AccountID:   -1,
 		CharacterID: -1,
 		Time:        0,
-		PosX:        0,
-		PosY:        0,
-		PosZ:        0,
-		RotX:        0,
-		RotY:        0,
-		RotZ:        0,
+		PosX:        constant.PosX,
+		PosY:        constant.PosY,
+		PosZ:        constant.PosZ,
+		RotX:        constant.RotX,
+		RotY:        constant.RotY,
+		RotZ:        constant.RotZ,
 	}
 
 	err := Maria.QueryRow(
@@ -76,14 +78,26 @@ func InsertNewAccount(uUid string, conn mnet.Client) {
 	accountID, err := res.LastInsertId()
 	conn.SetAccountID(int32(accountID))
 
-	res, err = Maria.Exec("INSERT INTO characters "+
+	cRes, cErr := Maria.Exec("INSERT INTO characters "+
 		"(accountID, worldID, name, gender, skin, hair, face, str, dex, intt, luk) "+
 		"VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
 		accountID, 1, "test", 1, 1, 1, 1, 1, 1, 1, 1)
 
-	if err != nil {
-		log.Println("INSERTING ERROR", err)
-		panic(err)
+	if cErr != nil {
+		log.Println("INSERTING ERROR", cErr)
+		panic(cErr)
+	}
+
+	characterID, err := cRes.LastInsertId()
+
+	_, mErr := Maria.Exec("INSERT INTO movement "+
+		"(characterID, pos_x, pos_y, pos_z, rot_x, rot_y, rot_z, time) "+
+		"VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+		characterID, constant.PosX, constant.PosY, constant.PosZ, constant.RotX, constant.RotY, constant.RotZ, time.Now().UnixNano()/int64(time.Millisecond))
+
+	if mErr != nil {
+		log.Println("INSERTING ERROR", mErr)
+		panic(mErr)
 	}
 }
 

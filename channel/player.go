@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/Hucaru/Valhalla/common/db"
+	"github.com/Hucaru/Valhalla/common/db/model"
 	"log"
 	"math"
 	"math/rand"
@@ -156,7 +157,8 @@ type player struct {
 
 	UpdatePartyInfo updatePartyInfoFunc
 
-	rates *rates
+	rates   *rates
+	account *model.Account
 }
 
 // Send the Data a packet
