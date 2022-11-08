@@ -28,9 +28,6 @@ func main() {
 	//
 	log.Println("TYPE", *typePtr)
 
-	//s := newChannelServer(*configPtr)
-	//s.run()
-
 	switch *typePtr {
 	case "login":
 		s := newLoginServer(*configPtr)
