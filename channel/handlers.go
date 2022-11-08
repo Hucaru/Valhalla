@@ -2,15 +2,16 @@ package channel
 
 import (
 	"fmt"
-	"github.com/Hucaru/Valhalla/common/db"
-	"github.com/Hucaru/Valhalla/common/proto"
-	"github.com/Hucaru/Valhalla/meta-proto/go/mc_metadata"
-	proto2 "google.golang.org/protobuf/proto"
 	"log"
 	"net"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/Hucaru/Valhalla/common/db"
+	"github.com/Hucaru/Valhalla/common/proto"
+	"github.com/Hucaru/Valhalla/meta-proto/go/mc_metadata"
+	proto2 "google.golang.org/protobuf/proto"
 
 	"github.com/Hucaru/Valhalla/internal"
 
@@ -159,7 +160,7 @@ func (server *Server) playerConnect(conn mnet.Client, tcpConn net.Conn, reader m
 		}
 	}
 
-	res, err := proto.AccountResponse(&acc, mType)
+	res, err := proto.AccountResponse(&acc, constant.P2C_ReportLoginUser)
 	if err != nil {
 		log.Println("DATA_RESPONSE_ERROR", err)
 	}
