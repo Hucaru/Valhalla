@@ -6,14 +6,13 @@ services:
             context: .
             dockerfile: docker/Dockerfile
         container_name: login-server
-        command: /bin/sh -c "/app/Valhalla --type=login --config=./docker/docker_config_login.toml"
+        command: /bin/sh -c "/app/Valhalla --type=login"
         restart: unless-stopped
         volumes:
-            - ./docker/docker_config_login.toml:/app/docker/docker_config_login.toml
             - ./Data.nx:/app/Data.nx
         ports:
-            - 8484:8484
-            - 8485:8485
+            - "8484:8484"
+            - "8485:8485"
         depends_on:
             - db
 
@@ -22,13 +21,12 @@ services:
             context: .
             dockerfile: docker/Dockerfile
         container_name: world-server
-        command: /bin/sh -c "/app/Valhalla --type=world --config=./docker/docker_config_world.toml"
+        command: /bin/sh -c "/app/Valhalla --type=world"
         restart: unless-stopped
         volumes:
-            - ./docker/docker_config_world.toml:/app/docker/docker_config_world.toml
             - ./Data.nx:/app/Data.nx
         ports:
-            - 8584:8584
+            - "8584:8584"
         depends_on:
             - login_server
 
@@ -43,7 +41,7 @@ services:
             - ./docker/docker_config_channel_1.toml:/app/docker/docker_config_channel.toml
             - ./Data.nx:/app/Data.nx
         ports:
-            - 8685:8685
+            - "8685:8685"
         depends_on:
             - world_server
 
@@ -58,7 +56,7 @@ services:
             - ./docker/docker_config_channel_2.toml:/app/docker/docker_config_channel.toml
             - ./Data.nx:/app/Data.nx
         ports:
-            - 8686:8686
+            - "8686:8686"
         depends_on:
             - world_server
 
@@ -69,10 +67,10 @@ services:
             - db-data:/var/lib/mysql
             - ./sql:/docker-entrypoint-initdb.d
         environment:
-            MYSQL_ROOT_PASSWORD: password
-            MYSQL_DATABASE: maplestory
+            MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
+            MYSQL_DATABASE: ${DB_NAME}
         ports:
-            - 3306:3306
+            - "3306:3306"
 
     adminer:
         image: arm64v8/adminer
@@ -80,10 +78,10 @@ services:
         environment:
             ADMINER_DEFAULT_DB_DRIVER: mysql
             ADMINER_DEFAULT_DB_HOST: db
-            ADMINER_DEFAULT_DB_NAME: maplestory
+            ADMINER_DEFAULT_DB_NAME: ${DB_NAME}
             ADMINER_DESIGN: nette
         ports:
-            - 8080:8080
+            - "8080:8080"
         depends_on:
             - db
 
@@ -93,14 +91,14 @@ services:
         volumes:
             - ./docker/prometheus.yml:/etc/prometheus/prometheus.yml
         ports:
-            - 9090:9090
+            - "9090:9090"
     grafana:
         image: grafana/grafana:6.7.3
         restart: unless-stopped
         # environment:
         #     GF_INSTALL_PLUGINS: ""
         ports:
-            - 3000:3000
+            - "3000:3000"
 
 volumes:
     db-data:

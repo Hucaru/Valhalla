@@ -30,10 +30,10 @@ func main() {
 
 	switch *typePtr {
 	case "login":
-		s := newLoginServer(*configPtr)
+		s := newLoginServer()
 		s.run()
 	case "world":
-		s := newWorldServer(*configPtr)
+		s := newWorldServer()
 		s.run()
 	case "channel":
 		s := newChannelServer(*configPtr)

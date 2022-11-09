@@ -22,8 +22,8 @@ type worldServer struct {
 	state    world.Server
 }
 
-func newWorldServer(configFile string) *worldServer {
-	config, dbConfig := worldConfigFromFile(configFile)
+func newWorldServer() *worldServer {
+	config, dbConfig := loadWorldConfig()
 	ws := worldServer{
 		eRecv:    make(chan *mnet.Event),
 		config:   config,

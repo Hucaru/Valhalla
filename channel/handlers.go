@@ -46,6 +46,11 @@ func (server *Server) HandleClientPacket(conn mnet.Client, tcpConn net.Conn, rea
 		log.Println("DATA_BUFFER_LOGOUT", reader.GetBuffer())
 		server.playerLogout(conn, reader)
 		break
+	case constant.C2P_RequestPlayerInfo:
+		log.Println("DATA_BUFFER_LOGOUT", reader.GetBuffer())
+		server.playerInfo(conn, reader)
+		break
+
 	default:
 		fmt.Println("UNKNOWN MSG", reader)
 		//msg = nil
@@ -297,6 +302,10 @@ func (server *Server) playerMovement(conn mnet.Client, reader mpacket.Reader) {
 	go server.updateUserLocation(msg.GetMovementData())
 }
 
+func (server *Server) playerInfo(conn mnet.Client, reader mpacket.Reader) {
+
+}
+
 func (server *Server) playerLogout(conn mnet.Client, reader mpacket.Reader) {
 
 	msg := mc_metadata.C2P_RequestLogoutUser{}
@@ -341,7 +350,6 @@ func (server *Server) updateMovement(conn mnet.Client) {
 			plr.account.RotZ,
 		)
 	}
-
 }
 
 func (server *Server) makeMovementResponse(conn mnet.Client, msg proto2.Message, mType uint32) {

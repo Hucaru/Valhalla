@@ -19,6 +19,9 @@ const (
 	P2C_ResultLogoutUser  = 11
 	P2C_ReportLogoutUser  = 12
 
+	C2P_RequestPlayerInfo = 13
+	P2C_ReportPlayerInfo  = 14
+
 	//errors
 	P2C_ResultLoginUserError = 90
 )

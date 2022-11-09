@@ -36,9 +36,9 @@ func packetClientHandshake(mapleVersion int16, recv, send []byte) mpacket.Packet
 
 }
 
-func newLoginServer(configFile string) *loginServer {
+func newLoginServer() *loginServer {
 	log.Println("newLoginServer")
-	config, dbConfig := loginConfigFromFile(configFile)
+	config, dbConfig := loadLoginConfig()
 
 	return &loginServer{
 		eRecv:    make(chan *mnet.Event),

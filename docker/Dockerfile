@@ -13,4 +13,4 @@ RUN echo "#!/bin/sh" > docker-entrypoint.sh && \
   chmod +x docker-entrypoint.sh
 
 ENTRYPOINT ["/app/docker-entrypoint.sh"]
-CMD ["/app/Valhalla", "-type", "login", "-config", "/app/config_login.toml"]
+CMD ["/app/Valhalla", "-type", "login"]

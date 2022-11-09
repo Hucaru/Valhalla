@@ -2,6 +2,52 @@
 
 [![Actions Status](https://github.com/Hucaru/Valhalla/workflows/Go/badge.svg)](https://github.com/Hucaru/Valhalla/actions)
 
+## ENVIROMENT FILE
+```
+# [database]
+DB_ADDRESS string
+DB_PORT string
+DB_USER string
+DB_PASSWORD string
+DB_NAME string
+
+#loading config for docker or local
+IS_DOCKER_CONFIG bool
+
+# [ login ]
+CLIENT_LISTEN_ADDRESS string
+CLIENT_LISTEN_PORT string
+LOGIN_LISTEN_ADDRESS string
+LOGIN_LISTEN_PORT string
+WITH_PIN bool
+LOGIN_PACKET_QUEUE_SIZE int
+LOGIN_ADDRESS string
+LOGIN_ADDRESS_LOCAL string
+
+
+# [ world ]
+MESSAGE string
+RIBBON int
+EXP_RATE float32
+DROP_RATE float32
+MESOS_RATE float32
+WORLD_LISTEN_ADDRESS string
+WORLD_LISTEN_PORT string
+WORLD_PACKET_QUEUE_SIZE int
+WORLD_ADDRESS string
+WORLD_ADDRESS_LOCAL string
+
+# [ channels ]
+CHANNEL_LISTEN_ADDRESS string
+CLIENT_CONNECTION_ADDRESS string
+CHANNEL_PACKET_QUEUE_SIZE int
+MAX_POP int
+
+# [ additional ]
+LATENCY int
+JITTER int
+```
+
 ## What is this?
 
 This project exists to preserve and archive an early version of the game (v28 of global)
@@ -173,3 +219,6 @@ Taken from [here](http://forum.ragezone.com/f428/add-learning-npcs-start-finish-
 ![Bosses](img/bosses.PNG?raw=true "Bosses")
 
 ![Metrics](img/metrics.PNG?raw=true "Metrics")
+
+
+

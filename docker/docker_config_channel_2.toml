@@ -1,15 +1,2 @@
-[database]
-address = "db"
-port = "3306"
-user = "root"
-password = "password"
-database = "maplestory"
-
 [channel]
-worldAddress = "world_server"
-worldPort = "8584"
-listenAddress = "0.0.0.0"
 listenPort = "8686"
-ClientConnectionAddress = "127.0.0.1"
-packetQueueSize = 512
-MaxPop = 250

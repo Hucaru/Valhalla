@@ -1,5 +1,3 @@
--- Adminer 4.7.7 MySQL dump
-
 SET NAMES utf8;
 SET time_zone = '+00:00';
 SET foreign_key_checks = 0;
@@ -40,20 +38,23 @@ DROP TABLE IF EXISTS `characters`;
 CREATE TABLE `characters` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `accountID` int(10) unsigned NOT NULL,
-  `worldID` int(11) unsigned NOT NULL,
+  `worldID` int(11) unsigned NOT NULL DEFAULT '1',
   `channelID` tinyint(2) NOT NULL DEFAULT '-1',
   `migrationID` tinyint(4) NOT NULL DEFAULT '-1',
-  `name` tinytext NOT NULL,
-  `gender` int(11) unsigned NOT NULL,
-  `skin` int(11) unsigned NOT NULL,
-  `hair` int(11) unsigned NOT NULL,
-  `face` int(11) unsigned NOT NULL,
+  `name` tinytext NOT NULL DEFAULT 'player',
+  `gender` int(11) unsigned NOT NULL DEFAULT '1',
+  `skin` int(11) unsigned NOT NULL DEFAULT '1',
+  `hair` tinytext ,
+  `top` tinytext,
+  `bottom` tinytext,
+  `clothes` tinytext,
+  `face` int(11) unsigned NOT NULL DEFAULT '100',
   `level` int(200) unsigned NOT NULL DEFAULT '1',
   `job` int(11) unsigned NOT NULL DEFAULT '0',
-  `str` int(11) unsigned NOT NULL,
-  `dex` int(11) unsigned NOT NULL,
-  `intt` int(11) unsigned NOT NULL,
-  `luk` int(11) unsigned NOT NULL,
+  `str` int(11) unsigned NOT NULL DEFAULT '5',
+  `dex` int(11) unsigned NOT NULL DEFAULT '5',
+  `intt` int(11) unsigned NOT NULL DEFAULT '5',
+  `luk` int(11) unsigned NOT NULL DEFAULT '5',
   `hp` int(11) unsigned NOT NULL DEFAULT '100',
   `maxHP` int(11) unsigned NOT NULL DEFAULT '100',
   `mp` int(11) unsigned NOT NULL DEFAULT '50',
@@ -146,6 +147,3 @@ CREATE TABLE `movement` (
   KEY `characterID` (`characterID`),
   CONSTRAINT `movement_ibfk_2` FOREIGN KEY (`characterID`) REFERENCES `characters` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
-
-
--- 2020-12-28 19:08:59

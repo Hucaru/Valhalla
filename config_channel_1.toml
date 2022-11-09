@@ -1,18 +1,2 @@
-[database]
-address = "127.0.0.1"
-port = "3306"
-user = "root"
-password = "password"
-database = "maplestory"
-
 [channel]
-worldAddress = "127.0.0.1"
-worldPort = "8584"
-listenAddress = "0.0.0.0"
 listenPort = "8685"
-clientConnectionAddress = "127.0.0.1"
-packetQueueSize = 1024
-maxPop = 250
-# The following should be set to zero when not testing on a local network environment
-latency = 0
-jitter = 0
