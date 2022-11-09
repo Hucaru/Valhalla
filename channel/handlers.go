@@ -303,7 +303,38 @@ func (server *Server) playerMovement(conn mnet.Client, reader mpacket.Reader) {
 }
 
 func (server *Server) playerInfo(conn mnet.Client, reader mpacket.Reader) {
+	msg := mc_metadata.C2P_RequestPlayerInfo{}
+	err := proto.Unmarshal(reader.GetBuffer(), &msg)
+	if err != nil || len(msg.GetUuId()) == 0 {
+		log.Println("Failed to parse data:", err)
+		return
+	}
 
+	res := mc_metadata.P2C_ReportPlayerInfo{
+		UuId:     msg.GetUuId(),
+		Nickname: msg.GetNickname(),
+		Hair:     msg.GetHair(),
+		Top:      msg.GetTop(),
+		Bottom:   msg.GetBottom(),
+		Clothes:  msg.GetClothes(),
+	}
+
+	res.IsSuccess = db.UpdatePlayerInfo(
+		msg.GetUuId(),
+		msg.GetNickname(),
+		msg.GetHair(),
+		msg.GetTop(),
+		msg.GetBottom(),
+		msg.GetClothes()) == nil
+
+	data, err := proto.MakeResponse(&res, constant.P2C_ReportPlayerInfo)
+	if err != nil {
+		log.Println("ERROR P2C_ResultLoginUser", msg.GetUuId())
+		return
+	}
+
+	server.sendMsgToAll(data, conn)
+	data = nil
 }
 
 func (server *Server) playerLogout(conn mnet.Client, reader mpacket.Reader) {

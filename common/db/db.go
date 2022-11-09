@@ -79,9 +79,9 @@ func InsertNewAccount(uUid string, conn mnet.Client) {
 	conn.SetAccountID(int32(accountID))
 
 	cRes, cErr := Maria.Exec("INSERT INTO characters "+
-		"(accountID, worldID, name, gender, skin, hair, face, str, dex, intt, luk) "+
-		"VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-		accountID, 1, "test", 1, 1, 1, 1, 1, 1, 1, 1)
+		"(accountID, worldID, name, gender, skin, hair, face, str, dex, intt, luk, top, bottom, clothes) "+
+		"VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+		accountID, 1, "", 1, 1, "", 1, 1, 1, 1, 1, "", "", "")
 
 	if cErr != nil {
 		log.Println("INSERTING ERROR", cErr)
@@ -89,7 +89,7 @@ func InsertNewAccount(uUid string, conn mnet.Client) {
 	}
 
 	characterID, err := cRes.LastInsertId()
-	InsertMovement(characterID, constant.PosX, constant.PosY, constant.PosZ, constant.RotX, constant.RotY, constant.RotZ)
+	insertMovement(characterID, constant.PosX, constant.PosY, constant.PosZ, constant.RotX, constant.RotY, constant.RotZ)
 }
 
 func UpdateMovement(
@@ -101,14 +101,29 @@ func UpdateMovement(
 	rotY float32,
 	rotZ float32) {
 
-	cID := FindCharacterByUid(uID)
+	cID := findCharacterByUid(uID)
 	if cID < 0 {
 		return
 	}
-	InsertMovement(int64(cID), posX, posY, posZ, rotX, rotY, rotZ)
+	insertMovement(int64(cID), posX, posY, posZ, rotX, rotY, rotZ)
 }
 
-func FindCharacterByUid(uID string) int32 {
+func UpdatePlayerInfo(
+	uID string,
+	nickname string,
+	hair string,
+	top string,
+	bottom string,
+	clothes string) error {
+
+	cID := findCharacterByUid(uID)
+	if cID < 0 {
+		return insertPlayerInfo(nickname, hair, top, bottom, clothes)
+	}
+	return updatePlayerInfo(cID, nickname, hair, top, bottom, clothes)
+}
+
+func findCharacterByUid(uID string) int32 {
 	var accountID int32
 	var characterID int32
 
@@ -125,7 +140,40 @@ func FindCharacterByUid(uID string) int32 {
 	return characterID
 }
 
-func InsertMovement(
+func insertPlayerInfo(
+	nickname string,
+	hair string,
+	top string,
+	bottom string,
+	clothes string) error {
+	_, err := Maria.Exec("INSERT INTO characters "+
+		"(name, hair, top, bottom, clothes) "+
+		"VALUES (?, ?, ?, ?, ?, ?, ?)",
+		nickname, hair, top, bottom, clothes)
+
+	if err != nil {
+		log.Println("INSERTING PLAYER INFO ERROR", err)
+	}
+	return err
+}
+
+func updatePlayerInfo(
+	cID int32,
+	nickname string,
+	hair string,
+	top string,
+	bottom string,
+	clothes string) error {
+	_, err := Maria.Exec("UPDATE characters SET name=?, hair=?, top=?, bottom=?, clothes=? WHERE id=?",
+		nickname, hair, top, bottom, clothes, cID)
+
+	if err != nil {
+		log.Println("UPDATING PLAYER INFO ERROR", err)
+	}
+	return err
+}
+
+func insertMovement(
 	characterID int64,
 	posX float32,
 	posY float32,
@@ -133,13 +181,13 @@ func InsertMovement(
 	rotX float32,
 	rotY float32,
 	rotZ float32) {
-	_, mErr := Maria.Exec("INSERT INTO movement "+
+	_, err := Maria.Exec("INSERT INTO movement "+
 		"(characterID, pos_x, pos_y, pos_z, rot_x, rot_y, rot_z, time) "+
 		"VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
 		characterID, posX, posY, posZ, rotX, rotY, rotZ, time.Now().UnixNano()/int64(time.Millisecond))
 
-	if mErr != nil {
-		log.Println("INSERTING ERROR", mErr)
+	if err != nil {
+		log.Println("INSERTING ERROR", err)
 	}
 }
 

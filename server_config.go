@@ -61,13 +61,21 @@ type fullConfig struct {
 }
 
 func loadDbConfig() *dbConfig {
-	return &dbConfig{
-		Address:  getEnv("DB_ADDRESS", ""),
-		Port:     getEnv("DB_PORT", ""),
-		User:     getEnv("DB_USER", ""),
-		Password: getEnv("DB_PASSWORD", ""),
-		Database: getEnv("DB_NAME", ""),
+
+	db := &dbConfig{}
+
+	if getEnvAsBool("IS_DOCKER_CONFIG", true) {
+		db.Address = getEnv("DB_ADDRESS", "")
+	} else {
+		db.Address = getEnv("DB_ADDRESS_LOCAL", "")
 	}
+
+	db.Port = getEnv("DB_PORT", "")
+	db.User = getEnv("DB_USER", "")
+	db.Password = getEnv("DB_PASSWORD", "")
+	db.Database = getEnv("DB_NAME", "")
+
+	return db
 }
 
 func loadLoginConfig() (loginConfig, dbConfig) {
