@@ -72,7 +72,7 @@ func InsertNewAccount(uUid string, conn mnet.Client) {
 
 	if err != nil {
 		log.Println(err)
-		panic(err)
+		return
 	}
 
 	accountID, err := res.LastInsertId()
@@ -85,19 +85,61 @@ func InsertNewAccount(uUid string, conn mnet.Client) {
 
 	if cErr != nil {
 		log.Println("INSERTING ERROR", cErr)
-		panic(cErr)
+		return
 	}
 
 	characterID, err := cRes.LastInsertId()
+	InsertMovement(characterID, constant.PosX, constant.PosY, constant.PosZ, constant.RotX, constant.RotY, constant.RotZ)
+}
 
+func UpdateMovement(
+	uID string,
+	posX float32,
+	posY float32,
+	posZ float32,
+	rotX float32,
+	rotY float32,
+	rotZ float32) {
+
+	cID := FindCharacterByUid(uID)
+	if cID < 0 {
+		return
+	}
+	InsertMovement(int64(cID), posX, posY, posZ, rotX, rotY, rotZ)
+}
+
+func FindCharacterByUid(uID string) int32 {
+	var accountID int32
+	var characterID int32
+
+	err := Maria.QueryRow(
+		"SELECT a.accountID, c.id as characterID "+
+			"FROM accounts a "+
+			"LEFT JOIN characters c ON c.accountID = a.accountID "+
+			"WHERE a.u_id=? "+
+			"LIMIT 1", uID).
+		Scan(&accountID, &characterID)
+	if err != nil {
+		return -1
+	}
+	return characterID
+}
+
+func InsertMovement(
+	characterID int64,
+	posX float32,
+	posY float32,
+	posZ float32,
+	rotX float32,
+	rotY float32,
+	rotZ float32) {
 	_, mErr := Maria.Exec("INSERT INTO movement "+
 		"(characterID, pos_x, pos_y, pos_z, rot_x, rot_y, rot_z, time) "+
 		"VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-		characterID, constant.PosX, constant.PosY, constant.PosZ, constant.RotX, constant.RotY, constant.RotZ, time.Now().UnixNano()/int64(time.Millisecond))
+		characterID, posX, posY, posZ, rotX, rotY, rotZ, time.Now().UnixNano()/int64(time.Millisecond))
 
 	if mErr != nil {
 		log.Println("INSERTING ERROR", mErr)
-		panic(mErr)
 	}
 }
 

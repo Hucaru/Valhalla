@@ -2,7 +2,6 @@ package channel
 
 import (
 	"fmt"
-	"github.com/Hucaru/Valhalla/common/db/model"
 	"log"
 	"net"
 	"strconv"
@@ -42,6 +41,10 @@ func (server *Server) HandleClientPacket(conn mnet.Client, tcpConn net.Conn, rea
 	case constant.C2P_RequestMoveEnd:
 		log.Println("DATA_BUFFER_MOVEMENT_END", reader.GetBuffer())
 		server.playerMovementEnd(conn, reader)
+		break
+	case constant.C2P_RequestLogoutUser:
+		log.Println("DATA_BUFFER_LOGOUT", reader.GetBuffer())
+		server.playerLogout(conn, reader)
 		break
 	default:
 		fmt.Println("UNKNOWN MSG", reader)
@@ -135,7 +138,8 @@ func (server *Server) playerConnect(conn mnet.Client, tcpConn net.Conn, reader m
 
 	msg, err := proto.GetRequestLoginUser(reader.GetBuffer())
 	if err != nil || len(msg.UuId) == 0 {
-		log.Fatalln("Failed to parse data:", err)
+		log.Println("Failed to parse data:", err)
+		return
 	}
 
 	conn.SetUid(msg.UuId)
@@ -170,32 +174,29 @@ func (server *Server) playerConnect(conn mnet.Client, tcpConn net.Conn, reader m
 	log.Println("PLAYER_ID_LOGIN", conn.GetUid())
 
 	server.sendMsgToAll(res, conn)
-	server.sendPrivateMsg(&acc)
+	server.sendMsgToPlayer(conn)
+	res = nil
 }
 
-func (server *Server) sendPrivateMsg(acc *model.Account) {
-	pos := 0
-	account := proto.GetResultUser(acc)
+func (server *Server) sendMsgToPlayer(conn mnet.Client) {
+	plr, err := server.players.getFromConn(conn)
 
-	for i := 0; i < len(server.players); i++ {
-		if acc.UId != server.players[i].playerID {
-			if server.players[i].account != nil {
-				user := proto.GetLoggedUsers(server.players[i].account)
-				account.LoggedUsers = append(account.LoggedUsers, user)
-			}
-			continue
-		}
-		pos = i
+	if err != nil {
+		return
 	}
+	account := proto.GetResultUser(plr.account)
+
+	user := proto.GetLoggedUsers(plr.account)
+	account.LoggedUsers = append(account.LoggedUsers, user)
 
 	data, err := proto.MakeResponse(account, constant.P2C_ResultLoginUser)
 	if err != nil {
-		log.Println("ERROR P2C_ResultLoginUser", server.players[pos].playerID)
+		log.Println("ERROR P2C_ResultLoginUser", plr.playerID)
 		return
 	}
 
-	log.Println("PLAYER_ID", server.players[pos].playerID)
-	server.players[pos].conn.Send(data)
+	log.Println("PLAYER_ID", plr.playerID)
+	plr.conn.Send(data)
 	data = nil
 	account = nil
 }
@@ -249,13 +250,14 @@ func (server *Server) playerChangeChannel(conn mnet.Client, reader mpacket.Reade
 func (server *Server) playerMovementStart(conn mnet.Client, reader mpacket.Reader) {
 
 	msg := mc_metadata.C2P_RequestMoveStart{}
-	err := proto.GetRequestMovement(reader.GetBuffer(), &msg)
+	err := proto.Unmarshal(reader.GetBuffer(), &msg)
 	if err != nil || len(msg.GetMovementData().GetUuId()) == 0 {
-		log.Fatalln("Failed to parse data:", err)
+		log.Println("Failed to parse data:", err)
+		return
 	}
 
 	res := mc_metadata.P2C_ReportMoveStart{
-		MovementData: server.makeMovementData(msg.GetMovementData()),
+		MovementData: proto.MakeMovementData(msg.GetMovementData()),
 	}
 	server.makeMovementResponse(conn, &res, constant.P2C_ReportMoveStart)
 	go server.updateUserLocation(msg.GetMovementData())
@@ -264,13 +266,14 @@ func (server *Server) playerMovementStart(conn mnet.Client, reader mpacket.Reade
 func (server *Server) playerMovementEnd(conn mnet.Client, reader mpacket.Reader) {
 
 	msg := mc_metadata.C2P_RequestMoveEnd{}
-	err := proto.GetRequestMovement(reader.GetBuffer(), &msg)
+	err := proto.Unmarshal(reader.GetBuffer(), &msg)
 	if err != nil || len(msg.GetMovementData().GetUuId()) == 0 {
-		log.Fatalln("Failed to parse data:", err)
+		log.Println("Failed to parse data:", err)
+		return
 	}
 
 	res := mc_metadata.P2C_ReportMoveEnd{
-		MovementData: server.makeMovementData(msg.GetMovementData()),
+		MovementData: proto.MakeMovementData(msg.GetMovementData()),
 	}
 
 	server.makeMovementResponse(conn, &res, constant.P2C_ReportMoveEnd)
@@ -280,30 +283,65 @@ func (server *Server) playerMovementEnd(conn mnet.Client, reader mpacket.Reader)
 func (server *Server) playerMovement(conn mnet.Client, reader mpacket.Reader) {
 
 	msg := mc_metadata.C2P_RequestMove{}
-	err := proto.GetRequestMovement(reader.GetBuffer(), &msg)
+	err := proto.Unmarshal(reader.GetBuffer(), &msg)
 	if err != nil || len(msg.GetMovementData().GetUuId()) == 0 {
-		log.Fatalln("Failed to parse data:", err)
+		log.Println("Failed to parse data:", err)
+		return
 	}
 
 	res := mc_metadata.P2C_ReportMove{
-		MovementData: server.makeMovementData(msg.GetMovementData()),
+		MovementData: proto.MakeMovementData(msg.GetMovementData()),
 	}
 
 	server.makeMovementResponse(conn, &res, constant.P2C_ReportMove)
 	go server.updateUserLocation(msg.GetMovementData())
 }
 
-func (server *Server) makeMovementData(msg *mc_metadata.Movement) *mc_metadata.Movement {
-	return &mc_metadata.Movement{
-		UuId:                 msg.GetUuId(),
-		DestinationX:         msg.GetDestinationX(),
-		DestinationY:         msg.GetDestinationY(),
-		DestinationZ:         msg.GetDestinationZ(),
-		DeatinationRotationX: msg.GetDeatinationRotationX(),
-		DeatinationRotationY: msg.GetDeatinationRotationY(),
-		DeatinationRotationZ: msg.GetDeatinationRotationZ(),
-		InterpTime:           msg.GetInterpTime(),
+func (server *Server) playerLogout(conn mnet.Client, reader mpacket.Reader) {
+
+	msg := mc_metadata.C2P_RequestLogoutUser{}
+	err := proto.Unmarshal(reader.GetBuffer(), &msg)
+	if err != nil || len(msg.GetUuId()) == 0 {
+		log.Println("Failed to parse data:", err)
+		return
 	}
+
+	res := mc_metadata.P2C_ReportLogoutUser{
+		UuId: msg.GetUuId(),
+	}
+
+	data, err := proto.MakeResponse(&res, constant.P2C_ReportLogoutUser)
+	if err != nil {
+		log.Println("ERROR P2C_ResultLoginUser", msg.GetUuId())
+		return
+	}
+
+	server.sendMsgToAll(data, conn)
+	server.updateMovement(conn)
+	go server.ClientDisconnected(conn)
+	data = nil
+}
+
+func (server *Server) updateMovement(conn mnet.Client) {
+
+	plr, err := server.players.getFromConn(conn)
+
+	if err != nil {
+		return
+	}
+
+	if plr.account != nil {
+		db.UpdateMovement(
+			plr.conn.GetUid(),
+			plr.account.PosX,
+			plr.account.PosY,
+			plr.account.PosZ,
+			plr.account.RotX,
+			plr.account.RotY,
+			plr.account.RotZ,
+		)
+	}
+
 }
 
 func (server *Server) makeMovementResponse(conn mnet.Client, msg proto2.Message, mType uint32) {
@@ -314,6 +352,7 @@ func (server *Server) makeMovementResponse(conn mnet.Client, msg proto2.Message,
 	log.Println("DATA_RESPONSE_MOVEMENT", res)
 
 	server.sendMsgToAll(res, conn)
+	res = nil
 }
 
 func (server *Server) updateUserLocation(msg *mc_metadata.Movement) {

@@ -18,7 +18,7 @@ func GetRequestLoginUser(buff []byte) (*mc_metadata.C2P_RequestLoginUser, error)
 	return msg, nil
 }
 
-func GetRequestMovement(buff []byte, msg proto.Message) error {
+func Unmarshal(buff []byte, msg proto.Message) error {
 	return proto.Unmarshal(buff, msg)
 }
 
@@ -59,6 +59,19 @@ func GetLoggedUsers(acc *model.Account) *mc_metadata.P2C_ReportLoginUser {
 		SpawnRotX: acc.RotX,
 		SpawnRotY: acc.RotY,
 		SpawnRotZ: acc.RotZ,
+	}
+}
+
+func MakeMovementData(msg *mc_metadata.Movement) *mc_metadata.Movement {
+	return &mc_metadata.Movement{
+		UuId:                 msg.GetUuId(),
+		DestinationX:         msg.GetDestinationX(),
+		DestinationY:         msg.GetDestinationY(),
+		DestinationZ:         msg.GetDestinationZ(),
+		DeatinationRotationX: msg.GetDeatinationRotationX(),
+		DeatinationRotationY: msg.GetDeatinationRotationY(),
+		DeatinationRotationZ: msg.GetDeatinationRotationZ(),
+		InterpTime:           msg.GetInterpTime(),
 	}
 }
 
