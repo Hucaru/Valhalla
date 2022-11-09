@@ -81,7 +81,7 @@ services:
             ADMINER_DEFAULT_DB_NAME: ${DB_NAME}
             ADMINER_DESIGN: nette
         ports:
-            - "8080:8080"
+            - "8181:8080"
         depends_on:
             - db
 
