@@ -73,7 +73,7 @@ services:
             - "3306:3306"
 
     adminer:
-        image: arm64v8/adminer
+        image: adminer
         restart: unless-stopped
         environment:
             ADMINER_DEFAULT_DB_DRIVER: mysql
