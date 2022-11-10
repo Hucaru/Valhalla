@@ -335,7 +335,7 @@ func makeDisconnectedResponse(uUID string) ([]byte, error) {
 	result := make([]byte, 0)
 	h := make([]byte, 0)
 	h = append(h, binary.BigEndian.AppendUint32(h, uint32(len(out)))...)
-	h = binary.BigEndian.AppendUint32(h, uint32(constant.C2P_RequestLogoutUser))
+	h = binary.BigEndian.AppendUint32(h, uint32(constant.P2C_ReportLogoutUser))
 	result = append(result, h...)
 	result = append(result, out...)
 

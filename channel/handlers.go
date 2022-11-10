@@ -29,7 +29,7 @@ func (server *Server) HandleClientPacket(conn mnet.Client, tcpConn net.Conn, rea
 	switch msgProtocolType {
 	case constant.C2P_RequestLoginUser:
 		log.Println("DATA_BUFFER_LOGIN", reader.GetBuffer())
-		server.playerConnect(conn, tcpConn, reader, msgProtocolType)
+		go server.playerConnect(conn, tcpConn, reader, msgProtocolType)
 		break
 	case constant.C2P_RequestMoveStart:
 		log.Println("DATA_BUFFER_MOVEMENT_START", reader.GetBuffer())
