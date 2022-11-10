@@ -297,6 +297,11 @@ func (server *Server) ClientDisconnected(conn mnet.Client) {
 	//	server.migrating = append(server.migrating[:index], server.migrating[index+1:]...)
 	//} else {
 
+	err1 := db.UpdateLoginState(conn.GetUid(), false)
+	if err1 != nil {
+		log.Println("ERROR LOGOUT PLAYER_ID", conn.GetUid())
+	}
+
 	msg, errR := makeDisconnectedResponse(conn.GetUid())
 	if errR == nil {
 		for i := 0; i < len(server.players); i++ {
@@ -311,12 +316,6 @@ func (server *Server) ClientDisconnected(conn mnet.Client) {
 	//	log.Println(err)
 	//}
 	log.Println("DISCONNECT", conn.GetUid())
-	_, err1 := db.Maria.Exec("UPDATE accounts SET isLogedIn=0 WHERE uId=?", conn.GetUid())
-
-	if err1 != nil {
-		log.Println("Unable to complete logout for ", conn.GetUid())
-	}
-	//}
 
 	conn.Cleanup()
 

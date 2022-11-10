@@ -22,6 +22,12 @@ const (
 	C2P_RequestPlayerInfo = 13
 	P2C_ReportPlayerInfo  = 14
 
+	C2P_RequestAllChat = 15
+	P2C_ReportAllChat  = 16
+
+	C2P_RequestWhisper = 17
+	P2C_ReportWhisper  = 18
+
 	//errors
 	P2C_ResultLoginUserError = 90
 )
@@ -38,6 +44,10 @@ const (
 const (
 	NoError                = -1
 	ErrorCodeDuplicateName = 400
+)
+
+const (
+	NO_TARGET = -1
 )
 
 // Generic Constants

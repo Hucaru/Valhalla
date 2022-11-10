@@ -67,6 +67,60 @@ func GetLoggedData(uUID string) (model.Account, error) {
 	return *acc, err
 }
 
+func GetLoggedUsersData(uUID string) ([]*model.Account, error) {
+
+	accounts := make([]*model.Account, 0)
+
+	rows, err := Maria.Query(
+		"SELECT a.accountID, a.uId, c.id as characterID, a.isLogedIn, "+
+			"IFNULL(m.time, 0) as time, "+
+			"IFNULL(m.pos_x, 0) as pos_x, "+
+			"IFNULL(m.pos_y, 0) as pos_y, "+
+			"IFNULL(m.pos_z, 0) as pos_z, "+
+			"IFNULL(m.rot_x, 0) as rot_x, "+
+			"IFNULL(m.rot_y, 0) as rot_y, "+
+			"IFNULL(m.rot_z, 0) as rot_z "+
+			"FROM accounts a "+
+			"LEFT JOIN characters c ON c.accountID = a.accountID "+
+			"LEFT JOIN movement m ON m.characterID = c.id "+
+			"WHERE a.uId != ? AND a.isLogedIn != 0 "+
+			"ORDER BY time DESC", uUID)
+
+	if err != nil {
+		log.Println("LOGGED USERS SELECTING ERROR", err)
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var is int32
+		acc := &model.Account{
+			UId:         uUID,
+			AccountID:   -1,
+			CharacterID: -1,
+			Time:        0,
+			PosX:        constant.PosX,
+			PosY:        constant.PosY,
+			PosZ:        constant.PosZ,
+			RotX:        constant.RotX,
+			RotY:        constant.RotY,
+			RotZ:        constant.RotZ,
+		}
+
+		if err := rows.Scan(&acc.AccountID, &acc.UId, &acc.CharacterID, &is, &acc.Time, &acc.PosX, &acc.PosY, &acc.PosZ, &acc.RotX, &acc.RotY, &acc.RotZ); err != nil {
+			log.Println("LOGGED USERS SELECTING ERROR", err)
+			return nil, err
+		}
+		accounts = append(accounts, acc)
+	}
+	if err := rows.Err(); err != nil {
+		log.Println("LOGGED USERS SELECTING ERROR", err)
+		return nil, err
+	}
+
+	return accounts, nil
+}
+
 func InsertNewAccount(uUid string, conn mnet.Client) {
 	res, err := Maria.Exec("INSERT INTO accounts (uId, username, password, pin, dob, isLogedIn) VALUES (?, ?, ?, ?, ?, ?)",
 		uUid, "test", "password", "1", 1, 1)
@@ -105,7 +159,7 @@ func UpdateMovement(
 	if cID < 0 {
 		return
 	}
-	insertMovement(int64(cID), posX, posY, posZ, rotX, rotY, rotZ)
+	insertMovement(cID, posX, posY, posZ, rotX, rotY, rotZ)
 }
 
 func UpdatePlayerInfo(
@@ -123,9 +177,9 @@ func UpdatePlayerInfo(
 	return updatePlayerInfo(cID, nickname, hair, top, bottom, clothes)
 }
 
-func findCharacterByUid(uID string) int32 {
-	var accountID int32
-	var characterID int32
+func findCharacterByUid(uID string) int64 {
+	var accountID int64
+	var characterID int64
 
 	err := Maria.QueryRow(
 		"SELECT a.accountID, c.id as characterID "+
@@ -158,7 +212,7 @@ func insertPlayerInfo(
 }
 
 func updatePlayerInfo(
-	cID int32,
+	cID int64,
 	nickname string,
 	hair string,
 	top string,
@@ -185,6 +239,61 @@ func insertMovement(
 		"(characterID, pos_x, pos_y, pos_z, rot_x, rot_y, rot_z, time) "+
 		"VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
 		characterID, posX, posY, posZ, rotX, rotY, rotZ, time.Now().UnixNano()/int64(time.Millisecond))
+
+	if err != nil {
+		log.Println("INSERTING ERROR", err)
+	}
+}
+
+func InsertPublicMessage(uID string, text string) {
+	var accountID int64
+	var characterID int64
+
+	err := Maria.QueryRow(
+		"SELECT a.accountID, c.id as characterID "+
+			"FROM accounts a "+
+			"LEFT JOIN characters c ON c.accountID = a.accountID "+
+			"WHERE a.uId=? "+
+			"LIMIT 1", uID).
+		Scan(&accountID, &characterID)
+	if err != nil {
+		log.Println("ERROR SELECTING ACCOUNT")
+	}
+
+	insertChatMessage(characterID, text, constant.NO_TARGET)
+}
+
+func InsertWhisperMessage(uID string, targetID string, text string) string {
+	var accountID int64
+	var characterID int64
+	var targetUID string
+	var targetCID int64
+
+	err := Maria.QueryRow(
+		"SELECT a1.accountID, c1.id as characterID, a2.uId as targetUID, IFNULL(c2.id, -1) as TargetCID "+
+			"FROM accounts a1 "+
+			"LEFT JOIN characters c1 ON c1.accountID = a1.accountID "+
+			"LEFT JOIN characters c2 ON c2.nickname = ? "+
+			"LEFT JOIN accounts a2 ON a2.accountID = c2.accountID "+
+			"WHERE a1.uId=? "+
+			"LIMIT 1", targetID, uID).
+		Scan(&accountID, &characterID, &targetUID, &targetCID)
+	if err != nil {
+		log.Println("ERROR SELECTING ACCOUNT")
+	}
+
+	insertChatMessage(characterID, text, targetCID)
+	return targetUID
+}
+
+func insertChatMessage(
+	characterID int64,
+	text string,
+	targetID int64) {
+	_, err := Maria.Exec("INSERT INTO chat "+
+		"(characterID, text, targetID, createdAt) "+
+		"VALUES (?, ?, ?, ?)",
+		characterID, text, targetID, time.Now().UnixNano()/int64(time.Millisecond))
 
 	if err != nil {
 		log.Println("INSERTING ERROR", err)

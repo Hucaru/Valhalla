@@ -1,9 +1,10 @@
 package model
 
 type Account struct {
-	AccountID   int32
+	AccountID   int64
+	NickName    string
 	UId         string
-	CharacterID int32
+	CharacterID int64
 	Time        int64
 	PosX        float32
 	PosY        float32

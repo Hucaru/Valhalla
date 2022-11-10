@@ -5,7 +5,6 @@ import (
 	"log"
 	"net"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/Hucaru/Valhalla/common/db"
@@ -25,6 +24,8 @@ import (
 // HandleClientPacket data
 func (server *Server) HandleClientPacket(conn mnet.Client, tcpConn net.Conn, reader mpacket.Reader, msgProtocolType uint32) {
 
+	log.Println("PLAYERS COUNT", len(server.players))
+
 	switch msgProtocolType {
 	case constant.C2P_RequestLoginUser:
 		log.Println("DATA_BUFFER_LOGIN", reader.GetBuffer())
@@ -32,23 +33,31 @@ func (server *Server) HandleClientPacket(conn mnet.Client, tcpConn net.Conn, rea
 		break
 	case constant.C2P_RequestMoveStart:
 		log.Println("DATA_BUFFER_MOVEMENT_START", reader.GetBuffer())
-		server.playerMovementStart(conn, reader)
+		go server.playerMovementStart(conn, reader)
 		break
 	case constant.C2P_RequestMove:
 		log.Println("DATA_BUFFER_MOVEMENT", reader.GetBuffer())
-		server.playerMovement(conn, reader)
+		go server.playerMovement(conn, reader)
 		break
 	case constant.C2P_RequestMoveEnd:
 		log.Println("DATA_BUFFER_MOVEMENT_END", reader.GetBuffer())
-		server.playerMovementEnd(conn, reader)
+		go server.playerMovementEnd(conn, reader)
 		break
 	case constant.C2P_RequestLogoutUser:
 		log.Println("DATA_BUFFER_LOGOUT", reader.GetBuffer())
-		server.playerLogout(conn, reader)
+		go server.playerLogout(conn, reader)
 		break
 	case constant.C2P_RequestPlayerInfo:
 		log.Println("DATA_BUFFER_LOGOUT", reader.GetBuffer())
-		server.playerInfo(conn, reader)
+		go server.playerInfo(conn, reader)
+		break
+	case constant.C2P_RequestAllChat:
+		log.Println("DATA_BUFFER_LOGOUT", reader.GetBuffer())
+		go server.chatSendAll(conn, reader)
+		break
+	case constant.C2P_RequestWhisper:
+		log.Println("DATA_BUFFER_LOGOUT", reader.GetBuffer())
+		go server.chatSendWhisper(conn, reader)
 		break
 
 	default:
@@ -140,8 +149,8 @@ func (server *Server) HandleClientPacket(conn mnet.Client, tcpConn net.Conn, rea
 }
 
 func (server *Server) playerConnect(conn mnet.Client, tcpConn net.Conn, reader mpacket.Reader, mType uint32) {
-
-	msg, err := proto.GetRequestLoginUser(reader.GetBuffer())
+	msg := mc_metadata.C2P_RequestLoginUser{}
+	err := proto.Unmarshal(reader.GetBuffer(), &msg)
 	if err != nil || len(msg.UuId) == 0 {
 		log.Println("Failed to parse data:", err)
 		return
@@ -167,7 +176,7 @@ func (server *Server) playerConnect(conn mnet.Client, tcpConn net.Conn, reader m
 		}
 	}
 
-	plr := loadPlayer(conn, *msg)
+	plr := loadPlayer(conn, msg)
 	plr.rates = &server.rates
 	plr.account = &acc
 	server.players = append(server.players, &plr)
@@ -177,22 +186,18 @@ func (server *Server) playerConnect(conn mnet.Client, tcpConn net.Conn, reader m
 		log.Println("DATA_RESPONSE_ERROR", err)
 	}
 	log.Println("PLAYER_ID_LOGIN", conn.GetUid())
-
 	server.sendMsgToAll(res, conn)
-	server.sendMsgToPlayer(conn)
-	res = nil
-}
 
-func (server *Server) sendMsgToPlayer(conn mnet.Client) {
-	plr, err := server.players.getFromConn(conn)
+	account := proto.GetResultUser(plr.account)
+	loggedAccounts, err := db.GetLoggedUsersData(plr.account.UId)
 
 	if err != nil {
+		log.Println("ERROR P2C_ResultLoginUser", plr.playerID)
 		return
 	}
-	account := proto.GetResultUser(plr.account)
 
-	user := proto.GetLoggedUsers(plr.account)
-	account.LoggedUsers = append(account.LoggedUsers, user)
+	users := proto.GetLoggedUsers(loggedAccounts)
+	account.LoggedUsers = append(account.LoggedUsers, users...)
 
 	data, err := proto.MakeResponse(account, constant.P2C_ResultLoginUser)
 	if err != nil {
@@ -201,9 +206,28 @@ func (server *Server) sendMsgToPlayer(conn mnet.Client) {
 	}
 
 	log.Println("PLAYER_ID", plr.playerID)
-	plr.conn.Send(data)
+	server.sendMsgToMe(data, conn)
+	res = nil
 	data = nil
 	account = nil
+}
+
+func (server *Server) sendMsgToMe(res mpacket.Packet, conn mnet.Client) {
+	plr, err := server.players.getFromConn(conn)
+
+	if err != nil {
+		return
+	}
+	plr.conn.Send(res)
+}
+
+func (server *Server) sendMsgToPlayer(res mpacket.Packet, uID string) {
+	for i := 0; i < len(server.players); i++ {
+		if uID == server.players[i].conn.GetUid() {
+			log.Println("PLAYER_ID", server.players[i].playerID)
+			server.players[i].conn.Send(res)
+		}
+	}
 }
 
 func (server *Server) sendMsgToAll(res mpacket.Packet, conn mnet.Client) {
@@ -265,7 +289,7 @@ func (server *Server) playerMovementStart(conn mnet.Client, reader mpacket.Reade
 		MovementData: proto.MakeMovementData(msg.GetMovementData()),
 	}
 	server.makeMovementResponse(conn, &res, constant.P2C_ReportMoveStart)
-	go server.updateUserLocation(msg.GetMovementData())
+	server.updateUserLocation(msg.GetMovementData())
 }
 
 func (server *Server) playerMovementEnd(conn mnet.Client, reader mpacket.Reader) {
@@ -282,7 +306,7 @@ func (server *Server) playerMovementEnd(conn mnet.Client, reader mpacket.Reader)
 	}
 
 	server.makeMovementResponse(conn, &res, constant.P2C_ReportMoveEnd)
-	go server.updateUserLocation(msg.GetMovementData())
+	server.updateUserLocation(msg.GetMovementData())
 }
 
 func (server *Server) playerMovement(conn mnet.Client, reader mpacket.Reader) {
@@ -299,7 +323,7 @@ func (server *Server) playerMovement(conn mnet.Client, reader mpacket.Reader) {
 	}
 
 	server.makeMovementResponse(conn, &res, constant.P2C_ReportMove)
-	go server.updateUserLocation(msg.GetMovementData())
+	server.updateUserLocation(msg.GetMovementData())
 }
 
 func (server *Server) playerInfo(conn mnet.Client, reader mpacket.Reader) {
@@ -363,7 +387,63 @@ func (server *Server) playerLogout(conn mnet.Client, reader mpacket.Reader) {
 
 	server.sendMsgToAll(data, conn)
 	server.updateMovement(conn)
-	go server.ClientDisconnected(conn)
+	server.ClientDisconnected(conn)
+	data = nil
+}
+
+func (server *Server) chatSendAll(conn mnet.Client, reader mpacket.Reader) {
+	msg := mc_metadata.C2P_RequestAllChat{}
+	err := proto.Unmarshal(reader.GetBuffer(), &msg)
+	if err != nil || len(msg.GetUuId()) == 0 {
+		log.Println("Failed to parse data:", err)
+		return
+	}
+
+	res := mc_metadata.P2C_ReportAllChat{
+		UuId:     msg.GetUuId(),
+		Nickname: msg.GetNickname(),
+		Chat:     msg.GetChat(),
+		Time:     time.Now().UnixNano() / int64(time.Millisecond),
+	}
+
+	data, err := proto.MakeResponse(&res, constant.P2C_ReportAllChat)
+	if err != nil {
+		log.Println("ERROR P2C_ReportAllChat", msg.GetUuId())
+		return
+	}
+
+	server.sendMsgToAll(data, conn)
+	db.InsertPublicMessage(msg.GetUuId(), msg.GetChat())
+
+	data = nil
+}
+
+func (server *Server) chatSendWhisper(conn mnet.Client, reader mpacket.Reader) {
+	msg := mc_metadata.C2P_RequestWhisper{}
+	err := proto.Unmarshal(reader.GetBuffer(), &msg)
+	if err != nil || len(msg.GetUuId()) == 0 {
+		log.Println("Failed to parse data:", err)
+		return
+	}
+
+	res := mc_metadata.P2C_ReportWhisper{
+		UuId:     msg.GetUuId(),
+		Nickname: msg.GetPlayerNickname(),
+		Chat:     msg.GetChat(),
+		Time:     time.Now().UnixNano() / int64(time.Millisecond),
+	}
+
+	data, err := proto.MakeResponse(&res, constant.P2C_ReportWhisper)
+	if err != nil {
+		log.Println("ERROR P2C_ReportAllChat", msg.GetUuId())
+		return
+	}
+
+	targetUid := db.InsertWhisperMessage(msg.GetUuId(), msg.GetTargetNickname(), msg.GetChat())
+	log.Println("TARGETID", targetUid)
+	if len(targetUid) > 0 {
+		server.sendMsgToPlayer(data, targetUid)
+	}
 	data = nil
 }
 
@@ -1342,28 +1422,6 @@ func (server Server) chatSlashCommand(conn mnet.Client, reader mpacket.Reader) {
 		}
 	default:
 		log.Println("Unkown slash command type:", op, reader)
-	}
-}
-
-func (server *Server) chatSendAll(conn mnet.Client, reader mpacket.Reader) {
-	msg := reader.ReadString(reader.ReadInt16())
-
-	if strings.Index(msg, "/") == 0 && conn.GetAdminLevel() > 0 {
-		server.gmCommand(conn, msg)
-	} else {
-		player, err := server.players.getFromConn(conn)
-
-		if err != nil {
-			return
-		}
-
-		inst, err := server.fields[player.mapID].getInstance(player.inst.id)
-
-		if err != nil {
-			return
-		}
-
-		inst.send(packetMessageAllChat(player.id, conn.GetAdminLevel() > 0, msg))
 	}
 }
 

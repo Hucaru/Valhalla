@@ -50,16 +50,20 @@ func GetResultUser(acc *model.Account) *mc_metadata.P2C_ResultLoginUser {
 	}
 }
 
-func GetLoggedUsers(acc *model.Account) *mc_metadata.P2C_ReportLoginUser {
-	return &mc_metadata.P2C_ReportLoginUser{
-		UuId:      acc.UId,
-		SpawnPosX: acc.PosX,
-		SpawnPosY: acc.PosY,
-		SpawnPosZ: acc.PosZ,
-		SpawnRotX: acc.RotX,
-		SpawnRotY: acc.RotY,
-		SpawnRotZ: acc.RotZ,
+func GetLoggedUsers(accounts []*model.Account) []*mc_metadata.P2C_ReportLoginUser {
+	res := make([]*mc_metadata.P2C_ReportLoginUser, 0)
+	for i := 0; i < len(accounts); i++ {
+		res = append(res, &mc_metadata.P2C_ReportLoginUser{
+			UuId:      accounts[i].UId,
+			SpawnPosX: accounts[i].PosX,
+			SpawnPosY: accounts[i].PosY,
+			SpawnPosZ: accounts[i].PosZ,
+			SpawnRotX: accounts[i].RotX,
+			SpawnRotY: accounts[i].RotY,
+			SpawnRotZ: accounts[i].RotZ,
+		})
 	}
+	return res
 }
 
 func MakeMovementData(msg *mc_metadata.Movement) *mc_metadata.Movement {

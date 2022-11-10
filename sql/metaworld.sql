@@ -156,6 +156,7 @@ CREATE TABLE `chat` (
     `characterID` int(11) NOT NULL,
     `text` text NOT NULL DEFAULT '',
     `targetID` int(11) NOT NULL,
+    `createdAt` bigint(20) NOT NULL DEFAULT '0',
     PRIMARY KEY (`id`),
     KEY `characterID` (`characterID`),
     CONSTRAINT `chat_ibfk_2` FOREIGN KEY (`characterID`) REFERENCES `characters` (`id`) ON DELETE CASCADE
