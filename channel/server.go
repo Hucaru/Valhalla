@@ -311,7 +311,7 @@ func (server *Server) ClientDisconnected(conn mnet.Client) {
 	//	log.Println(err)
 	//}
 	log.Println("DISCONNECT", conn.GetUid())
-	_, err1 := db.Maria.Exec("UPDATE accounts SET isLogedIn=0 WHERE u_id=?", conn.GetUid())
+	_, err1 := db.Maria.Exec("UPDATE accounts SET isLogedIn=0 WHERE uId=?", conn.GetUid())
 
 	if err1 != nil {
 		log.Println("Unable to complete logout for ", conn.GetUid())

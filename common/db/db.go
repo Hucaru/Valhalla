@@ -2,6 +2,7 @@ package db
 
 import (
 	"database/sql"
+	"fmt"
 	"github.com/Hucaru/Valhalla/common/db/model"
 	"github.com/Hucaru/Valhalla/constant"
 	"github.com/Hucaru/Valhalla/mnet"
@@ -47,7 +48,7 @@ func GetLoggedData(uUID string) (model.Account, error) {
 	}
 
 	err := Maria.QueryRow(
-		"SELECT a.accountID, a.u_id, c.id as characterID, "+
+		"SELECT a.accountID, a.uId, c.id as characterID, "+
 			"IFNULL(m.time, 0) as time, "+
 			"IFNULL(m.pos_x, 0) as pos_x, "+
 			"IFNULL(m.pos_y, 0) as pos_y, "+
@@ -58,7 +59,7 @@ func GetLoggedData(uUID string) (model.Account, error) {
 			"FROM accounts a "+
 			"LEFT JOIN characters c ON c.accountID = a.accountID "+
 			"LEFT JOIN movement m ON m.characterID = characterID "+
-			"WHERE a.u_id=? "+
+			"WHERE a.uId=? "+
 			"ORDER BY time DESC "+
 			"LIMIT 1", uUID).
 		Scan(&acc.AccountID, &acc.UId, &acc.CharacterID, &acc.Time, &acc.PosX, &acc.PosY, &acc.PosZ, &acc.RotX, &acc.RotY, &acc.RotZ)
@@ -67,7 +68,7 @@ func GetLoggedData(uUID string) (model.Account, error) {
 }
 
 func InsertNewAccount(uUid string, conn mnet.Client) {
-	res, err := Maria.Exec("INSERT INTO accounts (u_id, username, password, pin, dob, isLogedIn) VALUES (?, ?, ?, ?, ?, ?)",
+	res, err := Maria.Exec("INSERT INTO accounts (uId, username, password, pin, dob, isLogedIn) VALUES (?, ?, ?, ?, ?, ?)",
 		uUid, "test", "password", "1", 1, 1)
 
 	if err != nil {
@@ -77,11 +78,10 @@ func InsertNewAccount(uUid string, conn mnet.Client) {
 
 	accountID, err := res.LastInsertId()
 	conn.SetAccountID(int32(accountID))
-
 	cRes, cErr := Maria.Exec("INSERT INTO characters "+
-		"(accountID, worldID, name, gender, skin, hair, face, str, dex, intt, luk, top, bottom, clothes) "+
+		"(accountID, worldID, nickname, gender, skin, hair, face, str, dex, intt, luk, top, bottom, clothes) "+
 		"VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-		accountID, 1, "", 1, 1, "", 1, 1, 1, 1, 1, "", "", "")
+		accountID, 1, fmt.Sprintf("player#%d", time.Now().UnixNano()/int64(time.Millisecond)), 1, 1, "", 1, 1, 1, 1, 1, "", "", "")
 
 	if cErr != nil {
 		log.Println("INSERTING ERROR", cErr)
@@ -131,7 +131,7 @@ func findCharacterByUid(uID string) int32 {
 		"SELECT a.accountID, c.id as characterID "+
 			"FROM accounts a "+
 			"LEFT JOIN characters c ON c.accountID = a.accountID "+
-			"WHERE a.u_id=? "+
+			"WHERE a.uId=? "+
 			"LIMIT 1", uID).
 		Scan(&accountID, &characterID)
 	if err != nil {
@@ -147,7 +147,7 @@ func insertPlayerInfo(
 	bottom string,
 	clothes string) error {
 	_, err := Maria.Exec("INSERT INTO characters "+
-		"(name, hair, top, bottom, clothes) "+
+		"(nickname, hair, top, bottom, clothes) "+
 		"VALUES (?, ?, ?, ?, ?, ?, ?)",
 		nickname, hair, top, bottom, clothes)
 
@@ -164,7 +164,7 @@ func updatePlayerInfo(
 	top string,
 	bottom string,
 	clothes string) error {
-	_, err := Maria.Exec("UPDATE characters SET name=?, hair=?, top=?, bottom=?, clothes=? WHERE id=?",
+	_, err := Maria.Exec("UPDATE characters SET nickname=?, hair=?, top=?, bottom=?, clothes=? WHERE id=?",
 		nickname, hair, top, bottom, clothes, cID)
 
 	if err != nil {
@@ -198,6 +198,6 @@ func UpdateLoginState(uUID string, isLogedIn bool) error {
 	} else {
 		in = 0
 	}
-	_, err := Maria.Exec("UPDATE accounts SET isLogedIn=? WHERE u_id=?", in, uUID)
+	_, err := Maria.Exec("UPDATE accounts SET isLogedIn=? WHERE uId=?", in, uUID)
 	return err
 }

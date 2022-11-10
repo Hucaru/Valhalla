@@ -35,6 +35,11 @@ const (
 	RotZ = 0.0
 )
 
+const (
+	NoError                = -1
+	ErrorCodeDuplicateName = 400
+)
+
 // Generic Constants
 const (
 	MapleVersion          = 28

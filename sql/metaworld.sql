@@ -6,7 +6,7 @@ SET sql_mode = 'NO_AUTO_VALUE_ON_ZERO';
 DROP TABLE IF EXISTS `accounts`;
 CREATE TABLE `accounts` (
   `accountID` int(10) unsigned NOT NULL AUTO_INCREMENT,
-  `u_id` tinytext NOT NULL,
+  `uId` tinytext NOT NULL,
   `username` tinytext NOT NULL,
   `password` tinytext NOT NULL,
   `pin` tinytext NOT NULL,
@@ -16,7 +16,7 @@ CREATE TABLE `accounts` (
   `gender` tinyint(4) NOT NULL DEFAULT '0',
   `dob` int(11) NOT NULL,
   PRIMARY KEY (`accountID`),
-  UNIQUE KEY `unique_index_uID` (`u_id`)
+  UNIQUE KEY `unique_index_uID` (`uId`)
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 
 
@@ -41,7 +41,7 @@ CREATE TABLE `characters` (
   `worldID` int(11) unsigned NOT NULL DEFAULT '1',
   `channelID` tinyint(2) NOT NULL DEFAULT '-1',
   `migrationID` tinyint(4) NOT NULL DEFAULT '-1',
-  `name` tinytext NOT NULL DEFAULT 'player',
+  `nickname` tinytext NOT NULL,
   `gender` int(11) unsigned NOT NULL DEFAULT '1',
   `skin` int(11) unsigned NOT NULL DEFAULT '1',
   `hair` tinytext ,
@@ -79,6 +79,7 @@ CREATE TABLE `characters` (
   `buddyListSize` tinyint(3) unsigned NOT NULL DEFAULT '20',
   `inCashShop` int(11) NOT NULL DEFAULT '0',
   PRIMARY KEY (`id`),
+  UNIQUE KEY `unique_index_nickname` (`nickname`),
   KEY `userID` (`accountID`),
   CONSTRAINT `characters_ibfk_1` FOREIGN KEY (`accountID`) REFERENCES `accounts` (`accountID`)
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
@@ -146,4 +147,16 @@ CREATE TABLE `movement` (
   PRIMARY KEY (`id`),
   KEY `characterID` (`characterID`),
   CONSTRAINT `movement_ibfk_2` FOREIGN KEY (`characterID`) REFERENCES `characters` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+
+
+DROP TABLE IF EXISTS `chat`;
+CREATE TABLE `chat` (
+    `id` int(11) NOT NULL AUTO_INCREMENT,
+    `characterID` int(11) NOT NULL,
+    `text` text NOT NULL DEFAULT '',
+    `targetID` int(11) NOT NULL,
+    PRIMARY KEY (`id`),
+    KEY `characterID` (`characterID`),
+    CONSTRAINT `chat_ibfk_2` FOREIGN KEY (`characterID`) REFERENCES `characters` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;

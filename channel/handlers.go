@@ -311,21 +311,26 @@ func (server *Server) playerInfo(conn mnet.Client, reader mpacket.Reader) {
 	}
 
 	res := mc_metadata.P2C_ReportPlayerInfo{
-		UuId:     msg.GetUuId(),
-		Nickname: msg.GetNickname(),
-		Hair:     msg.GetHair(),
-		Top:      msg.GetTop(),
-		Bottom:   msg.GetBottom(),
-		Clothes:  msg.GetClothes(),
+		UuId:      msg.GetUuId(),
+		Nickname:  msg.GetNickname(),
+		Hair:      msg.GetHair(),
+		Top:       msg.GetTop(),
+		Bottom:    msg.GetBottom(),
+		Clothes:   msg.GetClothes(),
+		ErrorCode: constant.NoError,
 	}
 
-	res.IsSuccess = db.UpdatePlayerInfo(
+	uErr := db.UpdatePlayerInfo(
 		msg.GetUuId(),
 		msg.GetNickname(),
 		msg.GetHair(),
 		msg.GetTop(),
 		msg.GetBottom(),
-		msg.GetClothes()) == nil
+		msg.GetClothes())
+
+	if uErr != nil {
+		res.ErrorCode = constant.ErrorCodeDuplicateName
+	}
 
 	data, err := proto.MakeResponse(&res, constant.P2C_ReportPlayerInfo)
 	if err != nil {
