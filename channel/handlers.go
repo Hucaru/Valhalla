@@ -24,23 +24,18 @@ import (
 // HandleClientPacket data
 func (server *Server) HandleClientPacket(conn mnet.Client, tcpConn net.Conn, reader mpacket.Reader, msgProtocolType uint32) {
 
-	log.Println("PLAYERS COUNT", len(server.players))
-
 	switch msgProtocolType {
 	case constant.C2P_RequestLoginUser:
 		log.Println("DATA_BUFFER_LOGIN", reader.GetBuffer())
 		go server.playerConnect(conn, tcpConn, reader, msgProtocolType)
 		break
 	case constant.C2P_RequestMoveStart:
-		log.Println("DATA_BUFFER_MOVEMENT_START", reader.GetBuffer())
 		go server.playerMovementStart(conn, reader)
 		break
 	case constant.C2P_RequestMove:
-		log.Println("DATA_BUFFER_MOVEMENT", reader.GetBuffer())
 		go server.playerMovement(conn, reader)
 		break
 	case constant.C2P_RequestMoveEnd:
-		log.Println("DATA_BUFFER_MOVEMENT_END", reader.GetBuffer())
 		go server.playerMovementEnd(conn, reader)
 		break
 	case constant.C2P_RequestLogoutUser:
@@ -48,15 +43,15 @@ func (server *Server) HandleClientPacket(conn mnet.Client, tcpConn net.Conn, rea
 		go server.playerLogout(conn, reader)
 		break
 	case constant.C2P_RequestPlayerInfo:
-		log.Println("DATA_BUFFER_LOGOUT", reader.GetBuffer())
+		log.Println("DATA_PLAYER_INFO", reader.GetBuffer())
 		go server.playerInfo(conn, reader)
 		break
 	case constant.C2P_RequestAllChat:
-		log.Println("DATA_BUFFER_LOGOUT", reader.GetBuffer())
+		log.Println("DATA_ALL_CHAT", reader.GetBuffer())
 		go server.chatSendAll(conn, reader)
 		break
 	case constant.C2P_RequestWhisper:
-		log.Println("DATA_BUFFER_LOGOUT", reader.GetBuffer())
+		log.Println("DATA_WHISPER_CHAT", reader.GetBuffer())
 		go server.chatSendWhisper(conn, reader)
 		break
 
@@ -205,7 +200,6 @@ func (server *Server) playerConnect(conn mnet.Client, tcpConn net.Conn, reader m
 		return
 	}
 
-	log.Println("PLAYER_ID", plr.playerID)
 	server.sendMsgToMe(data, conn)
 	res = nil
 	data = nil
@@ -473,7 +467,6 @@ func (server *Server) makeMovementResponse(conn mnet.Client, msg proto2.Message,
 	if err != nil {
 		log.Println("DATA_RESPONSE_MOVEMENT_ERROR", err)
 	}
-	log.Println("DATA_RESPONSE_MOVEMENT", res)
 
 	server.sendMsgToAll(res, conn)
 	res = nil
@@ -482,7 +475,6 @@ func (server *Server) makeMovementResponse(conn mnet.Client, msg proto2.Message,
 func (server *Server) updateUserLocation(msg *mc_metadata.Movement) {
 	for i := 0; i < len(server.players); i++ {
 		if msg.GetUuId() == server.players[i].conn.GetUid() {
-			log.Println("UPDATING_LOCATION", server.players[i].playerID)
 			server.players[i].account.PosX = msg.GetDestinationX()
 			server.players[i].account.PosY = msg.GetDestinationY()
 			server.players[i].account.PosZ = msg.GetDestinationZ()

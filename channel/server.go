@@ -138,11 +138,11 @@ func (server *Server) Initialize(work chan func(), dbuser, dbpassword, dbaddress
 		server.fields[fieldID].formatFootholds()
 		server.fields[fieldID].calculateFieldLimits()
 		server.fields[fieldID].createInstance(&server.rates)
-
 	}
 
-	log.Println("Initialised game state")
+	server.clearSessions()
 
+	log.Println("Initialised game state")
 	common.MetricsGauges["player_count"] = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "player_count",
 		Help: "Number of players in this channel",
@@ -250,6 +250,13 @@ func (server *Server) registerWithWorld() {
 	p.WriteInt16(server.port)
 	p.WriteInt16(server.maxPop)
 	server.world.Send(p)
+}
+
+func (server *Server) clearSessions() {
+	err := db.ResetLoginState(false)
+	if err != nil {
+		log.Println("ERROR LOGOUT PLAYER_ID", err)
+	}
 }
 
 // ClientDisconnected from server

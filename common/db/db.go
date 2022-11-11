@@ -310,3 +310,14 @@ func UpdateLoginState(uUID string, isLogedIn bool) error {
 	_, err := Maria.Exec("UPDATE accounts SET isLogedIn=? WHERE uId=?", in, uUID)
 	return err
 }
+
+func ResetLoginState(isLogedIn bool) error {
+	in := 0
+	if isLogedIn {
+		in = 1
+	} else {
+		in = 0
+	}
+	_, err := Maria.Exec("UPDATE accounts SET isLogedIn=?", in)
+	return err
+}
