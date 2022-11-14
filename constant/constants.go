@@ -27,6 +27,23 @@ const (
 
 	C2P_RequestWhisper = 17
 	P2C_ReportWhisper  = 18
+	P2C_ResultWhisper  = 19
+
+	C2P_RequestPlayMontage = 20
+	P2C_ReportPlayMontage  = 21
+
+	C2P_RequestInteractionAttach = 22
+	P2C_ReportInteractionAttach  = 23
+
+	C2P_RequestMetaSchoolEnter = 24
+	P2C_ReportMetaSchoolEnter  = 25
+	P2C_ResultMetaSchoolEnter  = 26
+
+	C2P_RequestRollChecking = 27
+	P2C_ResultRollChecking  = 28
+
+	C2P_RequestRegionChat = 29
+	P2C_ReportRegionChat  = 30
 
 	//errors
 	P2C_ResultLoginUserError = 90
