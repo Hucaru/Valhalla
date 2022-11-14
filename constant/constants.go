@@ -54,9 +54,9 @@ const (
 )
 
 const (
-	PosX = 2000.0
-	PosY = -3441.0
-	PosZ = 664.9
+	PosX = -5102.0
+	PosY = -3365.0
+	PosZ = 670.0
 	RotX = 0.0
 	RotY = 0.0
 	RotZ = 0.0
