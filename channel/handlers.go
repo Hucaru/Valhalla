@@ -331,12 +331,6 @@ func (server *Server) playerInfo(conn mnet.Client, reader mpacket.Reader) {
 	}
 
 	res := mc_metadata.P2C_ResultPlayerInfo{
-		UuId:      msg.GetUuId(),
-		Nickname:  msg.GetNickname(),
-		Hair:      msg.GetHair(),
-		Top:       msg.GetTop(),
-		Bottom:    msg.GetBottom(),
-		Clothes:   msg.GetClothes(),
 		ErrorCode: constant.NoError,
 	}
 

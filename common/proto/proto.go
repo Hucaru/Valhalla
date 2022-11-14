@@ -25,7 +25,7 @@ func Unmarshal(buff []byte, msg proto.Message) error {
 func AccountReport(acc *model.Account) *mc_metadata.P2C_ReportLoginUser {
 	res := &mc_metadata.P2C_ReportLoginUser{
 		UuId: acc.UId,
-		PlayerInfo: &mc_metadata.P2C_ResultPlayerInfo{
+		PlayerInfo: &mc_metadata.P2C_PlayerInfo{
 			Hair:    acc.Hair,
 			Top:     acc.Top,
 			Bottom:  acc.Bottom,
@@ -45,7 +45,7 @@ func AccountReport(acc *model.Account) *mc_metadata.P2C_ReportLoginUser {
 func AccountResult(acc *model.Account) *mc_metadata.P2C_ResultLoginUser {
 	return &mc_metadata.P2C_ResultLoginUser{
 		UuId: acc.UId,
-		PlayerInfo: &mc_metadata.P2C_ResultPlayerInfo{
+		PlayerInfo: &mc_metadata.P2C_PlayerInfo{
 			Hair:    acc.Hair,
 			Top:     acc.Top,
 			Bottom:  acc.Bottom,
@@ -66,7 +66,7 @@ func ConvertAccountsToProto(accounts []*model.Account) []*mc_metadata.P2C_Report
 	for i := 0; i < len(accounts); i++ {
 		res = append(res, &mc_metadata.P2C_ReportLoginUser{
 			UuId: accounts[i].UId,
-			PlayerInfo: &mc_metadata.P2C_ResultPlayerInfo{
+			PlayerInfo: &mc_metadata.P2C_PlayerInfo{
 				Hair:    accounts[i].Hair,
 				Top:     accounts[i].Top,
 				Bottom:  accounts[i].Bottom,
