@@ -176,14 +176,15 @@ func (server *Server) playerConnect(conn mnet.Client, tcpConn net.Conn, reader m
 	plr.account = &acc
 	server.players = append(server.players, &plr)
 
-	res, err := proto.AccountResponseToAll(&acc, constant.P2C_ReportLoginUser)
+	response := proto.AccountReport(&acc)
+	res, err := proto.MakeResponse(response, constant.P2C_ReportLoginUser)
 	if err != nil {
 		log.Println("DATA_RESPONSE_ERROR", err)
 	}
 	log.Println("PLAYER_ID_LOGIN", conn.GetUid())
 	server.sendMsgToAll(res, conn)
 
-	account := proto.GetResultUser(plr.account)
+	account := proto.AccountResult(plr.account)
 	loggedAccounts, err := db.GetLoggedUsersData(plr.account.UId)
 
 	if err != nil {
@@ -191,7 +192,7 @@ func (server *Server) playerConnect(conn mnet.Client, tcpConn net.Conn, reader m
 		return
 	}
 
-	users := proto.GetLoggedUsers(loggedAccounts)
+	users := proto.ConvertAccountsToProto(loggedAccounts)
 	account.LoggedUsers = append(account.LoggedUsers, users...)
 
 	data, err := proto.MakeResponse(account, constant.P2C_ResultLoginUser)
@@ -202,6 +203,7 @@ func (server *Server) playerConnect(conn mnet.Client, tcpConn net.Conn, reader m
 
 	server.sendMsgToMe(data, conn)
 	res = nil
+	response = nil
 	data = nil
 	account = nil
 }
@@ -328,7 +330,7 @@ func (server *Server) playerInfo(conn mnet.Client, reader mpacket.Reader) {
 		return
 	}
 
-	res := mc_metadata.P2C_ReportPlayerInfo{
+	res := mc_metadata.P2C_ResultPlayerInfo{
 		UuId:      msg.GetUuId(),
 		Nickname:  msg.GetNickname(),
 		Hair:      msg.GetHair(),
@@ -350,7 +352,7 @@ func (server *Server) playerInfo(conn mnet.Client, reader mpacket.Reader) {
 		res.ErrorCode = constant.ErrorCodeDuplicateName
 	}
 
-	data, err := proto.MakeResponse(&res, constant.P2C_ReportPlayerInfo)
+	data, err := proto.MakeResponse(&res, constant.P2C_ResultPlayerInfo)
 	if err != nil {
 		log.Println("ERROR P2C_ResultLoginUser", msg.GetUuId())
 		return

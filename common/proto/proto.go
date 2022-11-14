@@ -22,24 +22,35 @@ func Unmarshal(buff []byte, msg proto.Message) error {
 	return proto.Unmarshal(buff, msg)
 }
 
-func AccountResponseToAll(acc *model.Account, msgType uint32) ([]byte, error) {
-	res, err := MakeResponse(&mc_metadata.P2C_ReportLoginUser{
-		UuId:      acc.UId,
+func AccountReport(acc *model.Account) *mc_metadata.P2C_ReportLoginUser {
+	res := &mc_metadata.P2C_ReportLoginUser{
+		UuId: acc.UId,
+		PlayerInfo: &mc_metadata.P2C_ResultPlayerInfo{
+			Hair:    acc.Hair,
+			Top:     acc.Top,
+			Bottom:  acc.Bottom,
+			Clothes: acc.Clothes,
+		},
 		SpawnPosX: acc.PosX,
 		SpawnPosY: acc.PosY,
 		SpawnPosZ: acc.PosZ,
 		SpawnRotX: acc.RotX,
 		SpawnRotY: acc.RotY,
 		SpawnRotZ: acc.RotZ,
-	}, msgType)
+	}
 
-	acc = nil
-	return res, err
+	return res
 }
 
-func GetResultUser(acc *model.Account) *mc_metadata.P2C_ResultLoginUser {
+func AccountResult(acc *model.Account) *mc_metadata.P2C_ResultLoginUser {
 	return &mc_metadata.P2C_ResultLoginUser{
-		UuId:        acc.UId,
+		UuId: acc.UId,
+		PlayerInfo: &mc_metadata.P2C_ResultPlayerInfo{
+			Hair:    acc.Hair,
+			Top:     acc.Top,
+			Bottom:  acc.Bottom,
+			Clothes: acc.Clothes,
+		},
 		SpawnPosX:   acc.PosX,
 		SpawnPosY:   acc.PosY,
 		SpawnPosZ:   acc.PosZ,
@@ -50,11 +61,17 @@ func GetResultUser(acc *model.Account) *mc_metadata.P2C_ResultLoginUser {
 	}
 }
 
-func GetLoggedUsers(accounts []*model.Account) []*mc_metadata.P2C_ReportLoginUser {
+func ConvertAccountsToProto(accounts []*model.Account) []*mc_metadata.P2C_ReportLoginUser {
 	res := make([]*mc_metadata.P2C_ReportLoginUser, 0)
 	for i := 0; i < len(accounts); i++ {
 		res = append(res, &mc_metadata.P2C_ReportLoginUser{
-			UuId:      accounts[i].UId,
+			UuId: accounts[i].UId,
+			PlayerInfo: &mc_metadata.P2C_ResultPlayerInfo{
+				Hair:    accounts[i].Hair,
+				Top:     accounts[i].Top,
+				Bottom:  accounts[i].Bottom,
+				Clothes: accounts[i].Clothes,
+			},
 			SpawnPosX: accounts[i].PosX,
 			SpawnPosY: accounts[i].PosY,
 			SpawnPosZ: accounts[i].PosZ,

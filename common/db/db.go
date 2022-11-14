@@ -38,6 +38,10 @@ func GetLoggedData(uUID string) (model.Account, error) {
 		UId:         uUID,
 		AccountID:   -1,
 		CharacterID: -1,
+		Hair:        "",
+		Top:         "",
+		Bottom:      "",
+		Clothes:     "",
 		Time:        0,
 		PosX:        constant.PosX,
 		PosY:        constant.PosY,
@@ -49,6 +53,7 @@ func GetLoggedData(uUID string) (model.Account, error) {
 
 	err := Maria.QueryRow(
 		"SELECT a.accountID, a.uId, c.id as characterID, "+
+			"c.hair, c.top, c.bottom, c.clothes, "+
 			"IFNULL(m.time, 0) as time, "+
 			"IFNULL(m.pos_x, 0) as pos_x, "+
 			"IFNULL(m.pos_y, 0) as pos_y, "+
@@ -62,7 +67,11 @@ func GetLoggedData(uUID string) (model.Account, error) {
 			"WHERE a.uId=? "+
 			"ORDER BY time DESC "+
 			"LIMIT 1", uUID).
-		Scan(&acc.AccountID, &acc.UId, &acc.CharacterID, &acc.Time, &acc.PosX, &acc.PosY, &acc.PosZ, &acc.RotX, &acc.RotY, &acc.RotZ)
+		Scan(&acc.AccountID,
+			&acc.UId,
+			&acc.CharacterID,
+			&acc.Hair, &acc.Top, &acc.Bottom, &acc.Clothes,
+			&acc.Time, &acc.PosX, &acc.PosY, &acc.PosZ, &acc.RotX, &acc.RotY, &acc.RotZ)
 
 	return *acc, err
 }
@@ -73,6 +82,7 @@ func GetLoggedUsersData(uUID string) ([]*model.Account, error) {
 
 	rows, err := Maria.Query(
 		"SELECT a.accountID, a.uId, c.id as characterID, a.isLogedIn, "+
+			"c.hair, c.top, c.bottom, c.clothes, "+
 			"IFNULL(m.time, 0) as time, "+
 			"IFNULL(m.pos_x, 0) as pos_x, "+
 			"IFNULL(m.pos_y, 0) as pos_y, "+
@@ -99,6 +109,10 @@ func GetLoggedUsersData(uUID string) ([]*model.Account, error) {
 			AccountID:   -1,
 			CharacterID: -1,
 			Time:        0,
+			Hair:        "",
+			Top:         "",
+			Bottom:      "",
+			Clothes:     "",
 			PosX:        constant.PosX,
 			PosY:        constant.PosY,
 			PosZ:        constant.PosZ,
@@ -107,7 +121,11 @@ func GetLoggedUsersData(uUID string) ([]*model.Account, error) {
 			RotZ:        constant.RotZ,
 		}
 
-		if err := rows.Scan(&acc.AccountID, &acc.UId, &acc.CharacterID, &is, &acc.Time, &acc.PosX, &acc.PosY, &acc.PosZ, &acc.RotX, &acc.RotY, &acc.RotZ); err != nil {
+		if err := rows.Scan(
+			&acc.AccountID, &acc.UId, &acc.CharacterID, &is,
+			&acc.Hair, &acc.Top, &acc.Bottom, &acc.Clothes,
+			&acc.Time,
+			&acc.PosX, &acc.PosY, &acc.PosZ, &acc.RotX, &acc.RotY, &acc.RotZ); err != nil {
 			log.Println("LOGGED USERS SELECTING ERROR", err)
 			return nil, err
 		}

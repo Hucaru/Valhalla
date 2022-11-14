@@ -20,7 +20,7 @@ const (
 	P2C_ReportLogoutUser  = 12
 
 	C2P_RequestPlayerInfo = 13
-	P2C_ReportPlayerInfo  = 14
+	P2C_ResultPlayerInfo  = 14
 
 	C2P_RequestAllChat = 15
 	P2C_ReportAllChat  = 16

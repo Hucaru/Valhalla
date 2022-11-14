@@ -3,6 +3,10 @@ package model
 type Account struct {
 	AccountID   int64
 	NickName    string
+	Hair        string
+	Top         string
+	Bottom      string
+	Clothes     string
 	UId         string
 	CharacterID int64
 	Time        int64
