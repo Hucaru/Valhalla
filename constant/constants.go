@@ -1,6 +1,6 @@
 package constant
 
-var WORLD_NAMES = [...]string{"Scania", "Bera", "Broa", "Windia", "Khaini", "Bellocan", "Mardia", "Kradia", "Yellonde", "Demethos", "Galicia", "El Nido", "Zenith", "Arcania", "Chaos", "Nova", "Renegates"}
+var WORLD_NAMES = [...]string{"metaWorld", "metaSchool", "ihq", "metaBank", "metaInvest", "Bellocan", "Mardia", "Kradia", "Yellonde", "Demethos", "Galicia", "El Nido", "Zenith", "Arcania", "Chaos", "Nova", "Renegates"}
 
 const (
 	C2P_RequestLoginUser = 1
@@ -29,21 +29,25 @@ const (
 	P2C_ReportWhisper  = 18
 	P2C_ResultWhisper  = 19
 
-	C2P_RequestPlayMontage = 20
-	P2C_ReportPlayMontage  = 21
+	P2C_RequestRegionChat = 20
+	P2C_ReportRegionChat  = 21
 
-	C2P_RequestInteractionAttach = 22
-	P2C_ReportInteractionAttach  = 23
+	C2P_RequestPlayMontage = 22
+	P2C_ReportPlayMontage  = 23
 
-	C2P_RequestMetaSchoolEnter = 24
-	P2C_ReportMetaSchoolEnter  = 25
-	P2C_ResultMetaSchoolEnter  = 26
+	C2P_RequestInteractionAttach = 24
+	P2C_ReportInteractionAttach  = 25
 
-	C2P_RequestRollChecking = 27
-	P2C_ResultRollChecking  = 28
+	C2P_RequestMetaSchoolEnter = 26
+	P2C_ReportMetaSchoolEnter  = 27
+	P2C_ResultMetaSchoolEnter  = 28
 
-	C2P_RequestRegionChat = 29
-	P2C_ReportRegionChat  = 30
+	C2P_RequestRollChecking = 29
+	P2C_ResultRollChecking  = 30
+
+	C2P_RequestRegionChange = 30
+	P2C_ResultRegionChange  = 31
+	P2C_ReportRegionChange  = 32
 
 	//errors
 	P2C_ResultLoginUserError = 90
@@ -61,10 +65,19 @@ const (
 const (
 	NoError                = -1
 	ErrorCodeDuplicateName = 400
+	ErrorCodeDuplicateUID  = 401
 )
 
 const (
 	NO_TARGET = -1
+)
+
+const (
+	World      = 1
+	MetaSchool = 2
+	Ihq        = 3
+	MetaBank   = 4
+	MetaInvest = 5
 )
 
 // Generic Constants

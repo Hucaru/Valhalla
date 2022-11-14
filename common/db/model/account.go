@@ -2,6 +2,7 @@ package model
 
 type Account struct {
 	AccountID   int64
+	RegionID    int32
 	NickName    string
 	Hair        string
 	Top         string

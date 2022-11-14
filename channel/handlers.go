@@ -28,6 +28,7 @@ func (server *Server) HandleClientPacket(conn mnet.Client, tcpConn net.Conn, rea
 	case constant.C2P_RequestLoginUser:
 		log.Println("DATA_BUFFER_LOGIN", reader.GetBuffer())
 		go server.playerConnect(conn, tcpConn, reader, msgProtocolType)
+		log.Println("CHANNELS", server.channels)
 		break
 	case constant.C2P_RequestMoveStart:
 		go server.playerMovementStart(conn, reader)
@@ -53,6 +54,10 @@ func (server *Server) HandleClientPacket(conn mnet.Client, tcpConn net.Conn, rea
 	case constant.C2P_RequestWhisper:
 		log.Println("DATA_WHISPER_CHAT", reader.GetBuffer())
 		go server.chatSendWhisper(conn, reader)
+		break
+	case constant.C2P_RequestRegionChange:
+		log.Println("DATA_WHISPER_CHAT", reader.GetBuffer())
+		go server.playerChangeChannel(conn, reader)
 		break
 
 	default:
@@ -151,8 +156,6 @@ func (server *Server) playerConnect(conn mnet.Client, tcpConn net.Conn, reader m
 		return
 	}
 
-	conn.SetUid(msg.UuId)
-
 	acc, err := db.GetLoggedData(msg.UuId)
 
 	if err != nil {
@@ -171,6 +174,9 @@ func (server *Server) playerConnect(conn mnet.Client, tcpConn net.Conn, reader m
 		}
 	}
 
+	conn.SetUid(msg.UuId)
+	conn.SetRegionID(acc.RegionID)
+
 	plr := loadPlayer(conn, msg)
 	plr.rates = &server.rates
 	plr.account = &acc
@@ -182,7 +188,7 @@ func (server *Server) playerConnect(conn mnet.Client, tcpConn net.Conn, reader m
 		log.Println("DATA_RESPONSE_ERROR", err)
 	}
 	log.Println("PLAYER_ID_LOGIN", conn.GetUid())
-	server.sendMsgToAll(res, conn)
+	server.sendMsgToRegion(res, conn)
 
 	account := proto.AccountResult(plr.account)
 	loggedAccounts, err := db.GetLoggedUsersData(plr.account.UId)
@@ -236,38 +242,62 @@ func (server *Server) sendMsgToAll(res mpacket.Packet, conn mnet.Client) {
 	}
 }
 
+func (server *Server) sendMsgToRegion(res mpacket.Packet, conn mnet.Client) {
+
+	for i := 0; i < len(server.players); i++ {
+		if conn.GetUid() != server.players[i].conn.GetUid() &&
+			conn.GetRegionID() == server.players[i].conn.GetRegionID() {
+			log.Println("PLAYER_ID", server.players[i].playerID)
+			server.players[i].conn.Send(res)
+		}
+	}
+}
+
 func (server *Server) playerChangeChannel(conn mnet.Client, reader mpacket.Reader) {
-	id := reader.ReadByte()
-
-	server.migrating = append(server.migrating, conn)
-	player, err := server.players.getFromConn(conn)
-
-	if err != nil {
-		log.Println("Unable to get player from connection", conn)
+	msg := mc_metadata.C2P_RequestRegionChange{}
+	err := proto.Unmarshal(reader.GetBuffer(), &msg)
+	if err != nil || len(msg.UuId) == 0 {
+		log.Println("Failed to parse data:", err)
 		return
 	}
 
-	if int(id) < len(server.channels) {
-		if server.channels[id].Port == 0 {
-			conn.Send(packetCannotChangeChannel())
-		} else {
-			_, err := db.Maria.Exec("UPDATE characters SET migrationID=? WHERE id=?", id, player.id)
+	if msg.GetRegionId() < constant.World || msg.GetRegionId() > constant.MetaInvest {
+		log.Println("Region not found:", err)
+		return
+	}
+
+	for i := 0; i < len(server.players); i++ {
+		if msg.GetUuId() == server.players[i].conn.GetUid() {
+			db.UpdateRegionID(msg.GetUuId(), msg.GetRegionId())
+			server.players[i].conn.SetRegionID(msg.GetRegionId())
+
+			response := proto.AccountReport(server.players[i].account)
+			res, err := proto.MakeResponse(response, constant.P2C_ReportRegionChange)
+			if err != nil {
+				log.Println("DATA_RESPONSE_ERROR", err)
+			}
+			log.Println("PLAYER_ID_LOGIN", conn.GetUid())
+			server.sendMsgToRegion(res, conn)
+
+			account := proto.AccountResult(server.players[i].account)
+			loggedAccounts, err := db.GetLoggedUsersData(server.players[i].account.UId)
 
 			if err != nil {
-				log.Println(err)
+				log.Println("ERROR P2C_ResultLoginUser", server.players[i].playerID)
 				return
 			}
 
-			packetChangeChannel := func(ip []byte, port int16) mpacket.Packet {
-				p := mpacket.CreateWithOpcode(opcode.SendChannelChange)
-				p.WriteBool(true)
-				p.WriteBytes(ip)
-				p.WriteInt16(port)
+			users := proto.ConvertAccountsToProto(loggedAccounts)
+			account.LoggedUsers = append(account.LoggedUsers, users...)
 
-				return p
+			data, err := proto.MakeResponse(account, constant.P2C_ResultRegionChange)
+			if err != nil {
+				log.Println("ERROR P2C_ResultLoginUser", err)
+				return
 			}
 
-			conn.Send(packetChangeChannel(server.channels[id].IP, server.channels[id].Port))
+			server.sendMsgToMe(data, conn)
+			break
 		}
 	}
 }
@@ -334,6 +364,16 @@ func (server *Server) playerInfo(conn mnet.Client, reader mpacket.Reader) {
 		ErrorCode: constant.NoError,
 	}
 
+	_, err1 := db.GetLoggedDataByName(msg.UuId, msg.Nickname)
+
+	if err1 != nil {
+		log.Println("Inserting new user", msg.UuId)
+		iErr := db.InsertNewAccount(msg.UuId, conn)
+		if iErr != nil {
+			res.ErrorCode = constant.ErrorCodeDuplicateUID
+		}
+	}
+
 	uErr := db.UpdatePlayerInfo(
 		msg.GetUuId(),
 		msg.GetNickname(),
@@ -351,8 +391,8 @@ func (server *Server) playerInfo(conn mnet.Client, reader mpacket.Reader) {
 		log.Println("ERROR P2C_ResultLoginUser", msg.GetUuId())
 		return
 	}
-
-	server.sendMsgToAll(data, conn)
+	conn.Send(data)
+	//server.sendMsgToMe(data, conn)
 	data = nil
 }
 
@@ -416,11 +456,13 @@ func (server *Server) chatSendWhisper(conn mnet.Client, reader mpacket.Reader) {
 		return
 	}
 
+	t := time.Now().UnixNano() / int64(time.Millisecond)
+
 	res := mc_metadata.P2C_ReportWhisper{
 		UuId:     msg.GetUuId(),
 		Nickname: msg.GetPlayerNickname(),
 		Chat:     msg.GetChat(),
-		Time:     time.Now().UnixNano() / int64(time.Millisecond),
+		Time:     t,
 	}
 
 	data, err := proto.MakeResponse(&res, constant.P2C_ReportWhisper)
@@ -434,6 +476,22 @@ func (server *Server) chatSendWhisper(conn mnet.Client, reader mpacket.Reader) {
 	if len(targetUid) > 0 {
 		server.sendMsgToPlayer(data, targetUid)
 	}
+
+	toMe := mc_metadata.P2C_ResultWhisper{
+		UuId:     msg.GetUuId(),
+		Nickname: msg.GetPlayerNickname(),
+		Chat:     msg.GetChat(),
+		Time:     t,
+	}
+
+	dataMe, err := proto.MakeResponse(&toMe, constant.P2C_ResultWhisper)
+	if err != nil {
+		log.Println("ERROR P2C_ResultWhisper", msg.GetUuId())
+		return
+	}
+
+	server.sendMsgToMe(dataMe, conn)
+	dataMe = nil
 	data = nil
 }
 
