@@ -45,9 +45,9 @@ const (
 	C2P_RequestRollChecking = 29
 	P2C_ResultRollChecking  = 30
 
-	C2P_RequestRegionChange = 30
-	P2C_ResultRegionChange  = 31
-	P2C_ReportRegionChange  = 32
+	C2P_RequestRegionChange = 31
+	P2C_ResultRegionChange  = 32
+	P2C_ReportRegionChange  = 33
 
 	//errors
 	P2C_ResultLoginUserError = 90
