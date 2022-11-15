@@ -39,6 +39,7 @@ func GetLoggedData(uUID string) (model.Account, error) {
 		UId:         uUID,
 		AccountID:   -1,
 		CharacterID: -1,
+		Role:        0,
 		RegionID:    constant.All,
 		Hair:        "",
 		Top:         "",
@@ -54,7 +55,7 @@ func GetLoggedData(uUID string) (model.Account, error) {
 	}
 
 	err := Maria.QueryRow(
-		"SELECT a.accountID, a.uId, c.id as characterID, c.channelID, "+
+		"SELECT a.accountID, a.uId, c.id as characterID, c.channelID, c.role, "+
 			"c.hair, c.top, c.bottom, c.clothes, "+
 			"IFNULL(m.time, 0) as time, "+
 			"IFNULL(m.pos_x, 0) as pos_x, "+
@@ -70,9 +71,7 @@ func GetLoggedData(uUID string) (model.Account, error) {
 			"ORDER BY time DESC "+
 			"LIMIT 1", uUID).
 		Scan(&acc.AccountID,
-			&acc.UId,
-			&acc.CharacterID,
-			&acc.RegionID,
+			&acc.UId, &acc.CharacterID, &acc.RegionID, &acc.Role,
 			&acc.Hair, &acc.Top, &acc.Bottom, &acc.Clothes,
 			&acc.Time, &acc.PosX, &acc.PosY, &acc.PosZ, &acc.RotX, &acc.RotY, &acc.RotZ)
 
@@ -85,6 +84,7 @@ func GetLoggedDataByName(uUID string, nickname string) (model.Account, error) {
 		UId:         uUID,
 		AccountID:   -1,
 		CharacterID: -1,
+		Role:        0,
 		RegionID:    constant.All,
 		Hair:        "",
 		Top:         "",
@@ -100,7 +100,7 @@ func GetLoggedDataByName(uUID string, nickname string) (model.Account, error) {
 	}
 
 	err := Maria.QueryRow(
-		"SELECT a.accountID, a.uId, c.id as characterID, c.channelID, "+
+		"SELECT a.accountID, a.uId, c.id as characterID, c.channelID, c.role, "+
 			"c.hair, c.top, c.bottom, c.clothes, "+
 			"IFNULL(m.time, 0) as time, "+
 			"IFNULL(m.pos_x, 0) as pos_x, "+
@@ -116,9 +116,7 @@ func GetLoggedDataByName(uUID string, nickname string) (model.Account, error) {
 			"ORDER BY time DESC "+
 			"LIMIT 1", nickname).
 		Scan(&acc.AccountID,
-			&acc.UId,
-			&acc.CharacterID,
-			&acc.RegionID,
+			&acc.UId, &acc.CharacterID, &acc.RegionID, &acc.Role,
 			&acc.Hair, &acc.Top, &acc.Bottom, &acc.Clothes,
 			&acc.Time, &acc.PosX, &acc.PosY, &acc.PosZ, &acc.RotX, &acc.RotY, &acc.RotZ)
 
@@ -130,7 +128,7 @@ func GetLoggedUsersData(uUID string, regionID int64) ([]*model.Account, error) {
 	accounts := make([]*model.Account, 0)
 
 	rows, err := Maria.Query(
-		"SELECT a.accountID, a.uId, c.id as characterID, a.isLogedIn, c.channelID, "+
+		"SELECT a.accountID, a.uId, c.id as characterID, a.isLogedIn, c.channelID, c.role, "+
 			"c.hair, c.top, c.bottom, c.clothes, "+
 			"IFNULL(m.time, 0) as time, "+
 			"IFNULL(m.pos_x, 0) as pos_x, "+
@@ -158,6 +156,7 @@ func GetLoggedUsersData(uUID string, regionID int64) ([]*model.Account, error) {
 			AccountID:   -1,
 			RegionID:    constant.All,
 			CharacterID: -1,
+			Role:        0,
 			Time:        0,
 			Hair:        "",
 			Top:         "",
@@ -172,7 +171,7 @@ func GetLoggedUsersData(uUID string, regionID int64) ([]*model.Account, error) {
 		}
 
 		if err := rows.Scan(
-			&acc.AccountID, &acc.UId, &acc.CharacterID, &is, &acc.RegionID,
+			&acc.AccountID, &acc.UId, &acc.CharacterID, &is, &acc.RegionID, &acc.Role,
 			&acc.Hair, &acc.Top, &acc.Bottom, &acc.Clothes,
 			&acc.Time,
 			&acc.PosX, &acc.PosY, &acc.PosZ, &acc.RotX, &acc.RotY, &acc.RotZ); err != nil {
@@ -201,9 +200,9 @@ func InsertNewAccount(uUid string, conn mnet.Client) error {
 	accountID, err := res.LastInsertId()
 	conn.SetAccountID(int32(accountID))
 	cRes, cErr := Maria.Exec("INSERT INTO characters "+
-		"(accountID, worldID, nickname, gender, skin, hair, face, str, dex, intt, luk, top, bottom, clothes, channelID) "+
-		"VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-		accountID, 1, fmt.Sprintf("player#%d", time.Now().UnixNano()/int64(time.Millisecond)), 1, 1, "", 1, 1, 1, 1, 1, "", "", "", constant.All)
+		"(accountID, worldID, nickname, gender, hair, top, bottom, clothes, channelID, role) "+
+		"VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+		accountID, 1, fmt.Sprintf("player#%d", time.Now().UnixNano()/int64(time.Millisecond)), 1, "", "", "", "", constant.All, 0)
 
 	if cErr != nil {
 		log.Println("INSERTING ERROR", cErr)
@@ -245,6 +244,51 @@ func UpdatePlayerInfo(
 	return updatePlayerInfo(cID, hair, top, bottom, clothes)
 }
 
+func UpdatePlayerRole(
+	uID string,
+	role int32) error {
+
+	cID := findCharacterByUid(uID)
+	if cID < 0 {
+		return errors.New("player not found")
+	}
+	return updatePlayerRole(cID, role)
+}
+
+func CountPlayersInRegion(uID string) int32 {
+	var nums int32
+
+	err := Maria.QueryRow(
+		"SELECT COUNT(c.nums) as nums"+
+			"FROM (SELECT c.id as nums FROM accounts a "+
+			"LEFT JOIN characters c1 ON c1.accountID = a.accountID "+
+			"LEFT JOIN characters c ON c.channelID = c1.channelID AND c.accountID != a.accountID"+
+			"LEFT JOIN accounts a2 ON a2.accountID = c.accountID "+
+			"WHERE a.uId = ? AND AND a2.isLogedIn = 1 "+
+			"GROUP BY c.id) c", uID).
+		Scan(&nums)
+	if err != nil {
+		return 0
+	}
+	return nums
+}
+
+func FindRegionModerators(regionID int32) int32 {
+	var nums int32
+
+	err := Maria.QueryRow(
+		"SELECT COUNT(c.nums) as nums FROM "+
+			"(SELECT c.id as nums "+
+			"FROM accounts a "+
+			"LEFT JOIN characters c ON c.accountID = a.accountID "+
+			"WHERE a.isLogedIn = 1 AND c.channelID = ? AND c.role = ?) c", regionID, constant.Moderator).
+		Scan(&nums)
+	if err != nil {
+		return 0
+	}
+	return nums
+}
+
 func findCharacterByUid(uID string) int64 {
 	var accountID int64
 	var characterID int64
@@ -269,9 +313,9 @@ func insertPlayerInfo(
 	bottom string,
 	clothes string) error {
 	_, err := Maria.Exec("INSERT INTO characters "+
-		"(nickname, hair, top, bottom, clothes) "+
-		"VALUES (?, ?, ?, ?, ?)",
-		nickname, hair, top, bottom, clothes)
+		"(nickname, hair, top, bottom, clothes, role) "+
+		"VALUES (?, ?, ?, ?, ?, ?)",
+		nickname, hair, top, bottom, clothes, 0)
 
 	if err != nil {
 		log.Println("INSERTING PLAYER INFO ERROR", err)
@@ -290,6 +334,17 @@ func updatePlayerInfo(
 
 	if err != nil {
 		log.Println("UPDATING PLAYER INFO ERROR", err)
+	}
+	return err
+}
+
+func updatePlayerRole(
+	cID int64,
+	role int32) error {
+	_, err := Maria.Exec("UPDATE characters SET role=? WHERE id=?", cID, role)
+
+	if err != nil {
+		log.Println("UPDATING PLAYER ROLE ERROR", err)
 	}
 	return err
 }
@@ -348,6 +403,7 @@ func InsertWhisperMessage(uID string, targetID string, text string) string {
 		Scan(&accountID, &characterID, &targetUID, &targetCID)
 	if err != nil {
 		log.Println("ERROR SELECTING ACCOUNT")
+		return targetUID
 	}
 
 	insertChatMessage(characterID, constant.All, text, targetCID)

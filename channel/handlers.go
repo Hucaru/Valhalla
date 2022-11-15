@@ -61,92 +61,27 @@ func (server *Server) HandleClientPacket(conn mnet.Client, tcpConn net.Conn, rea
 		log.Println("DATA_REGION_CHANGE", reader.GetBuffer())
 		go server.playerChangeChannel(conn, reader)
 		break
+	case constant.C2P_RequestInteractionAttach:
+		log.Println("DATA_INTERACTION", reader.GetBuffer())
+		go server.playerInteraction(conn, reader)
+		break
+	case constant.C2P_RequestPlayMontage:
+		log.Println("DATA_PLAY_MONTAGE", reader.GetBuffer())
+		go server.playerPlayAnimation(conn, reader)
+		break
+	case constant.C2P_RequestMetaSchoolEnter:
+		log.Println("DATA_META_SCHOOL_ENTER", reader.GetBuffer())
+		go server.playerRoleUpdate(conn, reader)
+		break
+	case constant.C2P_RequestRoleChecking:
+		log.Println("DATA_ROLE_CHECKING", reader.GetBuffer())
+		go server.playerRegionRoleChecking(conn, reader)
+		break
 	default:
 		fmt.Println("UNKNOWN MSG", reader)
 		//msg = nil
 		break
 	}
-
-	//switch reader.ReadByte() {
-	//case opcode.RecvPing:
-	//case opcode.RecvChannelPlayerLoad:
-	//	fmt.Println("RecvChannelPlayerLoad", conn)
-	//server.playerConnect(conn, reader)
-	//case opcode.RecvCHannelChangeChannel:
-	//	server.playerChangeChannel(conn, reader)
-	//case opcode.RecvChannelUserPortal:
-	//	// This opcode is used for revival UI as well.
-	//	server.playerUsePortal(conn, reader)
-	//case opcode.RecvChannelEnterCashShop:
-	//	conn.Send(packetMessageDialogueBox("Shop not implemented"))
-	//case opcode.RecvChannelPlayerMovement:
-	//	server.playerMovement(conn, reader)
-	//case opcode.RecvChannelPlayerStand:
-	//	server.playerStand(conn, reader)
-	//case opcode.RecvChannelPlayerUseChair:
-	//	server.playerUseChair(conn, reader)
-	//case opcode.RecvChannelMeleeSkill:
-	//	server.playerMeleeSkill(conn, reader)
-	//case opcode.RecvChannelRangedSkill:
-	//	server.playerRangedSkill(conn, reader)
-	//case opcode.RecvChannelMagicSkill:
-	//	server.playerMagicSkill(conn, reader)
-	//case opcode.RecvChannelDmgRecv:
-	//	server.playerTakeDamage(conn, reader)
-	//case opcode.RecvChannelPlayerSendAllChat:
-	//	server.chatSendAll(conn, reader)
-	//case opcode.RecvChannelGroupChat:
-	//	server.chatGroup(conn, reader)
-	//case opcode.RecvChannelSlashCommands:
-	//	server.chatSlashCommand(conn, reader)
-	//case opcode.RecvChannelCharacterUIWindow:
-	//	server.roomWindow(conn, reader)
-	//case opcode.RecvChannelEmote:
-	//	server.playerEmote(conn, reader)
-	//case opcode.RecvChannelNpcDialogue:
-	//	server.npcChatStart(conn, reader)
-	//case opcode.RecvChannelNpcDialogueContinue:
-	//	server.npcChatContinue(conn, reader)
-	//case opcode.RecvChannelNpcShop:
-	//	server.npcShop(conn, reader)
-	//case opcode.RecvChannelInvMoveItem:
-	//	server.playerMoveInventoryItem(conn, reader)
-	//case opcode.RecvChannelPlayerDropMesos:
-	//	server.playerDropMesos(conn, reader)
-	//case opcode.RecvChannelInvUseItem:
-	//	server.playerUseInventoryItem(conn, reader)
-	//case opcode.RecvChannelPlayerPickup:
-	//	server.playerPickupItem(conn, reader)
-	//case opcode.RecvChannelAddStatPoint:
-	//	server.playerAddStatPoint(conn, reader)
-	//case opcode.RecvChannelPassiveRegen:
-	//	server.playerPassiveRegen(conn, reader)
-	//case opcode.RecvChannelAddSkillPoint:
-	//	server.playerAddSkillPoint(conn, reader)
-	//case opcode.RecvChannelSpecialSkill:
-	//	// server.playerSpecialSkill(conn, reader)
-	//case opcode.RecvChannelCharacterInfo:
-	//	server.playerRequestAvatarInfoWindow(conn, reader)
-	//case opcode.RecvChannelLieDetectorResult:
-	//case opcode.RecvChannelPartyInfo:
-	//	server.playerPartyInfo(conn, reader)
-	//case opcode.RecvChannelGuildManagement:
-	//case opcode.RecvChannelGuildReject:
-	//case opcode.RecvChannelBuddyOperation:
-	//	server.playerBuddyOperation(conn, reader)
-	//case opcode.RecvChannelUseMysticDoor:
-	//	server.playerUseMysticDoor(conn, reader)
-	//case opcode.RecvChannelMobControl:
-	//	server.mobControl(conn, reader)
-	//case opcode.RecvChannelDistance:
-	//	server.mobDistance(conn, reader)
-	//case opcode.RecvChannelNpcMovement:
-	//	server.npcMovement(conn, reader)
-	//case opcode.RecvChannelBoatMap:
-	//	// [mapID int32][? byte]
-	//default:
-	//	log.Println("UNKNOWN CLIENT PACKET:", reader)
-	//}
 }
 
 func (server *Server) playerConnect(conn mnet.Client, tcpConn net.Conn, reader mpacket.Reader, mType uint32) {
@@ -176,7 +111,7 @@ func (server *Server) playerConnect(conn mnet.Client, tcpConn net.Conn, reader m
 	}
 
 	conn.SetUid(msg.UuId)
-	conn.SetRegionID(int64(acc.RegionID))
+	conn.SetRegionID(acc.RegionID)
 
 	plr := loadPlayer(conn, msg)
 	plr.rates = &server.rates
@@ -189,7 +124,7 @@ func (server *Server) playerConnect(conn mnet.Client, tcpConn net.Conn, reader m
 		log.Println("DATA_RESPONSE_ERROR", err)
 	}
 	log.Println("PLAYER_ID_LOGIN", conn.GetUid())
-	server.sendMsgToRegion(res, conn)
+	server.sendMsgToAll(res, conn)
 
 	account := proto.AccountResult(plr.account)
 	loggedAccounts, err := db.GetLoggedUsersData(plr.account.UId, acc.RegionID)
@@ -315,7 +250,7 @@ func (server *Server) playerMovementStart(conn mnet.Client, reader mpacket.Reade
 	res := mc_metadata.P2C_ReportMoveStart{
 		MovementData: proto.MakeMovementData(msg.GetMovementData()),
 	}
-	server.makeMovementResponse(conn, &res, constant.P2C_ReportMoveStart)
+	server.makeReportToRegion(conn, &res, constant.P2C_ReportMoveStart)
 	server.updateUserLocation(msg.GetMovementData())
 }
 
@@ -332,8 +267,102 @@ func (server *Server) playerMovementEnd(conn mnet.Client, reader mpacket.Reader)
 		MovementData: proto.MakeMovementData(msg.GetMovementData()),
 	}
 
-	server.makeMovementResponse(conn, &res, constant.P2C_ReportMoveEnd)
+	server.makeReportToRegion(conn, &res, constant.P2C_ReportMoveEnd)
 	server.updateUserLocation(msg.GetMovementData())
+}
+
+func (server *Server) playerInteraction(conn mnet.Client, reader mpacket.Reader) {
+
+	msg := mc_metadata.C2P_RequestInteractionAttach{}
+	err := proto.Unmarshal(reader.GetBuffer(), &msg)
+	if err != nil {
+		log.Println("Failed to parse data:", err)
+		return
+	}
+
+	res := mc_metadata.P2C_ReportInteractionAttach{
+		UuId:            msg.GetUuId(),
+		AttachEnable:    msg.GetAttachEnable(),
+		ObjectIndex:     msg.GetObjectIndex(),
+		AnimMontageName: msg.GetAnimMontageName(),
+		DestinationX:    msg.GetDestinationX(),
+		DestinationY:    msg.GetDestinationY(),
+		DestinationZ:    msg.GetDestinationZ(),
+	}
+
+	server.makeReportToRegion(conn, &res, constant.P2C_ReportInteractionAttach)
+}
+
+func (server *Server) playerPlayAnimation(conn mnet.Client, reader mpacket.Reader) {
+
+	msg := mc_metadata.C2P_RequestPlayMontage{}
+	err := proto.Unmarshal(reader.GetBuffer(), &msg)
+	if err != nil {
+		log.Println("Failed to parse data:", err)
+		return
+	}
+
+	res := mc_metadata.P2C_ReportPlayMontage{
+		UuId:    msg.GetUuId(),
+		AnimTid: msg.GetAnimTid(),
+	}
+
+	server.makeReportToRegion(conn, &res, constant.P2C_ReportPlayMontage)
+}
+
+func (server *Server) playerRegionRoleChecking(conn mnet.Client, reader mpacket.Reader) {
+
+	msg := mc_metadata.C2P_RequestRoleChecking{}
+	err := proto.Unmarshal(reader.GetBuffer(), &msg)
+	if err != nil {
+		log.Println("Failed to parse data:", err)
+		return
+	}
+
+	n := db.FindRegionModerators(msg.GetRegionId())
+	is := 0
+	if n > 0 {
+		is = 1
+	}
+	res := mc_metadata.P2C_ResultRoleChecking{
+		IsTeacher: int32(is),
+	}
+
+	data, err := proto.MakeResponse(&res, constant.P2C_ResultRoleChecking)
+	if err != nil {
+		log.Println("ERROR P2C_ResultRoleChecking", msg.GetUuId())
+		return
+	}
+
+	server.sendMsgToMe(data, conn)
+	data = nil
+}
+
+func (server *Server) playerRoleUpdate(conn mnet.Client, reader mpacket.Reader) {
+
+	msg := mc_metadata.C2P_RequestMetaSchoolEnter{}
+	err := proto.Unmarshal(reader.GetBuffer(), &msg)
+	if err != nil {
+		log.Println("Failed to parse data:", err)
+		return
+	}
+
+	go db.UpdatePlayerRole(msg.UuId, msg.TeacherEnable)
+	nums := db.CountPlayersInRegion(msg.UuId)
+
+	res := mc_metadata.P2C_ResultMetaSchoolEnter{
+		UuId:          msg.GetUuId(),
+		TeacherEnable: msg.GetTeacherEnable(),
+		PlayersNum:    nums,
+	}
+
+	data, err := proto.MakeResponse(&res, constant.P2C_ResultMetaSchoolEnter)
+	if err != nil {
+		log.Println("ERROR P2C_ResultWhisper", msg.GetUuId())
+		return
+	}
+
+	server.sendMsgToMe(data, conn)
 }
 
 func (server *Server) playerMovement(conn mnet.Client, reader mpacket.Reader) {
@@ -349,7 +378,7 @@ func (server *Server) playerMovement(conn mnet.Client, reader mpacket.Reader) {
 		MovementData: proto.MakeMovementData(msg.GetMovementData()),
 	}
 
-	server.makeMovementResponse(conn, &res, constant.P2C_ReportMove)
+	server.makeReportToRegion(conn, &res, constant.P2C_ReportMove)
 	go server.updateUserLocation(msg.GetMovementData())
 }
 
@@ -499,17 +528,19 @@ func (server *Server) chatSendWhisper(conn mnet.Client, reader mpacket.Reader) {
 		return
 	}
 
-	targetUid := db.InsertWhisperMessage(msg.GetUuId(), msg.GetTargetNickname(), msg.GetChat())
-	log.Println("TARGETID", targetUid)
-	if len(targetUid) > 0 {
-		server.sendMsgToPlayer(data, targetUid)
-	}
-
 	toMe := mc_metadata.P2C_ResultWhisper{
 		UuId:     msg.GetUuId(),
 		Nickname: msg.GetPlayerNickname(),
 		Chat:     msg.GetChat(),
 		Time:     t,
+	}
+
+	targetUid := db.InsertWhisperMessage(msg.GetUuId(), msg.GetTargetNickname(), msg.GetChat())
+
+	if len(targetUid) > 0 {
+		server.sendMsgToPlayer(data, targetUid)
+	} else {
+		toMe.ErrorCode = 2
 	}
 
 	dataMe, err := proto.MakeResponse(&toMe, constant.P2C_ResultWhisper)
@@ -544,13 +575,13 @@ func (server *Server) updateMovement(conn mnet.Client) {
 	}
 }
 
-func (server *Server) makeMovementResponse(conn mnet.Client, msg proto2.Message, mType uint32) {
+func (server *Server) makeReportToRegion(conn mnet.Client, msg proto2.Message, mType uint32) {
 	res, err := proto.MakeResponse(msg, mType)
 	if err != nil {
 		log.Println("DATA_RESPONSE_MOVEMENT_ERROR", err)
 	}
 
-	server.sendMsgToAll(res, conn)
+	server.sendMsgToRegion(res, conn)
 	res = nil
 }
 

@@ -3,14 +3,15 @@ package model
 type Account struct {
 	AccountID   int64
 	RegionID    int64
+	UId         string
+	CharacterID int64
+	Role        int64
 	NickName    string
+	Time        int64
 	Hair        string
 	Top         string
 	Bottom      string
 	Clothes     string
-	UId         string
-	CharacterID int64
-	Time        int64
 	PosX        float32
 	PosY        float32
 	PosZ        float32

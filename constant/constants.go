@@ -42,8 +42,8 @@ const (
 	P2C_ReportMetaSchoolEnter  = 27
 	P2C_ResultMetaSchoolEnter  = 28
 
-	C2P_RequestRollChecking = 29
-	P2C_ResultRollChecking  = 30
+	C2P_RequestRoleChecking = 29
+	P2C_ResultRoleChecking  = 30
 
 	C2P_RequestRegionChange = 31
 	P2C_ResultRegionChange  = 32
@@ -79,6 +79,12 @@ const (
 	Ihq        = 3
 	MetaBank   = 4
 	MetaInvest = 5
+)
+
+const (
+	User      = 0
+	Moderator = 1
+	Admin     = 2
 )
 
 // Generic Constants
