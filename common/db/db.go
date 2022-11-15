@@ -241,7 +241,7 @@ func UpdatePlayerInfo(
 	if cID < 0 {
 		return insertPlayerInfo(nickname, hair, top, bottom, clothes)
 	}
-	return updatePlayerInfo(cID, hair, top, bottom, clothes)
+	return updatePlayerInfo(cID, nickname, hair, top, bottom, clothes)
 }
 
 func UpdatePlayerRole(
@@ -325,12 +325,13 @@ func insertPlayerInfo(
 
 func updatePlayerInfo(
 	cID int64,
+	nickname string,
 	hair string,
 	top string,
 	bottom string,
 	clothes string) error {
-	_, err := Maria.Exec("UPDATE characters SET hair=?, top=?, bottom=?, clothes=? WHERE id=?",
-		hair, top, bottom, clothes, cID)
+	_, err := Maria.Exec("UPDATE characters SET nickname =?, hair=?, top=?, bottom=?, clothes=? WHERE id=?",
+		nickname, hair, top, bottom, clothes, cID)
 
 	if err != nil {
 		log.Println("UPDATING PLAYER INFO ERROR", err)
