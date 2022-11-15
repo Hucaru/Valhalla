@@ -29,7 +29,7 @@ const (
 	P2C_ReportWhisper  = 18
 	P2C_ResultWhisper  = 19
 
-	P2C_RequestRegionChat = 20
+	C2P_RequestRegionChat = 20
 	P2C_ReportRegionChat  = 21
 
 	C2P_RequestPlayMontage = 22
@@ -73,6 +73,7 @@ const (
 )
 
 const (
+	All        = -1
 	World      = 1
 	MetaSchool = 2
 	Ihq        = 3

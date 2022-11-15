@@ -23,18 +23,16 @@ import (
 
 // HandleClientPacket data
 func (server *Server) HandleClientPacket(conn mnet.Client, tcpConn net.Conn, reader mpacket.Reader, msgProtocolType uint32) {
-
 	switch msgProtocolType {
 	case constant.C2P_RequestLoginUser:
-		log.Println("DATA_BUFFER_LOGIN", reader.GetBuffer())
+		log.Println("PLAYERS", len(server.players))
 		go server.playerConnect(conn, tcpConn, reader, msgProtocolType)
-		log.Println("CHANNELS", server.channels)
 		break
 	case constant.C2P_RequestMoveStart:
 		go server.playerMovementStart(conn, reader)
 		break
 	case constant.C2P_RequestMove:
-		go server.playerMovement(conn, reader)
+		server.playerMovement(conn, reader)
 		break
 	case constant.C2P_RequestMoveEnd:
 		go server.playerMovementEnd(conn, reader)
@@ -55,11 +53,14 @@ func (server *Server) HandleClientPacket(conn mnet.Client, tcpConn net.Conn, rea
 		log.Println("DATA_WHISPER_CHAT", reader.GetBuffer())
 		go server.chatSendWhisper(conn, reader)
 		break
+	case constant.C2P_RequestRegionChat:
+		log.Println("DATA_REGION_CHAT", reader.GetBuffer())
+		go server.chatSendRegion(conn, reader)
+		break
 	case constant.C2P_RequestRegionChange:
-		log.Println("DATA_WHISPER_CHAT", reader.GetBuffer())
+		log.Println("DATA_REGION_CHANGE", reader.GetBuffer())
 		go server.playerChangeChannel(conn, reader)
 		break
-
 	default:
 		fmt.Println("UNKNOWN MSG", reader)
 		//msg = nil
@@ -175,7 +176,7 @@ func (server *Server) playerConnect(conn mnet.Client, tcpConn net.Conn, reader m
 	}
 
 	conn.SetUid(msg.UuId)
-	conn.SetRegionID(acc.RegionID)
+	conn.SetRegionID(int64(acc.RegionID))
 
 	plr := loadPlayer(conn, msg)
 	plr.rates = &server.rates
@@ -191,7 +192,7 @@ func (server *Server) playerConnect(conn mnet.Client, tcpConn net.Conn, reader m
 	server.sendMsgToRegion(res, conn)
 
 	account := proto.AccountResult(plr.account)
-	loggedAccounts, err := db.GetLoggedUsersData(plr.account.UId)
+	loggedAccounts, err := db.GetLoggedUsersData(plr.account.UId, acc.RegionID)
 
 	if err != nil {
 		log.Println("ERROR P2C_ResultLoginUser", plr.playerID)
@@ -261,7 +262,7 @@ func (server *Server) playerChangeChannel(conn mnet.Client, reader mpacket.Reade
 		return
 	}
 
-	if msg.GetRegionId() < constant.World || msg.GetRegionId() > constant.MetaInvest {
+	if msg.GetRegionId() < constant.All || msg.GetRegionId() > constant.MetaInvest {
 		log.Println("Region not found:", err)
 		return
 	}
@@ -269,21 +270,21 @@ func (server *Server) playerChangeChannel(conn mnet.Client, reader mpacket.Reade
 	for i := 0; i < len(server.players); i++ {
 		if msg.GetUuId() == server.players[i].conn.GetUid() {
 			db.UpdateRegionID(msg.GetUuId(), msg.GetRegionId())
-			server.players[i].conn.SetRegionID(msg.GetRegionId())
+			server.players[i].conn.SetRegionID(int64(msg.GetRegionId()))
 
 			response := proto.AccountReport(server.players[i].account)
 			res, err := proto.MakeResponse(response, constant.P2C_ReportRegionChange)
 			if err != nil {
 				log.Println("DATA_RESPONSE_ERROR", err)
 			}
-			log.Println("PLAYER_ID_LOGIN", conn.GetUid())
+			log.Println("REGION_CHANGED TO ", conn.GetRegionID())
 			server.sendMsgToRegion(res, conn)
 
 			account := proto.AccountResult(server.players[i].account)
-			loggedAccounts, err := db.GetLoggedUsersData(server.players[i].account.UId)
+			loggedAccounts, err := db.GetLoggedUsersData(server.players[i].account.UId, int64(account.RegionId))
 
 			if err != nil {
-				log.Println("ERROR P2C_ResultLoginUser", server.players[i].playerID)
+				log.Println("ERROR GetLoggedUsersData", server.players[i].playerID)
 				return
 			}
 
@@ -349,7 +350,7 @@ func (server *Server) playerMovement(conn mnet.Client, reader mpacket.Reader) {
 	}
 
 	server.makeMovementResponse(conn, &res, constant.P2C_ReportMove)
-	server.updateUserLocation(msg.GetMovementData())
+	go server.updateUserLocation(msg.GetMovementData())
 }
 
 func (server *Server) playerInfo(conn mnet.Client, reader mpacket.Reader) {
@@ -443,7 +444,34 @@ func (server *Server) chatSendAll(conn mnet.Client, reader mpacket.Reader) {
 	}
 
 	server.sendMsgToAll(data, conn)
-	db.InsertPublicMessage(msg.GetUuId(), msg.GetChat())
+	db.InsertPublicMessage(msg.GetUuId(), constant.All, msg.GetChat())
+
+	data = nil
+}
+
+func (server *Server) chatSendRegion(conn mnet.Client, reader mpacket.Reader) {
+	msg := mc_metadata.C2P_RequestRegionChat{}
+	err := proto.Unmarshal(reader.GetBuffer(), &msg)
+	if err != nil || len(msg.GetUuId()) == 0 {
+		log.Println("Failed to parse data:", err)
+		return
+	}
+
+	res := mc_metadata.P2C_ReportRegionChat{
+		UuId:     msg.GetUuId(),
+		Nickname: msg.GetNickname(),
+		Chat:     msg.GetChat(),
+		Time:     time.Now().UnixNano() / int64(time.Millisecond),
+	}
+
+	data, err := proto.MakeResponse(&res, constant.P2C_ReportRegionChat)
+	if err != nil {
+		log.Println("ERROR P2C_ReportAllChat", msg.GetUuId())
+		return
+	}
+
+	server.sendMsgToRegion(data, conn)
+	db.InsertPublicMessage(msg.GetUuId(), conn.GetRegionID(), msg.GetChat())
 
 	data = nil
 }

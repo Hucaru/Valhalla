@@ -23,8 +23,8 @@ type Client interface {
 	SetChannelID(byte)
 	GetAdminLevel() int
 	SetAdminLevel(int)
-	GetRegionID() int32
-	SetRegionID(int32)
+	GetRegionID() int64
+	SetRegionID(int64)
 	GetUid() string
 	SetUid(string)
 }
@@ -37,7 +37,7 @@ type client struct {
 	gender     byte
 	worldID    byte
 	channelID  byte
-	regionID   int32
+	regionID   int64
 	adminLevel int
 	uID        string
 }
@@ -169,10 +169,10 @@ func (c *client) SetUid(_uid string) {
 	c.uID = _uid
 }
 
-func (c *client) GetRegionID() int32 {
+func (c *client) GetRegionID() int64 {
 	return c.regionID
 }
 
-func (c *client) SetRegionID(rID int32) {
+func (c *client) SetRegionID(rID int64) {
 	c.regionID = rID
 }

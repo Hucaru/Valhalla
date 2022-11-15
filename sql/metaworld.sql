@@ -39,7 +39,7 @@ CREATE TABLE `characters` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `accountID` int(10) unsigned NOT NULL,
   `worldID` int(11) unsigned NOT NULL DEFAULT '1',
-  `channelID` tinyint(2) NOT NULL DEFAULT '-1',
+  `channelID` tinyint(2) NOT NULL DEFAULT '1',
   `migrationID` tinyint(4) NOT NULL DEFAULT '-1',
   `nickname` tinytext NOT NULL,
   `gender` int(11) unsigned NOT NULL DEFAULT '1',
@@ -154,6 +154,7 @@ DROP TABLE IF EXISTS `chat`;
 CREATE TABLE `chat` (
     `id` int(11) NOT NULL AUTO_INCREMENT,
     `characterID` int(11) NOT NULL,
+    `regionID` int(11) NOT NULL DEFAULT '-1',
     `text` text NOT NULL DEFAULT '',
     `targetID` int(11) NOT NULL,
     `createdAt` bigint(20) NOT NULL DEFAULT '0',

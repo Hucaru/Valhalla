@@ -39,7 +39,7 @@ func GetLoggedData(uUID string) (model.Account, error) {
 		UId:         uUID,
 		AccountID:   -1,
 		CharacterID: -1,
-		RegionID:    constant.World,
+		RegionID:    constant.All,
 		Hair:        "",
 		Top:         "",
 		Bottom:      "",
@@ -85,7 +85,7 @@ func GetLoggedDataByName(uUID string, nickname string) (model.Account, error) {
 		UId:         uUID,
 		AccountID:   -1,
 		CharacterID: -1,
-		RegionID:    constant.World,
+		RegionID:    constant.All,
 		Hair:        "",
 		Top:         "",
 		Bottom:      "",
@@ -125,27 +125,9 @@ func GetLoggedDataByName(uUID string, nickname string) (model.Account, error) {
 	return *acc, err
 }
 
-func GetLoggedUsersData(uUID string) ([]*model.Account, error) {
+func GetLoggedUsersData(uUID string, regionID int64) ([]*model.Account, error) {
 
 	accounts := make([]*model.Account, 0)
-
-	qwe := fmt.Sprintf(
-		"SELECT a.accountID, a.uId, c.id as characterID, a.isLogedIn, c.channelID, "+
-			"c.hair, c.top, c.bottom, c.clothes, "+
-			"IFNULL(m.time, 0) as time, "+
-			"IFNULL(m.pos_x, 0) as pos_x, "+
-			"IFNULL(m.pos_y, 0) as pos_y, "+
-			"IFNULL(m.pos_z, 0) as pos_z, "+
-			"IFNULL(m.rot_x, 0) as rot_x, "+
-			"IFNULL(m.rot_y, 0) as rot_y, "+
-			"IFNULL(m.rot_z, 0) as rot_z "+
-			"FROM accounts a "+
-			"LEFT JOIN characters c ON c.accountID = a.accountID "+
-			"LEFT JOIN movement m ON m.characterID = c.id "+
-			"WHERE a.uId != %s AND a.isLogedIn != 0 "+
-			"ORDER BY time DESC", uUID)
-
-	log.Println(qwe)
 
 	rows, err := Maria.Query(
 		"SELECT a.accountID, a.uId, c.id as characterID, a.isLogedIn, c.channelID, "+
@@ -159,9 +141,9 @@ func GetLoggedUsersData(uUID string) ([]*model.Account, error) {
 			"IFNULL(m.rot_z, 0) as rot_z "+
 			"FROM accounts a "+
 			"LEFT JOIN characters c ON c.accountID = a.accountID "+
-			"LEFT JOIN movement m ON m.characterID = c.id "+
-			"WHERE a.uId != ? AND a.isLogedIn != 0 "+
-			"ORDER BY time DESC", uUID)
+			"LEFT JOIN (SELECT * FROM movement m ORDER BY m.time DESC LIMIT 1) m ON m.characterID = c.id  "+
+			"WHERE a.uId != ? AND a.isLogedIn != 0 AND c.channelID = ? "+
+			"ORDER BY time DESC", uUID, regionID)
 
 	if err != nil {
 		log.Println("LOGGED USERS SELECTING ERROR", err)
@@ -174,7 +156,7 @@ func GetLoggedUsersData(uUID string) ([]*model.Account, error) {
 		acc := &model.Account{
 			UId:         uUID,
 			AccountID:   -1,
-			RegionID:    constant.World,
+			RegionID:    constant.All,
 			CharacterID: -1,
 			Time:        0,
 			Hair:        "",
@@ -221,7 +203,7 @@ func InsertNewAccount(uUid string, conn mnet.Client) error {
 	cRes, cErr := Maria.Exec("INSERT INTO characters "+
 		"(accountID, worldID, nickname, gender, skin, hair, face, str, dex, intt, luk, top, bottom, clothes, channelID) "+
 		"VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-		accountID, 1, fmt.Sprintf("player#%d", time.Now().UnixNano()/int64(time.Millisecond)), 1, 1, "", 1, 1, 1, 1, 1, "", "", "", constant.World)
+		accountID, 1, fmt.Sprintf("player#%d", time.Now().UnixNano()/int64(time.Millisecond)), 1, 1, "", 1, 1, 1, 1, 1, "", "", "", constant.All)
 
 	if cErr != nil {
 		log.Println("INSERTING ERROR", cErr)
@@ -331,7 +313,7 @@ func insertMovement(
 	return err
 }
 
-func InsertPublicMessage(uID string, text string) {
+func InsertPublicMessage(uID string, regionID int64, text string) {
 	var accountID int64
 	var characterID int64
 
@@ -346,7 +328,7 @@ func InsertPublicMessage(uID string, text string) {
 		log.Println("ERROR SELECTING ACCOUNT")
 	}
 
-	insertChatMessage(characterID, text, constant.NO_TARGET)
+	insertChatMessage(characterID, regionID, text, constant.NO_TARGET)
 }
 
 func InsertWhisperMessage(uID string, targetID string, text string) string {
@@ -368,18 +350,19 @@ func InsertWhisperMessage(uID string, targetID string, text string) string {
 		log.Println("ERROR SELECTING ACCOUNT")
 	}
 
-	insertChatMessage(characterID, text, targetCID)
+	insertChatMessage(characterID, constant.All, text, targetCID)
 	return targetUID
 }
 
 func insertChatMessage(
 	characterID int64,
+	regionID int64,
 	text string,
 	targetID int64) {
 	_, err := Maria.Exec("INSERT INTO chat "+
-		"(characterID, text, targetID, createdAt) "+
-		"VALUES (?, ?, ?, ?)",
-		characterID, text, targetID, time.Now().UnixNano()/int64(time.Millisecond))
+		"(characterID, regionID, text, targetID, createdAt) "+
+		"VALUES (?, ?, ?, ?, ?)",
+		characterID, regionID, text, targetID, time.Now().UnixNano()/int64(time.Millisecond))
 
 	if err != nil {
 		log.Println("INSERTING ERROR", err)
