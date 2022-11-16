@@ -46,10 +46,11 @@ func AccountResult(acc *model.Account) *mc_metadata.P2C_ResultLoginUser {
 	return &mc_metadata.P2C_ResultLoginUser{
 		UuId: acc.UId,
 		PlayerInfo: &mc_metadata.P2C_PlayerInfo{
-			Hair:    acc.Hair,
-			Top:     acc.Top,
-			Bottom:  acc.Bottom,
-			Clothes: acc.Clothes,
+			Nickname: acc.NickName,
+			Hair:     acc.Hair,
+			Top:      acc.Top,
+			Bottom:   acc.Bottom,
+			Clothes:  acc.Clothes,
 		},
 		SpawnPosX:   acc.PosX,
 		SpawnPosY:   acc.PosY,
@@ -67,10 +68,11 @@ func ConvertAccountsToProto(accounts []*model.Account) []*mc_metadata.P2C_Report
 		res = append(res, &mc_metadata.P2C_ReportLoginUser{
 			UuId: accounts[i].UId,
 			PlayerInfo: &mc_metadata.P2C_PlayerInfo{
-				Hair:    accounts[i].Hair,
-				Top:     accounts[i].Top,
-				Bottom:  accounts[i].Bottom,
-				Clothes: accounts[i].Clothes,
+				Nickname: accounts[i].NickName,
+				Hair:     accounts[i].Hair,
+				Top:      accounts[i].Top,
+				Bottom:   accounts[i].Bottom,
+				Clothes:  accounts[i].Clothes,
 			},
 			SpawnPosX: accounts[i].PosX,
 			SpawnPosY: accounts[i].PosY,

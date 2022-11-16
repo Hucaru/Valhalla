@@ -41,6 +41,7 @@ func GetLoggedData(uUID string) (model.Account, error) {
 		CharacterID: -1,
 		Role:        0,
 		RegionID:    constant.All,
+		NickName:    "",
 		Hair:        "",
 		Top:         "",
 		Bottom:      "",
@@ -55,7 +56,7 @@ func GetLoggedData(uUID string) (model.Account, error) {
 	}
 
 	err := Maria.QueryRow(
-		"SELECT a.accountID, a.uId, c.id as characterID, c.channelID, c.role, "+
+		"SELECT a.accountID, a.uId, c.id as characterID, c.channelID, c.role, c.nickname, "+
 			"c.hair, c.top, c.bottom, c.clothes, "+
 			"IFNULL(m.time, 0) as time, "+
 			"IFNULL(m.pos_x, 0) as pos_x, "+
@@ -71,7 +72,7 @@ func GetLoggedData(uUID string) (model.Account, error) {
 			"ORDER BY time DESC "+
 			"LIMIT 1", uUID).
 		Scan(&acc.AccountID,
-			&acc.UId, &acc.CharacterID, &acc.RegionID, &acc.Role,
+			&acc.UId, &acc.CharacterID, &acc.RegionID, &acc.Role, &acc.NickName,
 			&acc.Hair, &acc.Top, &acc.Bottom, &acc.Clothes,
 			&acc.Time, &acc.PosX, &acc.PosY, &acc.PosZ, &acc.RotX, &acc.RotY, &acc.RotZ)
 
@@ -86,6 +87,7 @@ func GetLoggedDataByName(uUID string, nickname string) (model.Account, error) {
 		CharacterID: -1,
 		Role:        0,
 		RegionID:    constant.All,
+		NickName:    "",
 		Hair:        "",
 		Top:         "",
 		Bottom:      "",
@@ -100,7 +102,7 @@ func GetLoggedDataByName(uUID string, nickname string) (model.Account, error) {
 	}
 
 	err := Maria.QueryRow(
-		"SELECT a.accountID, a.uId, c.id as characterID, c.channelID, c.role, "+
+		"SELECT a.accountID, a.uId, c.id as characterID, c.channelID, c.role, c.nickname, "+
 			"c.hair, c.top, c.bottom, c.clothes, "+
 			"IFNULL(m.time, 0) as time, "+
 			"IFNULL(m.pos_x, 0) as pos_x, "+
@@ -116,7 +118,7 @@ func GetLoggedDataByName(uUID string, nickname string) (model.Account, error) {
 			"ORDER BY time DESC "+
 			"LIMIT 1", nickname).
 		Scan(&acc.AccountID,
-			&acc.UId, &acc.CharacterID, &acc.RegionID, &acc.Role,
+			&acc.UId, &acc.CharacterID, &acc.RegionID, &acc.Role, &acc.NickName,
 			&acc.Hair, &acc.Top, &acc.Bottom, &acc.Clothes,
 			&acc.Time, &acc.PosX, &acc.PosY, &acc.PosZ, &acc.RotX, &acc.RotY, &acc.RotZ)
 
@@ -128,7 +130,7 @@ func GetLoggedUsersData(uUID string, regionID int64) ([]*model.Account, error) {
 	accounts := make([]*model.Account, 0)
 
 	rows, err := Maria.Query(
-		"SELECT a.accountID, a.uId, c.id as characterID, a.isLogedIn, c.channelID, c.role, "+
+		"SELECT a.accountID, a.uId, c.id as characterID, a.isLogedIn, c.channelID, c.role, c.nickname, "+
 			"c.hair, c.top, c.bottom, c.clothes, "+
 			"IFNULL(m.time, 0) as time, "+
 			"IFNULL(m.pos_x, 0) as pos_x, "+
@@ -156,6 +158,7 @@ func GetLoggedUsersData(uUID string, regionID int64) ([]*model.Account, error) {
 			AccountID:   -1,
 			RegionID:    constant.All,
 			CharacterID: -1,
+			NickName:    "",
 			Role:        0,
 			Time:        0,
 			Hair:        "",
@@ -171,7 +174,7 @@ func GetLoggedUsersData(uUID string, regionID int64) ([]*model.Account, error) {
 		}
 
 		if err := rows.Scan(
-			&acc.AccountID, &acc.UId, &acc.CharacterID, &is, &acc.RegionID, &acc.Role,
+			&acc.AccountID, &acc.UId, &acc.CharacterID, &is, &acc.RegionID, &acc.Role, &acc.NickName,
 			&acc.Hair, &acc.Top, &acc.Bottom, &acc.Clothes,
 			&acc.Time,
 			&acc.PosX, &acc.PosY, &acc.PosZ, &acc.RotX, &acc.RotY, &acc.RotZ); err != nil {
