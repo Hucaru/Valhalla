@@ -459,11 +459,13 @@ func (server *Server) chatSendAll(conn mnet.Client, reader mpacket.Reader) {
 		return
 	}
 
+	t := time.Now().UnixNano() / int64(time.Millisecond)
+
 	res := mc_metadata.P2C_ReportAllChat{
 		UuId:     msg.GetUuId(),
 		Nickname: msg.GetNickname(),
 		Chat:     msg.GetChat(),
-		Time:     time.Now().UnixNano() / int64(time.Millisecond),
+		Time:     t,
 	}
 
 	data, err := proto.MakeResponse(&res, constant.P2C_ReportAllChat)
@@ -475,6 +477,21 @@ func (server *Server) chatSendAll(conn mnet.Client, reader mpacket.Reader) {
 	server.sendMsgToAll(data, conn)
 	db.InsertPublicMessage(msg.GetUuId(), constant.All, msg.GetChat())
 
+	toMe := mc_metadata.P2C_ResultAllChat{
+		UuId:     msg.GetUuId(),
+		Nickname: msg.GetNickname(),
+		Chat:     msg.GetChat(),
+		Time:     t,
+	}
+
+	dataMe, err := proto.MakeResponse(&toMe, constant.P2C_ResultAllChat)
+	if err != nil {
+		log.Println("ERROR P2C_ResultWhisper", msg.GetUuId())
+		return
+	}
+
+	server.sendMsgToMe(dataMe, conn)
+	dataMe = nil
 	data = nil
 }
 
@@ -486,11 +503,13 @@ func (server *Server) chatSendRegion(conn mnet.Client, reader mpacket.Reader) {
 		return
 	}
 
+	t := time.Now().UnixNano() / int64(time.Millisecond)
+
 	res := mc_metadata.P2C_ReportRegionChat{
 		UuId:     msg.GetUuId(),
 		Nickname: msg.GetNickname(),
 		Chat:     msg.GetChat(),
-		Time:     time.Now().UnixNano() / int64(time.Millisecond),
+		Time:     t,
 	}
 
 	data, err := proto.MakeResponse(&res, constant.P2C_ReportRegionChat)
@@ -501,6 +520,22 @@ func (server *Server) chatSendRegion(conn mnet.Client, reader mpacket.Reader) {
 
 	server.sendMsgToRegion(data, conn)
 	db.InsertPublicMessage(msg.GetUuId(), conn.GetRegionID(), msg.GetChat())
+
+	toMe := mc_metadata.P2C_ResultRegionChat{
+		UuId:     msg.GetUuId(),
+		Nickname: msg.GetNickname(),
+		Chat:     msg.GetChat(),
+		Time:     t,
+	}
+
+	dataMe, err := proto.MakeResponse(&toMe, constant.P2C_ResultRegionChat)
+	if err != nil {
+		log.Println("ERROR P2C_ResultWhisper", msg.GetUuId())
+		return
+	}
+
+	server.sendMsgToMe(dataMe, conn)
+	dataMe = nil
 
 	data = nil
 }

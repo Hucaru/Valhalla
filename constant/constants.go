@@ -49,6 +49,9 @@ const (
 	P2C_ResultRegionChange  = 32
 	P2C_ReportRegionChange  = 33
 
+	P2C_ResultRegionChat = 34
+	P2C_ResultAllChat    = 35
+
 	//errors
 	P2C_ResultLoginUserError = 90
 )
