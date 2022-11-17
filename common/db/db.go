@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/Hucaru/Valhalla/common/db/model"
 	"github.com/Hucaru/Valhalla/constant"
+	"github.com/Hucaru/Valhalla/meta-proto/go/mc_metadata"
 	"github.com/Hucaru/Valhalla/mnet"
 	"log"
 	"time"
@@ -247,6 +248,61 @@ func UpdatePlayerInfo(
 	return updatePlayerInfo(cID, nickname, hair, top, bottom, clothes)
 }
 
+func InsertInteraction(
+	uID string,
+	objectIndex int32,
+	animationName string,
+	destinationX float32,
+	destinationY float32,
+	destinationZ float32) error {
+
+	cID := findCharacterByUid(uID)
+
+	if cID > 0 {
+		return insertInteraction(cID, objectIndex, animationName, destinationX, destinationY, destinationZ)
+	}
+	return errors.New("no uid")
+}
+
+func DeleteInteraction(uID string) error {
+
+	cID := findCharacterByUid(uID)
+
+	if cID > 0 {
+		return deleteInteraction(cID)
+	}
+	return errors.New("no uid")
+}
+
+func deleteInteraction(cID int64) error {
+
+	_, err := Maria.Exec("DELETE FROM interaction WHERE characterID = ?", cID)
+
+	if err != nil {
+		log.Println("DELETE INTERACTION ERROR", err)
+	}
+	return err
+}
+
+func insertInteraction(
+	cID int64,
+	objectIndex int32,
+	animationName string,
+	destinationX float32,
+	destinationY float32,
+	destinationZ float32) error {
+
+	_, err := Maria.Exec("INSERT INTO interaction "+
+		"(characterID, objectIndex, animationName, destinationX, destinationY, destinationZ) "+
+		"VALUES (?, ?, ?, ?, ?, ?)",
+		cID, objectIndex, animationName, destinationX, destinationY, destinationZ)
+
+	if err != nil {
+		log.Println("INSERTING INTERACTION ERROR", err)
+	}
+	return err
+}
+
 func UpdatePlayerRole(
 	uID string,
 	role int32) error {
@@ -258,22 +314,49 @@ func UpdatePlayerRole(
 	return updatePlayerRole(cID, role)
 }
 
-func CountPlayersInRegion(uID string) int32 {
-	var nums int32
+func GetRoomPlayers(uID string) []*mc_metadata.Data {
+	data := make([]*mc_metadata.Data, 0)
 
-	err := Maria.QueryRow(
-		"SELECT COUNT(c.nums) as nums"+
-			"FROM (SELECT c.id as nums FROM accounts a "+
-			"LEFT JOIN characters c1 ON c1.accountID = a.accountID "+
-			"LEFT JOIN characters c ON c.channelID = c1.channelID AND c.accountID != a.accountID"+
-			"LEFT JOIN accounts a2 ON a2.accountID = c.accountID "+
-			"WHERE a.uId = ? AND AND a2.isLogedIn = 1 "+
-			"GROUP BY c.id) c", uID).
-		Scan(&nums)
-	if err != nil {
-		return 0
+	rows, err := Maria.Query(
+		"SELECT a.uId, "+
+			"a.uId as cUid, c.nickname, c.hair, c.top, c.bottom, c.clothes, "+
+			"a.uId as iUid, i.objectIndex, i.animationName, i.destinationX, i.destinationY, i.destinationZ "+
+			"FROM interaction i "+
+			"LEFT JOIN characters c ON c.id = i.characterID "+
+			"LEFT JOIN accounts a ON a.accountID = c.accountID "+
+			"WHERE a.uId != ? AND a.isLogedIn = 1", uID)
+
+	if rows == nil {
+		return nil
 	}
-	return nums
+	for rows.Next() {
+		d := &mc_metadata.Data{
+			PlayerInfo: &mc_metadata.P2C_PlayerInfo{},
+			Interaction: &mc_metadata.P2C_ReportInteractionAttach{
+				AttachEnable: 1,
+			},
+			UuId: "",
+		}
+
+		if err := rows.Scan(
+			&d.UuId,
+			&d.PlayerInfo.UuId, &d.PlayerInfo.Nickname, &d.PlayerInfo.Hair, &d.PlayerInfo.Top, &d.PlayerInfo.Bottom, &d.PlayerInfo.Clothes,
+			&d.Interaction.UuId, &d.Interaction.ObjectIndex, &d.Interaction.AnimMontageName, &d.Interaction.DestinationX, &d.Interaction.DestinationY, &d.Interaction.DestinationZ,
+		); err != nil {
+			log.Println("LOGGED USERS SELECTING ERROR", err)
+			return nil
+		}
+		data = append(data, d)
+	}
+	if err := rows.Err(); err != nil {
+		log.Println("LOGGED USERS SELECTING ERROR", err)
+		return nil
+	}
+
+	if err != nil {
+		return nil
+	}
+	return data
 }
 
 func FindRegionModerators(regionID int32) int32 {

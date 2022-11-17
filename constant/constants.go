@@ -52,6 +52,10 @@ const (
 	P2C_ResultRegionChat = 34
 	P2C_ResultAllChat    = 35
 
+	P2C_ResultInteractionAttach = 36
+	C2P_RequestMetaSchoolLeave  = 37
+	P2C_ReportMetaSchoolLeave   = 37
+
 	//errors
 	P2C_ResultLoginUserError = 90
 )
@@ -67,8 +71,13 @@ const (
 
 const (
 	NoError                = -1
+	ErrorUserOffline       = 2
 	ErrorCodeDuplicateName = 400
 	ErrorCodeDuplicateUID  = 401
+	ErrorCodeAlreadyOnline = 403
+
+	ErrorCodeChairNotEmpty = 400
+	ErrorCodeDBorServer    = 500
 )
 
 const (

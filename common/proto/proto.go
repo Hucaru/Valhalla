@@ -26,10 +26,11 @@ func AccountReport(acc *model.Account) *mc_metadata.P2C_ReportLoginUser {
 	res := &mc_metadata.P2C_ReportLoginUser{
 		UuId: acc.UId,
 		PlayerInfo: &mc_metadata.P2C_PlayerInfo{
-			Hair:    acc.Hair,
-			Top:     acc.Top,
-			Bottom:  acc.Bottom,
-			Clothes: acc.Clothes,
+			Nickname: acc.NickName,
+			Hair:     acc.Hair,
+			Top:      acc.Top,
+			Bottom:   acc.Bottom,
+			Clothes:  acc.Clothes,
 		},
 		SpawnPosX: acc.PosX,
 		SpawnPosY: acc.PosY,

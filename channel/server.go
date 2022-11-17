@@ -61,7 +61,7 @@ func (p players) getFromID(id int32) (*player, error) {
 // RemoveFromConn removes the Data based on the connection
 func (p *players) removeFromConn(conn mnet.Client) error {
 	i := -1
-	log.Println("PPPP", conn)
+	log.Println("PLAYER IP", conn)
 	for j, v := range *p {
 		if v.conn == conn {
 			i = j
@@ -261,29 +261,9 @@ func (server *Server) clearSessions() {
 
 // ClientDisconnected from server
 func (server *Server) ClientDisconnected(conn mnet.Client) {
-	plr, err := server.players.getFromConn(conn)
-
+	_, err := server.players.getFromConn(conn)
 	if err != nil {
 		return
-	}
-
-	//field, ok := server.fields[plr.mapID]
-	//
-	//if !ok {
-	//	return
-	//}
-	//
-	//inst, err := field.getInstance(plr.inst.id)
-	//err = inst.removePlayer(plr)
-	//
-	//if err != nil {
-	//	log.Println(err)
-	//}
-
-	err = plr.save()
-
-	if err != nil {
-		log.Println(err)
 	}
 
 	if _, ok := server.npcChat[conn]; ok {
@@ -292,21 +272,14 @@ func (server *Server) ClientDisconnected(conn mnet.Client) {
 
 	server.players.removeFromConn(conn)
 
-	//index := -1
-	//
-	//for i, v := range server.migrating {
-	//	if v == conn {
-	//		index = i
-	//	}
-	//}
-
-	//if index > -1 {
-	//	server.migrating = append(server.migrating[:index], server.migrating[index+1:]...)
-	//} else {
-
 	err1 := db.UpdateLoginState(conn.GetUid(), false)
 	if err1 != nil {
 		log.Println("ERROR LOGOUT PLAYER_ID", conn.GetUid())
+	}
+
+	err2 := db.DeleteInteraction(conn.GetUid())
+	if err2 != nil {
+		log.Println("ERROR DeleteInteraction", conn.GetUid())
 	}
 
 	msg, errR := makeDisconnectedResponse(conn.GetUid())
@@ -317,15 +290,9 @@ func (server *Server) ClientDisconnected(conn mnet.Client) {
 		}
 	}
 
-	//_, err = common.DB.Exec("UPDATE characters SET channelID=? WHERE id=?", -1, plr.id)
-	//
-	//if err != nil {
-	//	log.Println(err)
-	//}
 	log.Println("DISCONNECT", conn.GetUid())
 
 	conn.Cleanup()
-
 	common.MetricsGauges["player_count"].With(prometheus.Labels{"channel": strconv.Itoa(int(server.id)), "world": server.worldName}).Dec()
 }
 

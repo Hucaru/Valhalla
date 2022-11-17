@@ -1,6 +1,7 @@
 package channel
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"net"
@@ -150,6 +151,16 @@ func (server *Server) playerConnect(conn mnet.Client, tcpConn net.Conn, reader m
 	account = nil
 }
 
+func (server *Server) isPlayerOnline(conn mnet.Client) bool {
+
+	for i := 0; i < len(server.players); i++ {
+		if conn.GetUid() == server.players[i].conn.GetUid() {
+			return true
+		}
+	}
+	return false
+}
+
 func (server *Server) sendMsgToMe(res mpacket.Packet, conn mnet.Client) {
 	plr, err := server.players.getFromConn(conn)
 
@@ -157,6 +168,15 @@ func (server *Server) sendMsgToMe(res mpacket.Packet, conn mnet.Client) {
 		return
 	}
 	plr.conn.Send(res)
+}
+
+func (server *Server) getCurrentRole(conn mnet.Client) int64 {
+	plr, err := server.players.getFromConn(conn)
+
+	if err != nil {
+		return 0
+	}
+	return plr.account.Role
 }
 
 func (server *Server) sendMsgToPlayer(res mpacket.Packet, uID string) {
@@ -280,6 +300,19 @@ func (server *Server) playerInteraction(conn mnet.Client, reader mpacket.Reader)
 		return
 	}
 
+	errR := errors.New("error")
+	errR = nil
+
+	if msg.GetAttachEnable() == 1 {
+		errR = server.InsertInteractionAndSend(conn, &msg)
+	} else {
+		errR = server.DeleteInteractionAndSend(conn, &msg)
+	}
+
+	if errR != nil {
+		return
+	}
+
 	res := mc_metadata.P2C_ReportInteractionAttach{
 		UuId:            msg.GetUuId(),
 		AttachEnable:    msg.GetAttachEnable(),
@@ -291,6 +324,56 @@ func (server *Server) playerInteraction(conn mnet.Client, reader mpacket.Reader)
 	}
 
 	server.makeReportToRegion(conn, &res, constant.P2C_ReportInteractionAttach)
+}
+
+func (server *Server) DeleteInteractionAndSend(conn mnet.Client, msg *mc_metadata.C2P_RequestInteractionAttach) error {
+
+	errD := db.DeleteInteraction(msg.GetUuId())
+
+	att := mc_metadata.P2C_ResultInteractionAttach{
+		ErrorCode: -1,
+	}
+
+	data, err := proto.MakeResponse(&att, constant.P2C_ResultInteractionAttach)
+	if err != nil {
+		log.Println("ERROR P2C_ResultInteractionAttach", err)
+		return err
+	}
+
+	if errD != nil {
+		att.ErrorCode = constant.ErrorCodeDBorServer
+	}
+
+	server.sendMsgToMe(data, conn)
+	return errD
+
+}
+
+func (server *Server) InsertInteractionAndSend(conn mnet.Client, msg *mc_metadata.C2P_RequestInteractionAttach) error {
+	errI := db.InsertInteraction(
+		msg.GetUuId(),
+		msg.GetObjectIndex(),
+		msg.GetAnimMontageName(),
+		msg.GetDestinationX(),
+		msg.GetDestinationY(),
+		msg.GetDestinationZ())
+
+	att := mc_metadata.P2C_ResultInteractionAttach{
+		ErrorCode: -1,
+	}
+
+	data, err := proto.MakeResponse(&att, constant.P2C_ResultInteractionAttach)
+	if err != nil {
+		log.Println("ERROR P2C_ResultInteractionAttach", err)
+		return err
+	}
+
+	if errI != nil {
+		att.ErrorCode = constant.ErrorCodeChairNotEmpty
+	}
+
+	server.sendMsgToMe(data, conn)
+	return errI
 }
 
 func (server *Server) playerPlayAnimation(conn mnet.Client, reader mpacket.Reader) {
@@ -347,13 +430,16 @@ func (server *Server) playerRoleUpdate(conn mnet.Client, reader mpacket.Reader) 
 		return
 	}
 
-	go db.UpdatePlayerRole(msg.UuId, msg.TeacherEnable)
-	nums := db.CountPlayersInRegion(msg.UuId)
+	if int64(msg.TeacherEnable) != server.getCurrentRole(conn) {
+		go db.UpdatePlayerRole(msg.UuId, msg.TeacherEnable)
+	}
+
+	plrs := db.GetRoomPlayers(msg.UuId)
 
 	res := mc_metadata.P2C_ResultMetaSchoolEnter{
 		UuId:          msg.GetUuId(),
 		TeacherEnable: msg.GetTeacherEnable(),
-		PlayersNum:    nums,
+		Data:          plrs,
 	}
 
 	data, err := proto.MakeResponse(&res, constant.P2C_ResultMetaSchoolEnter)
@@ -392,6 +478,18 @@ func (server *Server) playerInfo(conn mnet.Client, reader mpacket.Reader) {
 
 	res := mc_metadata.P2C_ResultPlayerInfo{
 		ErrorCode: constant.NoError,
+	}
+
+	if server.isPlayerOnline(conn) {
+		res.ErrorCode = constant.ErrorCodeAlreadyOnline
+
+		data, err := proto.MakeResponse(&res, constant.P2C_ResultPlayerInfo)
+		if err != nil {
+			log.Println("ERROR P2C_ResultPlayerInfo Already Online", msg.GetUuId())
+			return
+		}
+		conn.Send(data)
+		return
 	}
 
 	_, err1 := db.GetLoggedDataByName(msg.UuId, msg.Nickname)
@@ -564,10 +662,11 @@ func (server *Server) chatSendWhisper(conn mnet.Client, reader mpacket.Reader) {
 	}
 
 	toMe := mc_metadata.P2C_ResultWhisper{
-		UuId:     msg.GetUuId(),
-		Nickname: msg.GetPlayerNickname(),
-		Chat:     msg.GetChat(),
-		Time:     t,
+		UuId:      msg.GetUuId(),
+		Nickname:  msg.GetTargetNickname(),
+		Chat:      msg.GetChat(),
+		Time:      t,
+		ErrorCode: constant.NoError,
 	}
 
 	targetUid := db.InsertWhisperMessage(msg.GetUuId(), msg.GetTargetNickname(), msg.GetChat())
@@ -575,7 +674,7 @@ func (server *Server) chatSendWhisper(conn mnet.Client, reader mpacket.Reader) {
 	if len(targetUid) > 0 {
 		server.sendMsgToPlayer(data, targetUid)
 	} else {
-		toMe.ErrorCode = 2
+		toMe.ErrorCode = constant.ErrorUserOffline
 	}
 
 	dataMe, err := proto.MakeResponse(&toMe, constant.P2C_ResultWhisper)
