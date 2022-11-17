@@ -435,6 +435,22 @@ func (server *Server) playerRoleUpdate(conn mnet.Client, reader mpacket.Reader) 
 		db.UpdatePlayerRole(msg.UuId, msg.TeacherEnable)
 	}
 
+	{
+		res := &mc_metadata.P2C_ReportMetaSchoolEnter{
+			UuId:          msg.GetUuId(),
+			TeacherEnable: msg.GetTeacherEnable(),
+		}
+
+		data, err := proto.MakeResponse(res, constant.P2C_ReportMetaSchoolEnter)
+		if err != nil {
+			log.Println("ERROR P2C_ResultWhisper", msg.GetUuId())
+			return
+		}
+
+		// 2022. 11. 17 Report Temp AHNJUNGMO
+		server.sendMsgToRegion(data, conn)
+	}
+
 	plrs := db.GetRoomPlayers(msg.UuId)
 
 	res := &mc_metadata.P2C_ResultMetaSchoolEnter{
