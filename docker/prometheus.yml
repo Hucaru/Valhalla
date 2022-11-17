@@ -5,4 +5,4 @@ scrape_configs:
     - job_name: 'metrics'
       scrape_interval: 5s
       static_configs:
-      - targets: ['channel_server_1:9000', 'channel_server_2:9000']
+      - targets: ['channel_server_1:8586', 'channel_server_2:8686']

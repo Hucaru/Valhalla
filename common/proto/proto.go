@@ -45,7 +45,8 @@ func AccountReport(acc *model.Account) *mc_metadata.P2C_ReportLoginUser {
 
 func AccountResult(acc *model.Account) *mc_metadata.P2C_ResultLoginUser {
 	return &mc_metadata.P2C_ResultLoginUser{
-		UuId: acc.UId,
+		UuId:     acc.UId,
+		RegionId: int32(acc.RegionID),
 		PlayerInfo: &mc_metadata.P2C_PlayerInfo{
 			Nickname: acc.NickName,
 			Hair:     acc.Hair,

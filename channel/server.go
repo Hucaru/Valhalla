@@ -261,7 +261,7 @@ func (server *Server) clearSessions() {
 
 // ClientDisconnected from server
 func (server *Server) ClientDisconnected(conn mnet.Client) {
-	_, err := server.players.getFromConn(conn)
+	plr, err := server.players.getFromConn(conn)
 	if err != nil {
 		return
 	}
@@ -280,6 +280,20 @@ func (server *Server) ClientDisconnected(conn mnet.Client) {
 	err2 := db.DeleteInteraction(conn.GetUid())
 	if err2 != nil {
 		log.Println("ERROR DeleteInteraction", conn.GetUid())
+	}
+
+	err3 := db.UpdateMovement(
+		conn.GetUid(),
+		plr.account.PosX,
+		plr.account.PosY,
+		plr.account.PosZ,
+		plr.account.RotX,
+		plr.account.RotY,
+		plr.account.RotZ,
+	)
+
+	if err3 != nil {
+		log.Println("ERROR UpdateMovement disconnect", conn.GetUid())
 	}
 
 	msg, errR := makeDisconnectedResponse(conn.GetUid())
