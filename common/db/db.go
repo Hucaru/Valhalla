@@ -314,8 +314,8 @@ func UpdatePlayerRole(
 	return updatePlayerRole(cID, role)
 }
 
-func GetRoomPlayers(uID string) []*mc_metadata.Data {
-	data := make([]*mc_metadata.Data, 0)
+func GetRoomPlayers(uID string) []*mc_metadata.DataSchool {
+	data := make([]*mc_metadata.DataSchool, 0)
 
 	rows, err := Maria.Query(
 		"SELECT a.uId, "+
@@ -330,9 +330,9 @@ func GetRoomPlayers(uID string) []*mc_metadata.Data {
 		return nil
 	}
 	for rows.Next() {
-		d := &mc_metadata.Data{
+		d := &mc_metadata.DataSchool{
 			PlayerInfo: &mc_metadata.P2C_PlayerInfo{},
-			Interaction: &mc_metadata.P2C_ReportInteractionAttach{
+			InteractionData: &mc_metadata.P2C_ReportInteractionAttach{
 				AttachEnable: 1,
 			},
 			UuId: "",
@@ -341,7 +341,7 @@ func GetRoomPlayers(uID string) []*mc_metadata.Data {
 		if err := rows.Scan(
 			&d.UuId,
 			&d.PlayerInfo.UuId, &d.PlayerInfo.Nickname, &d.PlayerInfo.Hair, &d.PlayerInfo.Top, &d.PlayerInfo.Bottom, &d.PlayerInfo.Clothes,
-			&d.Interaction.UuId, &d.Interaction.ObjectIndex, &d.Interaction.AnimMontageName, &d.Interaction.DestinationX, &d.Interaction.DestinationY, &d.Interaction.DestinationZ,
+			&d.InteractionData.UuId, &d.InteractionData.ObjectIndex, &d.InteractionData.AnimMontageName, &d.InteractionData.DestinationX, &d.InteractionData.DestinationY, &d.InteractionData.DestinationZ,
 		); err != nil {
 			log.Println("LOGGED USERS SELECTING ERROR", err)
 			return nil

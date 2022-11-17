@@ -407,11 +407,12 @@ func (server *Server) playerRegionRoleChecking(conn mnet.Client, reader mpacket.
 	if n > 0 {
 		is = 1
 	}
-	res := mc_metadata.P2C_ResultRoleChecking{
+	res := &mc_metadata.P2C_ResultRoleChecking{
+		UuId:      msg.GetUuId(),
 		IsTeacher: int32(is),
 	}
 
-	data, err := proto.MakeResponse(&res, constant.P2C_ResultRoleChecking)
+	data, err := proto.MakeResponse(res, constant.P2C_ResultRoleChecking)
 	if err != nil {
 		log.Println("ERROR P2C_ResultRoleChecking", msg.GetUuId())
 		return
@@ -431,18 +432,18 @@ func (server *Server) playerRoleUpdate(conn mnet.Client, reader mpacket.Reader) 
 	}
 
 	if int64(msg.TeacherEnable) != server.getCurrentRole(conn) {
-		go db.UpdatePlayerRole(msg.UuId, msg.TeacherEnable)
+		db.UpdatePlayerRole(msg.UuId, msg.TeacherEnable)
 	}
 
 	plrs := db.GetRoomPlayers(msg.UuId)
 
-	res := mc_metadata.P2C_ResultMetaSchoolEnter{
+	res := &mc_metadata.P2C_ResultMetaSchoolEnter{
 		UuId:          msg.GetUuId(),
 		TeacherEnable: msg.GetTeacherEnable(),
-		Data:          plrs,
+		DataSchool:    plrs,
 	}
 
-	data, err := proto.MakeResponse(&res, constant.P2C_ResultMetaSchoolEnter)
+	data, err := proto.MakeResponse(res, constant.P2C_ResultMetaSchoolEnter)
 	if err != nil {
 		log.Println("ERROR P2C_ResultWhisper", msg.GetUuId())
 		return
