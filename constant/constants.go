@@ -54,7 +54,7 @@ const (
 
 	P2C_ResultInteractionAttach = 36
 	C2P_RequestMetaSchoolLeave  = 37
-	P2C_ReportMetaSchoolLeave   = 37
+	P2C_ReportMetaSchoolLeave   = 38
 
 	//errors
 	P2C_ResultLoginUserError = 90
