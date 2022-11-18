@@ -212,7 +212,7 @@ func (server *Server) playerChangeChannel(conn mnet.Client, reader mpacket.Reade
 		return
 	}
 
-	if msg.GetRegionId() < constant.All || msg.GetRegionId() > constant.MetaInvest {
+	if msg.GetRegionId() < constant.World || msg.GetRegionId() > constant.MetaInvest {
 		log.Println("Region not found:", err)
 		return
 	}
@@ -614,7 +614,7 @@ func (server *Server) chatSendAll(conn mnet.Client, reader mpacket.Reader) {
 	}
 
 	server.sendMsgToAll(data, conn)
-	db.InsertPublicMessage(msg.GetUuId(), constant.All, msg.GetChat())
+	db.InsertPublicMessage(msg.GetUuId(), constant.World, msg.GetChat())
 
 	toMe := mc_metadata.P2C_ResultAllChat{
 		UuId:     msg.GetUuId(),

@@ -85,7 +85,6 @@ const (
 )
 
 const (
-	All        = -1
 	World      = 1
 	MetaSchool = 2
 	Ihq        = 3

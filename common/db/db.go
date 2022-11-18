@@ -40,7 +40,7 @@ func GetLoggedData(uUID string) (model.Account, error) {
 		UId:         uUID,
 		AccountID:   -1,
 		CharacterID: -1,
-		RegionID:    constant.All,
+		RegionID:    constant.World,
 		NickName:    "",
 		Hair:        "",
 		Top:         "",
@@ -85,7 +85,7 @@ func GetLoggedDataByName(uUID string, nickname string) (model.Account, error) {
 		UId:         uUID,
 		AccountID:   -1,
 		CharacterID: -1,
-		RegionID:    constant.All,
+		RegionID:    constant.World,
 		NickName:    "",
 		Hair:        "",
 		Top:         "",
@@ -155,7 +155,7 @@ func GetLoggedUsersData(uUID string, regionID int64) ([]*model.Account, error) {
 		acc := &model.Account{
 			UId:         uUID,
 			AccountID:   -1,
-			RegionID:    constant.All,
+			RegionID:    constant.World,
 			CharacterID: -1,
 			NickName:    "",
 			Time:        0,
@@ -203,7 +203,7 @@ func InsertNewAccount(uUid string, conn mnet.Client) error {
 	cRes, cErr := Maria.Exec("INSERT INTO characters "+
 		"(accountID, worldID, nickname, gender, hair, top, bottom, clothes, channelID) "+
 		"VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-		accountID, 1, fmt.Sprintf("player#%d", time.Now().UnixNano()/int64(time.Millisecond)), 1, "", "", "", "", constant.All)
+		accountID, 1, fmt.Sprintf("player#%d", time.Now().UnixNano()/int64(time.Millisecond)), 1, "", "", "", "", constant.World)
 
 	if cErr != nil {
 		log.Println("INSERTING ERROR", cErr)
@@ -508,7 +508,7 @@ func InsertWhisperMessage(uID string, targetID string, text string) string {
 		return targetUID
 	}
 
-	insertChatMessage(characterID, constant.All, text, targetCID)
+	insertChatMessage(characterID, constant.World, text, targetCID)
 	return targetUID
 }
 
