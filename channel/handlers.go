@@ -72,7 +72,11 @@ func (server *Server) HandleClientPacket(conn mnet.Client, tcpConn net.Conn, rea
 		break
 	case constant.C2P_RequestMetaSchoolEnter:
 		log.Println("DATA_META_SCHOOL_ENTER", reader.GetBuffer())
-		go server.playerRoleUpdate(conn, reader)
+		go server.playerEnterToRoom(conn, reader)
+		break
+	case constant.C2P_RequestMetaSchoolLeave:
+		log.Println("DATA_META_SCHOOL_ENTER", reader.GetBuffer())
+		go server.playerLeaveFromRoom(conn, reader)
 		break
 	case constant.C2P_RequestRoleChecking:
 		log.Println("DATA_ROLE_CHECKING", reader.GetBuffer())
@@ -168,15 +172,6 @@ func (server *Server) sendMsgToMe(res mpacket.Packet, conn mnet.Client) {
 		return
 	}
 	plr.conn.Send(res)
-}
-
-func (server *Server) getCurrentRole(conn mnet.Client) int64 {
-	plr, err := server.players.getFromConn(conn)
-
-	if err != nil {
-		return 0
-	}
-	return plr.account.Role
 }
 
 func (server *Server) sendMsgToPlayer(res mpacket.Packet, uID string) {
@@ -422,7 +417,7 @@ func (server *Server) playerRegionRoleChecking(conn mnet.Client, reader mpacket.
 	data = nil
 }
 
-func (server *Server) playerRoleUpdate(conn mnet.Client, reader mpacket.Reader) {
+func (server *Server) playerEnterToRoom(conn mnet.Client, reader mpacket.Reader) {
 
 	msg := mc_metadata.C2P_RequestMetaSchoolEnter{}
 	err := proto.Unmarshal(reader.GetBuffer(), &msg)
@@ -431,8 +426,10 @@ func (server *Server) playerRoleUpdate(conn mnet.Client, reader mpacket.Reader) 
 		return
 	}
 
-	if int64(msg.TeacherEnable) != server.getCurrentRole(conn) {
-		db.UpdatePlayerRole(msg.UuId, msg.TeacherEnable)
+	err1 := db.InsertPLayerToRoom(msg.UuId, msg.TeacherEnable)
+	if err1 != nil {
+		log.Println("Failed to insert data:", err1)
+		return
 	}
 
 	{
@@ -466,6 +463,33 @@ func (server *Server) playerRoleUpdate(conn mnet.Client, reader mpacket.Reader) 
 	}
 
 	server.sendMsgToMe(data, conn)
+}
+
+func (server *Server) playerLeaveFromRoom(conn mnet.Client, reader mpacket.Reader) {
+
+	msg := mc_metadata.C2P_RequestMetaSchoolLeave{}
+	err := proto.Unmarshal(reader.GetBuffer(), &msg)
+	if err != nil {
+		log.Println("Failed to parse data:", err)
+		return
+	}
+
+	err1 := db.LeavePLayerToRoom(msg.UuId)
+	if err1 != nil {
+		log.Println("Failed to insert data:", err1)
+		return
+	}
+
+	res := &mc_metadata.P2C_ReportMetaSchoolLeave{
+		UuId: msg.GetUuId(),
+	}
+
+	data, err := proto.MakeResponse(res, constant.P2C_ReportMetaSchoolLeave)
+	if err != nil {
+		log.Println("ERROR P2C_ReportMetaSchoolLeave", msg.GetUuId())
+		return
+	}
+	server.sendMsgToRegion(data, conn)
 }
 
 func (server *Server) playerMovement(conn mnet.Client, reader mpacket.Reader) {

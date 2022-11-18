@@ -40,7 +40,6 @@ func GetLoggedData(uUID string) (model.Account, error) {
 		UId:         uUID,
 		AccountID:   -1,
 		CharacterID: -1,
-		Role:        0,
 		RegionID:    constant.All,
 		NickName:    "",
 		Hair:        "",
@@ -57,7 +56,7 @@ func GetLoggedData(uUID string) (model.Account, error) {
 	}
 
 	err := Maria.QueryRow(
-		"SELECT a.accountID, a.uId, c.id as characterID, c.channelID, c.role, c.nickname, "+
+		"SELECT a.accountID, a.uId, c.id as characterID, c.channelID, c.nickname, "+
 			"c.hair, c.top, c.bottom, c.clothes, "+
 			"IFNULL(m.time, 0) as time, "+
 			"IFNULL(m.pos_x, 0) as pos_x, "+
@@ -73,7 +72,7 @@ func GetLoggedData(uUID string) (model.Account, error) {
 			"ORDER BY time DESC "+
 			"LIMIT 1", uUID).
 		Scan(&acc.AccountID,
-			&acc.UId, &acc.CharacterID, &acc.RegionID, &acc.Role, &acc.NickName,
+			&acc.UId, &acc.CharacterID, &acc.RegionID, &acc.NickName,
 			&acc.Hair, &acc.Top, &acc.Bottom, &acc.Clothes,
 			&acc.Time, &acc.PosX, &acc.PosY, &acc.PosZ, &acc.RotX, &acc.RotY, &acc.RotZ)
 
@@ -86,7 +85,6 @@ func GetLoggedDataByName(uUID string, nickname string) (model.Account, error) {
 		UId:         uUID,
 		AccountID:   -1,
 		CharacterID: -1,
-		Role:        0,
 		RegionID:    constant.All,
 		NickName:    "",
 		Hair:        "",
@@ -103,7 +101,7 @@ func GetLoggedDataByName(uUID string, nickname string) (model.Account, error) {
 	}
 
 	err := Maria.QueryRow(
-		"SELECT a.accountID, a.uId, c.id as characterID, c.channelID, c.role, c.nickname, "+
+		"SELECT a.accountID, a.uId, c.id as characterID, c.channelID, c.nickname, "+
 			"c.hair, c.top, c.bottom, c.clothes, "+
 			"IFNULL(m.time, 0) as time, "+
 			"IFNULL(m.pos_x, 0) as pos_x, "+
@@ -119,7 +117,7 @@ func GetLoggedDataByName(uUID string, nickname string) (model.Account, error) {
 			"ORDER BY time DESC "+
 			"LIMIT 1", nickname).
 		Scan(&acc.AccountID,
-			&acc.UId, &acc.CharacterID, &acc.RegionID, &acc.Role, &acc.NickName,
+			&acc.UId, &acc.CharacterID, &acc.RegionID, &acc.NickName,
 			&acc.Hair, &acc.Top, &acc.Bottom, &acc.Clothes,
 			&acc.Time, &acc.PosX, &acc.PosY, &acc.PosZ, &acc.RotX, &acc.RotY, &acc.RotZ)
 
@@ -131,7 +129,7 @@ func GetLoggedUsersData(uUID string, regionID int64) ([]*model.Account, error) {
 	accounts := make([]*model.Account, 0)
 
 	rows, err := Maria.Query(
-		"SELECT a.accountID, a.uId, c.id as characterID, a.isLogedIn, c.channelID, c.role, c.nickname, "+
+		"SELECT a.accountID, a.uId, c.id as characterID, a.isLogedIn, c.channelID, c.nickname, "+
 			"c.hair, c.top, c.bottom, c.clothes, "+
 			"IFNULL(m.time, 0) as time, "+
 			"IFNULL(m.pos_x, 0) as pos_x, "+
@@ -142,8 +140,8 @@ func GetLoggedUsersData(uUID string, regionID int64) ([]*model.Account, error) {
 			"IFNULL(m.rot_z, 0) as rot_z "+
 			"FROM accounts a "+
 			"LEFT JOIN characters c ON c.accountID = a.accountID "+
-			"LEFT JOIN (SELECT * FROM movement m ORDER BY m.time DESC LIMIT 1) m ON m.characterID = c.id  "+
-			"WHERE a.uId != ? AND a.isLogedIn != 0 AND c.channelID = ? "+
+			"LEFT JOIN (SELECT * FROM movement m ORDER BY m.time DESC LIMIT 1) m ON m.characterID = characterID  "+
+			"WHERE a.uId != ? AND a.isLogedIn > 0 AND c.channelID = ? "+
 			"ORDER BY time DESC", uUID, regionID)
 
 	if err != nil {
@@ -160,7 +158,6 @@ func GetLoggedUsersData(uUID string, regionID int64) ([]*model.Account, error) {
 			RegionID:    constant.All,
 			CharacterID: -1,
 			NickName:    "",
-			Role:        0,
 			Time:        0,
 			Hair:        "",
 			Top:         "",
@@ -175,7 +172,7 @@ func GetLoggedUsersData(uUID string, regionID int64) ([]*model.Account, error) {
 		}
 
 		if err := rows.Scan(
-			&acc.AccountID, &acc.UId, &acc.CharacterID, &is, &acc.RegionID, &acc.Role, &acc.NickName,
+			&acc.AccountID, &acc.UId, &acc.CharacterID, &is, &acc.RegionID, &acc.NickName,
 			&acc.Hair, &acc.Top, &acc.Bottom, &acc.Clothes,
 			&acc.Time,
 			&acc.PosX, &acc.PosY, &acc.PosZ, &acc.RotX, &acc.RotY, &acc.RotZ); err != nil {
@@ -204,9 +201,9 @@ func InsertNewAccount(uUid string, conn mnet.Client) error {
 	accountID, err := res.LastInsertId()
 	conn.SetAccountID(int32(accountID))
 	cRes, cErr := Maria.Exec("INSERT INTO characters "+
-		"(accountID, worldID, nickname, gender, hair, top, bottom, clothes, channelID, role) "+
-		"VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-		accountID, 1, fmt.Sprintf("player#%d", time.Now().UnixNano()/int64(time.Millisecond)), 1, "", "", "", "", constant.All, 0)
+		"(accountID, worldID, nickname, gender, hair, top, bottom, clothes, channelID) "+
+		"VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+		accountID, 1, fmt.Sprintf("player#%d", time.Now().UnixNano()/int64(time.Millisecond)), 1, "", "", "", "", constant.All)
 
 	if cErr != nil {
 		log.Println("INSERTING ERROR", cErr)
@@ -303,15 +300,22 @@ func insertInteraction(
 	return err
 }
 
-func UpdatePlayerRole(
-	uID string,
-	role int32) error {
+func InsertPLayerToRoom(uID string, role int32) error {
 
 	cID := findCharacterByUid(uID)
 	if cID < 0 {
 		return errors.New("player not found")
 	}
-	return updatePlayerRole(cID, role)
+	return insertPLayerToRoom(cID, role)
+}
+
+func LeavePLayerToRoom(uID string) error {
+
+	cID := findCharacterByUid(uID)
+	if cID < 0 {
+		return errors.New("player not found")
+	}
+	return deletePLayerToRoom(cID)
 }
 
 func GetRoomPlayers(uID string) []*mc_metadata.DataSchool {
@@ -320,9 +324,11 @@ func GetRoomPlayers(uID string) []*mc_metadata.DataSchool {
 	rows, err := Maria.Query(
 		"SELECT a.uId, "+
 			"a.uId as cUid, c.nickname, c.hair, c.top, c.bottom, c.clothes, "+
-			"a.uId as iUid, i.objectIndex, i.animationName, i.destinationX, i.destinationY, i.destinationZ "+
-			"FROM interaction i "+
-			"LEFT JOIN characters c ON c.id = i.characterID "+
+			"a.uId as iUid, IFNULL(i.objectIndex, 0) as objectIndex, IFNULL(i.animationName, '') as animationName, "+
+			"IFNULL(i.destinationX, 0) as destinationX, IFNULL(i.destinationY,0) as destinationY, IFNULL(i.destinationZ,0) as destinationZ "+
+			"FROM classroom cs "+
+			"LEFT JOIN characters c ON c.id = cs.characterID "+
+			"LEFT JOIN interaction i ON i.characterID = cs.characterID "+
 			"LEFT JOIN accounts a ON a.accountID = c.accountID "+
 			"WHERE a.uId != ? AND a.isLogedIn = 1", uID)
 
@@ -365,9 +371,10 @@ func FindRegionModerators(regionID int32) int32 {
 	err := Maria.QueryRow(
 		"SELECT COUNT(c.nums) as nums FROM "+
 			"(SELECT c.id as nums "+
-			"FROM accounts a "+
-			"LEFT JOIN characters c ON c.accountID = a.accountID "+
-			"WHERE a.isLogedIn = 1 AND c.channelID = ? AND c.role = ?) c", regionID, constant.Moderator).
+			"FROM classroom cs "+
+			"LEFT JOIN characters c ON c.id = cs.characterID "+
+			"LEFT JOIN accounts a ON c.accountID = a.accountID "+
+			"WHERE a.isLogedIn = 1 AND c.channelID = ? AND cs.role = ?) c", regionID, constant.Moderator).
 		Scan(&nums)
 	if err != nil {
 		return 0
@@ -399,9 +406,9 @@ func insertPlayerInfo(
 	bottom string,
 	clothes string) error {
 	_, err := Maria.Exec("INSERT INTO characters "+
-		"(nickname, hair, top, bottom, clothes, role) "+
-		"VALUES (?, ?, ?, ?, ?, ?)",
-		nickname, hair, top, bottom, clothes, 0)
+		"(nickname, hair, top, bottom, clothes) "+
+		"VALUES (?, ?, ?, ?, ?)",
+		nickname, hair, top, bottom, clothes)
 
 	if err != nil {
 		log.Println("INSERTING PLAYER INFO ERROR", err)
@@ -425,13 +432,21 @@ func updatePlayerInfo(
 	return err
 }
 
-func updatePlayerRole(
-	cID int64,
-	role int32) error {
-	_, err := Maria.Exec("UPDATE characters SET role=? WHERE id=?", cID, role)
+func deletePLayerToRoom(cID int64) error {
+	_, err := Maria.Exec("DELETE FROM classroom WHERE characterID =?", cID)
 
 	if err != nil {
-		log.Println("UPDATING PLAYER ROLE ERROR", err)
+		log.Println("REMOVING PLAYER FROM ROOM ERROR", err)
+	}
+	return err
+}
+
+func insertPLayerToRoom(cID int64, role int32) error {
+	_, err := Maria.Exec("INSERT INTO classroom (characterID, role) "+
+		"VALUES (?, ?)", cID, role)
+
+	if err != nil {
+		log.Println("INSERTING PLAYER TO ROOM ERROR", err)
 	}
 	return err
 }

@@ -5,7 +5,6 @@ type Account struct {
 	RegionID    int64
 	UId         string
 	CharacterID int64
-	Role        int64
 	NickName    string
 	Time        int64
 	Hair        string

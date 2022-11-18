@@ -47,7 +47,6 @@ CREATE TABLE `characters` (
   `top` tinytext,
   `bottom` tinytext,
   `clothes` tinytext,
-  `role` int(11) unsigned NOT NULL DEFAULT '0',
   `mapID` int(11) unsigned NOT NULL DEFAULT '0',
   `previousMapID` int(11) unsigned NOT NULL DEFAULT '0',
   `createdAt` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -105,7 +104,6 @@ CREATE TABLE `skills` (
   CONSTRAINT `skills_ibfk_2` FOREIGN KEY (`characterID`) REFERENCES `characters` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 
-
 DROP TABLE IF EXISTS `movement`;
 CREATE TABLE `movement` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
@@ -136,8 +134,6 @@ CREATE TABLE `chat` (
     CONSTRAINT `chat_ibfk_2` FOREIGN KEY (`characterID`) REFERENCES `characters` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 
-
-
 DROP TABLE IF EXISTS `interaction`;
 CREATE TABLE `interaction` (
     `id` int(11) NOT NULL AUTO_INCREMENT,
@@ -152,4 +148,15 @@ CREATE TABLE `interaction` (
     UNIQUE KEY `unique_interaction_index` (`objectIndex`),
     KEY `characterID` (`characterID`),
     CONSTRAINT `interaction_ibfk_2` FOREIGN KEY (`characterID`) REFERENCES `characters` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+
+DROP TABLE IF EXISTS `classroom`;
+CREATE TABLE `classroom` (
+   `id` int(11) NOT NULL AUTO_INCREMENT,
+   `characterID` int(11) NOT NULL,
+   `role` int(11) NOT NULL,
+   `createdAt` bigint(20) NOT NULL DEFAULT '0',
+   PRIMARY KEY (`id`),
+   KEY `characterID` (`characterID`),
+   CONSTRAINT `classroom_ibfk_2` FOREIGN KEY (`characterID`) REFERENCES `characters` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
