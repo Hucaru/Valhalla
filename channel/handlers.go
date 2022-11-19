@@ -506,6 +506,7 @@ func (server *Server) playerEnterToRoom(conn mnet.Client, reader mpacket.Reader)
 	}
 
 	plr.conn.GetPlayer().Character.Role = msg.TeacherEnable
+	plr.conn.GetPlayer().Interaction = &model.Interaction{}
 	server.setPlayer(plr.conn.GetPlayer())
 
 	reportEnter := &mc_metadata.P2C_ReportMetaSchoolEnter{
