@@ -258,7 +258,7 @@ func (server *Server) playerChangeChannel(conn mnet.Client, reader mpacket.Reade
 
 	db.UpdateRegionID(plr.conn.GetPlayer().CharacterID, msg.GetRegionId())
 
-	responseOld := proto.ChannelChangeForOldReport(plr.conn.GetPlayer().Character)
+	responseOld := proto.ChannelChangeForOldReport(plr.conn.GetPlayer().UId, plr.conn.GetPlayer().Character)
 	res1, err1 := proto.MakeResponse(responseOld, constant.P2C_ReportRegionLeave)
 	if err1 != nil {
 		log.Println("DATA_RESPONSE_ERROR", err1)
