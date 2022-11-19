@@ -115,6 +115,15 @@ func (server *Server) playerConnect(conn mnet.Client, tcpConn net.Conn, reader m
 		}
 	}
 
+	if acc.RegionID == constant.MetaClassRoom {
+		acc.RegionID = constant.MetaSchool
+		acc.PosX = -8597
+		acc.PosY = -23392
+		acc.PosZ = 2180
+
+		db.UpdateMovement(msg.UuId, acc.PosX, acc.PosY, acc.PosZ, constant.RotX, constant.RotY, constant.RotZ)
+	}
+
 	conn.SetUid(msg.UuId)
 	conn.SetRegionID(acc.RegionID)
 

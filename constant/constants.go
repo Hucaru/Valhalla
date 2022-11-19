@@ -1,6 +1,6 @@
 package constant
 
-var WORLD_NAMES = [...]string{"metaWorld", "metaSchool", "ihq", "metaBank", "metaInvest", "Bellocan", "Mardia", "Kradia", "Yellonde", "Demethos", "Galicia", "El Nido", "Zenith", "Arcania", "Chaos", "Nova", "Renegates"}
+var WORLD_NAMES = [...]string{"metaWorld", "metaSchool", "ihq", "metaBank", "metaInvest", "metaClassRoom", "Bellocan", "Mardia", "Kradia", "Yellonde", "Demethos", "Galicia", "El Nido", "Zenith", "Arcania", "Chaos", "Nova", "Renegates"}
 
 const (
 	C2P_RequestLoginUser = 1
@@ -85,12 +85,13 @@ const (
 )
 
 const (
-	All        = -1
-	World      = 1
-	MetaSchool = 2
-	Ihq        = 3
-	MetaBank   = 4
-	MetaInvest = 5
+	All           = -1
+	World         = 1
+	MetaSchool    = 2
+	Ihq           = 3
+	MetaBank      = 4
+	MetaInvest    = 5
+	MetaClassRoom = 6
 )
 
 const (
