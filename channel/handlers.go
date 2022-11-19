@@ -121,6 +121,7 @@ func (server *Server) playerConnect(conn mnet.Client, tcpConn net.Conn, reader m
 		acc.PosY = -23392
 		acc.PosZ = 2180
 
+		db.UpdateRegionID(msg.UuId, int32(acc.RegionID))
 		db.UpdateMovement(msg.UuId, acc.PosX, acc.PosY, acc.PosZ, constant.RotX, constant.RotY, constant.RotZ)
 	}
 
