@@ -134,29 +134,3 @@ CREATE TABLE `chat` (
     CONSTRAINT `chat_ibfk_2` FOREIGN KEY (`characterID`) REFERENCES `characters` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 
-DROP TABLE IF EXISTS `interaction`;
-CREATE TABLE `interaction` (
-    `id` int(11) NOT NULL AUTO_INCREMENT,
-    `characterID` int(11) NOT NULL,
-    `objectIndex` int(11),
-    `animationName` tinytext NOT NULL DEFAULT '',
-    `destinationX` float NOT NULL DEFAULT '0',
-    `destinationY` float NOT NULL DEFAULT '0',
-    `destinationZ` float NOT NULL DEFAULT '0',
-    `createdAt` bigint(20) NOT NULL DEFAULT '0',
-    PRIMARY KEY (`id`),
-    UNIQUE KEY `unique_interaction_index` (`objectIndex`),
-    KEY `characterID` (`characterID`),
-    CONSTRAINT `interaction_ibfk_2` FOREIGN KEY (`characterID`) REFERENCES `characters` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=latin1;
-
-DROP TABLE IF EXISTS `classroom`;
-CREATE TABLE `classroom` (
-   `id` int(11) NOT NULL AUTO_INCREMENT,
-   `characterID` int(11) NOT NULL,
-   `role` int(11) NOT NULL,
-   `createdAt` bigint(20) NOT NULL DEFAULT '0',
-   PRIMARY KEY (`id`),
-   KEY `characterID` (`characterID`),
-   CONSTRAINT `classroom_ibfk_2` FOREIGN KEY (`characterID`) REFERENCES `characters` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=latin1;

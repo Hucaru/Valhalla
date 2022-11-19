@@ -55,6 +55,7 @@ const (
 	P2C_ResultInteractionAttach = 36
 	C2P_RequestMetaSchoolLeave  = 37
 	P2C_ReportMetaSchoolLeave   = 38
+	P2C_ReportRegionLeave       = 39
 
 	//errors
 	P2C_ResultLoginUserError = 90
@@ -81,7 +82,8 @@ const (
 )
 
 const (
-	NO_TARGET = -1
+	DEFAULT_TIME = 0
+	NO_TARGET    = -1
 )
 
 const (
@@ -94,6 +96,7 @@ const (
 )
 
 const (
+	UNKNOWN   = -1
 	User      = 0
 	Moderator = 1
 	Admin     = 2

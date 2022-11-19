@@ -1,11 +1,11 @@
 package mnet
 
 import (
-	"net"
-
+	"github.com/Hucaru/Valhalla/common/db/model"
 	"github.com/Hucaru/Valhalla/constant"
 	"github.com/Hucaru/Valhalla/mnet/crypt"
 	"github.com/Hucaru/Valhalla/mpacket"
+	"net"
 )
 
 type Client interface {
@@ -23,10 +23,8 @@ type Client interface {
 	SetChannelID(byte)
 	GetAdminLevel() int
 	SetAdminLevel(int)
-	GetRegionID() int64
-	SetRegionID(int64)
-	GetUid() string
-	SetUid(string)
+	GetPlayer() *model.Player
+	SetPlayer(player model.Player)
 }
 
 type client struct {
@@ -40,6 +38,7 @@ type client struct {
 	regionID   int64
 	adminLevel int
 	uID        string
+	player     model.Player
 }
 
 func NewClient(conn net.Conn, eRecv chan *Event, queueSize int, keySend, keyRecv [4]byte, latency, jitter int) *client {
@@ -161,18 +160,10 @@ func (c *client) SetAdminLevel(level int) {
 	c.adminLevel = level
 }
 
-func (c *client) GetUid() string {
-	return c.uID
+func (c *client) GetPlayer() *model.Player {
+	return &c.player
 }
 
-func (c *client) SetUid(_uid string) {
-	c.uID = _uid
-}
-
-func (c *client) GetRegionID() int64 {
-	return c.regionID
-}
-
-func (c *client) SetRegionID(rID int64) {
-	c.regionID = rID
+func (c *client) SetPlayer(player model.Player) {
+	c.player = player
 }

@@ -157,8 +157,8 @@ type player struct {
 
 	UpdatePartyInfo updatePartyInfoFunc
 
-	rates   *rates
-	account *model.Account
+	rates *rates
+	data  *model.Player
 }
 
 // Send the Data a packet

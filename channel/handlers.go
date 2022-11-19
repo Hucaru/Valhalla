@@ -3,6 +3,7 @@ package channel
 import (
 	"errors"
 	"fmt"
+	"github.com/Hucaru/Valhalla/common/db/model"
 	"log"
 	"net"
 	"strconv"
@@ -27,16 +28,16 @@ func (server *Server) HandleClientPacket(conn mnet.Client, tcpConn net.Conn, rea
 	switch msgProtocolType {
 	case constant.C2P_RequestLoginUser:
 		log.Println("PLAYERS", len(server.players))
-		go server.playerConnect(conn, tcpConn, reader, msgProtocolType)
+		go server.playerConnect(conn, tcpConn, reader)
 		break
 	case constant.C2P_RequestMoveStart:
-		go server.playerMovementStart(conn, reader)
+		server.playerMovementStart(conn, reader)
 		break
 	case constant.C2P_RequestMove:
 		server.playerMovement(conn, reader)
 		break
 	case constant.C2P_RequestMoveEnd:
-		go server.playerMovementEnd(conn, reader)
+		server.playerMovementEnd(conn, reader)
 		break
 	case constant.C2P_RequestLogoutUser:
 		log.Println("DATA_BUFFER_LOGOUT", reader.GetBuffer())
@@ -89,7 +90,7 @@ func (server *Server) HandleClientPacket(conn mnet.Client, tcpConn net.Conn, rea
 	}
 }
 
-func (server *Server) playerConnect(conn mnet.Client, tcpConn net.Conn, reader mpacket.Reader, mType uint32) {
+func (server *Server) playerConnect(conn mnet.Client, tcpConn net.Conn, reader mpacket.Reader) {
 	msg := mc_metadata.C2P_RequestLoginUser{}
 	err := proto.Unmarshal(reader.GetBuffer(), &msg)
 	if err != nil || len(msg.UuId) == 0 {
@@ -97,16 +98,16 @@ func (server *Server) playerConnect(conn mnet.Client, tcpConn net.Conn, reader m
 		return
 	}
 
-	acc, err := db.GetLoggedData(msg.UuId)
+	player, err := db.GetLoggedData(msg.GetUuId())
 
 	if err != nil {
-		log.Println("Inserting new user", msg.UuId)
-		go db.InsertNewAccount(msg.UuId, conn)
+		log.Println("Inserting new user", msg.GetUuId())
+		db.InsertNewAccount(player)
 	} else {
-		err1 := db.UpdateLoginState(msg.UuId, true)
+		err1 := db.UpdateLoginState(msg.GetUuId(), true)
 		if err1 != nil {
-			log.Println("Unable to complete login for ", msg.UuId)
-			m, err2 := proto.ErrorLoginResponse(err.Error(), msg.UuId)
+			log.Println("Unable to complete login for ", msg.GetUuId())
+			m, err2 := proto.ErrorLoginResponse(err.Error(), msg.GetUuId())
 			if err2 != nil {
 				log.Println("ErrorLoginResponse", err2)
 			}
@@ -116,42 +117,35 @@ func (server *Server) playerConnect(conn mnet.Client, tcpConn net.Conn, reader m
 	}
 
 	// TMP part, will be moved later
-	if acc.RegionID == constant.MetaClassRoom {
-		acc.RegionID = constant.MetaSchool
-		acc.PosX = -8597
-		acc.PosY = -23392
-		acc.PosZ = 2180
+	if player.RegionID == constant.MetaClassRoom {
+		player.RegionID = constant.MetaSchool
+		player.Character.PosX = -8597
+		player.Character.PosY = -23392
+		player.Character.PosZ = 2180
 
-		db.UpdateRegionID(msg.UuId, int32(acc.RegionID))
-		db.UpdateMovement(msg.UuId, acc.PosX, acc.PosY, acc.PosZ, constant.RotX, constant.RotY, constant.RotZ)
+		db.UpdateRegionID(player.CharacterID, int32(player.RegionID))
 	}
-
-	conn.SetUid(msg.UuId)
-	conn.SetRegionID(acc.RegionID)
 
 	plr := loadPlayer(conn, msg)
 	plr.rates = &server.rates
-	plr.account = &acc
+	plr.conn.SetPlayer(*player)
 	server.players = append(server.players, &plr)
 
-	response := proto.AccountReport(&acc)
+	response := proto.AccountReport(&player.UId, player.Character)
 	res, err := proto.MakeResponse(response, constant.P2C_ReportLoginUser)
 	if err != nil {
 		log.Println("DATA_RESPONSE_ERROR", err)
 	}
-	log.Println("PLAYER_ID_LOGIN", conn.GetUid())
-	server.sendMsgToAll(res, conn)
+	log.Println("PLAYER_ID_LOGIN", player.UId)
+	server.sendMsgToAll(res, msg.GetUuId())
 
-	account := proto.AccountResult(plr.account)
-	loggedAccounts, err := db.GetLoggedUsersData(plr.account.UId, acc.RegionID)
+	account := proto.AccountResult(player)
+	loggedPlayers := server.getLoggedPlayers(player.UId, constant.UNKNOWN)
 
-	if err != nil {
-		log.Println("ERROR P2C_ResultLoginUser", plr.playerID)
-		return
+	if loggedPlayers != nil {
+		users := proto.ConvertPlayersToLoginResult(loggedPlayers)
+		account.LoggedUsers = append(account.LoggedUsers, users...)
 	}
-
-	users := proto.ConvertAccountsToProto(loggedAccounts)
-	account.LoggedUsers = append(account.LoggedUsers, users...)
 
 	data, err := proto.MakeResponse(account, constant.P2C_ResultLoginUser)
 	if err != nil {
@@ -166,14 +160,49 @@ func (server *Server) playerConnect(conn mnet.Client, tcpConn net.Conn, reader m
 	account = nil
 }
 
-func (server *Server) isPlayerOnline(conn mnet.Client) bool {
-
+func (server *Server) getLoggedPlayers(uID string, regionID int64) []*model.Player {
+	plrs := make([]*model.Player, 0)
 	for i := 0; i < len(server.players); i++ {
-		if conn.GetUid() == server.players[i].conn.GetUid() {
-			return true
+		if regionID != -1 && regionID != server.players[i].conn.GetPlayer().RegionID {
+			continue
+		}
+		if uID == server.players[i].conn.GetPlayer().UId {
+			continue
+		}
+		plrs = append(plrs, server.players[i].conn.GetPlayer())
+	}
+	return plrs
+}
+
+func (server *Server) getRoomPlayers(uID string) []*model.Player {
+	plrs := make([]*model.Player, 0)
+	for i := 0; i < len(server.players); i++ {
+		if uID == server.players[i].conn.GetPlayer().UId {
+			continue
+		}
+		if server.players[i].conn.GetPlayer().Interaction != nil {
+			plrs = append(plrs, server.players[i].conn.GetPlayer())
+		}
+
+	}
+	return plrs
+}
+
+func (server *Server) setPlayer(plr *model.Player) {
+	for i := 0; i < len(server.players); i++ {
+		if plr.UId == server.players[i].conn.GetPlayer().UId {
+			server.players[i].conn.SetPlayer(*plr)
+			break
 		}
 	}
-	return false
+}
+
+func (server *Server) isPlayerOnline(conn mnet.Client) bool {
+	_, err := server.players.getFromConn(conn)
+	if err != nil {
+		return false
+	}
+	return true
 }
 
 func (server *Server) sendMsgToMe(res mpacket.Packet, conn mnet.Client) {
@@ -187,28 +216,27 @@ func (server *Server) sendMsgToMe(res mpacket.Packet, conn mnet.Client) {
 
 func (server *Server) sendMsgToPlayer(res mpacket.Packet, uID string) {
 	for i := 0; i < len(server.players); i++ {
-		if uID == server.players[i].conn.GetUid() {
+		if uID == server.players[i].conn.GetPlayer().UId {
+			log.Println("PLAYER_ID", server.players[i].playerID)
+			server.players[i].conn.Send(res)
+			break
+		}
+	}
+}
+
+func (server *Server) sendMsgToAll(res mpacket.Packet, uID string) {
+	for i := 0; i < len(server.players); i++ {
+		if uID != server.players[i].conn.GetPlayer().UId {
 			log.Println("PLAYER_ID", server.players[i].playerID)
 			server.players[i].conn.Send(res)
 		}
 	}
 }
 
-func (server *Server) sendMsgToAll(res mpacket.Packet, conn mnet.Client) {
-
+func (server *Server) sendMsgToRegion(res mpacket.Packet, uID string, regionId int64) {
 	for i := 0; i < len(server.players); i++ {
-		if conn.GetUid() != server.players[i].conn.GetUid() {
-			log.Println("PLAYER_ID", server.players[i].playerID)
-			server.players[i].conn.Send(res)
-		}
-	}
-}
-
-func (server *Server) sendMsgToRegion(res mpacket.Packet, conn mnet.Client) {
-
-	for i := 0; i < len(server.players); i++ {
-		if conn.GetUid() != server.players[i].conn.GetUid() &&
-			conn.GetRegionID() == server.players[i].conn.GetRegionID() {
+		if uID != server.players[i].conn.GetPlayer().UId &&
+			regionId == server.players[i].conn.GetPlayer().RegionID {
 			log.Println("PLAYER_ID", server.players[i].playerID)
 			server.players[i].conn.Send(res)
 		}
@@ -223,40 +251,52 @@ func (server *Server) playerChangeChannel(conn mnet.Client, reader mpacket.Reade
 		return
 	}
 
-	for i := 0; i < len(server.players); i++ {
-		if msg.GetUuId() == server.players[i].conn.GetUid() {
-			db.UpdateRegionID(msg.GetUuId(), msg.GetRegionId())
-			server.players[i].conn.SetRegionID(int64(msg.GetRegionId()))
-
-			response := proto.AccountReport(server.players[i].account)
-			res, err := proto.MakeResponse(response, constant.P2C_ReportRegionChange)
-			if err != nil {
-				log.Println("DATA_RESPONSE_ERROR", err)
-			}
-			log.Println("REGION_CHANGED TO ", conn.GetRegionID())
-			server.sendMsgToRegion(res, conn)
-
-			account := proto.AccountResult(server.players[i].account)
-			loggedAccounts, err := db.GetLoggedUsersData(server.players[i].account.UId, int64(account.RegionId))
-
-			if err != nil {
-				log.Println("ERROR GetLoggedUsersData", server.players[i].playerID)
-				return
-			}
-
-			users := proto.ConvertAccountsToProto(loggedAccounts)
-			account.LoggedUsers = append(account.LoggedUsers, users...)
-
-			data, err := proto.MakeResponse(account, constant.P2C_ResultRegionChange)
-			if err != nil {
-				log.Println("ERROR P2C_ResultLoginUser", err)
-				return
-			}
-
-			server.sendMsgToMe(data, conn)
-			break
-		}
+	plr, err := server.players.getFromConn(conn)
+	if err != nil {
+		return
 	}
+
+	db.UpdateRegionID(plr.conn.GetPlayer().CharacterID, msg.GetRegionId())
+
+	responseOld := proto.ChannelChangeForOldReport(plr.conn.GetPlayer().Character)
+	res1, err1 := proto.MakeResponse(responseOld, constant.P2C_ReportRegionLeave)
+	if err1 != nil {
+		log.Println("DATA_RESPONSE_ERROR", err1)
+	}
+
+	log.Println("REGION_CHANGED PREV REGION SEND", &plr.conn.GetPlayer().RegionID)
+	server.sendMsgToRegion(res1, plr.conn.GetPlayer().UId, plr.conn.GetPlayer().RegionID)
+
+	responseNew := proto.ChannelChangeForNewReport(&plr.conn.GetPlayer().UId, plr.conn.GetPlayer().Character)
+	res2, err2 := proto.MakeResponse(responseNew, constant.P2C_ReportRegionChange)
+	if err2 != nil {
+		log.Println("DATA_RESPONSE_ERROR", err2)
+	}
+
+	log.Println("REGION_CHANGED TO ", msg.GetRegionId())
+	server.sendMsgToRegion(res2, plr.conn.GetPlayer().UId, int64(msg.RegionId))
+
+	plr.conn.GetPlayer().RegionID = int64(msg.RegionId)
+	server.setPlayer(plr.conn.GetPlayer())
+
+	account := proto.RegionResult(plr.conn.GetPlayer())
+	loggedAccounts := server.getLoggedPlayers(plr.conn.GetPlayer().UId, plr.conn.GetPlayer().RegionID)
+
+	if err != nil {
+		log.Println("ERROR GetLoggedUsersData", plr.conn.GetPlayer().UId)
+		return
+	}
+
+	users := proto.ConvertPlayersToRegionReport(loggedAccounts)
+	account.RegionUsers = append(account.RegionUsers, users...)
+
+	data, err := proto.MakeResponse(account, constant.P2C_ResultRegionChange)
+	if err != nil {
+		log.Println("ERROR P2C_ResultLoginUser", err)
+		return
+	}
+
+	server.sendMsgToMe(data, conn)
 }
 
 func (server *Server) playerMovementStart(conn mnet.Client, reader mpacket.Reader) {
@@ -272,7 +312,7 @@ func (server *Server) playerMovementStart(conn mnet.Client, reader mpacket.Reade
 		MovementData: proto.MakeMovementData(msg.GetMovementData()),
 	}
 	server.makeReportToRegion(conn, &res, constant.P2C_ReportMoveStart)
-	server.updateUserLocation(msg.GetMovementData())
+	go server.updateUserLocation(msg.GetMovementData())
 }
 
 func (server *Server) playerMovementEnd(conn mnet.Client, reader mpacket.Reader) {
@@ -289,7 +329,7 @@ func (server *Server) playerMovementEnd(conn mnet.Client, reader mpacket.Reader)
 	}
 
 	server.makeReportToRegion(conn, &res, constant.P2C_ReportMoveEnd)
-	server.updateUserLocation(msg.GetMovementData())
+	go server.updateUserLocation(msg.GetMovementData())
 }
 
 func (server *Server) playerInteraction(conn mnet.Client, reader mpacket.Reader) {
@@ -307,7 +347,7 @@ func (server *Server) playerInteraction(conn mnet.Client, reader mpacket.Reader)
 	if msg.GetAttachEnable() == 1 {
 		errR = server.InsertInteractionAndSend(conn, &msg)
 	} else {
-		errR = server.DeleteInteractionAndSend(conn, &msg)
+		errR = server.DeleteInteractionAndSend(conn)
 	}
 
 	if errR != nil {
@@ -327,12 +367,22 @@ func (server *Server) playerInteraction(conn mnet.Client, reader mpacket.Reader)
 	server.makeReportToRegion(conn, &res, constant.P2C_ReportInteractionAttach)
 }
 
-func (server *Server) DeleteInteractionAndSend(conn mnet.Client, msg *mc_metadata.C2P_RequestInteractionAttach) error {
+func (server *Server) DeleteInteractionAndSend(conn mnet.Client) error {
 
-	errD := db.DeleteInteraction(msg.GetUuId())
+	plr, err := server.players.getFromConn(conn)
+	if err != nil {
+		return err
+	}
 
 	att := mc_metadata.P2C_ResultInteractionAttach{
 		ErrorCode: -1,
+	}
+
+	for i := 0; i < len(server.players); i++ {
+		if plr.conn.GetPlayer().UId == server.players[i].conn.GetPlayer().UId {
+			server.players[i].conn.GetPlayer().Interaction = nil
+			break
+		}
 	}
 
 	data, err := proto.MakeResponse(&att, constant.P2C_ResultInteractionAttach)
@@ -341,26 +391,40 @@ func (server *Server) DeleteInteractionAndSend(conn mnet.Client, msg *mc_metadat
 		return err
 	}
 
-	if errD != nil {
-		att.ErrorCode = constant.ErrorCodeDBorServer
-	}
-
 	server.sendMsgToMe(data, conn)
-	return errD
-
+	return nil
 }
 
 func (server *Server) InsertInteractionAndSend(conn mnet.Client, msg *mc_metadata.C2P_RequestInteractionAttach) error {
-	errI := db.InsertInteraction(
-		msg.GetUuId(),
-		msg.GetObjectIndex(),
-		msg.GetAnimMontageName(),
-		msg.GetDestinationX(),
-		msg.GetDestinationY(),
-		msg.GetDestinationZ())
+
+	plr, err := server.players.getFromConn(conn)
+	if err != nil {
+		return nil
+	}
 
 	att := mc_metadata.P2C_ResultInteractionAttach{
 		ErrorCode: -1,
+	}
+
+	for i := 0; i < len(server.players); i++ {
+		if plr.conn.GetPlayer().UId == server.players[i].conn.GetPlayer().UId &&
+			msg.ObjectIndex == server.players[i].conn.GetPlayer().Interaction.ObjectIndex {
+			att.ErrorCode = constant.ErrorCodeChairNotEmpty
+			break
+		}
+	}
+
+	if att.ErrorCode == -1 {
+		if plr.conn.GetPlayer().Interaction == nil {
+			plr.conn.GetPlayer().Interaction = &model.Interaction{}
+		}
+		plr.conn.GetPlayer().Interaction.ObjectIndex = msg.GetObjectIndex()
+		plr.conn.GetPlayer().Interaction.AttachEnabled = msg.GetAttachEnable()
+		plr.conn.GetPlayer().Interaction.AnimMontageName = msg.GetAnimMontageName()
+		plr.conn.GetPlayer().Interaction.DestinationX = msg.GetDestinationX()
+		plr.conn.GetPlayer().Interaction.DestinationY = msg.GetDestinationY()
+		plr.conn.GetPlayer().Interaction.DestinationZ = msg.GetDestinationZ()
+		server.setPlayer(plr.conn.GetPlayer())
 	}
 
 	data, err := proto.MakeResponse(&att, constant.P2C_ResultInteractionAttach)
@@ -369,12 +433,12 @@ func (server *Server) InsertInteractionAndSend(conn mnet.Client, msg *mc_metadat
 		return err
 	}
 
-	if errI != nil {
-		att.ErrorCode = constant.ErrorCodeChairNotEmpty
-	}
-
 	server.sendMsgToMe(data, conn)
-	return errI
+	if att.ErrorCode == -1 {
+		return nil
+	} else {
+		return errors.New("chair not empty")
+	}
 }
 
 func (server *Server) playerPlayAnimation(conn mnet.Client, reader mpacket.Reader) {
@@ -403,11 +467,15 @@ func (server *Server) playerRegionRoleChecking(conn mnet.Client, reader mpacket.
 		return
 	}
 
-	n := db.FindRegionModerators(msg.GetRegionId())
 	is := 0
-	if n > 0 {
-		is = 1
+	for i := 0; i < len(server.players); i++ {
+		if server.players[i].conn.GetPlayer().Interaction != nil &&
+			server.players[i].conn.GetPlayer().Character.Role > 1 {
+			is = 1
+			break
+		}
 	}
+
 	res := &mc_metadata.P2C_ResultRoleChecking{
 		UuId:      msg.GetUuId(),
 		IsTeacher: int32(is),
@@ -432,16 +500,26 @@ func (server *Server) playerEnterToRoom(conn mnet.Client, reader mpacket.Reader)
 		return
 	}
 
-	err1 := db.InsertPLayerToRoom(msg.UuId, msg.TeacherEnable)
-	if err1 != nil {
-		log.Println("Failed to insert data:", err1)
+	plr, err := server.players.getFromConn(conn)
+	if err != nil {
 		return
 	}
+
+	plr.conn.GetPlayer().Character.Role = msg.TeacherEnable
+	server.setPlayer(plr.conn.GetPlayer())
 
 	reportEnter := &mc_metadata.P2C_ReportMetaSchoolEnter{
 		UuId:          msg.GetUuId(),
 		TeacherEnable: msg.GetTeacherEnable(),
-		PlayerInfo:    db.GetPlayerInfo(msg.GetUuId()),
+		PlayerInfo: &mc_metadata.P2C_PlayerInfo{
+			UuId:     plr.conn.GetPlayer().UId,
+			Nickname: plr.conn.GetPlayer().Character.NickName,
+			Role:     plr.conn.GetPlayer().Character.Role,
+			Hair:     plr.conn.GetPlayer().Character.Hair,
+			Top:      plr.conn.GetPlayer().Character.Top,
+			Bottom:   plr.conn.GetPlayer().Character.Bottom,
+			Clothes:  plr.conn.GetPlayer().Character.Clothes,
+		},
 	}
 
 	data, err2 := proto.MakeResponse(reportEnter, constant.P2C_ReportMetaSchoolEnter)
@@ -449,13 +527,12 @@ func (server *Server) playerEnterToRoom(conn mnet.Client, reader mpacket.Reader)
 		log.Println("ERROR P2C_ResultWhisper", msg.GetUuId())
 		return
 	}
-	server.sendMsgToRegion(data, conn)
+	server.sendMsgToRegion(data, plr.conn.GetPlayer().UId, plr.conn.GetPlayer().RegionID)
 
-	plrs := db.GetRoomPlayers(msg.GetUuId())
 	res := &mc_metadata.P2C_ResultMetaSchoolEnter{
 		UuId:          msg.GetUuId(),
 		TeacherEnable: msg.GetTeacherEnable(),
-		DataSchool:    plrs,
+		DataSchool:    proto.ConvertPlayersToRoomReport(server.getRoomPlayers(msg.GetUuId())),
 	}
 
 	data, err3 := proto.MakeResponse(res, constant.P2C_ResultMetaSchoolEnter)
@@ -476,9 +553,25 @@ func (server *Server) playerLeaveFromRoom(conn mnet.Client, reader mpacket.Reade
 		return
 	}
 
+	plr, err := server.players.getFromConn(conn)
+	if err != nil {
+		return
+	}
+	plr.conn.GetPlayer().Character.Role = constant.User
+	plr.conn.GetPlayer().Interaction = nil
+	server.setPlayer(plr.conn.GetPlayer())
+
 	res := &mc_metadata.P2C_ReportMetaSchoolLeave{
-		UuId:       msg.GetUuId(),
-		PlayerInfo: db.GetPlayerInfo(msg.GetUuId()),
+		UuId: msg.GetUuId(),
+		PlayerInfo: &mc_metadata.P2C_PlayerInfo{
+			UuId:     plr.conn.GetPlayer().UId,
+			Nickname: plr.conn.GetPlayer().Character.NickName,
+			Role:     plr.conn.GetPlayer().Character.Role,
+			Hair:     plr.conn.GetPlayer().Character.Hair,
+			Top:      plr.conn.GetPlayer().Character.Top,
+			Bottom:   plr.conn.GetPlayer().Character.Bottom,
+			Clothes:  plr.conn.GetPlayer().Character.Clothes,
+		},
 	}
 
 	data, err := proto.MakeResponse(res, constant.P2C_ReportMetaSchoolLeave)
@@ -487,8 +580,7 @@ func (server *Server) playerLeaveFromRoom(conn mnet.Client, reader mpacket.Reade
 		return
 	}
 
-	db.LeavePLayerToRoom(msg.GetUuId())
-	server.sendMsgToRegion(data, conn)
+	server.sendMsgToRegion(data, plr.conn.GetPlayer().UId, plr.conn.GetPlayer().RegionID)
 
 	data = nil
 }
@@ -534,18 +626,18 @@ func (server *Server) playerInfo(conn mnet.Client, reader mpacket.Reader) {
 		return
 	}
 
-	_, err1 := db.GetLoggedDataByName(msg.UuId, msg.Nickname)
+	plr, err1 := db.GetLoggedDataByName(msg.UuId, msg.Nickname)
 
 	if err1 != nil {
 		log.Println("Inserting new user", msg.UuId)
-		iErr := db.InsertNewAccount(msg.UuId, conn)
+		iErr := db.InsertNewAccount(&plr)
 		if iErr != nil {
 			res.ErrorCode = constant.ErrorCodeDuplicateUID
 		}
 	}
 
 	uErr := db.UpdatePlayerInfo(
-		msg.GetUuId(),
+		plr.CharacterID,
 		msg.GetNickname(),
 		msg.GetHair(),
 		msg.GetTop(),
@@ -585,8 +677,7 @@ func (server *Server) playerLogout(conn mnet.Client, reader mpacket.Reader) {
 		return
 	}
 
-	server.sendMsgToAll(data, conn)
-	server.updateMovement(conn)
+	server.sendMsgToAll(data, msg.GetUuId())
 	server.ClientDisconnected(conn)
 	data = nil
 }
@@ -614,8 +705,13 @@ func (server *Server) chatSendAll(conn mnet.Client, reader mpacket.Reader) {
 		return
 	}
 
-	server.sendMsgToAll(data, conn)
-	db.InsertPublicMessage(msg.GetUuId(), constant.World, msg.GetChat())
+	server.sendMsgToAll(data, msg.GetUuId())
+	plr, err := server.players.getFromConn(conn)
+	if err != nil {
+		return
+	}
+
+	db.InsertPublicMessage(plr.conn.GetPlayer().CharacterID, constant.World, msg.GetChat())
 
 	toMe := mc_metadata.P2C_ResultAllChat{
 		UuId:     msg.GetUuId(),
@@ -636,8 +732,8 @@ func (server *Server) chatSendAll(conn mnet.Client, reader mpacket.Reader) {
 }
 
 func (server *Server) chatSendRegion(conn mnet.Client, reader mpacket.Reader) {
-	msg := mc_metadata.C2P_RequestRegionChat{}
-	err := proto.Unmarshal(reader.GetBuffer(), &msg)
+	msg := &mc_metadata.C2P_RequestRegionChat{}
+	err := proto.Unmarshal(reader.GetBuffer(), msg)
 	if err != nil || len(msg.GetUuId()) == 0 {
 		log.Println("Failed to parse data:", err)
 		return
@@ -645,30 +741,38 @@ func (server *Server) chatSendRegion(conn mnet.Client, reader mpacket.Reader) {
 
 	t := time.Now().UnixNano() / int64(time.Millisecond)
 
-	res := mc_metadata.P2C_ReportRegionChat{
+	res := &mc_metadata.P2C_ReportRegionChat{
 		UuId:     msg.GetUuId(),
 		Nickname: msg.GetNickname(),
 		Chat:     msg.GetChat(),
 		Time:     t,
 	}
 
-	data, err := proto.MakeResponse(&res, constant.P2C_ReportRegionChat)
+	data, err := proto.MakeResponse(res, constant.P2C_ReportRegionChat)
 	if err != nil {
 		log.Println("ERROR P2C_ReportAllChat", msg.GetUuId())
 		return
 	}
 
-	server.sendMsgToRegion(data, conn)
-	db.InsertPublicMessage(msg.GetUuId(), conn.GetRegionID(), msg.GetChat())
+	plr, err := server.players.getFromConn(conn)
+	if err != nil {
+		return
+	}
 
-	toMe := mc_metadata.P2C_ResultRegionChat{
+	server.sendMsgToRegion(data, plr.conn.GetPlayer().UId, plr.conn.GetPlayer().RegionID)
+	db.InsertPublicMessage(
+		plr.conn.GetPlayer().CharacterID,
+		plr.conn.GetPlayer().RegionID,
+		msg.GetChat())
+
+	toMe := &mc_metadata.P2C_ResultRegionChat{
 		UuId:     msg.GetUuId(),
 		Nickname: msg.GetNickname(),
 		Chat:     msg.GetChat(),
 		Time:     t,
 	}
 
-	dataMe, err := proto.MakeResponse(&toMe, constant.P2C_ResultRegionChat)
+	dataMe, err := proto.MakeResponse(toMe, constant.P2C_ResultRegionChat)
 	if err != nil {
 		log.Println("ERROR P2C_ResultWhisper", msg.GetUuId())
 		return
@@ -676,34 +780,39 @@ func (server *Server) chatSendRegion(conn mnet.Client, reader mpacket.Reader) {
 
 	server.sendMsgToMe(dataMe, conn)
 	dataMe = nil
-
 	data = nil
 }
 
 func (server *Server) chatSendWhisper(conn mnet.Client, reader mpacket.Reader) {
-	msg := mc_metadata.C2P_RequestWhisper{}
-	err := proto.Unmarshal(reader.GetBuffer(), &msg)
+	msg := &mc_metadata.C2P_RequestWhisper{}
+	err := proto.Unmarshal(reader.GetBuffer(), msg)
 	if err != nil || len(msg.GetUuId()) == 0 {
 		log.Println("Failed to parse data:", err)
 		return
 	}
 
+	plr, err := server.players.getFromConn(conn)
+	if err != nil {
+		log.Println("Player not found", err)
+		return
+	}
+
 	t := time.Now().UnixNano() / int64(time.Millisecond)
 
-	res := mc_metadata.P2C_ReportWhisper{
+	res := &mc_metadata.P2C_ReportWhisper{
 		UuId:     msg.GetUuId(),
 		Nickname: msg.GetPlayerNickname(),
 		Chat:     msg.GetChat(),
 		Time:     t,
 	}
 
-	data, err := proto.MakeResponse(&res, constant.P2C_ReportWhisper)
+	data, err := proto.MakeResponse(res, constant.P2C_ReportWhisper)
 	if err != nil {
 		log.Println("ERROR P2C_ReportAllChat", msg.GetUuId())
 		return
 	}
 
-	toMe := mc_metadata.P2C_ResultWhisper{
+	toMe := &mc_metadata.P2C_ResultWhisper{
 		UuId:      msg.GetUuId(),
 		Nickname:  msg.GetTargetNickname(),
 		Chat:      msg.GetChat(),
@@ -711,15 +820,19 @@ func (server *Server) chatSendWhisper(conn mnet.Client, reader mpacket.Reader) {
 		ErrorCode: constant.NoError,
 	}
 
-	targetUid := db.InsertWhisperMessage(msg.GetUuId(), msg.GetTargetNickname(), msg.GetChat())
+	targetPlayer := server.findCharacterIDByNickname(msg.GetTargetNickname())
+	db.InsertWhisperMessage(
+		plr.conn.GetPlayer().CharacterID,
+		targetPlayer.CharacterID,
+		msg.GetChat())
 
-	if len(targetUid) > 0 {
-		server.sendMsgToPlayer(data, targetUid)
+	if targetPlayer != nil {
+		server.sendMsgToPlayer(data, targetPlayer.UId)
 	} else {
 		toMe.ErrorCode = constant.ErrorUserOffline
 	}
 
-	dataMe, err := proto.MakeResponse(&toMe, constant.P2C_ResultWhisper)
+	dataMe, err := proto.MakeResponse(toMe, constant.P2C_ResultWhisper)
 	if err != nil {
 		log.Println("ERROR P2C_ResultWhisper", msg.GetUuId())
 		return
@@ -730,46 +843,49 @@ func (server *Server) chatSendWhisper(conn mnet.Client, reader mpacket.Reader) {
 	data = nil
 }
 
-func (server *Server) updateMovement(conn mnet.Client) {
-
-	plr, err := server.players.getFromConn(conn)
-
-	if err != nil {
-		return
+func (server *Server) findCharacterIDByUID(uID string) *model.Player {
+	for i := 0; i < len(server.players); i++ {
+		if uID == server.players[i].conn.GetPlayer().UId {
+			return server.players[i].conn.GetPlayer()
+		}
 	}
+	return nil
+}
 
-	if plr.account != nil {
-		db.UpdateMovement(
-			plr.conn.GetUid(),
-			plr.account.PosX,
-			plr.account.PosY,
-			plr.account.PosZ,
-			plr.account.RotX,
-			plr.account.RotY,
-			plr.account.RotZ,
-		)
+func (server *Server) findCharacterIDByNickname(nickname string) *model.Player {
+	for i := 0; i < len(server.players); i++ {
+		if nickname == server.players[i].conn.GetPlayer().Character.NickName {
+			return server.players[i].conn.GetPlayer()
+		}
 	}
+	return nil
 }
 
 func (server *Server) makeReportToRegion(conn mnet.Client, msg proto2.Message, mType uint32) {
+	plr, err := server.players.getFromConn(conn)
+	if err != nil {
+		log.Println("Player not found", err)
+		return
+	}
+
 	res, err := proto.MakeResponse(msg, mType)
 	if err != nil {
 		log.Println("DATA_RESPONSE_MOVEMENT_ERROR", err)
 	}
 
-	server.sendMsgToRegion(res, conn)
+	server.sendMsgToRegion(res, plr.conn.GetPlayer().UId, plr.conn.GetPlayer().RegionID)
 	res = nil
 }
 
 func (server *Server) updateUserLocation(msg *mc_metadata.Movement) {
 	for i := 0; i < len(server.players); i++ {
-		if msg.GetUuId() == server.players[i].conn.GetUid() {
-			server.players[i].account.PosX = msg.GetDestinationX()
-			server.players[i].account.PosY = msg.GetDestinationY()
-			server.players[i].account.PosZ = msg.GetDestinationZ()
-			server.players[i].account.RotX = msg.GetDeatinationRotationX()
-			server.players[i].account.RotY = msg.GetDeatinationRotationY()
-			server.players[i].account.RotZ = msg.GetDeatinationRotationZ()
+		if msg.GetUuId() == server.players[i].conn.GetPlayer().UId {
+			server.players[i].conn.GetPlayer().Character.PosX = msg.GetDestinationX()
+			server.players[i].conn.GetPlayer().Character.PosY = msg.GetDestinationY()
+			server.players[i].conn.GetPlayer().Character.PosZ = msg.GetDestinationZ()
+			server.players[i].conn.GetPlayer().Character.RotX = msg.GetDeatinationRotationX()
+			server.players[i].conn.GetPlayer().Character.RotY = msg.GetDeatinationRotationY()
+			server.players[i].conn.GetPlayer().Character.RotZ = msg.GetDeatinationRotationZ()
 			break
 		}
 	}

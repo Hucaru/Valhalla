@@ -105,7 +105,7 @@ type Server struct {
 	eventScriptStore *scriptStore
 	parties          map[int32]*party
 	rates            rates
-	account          *model.Account
+	account          *model.Character
 }
 
 // Initialize the server
@@ -261,7 +261,7 @@ func (server *Server) clearSessions() {
 
 // ClientDisconnected from server
 func (server *Server) ClientDisconnected(conn mnet.Client) {
-	plr, err := server.players.getFromConn(conn)
+	_, err := server.players.getFromConn(conn)
 	if err != nil {
 		return
 	}
@@ -272,41 +272,37 @@ func (server *Server) ClientDisconnected(conn mnet.Client) {
 
 	server.players.removeFromConn(conn)
 
-	err1 := db.UpdateLoginState(conn.GetUid(), false)
+	err1 := db.UpdateLoginState(conn.GetPlayer().UId, false)
 	if err1 != nil {
-		log.Println("ERROR LOGOUT PLAYER_ID", conn.GetUid())
+		log.Println("ERROR LOGOUT PLAYER_ID", conn.GetPlayer().UId)
 	}
 
-	err2 := db.DeleteInteraction(conn.GetUid())
-	if err2 != nil {
-		log.Println("ERROR DeleteInteraction", conn.GetUid())
-	}
-
-	err3 := db.UpdateMovement(
-		conn.GetUid(),
-		plr.account.PosX,
-		plr.account.PosY,
-		plr.account.PosZ,
-		plr.account.RotX,
-		plr.account.RotY,
-		plr.account.RotZ,
+	err2 := db.UpdateMovement(
+		conn.GetPlayer().CharacterID,
+		conn.GetPlayer().Character.PosX,
+		conn.GetPlayer().Character.PosY,
+		conn.GetPlayer().Character.PosZ,
+		conn.GetPlayer().Character.RotX,
+		conn.GetPlayer().Character.RotY,
+		conn.GetPlayer().Character.RotZ,
 	)
 
-	if err3 != nil {
-		log.Println("ERROR UpdateMovement disconnect", conn.GetUid())
+	if err2 != nil {
+		log.Println("ERROR UpdateMovement disconnect", err2)
 	}
 
-	msg, errR := makeDisconnectedResponse(conn.GetUid())
+	msg, errR := makeDisconnectedResponse(conn.GetPlayer().UId)
 	if errR == nil {
 		for i := 0; i < len(server.players); i++ {
-			log.Println("PLAYER_ID", server.players[i].conn.GetUid())
+			log.Println("PLAYER_ID", server.players[i].conn.GetPlayer().UId)
 			server.players[i].conn.Send(msg)
 		}
 	}
 
-	log.Println("DISCONNECT", conn.GetUid())
+	log.Println("DISCONNECT", conn.GetPlayer().UId)
 
 	conn.Cleanup()
+	conn = nil
 	common.MetricsGauges["player_count"].With(prometheus.Labels{"channel": strconv.Itoa(int(server.id)), "world": server.worldName}).Dec()
 }
 
