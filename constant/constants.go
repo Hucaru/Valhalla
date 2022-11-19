@@ -85,11 +85,12 @@ const (
 )
 
 const (
-	World      = 1
-	MetaSchool = 2
-	Ihq        = 3
-	MetaBank   = 4
-	MetaInvest = 5
+	World         = 1
+	MetaSchool    = 2
+	Ihq           = 3
+	MetaBank      = 4
+	MetaInvest    = 5
+	MetaClassRoom = 6
 )
 
 const (
