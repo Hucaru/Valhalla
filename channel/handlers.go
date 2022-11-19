@@ -627,10 +627,10 @@ func (server *Server) playerInfo(conn mnet.Client, reader mpacket.Reader) {
 		return
 	}
 
-	plr, err1 := db.GetLoggedDataByName(msg.UuId, msg.Nickname)
+	plr, err1 := db.GetLoggedDataByName(msg.GetUuId(), msg.GetNickname())
 
 	if err1 != nil {
-		log.Println("Inserting new user", msg.UuId)
+		log.Println("Inserting new user", msg.GetUuId())
 		iErr := db.InsertNewAccount(&plr)
 		if iErr != nil {
 			res.ErrorCode = constant.ErrorCodeDuplicateUID
