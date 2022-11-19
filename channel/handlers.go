@@ -115,6 +115,7 @@ func (server *Server) playerConnect(conn mnet.Client, tcpConn net.Conn, reader m
 		}
 	}
 
+	// TMP part, will be moved later
 	if acc.RegionID == constant.MetaClassRoom {
 		acc.RegionID = constant.MetaSchool
 		acc.PosX = -8597
@@ -219,11 +220,6 @@ func (server *Server) playerChangeChannel(conn mnet.Client, reader mpacket.Reade
 	err := proto.Unmarshal(reader.GetBuffer(), &msg)
 	if err != nil || len(msg.UuId) == 0 {
 		log.Println("Failed to parse data:", err)
-		return
-	}
-
-	if msg.GetRegionId() < constant.World || msg.GetRegionId() > constant.MetaClassRoom {
-		log.Println("Region not found:", err)
 		return
 	}
 
@@ -442,32 +438,28 @@ func (server *Server) playerEnterToRoom(conn mnet.Client, reader mpacket.Reader)
 		return
 	}
 
-	{
-		res := &mc_metadata.P2C_ReportMetaSchoolEnter{
-			UuId:          msg.GetUuId(),
-			TeacherEnable: msg.GetTeacherEnable(),
-		}
-
-		data, err := proto.MakeResponse(res, constant.P2C_ReportMetaSchoolEnter)
-		if err != nil {
-			log.Println("ERROR P2C_ResultWhisper", msg.GetUuId())
-			return
-		}
-
-		// 2022. 11. 17 Report Temp AHNJUNGMO
-		server.sendMsgToRegion(data, conn)
+	reportEnter := &mc_metadata.P2C_ReportMetaSchoolEnter{
+		UuId:          msg.GetUuId(),
+		TeacherEnable: msg.GetTeacherEnable(),
+		PlayerInfo:    db.GetPlayerInfo(msg.GetUuId()),
 	}
 
-	plrs := db.GetRoomPlayers(msg.UuId)
+	data, err2 := proto.MakeResponse(reportEnter, constant.P2C_ReportMetaSchoolEnter)
+	if err2 != nil {
+		log.Println("ERROR P2C_ResultWhisper", msg.GetUuId())
+		return
+	}
+	server.sendMsgToRegion(data, conn)
 
+	plrs := db.GetRoomPlayers(msg.GetUuId())
 	res := &mc_metadata.P2C_ResultMetaSchoolEnter{
 		UuId:          msg.GetUuId(),
 		TeacherEnable: msg.GetTeacherEnable(),
 		DataSchool:    plrs,
 	}
 
-	data, err := proto.MakeResponse(res, constant.P2C_ResultMetaSchoolEnter)
-	if err != nil {
+	data, err3 := proto.MakeResponse(res, constant.P2C_ResultMetaSchoolEnter)
+	if err3 != nil {
 		log.Println("ERROR P2C_ResultWhisper", msg.GetUuId())
 		return
 	}
@@ -484,14 +476,9 @@ func (server *Server) playerLeaveFromRoom(conn mnet.Client, reader mpacket.Reade
 		return
 	}
 
-	err1 := db.LeavePLayerToRoom(msg.UuId)
-	if err1 != nil {
-		log.Println("Failed to insert data:", err1)
-		return
-	}
-
 	res := &mc_metadata.P2C_ReportMetaSchoolLeave{
-		UuId: msg.GetUuId(),
+		UuId:       msg.GetUuId(),
+		PlayerInfo: db.GetPlayerInfo(msg.GetUuId()),
 	}
 
 	data, err := proto.MakeResponse(res, constant.P2C_ReportMetaSchoolLeave)
@@ -499,7 +486,11 @@ func (server *Server) playerLeaveFromRoom(conn mnet.Client, reader mpacket.Reade
 		log.Println("ERROR P2C_ReportMetaSchoolLeave", msg.GetUuId())
 		return
 	}
+
+	db.LeavePLayerToRoom(msg.GetUuId())
 	server.sendMsgToRegion(data, conn)
+
+	data = nil
 }
 
 func (server *Server) playerMovement(conn mnet.Client, reader mpacket.Reader) {

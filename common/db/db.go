@@ -323,7 +323,7 @@ func GetRoomPlayers(uID string) []*mc_metadata.DataSchool {
 
 	rows, err := Maria.Query(
 		"SELECT a.uId, "+
-			"a.uId as cUid, c.nickname, c.hair, c.top, c.bottom, c.clothes, "+
+			"cs.role, a.uId as cUid, c.nickname, c.hair, c.top, c.bottom, c.clothes, "+
 			"a.uId as iUid, IFNULL(i.objectIndex, 0) as objectIndex, IFNULL(i.animationName, '') as animationName, "+
 			"IFNULL(i.destinationX, 0) as destinationX, IFNULL(i.destinationY,0) as destinationY, IFNULL(i.destinationZ,0) as destinationZ "+
 			"FROM classroom cs "+
@@ -332,9 +332,10 @@ func GetRoomPlayers(uID string) []*mc_metadata.DataSchool {
 			"LEFT JOIN accounts a ON a.accountID = c.accountID "+
 			"WHERE a.uId != ? AND a.isLogedIn = 1", uID)
 
-	if rows == nil {
+	if rows == nil || err != nil {
 		return nil
 	}
+
 	for rows.Next() {
 		d := &mc_metadata.DataSchool{
 			PlayerInfo: &mc_metadata.P2C_PlayerInfo{},
@@ -346,7 +347,7 @@ func GetRoomPlayers(uID string) []*mc_metadata.DataSchool {
 
 		if err := rows.Scan(
 			&d.UuId,
-			&d.PlayerInfo.UuId, &d.PlayerInfo.Nickname, &d.PlayerInfo.Hair, &d.PlayerInfo.Top, &d.PlayerInfo.Bottom, &d.PlayerInfo.Clothes,
+			&d.PlayerInfo.Role, &d.PlayerInfo.UuId, &d.PlayerInfo.Nickname, &d.PlayerInfo.Hair, &d.PlayerInfo.Top, &d.PlayerInfo.Bottom, &d.PlayerInfo.Clothes,
 			&d.InteractionData.UuId, &d.InteractionData.ObjectIndex, &d.InteractionData.AnimMontageName, &d.InteractionData.DestinationX, &d.InteractionData.DestinationY, &d.InteractionData.DestinationZ,
 		); err != nil {
 			log.Println("LOGGED USERS SELECTING ERROR", err)
@@ -358,11 +359,24 @@ func GetRoomPlayers(uID string) []*mc_metadata.DataSchool {
 		log.Println("LOGGED USERS SELECTING ERROR", err)
 		return nil
 	}
+	return data
+}
 
+func GetPlayerInfo(uID string) *mc_metadata.P2C_PlayerInfo {
+	d := &mc_metadata.P2C_PlayerInfo{}
+	err := Maria.QueryRow(
+		"SELECT a.uId, "+
+			"cs.role, c.nickname, c.hair, c.top, c.bottom, c.clothes "+
+			"FROM classroom cs "+
+			"LEFT JOIN characters c ON c.id = cs.characterID "+
+			"LEFT JOIN accounts a ON a.accountID = c.accountID "+
+			"WHERE a.uId = ? LIMIT 1", uID).Scan(
+		&d.UuId, &d.Role, &d.Nickname, &d.Hair, &d.Top, &d.Bottom, &d.Clothes)
 	if err != nil {
+		log.Println("LOGGED USERS SELECTING ERROR", err)
 		return nil
 	}
-	return data
+	return d
 }
 
 func FindRegionModerators(regionID int32) int32 {
