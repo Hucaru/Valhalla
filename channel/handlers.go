@@ -221,7 +221,7 @@ func (server *Server) playerChangeChannel(conn mnet.Client, reader mpacket.Reade
 		return
 	}
 
-	if msg.GetRegionId() < constant.World || msg.GetRegionId() > constant.MetaInvest {
+	if msg.GetRegionId() < constant.World || msg.GetRegionId() > constant.MetaClassRoom {
 		log.Println("Region not found:", err)
 		return
 	}
