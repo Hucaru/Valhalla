@@ -52,6 +52,7 @@ func ChannelChangeForNewReport(uID *string, acc *model.Character) *mc_metadata.P
 			Top:      acc.Top,
 			Bottom:   acc.Bottom,
 			Clothes:  acc.Clothes,
+			Role:     acc.Role,
 		},
 		SpawnPosX: acc.PosX,
 		SpawnPosY: acc.PosY,
@@ -68,6 +69,7 @@ func ChannelChangeForOldReport(uID string, acc *model.Character) *mc_metadata.P2
 	res := &mc_metadata.P2C_ReportRegionLeave{
 		PlayerInfo: &mc_metadata.P2C_PlayerInfo{
 			UuId:     uID,
+			Role:     acc.Role,
 			Nickname: acc.NickName,
 			Hair:     acc.Hair,
 			Top:      acc.Top,

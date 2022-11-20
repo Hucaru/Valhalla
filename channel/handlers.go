@@ -407,7 +407,8 @@ func (server *Server) InsertInteractionAndSend(conn mnet.Client, msg *mc_metadat
 	}
 
 	for i := 0; i < len(server.players); i++ {
-		if plr.conn.GetPlayer().UId == server.players[i].conn.GetPlayer().UId &&
+		if server.players[i].conn.GetPlayer().Interaction != nil &&
+			plr.conn.GetPlayer().UId != server.players[i].conn.GetPlayer().UId &&
 			msg.ObjectIndex == server.players[i].conn.GetPlayer().Interaction.ObjectIndex {
 			att.ErrorCode = constant.ErrorCodeChairNotEmpty
 			break
@@ -558,7 +559,6 @@ func (server *Server) playerLeaveFromRoom(conn mnet.Client, reader mpacket.Reade
 	if err != nil {
 		return
 	}
-	plr.conn.GetPlayer().Character.Role = constant.User
 	plr.conn.GetPlayer().Interaction = nil
 	server.setPlayer(plr.conn.GetPlayer())
 
