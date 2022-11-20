@@ -530,6 +530,7 @@ func (server *Server) playerEnterToRoom(conn mnet.Client, reader mpacket.Reader)
 		log.Println("ERROR P2C_ResultWhisper", msg.GetUuId())
 		return
 	}
+	log.Println("P2C_ResultMetaSchoolEnter sendMsgToRegion")
 	server.sendMsgToRegion(data1, plr.conn.GetPlayer().UId, plr.conn.GetPlayer().RegionID)
 
 	res := &mc_metadata.P2C_ResultMetaSchoolEnter{
@@ -544,7 +545,7 @@ func (server *Server) playerEnterToRoom(conn mnet.Client, reader mpacket.Reader)
 		return
 	}
 
-	log.Println("P2C_ResultMetaSchoolEnter")
+	log.Println("P2C_ResultMetaSchoolEnter sendMsgToMe")
 	server.sendMsgToMe(data2, conn)
 	data1 = nil
 	data2 = nil
