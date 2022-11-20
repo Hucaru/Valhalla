@@ -28,9 +28,10 @@ func (server *Server) HandleClientPacket(conn mnet.Client, tcpConn net.Conn, rea
 	switch msgProtocolType {
 	case constant.C2P_RequestLoginUser:
 		log.Println("PLAYERS", len(server.players))
-		go server.playerConnect(conn, tcpConn, reader)
+		server.playerConnect(conn, tcpConn, reader)
 		break
 	case constant.C2P_RequestMoveStart:
+		log.Println("C2P_RequestMoveStart")
 		server.playerMovementStart(conn, reader)
 		break
 	case constant.C2P_RequestMove:
@@ -41,11 +42,11 @@ func (server *Server) HandleClientPacket(conn mnet.Client, tcpConn net.Conn, rea
 		break
 	case constant.C2P_RequestLogoutUser:
 		log.Println("DATA_BUFFER_LOGOUT", reader.GetBuffer())
-		go server.playerLogout(conn, reader)
+		server.playerLogout(conn, reader)
 		break
 	case constant.C2P_RequestPlayerInfo:
 		log.Println("DATA_PLAYER_INFO", reader.GetBuffer())
-		go server.playerInfo(conn, reader)
+		server.playerInfo(conn, reader)
 		break
 	case constant.C2P_RequestAllChat:
 		log.Println("DATA_ALL_CHAT", reader.GetBuffer())
@@ -61,7 +62,7 @@ func (server *Server) HandleClientPacket(conn mnet.Client, tcpConn net.Conn, rea
 		break
 	case constant.C2P_RequestRegionChange:
 		log.Println("DATA_REGION_CHANGE", reader.GetBuffer())
-		go server.playerChangeChannel(conn, reader)
+		server.playerChangeChannel(conn, reader)
 		break
 	case constant.C2P_RequestInteractionAttach:
 		log.Println("DATA_INTERACTION", reader.GetBuffer())
@@ -69,19 +70,19 @@ func (server *Server) HandleClientPacket(conn mnet.Client, tcpConn net.Conn, rea
 		break
 	case constant.C2P_RequestPlayMontage:
 		log.Println("DATA_PLAY_MONTAGE", reader.GetBuffer())
-		go server.playerPlayAnimation(conn, reader)
+		server.playerPlayAnimation(conn, reader)
 		break
 	case constant.C2P_RequestMetaSchoolEnter:
 		log.Println("DATA_META_SCHOOL_ENTER", reader.GetBuffer())
-		go server.playerEnterToRoom(conn, reader)
+		server.playerEnterToRoom(conn, reader)
 		break
 	case constant.C2P_RequestMetaSchoolLeave:
 		log.Println("DATA_META_SCHOOL_ENTER", reader.GetBuffer())
-		go server.playerLeaveFromRoom(conn, reader)
+		server.playerLeaveFromRoom(conn, reader)
 		break
 	case constant.C2P_RequestRoleChecking:
 		log.Println("DATA_ROLE_CHECKING", reader.GetBuffer())
-		go server.playerRegionRoleChecking(conn, reader)
+		server.playerRegionRoleChecking(conn, reader)
 		break
 	default:
 		fmt.Println("UNKNOWN MSG", reader)
@@ -264,7 +265,7 @@ func (server *Server) playerChangeChannel(conn mnet.Client, reader mpacket.Reade
 		log.Println("DATA_RESPONSE_ERROR", err1)
 	}
 
-	log.Println("REGION_CHANGED PREV REGION SEND", &plr.conn.GetPlayer().RegionID)
+	log.Println("REGION_CHANGED PREV REGION SEND", plr.conn.GetPlayer().RegionID)
 	server.sendMsgToRegion(res1, plr.conn.GetPlayer().UId, plr.conn.GetPlayer().RegionID)
 
 	responseNew := proto.ChannelChangeForNewReport(&plr.conn.GetPlayer().UId, plr.conn.GetPlayer().Character)
@@ -487,7 +488,7 @@ func (server *Server) playerRegionRoleChecking(conn mnet.Client, reader mpacket.
 		log.Println("ERROR P2C_ResultRoleChecking", msg.GetUuId())
 		return
 	}
-
+	log.Println("P2C_ResultRoleChecking")
 	server.sendMsgToMe(data, conn)
 	data = nil
 }
@@ -524,12 +525,12 @@ func (server *Server) playerEnterToRoom(conn mnet.Client, reader mpacket.Reader)
 		},
 	}
 
-	data, err2 := proto.MakeResponse(reportEnter, constant.P2C_ReportMetaSchoolEnter)
+	data1, err2 := proto.MakeResponse(reportEnter, constant.P2C_ReportMetaSchoolEnter)
 	if err2 != nil {
 		log.Println("ERROR P2C_ResultWhisper", msg.GetUuId())
 		return
 	}
-	server.sendMsgToRegion(data, plr.conn.GetPlayer().UId, plr.conn.GetPlayer().RegionID)
+	server.sendMsgToRegion(data1, plr.conn.GetPlayer().UId, plr.conn.GetPlayer().RegionID)
 
 	res := &mc_metadata.P2C_ResultMetaSchoolEnter{
 		UuId:          msg.GetUuId(),
@@ -537,13 +538,16 @@ func (server *Server) playerEnterToRoom(conn mnet.Client, reader mpacket.Reader)
 		DataSchool:    proto.ConvertPlayersToRoomReport(server.getRoomPlayers(msg.GetUuId())),
 	}
 
-	data, err3 := proto.MakeResponse(res, constant.P2C_ResultMetaSchoolEnter)
+	data2, err3 := proto.MakeResponse(res, constant.P2C_ResultMetaSchoolEnter)
 	if err3 != nil {
 		log.Println("ERROR P2C_ResultWhisper", msg.GetUuId())
 		return
 	}
 
-	server.sendMsgToMe(data, conn)
+	log.Println("P2C_ResultMetaSchoolEnter")
+	server.sendMsgToMe(data2, conn)
+	data1 = nil
+	data2 = nil
 }
 
 func (server *Server) playerLeaveFromRoom(conn mnet.Client, reader mpacket.Reader) {
@@ -580,7 +584,7 @@ func (server *Server) playerLeaveFromRoom(conn mnet.Client, reader mpacket.Reade
 		log.Println("ERROR P2C_ReportMetaSchoolLeave", msg.GetUuId())
 		return
 	}
-
+	log.Println("P2C_ReportMetaSchoolLeave")
 	server.sendMsgToRegion(data, plr.conn.GetPlayer().UId, plr.conn.GetPlayer().RegionID)
 
 	data = nil
