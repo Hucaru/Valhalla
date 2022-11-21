@@ -1,18 +1,14 @@
 package mnet
 
 import (
-	"bufio"
 	"encoding/binary"
 	"fmt"
+	"github.com/Hucaru/Valhalla/mnet/crypt"
+	"github.com/Hucaru/Valhalla/mpacket"
 	"io"
-	"log"
 	"math/rand"
 	"net"
 	"time"
-
-	"github.com/Hucaru/Valhalla/mnet/crypt"
-
-	"github.com/Hucaru/Valhalla/mpacket"
 )
 
 type MConn interface {
@@ -55,10 +51,8 @@ func clientReaderMeta(conn net.Conn, eRecv chan *Event, headerSize int) {
 	eRecv <- &Event{Type: MEClientConnected, Conn: conn}
 
 	for {
-		reader := bufio.NewReader(conn)
-
 		buff := make([]byte, headerSize)
-		if _, err := io.ReadFull(reader, buff); err == io.EOF || err != nil {
+		if _, err := conn.Read(buff); err == io.EOF || err != nil {
 			fmt.Println("Error reading:", err.Error())
 			eRecv <- &Event{Type: MEClientDisconnect, Conn: conn}
 			break
@@ -68,13 +62,11 @@ func clientReaderMeta(conn net.Conn, eRecv chan *Event, headerSize int) {
 		msgProtocol := binary.BigEndian.Uint32(buff[4:8])
 
 		buff = make([]byte, msgLen)
-		if _, err := io.ReadFull(reader, buff); err == io.EOF || err != nil {
+		if _, err := conn.Read(buff); err == io.EOF || err != nil {
 			fmt.Println("Error reading:", err.Error())
 			eRecv <- &Event{Type: MEClientDisconnect, Conn: conn}
 			break
 		}
-
-		log.Println("msgType", headerSize, msgLen, msgProtocol)
 		eRecv <- &Event{Type: MEClientPacket, Conn: conn, Packet: buff, Protocol: msgProtocol}
 	}
 }

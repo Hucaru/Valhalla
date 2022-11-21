@@ -25,6 +25,7 @@ import (
 
 // HandleClientPacket data
 func (server *Server) HandleClientPacket(conn mnet.Client, tcpConn net.Conn, reader mpacket.Reader, msgProtocolType uint32) {
+
 	switch msgProtocolType {
 	case constant.C2P_RequestLoginUser:
 		log.Println("PLAYERS ONLINE ", len(server.players))
@@ -241,7 +242,6 @@ func (server *Server) sendMsgToPlayer(res mpacket.Packet, uID string) {
 func (server *Server) sendMsgToAll(res mpacket.Packet, uID string) {
 	for i := 0; i < len(server.players); i++ {
 		if uID != server.players[i].conn.GetPlayer().UId {
-			log.Println("sendMsgToAll PLAYER_ID", server.players[i].playerID)
 			server.players[i].conn.Send(res)
 		}
 	}
@@ -251,7 +251,6 @@ func (server *Server) sendMsgToRegion(res mpacket.Packet, uID string, regionId i
 	for i := 0; i < len(server.players); i++ {
 		if uID != server.players[i].conn.GetPlayer().UId &&
 			regionId == server.players[i].conn.GetPlayer().RegionID {
-			log.Println("sendMsgToRegion PLAYER_ID", server.players[i].playerID)
 			server.players[i].conn.Send(res)
 		}
 	}
@@ -526,7 +525,7 @@ func (server *Server) playerEnterToRoom(conn mnet.Client, reader mpacket.Reader)
 
 	plr.conn.GetPlayer().Character.Role = msg.TeacherEnable
 	plr.conn.GetPlayer().Interaction = &model.Interaction{
-		AttachEnabled: 0,
+		AttachEnabled: 1,
 		ObjectIndex:   0,
 	}
 	server.setPlayer(plr.conn.GetPlayer())
@@ -565,7 +564,6 @@ func (server *Server) playerEnterToRoom(conn mnet.Client, reader mpacket.Reader)
 		return
 	}
 
-	log.Println("P2C_ResultMetaSchoolEnter sendMsgToMe")
 	server.sendMsgToMe(data2, conn)
 	data1 = nil
 	data2 = nil
@@ -606,7 +604,6 @@ func (server *Server) playerLeaveFromRoom(conn mnet.Client, reader mpacket.Reade
 		log.Println("ERROR P2C_ReportMetaSchoolLeave", msg.GetUuId())
 		return
 	}
-	log.Println("P2C_ReportMetaSchoolLeave")
 	server.sendMsgToRegion(data, plr.conn.GetPlayer().UId, plr.conn.GetPlayer().RegionID)
 
 	data = nil

@@ -153,8 +153,6 @@ func (cs *channelServer) processEvent() {
 				return
 			}
 
-			fmt.Println("EVENT", e.Type)
-
 			switch conn := e.Conn.(type) {
 			case mnet.Client:
 				switch e.Type {
