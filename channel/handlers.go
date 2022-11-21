@@ -198,12 +198,15 @@ func (server *Server) setPlayer(plr *model.Player) {
 	}
 }
 
-func (server *Server) isPlayerOnline(conn mnet.Client) bool {
-	_, err := server.players.getFromConn(conn)
-	if err != nil {
-		return false
+func (server *Server) isPlayerOnline(nickname string, uID string) bool {
+
+	for i := 0; i < len(server.players); i++ {
+		if nickname == server.players[i].conn.GetPlayer().Character.NickName ||
+			uID == server.players[i].conn.GetPlayer().UId {
+			return true
+		}
 	}
-	return true
+	return false
 }
 
 func (server *Server) sendMsgToMe(res mpacket.Packet, conn mnet.Client) {
@@ -348,7 +351,7 @@ func (server *Server) playerInteraction(conn mnet.Client, reader mpacket.Reader)
 	if msg.GetAttachEnable() == 1 {
 		errR = server.InsertInteractionAndSend(conn, &msg)
 	} else {
-		errR = server.DeleteInteractionAndSend(conn)
+		errR = server.DeleteInteractionAndSend(conn, &msg)
 	}
 
 	if errR != nil {
@@ -368,7 +371,7 @@ func (server *Server) playerInteraction(conn mnet.Client, reader mpacket.Reader)
 	server.makeReportToRegion(conn, &res, constant.P2C_ReportInteractionAttach)
 }
 
-func (server *Server) DeleteInteractionAndSend(conn mnet.Client) error {
+func (server *Server) DeleteInteractionAndSend(conn mnet.Client, msg *mc_metadata.C2P_RequestInteractionAttach) error {
 
 	plr, err := server.players.getFromConn(conn)
 	if err != nil {
@@ -379,12 +382,16 @@ func (server *Server) DeleteInteractionAndSend(conn mnet.Client) error {
 		ErrorCode: -1,
 	}
 
-	for i := 0; i < len(server.players); i++ {
-		if plr.conn.GetPlayer().UId == server.players[i].conn.GetPlayer().UId {
-			server.players[i].conn.GetPlayer().Interaction = nil
-			break
-		}
+	if plr.conn.GetPlayer().Interaction == nil {
+		plr.conn.GetPlayer().Interaction = &model.Interaction{}
 	}
+	plr.conn.GetPlayer().Interaction.ObjectIndex = msg.GetObjectIndex()
+	plr.conn.GetPlayer().Interaction.AttachEnabled = msg.GetAttachEnable()
+	plr.conn.GetPlayer().Interaction.AnimMontageName = msg.GetAnimMontageName()
+	plr.conn.GetPlayer().Interaction.DestinationX = msg.GetDestinationX()
+	plr.conn.GetPlayer().Interaction.DestinationY = msg.GetDestinationY()
+	plr.conn.GetPlayer().Interaction.DestinationZ = msg.GetDestinationZ()
+	server.setPlayer(plr.conn.GetPlayer())
 
 	data, err := proto.MakeResponse(&att, constant.P2C_ResultInteractionAttach)
 	if err != nil {
@@ -508,7 +515,10 @@ func (server *Server) playerEnterToRoom(conn mnet.Client, reader mpacket.Reader)
 	}
 
 	plr.conn.GetPlayer().Character.Role = msg.TeacherEnable
-	plr.conn.GetPlayer().Interaction = &model.Interaction{}
+	plr.conn.GetPlayer().Interaction = &model.Interaction{
+		AttachEnabled: 0,
+		ObjectIndex:   0,
+	}
 	server.setPlayer(plr.conn.GetPlayer())
 
 	reportEnter := &mc_metadata.P2C_ReportMetaSchoolEnter{
@@ -564,6 +574,7 @@ func (server *Server) playerLeaveFromRoom(conn mnet.Client, reader mpacket.Reade
 	if err != nil {
 		return
 	}
+
 	plr.conn.GetPlayer().Interaction = nil
 	server.setPlayer(plr.conn.GetPlayer())
 
@@ -620,7 +631,7 @@ func (server *Server) playerInfo(conn mnet.Client, reader mpacket.Reader) {
 		ErrorCode: constant.NoError,
 	}
 
-	if server.isPlayerOnline(conn) {
+	if server.isPlayerOnline(msg.GetNickname(), msg.GetUuId()) {
 		res.ErrorCode = constant.ErrorCodeAlreadyOnline
 
 		data, err := proto.MakeResponse(&res, constant.P2C_ResultPlayerInfo)
@@ -640,18 +651,13 @@ func (server *Server) playerInfo(conn mnet.Client, reader mpacket.Reader) {
 		if iErr != nil {
 			res.ErrorCode = constant.ErrorCodeDuplicateUID
 		}
-	}
-
-	uErr := db.UpdatePlayerInfo(
-		plr.CharacterID,
-		msg.GetNickname(),
-		msg.GetHair(),
-		msg.GetTop(),
-		msg.GetBottom(),
-		msg.GetClothes())
-
-	if uErr != nil {
-		res.ErrorCode = constant.ErrorCodeDuplicateName
+	} else {
+		db.UpdatePlayerInfo(
+			plr.CharacterID,
+			msg.GetHair(),
+			msg.GetTop(),
+			msg.GetBottom(),
+			msg.GetClothes())
 	}
 
 	data, err := proto.MakeResponse(&res, constant.P2C_ResultPlayerInfo)

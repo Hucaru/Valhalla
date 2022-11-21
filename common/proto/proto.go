@@ -191,6 +191,7 @@ func ConvertPlayersToRoomReport(plrs []*model.Player) []*mc_metadata.DataSchool 
 			UuId:            plrs[i].UId,
 			InteractionData: interaction,
 			PlayerInfo: &mc_metadata.P2C_PlayerInfo{
+				UuId:     plrs[i].UId,
 				Nickname: plrs[i].Character.NickName,
 				Hair:     plrs[i].Character.Hair,
 				Top:      plrs[i].Character.Top,

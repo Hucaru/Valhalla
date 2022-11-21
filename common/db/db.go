@@ -89,7 +89,7 @@ func GetLoggedDataByName(uUID string, nickname string) (model.Player, error) {
 		RegionID:    constant.World,
 		Character: &model.Character{
 			Role:     constant.User,
-			NickName: "",
+			NickName: nickname,
 			Hair:     "",
 			Top:      "",
 			Bottom:   "",
@@ -137,14 +137,19 @@ func InsertNewAccount(plr *model.Player) error {
 		return err
 	}
 	err = nil
+
+	if plr.Character.NickName == "" {
+		plr.Character.NickName = fmt.Sprintf("player#%d", time.Now().UnixNano()/int64(time.Millisecond))
+	}
+
 	plr.AccountID, err = res.LastInsertId()
 	cRes, cErr := Maria.Exec("INSERT INTO characters "+
 		"(accountID, worldID, nickname, "+
 		"gender, hair, top, bottom, clothes, channelID) "+
 		"VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
 		plr.AccountID, 1,
-		fmt.Sprintf("player#%d", time.Now().UnixNano()/int64(time.Millisecond)),
-		1, "", "", "", "", constant.World)
+		plr.Character.NickName, 1,
+		plr.Character.Hair, plr.Character.Top, plr.Character.Bottom, plr.Character.Clothes, constant.World)
 
 	if cErr != nil {
 		log.Println("INSERTING ERROR", cErr)
@@ -174,16 +179,11 @@ func UpdateMovement(
 
 func UpdatePlayerInfo(
 	cID int64,
-	nickname string,
 	hair string,
 	top string,
 	bottom string,
 	clothes string) error {
-
-	if cID < 0 {
-		return insertPlayerInfo(nickname, hair, top, bottom, clothes)
-	}
-	return updatePlayerInfo(cID, nickname, hair, top, bottom, clothes)
+	return updatePlayerInfo(cID, hair, top, bottom, clothes)
 }
 
 func insertPlayerInfo(
@@ -205,13 +205,12 @@ func insertPlayerInfo(
 
 func updatePlayerInfo(
 	cID int64,
-	nickname string,
 	hair string,
 	top string,
 	bottom string,
 	clothes string) error {
-	_, err := Maria.Exec("UPDATE characters SET nickname =?, hair=?, top=?, bottom=?, clothes=? WHERE id=?",
-		nickname, hair, top, bottom, clothes, cID)
+	_, err := Maria.Exec("UPDATE characters SET hair=?, top=?, bottom=?, clothes=? WHERE id=?",
+		hair, top, bottom, clothes, cID)
 
 	if err != nil {
 		log.Println("UPDATING PLAYER INFO ERROR", err)
