@@ -61,7 +61,6 @@ func (p players) getFromID(id int32) (*player, error) {
 // RemoveFromConn removes the Data based on the connection
 func (p *players) removeFromConn(conn mnet.Client) error {
 	i := -1
-	log.Println("PLAYER IP", conn)
 	for j, v := range *p {
 		if v.conn == conn {
 			i = j
@@ -294,7 +293,6 @@ func (server *Server) ClientDisconnected(conn mnet.Client) {
 	msg, errR := makeDisconnectedResponse(conn.GetPlayer().UId)
 	if errR == nil {
 		for i := 0; i < len(server.players); i++ {
-			log.Println("PLAYER_ID", server.players[i].conn.GetPlayer().UId)
 			server.players[i].conn.Send(msg)
 		}
 	}

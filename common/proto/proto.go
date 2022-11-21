@@ -43,23 +43,24 @@ func AccountReport(uID *string, acc *model.Character) *mc_metadata.P2C_ReportLog
 	return res
 }
 
-func ChannelChangeForNewReport(uID *string, acc *model.Character) *mc_metadata.P2C_ReportRegionChange {
+func ChannelChangeForNewReport(plr *model.Player) *mc_metadata.P2C_ReportRegionChange {
 	res := &mc_metadata.P2C_ReportRegionChange{
-		UuId: *uID,
+		UuId:     plr.UId,
+		RegionId: int32(plr.RegionID),
 		PlayerInfo: &mc_metadata.P2C_PlayerInfo{
-			Nickname: acc.NickName,
-			Hair:     acc.Hair,
-			Top:      acc.Top,
-			Bottom:   acc.Bottom,
-			Clothes:  acc.Clothes,
-			Role:     acc.Role,
+			Nickname: plr.Character.NickName,
+			Hair:     plr.Character.Hair,
+			Top:      plr.Character.Top,
+			Bottom:   plr.Character.Bottom,
+			Clothes:  plr.Character.Clothes,
+			Role:     plr.Character.Role,
 		},
-		SpawnPosX: acc.PosX,
-		SpawnPosY: acc.PosY,
-		SpawnPosZ: acc.PosZ,
-		SpawnRotX: acc.RotX,
-		SpawnRotY: acc.RotY,
-		SpawnRotZ: acc.RotZ,
+		SpawnPosX: plr.Character.PosX,
+		SpawnPosY: plr.Character.PosY,
+		SpawnPosZ: plr.Character.PosZ,
+		SpawnRotX: plr.Character.RotX,
+		SpawnRotY: plr.Character.RotY,
+		SpawnRotZ: plr.Character.RotZ,
 	}
 
 	return res
@@ -152,8 +153,10 @@ func ConvertPlayersToRegionReport(plrs []*model.Player) []*mc_metadata.P2C_Repor
 
 	for i := 0; i < len(plrs); i++ {
 		res = append(res, &mc_metadata.P2C_ReportRegionChange{
-			UuId: plrs[i].UId,
+			UuId:     plrs[i].UId,
+			RegionId: int32(plrs[i].RegionID),
 			PlayerInfo: &mc_metadata.P2C_PlayerInfo{
+				Role:     plrs[i].Character.Role,
 				Nickname: plrs[i].Character.NickName,
 				Hair:     plrs[i].Character.Hair,
 				Top:      plrs[i].Character.Top,

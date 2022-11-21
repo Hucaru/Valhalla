@@ -27,7 +27,7 @@ import (
 func (server *Server) HandleClientPacket(conn mnet.Client, tcpConn net.Conn, reader mpacket.Reader, msgProtocolType uint32) {
 	switch msgProtocolType {
 	case constant.C2P_RequestLoginUser:
-		log.Println("PLAYERS", len(server.players))
+		log.Println("PLAYERS ONLINE ", len(server.players))
 		server.playerConnect(conn, tcpConn, reader)
 		break
 	case constant.C2P_RequestMoveStart:
@@ -38,6 +38,7 @@ func (server *Server) HandleClientPacket(conn mnet.Client, tcpConn net.Conn, rea
 		server.playerMovement(conn, reader)
 		break
 	case constant.C2P_RequestMoveEnd:
+		log.Println("C2P_RequestMoveEnd")
 		server.playerMovementEnd(conn, reader)
 		break
 	case constant.C2P_RequestLogoutUser:
@@ -82,7 +83,7 @@ func (server *Server) HandleClientPacket(conn mnet.Client, tcpConn net.Conn, rea
 		break
 	case constant.C2P_RequestRoleChecking:
 		log.Println("DATA_ROLE_CHECKING", reader.GetBuffer())
-		server.playerRegionRoleChecking(conn, reader)
+		go server.playerRegionRoleChecking(conn, reader)
 		break
 	default:
 		fmt.Println("UNKNOWN MSG", reader)
@@ -141,7 +142,7 @@ func (server *Server) playerConnect(conn mnet.Client, tcpConn net.Conn, reader m
 	server.sendMsgToAll(res, msg.GetUuId())
 
 	account := proto.AccountResult(player)
-	loggedPlayers := server.getLoggedPlayers(player.UId, constant.UNKNOWN)
+	loggedPlayers := server.getLoggedPlayers(player.UId, player.RegionID)
 
 	if loggedPlayers != nil {
 		users := proto.ConvertPlayersToLoginResult(loggedPlayers)
@@ -170,6 +171,15 @@ func (server *Server) getLoggedPlayers(uID string, regionID int64) []*model.Play
 		if uID == server.players[i].conn.GetPlayer().UId {
 			continue
 		}
+
+		if uID == server.players[i].conn.GetPlayer().UId {
+			continue
+		}
+
+		if regionID != server.players[i].conn.GetPlayer().RegionID {
+			continue
+		}
+
 		plrs = append(plrs, server.players[i].conn.GetPlayer())
 	}
 	return plrs
@@ -221,7 +231,7 @@ func (server *Server) sendMsgToMe(res mpacket.Packet, conn mnet.Client) {
 func (server *Server) sendMsgToPlayer(res mpacket.Packet, uID string) {
 	for i := 0; i < len(server.players); i++ {
 		if uID == server.players[i].conn.GetPlayer().UId {
-			log.Println("PLAYER_ID", server.players[i].playerID)
+			log.Println("sendMsgToPlayer PLAYER_ID", server.players[i].playerID)
 			server.players[i].conn.Send(res)
 			break
 		}
@@ -231,7 +241,7 @@ func (server *Server) sendMsgToPlayer(res mpacket.Packet, uID string) {
 func (server *Server) sendMsgToAll(res mpacket.Packet, uID string) {
 	for i := 0; i < len(server.players); i++ {
 		if uID != server.players[i].conn.GetPlayer().UId {
-			log.Println("PLAYER_ID", server.players[i].playerID)
+			log.Println("sendMsgToAll PLAYER_ID", server.players[i].playerID)
 			server.players[i].conn.Send(res)
 		}
 	}
@@ -241,7 +251,7 @@ func (server *Server) sendMsgToRegion(res mpacket.Packet, uID string, regionId i
 	for i := 0; i < len(server.players); i++ {
 		if uID != server.players[i].conn.GetPlayer().UId &&
 			regionId == server.players[i].conn.GetPlayer().RegionID {
-			log.Println("PLAYER_ID", server.players[i].playerID)
+			log.Println("sendMsgToRegion PLAYER_ID", server.players[i].playerID)
 			server.players[i].conn.Send(res)
 		}
 	}
@@ -271,7 +281,7 @@ func (server *Server) playerChangeChannel(conn mnet.Client, reader mpacket.Reade
 	log.Println("REGION_CHANGED PREV REGION SEND", plr.conn.GetPlayer().RegionID)
 	server.sendMsgToRegion(res1, plr.conn.GetPlayer().UId, plr.conn.GetPlayer().RegionID)
 
-	responseNew := proto.ChannelChangeForNewReport(&plr.conn.GetPlayer().UId, plr.conn.GetPlayer().Character)
+	responseNew := proto.ChannelChangeForNewReport(plr.conn.GetPlayer())
 	res2, err2 := proto.MakeResponse(responseNew, constant.P2C_ReportRegionChange)
 	if err2 != nil {
 		log.Println("DATA_RESPONSE_ERROR", err2)
