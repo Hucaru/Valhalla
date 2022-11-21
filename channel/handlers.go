@@ -620,8 +620,8 @@ func (server *Server) playerMovement(conn mnet.Client, reader mpacket.Reader) {
 }
 
 func (server *Server) playerInfo(conn mnet.Client, reader mpacket.Reader) {
-	msg := mc_metadata.C2P_RequestPlayerInfo{}
-	err := proto.Unmarshal(reader.GetBuffer(), &msg)
+	msg := &mc_metadata.C2P_RequestPlayerInfo{}
+	err := proto.Unmarshal(reader.GetBuffer(), msg)
 	if err != nil || len(msg.GetUuId()) == 0 {
 		log.Println("Failed to parse data:", err)
 		return
@@ -643,7 +643,7 @@ func (server *Server) playerInfo(conn mnet.Client, reader mpacket.Reader) {
 		return
 	}
 
-	plr, err1 := db.GetLoggedDataByName(msg.GetUuId(), msg.GetNickname())
+	plr, err1 := db.GetLoggedDataByName(msg)
 
 	if err1 != nil {
 		log.Println("Inserting new user", msg.GetUuId())

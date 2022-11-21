@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/Hucaru/Valhalla/common/db/model"
 	"github.com/Hucaru/Valhalla/constant"
+	"github.com/Hucaru/Valhalla/meta-proto/go/mc_metadata"
 	"log"
 	"time"
 )
@@ -80,20 +81,20 @@ func GetLoggedData(uUID string) (*model.Player, error) {
 	return plr, err
 }
 
-func GetLoggedDataByName(uUID string, nickname string) (model.Player, error) {
+func GetLoggedDataByName(req *mc_metadata.C2P_RequestPlayerInfo) (model.Player, error) {
 
 	plr := &model.Player{
-		UId:         uUID,
+		UId:         req.GetUuId(),
 		AccountID:   constant.UNKNOWN,
 		CharacterID: constant.UNKNOWN,
 		RegionID:    constant.World,
 		Character: &model.Character{
 			Role:     constant.User,
-			NickName: nickname,
-			Hair:     "",
-			Top:      "",
-			Bottom:   "",
-			Clothes:  "",
+			NickName: req.GetNickname(),
+			Hair:     req.GetHair(),
+			Top:      req.GetTop(),
+			Bottom:   req.GetBottom(),
+			Clothes:  req.GetClothes(),
 			Time:     constant.DEFAULT_TIME,
 			PosX:     constant.PosX,
 			PosY:     constant.PosY,
@@ -117,7 +118,7 @@ func GetLoggedDataByName(uUID string, nickname string) (model.Player, error) {
 			"LEFT JOIN movement m ON m.characterID = characterID "+
 			"WHERE a.nickname=? "+
 			"ORDER BY time DESC "+
-			"LIMIT 1", nickname).
+			"LIMIT 1", req.GetNickname()).
 		Scan(&plr.AccountID,
 			&plr.UId, &plr.CharacterID, &plr.RegionID,
 			&plr.Character.NickName, &plr.Character.Hair, &plr.Character.Top, &plr.Character.Bottom, &plr.Character.Clothes,
