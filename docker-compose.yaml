@@ -45,20 +45,20 @@ services:
         depends_on:
             - world_server
 
-    channel_server_2:
-        build:
-            context: .
-            dockerfile: docker/Dockerfile
-        container_name: channel-server-2
-        command: /bin/sh -c "/app/Valhalla --type=channel --config=./docker/docker_config_channel.toml"
-        restart: unless-stopped
-        volumes:
-            - ./docker/docker_config_channel_2.toml:/app/docker/docker_config_channel.toml
-            - ./Data.nx:/app/Data.nx
-        ports:
-            - "8686:8686"
-        depends_on:
-            - world_server
+#    channel_server_2:
+#        build:
+#            context: .
+#            dockerfile: docker/Dockerfile
+#        container_name: channel-server-2
+#        command: /bin/sh -c "/app/Valhalla --type=channel --config=./docker/docker_config_channel.toml"
+#        restart: unless-stopped
+#        volumes:
+#            - ./docker/docker_config_channel_2.toml:/app/docker/docker_config_channel.toml
+#            - ./Data.nx:/app/Data.nx
+#        ports:
+#            - "8686:8686"
+#        depends_on:
+#            - world_server
 
     db:
         image: mariadb:10.5.8
