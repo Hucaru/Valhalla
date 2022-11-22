@@ -376,7 +376,7 @@ func (server *Server) playerInteraction(conn mnet.Client, reader mpacket.Reader)
 		DestinationY:    msg.GetDestinationY(),
 		DestinationZ:    msg.GetDestinationZ(),
 	}
-	log.Println("P2C_ReportInteractionAttach sent", res)
+	log.Println("P2C_ReportInteractionAttach sent from ", res.GetUuId())
 	server.makeReportToRegion(conn, &res, constant.P2C_ReportInteractionAttach)
 }
 
