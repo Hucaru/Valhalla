@@ -357,7 +357,7 @@ func (server *Server) playerInteraction(conn mnet.Client, reader mpacket.Reader)
 	errR := errors.New("error")
 	errR = nil
 
-	if msg.GetAttachEnable() == 1 {
+	if msg.GetAttachEnable() == 0 {
 		errR = server.InsertInteractionAndSend(conn, &msg)
 	} else {
 		errR = server.DeleteInteractionAndSend(conn, &msg)
@@ -526,7 +526,7 @@ func (server *Server) playerEnterToRoom(conn mnet.Client, reader mpacket.Reader)
 	plr.conn.GetPlayer().Character.Role = msg.TeacherEnable
 	plr.conn.GetPlayer().Interaction = &model.Interaction{
 		AttachEnabled: 1,
-		ObjectIndex:   0,
+		ObjectIndex:   -1,
 	}
 	server.setPlayer(plr.conn.GetPlayer())
 
@@ -653,7 +653,7 @@ func (server *Server) playerInfo(conn mnet.Client, reader mpacket.Reader) {
 	plr, err1 := db.GetLoggedDataByName(msg)
 
 	if err1 != nil {
-		log.Println("Inserting new user", msg.GetUuId())
+		log.Println("Inserting new user playerInfo", msg.GetUuId())
 		iErr := db.InsertNewAccount(&plr)
 		if iErr != nil {
 			res.ErrorCode = constant.ErrorCodeDuplicateUID
@@ -672,6 +672,7 @@ func (server *Server) playerInfo(conn mnet.Client, reader mpacket.Reader) {
 		log.Println("ERROR P2C_ResultLoginUser", msg.GetUuId())
 		return
 	}
+
 	conn.Send(data)
 	//server.sendMsgToMe(data, conn)
 	data = nil

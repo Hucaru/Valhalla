@@ -19,6 +19,7 @@ var (
 func init() {
 	once.Do(func() {
 		log.Println("Parsing flags")
+		log.SetFlags(log.LstdFlags | log.Lmicroseconds)
 		parseFlags()
 	})
 }
