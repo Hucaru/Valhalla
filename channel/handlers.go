@@ -135,12 +135,8 @@ func (server *Server) playerConnect(conn mnet.Client, tcpConn net.Conn, reader m
 	server.players = append(server.players, &plr)
 
 	response := proto.AccountReport(&player.UId, player.Character)
-	res, err := proto.MakeResponse(response, constant.P2C_ReportLoginUser)
-	if err != nil {
-		log.Println("DATA_RESPONSE_ERROR", err)
-	}
 	log.Println("PLAYER_ID_LOGIN", player.UId)
-	server.sendMsgToAll(res, msg.GetUuId())
+	server.makeReportToRegion(conn, response, constant.P2C_ReportLoginUser)
 
 	account := proto.AccountResult(player)
 	loggedPlayers := server.getLoggedPlayers(player.UId, player.RegionID)
@@ -157,7 +153,6 @@ func (server *Server) playerConnect(conn mnet.Client, tcpConn net.Conn, reader m
 	}
 
 	server.sendMsgToMe(data, conn)
-	res = nil
 	response = nil
 	data = nil
 	account = nil
