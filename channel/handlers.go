@@ -693,7 +693,6 @@ func (server *Server) playerLogout(conn mnet.Client, reader mpacket.Reader) {
 	}
 
 	server.sendMsgToAll(data, msg.GetUuId())
-	server.ClientDisconnected(conn)
 	data = nil
 }
 
