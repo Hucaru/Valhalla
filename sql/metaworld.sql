@@ -3,8 +3,8 @@ SET time_zone = '+00:00';
 SET foreign_key_checks = 0;
 SET sql_mode = 'NO_AUTO_VALUE_ON_ZERO';
 
-DROP TABLE IF EXISTS `accounts`;
-CREATE TABLE `accounts` (
+# DROP TABLE IF EXISTS `accounts`;
+CREATE TABLE IF NOT EXISTS `accounts` (
   `accountID` int(10) unsigned NOT NULL AUTO_INCREMENT,
   `uId` tinytext NOT NULL,
   `username` tinytext NOT NULL,
@@ -20,8 +20,8 @@ CREATE TABLE `accounts` (
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 
 
-DROP TABLE IF EXISTS `buddy`;
-CREATE TABLE `buddy` (
+# DROP TABLE IF EXISTS `buddy`;
+CREATE TABLE IF NOT EXISTS `buddy` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `characterID` int(11) NOT NULL,
   `friendID` int(11) NOT NULL,
@@ -34,8 +34,8 @@ CREATE TABLE `buddy` (
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 
 
-DROP TABLE IF EXISTS `characters`;
-CREATE TABLE `characters` (
+# DROP TABLE IF EXISTS `characters`;
+CREATE TABLE IF NOT EXISTS `characters` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `accountID` int(10) unsigned NOT NULL,
   `worldID` int(11) unsigned NOT NULL DEFAULT '1',
@@ -57,8 +57,8 @@ CREATE TABLE `characters` (
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 
 
-DROP TABLE IF EXISTS `items`;
-CREATE TABLE `items` (
+# DROP TABLE IF EXISTS `items`;
+CREATE TABLE IF NOT EXISTS `items` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `characterID` int(11) NOT NULL,
   `itemID` int(11) NOT NULL,
@@ -104,8 +104,8 @@ CREATE TABLE `skills` (
   CONSTRAINT `skills_ibfk_2` FOREIGN KEY (`characterID`) REFERENCES `characters` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 
-DROP TABLE IF EXISTS `movement`;
-CREATE TABLE `movement` (
+# DROP TABLE IF EXISTS `movement`;
+CREATE TABLE IF NOT EXISTS `movement` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `characterID` int(11) NOT NULL,
   `pos_x` float NOT NULL DEFAULT '0',
@@ -132,5 +132,5 @@ CREATE TABLE `chat` (
     PRIMARY KEY (`id`),
     KEY `characterID` (`characterID`),
     CONSTRAINT `chat_ibfk_2` FOREIGN KEY (`characterID`) REFERENCES `characters` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
