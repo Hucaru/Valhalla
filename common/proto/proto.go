@@ -128,6 +128,17 @@ func ConvertPlayersToLoginResult(plrs []*model.Player) []*mc_metadata.P2C_Report
 	res := make([]*mc_metadata.P2C_ReportLoginUser, 0)
 
 	for i := 0; i < len(plrs); i++ {
+		intr := &mc_metadata.P2C_ReportInteractionAttach{}
+		if plrs[i].Interaction != nil {
+			intr.UuId = plrs[i].UId
+			intr.AttachEnable = plrs[i].Interaction.AttachEnabled
+			intr.ObjectIndex = plrs[i].Interaction.ObjectIndex
+			intr.AnimMontageName = plrs[i].Interaction.AnimMontageName
+			intr.DestinationX = plrs[i].Interaction.DestinationX
+			intr.DestinationY = plrs[i].Interaction.DestinationY
+			intr.DestinationZ = plrs[i].Interaction.DestinationZ
+		}
+
 		res = append(res, &mc_metadata.P2C_ReportLoginUser{
 			UuId: plrs[i].UId,
 			PlayerInfo: &mc_metadata.P2C_PlayerInfo{
@@ -137,12 +148,13 @@ func ConvertPlayersToLoginResult(plrs []*model.Player) []*mc_metadata.P2C_Report
 				Bottom:   plrs[i].Character.Bottom,
 				Clothes:  plrs[i].Character.Clothes,
 			},
-			SpawnPosX: plrs[i].Character.PosX,
-			SpawnPosY: plrs[i].Character.PosY,
-			SpawnPosZ: plrs[i].Character.PosZ,
-			SpawnRotX: plrs[i].Character.RotX,
-			SpawnRotY: plrs[i].Character.RotY,
-			SpawnRotZ: plrs[i].Character.RotZ,
+			InteractionData: intr,
+			SpawnPosX:       plrs[i].Character.PosX,
+			SpawnPosY:       plrs[i].Character.PosY,
+			SpawnPosZ:       plrs[i].Character.PosZ,
+			SpawnRotX:       plrs[i].Character.RotX,
+			SpawnRotY:       plrs[i].Character.RotY,
+			SpawnRotZ:       plrs[i].Character.RotZ,
 		})
 	}
 	return res
@@ -152,6 +164,16 @@ func ConvertPlayersToRegionReport(plrs []*model.Player) []*mc_metadata.P2C_Repor
 	res := make([]*mc_metadata.P2C_ReportRegionChange, 0)
 
 	for i := 0; i < len(plrs); i++ {
+		intr := &mc_metadata.P2C_ReportInteractionAttach{}
+		if plrs[i].Interaction != nil {
+			intr.UuId = plrs[i].UId
+			intr.AttachEnable = plrs[i].Interaction.AttachEnabled
+			intr.ObjectIndex = plrs[i].Interaction.ObjectIndex
+			intr.AnimMontageName = plrs[i].Interaction.AnimMontageName
+			intr.DestinationX = plrs[i].Interaction.DestinationX
+			intr.DestinationY = plrs[i].Interaction.DestinationY
+			intr.DestinationZ = plrs[i].Interaction.DestinationZ
+		}
 		res = append(res, &mc_metadata.P2C_ReportRegionChange{
 			UuId:     plrs[i].UId,
 			RegionId: int32(plrs[i].RegionID),
@@ -163,12 +185,13 @@ func ConvertPlayersToRegionReport(plrs []*model.Player) []*mc_metadata.P2C_Repor
 				Bottom:   plrs[i].Character.Bottom,
 				Clothes:  plrs[i].Character.Clothes,
 			},
-			SpawnPosX: plrs[i].Character.PosX,
-			SpawnPosY: plrs[i].Character.PosY,
-			SpawnPosZ: plrs[i].Character.PosZ,
-			SpawnRotX: plrs[i].Character.RotX,
-			SpawnRotY: plrs[i].Character.RotY,
-			SpawnRotZ: plrs[i].Character.RotZ,
+			InteractionData: intr,
+			SpawnPosX:       plrs[i].Character.PosX,
+			SpawnPosY:       plrs[i].Character.PosY,
+			SpawnPosZ:       plrs[i].Character.PosZ,
+			SpawnRotX:       plrs[i].Character.RotX,
+			SpawnRotY:       plrs[i].Character.RotY,
+			SpawnRotZ:       plrs[i].Character.RotZ,
 		})
 	}
 	return res

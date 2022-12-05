@@ -3,7 +3,6 @@ SET time_zone = '+00:00';
 SET foreign_key_checks = 0;
 SET sql_mode = 'NO_AUTO_VALUE_ON_ZERO';
 
-# DROP TABLE IF EXISTS `accounts`;
 CREATE TABLE IF NOT EXISTS `accounts` (
   `accountID` int(10) unsigned NOT NULL AUTO_INCREMENT,
   `uId` tinytext NOT NULL,
@@ -20,7 +19,6 @@ CREATE TABLE IF NOT EXISTS `accounts` (
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 
 
-# DROP TABLE IF EXISTS `buddy`;
 CREATE TABLE IF NOT EXISTS `buddy` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `characterID` int(11) NOT NULL,
@@ -34,7 +32,6 @@ CREATE TABLE IF NOT EXISTS `buddy` (
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 
 
-# DROP TABLE IF EXISTS `characters`;
 CREATE TABLE IF NOT EXISTS `characters` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `accountID` int(10) unsigned NOT NULL,
@@ -57,7 +54,6 @@ CREATE TABLE IF NOT EXISTS `characters` (
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 
 
-# DROP TABLE IF EXISTS `items`;
 CREATE TABLE IF NOT EXISTS `items` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `characterID` int(11) NOT NULL,
@@ -91,8 +87,7 @@ CREATE TABLE IF NOT EXISTS `items` (
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 
 
-DROP TABLE IF EXISTS `skills`;
-CREATE TABLE `skills` (
+CREATE TABLE IF NOT EXISTS `skills` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `characterID` int(11) NOT NULL,
   `skillID` int(11) NOT NULL DEFAULT '0',
@@ -104,7 +99,6 @@ CREATE TABLE `skills` (
   CONSTRAINT `skills_ibfk_2` FOREIGN KEY (`characterID`) REFERENCES `characters` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 
-# DROP TABLE IF EXISTS `movement`;
 CREATE TABLE IF NOT EXISTS `movement` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `characterID` int(11) NOT NULL,
@@ -121,8 +115,7 @@ CREATE TABLE IF NOT EXISTS `movement` (
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 
 
-DROP TABLE IF EXISTS `chat`;
-CREATE TABLE `chat` (
+CREATE TABLE IF NOT EXISTS `chat` (
     `id` int(11) NOT NULL AUTO_INCREMENT,
     `characterID` int(11) NOT NULL,
     `regionID` int(11) NOT NULL DEFAULT '-1',
