@@ -7,7 +7,6 @@ import (
 	"log"
 	"net"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/Hucaru/Valhalla/common/db"
@@ -1016,13 +1015,13 @@ func (server Server) playerStand(conn mnet.Client, reader mpacket.Reader) {
 	}
 }
 
-func (server *Server) translateMessage(msg string) {
-	if language, exists := server.langDetector.DetectLanguageOf(msg); exists {
-		lng := strings.ToLower(language.String())
-
-		fmt.Println(lng)
-	}
-}
+//func (server *Server) translateMessage(msg string) {
+//	if language, exists := server.langDetector.DetectLanguageOf(msg); exists {
+//		lng := strings.ToLower(language.String())
+//
+//		fmt.Println(lng)
+//	}
+//}
 
 func (server Server) playerAddSkillPoint(conn mnet.Client, reader mpacket.Reader) {
 	plr, err := server.players.getFromConn(conn)
