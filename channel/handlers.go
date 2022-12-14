@@ -7,6 +7,7 @@ import (
 	"log"
 	"net"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/Hucaru/Valhalla/common/db"
@@ -325,7 +326,6 @@ func (server *Server) playerMovementEnd(conn mnet.Client, reader mpacket.Reader)
 }
 
 func (server *Server) playerInteraction(conn mnet.Client, reader mpacket.Reader) {
-
 	msg := mc_metadata.C2P_RequestInteractionAttach{}
 	err := proto.Unmarshal(reader.GetBuffer(), &msg)
 	if err != nil {
@@ -336,15 +336,22 @@ func (server *Server) playerInteraction(conn mnet.Client, reader mpacket.Reader)
 	errR := errors.New("error")
 	errR = nil
 
+	log.Println("PreError: ObjIndex:", msg.GetObjectIndex())
+	log.Println("PreError: Attach:", msg.GetAttachEnable())
+
 	if msg.GetAttachEnable() == 0 {
 		errR = server.InsertInteractionAndSend(conn, &msg)
+		if errR != nil {
+			log.Println("Error: Insert:", errR)
+			return
+		}
+
 	} else {
 		errR = server.DeleteInteractionAndSend(conn, &msg)
-	}
-
-	if errR != nil {
-		log.Println("Error: Insert / Delete:", errR)
-		return
+		if errR != nil {
+			log.Println("Error: Delete:", errR)
+			return
+		}
 	}
 
 	res := mc_metadata.P2C_ReportInteractionAttach{
@@ -754,12 +761,7 @@ func (server *Server) chatSendRegion(conn mnet.Client, reader mpacket.Reader) {
 		Time:     t,
 	}
 
-	//if language, exists := server.langDetector.DetectLanguageOf(msg.GetChat()); exists {
-	//	lng := strings.ToLower(language.String())
-	//	fmt.Println(lng)
-	//} else {
-	//	fmt.Println("Eng")
-	//}
+	//server.translateMessage(msg.GetChat())
 
 	data, err := proto.MakeResponse(res, constant.P2C_ReportRegionChat)
 	if err != nil {
@@ -1011,6 +1013,14 @@ func (server Server) playerStand(conn mnet.Client, reader mpacket.Reader) {
 	if reader.ReadInt16() == -1 {
 
 	} else {
+	}
+}
+
+func (server *Server) translateMessage(msg string) {
+	if language, exists := server.langDetector.DetectLanguageOf(msg); exists {
+		lng := strings.ToLower(language.String())
+
+		fmt.Println(lng)
 	}
 }
 
