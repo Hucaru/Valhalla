@@ -325,9 +325,9 @@ func (server *Server) playerMovementEnd(conn mnet.Client, reader mpacket.Reader)
 }
 
 func (server *Server) playerInteraction(conn mnet.Client, reader mpacket.Reader) {
-	q := []byte{10, 4, 113, 119, 101, 114, 29, 0, 208, 14, 69, 37, 0, 128, 61, 198, 45, 0, 128, 194, 68, 48, 16, 58, 10, 65, 77, 95, 83, 105, 116, 116, 105, 110, 103}
+
 	msg := mc_metadata.C2P_RequestInteractionAttach{}
-	err := proto.Unmarshal(q, &msg)
+	err := proto.Unmarshal(reader.GetBuffer(), &msg)
 	if err != nil {
 		log.Println("Failed to parse data:", err)
 		return
@@ -753,6 +753,13 @@ func (server *Server) chatSendRegion(conn mnet.Client, reader mpacket.Reader) {
 		Chat:     msg.GetChat(),
 		Time:     t,
 	}
+
+	//if language, exists := server.langDetector.DetectLanguageOf(msg.GetChat()); exists {
+	//	lng := strings.ToLower(language.String())
+	//	fmt.Println(lng)
+	//} else {
+	//	fmt.Println("Eng")
+	//}
 
 	data, err := proto.MakeResponse(res, constant.P2C_ReportRegionChat)
 	if err != nil {
