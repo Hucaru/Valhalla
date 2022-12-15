@@ -7,6 +7,7 @@ import (
 	"github.com/Hucaru/Valhalla/common/db/model"
 	"github.com/Hucaru/Valhalla/constant"
 	"github.com/Hucaru/Valhalla/meta-proto/go/mc_metadata"
+	"github.com/pemistahl/lingua-go"
 	"google.golang.org/protobuf/proto"
 	"log"
 	"strconv"
@@ -105,6 +106,7 @@ type Server struct {
 	parties          map[int32]*party
 	rates            rates
 	account          *model.Character
+	langDetector     lingua.LanguageDetector
 }
 
 // Initialize the server
@@ -152,6 +154,16 @@ func (server *Server) Initialize(work chan func(), dbuser, dbpassword, dbaddress
 	log.Println("Started serving metrics on :" + common.MetricsPort)
 
 	server.loadScripts()
+
+	detector := lingua.NewLanguageDetectorBuilder().
+		FromLanguages([]lingua.Language{
+			lingua.English,
+			lingua.Korean,
+			lingua.Thai,
+		}...).
+		Build()
+
+	server.langDetector = detector
 
 	server.parties = make(map[int32]*party)
 }

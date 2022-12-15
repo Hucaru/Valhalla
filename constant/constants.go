@@ -1,5 +1,7 @@
 package constant
 
+import "strings"
+
 var WORLD_NAMES = [...]string{"metaWorld", "metaSchool", "ihq", "metaBank", "metaInvest", "metaClassRoom", "Bellocan", "Mardia", "Kradia", "Yellonde", "Demethos", "Galicia", "El Nido", "Zenith", "Arcania", "Chaos", "Nova", "Renegates"}
 
 const (
@@ -195,6 +197,16 @@ const (
 
 	MaxPartySize = 6
 )
+
+var LANGUAGES = map[string]string{
+	"english": "en",
+	"korean":  "ko",
+	"thai":    "th",
+}
+
+func GetISOCode(lng string) string {
+	return LANGUAGES[strings.ToLower(lng)]
+}
 
 var ExpTable = [...]int32{15, 34, 57, 92, 135, 372, 560, 840, 1242, 1144, // Beginner
 

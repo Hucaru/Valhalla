@@ -4,9 +4,11 @@ import (
 	"errors"
 	"fmt"
 	"github.com/Hucaru/Valhalla/common/db/model"
+	"github.com/Hucaru/Valhalla/common/translates"
 	"log"
 	"net"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/Hucaru/Valhalla/common/db"
@@ -89,7 +91,7 @@ func (server *Server) playerConnect(conn mnet.Client, tcpConn net.Conn, reader m
 
 	if err != nil {
 		log.Println("Inserting new user", msg.GetUuId())
-		db.InsertNewAccount(player)
+		db.AddNewAccount(player)
 	} else {
 		err1 := db.UpdateLoginState(msg.GetUuId(), true)
 		if err1 != nil {
@@ -647,7 +649,7 @@ func (server *Server) playerInfo(conn mnet.Client, reader mpacket.Reader) {
 
 	if err1 != nil {
 		log.Println("Inserting new user playerInfo", fmt.Sprintf("niickname=%s uid=%s", msg.GetNickname(), msg.GetUuId()))
-		iErr := db.InsertNewAccount(&plr)
+		iErr := db.AddNewAccount(&plr)
 		if iErr != nil {
 			res.ErrorCode = constant.ErrorCodeDuplicateUID
 		}
@@ -723,7 +725,7 @@ func (server *Server) chatSendAll(conn mnet.Client, reader mpacket.Reader) {
 		return
 	}
 
-	db.InsertPublicMessage(plr.conn.GetPlayer().CharacterID, constant.World, msg.GetChat())
+	db.AddPublicMessage(plr.conn.GetPlayer().CharacterID, constant.World, msg.GetChat())
 
 	toMe := mc_metadata.P2C_ResultAllChat{
 		UuId:     msg.GetUuId(),
@@ -754,13 +756,17 @@ func (server *Server) chatSendRegion(conn mnet.Client, reader mpacket.Reader) {
 	t := time.Now().UnixNano() / int64(time.Millisecond)
 
 	res := &mc_metadata.P2C_ReportRegionChat{
-		UuId:     msg.GetUuId(),
-		Nickname: msg.GetNickname(),
-		Chat:     msg.GetChat(),
-		Time:     t,
+		UuId:      msg.GetUuId(),
+		Nickname:  msg.GetNickname(),
+		Chat:      msg.GetChat(),
+		Time:      t,
+		Translate: &mc_metadata.Translate{},
 	}
 
-	//server.translateMessage(msg.GetChat())
+	papagoTranslate := server.translateMessage(msg.GetChat())
+	if papagoTranslate != nil {
+		res.Translate = papagoTranslate
+	}
 
 	data, err := proto.MakeResponse(res, constant.P2C_ReportRegionChat)
 	if err != nil {
@@ -774,7 +780,7 @@ func (server *Server) chatSendRegion(conn mnet.Client, reader mpacket.Reader) {
 	}
 
 	server.sendMsgToRegion(data, plr.conn.GetPlayer().UId, plr.conn.GetPlayer().RegionID)
-	db.InsertPublicMessage(
+	db.AddPublicMessage(
 		plr.conn.GetPlayer().CharacterID,
 		plr.conn.GetPlayer().RegionID,
 		msg.GetChat())
@@ -835,7 +841,7 @@ func (server *Server) chatSendWhisper(conn mnet.Client, reader mpacket.Reader) {
 	}
 
 	targetPlayer := server.findCharacterIDByNickname(msg.GetTargetNickname())
-	db.InsertWhisperMessage(
+	db.AddWhisperMessage(
 		plr.conn.GetPlayer().CharacterID,
 		targetPlayer.CharacterID,
 		msg.GetChat())
@@ -1015,13 +1021,78 @@ func (server Server) playerStand(conn mnet.Client, reader mpacket.Reader) {
 	}
 }
 
-//func (server *Server) translateMessage(msg string) {
-//	if language, exists := server.langDetector.DetectLanguageOf(msg); exists {
-//		lng := strings.ToLower(language.String())
-//
-//		fmt.Println(lng)
-//	}
-//}
+func (server *Server) findISOCode(msg string) string {
+	if language, exists := server.langDetector.DetectLanguageOf(msg); exists {
+		lng := strings.ToLower(language.String())
+		return constant.GetISOCode(lng)
+	}
+	return ""
+}
+
+func (server *Server) translateMessage(msg string) *mc_metadata.Translate {
+	if language, exists := server.langDetector.DetectLanguageOf(msg); exists {
+		lng := strings.ToLower(language.String())
+
+		isoCode := constant.GetISOCode(lng)
+		if len(isoCode) == 0 {
+			fmt.Println("ERROR: Not supported language", lng)
+			return nil
+		}
+
+		targetIsoCode := constant.GetISOCode("English")
+		if isoCode == "en" {
+			targetIsoCode = constant.GetISOCode("Korean")
+		}
+
+		originID, err := db.FindOriginIDTranslate(msg)
+
+		if err != nil {
+			fmt.Println("ERROR: FindOriginIDTranslate", err)
+		}
+
+		if originID > 0 {
+			translate, err := server.findTranslate(originID, targetIsoCode)
+			if err != nil {
+				fmt.Println("ERROR: FindOriginIDTranslate", err)
+			}
+			if translate != nil {
+				return translate
+			}
+		}
+
+		text, err := translates.GetTranslate(isoCode, targetIsoCode, msg)
+		if err != nil || len(text) == 0 {
+			fmt.Println("ERROR: GetTranslate", err)
+			return nil
+		}
+
+		if originID > 0 {
+			db.AddTranslate(originID, targetIsoCode, text)
+		} else {
+			id, err := db.AddTranslate(-1, isoCode, msg)
+			if err != nil || id == 0 {
+				fmt.Println("ERROR: FindOriginIDTranslate", err)
+				return nil
+			}
+			db.AddTranslate(id, targetIsoCode, text)
+		}
+
+		return &mc_metadata.Translate{
+			Code: targetIsoCode,
+			Text: text,
+		}
+	}
+	return nil
+}
+
+func (server *Server) findTranslate(originID int64, lng string) (*mc_metadata.Translate, error) {
+	translate, err := db.GetTranslate(originID, lng)
+	if err != nil {
+		fmt.Println("ERROR: FindOriginIDTranslate", err)
+		return nil, err
+	}
+	return translate, nil
+}
 
 func (server Server) playerAddSkillPoint(conn mnet.Client, reader mpacket.Reader) {
 	plr, err := server.players.getFromConn(conn)

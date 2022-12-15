@@ -129,7 +129,7 @@ func GetLoggedDataByName(req *mc_metadata.C2P_RequestPlayerInfo) (model.Player, 
 	return *plr, err
 }
 
-func InsertNewAccount(plr *model.Player) error {
+func AddNewAccount(plr *model.Player) error {
 	res, err := Maria.Exec("INSERT INTO accounts (uId, username, password, pin, dob, isLogedIn) VALUES (?, ?, ?, ?, ?, ?)",
 		plr.UId, "test", "password", "1", 1, 1)
 
@@ -158,7 +158,7 @@ func InsertNewAccount(plr *model.Player) error {
 	}
 	err = nil
 	plr.CharacterID, err = cRes.LastInsertId()
-	return insertMovement(plr.CharacterID,
+	return AddMovement(plr.CharacterID,
 		constant.PosX, constant.PosY, constant.PosZ,
 		constant.RotX, constant.RotY, constant.RotZ)
 }
@@ -175,7 +175,7 @@ func UpdateMovement(
 	if cID < 0 {
 		return errors.New("characterId not found")
 	}
-	return insertMovement(cID, posX, posY, posZ, rotX, rotY, rotZ)
+	return AddMovement(cID, posX, posY, posZ, rotX, rotY, rotZ)
 }
 
 func UpdatePlayerInfo(
@@ -185,23 +185,6 @@ func UpdatePlayerInfo(
 	bottom string,
 	clothes string) error {
 	return updatePlayerInfo(cID, hair, top, bottom, clothes)
-}
-
-func insertPlayerInfo(
-	nickname string,
-	hair string,
-	top string,
-	bottom string,
-	clothes string) error {
-	_, err := Maria.Exec("INSERT INTO characters "+
-		"(nickname, hair, top, bottom, clothes) "+
-		"VALUES (?, ?, ?, ?, ?)",
-		nickname, hair, top, bottom, clothes)
-
-	if err != nil {
-		log.Println("INSERTING PLAYER INFO ERROR", err)
-	}
-	return err
 }
 
 func updatePlayerInfo(
@@ -219,7 +202,59 @@ func updatePlayerInfo(
 	return err
 }
 
-func insertMovement(
+func AddTranslate(
+	originalID int64,
+	lng string,
+	message string) (int64, error) {
+	res, err := Maria.Exec("INSERT INTO message_translates "+
+		"(originalID, lng, message) "+
+		"VALUES (?, ?, ?)",
+		originalID, lng, message)
+
+	if err != nil {
+		log.Println("INSERTING ERROR", err)
+		return -1, err
+	}
+
+	return res.LastInsertId()
+}
+
+func FindOriginIDTranslate(message string) (int64, error) {
+	var id int64 = -1
+	var originalID int64 = -1
+
+	err := Maria.QueryRow("SELECT id, originalID FROM message_translates WHERE message=?", message).Scan(&id, &originalID)
+
+	if err != nil {
+		log.Println("FindTranslate SELECT ERROR", err)
+		return -1, err
+	}
+
+	if originalID > 0 {
+		return originalID, nil
+	}
+
+	return id, nil
+}
+
+func GetTranslate(originalID int64, lng string) (*mc_metadata.Translate, error) {
+	translate := &mc_metadata.Translate{}
+
+	err := Maria.QueryRow("SELECT lng, message FROM message_translates "+
+		"WHERE lng=? AND originalID=?", lng, originalID).Scan(&translate.Code, &translate.Text)
+
+	if err != nil {
+		return nil, err
+	}
+
+	if len(translate.Code) == 0 {
+		return nil, errors.New("not found")
+	}
+
+	return translate, nil
+}
+
+func AddMovement(
 	characterID int64,
 	posX float32,
 	posY float32,
@@ -238,15 +273,15 @@ func insertMovement(
 	return err
 }
 
-func InsertPublicMessage(cID int64, regionID int64, text string) {
-	insertChatMessage(cID, regionID, text, constant.NO_TARGET)
+func AddPublicMessage(cID int64, regionID int64, text string) {
+	addChatMessage(cID, regionID, text, constant.NO_TARGET)
 }
 
-func InsertWhisperMessage(cID int64, targetCID int64, text string) {
-	insertChatMessage(cID, constant.World, text, targetCID)
+func AddWhisperMessage(cID int64, targetCID int64, text string) {
+	addChatMessage(cID, constant.World, text, targetCID)
 }
 
-func insertChatMessage(
+func addChatMessage(
 	characterID int64,
 	regionID int64,
 	text string,
