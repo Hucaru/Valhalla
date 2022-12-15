@@ -1057,12 +1057,7 @@ func (server *Server) translateMessage(msg string) *mc_metadata.Translate {
 		}
 
 		originID, err := db.FindOriginIDTranslate(msg)
-
-		if err != nil {
-			fmt.Println("ERROR: FindOriginIDTranslate", err)
-		}
-
-		if originID > 0 {
+		if err == nil {
 			translate, err := server.findTranslate(originID, targetIsoCode)
 			if err != nil {
 				fmt.Println("ERROR: FindOriginIDTranslate", err)
@@ -1082,7 +1077,7 @@ func (server *Server) translateMessage(msg string) *mc_metadata.Translate {
 			db.AddTranslate(originID, targetIsoCode, text)
 		} else {
 			id, err := db.AddTranslate(-1, isoCode, msg)
-			if err != nil || id == 0 {
+			if err != nil {
 				fmt.Println("ERROR: FindOriginIDTranslate", err)
 				return nil
 			}
