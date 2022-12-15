@@ -707,10 +707,16 @@ func (server *Server) chatSendAll(conn mnet.Client, reader mpacket.Reader) {
 	t := time.Now().UnixNano() / int64(time.Millisecond)
 
 	res := mc_metadata.P2C_ReportAllChat{
-		UuId:     msg.GetUuId(),
-		Nickname: msg.GetNickname(),
-		Chat:     msg.GetChat(),
-		Time:     t,
+		UuId:      msg.GetUuId(),
+		Nickname:  msg.GetNickname(),
+		Chat:      msg.GetChat(),
+		Time:      t,
+		Translate: &mc_metadata.Translate{},
+	}
+
+	papagoTranslate := server.translateMessage(msg.GetChat())
+	if papagoTranslate != nil {
+		res.Translate = papagoTranslate
 	}
 
 	data, err := proto.MakeResponse(&res, constant.P2C_ReportAllChat)
@@ -820,10 +826,16 @@ func (server *Server) chatSendWhisper(conn mnet.Client, reader mpacket.Reader) {
 	t := time.Now().UnixNano() / int64(time.Millisecond)
 
 	res := &mc_metadata.P2C_ReportWhisper{
-		UuId:     msg.GetUuId(),
-		Nickname: msg.GetPlayerNickname(),
-		Chat:     msg.GetChat(),
-		Time:     t,
+		UuId:      msg.GetUuId(),
+		Nickname:  msg.GetPlayerNickname(),
+		Chat:      msg.GetChat(),
+		Time:      t,
+		Translate: &mc_metadata.Translate{},
+	}
+
+	papagoTranslate := server.translateMessage(msg.GetChat())
+	if papagoTranslate != nil {
+		res.Translate = papagoTranslate
 	}
 
 	data, err := proto.MakeResponse(res, constant.P2C_ReportWhisper)
