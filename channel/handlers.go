@@ -28,6 +28,15 @@ import (
 // HandleClientPacket data
 func (server *Server) HandleClientPacket(conn mnet.Client, tcpConn net.Conn, reader mpacket.Reader, msgProtocolType uint32) {
 
+	if msgProtocolType != constant.C2P_RequestLoginUser && msgProtocolType != constant.C2P_RequestPlayerInfo {
+		_, err := server.players.getFromConn(conn)
+		if err != nil {
+			log.Println("Disconnected: Access Denied", "IP:", conn)
+			tcpConn.Close()
+			return
+		}
+	}
+
 	switch msgProtocolType {
 	case constant.C2P_RequestLoginUser:
 		log.Println("PLAYERS ONLINE ", len(server.players))
@@ -137,6 +146,8 @@ func (server *Server) playerConnect(conn mnet.Client, tcpConn net.Conn, reader m
 		log.Println("ERROR P2C_ResultLoginUser", plr.playerID)
 		return
 	}
+
+	fmt.Println(" Client at ", conn, "Registered WITH UID:", msg.GetUuId())
 
 	server.sendMsgToMe(data, conn)
 	response = nil
