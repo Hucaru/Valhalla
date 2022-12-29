@@ -107,6 +107,7 @@ type Server struct {
 	rates            rates
 	account          *model.Character
 	langDetector     lingua.LanguageDetector
+	mapGrid          map[int]map[int]map[int]*model.Player //(y,x)[data]
 }
 
 // Initialize the server
@@ -142,6 +143,22 @@ func (server *Server) Initialize(work chan func(), dbuser, dbpassword, dbaddress
 	}
 
 	server.clearSessions()
+
+	columns := (constant.LAND_X1 - constant.LAND_X2) / constant.LAND_VIEW_RANGE
+	rows := (constant.LAND_Y2 - constant.LAND_Y1) / constant.LAND_VIEW_RANGE
+
+	x := make(map[int]map[int]map[int]*model.Player)
+	y := make(map[int]map[int]*model.Player)
+
+	for i := 0; i < columns; i++ {
+		for j := 0; j < rows; j++ {
+			d := map[int]*model.Player{}
+			y[j] = d
+		}
+		x[i] = y
+	}
+
+	server.mapGrid = x
 
 	log.Println("Initialised game state")
 	common.MetricsGauges["player_count"] = prometheus.NewGaugeVec(prometheus.GaugeOpts{
@@ -281,6 +298,14 @@ func (server *Server) ClientDisconnected(conn mnet.Client) {
 		delete(server.npcChat, conn)
 	}
 
+	x, y := common.FindGrid(conn.GetPlayer().Character.PosX, conn.GetPlayer().Character.PosY)
+
+	for i := 0; i < len(server.mapGrid[x][y]); i++ {
+		if fmt.Sprintf("%p", server.mapGrid[x][y][i]) == fmt.Sprintf("%p", conn.GetPlayer()) {
+			delete(server.mapGrid[x][y], i)
+			break
+		}
+	}
 	server.players.removeFromConn(conn)
 
 	err1 := db.UpdateLoginState(conn.GetPlayer().UId, false)

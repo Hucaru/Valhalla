@@ -3,6 +3,7 @@ package channel
 import (
 	"errors"
 	"fmt"
+	"github.com/Hucaru/Valhalla/common"
 	"github.com/Hucaru/Valhalla/common/db/model"
 	"github.com/Hucaru/Valhalla/common/translates"
 	"log"
@@ -26,7 +27,8 @@ import (
 )
 
 // HandleClientPacket data
-func (server *Server) HandleClientPacket(conn mnet.Client, tcpConn net.Conn, reader mpacket.Reader, msgProtocolType uint32) {
+func (server *Server) HandleClientPacket(
+	conn mnet.Client, tcpConn net.Conn, reader mpacket.Reader, msgProtocolType uint32) {
 
 	if msgProtocolType != constant.C2P_RequestLoginUser && msgProtocolType != constant.C2P_RequestPlayerInfo {
 		_, err := server.players.getFromConn(conn)
@@ -127,6 +129,10 @@ func (server *Server) playerConnect(conn mnet.Client, tcpConn net.Conn, reader m
 	plr := loadPlayer(conn, msg)
 	plr.rates = &server.rates
 	plr.conn.SetPlayer(*player)
+
+	x, y := common.FindGrid(player.Character.PosX, player.Character.PosY)
+	server.mapGrid[x][y][len(server.mapGrid[x][y])] = plr.conn.GetPlayer()
+
 	server.players = append(server.players, &plr)
 
 	response := proto.AccountReport(&player.UId, player.Character)
@@ -314,7 +320,7 @@ func (server *Server) playerMovementStart(conn mnet.Client, reader mpacket.Reade
 	}
 
 	res := mc_metadata.P2C_ReportMoveStart{
-		MovementData: proto.MakeMovementData(msg.GetMovementData()),
+		MovementData: msg.GetMovementData(),
 	}
 	server.makeReportToRegion(conn, &res, constant.P2C_ReportMoveStart)
 	go server.updateUserLocation(msg.GetMovementData())
@@ -330,7 +336,7 @@ func (server *Server) playerMovementEnd(conn mnet.Client, reader mpacket.Reader)
 	}
 
 	res := mc_metadata.P2C_ReportMoveEnd{
-		MovementData: proto.MakeMovementData(msg.GetMovementData()),
+		MovementData: msg.GetMovementData(),
 	}
 
 	server.makeReportToRegion(conn, &res, constant.P2C_ReportMoveEnd)
@@ -625,7 +631,7 @@ func (server *Server) playerMovement(conn mnet.Client, reader mpacket.Reader) {
 	}
 
 	res := mc_metadata.P2C_ReportMove{
-		MovementData: proto.MakeMovementData(msg.GetMovementData()),
+		MovementData: msg.GetMovementData(),
 	}
 
 	server.makeReportToRegion(conn, &res, constant.P2C_ReportMove)

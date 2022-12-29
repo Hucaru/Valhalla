@@ -230,19 +230,6 @@ func ConvertPlayersToRoomReport(plrs []*model.Player) []*mc_metadata.DataSchool 
 	return res
 }
 
-func MakeMovementData(msg *mc_metadata.Movement) *mc_metadata.Movement {
-	return &mc_metadata.Movement{
-		UuId:                 msg.GetUuId(),
-		DestinationX:         msg.GetDestinationX(),
-		DestinationY:         msg.GetDestinationY(),
-		DestinationZ:         msg.GetDestinationZ(),
-		DeatinationRotationX: msg.GetDeatinationRotationX(),
-		DeatinationRotationY: msg.GetDeatinationRotationY(),
-		DeatinationRotationZ: msg.GetDeatinationRotationZ(),
-		InterpTime:           msg.GetInterpTime(),
-	}
-}
-
 func ErrorLoginResponse(_err string, uID string) ([]byte, error) {
 	return MakeResponse(&mc_metadata.P2C_ResultLoginUserError{
 		UuId:  uID,

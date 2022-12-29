@@ -27,7 +27,6 @@ type channelServer struct {
 
 func newChannelServer(configFile string) *channelServer {
 	config, dbConfig := loadChannelConfig(configFile)
-
 	return &channelServer{
 		eRecv:    make(chan *mnet.Event),
 		wRecv:    make(chan func()),

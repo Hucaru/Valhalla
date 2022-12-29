@@ -89,6 +89,15 @@ const (
 )
 
 const (
+	LAND_X1         = 11334
+	LAND_Y1         = -30006
+	LAND_X2         = -17338
+	LAND_Y2         = 19146
+	LAND_Z          = 3000
+	LAND_VIEW_RANGE = 256 //number multiplies 2
+)
+
+const (
 	World         = 1
 	MetaSchool    = 2
 	Ihq           = 3
