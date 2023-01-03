@@ -158,7 +158,6 @@ func (cs *channelServer) processEvent() {
 				case mnet.MEClientConnected:
 					log.Println("New client from", conn)
 				case mnet.MEClientDisconnect:
-					log.Println("Client at", conn, "disconnected")
 					cs.gameState.ClientDisconnected(conn)
 				case mnet.MEClientPacket:
 					cs.gameState.HandleClientPacket(

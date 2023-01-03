@@ -25,13 +25,18 @@ import (
 	"github.com/Hucaru/Valhalla/nx"
 )
 
-type players []*player
+type players map[string]*player
 
 func (p players) getFromConn(conn mnet.Client) (*player, error) {
-	for _, v := range p {
-		if v.conn == conn {
-			return v, nil
-		}
+	//for _, v := range p {
+	//	if v.conn == conn {
+	//		return v, nil
+	//	}
+	//}
+
+	plr, ok := p[conn.GetPlayer().UId]
+	if ok {
+		return plr, nil
 	}
 
 	return new(player), fmt.Errorf("Could not retrieve Data")
@@ -60,24 +65,24 @@ func (p players) getFromID(id int32) (*player, error) {
 }
 
 // RemoveFromConn removes the Data based on the connection
-func (p *players) removeFromConn(conn mnet.Client) error {
-	i := -1
-	for j, v := range *p {
-		if v.conn == conn {
-			i = j
-			break
-		}
-	}
-
-	if i == -1 {
-		return fmt.Errorf("Could not find Data")
-	}
-
-	(*p)[i] = (*p)[len((*p))-1]
-	(*p) = (*p)[:len((*p))-1]
-
-	return nil
-}
+//func (p *players) removeFromConn(conn mnet.Client) error {
+//	i := -1
+//	for j, v := range *p {
+//		if v.conn == conn {
+//			i = j
+//			break
+//		}
+//	}
+//
+//	if i == -1 {
+//		return fmt.Errorf("Could not find Data")
+//	}
+//
+//	(*p)[i] = (*p)[len((*p))-1]
+//	(*p) = (*p)[:len((*p))-1]
+//
+//	return nil
+//}
 
 type rates struct {
 	exp   float32
@@ -107,7 +112,7 @@ type Server struct {
 	rates            rates
 	account          *model.Character
 	langDetector     lingua.LanguageDetector
-	mapGrid          map[int]map[int]map[int]*player //(y,x)[data]
+	mapGrid          map[int]map[int][]*player //(y,x)[data]
 }
 
 // Initialize the server
@@ -147,12 +152,13 @@ func (server *Server) Initialize(work chan func(), dbuser, dbpassword, dbaddress
 	columns := (constant.LAND_X1 - constant.LAND_X2) / constant.LAND_VIEW_RANGE
 	rows := (constant.LAND_Y2 - constant.LAND_Y1) / constant.LAND_VIEW_RANGE
 
-	x := make(map[int]map[int]map[int]*player)
-	y := make(map[int]map[int]*player)
+	x := make(map[int]map[int][]*player, columns)
 
 	for i := 0; i < columns; i++ {
+		y := make(map[int][]*player, rows)
+
 		for j := 0; j < rows; j++ {
-			d := map[int]*player{}
+			d := []*player{}
 			y[j] = d
 		}
 		x[i] = y
@@ -289,7 +295,7 @@ func (server *Server) clearSessions() {
 
 // ClientDisconnected from server
 func (server *Server) ClientDisconnected(conn mnet.Client) {
-	_, err := server.players.getFromConn(conn)
+	plr, err := server.players.getFromConn(conn)
 	if err != nil {
 		return
 	}
@@ -301,12 +307,16 @@ func (server *Server) ClientDisconnected(conn mnet.Client) {
 	x, y := common.FindGrid(conn.GetPlayer().Character.PosX, conn.GetPlayer().Character.PosY)
 
 	for i := 0; i < len(server.mapGrid[x][y]); i++ {
-		if fmt.Sprintf("%p", server.mapGrid[x][y][i]) == fmt.Sprintf("%p", conn) {
-			delete(server.mapGrid[x][y], i)
+
+		if fmt.Sprintf("%p", server.mapGrid[x][y][i]) == fmt.Sprintf("%p", plr) {
+			server.mapGrid[x][y][i] = server.mapGrid[x][y][len(server.mapGrid[x][y])-1] // Copy last element to index i.
+			server.mapGrid[x][y][len(server.mapGrid[x][y])-1] = nil                     // Erase last element (write zero value).
+			server.mapGrid[x][y] = server.mapGrid[x][y][:len(server.mapGrid[x][y])-1]   // Truncate slice.
+
 			break
 		}
 	}
-	server.players.removeFromConn(conn)
+	server.removePlayer(conn.GetPlayer().UId)
 
 	err1 := db.UpdateLoginState(conn.GetPlayer().UId, false)
 	if err1 != nil {
@@ -329,12 +339,15 @@ func (server *Server) ClientDisconnected(conn mnet.Client) {
 
 	msg, errR := makeDisconnectedResponse(conn.GetPlayer().UId)
 	if errR == nil {
-		for i := 0; i < len(server.players); i++ {
-			server.players[i].conn.Send(msg)
+		x, y := common.FindGrid(conn.GetPlayer().Character.PosX, conn.GetPlayer().Character.PosY)
+		loggedPlayers := server.getPlayersOnGrids(x, y, conn.GetPlayer().UId)
+
+		for i := 0; i < len(loggedPlayers); i++ {
+			loggedPlayers[i].conn.Send(msg)
 		}
 	}
 
-	log.Println("DISCONNECT", conn.GetPlayer().UId)
+	log.Println("Client at", conn, "UID", conn.GetPlayer().UId, "disconnected")
 
 	conn.Cleanup()
 	conn = nil
@@ -359,6 +372,31 @@ func makeDisconnectedResponse(uUID string) ([]byte, error) {
 	result = append(result, out...)
 
 	return result, nil
+}
+
+func (server *Server) addPlayer(prl *player) {
+	if prl == nil || prl.conn.GetPlayer() == nil {
+		return
+	}
+	if server.players == nil {
+		server.players = make(map[string]*player)
+	}
+	server.players[prl.conn.GetPlayer().UId] = prl
+}
+
+func (server *Server) removePlayer(key string) {
+	_, ok := server.players[key]
+	if ok {
+		delete(server.players, key)
+	}
+}
+
+func (server *Server) getPlayer(key string) *player {
+	_, ok := server.players[key]
+	if ok {
+		return server.players[key]
+	}
+	return nil
 }
 
 // SetScrollingHeaderMessage that appears at the top of game window
