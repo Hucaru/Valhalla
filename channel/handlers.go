@@ -140,19 +140,17 @@ func (server *Server) playerConnect(conn mnet.Client, tcpConn net.Conn, reader m
 	server.addPlayer(&plr)
 
 	response := proto.AccountReport(&player.UId, player.Character)
-
 	server.sendMsgToRegion(conn, response, constant.P2C_ReportLoginUser)
 
 	account := proto.AccountResult(player)
 
 	loggedPlayers := server.getPlayersOnGrids(x, y, plr.conn.GetPlayer().UId)
-
 	if loggedPlayers != nil {
 		users := server.convertPlayersToLoginResult(loggedPlayers)
 		account.LoggedUsers = append(account.LoggedUsers, users...)
 	}
 
-	fmt.Println(" Client at ", conn, "UID:", msg.GetUuId())
+	fmt.Println(" Client at ", conn, "UID:", msg.GetUuId(), "LOCATION:", player.Character.PosX, player.Character.PosY)
 
 	server.sendMsgToMe(conn, account, constant.P2C_ResultLoginUser)
 	response = nil
@@ -325,6 +323,15 @@ func (server *Server) playerMovementEnd(conn mnet.Client, reader mpacket.Reader)
 	if err != nil || len(msg.GetMovementData().GetUuId()) == 0 {
 		log.Println("Failed to parse data:", err)
 		return
+	}
+
+	if server.isCellChanged(conn, msg.GetMovementData()) {
+		oldPlr, newPlr := server.getNineCellsPlayers(conn, msg.GetMovementData())
+		cellsData := &mc_metadata.P2C_ResultGrid{
+			OldPlayers: server.convertPlayersToGridChanged(oldPlr),
+			NewPlayers: server.convertPlayersToGridChanged(newPlr),
+		}
+		server.sendMsgToMe(conn, cellsData, constant.P2C_ResultGrid)
 	}
 
 	res := &mc_metadata.P2C_ReportMoveEnd{
@@ -677,6 +684,15 @@ func (server *Server) playerMovement(conn mnet.Client, reader mpacket.Reader) {
 	if err != nil || len(msg.GetMovementData().GetUuId()) == 0 {
 		log.Println("Failed to parse data:", err)
 		return
+	}
+
+	if server.isCellChanged(conn, msg.GetMovementData()) {
+		oldPlr, newPlr := server.getNineCellsPlayers(conn, msg.GetMovementData())
+		cellsData := &mc_metadata.P2C_ResultGrid{
+			OldPlayers: server.convertPlayersToGridChanged(oldPlr),
+			NewPlayers: server.convertPlayersToGridChanged(newPlr),
+		}
+		server.sendMsgToMe(conn, cellsData, constant.P2C_ResultGrid)
 	}
 
 	res := &mc_metadata.P2C_ReportMove{

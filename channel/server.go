@@ -391,14 +391,6 @@ func (server *Server) removePlayer(key string) {
 	}
 }
 
-func (server *Server) getPlayer(key string) *player {
-	_, ok := server.players[key]
-	if ok {
-		return server.players[key]
-	}
-	return nil
-}
-
 // SetScrollingHeaderMessage that appears at the top of game window
 // func (server *Server) SetScrollingHeaderMessage(msg string) {
 // 	server.header = msg
