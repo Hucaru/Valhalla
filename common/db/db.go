@@ -28,7 +28,7 @@ func ConnectToDB(user, password, address, port, database string) error {
 		return err
 	}
 
-	Maria.SetMaxIdleConns(10)
+	Maria.SetMaxIdleConns(100)
 
 	return nil
 }
@@ -237,8 +237,8 @@ func FindOriginIDTranslate(message string) (int64, error) {
 	return id, nil
 }
 
-func GetTranslate(originalID int64, lng string) (*mc_metadata.Translate, error) {
-	translate := &mc_metadata.Translate{}
+func GetTranslate(originalID int64, lng string) (*mc_metadata.P2C_Translate, error) {
+	translate := &mc_metadata.P2C_Translate{}
 
 	err := Maria.QueryRow("SELECT lng, message FROM message_translates "+
 		"WHERE lng=? AND originalID=?", lng, originalID).Scan(&translate.Code, &translate.Text)

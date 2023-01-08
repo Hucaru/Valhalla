@@ -87,6 +87,7 @@ func AccountResult(player *model.Player) *mc_metadata.P2C_ResultLoginUser {
 		UuId:     player.UId,
 		RegionId: int32(player.RegionID),
 		PlayerInfo: &mc_metadata.P2C_PlayerInfo{
+			UuId:     player.UId,
 			Nickname: player.Character.NickName,
 			Hair:     player.Character.Hair,
 			Top:      player.Character.Top,

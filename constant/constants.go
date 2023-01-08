@@ -96,7 +96,7 @@ const (
 	LAND_X2         = -17338
 	LAND_Y2         = 19146
 	LAND_Z          = 3000
-	LAND_VIEW_RANGE = 256 //number multiplies 2
+	LAND_VIEW_RANGE = 1024 //number multiplies 2
 )
 
 const (
