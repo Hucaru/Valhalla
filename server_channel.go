@@ -155,18 +155,18 @@ func (cs *channelServer) processEvent() {
 			switch conn := e.Conn.(type) {
 			case mnet.Client:
 				switch e.Type {
-				case mnet.MEClientConnected:
-					log.Println("New client from", conn)
+				//case mnet.MEClientConnected:
+				//	log.Println("New client from", conn)
 				case mnet.MEClientDisconnect:
-					cs.gameState.ClientDisconnected(conn)
+					go cs.gameState.ClientDisconnected(conn)
 				case mnet.MEClientPacket:
-					cs.gameState.HandleClientPacket(
+					go cs.gameState.HandleClientPacket(
 						conn,
 						e.Conn,
 						mpacket.NewReader(&e.Packet, time.Now().Unix()),
 						e.Protocol)
-				default:
-					log.Println("UNKNOWN", &e.Packet)
+					//default:
+					//	log.Println("UNKNOWN", &e.Packet)
 				}
 			case mnet.Server:
 				switch e.Type {

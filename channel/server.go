@@ -11,6 +11,7 @@ import (
 	"google.golang.org/protobuf/proto"
 	"log"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/dop251/goja"
@@ -27,14 +28,17 @@ import (
 
 type players map[string]*player
 
+var SomeMapMutex = sync.RWMutex{}
+
 func (p players) getFromConn(conn mnet.Client) (*player, error) {
 	//for _, v := range p {
 	//	if v.conn == conn {
 	//		return v, nil
 	//	}
 	//}
-
+	SomeMapMutex.RLock()
 	plr, ok := p[conn.GetPlayer().UId]
+	SomeMapMutex.RUnlock()
 	if ok {
 		return plr, nil
 	}
@@ -112,7 +116,7 @@ type Server struct {
 	rates            rates
 	account          *model.Character
 	langDetector     lingua.LanguageDetector
-	mapGrid          map[int]map[int][]*player //(y,x)[data]
+	mapGrid          [][][]*player //(y,x)[data]
 }
 
 // Initialize the server
@@ -152,10 +156,10 @@ func (server *Server) Initialize(work chan func(), dbuser, dbpassword, dbaddress
 	columns := (constant.LAND_X1 - constant.LAND_X2) / constant.LAND_VIEW_RANGE
 	rows := (constant.LAND_Y2 - constant.LAND_Y1) / constant.LAND_VIEW_RANGE
 
-	x := make(map[int]map[int][]*player, columns)
+	x := make([][][]*player, columns)
 
 	for i := 0; i < columns; i++ {
-		y := make(map[int][]*player, rows)
+		y := make([][]*player, rows)
 
 		for j := 0; j < rows; j++ {
 			d := []*player{}
@@ -163,7 +167,6 @@ func (server *Server) Initialize(work chan func(), dbuser, dbpassword, dbaddress
 		}
 		x[i] = y
 	}
-
 	server.mapGrid = x
 
 	log.Println("Initialised game state")
@@ -305,7 +308,6 @@ func (server *Server) ClientDisconnected(conn mnet.Client) {
 	}
 
 	x, y := common.FindGrid(conn.GetPlayer().Character.PosX, conn.GetPlayer().Character.PosY)
-
 	for i := 0; i < len(server.mapGrid[x][y]); i++ {
 
 		if fmt.Sprintf("%p", server.mapGrid[x][y][i]) == fmt.Sprintf("%p", plr) {
@@ -323,18 +325,20 @@ func (server *Server) ClientDisconnected(conn mnet.Client) {
 		log.Println("ERROR LOGOUT PLAYER_ID", conn.GetPlayer().UId)
 	}
 
-	err2 := db.UpdateMovement(
-		conn.GetPlayer().CharacterID,
-		conn.GetPlayer().Character.PosX,
-		conn.GetPlayer().Character.PosY,
-		conn.GetPlayer().Character.PosZ,
-		conn.GetPlayer().Character.RotX,
-		conn.GetPlayer().Character.RotY,
-		conn.GetPlayer().Character.RotZ,
-	)
+	if conn.GetPlayer().IsBot != 1 {
+		err2 := db.UpdateMovement(
+			conn.GetPlayer().CharacterID,
+			conn.GetPlayer().Character.PosX,
+			conn.GetPlayer().Character.PosY,
+			conn.GetPlayer().Character.PosZ,
+			conn.GetPlayer().Character.RotX,
+			conn.GetPlayer().Character.RotY,
+			conn.GetPlayer().Character.RotZ,
+		)
 
-	if err2 != nil {
-		log.Println("ERROR UpdateMovement disconnect", err2)
+		if err2 != nil {
+			log.Println("ERROR UpdateMovement disconnect", err2)
+		}
 	}
 
 	msg, errR := makeDisconnectedResponse(conn.GetPlayer().UId)
@@ -381,13 +385,19 @@ func (server *Server) addPlayer(prl *player) {
 	if server.players == nil {
 		server.players = make(map[string]*player)
 	}
+	SomeMapMutex.Lock()
 	server.players[prl.conn.GetPlayer().UId] = prl
+	SomeMapMutex.Unlock()
 }
 
 func (server *Server) removePlayer(key string) {
+	SomeMapMutex.RLock()
 	_, ok := server.players[key]
+	SomeMapMutex.RUnlock()
 	if ok {
+		SomeMapMutex.Lock()
 		delete(server.players, key)
+		SomeMapMutex.Unlock()
 	}
 }
 

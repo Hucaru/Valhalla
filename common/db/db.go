@@ -81,6 +81,34 @@ func GetLoggedData(uUID string) (*model.Player, error) {
 	return plr, err
 }
 
+func GetLoggedDataForBot(uUID string) (*model.Player, error) {
+
+	plr := &model.Player{
+		UId:         uUID,
+		AccountID:   constant.UNKNOWN,
+		CharacterID: constant.UNKNOWN,
+		RegionID:    constant.World,
+		Character: &model.Character{
+			Role:     constant.User,
+			NickName: "",
+			Hair:     "",
+			Top:      "",
+			Bottom:   "",
+			Clothes:  "",
+			Time:     constant.DEFAULT_TIME,
+			PosX:     constant.PosX,
+			PosY:     constant.PosY,
+			PosZ:     constant.PosZ,
+			RotX:     constant.RotX,
+			RotY:     constant.RotY,
+			RotZ:     constant.RotZ,
+		},
+		Interaction: nil,
+	}
+
+	return plr, nil
+}
+
 func GetLoggedDataByName(req *mc_metadata.C2P_RequestPlayerInfo) (model.Player, error) {
 
 	plr := &model.Player{

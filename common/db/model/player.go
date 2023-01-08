@@ -7,4 +7,5 @@ type Player struct {
 	RegionID    int64
 	Character   *Character
 	Interaction *Interaction
+	IsBot       int32
 }

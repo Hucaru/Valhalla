@@ -27,14 +27,14 @@ import (
 func (server *Server) HandleClientPacket(
 	conn mnet.Client, tcpConn net.Conn, reader mpacket.Reader, msgProtocolType uint32) {
 
-	if msgProtocolType != constant.C2P_RequestLoginUser && msgProtocolType != constant.C2P_RequestPlayerInfo {
-		_, err := server.players.getFromConn(conn)
-		if err != nil {
-			log.Println("Disconnected: Access Denied", "IP:", conn)
-			tcpConn.Close()
-			return
-		}
-	}
+	//if msgProtocolType != constant.C2P_RequestLoginUser && msgProtocolType != constant.C2P_RequestPlayerInfo {
+	//	_, err := server.players.getFromConn(conn)
+	//	if err != nil {
+	//		log.Println("Disconnected: Access Denied", "IP:", conn)
+	//		tcpConn.Close()
+	//		return
+	//	}
+	//}
 
 	switch msgProtocolType {
 	case constant.C2P_RequestLoginUser:
@@ -92,8 +92,28 @@ func (server *Server) playerConnect(conn mnet.Client, tcpConn net.Conn, reader m
 		log.Println("Failed to parse data:", err)
 		return
 	}
+	player := &model.Player{}
 
-	player, err := db.GetLoggedData(msg.GetUuId())
+	if msg.IsBot == 1 {
+		player, err = db.GetLoggedDataForBot(msg.GetUuId())
+	} else {
+		player, err = db.GetLoggedData(msg.GetUuId())
+		if err != nil {
+			db.AddNewAccount(player)
+		} else {
+			err1 := db.UpdateLoginState(msg.GetUuId(), true)
+			if err1 != nil {
+				log.Println("Unable to complete login for ", msg.GetUuId())
+				m, err2 := proto.ErrorLoginResponse(err.Error(), msg.GetUuId())
+				if err2 != nil {
+					log.Println("ErrorLoginResponse", err2)
+				}
+				tcpConn.Write(m)
+				return
+			}
+		}
+	}
+
 	if msg.GetSpawnPosX() != 0 {
 		player.Character.PosX = msg.GetSpawnPosX()
 	}
@@ -106,20 +126,7 @@ func (server *Server) playerConnect(conn mnet.Client, tcpConn net.Conn, reader m
 		player.Character.PosZ = msg.GetSpawnPosZ()
 	}
 
-	if err != nil {
-		db.AddNewAccount(player)
-	} else {
-		err1 := db.UpdateLoginState(msg.GetUuId(), true)
-		if err1 != nil {
-			log.Println("Unable to complete login for ", msg.GetUuId())
-			m, err2 := proto.ErrorLoginResponse(err.Error(), msg.GetUuId())
-			if err2 != nil {
-				log.Println("ErrorLoginResponse", err2)
-			}
-			tcpConn.Write(m)
-			return
-		}
-	}
+	player.IsBot = msg.IsBot
 
 	// TMP part, will be moved later
 	if player.RegionID == constant.MetaClassRoom {
@@ -136,11 +143,13 @@ func (server *Server) playerConnect(conn mnet.Client, tcpConn net.Conn, reader m
 	plr.conn.SetPlayer(*player)
 
 	x, y := common.FindGrid(player.Character.PosX, player.Character.PosY)
+
 	server.mapGrid[x][y] = append(server.mapGrid[x][y], &plr)
+
 	server.addPlayer(&plr)
 
 	response := proto.AccountReport(&player.UId, player.Character)
-	go server.sendMsgToRegion(conn, response, constant.P2C_ReportLoginUser)
+	server.sendMsgToRegion(conn, response, constant.P2C_ReportLoginUser)
 
 	account := proto.AccountResult(player)
 
@@ -152,7 +161,7 @@ func (server *Server) playerConnect(conn mnet.Client, tcpConn net.Conn, reader m
 
 	//fmt.Println(" Client at ", conn, "UID:", msg.GetUuId(), "LOCATION:", player.Character.PosX, player.Character.PosY)
 
-	go server.sendMsgToMe(conn, account, constant.P2C_ResultLoginUser)
+	server.sendMsgToMe(conn, account, constant.P2C_ResultLoginUser)
 	response = nil
 }
 
@@ -175,11 +184,15 @@ func (server *Server) getRoomPlayers(uID string, mX, mY float32) []*model.Player
 }
 
 func (server *Server) setPlayer(plr *model.Player) {
+	SomeMapMutex.Lock()
 	server.players[plr.UId].conn.SetPlayer(*plr)
+	SomeMapMutex.Unlock()
 }
 
 func (server *Server) isPlayerOnline(uID string) bool {
+	SomeMapMutex.RLock()
 	_, ok := server.players[uID]
+	SomeMapMutex.RUnlock()
 	return ok
 }
 
@@ -204,10 +217,12 @@ func (server *Server) sendMsgToPlayer(msg proto2.Message, uID string, msgType in
 		log.Println("DATA_RESPONSE_ERROR", err)
 	}
 
+	SomeMapMutex.RLock()
 	_, ok := server.players[uID]
 	if ok {
 		server.players[uID].conn.Send(res)
 	}
+	SomeMapMutex.RUnlock()
 }
 
 func (server *Server) sendMsgToAll(msg proto2.Message, uID string, msgType int) {
@@ -266,11 +281,11 @@ func (server *Server) playerChangeChannel(conn mnet.Client, reader mpacket.Reade
 
 	responseOld := proto.ChannelChangeForOldReport(plr.conn.GetPlayer().UId, plr.conn.GetPlayer().Character)
 	log.Println("REGION_CHANGED PREV REGION SEND", plr.conn.GetPlayer().RegionID)
-	go server.sendMsgToRegion(conn, responseOld, constant.P2C_ReportRegionLeave)
+	server.sendMsgToRegion(conn, responseOld, constant.P2C_ReportRegionLeave)
 
 	responseNew := proto.ChannelChangeForNewReport(plr.conn.GetPlayer())
 	log.Println("REGION_CHANGED TO ", msg.GetRegionId())
-	go server.sendMsgToRegion(conn, responseNew, constant.P2C_ReportRegionChange)
+	server.sendMsgToRegion(conn, responseNew, constant.P2C_ReportRegionChange)
 
 	plr.conn.GetPlayer().RegionID = int64(msg.RegionId)
 	server.setPlayer(plr.conn.GetPlayer())
@@ -287,7 +302,7 @@ func (server *Server) playerChangeChannel(conn mnet.Client, reader mpacket.Reade
 
 	users := server.convertPlayersToRegionReport(loggedAccounts)
 	account.RegionUsers = append(account.RegionUsers, users...)
-	go server.sendMsgToMe(conn, account, constant.P2C_ResultRegionChange)
+	server.sendMsgToMe(conn, account, constant.P2C_ResultRegionChange)
 }
 
 func (server *Server) playerMovementStart(conn mnet.Client, reader mpacket.Reader) {
@@ -305,15 +320,15 @@ func (server *Server) playerMovementStart(conn mnet.Client, reader mpacket.Reade
 			OldPlayers: server.convertPlayersToGridChanged(oldPlr),
 			NewPlayers: server.convertPlayersToGridChanged(newPlr),
 		}
-		go server.sendMsgToMe(conn, cellsData, constant.P2C_ResultGrid)
+		server.sendMsgToMe(conn, cellsData, constant.P2C_ResultGrid)
 	}
 
 	res := &mc_metadata.P2C_ReportMoveStart{
 		MovementData: msg.GetMovementData(),
 	}
 
-	go server.sendMsgToRegion(conn, res, constant.P2C_ReportMoveStart)
-	go server.updateUserLocation(conn, msg.GetMovementData())
+	server.sendMsgToRegion(conn, res, constant.P2C_ReportMoveStart)
+	server.updateUserLocation(conn, msg.GetMovementData())
 }
 
 func (server *Server) playerMovementEnd(conn mnet.Client, reader mpacket.Reader) {
@@ -331,15 +346,15 @@ func (server *Server) playerMovementEnd(conn mnet.Client, reader mpacket.Reader)
 			OldPlayers: server.convertPlayersToGridChanged(oldPlr),
 			NewPlayers: server.convertPlayersToGridChanged(newPlr),
 		}
-		go server.sendMsgToMe(conn, cellsData, constant.P2C_ResultGrid)
+		server.sendMsgToMe(conn, cellsData, constant.P2C_ResultGrid)
 	}
 
 	res := &mc_metadata.P2C_ReportMoveEnd{
 		MovementData: msg.GetMovementData(),
 	}
 
-	go server.sendMsgToRegion(conn, res, constant.P2C_ReportMoveEnd)
-	go server.updateUserLocation(conn, msg.GetMovementData())
+	server.sendMsgToRegion(conn, res, constant.P2C_ReportMoveEnd)
+	server.updateUserLocation(conn, msg.GetMovementData())
 }
 
 func (server *Server) getPlayersOnGrids(x, y int, uID string) []*player {
@@ -431,12 +446,10 @@ func (server *Server) getPlayersOnGrids(x, y int, uID string) []*player {
 }
 
 func (server *Server) getGridPlayers(x int, y int) []*player {
-	_, ok := server.mapGrid[x][y]
-	if ok {
-		return server.mapGrid[x][y]
+	if len(server.mapGrid) <= x || len(server.mapGrid[x]) <= y {
+		return []*player{}
 	}
-
-	return []*player{}
+	return server.mapGrid[x][y]
 }
 
 func (server *Server) playerInteraction(conn mnet.Client, reader mpacket.Reader) {
@@ -478,7 +491,7 @@ func (server *Server) playerInteraction(conn mnet.Client, reader mpacket.Reader)
 		DestinationZ:    msg.GetDestinationZ(),
 	}
 	log.Println("P2C_ReportInteractionAttach sent from ", res.GetUuId())
-	go server.sendMsgToAll(res, msg.GetUuId(), constant.P2C_ReportInteractionAttach)
+	server.sendMsgToAll(res, msg.GetUuId(), constant.P2C_ReportInteractionAttach)
 }
 
 func (server *Server) DeleteInteractionAndSend(conn mnet.Client, msg *mc_metadata.C2P_RequestInteractionAttach) error {
@@ -503,7 +516,7 @@ func (server *Server) DeleteInteractionAndSend(conn mnet.Client, msg *mc_metadat
 	plr.conn.GetPlayer().Interaction.DestinationZ = msg.GetDestinationZ()
 	server.setPlayer(plr.conn.GetPlayer())
 
-	go server.sendMsgToMe(conn, att, constant.P2C_ResultInteractionAttach)
+	server.sendMsgToMe(conn, att, constant.P2C_ResultInteractionAttach)
 	return nil
 }
 
@@ -543,7 +556,7 @@ func (server *Server) InsertInteractionAndSend(conn mnet.Client, msg *mc_metadat
 		server.setPlayer(plr.conn.GetPlayer())
 	}
 
-	go server.sendMsgToMe(conn, att, constant.P2C_ResultInteractionAttach)
+	server.sendMsgToMe(conn, att, constant.P2C_ResultInteractionAttach)
 	if att.ErrorCode == -1 {
 		return nil
 	} else {
@@ -565,7 +578,7 @@ func (server *Server) playerPlayAnimation(conn mnet.Client, reader mpacket.Reade
 		AnimTid: msg.GetAnimTid(),
 	}
 
-	go server.sendMsgToRegion(conn, res, constant.P2C_ReportPlayMontage)
+	server.sendMsgToRegion(conn, res, constant.P2C_ReportPlayMontage)
 }
 
 func (server *Server) playerRegionRoleChecking(conn mnet.Client, reader mpacket.Reader) {
@@ -595,7 +608,7 @@ func (server *Server) playerRegionRoleChecking(conn mnet.Client, reader mpacket.
 	}
 
 	log.Println("P2C_ResultRoleChecking")
-	go server.sendMsgToMe(conn, res, constant.P2C_ResultRoleChecking)
+	server.sendMsgToMe(conn, res, constant.P2C_ResultRoleChecking)
 }
 
 func (server *Server) playerEnterToRoom(conn mnet.Client, reader mpacket.Reader) {
@@ -634,7 +647,7 @@ func (server *Server) playerEnterToRoom(conn mnet.Client, reader mpacket.Reader)
 	}
 
 	log.Println("P2C_ResultMetaSchoolEnter sendMsgToRegion")
-	go server.sendMsgToRegion(conn, reportEnter, constant.P2C_ReportMetaSchoolEnter)
+	server.sendMsgToRegion(conn, reportEnter, constant.P2C_ReportMetaSchoolEnter)
 
 	res := &mc_metadata.P2C_ResultMetaSchoolEnter{
 		UuId:          msg.GetUuId(),
@@ -642,7 +655,7 @@ func (server *Server) playerEnterToRoom(conn mnet.Client, reader mpacket.Reader)
 		DataSchool:    proto.ConvertPlayersToRoomReport(server.getRoomPlayers(msg.GetUuId(), plr.conn.GetPlayer().Character.PosX, plr.conn.GetPlayer().Character.PosY)),
 	}
 
-	go server.sendMsgToMe(conn, res, constant.P2C_ResultMetaSchoolEnter)
+	server.sendMsgToMe(conn, res, constant.P2C_ResultMetaSchoolEnter)
 }
 
 func (server *Server) playerLeaveFromRoom(conn mnet.Client, reader mpacket.Reader) {
@@ -674,7 +687,7 @@ func (server *Server) playerLeaveFromRoom(conn mnet.Client, reader mpacket.Reade
 			Clothes:  plr.conn.GetPlayer().Character.Clothes,
 		},
 	}
-	go server.sendMsgToRegion(conn, res, constant.P2C_ReportMetaSchoolLeave)
+	server.sendMsgToRegion(conn, res, constant.P2C_ReportMetaSchoolLeave)
 }
 
 func (server *Server) playerMovement(conn mnet.Client, reader mpacket.Reader) {
@@ -692,15 +705,15 @@ func (server *Server) playerMovement(conn mnet.Client, reader mpacket.Reader) {
 			OldPlayers: server.convertPlayersToGridChanged(oldPlr),
 			NewPlayers: server.convertPlayersToGridChanged(newPlr),
 		}
-		go server.sendMsgToMe(conn, cellsData, constant.P2C_ResultGrid)
+		server.sendMsgToMe(conn, cellsData, constant.P2C_ResultGrid)
 	}
 
 	res := &mc_metadata.P2C_ReportMove{
 		MovementData: msg.GetMovementData(),
 	}
 
-	go server.sendMsgToRegion(conn, res, constant.P2C_ReportMove)
-	go server.updateUserLocation(conn, msg.GetMovementData())
+	server.sendMsgToRegion(conn, res, constant.P2C_ReportMove)
+	server.updateUserLocation(conn, msg.GetMovementData())
 }
 
 func (server *Server) playerInfo(conn mnet.Client, reader mpacket.Reader) {
@@ -723,7 +736,7 @@ func (server *Server) playerInfo(conn mnet.Client, reader mpacket.Reader) {
 			log.Println("ERROR P2C_ResultPlayerInfo Already Online", msg.GetUuId())
 			return
 		}
-		go conn.Send(data)
+		conn.Send(data)
 		return
 	}
 
@@ -750,7 +763,7 @@ func (server *Server) playerInfo(conn mnet.Client, reader mpacket.Reader) {
 		return
 	}
 
-	go conn.Send(data)
+	conn.Send(data)
 	//server.sendMsgToMe(data, conn)
 	data = nil
 }
@@ -768,7 +781,7 @@ func (server *Server) playerLogout(conn mnet.Client, reader mpacket.Reader) {
 		UuId: msg.GetUuId(),
 	}
 
-	go server.sendMsgToAll(res, msg.GetUuId(), constant.P2C_ReportLogoutUser)
+	server.sendMsgToAll(res, msg.GetUuId(), constant.P2C_ReportLogoutUser)
 }
 
 func (server *Server) chatSendAll(conn mnet.Client, reader mpacket.Reader) {
@@ -794,7 +807,7 @@ func (server *Server) chatSendAll(conn mnet.Client, reader mpacket.Reader) {
 		res.Translate = papagoTranslate
 	}
 
-	go server.sendMsgToAll(res, msg.GetUuId(), constant.P2C_ReportAllChat)
+	server.sendMsgToAll(res, msg.GetUuId(), constant.P2C_ReportAllChat)
 	plr, err := server.players.getFromConn(conn)
 	if err != nil {
 		return
@@ -809,7 +822,7 @@ func (server *Server) chatSendAll(conn mnet.Client, reader mpacket.Reader) {
 		Time:     t,
 	}
 
-	go server.sendMsgToMe(conn, toMe, constant.P2C_ResultAllChat)
+	server.sendMsgToMe(conn, toMe, constant.P2C_ResultAllChat)
 }
 
 func (server *Server) chatSendRegion(conn mnet.Client, reader mpacket.Reader) {
@@ -840,7 +853,7 @@ func (server *Server) chatSendRegion(conn mnet.Client, reader mpacket.Reader) {
 		return
 	}
 
-	go server.sendMsgToRegion(conn, res, constant.P2C_ReportRegionChat)
+	server.sendMsgToRegion(conn, res, constant.P2C_ReportRegionChat)
 	db.AddPublicMessage(
 		plr.conn.GetPlayer().CharacterID,
 		plr.conn.GetPlayer().RegionID,
@@ -853,7 +866,7 @@ func (server *Server) chatSendRegion(conn mnet.Client, reader mpacket.Reader) {
 		Time:     t,
 	}
 
-	go server.sendMsgToMe(conn, toMe, constant.P2C_ResultRegionChat)
+	server.sendMsgToMe(conn, toMe, constant.P2C_ResultRegionChat)
 }
 
 func (server *Server) chatSendWhisper(conn mnet.Client, reader mpacket.Reader) {
@@ -905,12 +918,13 @@ func (server *Server) chatSendWhisper(conn mnet.Client, reader mpacket.Reader) {
 		toMe.ErrorCode = constant.ErrorUserOffline
 	}
 
-	go server.sendMsgToMe(conn, toMe, constant.P2C_ResultWhisper)
+	server.sendMsgToMe(conn, toMe, constant.P2C_ResultWhisper)
 }
 
 func (server *Server) findCharacterIDByUID(uID string) *model.Player {
-
+	SomeMapMutex.RLock()
 	p, ok := server.players[uID]
+	SomeMapMutex.RUnlock()
 	if ok {
 		return p.conn.GetPlayer()
 	}
@@ -974,7 +988,7 @@ func (server *Server) getNineCellsPlayers(conn mnet.Client, msg *mc_metadata.Mov
 }
 
 func (server *Server) updateUserLocation(conn mnet.Client, msg *mc_metadata.Movement) {
-
+	SomeMapMutex.RLock()
 	_, ok := server.players[conn.GetPlayer().UId]
 	if ok {
 		server.players[conn.GetPlayer().UId].conn.GetPlayer().Character.PosX = msg.GetDestinationX()
@@ -984,6 +998,7 @@ func (server *Server) updateUserLocation(conn mnet.Client, msg *mc_metadata.Move
 		server.players[conn.GetPlayer().UId].conn.GetPlayer().Character.RotY = msg.GetDeatinationRotationY()
 		server.players[conn.GetPlayer().UId].conn.GetPlayer().Character.RotZ = msg.GetDeatinationRotationZ()
 	}
+	SomeMapMutex.RUnlock()
 }
 
 func (server *Server) translateMessage(msg string) *mc_metadata.P2C_Translate {
