@@ -4,6 +4,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"log"
+	rand2 "math/rand"
 	"runtime"
 	"strconv"
 	"sync"
@@ -221,29 +222,23 @@ func (server *Server) addToEmulateMoving(uid string, plrs []*player) {
 		if plrs[i].conn.GetPlayer().IsBot != 1 {
 			return
 		}
-		server.moveEmulate(arr[i].conn.GetPlayer().UId,
-			arr[i].conn.GetPlayer().Character.PosX,
-			arr[i].conn.GetPlayer().Character.PosY,
-			arr[i].conn.GetPlayer().Character.PosZ)
+		server.moveEmulate(arr[i])
 	}
 	arr = nil
 }
 
 func (server *Server) addToEmulateMove(plr *player) {
-	go server.moveEmulate(plr.conn.GetPlayer().UId,
-		plr.conn.GetPlayer().Character.PosX,
-		plr.conn.GetPlayer().Character.PosY,
-		plr.conn.GetPlayer().Character.PosZ)
+	server.moveEmulate(plr)
 }
 
-func (server *Server) moveEmulate(uID string, x, y, z float32) {
+func (server *Server) moveEmulate(plr *player) {
 
 	//if gorotinesManager.Get(uID) {
 	//	return
 	//}
 
 	ch := make(chan bool)
-	gorotinesManager.Add(ch, uID)
+	gorotinesManager.Add(ch, plr.conn.GetPlayer().UId)
 	go func(chan bool) {
 		for {
 			select {
@@ -253,12 +248,22 @@ func (server *Server) moveEmulate(uID string, x, y, z float32) {
 			default:
 			}
 
+			xq := 0
+			xw := 1
+
+			ox := plr.conn.GetPlayer().Character.PosX
+			oy := plr.conn.GetPlayer().Character.PosY
+
+			if (rand2.Intn(10) - 5) < 0 {
+				xq = 1
+				xw = 0
+			}
 			s := &mc_metadata.P2C_ReportMoveStart{
 				MovementData: &mc_metadata.Movement{
-					UuId:         uID,
-					DestinationX: x,
-					DestinationY: y,
-					DestinationZ: z,
+					UuId:         plr.conn.GetPlayer().UId,
+					DestinationX: plr.conn.GetPlayer().Character.PosX,
+					DestinationY: plr.conn.GetPlayer().Character.PosY,
+					DestinationZ: plr.conn.GetPlayer().Character.PosZ,
 					InterpTime:   300,
 				},
 			}
@@ -268,10 +273,10 @@ func (server *Server) moveEmulate(uID string, x, y, z float32) {
 				for i := 0; i < len(server.fMovePlayers); i++ {
 					if plr, err := server.players.getFromConnByUID(server.fMovePlayers[i].name); err == nil {
 						x1, y1 := common.FindGrid(plr.conn.GetPlayer().Character.PosX, plr.conn.GetPlayer().Character.PosY)
-						x2, y2 := common.FindGrid(x, y)
+						x2, y2 := common.FindGrid(plr.conn.GetPlayer().Character.PosX, plr.conn.GetPlayer().Character.PosY)
 
 						if common.FindLocationInGrid(x1, y1, x2, y2) {
-							plr.conn.Send(res)
+							go plr.conn.Send(res)
 						}
 					}
 				}
@@ -283,10 +288,10 @@ func (server *Server) moveEmulate(uID string, x, y, z float32) {
 			for k := 1; k <= 10; k++ {
 				m := &mc_metadata.P2C_ReportMove{
 					MovementData: &mc_metadata.Movement{
-						UuId:         uID,
-						DestinationX: x + float32(k*100),
-						DestinationY: y,
-						DestinationZ: z,
+						UuId:         plr.conn.GetPlayer().UId,
+						DestinationX: plr.conn.GetPlayer().Character.PosX + float32(k*100*xq),
+						DestinationY: plr.conn.GetPlayer().Character.PosY + float32(k*100*xw),
+						DestinationZ: plr.conn.GetPlayer().Character.PosZ,
 						InterpTime:   300,
 					},
 				}
@@ -295,10 +300,10 @@ func (server *Server) moveEmulate(uID string, x, y, z float32) {
 					for i := 0; i < len(server.fMovePlayers); i++ {
 						if plr, err := server.players.getFromConnByUID(server.fMovePlayers[i].name); err == nil {
 							x1, y1 := common.FindGrid(plr.conn.GetPlayer().Character.PosX, plr.conn.GetPlayer().Character.PosY)
-							x2, y2 := common.FindGrid(x, y)
+							x2, y2 := common.FindGrid(plr.conn.GetPlayer().Character.PosX, plr.conn.GetPlayer().Character.PosY)
 
 							if common.FindLocationInGrid(x1, y1, x2, y2) {
-								plr.conn.Send(res)
+								go plr.conn.Send(res)
 							}
 						}
 					}
@@ -310,10 +315,10 @@ func (server *Server) moveEmulate(uID string, x, y, z float32) {
 
 			e := &mc_metadata.P2C_ReportMoveEnd{
 				MovementData: &mc_metadata.Movement{
-					UuId:         uID,
-					DestinationX: x + float32(1000),
-					DestinationY: y,
-					DestinationZ: z,
+					UuId:         plr.conn.GetPlayer().UId,
+					DestinationX: ox,
+					DestinationY: oy,
+					DestinationZ: plr.conn.GetPlayer().Character.PosZ,
 					InterpTime:   300,
 				},
 			}
@@ -322,10 +327,10 @@ func (server *Server) moveEmulate(uID string, x, y, z float32) {
 				for i := 0; i < len(server.fMovePlayers); i++ {
 					if plr, err := server.players.getFromConnByUID(server.fMovePlayers[i].name); err == nil {
 						x1, y1 := common.FindGrid(plr.conn.GetPlayer().Character.PosX, plr.conn.GetPlayer().Character.PosY)
-						x2, y2 := common.FindGrid(x, y)
+						x2, y2 := common.FindGrid(plr.conn.GetPlayer().Character.PosX, plr.conn.GetPlayer().Character.PosY)
 
 						if common.FindLocationInGrid(x1, y1, x2, y2) {
-							plr.conn.Send(res)
+							go plr.conn.Send(res)
 						}
 					}
 				}

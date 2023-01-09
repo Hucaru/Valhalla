@@ -3,6 +3,11 @@ package constant
 import "strings"
 
 var WORLD_NAMES = [...]string{"metaWorld", "metaSchool", "ihq", "metaBank", "metaInvest", "metaClassRoom", "Bellocan", "Mardia", "Kradia", "Yellonde", "Demethos", "Galicia", "El Nido", "Zenith", "Arcania", "Chaos", "Nova", "Renegates"}
+var RandomHair = [...]string{"SKM_Male_Hair001_2", "SKM_Male_Hair002_2", "SKM_Female_Hair003", "SKM_Female_Hair001_2", "SKM_Female_Hair003_2", "SKM_Female_Hair002"}
+var RandomClothes = [...]string{"SKM_None_Clothes001", "SKM_Male_Clothes001", "SKM_None_Clothes001_2", "SKM_None_Clothes001_2", "SKM_None_Clothes001_2"}
+var RandomBottom = [...]string{"SKM_Female_bottom001", "SKM_Female_bottom002", "SKM_Female_bottom001_2", "SKM_None_bottom001", "SKM_None_bottom002"}
+var RandomTop = [...]string{"SKM_Male_Top001", "SKM_None_Top002", "SKM_None_Top003", "SKM_None_Top001", "SKM_None_Top004"}
+var RandomBody = [...]string{"SKM_None_Body_upper", "SKM_None_Body_Lower", "SKM_None_Body_foot"}
 
 const (
 	C2P_RequestLoginUser = 1
@@ -97,7 +102,7 @@ const (
 	LAND_X2         = -17338
 	LAND_Y2         = 19146
 	LAND_Z          = 3000
-	LAND_VIEW_RANGE = 1200 //number multiplies 2
+	LAND_VIEW_RANGE = 2048 //number multiplies 2
 )
 
 const (

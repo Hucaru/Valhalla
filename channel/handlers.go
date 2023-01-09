@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	rand2 "math/rand"
 	"net"
 	"runtime"
 	"strconv"
@@ -147,6 +148,11 @@ func (server *Server) playerConnect(conn mnet.Client, tcpConn net.Conn, reader m
 	server.addPlayer(&plr)
 
 	if msg.IsBot == 1 {
+		plr.conn.GetPlayer().Character.Top = constant.RandomTop[rand2.Intn(4)]
+		plr.conn.GetPlayer().Character.Bottom = constant.RandomBottom[rand2.Intn(4)]
+		plr.conn.GetPlayer().Character.Clothes = constant.RandomClothes[rand2.Intn(4)]
+		plr.conn.GetPlayer().Character.Hair = constant.RandomHair[rand2.Intn(5)]
+		go server.addToEmulateMove(&plr)
 		return
 	}
 
@@ -166,7 +172,7 @@ func (server *Server) playerConnect(conn mnet.Client, tcpConn net.Conn, reader m
 			y:    player.Character.PosY,
 		})
 
-		go server.addToEmulateMoving(plr.conn.GetPlayer().UId, loggedPlayers)
+		//go server.addToEmulateMoving(plr.conn.GetPlayer().UId, loggedPlayers)
 		fmt.Println("NumGoroutine COUNT EMULATE", runtime.NumGoroutine())
 		users := server.convertPlayersToLoginResult(loggedPlayers)
 		account.LoggedUsers = append(account.LoggedUsers, users...)
@@ -467,9 +473,21 @@ func (server *Server) getPlayersOnGrids(x, y int, uID string) []*player {
 }
 
 func (server *Server) getGridPlayers(x int, y int) []*player {
-	if len(server.mapGrid) <= x || len(server.mapGrid[x]) <= y {
+	if len(server.mapGrid) <= x {
 		return []*player{}
 	}
+	if x < 0 {
+		x = 1
+	}
+
+	if len(server.mapGrid[x]) <= y {
+		return []*player{}
+	}
+
+	if y < 0 {
+		y = 1
+	}
+
 	return server.mapGrid[x][y]
 }
 
@@ -726,14 +744,14 @@ func (server *Server) playerMovement(conn mnet.Client, reader mpacket.Reader) {
 			OldPlayers: server.convertPlayersToGridChanged(oldPlr),
 			NewPlayers: server.convertPlayersToGridChanged(newPlr),
 		}
-		server.sendMsgToMe(conn, cellsData, constant.P2C_ResultGrid)
+		go server.sendMsgToMe(conn, cellsData, constant.P2C_ResultGrid)
 
 		server.switchPlayerCell(conn, msg.GetMovementData())
 		fmt.Println("NumGoroutine switchPlayerCell", runtime.NumGoroutine())
-		go server.addToEmulateMoving(conn.GetPlayer().UId, newPlr)
+		//go server.addToEmulateMoving(conn.GetPlayer().UId, newPlr)
 
 		for i := 0; i < len(oldPlr); i++ {
-			go server.removePlayersFromMovementLoop(oldPlr[i].conn.GetPlayer().UId)
+			//go server.removePlayersFromMovementLoop(oldPlr[i].conn.GetPlayer().UId)
 			go server.sendMsgToPlayer(&mc_metadata.P2C_ReportGrid{
 				PlayerInfo: &mc_metadata.P2C_PlayerInfo{
 					UuId: msg.GetMovementData().UuId,
@@ -1177,7 +1195,7 @@ func (server *Server) convertPlayersToRegionReport(plrs []*player) []*mc_metadat
 }
 
 func (server *Server) convertPlayersToGridChanged(plrs []*player) []*mc_metadata.GridPlayers {
-	var res []*mc_metadata.GridPlayers
+	res := []*mc_metadata.GridPlayers{}
 
 	for _, v := range plrs {
 		intr := &mc_metadata.P2C_ReportInteractionAttach{}
