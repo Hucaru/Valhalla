@@ -762,6 +762,12 @@ func (server *Server) playerMovement(conn mnet.Client, reader mpacket.Reader) {
 
 		for i := 0; i < len(newPlr); i++ {
 			go server.sendMsgToPlayer(&mc_metadata.P2C_ReportGridNew{
+				SpawnPosX: msg.GetMovementData().DestinationX,
+				SpawnPosY: msg.GetMovementData().DestinationY,
+				SpawnPosZ: msg.GetMovementData().DestinationZ,
+				SpawnRotX: msg.GetMovementData().DeatinationRotationX,
+				SpawnRotY: msg.GetMovementData().DeatinationRotationY,
+				SpawnRotZ: msg.GetMovementData().DeatinationRotationZ,
 				PlayerInfo: &mc_metadata.P2C_PlayerInfo{
 					UuId: msg.GetMovementData().UuId,
 				},
