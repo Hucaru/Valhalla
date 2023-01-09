@@ -3,6 +3,12 @@ package channel
 import (
 	"encoding/binary"
 	"fmt"
+	"log"
+	"runtime"
+	"strconv"
+	"sync"
+	"time"
+
 	"github.com/Hucaru/Valhalla/common/db"
 	"github.com/Hucaru/Valhalla/common/db/model"
 	"github.com/Hucaru/Valhalla/common/manager"
@@ -11,11 +17,6 @@ import (
 	"github.com/Hucaru/Valhalla/meta-proto/go/mc_metadata"
 	"github.com/pemistahl/lingua-go"
 	"google.golang.org/protobuf/proto"
-	"log"
-	"runtime"
-	"strconv"
-	"sync"
-	"time"
 
 	"github.com/dop251/goja"
 	_ "github.com/go-sql-driver/mysql" // don't need full import

@@ -3,16 +3,17 @@ package channel
 import (
 	"errors"
 	"fmt"
-	"github.com/Hucaru/Valhalla/common"
-	"github.com/Hucaru/Valhalla/common/db/model"
-	"github.com/Hucaru/Valhalla/common/opcode"
-	"github.com/Hucaru/Valhalla/common/translates"
 	"log"
 	"net"
 	"runtime"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/Hucaru/Valhalla/common"
+	"github.com/Hucaru/Valhalla/common/db/model"
+	"github.com/Hucaru/Valhalla/common/opcode"
+	"github.com/Hucaru/Valhalla/common/translates"
 
 	"github.com/Hucaru/Valhalla/common/db"
 	"github.com/Hucaru/Valhalla/common/proto"
@@ -42,11 +43,17 @@ func (server *Server) HandleClientPacket(
 		log.Println("PLAYERS ONLINE ", len(server.players))
 		server.playerConnect(conn, tcpConn, reader)
 	case constant.C2P_RequestMoveStart:
-		server.playerMovementStart(conn, reader)
+		conn.PushAction(func() {
+			server.playerMovementStart(conn, reader)
+		})
 	case constant.C2P_RequestMove:
-		server.playerMovement(conn, reader)
+		conn.PushAction(func() {
+			server.playerMovement(conn, reader)
+		})
 	case constant.C2P_RequestMoveEnd:
-		server.playerMovementEnd(conn, reader)
+		conn.PushAction(func() {
+			server.playerMovementEnd(conn, reader)
+		})
 	case constant.C2P_RequestLogoutUser:
 		log.Println("DATA_BUFFER_LOGOUT", reader.GetBuffer())
 		server.playerLogout(conn, reader)
