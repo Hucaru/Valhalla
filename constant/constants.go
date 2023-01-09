@@ -58,9 +58,9 @@ const (
 	C2P_RequestMetaSchoolLeave  = 37
 	P2C_ReportMetaSchoolLeave   = 38
 	P2C_ReportRegionLeave       = 39
-	P2C_ReportGrid              = 40
 
 	P2C_ResultGrid = 40
+	P2C_ReportGrid = 41
 
 	//errors
 	P2C_ResultLoginUserError = 90
@@ -97,7 +97,7 @@ const (
 	LAND_X2         = -17338
 	LAND_Y2         = 19146
 	LAND_Z          = 3000
-	LAND_VIEW_RANGE = 1024 //number multiplies 2
+	LAND_VIEW_RANGE = 1200 //number multiplies 2
 )
 
 const (

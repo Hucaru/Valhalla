@@ -165,7 +165,7 @@ func (server *Server) playerConnect(conn mnet.Client, tcpConn net.Conn, reader m
 			y:    player.Character.PosY,
 		})
 
-		server.addToEmulateMoving(plr.conn.GetPlayer().UId, loggedPlayers)
+		go server.addToEmulateMoving(plr.conn.GetPlayer().UId, loggedPlayers)
 		fmt.Println("NumGoroutine COUNT EMULATE", runtime.NumGoroutine())
 		users := server.convertPlayersToLoginResult(loggedPlayers)
 		account.LoggedUsers = append(account.LoggedUsers, users...)
@@ -326,18 +326,18 @@ func (server *Server) playerMovementStart(conn mnet.Client, reader mpacket.Reade
 		return
 	}
 
-	if server.isCellChanged(conn, msg.GetMovementData()) {
-		oldPlr, newPlr := server.getNineCellsPlayers(conn, msg.GetMovementData())
-		cellsData := &mc_metadata.P2C_ResultGrid{
-			OldPlayers: server.convertPlayersToGridChanged(oldPlr),
-			NewPlayers: server.convertPlayersToGridChanged(newPlr),
-		}
-		//server.removeFromEmulateMoving(conn.GetPlayer().UId, oldPlr)
-		//server.addToEmulateMoving(conn.GetPlayer().UId, newPlr)
-
-		//server.switchPlayerCell(conn, msg.GetMovementData())
-		server.sendMsgToMe(conn, cellsData, constant.P2C_ResultGrid)
-	}
+	//if server.isCellChanged(conn, msg.GetMovementData()) {
+	//	oldPlr, newPlr := server.getNineCellsPlayers(conn, msg.GetMovementData())
+	//	cellsData := &mc_metadata.P2C_ResultGrid{
+	//		OldPlayers: server.convertPlayersToGridChanged(oldPlr),
+	//		NewPlayers: server.convertPlayersToGridChanged(newPlr),
+	//	}
+	//	//server.removeFromEmulateMoving(conn.GetPlayer().UId, oldPlr)
+	//	//server.addToEmulateMoving(conn.GetPlayer().UId, newPlr)
+	//
+	//	//server.switchPlayerCell(conn, msg.GetMovementData())
+	//	go server.sendMsgToMe(conn, cellsData, constant.P2C_ResultGrid)
+	//}
 
 	res := &mc_metadata.P2C_ReportMoveStart{
 		MovementData: msg.GetMovementData(),
@@ -356,18 +356,18 @@ func (server *Server) playerMovementEnd(conn mnet.Client, reader mpacket.Reader)
 		return
 	}
 
-	if server.isCellChanged(conn, msg.GetMovementData()) {
-		oldPlr, newPlr := server.getNineCellsPlayers(conn, msg.GetMovementData())
-		cellsData := &mc_metadata.P2C_ResultGrid{
-			OldPlayers: server.convertPlayersToGridChanged(oldPlr),
-			NewPlayers: server.convertPlayersToGridChanged(newPlr),
-		}
-		//server.removeFromEmulateMoving(conn.GetPlayer().UId, oldPlr)
-		//server.addToEmulateMoving(conn.GetPlayer().UId, newPlr)
-
-		//server.switchPlayerCell(conn, msg.GetMovementData())
-		server.sendMsgToMe(conn, cellsData, constant.P2C_ResultGrid)
-	}
+	//if server.isCellChanged(conn, msg.GetMovementData()) {
+	//	oldPlr, newPlr := server.getNineCellsPlayers(conn, msg.GetMovementData())
+	//	cellsData := &mc_metadata.P2C_ResultGrid{
+	//		OldPlayers: server.convertPlayersToGridChanged(oldPlr),
+	//		NewPlayers: server.convertPlayersToGridChanged(newPlr),
+	//	}
+	//	//server.removeFromEmulateMoving(conn.GetPlayer().UId, oldPlr)
+	//	//server.addToEmulateMoving(conn.GetPlayer().UId, newPlr)
+	//
+	//	//server.switchPlayerCell(conn, msg.GetMovementData())
+	//	go server.sendMsgToMe(conn, cellsData, constant.P2C_ResultGrid)
+	//}
 
 	res := &mc_metadata.P2C_ReportMoveEnd{
 		MovementData: msg.GetMovementData(),
@@ -725,32 +725,30 @@ func (server *Server) playerMovement(conn mnet.Client, reader mpacket.Reader) {
 			OldPlayers: server.convertPlayersToGridChanged(oldPlr),
 			NewPlayers: server.convertPlayersToGridChanged(newPlr),
 		}
+		server.sendMsgToMe(conn, cellsData, constant.P2C_ResultGrid)
+
+		server.switchPlayerCell(conn, msg.GetMovementData())
+		fmt.Println("NumGoroutine switchPlayerCell", runtime.NumGoroutine())
+		go server.addToEmulateMoving(conn.GetPlayer().UId, newPlr)
 
 		for i := 0; i < len(oldPlr); i++ {
-			server.sendMsgToPlayer(&mc_metadata.P2C_ReportGrid{
+			go server.removePlayersFromMovementLoop(oldPlr[i].conn.GetPlayer().UId)
+			go server.sendMsgToPlayer(&mc_metadata.P2C_ReportGrid{
 				PlayerInfo: &mc_metadata.P2C_PlayerInfo{
 					UuId: msg.GetMovementData().UuId,
 				},
 			}, oldPlr[i].conn.GetPlayer().UId, constant.P2C_ReportGrid)
 		}
 
-		//go server.removeFromEmulateMoving(conn.GetPlayer().UId, oldPlr)
-		//fmt.Println("NumGoroutine removeFromEmulateMoving", runtime.NumGoroutine())
-		//
-		server.switchPlayerCell(conn, msg.GetMovementData())
-
-		server.addToEmulateMoving(conn.GetPlayer().UId, newPlr)
 		fmt.Println("NumGoroutine addToEmulateMoving", runtime.NumGoroutine())
-
-		server.sendMsgToMe(conn, cellsData, constant.P2C_ResultGrid)
 	}
 
 	res := &mc_metadata.P2C_ReportMove{
 		MovementData: msg.GetMovementData(),
 	}
 
-	server.sendMsgToRegion(conn, res, constant.P2C_ReportMove)
-	server.updateUserLocation(conn, msg.GetMovementData())
+	go server.sendMsgToRegion(conn, res, constant.P2C_ReportMove)
+	go server.updateUserLocation(conn, msg.GetMovementData())
 }
 
 func (server *Server) playerInfo(conn mnet.Client, reader mpacket.Reader) {

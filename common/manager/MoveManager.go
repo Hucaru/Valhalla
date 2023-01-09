@@ -20,6 +20,7 @@ func (g *GoroutineManager) Remove(key string) {
 	q, exist := g.m.Load(key)
 	if exist {
 		q.(chan bool) <- true
+		//close(q.(chan bool))
 		g.m.Delete(key)
 	}
 }
