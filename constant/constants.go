@@ -64,8 +64,9 @@ const (
 	P2C_ReportMetaSchoolLeave   = 38
 	P2C_ReportRegionLeave       = 39
 
-	P2C_ResultGrid = 40
-	P2C_ReportGrid = 41
+	P2C_ResultGrid    = 40
+	P2C_ReportGridOld = 41
+	P2C_ReportGridNew = 42
 
 	//errors
 	P2C_ResultLoginUserError = 90

@@ -552,7 +552,15 @@ func (server *Server) addPlayerToGrid(plr *player, x1, y1 float32) {
 	}
 	x, y := common.FindGrid(x1, y1)
 	SomeMapMutex.Lock()
-	server.mapGrid[x][y] = append(server.mapGrid[x][y], plr)
+	is := false
+	for i := 0; i < len(server.mapGrid[x][y]); i++ {
+		if server.mapGrid[x][y][i].conn.GetPlayer().UId == plr.conn.GetPlayer().UId {
+			is = true
+		}
+	}
+	if !is {
+		server.mapGrid[x][y] = append(server.mapGrid[x][y], plr)
+	}
 	SomeMapMutex.Unlock()
 }
 
@@ -570,15 +578,16 @@ func (server *Server) removePlayer(uid string) {
 func (server *Server) removePlayerFromGrid(plr []*player, uID string, x1, y1 float32) {
 	x, y := common.FindGrid(x1, y1)
 	for i := 0; i < len(plr); i++ {
+
 		if plr[i].conn.GetPlayer().UId == uID {
 			if i >= (len(plr) - 1) {
 				SomeMapMutex.Lock()
-				server.mapGrid[x][y] = server.mapGrid[x][y][:len(server.mapGrid[x][y])-1]
+				server.mapGrid[x][y] = server.mapGrid[x][y][:0]
 				SomeMapMutex.Unlock()
 				break
 			} else {
 				SomeMapMutex.Lock()
-				server.mapGrid[x][y] = append(server.mapGrid[x][y][:i], server.mapGrid[x][y][i+1:]...)
+				server.mapGrid[x][y] = append(server.mapGrid[x][y][:i-1], server.mapGrid[x][y][i+1:]...)
 				SomeMapMutex.Unlock()
 				break
 			}

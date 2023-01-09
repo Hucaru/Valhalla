@@ -740,23 +740,32 @@ func (server *Server) playerMovement(conn mnet.Client, reader mpacket.Reader) {
 
 	if server.isCellChanged(conn, msg.GetMovementData()) {
 		oldPlr, newPlr := server.getNineCellsPlayers(conn, msg.GetMovementData())
-		cellsData := &mc_metadata.P2C_ResultGrid{
-			OldPlayers: server.convertPlayersToGridChanged(oldPlr),
-			NewPlayers: server.convertPlayersToGridChanged(newPlr),
+		if len(oldPlr) > 0 || len(newPlr) > 0 {
+			cellsData := &mc_metadata.P2C_ResultGrid{
+				OldPlayers: server.convertPlayersToGridChanged(oldPlr),
+				NewPlayers: server.convertPlayersToGridChanged(newPlr),
+			}
+			server.sendMsgToMe(conn, cellsData, constant.P2C_ResultGrid)
 		}
-		go server.sendMsgToMe(conn, cellsData, constant.P2C_ResultGrid)
 
 		server.switchPlayerCell(conn, msg.GetMovementData())
 		fmt.Println("NumGoroutine switchPlayerCell", runtime.NumGoroutine())
 		//go server.addToEmulateMoving(conn.GetPlayer().UId, newPlr)
 
 		for i := 0; i < len(oldPlr); i++ {
-			//go server.removePlayersFromMovementLoop(oldPlr[i].conn.GetPlayer().UId)
 			go server.sendMsgToPlayer(&mc_metadata.P2C_ReportGrid{
 				PlayerInfo: &mc_metadata.P2C_PlayerInfo{
 					UuId: msg.GetMovementData().UuId,
 				},
-			}, oldPlr[i].conn.GetPlayer().UId, constant.P2C_ReportGrid)
+			}, oldPlr[i].conn.GetPlayer().UId, constant.P2C_ReportGridOld)
+		}
+
+		for i := 0; i < len(newPlr); i++ {
+			go server.sendMsgToPlayer(&mc_metadata.P2C_ReportGrid{
+				PlayerInfo: &mc_metadata.P2C_PlayerInfo{
+					UuId: msg.GetMovementData().UuId,
+				},
+			}, newPlr[i].conn.GetPlayer().UId, constant.P2C_ReportGridNew)
 		}
 
 		fmt.Println("NumGoroutine addToEmulateMoving", runtime.NumGoroutine())
@@ -765,9 +774,9 @@ func (server *Server) playerMovement(conn mnet.Client, reader mpacket.Reader) {
 	res := &mc_metadata.P2C_ReportMove{
 		MovementData: msg.GetMovementData(),
 	}
-
+	server.updateUserLocation(conn, msg.GetMovementData())
 	go server.sendMsgToRegion(conn, res, constant.P2C_ReportMove)
-	go server.updateUserLocation(conn, msg.GetMovementData())
+
 }
 
 func (server *Server) playerInfo(conn mnet.Client, reader mpacket.Reader) {
