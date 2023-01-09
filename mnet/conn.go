@@ -3,12 +3,13 @@ package mnet
 import (
 	"encoding/binary"
 	"fmt"
-	"github.com/Hucaru/Valhalla/mnet/crypt"
-	"github.com/Hucaru/Valhalla/mpacket"
 	"io"
 	"math/rand"
 	"net"
 	"time"
+
+	"github.com/Hucaru/Valhalla/mnet/crypt"
+	"github.com/Hucaru/Valhalla/mpacket"
 )
 
 type MConn interface {
@@ -113,6 +114,7 @@ type baseConn struct {
 	latency int
 	jitter  int
 	pSend   chan func()
+	pAction chan func()
 }
 
 func (bc *baseConn) Reader() {
