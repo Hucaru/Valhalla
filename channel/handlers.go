@@ -43,17 +43,11 @@ func (server *Server) HandleClientPacket(
 		log.Println("PLAYERS ONLINE ", len(server.players))
 		server.playerConnect(conn, tcpConn, reader)
 	case constant.C2P_RequestMoveStart:
-		conn.PushAction(func() {
-			server.playerMovementStart(conn, reader)
-		})
+		server.playerMovementStart(conn, reader)
 	case constant.C2P_RequestMove:
-		conn.PushAction(func() {
-			server.playerMovement(conn, reader)
-		})
+		server.playerMovement(conn, reader)
 	case constant.C2P_RequestMoveEnd:
-		conn.PushAction(func() {
-			server.playerMovementEnd(conn, reader)
-		})
+		server.playerMovementEnd(conn, reader)
 	case constant.C2P_RequestLogoutUser:
 		log.Println("DATA_BUFFER_LOGOUT", reader.GetBuffer())
 		server.playerLogout(conn, reader)

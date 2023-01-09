@@ -34,7 +34,6 @@ type players map[string]*player
 
 var SomeMapMutex = &sync.RWMutex{}
 var gorotinesManager = manager.Init()
-var wg sync.WaitGroup
 
 func (p players) getFromConn(conn mnet.Client) (*player, error) {
 	SomeMapMutex.Lock()

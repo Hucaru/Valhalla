@@ -160,7 +160,7 @@ func (cs *channelServer) processEvent() {
 				case mnet.MEClientDisconnect:
 					cs.gameState.ClientDisconnected(conn)
 				case mnet.MEClientPacket:
-					cs.gameState.HandleClientPacket(
+					go cs.gameState.HandleClientPacket(
 						conn,
 						e.Conn,
 						mpacket.NewReader(&e.Packet, time.Now().Unix()),

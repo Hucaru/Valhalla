@@ -26,7 +26,6 @@ type Client interface {
 	SetAdminLevel(int)
 	GetPlayer() *model.Player
 	SetPlayer(player model.Player)
-	PushAction(f func())
 }
 
 type client struct {
@@ -61,23 +60,6 @@ func NewClient(conn net.Conn, eRecv chan *Event, queueSize int, keySend, keyRecv
 	c.latency = latency
 	c.jitter = jitter
 	c.pSend = make(chan func(), queueSize*10) // Used only when simulating latency
-	c.pAction = make(chan func())
-
-	go func(pAction chan func()) {
-
-		for {
-			select {
-			case p, ok := <-pAction:
-				if !ok {
-					return
-				}
-
-				p()
-			default:
-			}
-		}
-
-	}(c.pAction)
 
 	if latency > 0 {
 		go func(pSend chan func(), conn net.Conn) {
@@ -128,25 +110,6 @@ func NewClientMeta(conn net.Conn, eRecv chan *Event, queueSize int, latency, jit
 			}
 		}(c.pSend, conn)
 	}
-
-	c.pAction = make(chan func())
-
-	go func(pAction chan func()) {
-
-		for {
-			select {
-			case p, ok := <-pAction:
-				if !ok {
-					return
-				}
-
-				p()
-			default:
-			}
-		}
-
-	}(c.pAction)
-
 	return c
 }
 
@@ -204,8 +167,4 @@ func (c *client) GetPlayer() *model.Player {
 
 func (c *client) SetPlayer(player model.Player) {
 	c.player = player
-}
-
-func (c *client) PushAction(f func()) {
-	c.pAction <- f
 }

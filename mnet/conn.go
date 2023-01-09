@@ -114,7 +114,6 @@ type baseConn struct {
 	latency int
 	jitter  int
 	pSend   chan func()
-	pAction chan func()
 }
 
 func (bc *baseConn) Reader() {
