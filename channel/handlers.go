@@ -753,7 +753,7 @@ func (server *Server) playerMovement(conn mnet.Client, reader mpacket.Reader) {
 		//go server.addToEmulateMoving(conn.GetPlayer().UId, newPlr)
 
 		for i := 0; i < len(oldPlr); i++ {
-			go server.sendMsgToPlayer(&mc_metadata.P2C_ReportGrid{
+			go server.sendMsgToPlayer(&mc_metadata.P2C_ReportGridOld{
 				PlayerInfo: &mc_metadata.P2C_PlayerInfo{
 					UuId: msg.GetMovementData().UuId,
 				},
@@ -761,7 +761,7 @@ func (server *Server) playerMovement(conn mnet.Client, reader mpacket.Reader) {
 		}
 
 		for i := 0; i < len(newPlr); i++ {
-			go server.sendMsgToPlayer(&mc_metadata.P2C_ReportGrid{
+			go server.sendMsgToPlayer(&mc_metadata.P2C_ReportGridNew{
 				PlayerInfo: &mc_metadata.P2C_PlayerInfo{
 					UuId: msg.GetMovementData().UuId,
 				},
