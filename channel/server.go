@@ -5,11 +5,14 @@ import (
 	"fmt"
 	"github.com/Hucaru/Valhalla/common/db"
 	"github.com/Hucaru/Valhalla/common/db/model"
+	"github.com/Hucaru/Valhalla/common/manager"
+	proto2 "github.com/Hucaru/Valhalla/common/proto"
 	"github.com/Hucaru/Valhalla/constant"
 	"github.com/Hucaru/Valhalla/meta-proto/go/mc_metadata"
 	"github.com/pemistahl/lingua-go"
 	"google.golang.org/protobuf/proto"
 	"log"
+	"runtime"
 	"strconv"
 	"sync"
 	"time"
@@ -28,16 +31,23 @@ import (
 
 type players map[string]*player
 
-var SomeMapMutex = sync.RWMutex{}
+var SomeMapMutex = &sync.RWMutex{}
+var gorotinesManager = manager.Init()
 
 func (p players) getFromConn(conn mnet.Client) (*player, error) {
-	//for _, v := range p {
-	//	if v.conn == conn {
-	//		return v, nil
-	//	}
-	//}
-	SomeMapMutex.RLock()
+	SomeMapMutex.Lock()
 	plr, ok := p[conn.GetPlayer().UId]
+	SomeMapMutex.Unlock()
+	if ok {
+		return plr, nil
+	}
+
+	return new(player), fmt.Errorf("Could not retrieve Data")
+}
+
+func (p players) getFromConnByUID(uID string) (*player, error) {
+	SomeMapMutex.RLock()
+	plr, ok := p[uID]
 	SomeMapMutex.RUnlock()
 	if ok {
 		return plr, nil
@@ -94,6 +104,12 @@ type rates struct {
 	mesos float32
 }
 
+type PlayerMovement struct {
+	name string
+	x    float32
+	y    float32
+}
+
 // Server state
 type Server struct {
 	id               byte
@@ -116,7 +132,8 @@ type Server struct {
 	rates            rates
 	account          *model.Character
 	langDetector     lingua.LanguageDetector
-	mapGrid          [][][]*player //(y,x)[data]
+	mapGrid          [][][]*player    //(y,x)[data]
+	fMovePlayers     []PlayerMovement //(y,x)[data]
 }
 
 // Initialize the server
@@ -156,6 +173,8 @@ func (server *Server) Initialize(work chan func(), dbuser, dbpassword, dbaddress
 	columns := (constant.LAND_X1 - constant.LAND_X2) / constant.LAND_VIEW_RANGE
 	rows := (constant.LAND_Y2 - constant.LAND_Y1) / constant.LAND_VIEW_RANGE
 
+	server.fMovePlayers = []PlayerMovement{}
+
 	x := make([][][]*player, columns)
 
 	for i := 0; i < columns; i++ {
@@ -192,6 +211,126 @@ func (server *Server) Initialize(work chan func(), dbuser, dbpassword, dbaddress
 	server.langDetector = detector
 
 	server.parties = make(map[int32]*party)
+}
+
+func (server *Server) addToEmulateMoving(uid string, plrs []*player) {
+	for i := 0; i < len(plrs); i++ {
+		if plrs[i].conn.GetPlayer().IsBot != 1 {
+			return
+		}
+		server.moveEmulate(plrs[i].conn.GetPlayer().UId,
+			plrs[i].conn.GetPlayer().Character.PosX,
+			plrs[i].conn.GetPlayer().Character.PosY,
+			plrs[i].conn.GetPlayer().Character.PosZ)
+	}
+}
+
+func (server *Server) addToEmulateMove(plr *player) {
+	server.moveEmulate(plr.conn.GetPlayer().UId,
+		plr.conn.GetPlayer().Character.PosX,
+		plr.conn.GetPlayer().Character.PosY,
+		plr.conn.GetPlayer().Character.PosZ)
+}
+
+func (server *Server) moveEmulate(uID string, x, y, z float32) {
+
+	if gorotinesManager.Get(uID) {
+		return
+	}
+
+	ch := make(chan bool)
+	gorotinesManager.Add(ch, uID)
+
+	go func(chan bool) {
+		for {
+			select {
+
+			case <-ch:
+				return
+			default:
+				s := &mc_metadata.P2C_ReportMoveStart{
+					MovementData: &mc_metadata.Movement{
+						UuId:         uID,
+						DestinationX: x,
+						DestinationY: y,
+						DestinationZ: z,
+						InterpTime:   300,
+					},
+				}
+				//log.Println("P2C_ReportMoveStart", uID, x, y)
+				if res, errR := proto2.MakeResponse(s, constant.P2C_ReportMoveStart); errR == nil {
+
+					for i := 0; i < len(server.fMovePlayers); i++ {
+						if plr, err := server.players.getFromConnByUID(server.fMovePlayers[i].name); err == nil {
+							x1, y1 := common.FindGrid(plr.conn.GetPlayer().Character.PosX, plr.conn.GetPlayer().Character.PosY)
+							x2, y2 := common.FindGrid(x, y)
+
+							if common.FindLocationInGrid(x1, y1, x2, y2) {
+								plr.conn.Send(res)
+							}
+						}
+					}
+
+				} else if errR != nil {
+					log.Println("DATA_RESPONSE_ERROR", errR)
+				}
+
+				for k := 1; k <= 10; k++ {
+					m := &mc_metadata.P2C_ReportMove{
+						MovementData: &mc_metadata.Movement{
+							UuId:         uID,
+							DestinationX: x + float32(k*100),
+							DestinationY: y,
+							DestinationZ: z,
+							InterpTime:   300,
+						},
+					}
+
+					if res, errR := proto2.MakeResponse(m, constant.P2C_ReportMove); errR == nil {
+						for i := 0; i < len(server.fMovePlayers); i++ {
+							if plr, err := server.players.getFromConnByUID(server.fMovePlayers[i].name); err == nil {
+								x1, y1 := common.FindGrid(plr.conn.GetPlayer().Character.PosX, plr.conn.GetPlayer().Character.PosY)
+								x2, y2 := common.FindGrid(x, y)
+
+								if common.FindLocationInGrid(x1, y1, x2, y2) {
+									plr.conn.Send(res)
+								}
+							}
+						}
+					} else if errR != nil {
+						log.Println("DATA_RESPONSE_ERROR", errR)
+					}
+					time.Sleep(300 * time.Millisecond)
+				}
+
+				e := &mc_metadata.P2C_ReportMoveEnd{
+					MovementData: &mc_metadata.Movement{
+						UuId:         uID,
+						DestinationX: x + float32(1000),
+						DestinationY: y,
+						DestinationZ: z,
+						InterpTime:   300,
+					},
+				}
+
+				if res, errR := proto2.MakeResponse(e, constant.P2C_ReportMoveEnd); errR == nil {
+					for i := 0; i < len(server.fMovePlayers); i++ {
+						if plr, err := server.players.getFromConnByUID(server.fMovePlayers[i].name); err == nil {
+							x1, y1 := common.FindGrid(plr.conn.GetPlayer().Character.PosX, plr.conn.GetPlayer().Character.PosY)
+							x2, y2 := common.FindGrid(x, y)
+
+							if common.FindLocationInGrid(x1, y1, x2, y2) {
+								plr.conn.Send(res)
+							}
+						}
+					}
+				} else if errR != nil {
+					log.Println("DATA_RESPONSE_ERROR", errR)
+				}
+			}
+		}
+	}(ch)
+
 }
 
 func (server *Server) loadScripts() {
@@ -309,17 +448,24 @@ func (server *Server) ClientDisconnected(conn mnet.Client) {
 
 	x, y := common.FindGrid(conn.GetPlayer().Character.PosX, conn.GetPlayer().Character.PosY)
 	for i := 0; i < len(server.mapGrid[x][y]); i++ {
-
+		arr := server.mapGrid[x][y]
 		if fmt.Sprintf("%p", server.mapGrid[x][y][i]) == fmt.Sprintf("%p", plr) {
-			server.mapGrid[x][y][i] = server.mapGrid[x][y][len(server.mapGrid[x][y])-1] // Copy last element to index i.
-			server.mapGrid[x][y][len(server.mapGrid[x][y])-1] = nil                     // Erase last element (write zero value).
-			server.mapGrid[x][y] = server.mapGrid[x][y][:len(server.mapGrid[x][y])-1]   // Truncate slice.
+			if i == (len(server.mapGrid[x][y]) - 1) {
+				arr = server.mapGrid[x][y][:len(server.mapGrid[x][y])-1]
+			} else {
+				arr[i] = server.mapGrid[x][y][len(server.mapGrid[x][y])-1] // Copy last element to index i.
+				arr[len(server.mapGrid[x][y])-1] = nil                     // Erase last element (write zero value).
+				arr = server.mapGrid[x][y][:len(server.mapGrid[x][y])-1]
+			}
 
+			SomeMapMutex.Lock()
+			server.mapGrid[x][y] = arr
+			SomeMapMutex.Unlock()
 			break
 		}
 	}
 	server.removePlayer(conn.GetPlayer().UId)
-
+	fmt.Println("NumGoroutine COUNT", runtime.NumGoroutine())
 	err1 := db.UpdateLoginState(conn.GetPlayer().UId, false)
 	if err1 != nil {
 		log.Println("ERROR LOGOUT PLAYER_ID", conn.GetPlayer().UId)
@@ -378,27 +524,79 @@ func makeDisconnectedResponse(uUID string) ([]byte, error) {
 	return result, nil
 }
 
-func (server *Server) addPlayer(prl *player) {
-	if prl == nil || prl.conn.GetPlayer() == nil {
+func (server *Server) addPlayer(plr *player) {
+	if plr == nil || plr.conn.GetPlayer() == nil {
 		return
 	}
 	if server.players == nil {
 		server.players = make(map[string]*player)
 	}
 	SomeMapMutex.Lock()
-	server.players[prl.conn.GetPlayer().UId] = prl
+	server.players[plr.conn.GetPlayer().UId] = plr
+	SomeMapMutex.Unlock()
+	server.addPlayerToGrid(plr, plr.conn.GetPlayer().Character.PosX, plr.conn.GetPlayer().Character.PosY)
+}
+
+func (server *Server) addPlayerToGrid(plr *player, x1, y1 float32) {
+	if plr == nil {
+		return
+	}
+	x, y := common.FindGrid(x1, y1)
+	SomeMapMutex.Lock()
+	server.mapGrid[x][y] = append(server.mapGrid[x][y], plr)
 	SomeMapMutex.Unlock()
 }
 
-func (server *Server) removePlayer(key string) {
+func (server *Server) removePlayer(uid string) {
 	SomeMapMutex.RLock()
-	_, ok := server.players[key]
+	_, ok := server.players[uid]
 	SomeMapMutex.RUnlock()
 	if ok {
-		SomeMapMutex.Lock()
-		delete(server.players, key)
-		SomeMapMutex.Unlock()
+		delete(server.players, uid)
 	}
+	server.removeFromMovingLoop(uid)
+	go gorotinesManager.ClearAll()
+}
+
+func (server *Server) removePlayerFromGrid(plr []*player, uID string, x1, y1 float32) {
+	x, y := common.FindGrid(x1, y1)
+	for i := 0; i < len(plr); i++ {
+		if plr[i].conn.GetPlayer().UId == uID {
+			if i == (len(plr) - 2) {
+				SomeMapMutex.Lock()
+				server.mapGrid[x][y] = server.mapGrid[x][y][:len(server.mapGrid[x][y])-1]
+				SomeMapMutex.Unlock()
+				break
+			} else {
+				SomeMapMutex.Lock()
+				server.mapGrid[x][y] = append(server.mapGrid[x][y][:i], server.mapGrid[x][y][i+1:]...)
+				SomeMapMutex.Unlock()
+				break
+			}
+
+		}
+	}
+
+}
+
+func (server *Server) removeFromMovingLoop(uid string) {
+	for i := 0; i < len(server.fMovePlayers); i++ {
+		if server.fMovePlayers[i].name == uid {
+			server.fMovePlayers = append(server.fMovePlayers[:i], server.fMovePlayers[i+1:]...)
+			//server.removePlayersFromMovementLoop(v[i])
+		}
+	}
+
+}
+
+func (server *Server) removeFromEmulateMoving(uid string, plrs []*player) {
+	for i := 0; i < len(plrs); i++ {
+		server.removePlayersFromMovementLoop(plrs[i].conn.GetPlayer().UId)
+	}
+}
+
+func (server *Server) removePlayersFromMovementLoop(uID string) {
+	gorotinesManager.Remove(uID)
 }
 
 // SetScrollingHeaderMessage that appears at the top of game window

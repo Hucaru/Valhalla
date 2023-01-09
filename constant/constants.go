@@ -58,6 +58,7 @@ const (
 	C2P_RequestMetaSchoolLeave  = 37
 	P2C_ReportMetaSchoolLeave   = 38
 	P2C_ReportRegionLeave       = 39
+	P2C_ReportGrid              = 40
 
 	P2C_ResultGrid = 40
 

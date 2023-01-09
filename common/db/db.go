@@ -90,7 +90,7 @@ func GetLoggedDataForBot(uUID string) (*model.Player, error) {
 		RegionID:    constant.World,
 		Character: &model.Character{
 			Role:     constant.User,
-			NickName: "",
+			NickName: uUID,
 			Hair:     "",
 			Top:      "",
 			Bottom:   "",
