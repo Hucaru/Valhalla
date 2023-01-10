@@ -134,8 +134,8 @@ type Server struct {
 	rates            rates
 	account          *model.Character
 	langDetector     lingua.LanguageDetector
-	mapGrid          [][][]*player    //(y,x)[data]
-	fMovePlayers     []PlayerMovement //(y,x)[data]
+	mapGrid          [][]map[int]*player //(y,x)[data]
+	fMovePlayers     []PlayerMovement    //(y,x)[data]
 }
 
 // Initialize the server
@@ -178,13 +178,13 @@ func (server *Server) Initialize(work chan func(), dbuser, dbpassword, dbaddress
 
 	server.fMovePlayers = []PlayerMovement{}
 
-	x := make([][][]*player, columns)
+	x := make([][]map[int]*player, columns)
 
 	for i := 0; i < columns; i++ {
-		y := make([][]*player, rows)
+		y := make([]map[int]*player, rows)
 
 		for j := 0; j < rows; j++ {
-			d := []*player{}
+			d := make(map[int]*player)
 			y[j] = d
 		}
 		x[i] = y
@@ -446,7 +446,7 @@ func (server *Server) clearSessions() {
 
 // ClientDisconnected from server
 func (server *Server) ClientDisconnected(conn mnet.Client) {
-	plr, err := server.players.getFromConn(conn)
+	_, err := server.players.getFromConn(conn)
 	if err != nil {
 		return
 	}
@@ -455,24 +455,6 @@ func (server *Server) ClientDisconnected(conn mnet.Client) {
 		delete(server.npcChat, conn)
 	}
 
-	x, y := common.FindGrid(conn.GetPlayer().Character.PosX, conn.GetPlayer().Character.PosY)
-	for i := 0; i < len(server.mapGrid[x][y]); i++ {
-		arr := server.mapGrid[x][y]
-		if fmt.Sprintf("%p", server.mapGrid[x][y][i]) == fmt.Sprintf("%p", plr) {
-			if i == (len(server.mapGrid[x][y]) - 1) {
-				arr = server.mapGrid[x][y][:len(server.mapGrid[x][y])-1]
-			} else {
-				arr[i] = server.mapGrid[x][y][len(server.mapGrid[x][y])-1] // Copy last element to index i.
-				arr[len(server.mapGrid[x][y])-1] = nil                     // Erase last element (write zero value).
-				arr = server.mapGrid[x][y][:len(server.mapGrid[x][y])-1]
-			}
-
-			SomeMapMutex.Lock()
-			server.mapGrid[x][y] = arr
-			SomeMapMutex.Unlock()
-			break
-		}
-	}
 	server.removePlayer(conn.GetPlayer().UId)
 	fmt.Println("NumGoroutine COUNT", runtime.NumGoroutine())
 	err1 := db.UpdateLoginState(conn.GetPlayer().UId, false)
@@ -540,10 +522,11 @@ func (server *Server) addPlayer(plr *player) {
 	if server.players == nil {
 		server.players = make(map[string]*player)
 	}
+	server.addPlayerToGrid(plr, plr.conn.GetPlayer().Character.PosX, plr.conn.GetPlayer().Character.PosY)
 	SomeMapMutex.Lock()
 	server.players[plr.conn.GetPlayer().UId] = plr
 	SomeMapMutex.Unlock()
-	server.addPlayerToGrid(plr, plr.conn.GetPlayer().Character.PosX, plr.conn.GetPlayer().Character.PosY)
+
 }
 
 func (server *Server) addPlayerToGrid(plr *player, x1, y1 float32) {
@@ -551,47 +534,60 @@ func (server *Server) addPlayerToGrid(plr *player, x1, y1 float32) {
 		return
 	}
 	x, y := common.FindGrid(x1, y1)
-	SomeMapMutex.Lock()
+
 	is := false
 	for i := 0; i < len(server.mapGrid[x][y]); i++ {
+		SomeMapMutex.RLock()
 		if server.mapGrid[x][y][i].conn.GetPlayer().UId == plr.conn.GetPlayer().UId {
 			is = true
 		}
+		SomeMapMutex.RUnlock()
 	}
 	if !is {
-		server.mapGrid[x][y] = append(server.mapGrid[x][y], plr)
+		SomeMapMutex.Lock()
+		server.mapGrid[x][y][len(server.mapGrid[x][y])] = plr
+		SomeMapMutex.Unlock()
 	}
-	SomeMapMutex.Unlock()
+
 }
 
 func (server *Server) removePlayer(uid string) {
 	SomeMapMutex.RLock()
-	_, ok := server.players[uid]
+	plr, ok := server.players[uid]
 	SomeMapMutex.RUnlock()
+
+	for i := 0; i < len(server.mapGrid); i++ {
+		x, y := common.FindGrid(plr.conn.GetPlayer().Character.PosX, plr.conn.GetPlayer().Character.PosY)
+		SomeMapMutex.RLock()
+		_, ok := server.mapGrid[x][y][i]
+		SomeMapMutex.RUnlock()
+		if ok {
+			SomeMapMutex.Lock()
+			if server.mapGrid[x][y][i].conn.GetPlayer().UId == plr.conn.GetPlayer().UId {
+				delete(server.mapGrid[x][y], i)
+				break
+			}
+			SomeMapMutex.Unlock()
+		}
+	}
+
 	if ok {
 		delete(server.players, uid)
 	}
-	server.removeFromMovingLoop(uid)
-	go gorotinesManager.ClearAll()
+
+	//server.removeFromMovingLoop(uid)
+	//go gorotinesManager.ClearAll()
 }
 
-func (server *Server) removePlayerFromGrid(plr []*player, uID string, x1, y1 float32) {
+func (server *Server) removePlayerFromGrid(plr map[int]*player, uID string, x1, y1 float32) {
+	if plr == nil {
+		return
+	}
 	x, y := common.FindGrid(x1, y1)
 	for i := 0; i < len(plr); i++ {
 
 		if plr[i].conn.GetPlayer().UId == uID {
-			if i >= (len(plr) - 1) {
-				SomeMapMutex.Lock()
-				server.mapGrid[x][y] = server.mapGrid[x][y][:0]
-				SomeMapMutex.Unlock()
-				break
-			} else {
-				SomeMapMutex.Lock()
-				server.mapGrid[x][y] = append(server.mapGrid[x][y][:i-1], server.mapGrid[x][y][i+1:]...)
-				SomeMapMutex.Unlock()
-				break
-			}
-
+			delete(server.mapGrid[x][y], i)
 		}
 	}
 

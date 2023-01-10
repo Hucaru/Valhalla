@@ -350,7 +350,7 @@ func (server *Server) playerMovementStart(conn mnet.Client, reader mpacket.Reade
 		MovementData: msg.GetMovementData(),
 	}
 
-	go server.sendMsgToRegion(conn, res, constant.P2C_ReportMoveStart)
+	server.sendMsgToRegion(conn, res, constant.P2C_ReportMoveStart)
 	server.updateUserLocation(conn, msg.GetMovementData())
 }
 
@@ -380,7 +380,7 @@ func (server *Server) playerMovementEnd(conn mnet.Client, reader mpacket.Reader)
 		MovementData: msg.GetMovementData(),
 	}
 
-	go server.sendMsgToRegion(conn, res, constant.P2C_ReportMoveEnd)
+	server.sendMsgToRegion(conn, res, constant.P2C_ReportMoveEnd)
 	server.updateUserLocation(conn, msg.GetMovementData())
 }
 
@@ -472,16 +472,16 @@ func (server *Server) getPlayersOnGrids(x, y int, uID string) []*player {
 
 }
 
-func (server *Server) getGridPlayers(x int, y int) []*player {
+func (server *Server) getGridPlayers(x int, y int) map[int]*player {
 	if len(server.mapGrid) <= x {
-		return []*player{}
+		return map[int]*player{}
 	}
 	if x < 0 {
 		x = 1
 	}
 
 	if len(server.mapGrid[x]) <= y {
-		return []*player{}
+		return map[int]*player{}
 	}
 
 	if y < 0 {
@@ -747,7 +747,6 @@ func (server *Server) playerMovement(conn mnet.Client, reader mpacket.Reader) {
 			}
 			server.sendMsgToMe(conn, cellsData, constant.P2C_ResultGrid)
 		}
-
 		server.switchPlayerCell(conn, msg.GetMovementData())
 		fmt.Println("NumGoroutine switchPlayerCell", runtime.NumGoroutine())
 		//go server.addToEmulateMoving(conn.GetPlayer().UId, newPlr)
@@ -769,11 +768,12 @@ func (server *Server) playerMovement(conn mnet.Client, reader mpacket.Reader) {
 				SpawnRotY: msg.GetMovementData().DeatinationRotationY,
 				SpawnRotZ: msg.GetMovementData().DeatinationRotationZ,
 				PlayerInfo: &mc_metadata.P2C_PlayerInfo{
-					UuId:    msg.GetMovementData().UuId,
-					Top:     conn.GetPlayer().Character.Top,
-					Bottom:  conn.GetPlayer().Character.Bottom,
-					Clothes: conn.GetPlayer().Character.Clothes,
-					Hair:    conn.GetPlayer().Character.Hair,
+					Nickname: msg.GetMovementData().UuId,
+					UuId:     msg.GetMovementData().UuId,
+					Top:      conn.GetPlayer().Character.Top,
+					Bottom:   conn.GetPlayer().Character.Bottom,
+					Clothes:  conn.GetPlayer().Character.Clothes,
+					Hair:     conn.GetPlayer().Character.Hair,
 				},
 			}, newPlr[i].conn.GetPlayer().UId, constant.P2C_ReportGridNew)
 		}
@@ -784,8 +784,8 @@ func (server *Server) playerMovement(conn mnet.Client, reader mpacket.Reader) {
 	res := &mc_metadata.P2C_ReportMove{
 		MovementData: msg.GetMovementData(),
 	}
+	server.sendMsgToRegion(conn, res, constant.P2C_ReportMove)
 	server.updateUserLocation(conn, msg.GetMovementData())
-	go server.sendMsgToRegion(conn, res, constant.P2C_ReportMove)
 
 }
 
@@ -1022,18 +1022,19 @@ func (server *Server) isCellChanged(conn mnet.Client, msg *mc_metadata.Movement)
 }
 
 func (server *Server) switchPlayerCell(conn mnet.Client, msg *mc_metadata.Movement) {
+	SomeMapMutex.RLock()
+	_, ok := server.players[conn.GetPlayer().UId]
+	SomeMapMutex.RUnlock()
+	if ok {
+		server.addPlayerToGrid(server.players[conn.GetPlayer().UId], msg.GetDestinationX(), msg.GetDestinationY())
+	}
+
 	x1, y1 := common.FindGrid(conn.GetPlayer().Character.PosX, conn.GetPlayer().Character.PosY)
 	server.removePlayerFromGrid(
 		server.getGridPlayers(x1, y1),
 		conn.GetPlayer().UId,
 		conn.GetPlayer().Character.PosX,
 		conn.GetPlayer().Character.PosY)
-
-	_, ok := server.players[conn.GetPlayer().UId]
-	if ok {
-		server.addPlayerToGrid(server.players[conn.GetPlayer().UId], msg.GetDestinationX(), msg.GetDestinationY())
-	}
-
 }
 
 func (server *Server) getNineCellsPlayers(conn mnet.Client, msg *mc_metadata.Movement) (oldPlr []*player, newPlr []*player) {
