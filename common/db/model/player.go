@@ -8,4 +8,5 @@ type Player struct {
 	Character   *Character
 	Interaction *Interaction
 	IsBot       int32
+	ModifiedAt  int64
 }

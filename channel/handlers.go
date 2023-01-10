@@ -270,6 +270,8 @@ func (server *Server) sendMsgToRegion(conn mnet.Client, msg proto2.Message, msgT
 	x, y := common.FindGrid(plr.conn.GetPlayer().Character.PosX, plr.conn.GetPlayer().Character.PosY)
 	plrs := server.getPlayersOnGrids(x, y, plr.conn.GetPlayer().UId)
 
+	log.Println("getPlayersOnGrids", len(plrs))
+
 	res, err := proto.MakeResponse(msg, uint32(msgType))
 	if err != nil {
 		log.Println("DATA_RESPONSE_ERROR", err)
@@ -388,7 +390,9 @@ func (server *Server) getPlayersOnGrids(x, y int, uID string) []*player {
 	var players []*player
 
 	//main
+	SomeMapMutex.RLock()
 	arr := server.getGridPlayers(x, y)
+	SomeMapMutex.RUnlock()
 	for _, val := range arr {
 		if val.conn.GetPlayer().UId == uID {
 			continue
@@ -397,7 +401,9 @@ func (server *Server) getPlayersOnGrids(x, y int, uID string) []*player {
 	}
 
 	//left-top
+	SomeMapMutex.RLock()
 	arr = server.getGridPlayers(x-1, y+1)
+	SomeMapMutex.RUnlock()
 	for _, val := range arr {
 		if val.conn.GetPlayer().UId == uID {
 			continue
@@ -406,7 +412,9 @@ func (server *Server) getPlayersOnGrids(x, y int, uID string) []*player {
 	}
 
 	//top
+	SomeMapMutex.RLock()
 	arr = server.getGridPlayers(x, y+1)
+	SomeMapMutex.RUnlock()
 	for _, val := range arr {
 		if val.conn.GetPlayer().UId == uID {
 			continue
@@ -415,7 +423,9 @@ func (server *Server) getPlayersOnGrids(x, y int, uID string) []*player {
 	}
 
 	//right-top
+	SomeMapMutex.RLock()
 	arr = server.getGridPlayers(x+1, y+1)
+	SomeMapMutex.RUnlock()
 	for _, val := range arr {
 		if val.conn.GetPlayer().UId == uID {
 			continue
@@ -424,7 +434,9 @@ func (server *Server) getPlayersOnGrids(x, y int, uID string) []*player {
 	}
 
 	//right
+	SomeMapMutex.RLock()
 	arr = server.getGridPlayers(x+1, y)
+	SomeMapMutex.RUnlock()
 	for _, val := range arr {
 		if val.conn.GetPlayer().UId == uID {
 			continue
@@ -433,7 +445,9 @@ func (server *Server) getPlayersOnGrids(x, y int, uID string) []*player {
 	}
 
 	//right-bottom
+	SomeMapMutex.RLock()
 	arr = server.getGridPlayers(x+1, y-1)
+	SomeMapMutex.RUnlock()
 	for _, val := range arr {
 		if val.conn.GetPlayer().UId == uID {
 			continue
@@ -451,7 +465,9 @@ func (server *Server) getPlayersOnGrids(x, y int, uID string) []*player {
 	}
 
 	//left-bottom
+	SomeMapMutex.RLock()
 	arr = server.getGridPlayers(x-1, y-1)
+	SomeMapMutex.RUnlock()
 	for _, val := range arr {
 		if val.conn.GetPlayer().UId == uID {
 			continue
@@ -460,7 +476,9 @@ func (server *Server) getPlayersOnGrids(x, y int, uID string) []*player {
 	}
 
 	//left
+	SomeMapMutex.RLock()
 	arr = server.getGridPlayers(x-1, y)
+	SomeMapMutex.RUnlock()
 	for _, val := range arr {
 		if val.conn.GetPlayer().UId == uID {
 			continue
@@ -470,6 +488,14 @@ func (server *Server) getPlayersOnGrids(x, y int, uID string) []*player {
 	arr = nil
 	return players
 
+}
+
+func (server *Server) existsPlayerFromGrid(uID string, x, y int) bool {
+	plrs := server.getGridPlayers(x, y)
+	for i := 0; i < len(plrs); i++ {
+		return plrs[i] != nil && plrs[i].conn.GetPlayer().UId == uID
+	}
+	return false
 }
 
 func (server *Server) getGridPlayers(x int, y int) map[int]*player {
@@ -1022,19 +1048,30 @@ func (server *Server) isCellChanged(conn mnet.Client, msg *mc_metadata.Movement)
 }
 
 func (server *Server) switchPlayerCell(conn mnet.Client, msg *mc_metadata.Movement) {
+	if conn.GetPlayer().ModifiedAt >= (msg.ModifiedAt / 1000) {
+		return
+	}
+
+	conn.GetPlayer().ModifiedAt = msg.ModifiedAt / 1000
+	x1, y1 := common.FindGrid(conn.GetPlayer().Character.PosX, conn.GetPlayer().Character.PosY)
+	x2, y2 := common.FindGrid(msg.DestinationX, msg.DestinationY)
+
+	if (x1 == x2 && y1 == y2) && !server.existsPlayerFromGrid(conn.GetPlayer().UId, x1, y1) {
+		return
+	}
+
+	server.removePlayerFromGrid(
+		server.getGridPlayers(x1, y1),
+		conn.GetPlayer().UId,
+		conn.GetPlayer().Character.PosX,
+		conn.GetPlayer().Character.PosY)
+
 	SomeMapMutex.RLock()
 	_, ok := server.players[conn.GetPlayer().UId]
 	SomeMapMutex.RUnlock()
 	if ok {
 		server.addPlayerToGrid(server.players[conn.GetPlayer().UId], msg.GetDestinationX(), msg.GetDestinationY())
 	}
-
-	x1, y1 := common.FindGrid(conn.GetPlayer().Character.PosX, conn.GetPlayer().Character.PosY)
-	server.removePlayerFromGrid(
-		server.getGridPlayers(x1, y1),
-		conn.GetPlayer().UId,
-		conn.GetPlayer().Character.PosX,
-		conn.GetPlayer().Character.PosY)
 }
 
 func (server *Server) getNineCellsPlayers(conn mnet.Client, msg *mc_metadata.Movement) (oldPlr []*player, newPlr []*player) {
@@ -1195,6 +1232,7 @@ func (server *Server) convertPlayersToRegionReport(plrs []*player) []*mc_metadat
 			UuId:     v.conn.GetPlayer().UId,
 			RegionId: int32(v.conn.GetPlayer().RegionID),
 			PlayerInfo: &mc_metadata.P2C_PlayerInfo{
+				UuId:     v.conn.GetPlayer().UId,
 				Role:     v.conn.GetPlayer().Character.Role,
 				Nickname: v.conn.GetPlayer().Character.NickName,
 				Hair:     v.conn.GetPlayer().Character.Hair,

@@ -591,7 +591,6 @@ func (server *Server) removePlayerFromGrid(plr map[int]*player, uID string, x1, 
 			delete(server.mapGrid[x][y], i)
 		}
 	}
-
 }
 
 func (server *Server) removeFromMovingLoop(uid string) {
