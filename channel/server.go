@@ -586,7 +586,7 @@ func (server *Server) removePlayerFromGrid(plr map[int]*player, uID string, x1, 
 	x, y := common.FindGrid(x1, y1)
 	for i := 0; i < len(plr); i++ {
 
-		if plr[i].conn.GetPlayer().UId == uID {
+		if plr[i] != nil && plr[i].conn.GetPlayer().UId == uID {
 			delete(server.mapGrid[x][y], i)
 		}
 	}
