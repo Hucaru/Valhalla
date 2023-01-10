@@ -769,7 +769,11 @@ func (server *Server) playerMovement(conn mnet.Client, reader mpacket.Reader) {
 				SpawnRotY: msg.GetMovementData().DeatinationRotationY,
 				SpawnRotZ: msg.GetMovementData().DeatinationRotationZ,
 				PlayerInfo: &mc_metadata.P2C_PlayerInfo{
-					UuId: msg.GetMovementData().UuId,
+					UuId:    msg.GetMovementData().UuId,
+					Top:     conn.GetPlayer().Character.Top,
+					Bottom:  conn.GetPlayer().Character.Bottom,
+					Clothes: conn.GetPlayer().Character.Clothes,
+					Hair:    conn.GetPlayer().Character.Hair,
 				},
 			}, newPlr[i].conn.GetPlayer().UId, constant.P2C_ReportGridNew)
 		}
