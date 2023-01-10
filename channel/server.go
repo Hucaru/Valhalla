@@ -455,7 +455,7 @@ func (server *Server) ClientDisconnected(conn mnet.Client) {
 		delete(server.npcChat, conn)
 	}
 
-	server.removePlayer(conn.GetPlayer().UId)
+	server.removePlayer(conn)
 	fmt.Println("NumGoroutine COUNT", runtime.NumGoroutine())
 	err1 := db.UpdateLoginState(conn.GetPlayer().UId, false)
 	if err1 != nil {
@@ -548,31 +548,32 @@ func (server *Server) addPlayerToGrid(plr *player, x1, y1 float32) {
 		server.mapGrid[x][y][len(server.mapGrid[x][y])] = plr
 		SomeMapMutex.Unlock()
 	}
-
 }
 
-func (server *Server) removePlayer(uid string) {
-	SomeMapMutex.RLock()
-	plr, ok := server.players[uid]
-	SomeMapMutex.RUnlock()
-
+func (server *Server) removePlayer(conn mnet.Client) {
 	for i := 0; i < len(server.mapGrid); i++ {
-		x, y := common.FindGrid(plr.conn.GetPlayer().Character.PosX, plr.conn.GetPlayer().Character.PosY)
+		x, y := common.FindGrid(conn.GetPlayer().Character.PosX, conn.GetPlayer().Character.PosY)
 		SomeMapMutex.RLock()
 		_, ok := server.mapGrid[x][y][i]
 		SomeMapMutex.RUnlock()
 		if ok {
-			SomeMapMutex.Lock()
-			if server.mapGrid[x][y][i].conn.GetPlayer().UId == plr.conn.GetPlayer().UId {
+			if server.mapGrid[x][y][i].conn.GetPlayer().UId == conn.GetPlayer().UId {
+				SomeMapMutex.Lock()
 				delete(server.mapGrid[x][y], i)
+				SomeMapMutex.Unlock()
 				break
 			}
-			SomeMapMutex.Unlock()
 		}
 	}
 
+	SomeMapMutex.RLock()
+	_, ok := server.players[conn.GetPlayer().UId]
+	SomeMapMutex.RUnlock()
+
 	if ok {
-		delete(server.players, uid)
+		SomeMapMutex.Lock()
+		delete(server.players, conn.GetPlayer().UId)
+		SomeMapMutex.Unlock()
 	}
 
 	//server.removeFromMovingLoop(uid)
