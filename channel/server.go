@@ -538,7 +538,7 @@ func (server *Server) addPlayerToGrid(plr *player, x1, y1 float32) {
 	is := false
 	for i := 0; i < len(server.mapGrid[x][y]); i++ {
 		SomeMapMutex.RLock()
-		if server.mapGrid[x][y][i].conn.GetPlayer().UId == plr.conn.GetPlayer().UId {
+		if server.mapGrid[x][y][i] != nil && server.mapGrid[x][y][i].conn.GetPlayer().UId == plr.conn.GetPlayer().UId {
 			is = true
 		}
 		SomeMapMutex.RUnlock()
