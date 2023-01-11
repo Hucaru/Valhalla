@@ -1,6 +1,7 @@
 package mnet
 
 import (
+	"log"
 	"net"
 
 	"github.com/Hucaru/Valhalla/common/db/model"
@@ -25,21 +26,26 @@ type Client interface {
 	GetAdminLevel() int
 	SetAdminLevel(int)
 	GetPlayer() *model.Player
-	SetPlayer(player model.Player)
+	SetPlayer(player *model.Player)
+
+	PushAction(f func())
+	OnDisconnected()
 }
 
 type client struct {
 	baseConn
 
-	logedIn    bool
-	accountID  int32
-	gender     byte
-	worldID    byte
-	channelID  byte
-	regionID   int64
-	adminLevel int
-	uID        string
-	player     model.Player
+	logedIn        bool
+	accountID      int32
+	gender         byte
+	worldID        byte
+	channelID      byte
+	regionID       int64
+	adminLevel     int
+	uID            string
+	player         *model.Player
+	goChannel      chan func()
+	goDisconnected chan func()
 }
 
 func NewClient(conn net.Conn, eRecv chan *Event, queueSize int, keySend, keyRecv [4]byte, latency, jitter int) *client {
@@ -77,6 +83,20 @@ func NewClient(conn net.Conn, eRecv chan *Event, queueSize int, keySend, keyRecv
 		}(c.pSend, conn)
 	}
 
+	c.goChannel = make(chan func())
+	go func(goChannel chan func()) {
+		for {
+			select {
+			case p, ok := <-goChannel:
+				if !ok {
+					return
+				}
+
+				p()
+			}
+		}
+	}(c.goChannel)
+
 	return c
 }
 
@@ -110,6 +130,26 @@ func NewClientMeta(conn net.Conn, eRecv chan *Event, queueSize int, latency, jit
 			}
 		}(c.pSend, conn)
 	}
+
+	c.goChannel = make(chan func(), 1)
+	c.goDisconnected = make(chan func(), 1)
+
+	go func(goChannel <-chan func(), goDisconnected <-chan func()) {
+		for {
+			select {
+			case p, ok := <-goChannel:
+				if !ok {
+					log.Println("goChannel ok fail")
+					return
+				}
+
+				p()
+			case <-goDisconnected:
+				return
+			}
+		}
+	}(c.goChannel, c.goDisconnected)
+
 	return c
 }
 
@@ -162,9 +202,21 @@ func (c *client) SetAdminLevel(level int) {
 }
 
 func (c *client) GetPlayer() *model.Player {
-	return &c.player
+	return c.player
 }
 
-func (c *client) SetPlayer(player model.Player) {
+func (c *client) SetPlayer(player *model.Player) {
 	c.player = player
+}
+
+//func (c *client) EventLoop(f <-chan func()) {
+//
+//}
+
+func (c *client) PushAction(f func()) {
+	c.goChannel <- f
+}
+
+func (c *client) OnDisconnected() {
+	c.goDisconnected <- func() {}
 }

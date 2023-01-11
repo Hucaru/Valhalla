@@ -116,14 +116,14 @@ func (gridMgr *GridManager) fillPlayers(GridX, GridY int) map[string]*mnet.Clien
 	return result
 }
 
-func (gridMgr *GridManager) OnMove(newX, newY float32, uId string) (map[string]*mnet.Client, map[string]*mnet.Client) {
+func (gridMgr *GridManager) OnMove(newX, newY float32, uId string) (map[string]*mnet.Client, map[string]*mnet.Client, map[string]*mnet.Client) {
 	info, ok := gridMgr.plrs.Get(uId)
 	if ok {
 		newGridX, newGridY := common.FindGrid(newX, newY)
 		gridInfo := info
 		if newGridX != gridInfo.GridX || newGridY != gridInfo.GridY {
-			gridMgr.mtx.Lock()
-			defer gridMgr.mtx.Unlock()
+			//gridMgr.mtx.Lock()
+			//defer gridMgr.mtx.Unlock()
 
 			_plr := gridMgr.Remove(uId)
 			if _plr != nil {
@@ -146,6 +146,9 @@ func (gridMgr *GridManager) OnMove(newX, newY float32, uId string) (map[string]*
 					}
 				}
 
+				delete(oldList, uId)
+				delete(newList, uId)
+
 				removeList := map[string]*mnet.Client{}
 				addList := map[string]*mnet.Client{}
 
@@ -167,10 +170,24 @@ func (gridMgr *GridManager) OnMove(newX, newY float32, uId string) (map[string]*
 					addList[k] = v
 				}
 
-				return addList, removeList
+				return addList, removeList, newList
 			}
+		} else {
+			newList := map[string]*mnet.Client{}
+			for i := -1; i <= 1; i++ {
+				for j := -1; j <= 1; j++ {
+					_newGridX := newGridX + i
+					_newGridY := newGridY + j
+
+					maps.Copy(newList, gridMgr.fillPlayers(_newGridX, _newGridY))
+				}
+			}
+
+			delete(newList, uId)
+
+			return nil, nil, newList
 		}
 	}
 
-	return nil, nil
+	return nil, nil, nil
 }
