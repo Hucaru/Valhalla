@@ -16,7 +16,7 @@ CREATE TABLE IF NOT EXISTS `accounts` (
   `dob` int(11) NOT NULL,
   PRIMARY KEY (`accountID`),
   UNIQUE KEY `unique_index_uID` (`uId`)
-) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 DEFAULT COLLATE='utf8mb4_bin';
 
 
 CREATE TABLE IF NOT EXISTS `buddy` (
@@ -29,7 +29,7 @@ CREATE TABLE IF NOT EXISTS `buddy` (
   KEY `friendID` (`friendID`),
   CONSTRAINT `buddy_ibfk_1` FOREIGN KEY (`characterID`) REFERENCES `characters` (`id`),
   CONSTRAINT `buddy_ibfk_2` FOREIGN KEY (`friendID`) REFERENCES `characters` (`id`) ON DELETE NO ACTION
-) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 DEFAULT COLLATE='utf8mb4_bin';
 
 
 CREATE TABLE IF NOT EXISTS `characters` (
@@ -51,7 +51,7 @@ CREATE TABLE IF NOT EXISTS `characters` (
   UNIQUE KEY `unique_index_nickname` (`nickname`),
   KEY `userID` (`accountID`),
   CONSTRAINT `characters_ibfk_1` FOREIGN KEY (`accountID`) REFERENCES `accounts` (`accountID`)
-) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 DEFAULT COLLATE='utf8mb4_bin';
 
 
 CREATE TABLE IF NOT EXISTS `items` (
@@ -84,7 +84,7 @@ CREATE TABLE IF NOT EXISTS `items` (
   PRIMARY KEY (`id`),
   KEY `characterID` (`characterID`),
   CONSTRAINT `items_ibfk_5` FOREIGN KEY (`characterID`) REFERENCES `characters` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 DEFAULT COLLATE='utf8mb4_bin';
 
 
 CREATE TABLE IF NOT EXISTS `skills` (
@@ -97,7 +97,7 @@ CREATE TABLE IF NOT EXISTS `skills` (
   UNIQUE KEY `unique_index` (`characterID`,`skillID`),
   KEY `characterID` (`characterID`),
   CONSTRAINT `skills_ibfk_2` FOREIGN KEY (`characterID`) REFERENCES `characters` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 DEFAULT COLLATE='utf8mb4_bin';
 
 CREATE TABLE IF NOT EXISTS `movement` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
@@ -112,7 +112,7 @@ CREATE TABLE IF NOT EXISTS `movement` (
   PRIMARY KEY (`id`),
   KEY `characterID` (`characterID`),
   CONSTRAINT `movement_ibfk_2` FOREIGN KEY (`characterID`) REFERENCES `characters` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 DEFAULT COLLATE='utf8mb4_bin';
 
 CREATE TABLE IF NOT EXISTS `chat` (
     `id` int(11) NOT NULL AUTO_INCREMENT,
@@ -124,7 +124,7 @@ CREATE TABLE IF NOT EXISTS `chat` (
     PRIMARY KEY (`id`),
     KEY `characterID` (`characterID`),
     CONSTRAINT `chat_ibfk_2` FOREIGN KEY (`characterID`) REFERENCES `characters` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 DEFAULT COLLATE='utf8mb4_bin';
 
 CREATE TABLE IF NOT EXISTS `message_translates` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
@@ -132,6 +132,6 @@ CREATE TABLE IF NOT EXISTS `message_translates` (
   `lng` text NOT NULL DEFAULT 'en',
   `message` text NOT NULL DEFAULT '',
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 DEFAULT COLLATE='utf8mb4_bin';
 
 

@@ -98,10 +98,10 @@ const (
 )
 
 const (
-	LAND_X1         = 11334
-	LAND_Y1         = -30006
-	LAND_X2         = -17338
-	LAND_Y2         = 19146
+	LAND_X1         = -90000
+	LAND_Y1         = -90000
+	LAND_X2         = 90000
+	LAND_Y2         = 90000
 	LAND_Z          = 3000
 	LAND_VIEW_RANGE = 2048 //number multiplies 2
 )

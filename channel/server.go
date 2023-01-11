@@ -136,6 +136,8 @@ type Server struct {
 	langDetector     lingua.LanguageDetector
 	mapGrid          [][]map[int]*player //(y,x)[data]
 	fMovePlayers     []PlayerMovement    //(y,x)[data]
+
+	gridMgr manager.GridManager
 }
 
 // Initialize the server
@@ -173,7 +175,7 @@ func (server *Server) Initialize(work chan func(), dbuser, dbpassword, dbaddress
 
 	server.clearSessions()
 
-	columns := (constant.LAND_X1 - constant.LAND_X2) / constant.LAND_VIEW_RANGE
+	columns := (constant.LAND_X2 - constant.LAND_X1) / constant.LAND_VIEW_RANGE
 	rows := (constant.LAND_Y2 - constant.LAND_Y1) / constant.LAND_VIEW_RANGE
 
 	server.fMovePlayers = []PlayerMovement{}
@@ -214,6 +216,9 @@ func (server *Server) Initialize(work chan func(), dbuser, dbpassword, dbaddress
 	server.langDetector = detector
 
 	server.parties = make(map[int32]*party)
+
+	server.gridMgr = manager.GridManager{}
+	server.gridMgr.Init()
 }
 
 func (server *Server) addToEmulateMoving(uid string, plrs []*player) {
