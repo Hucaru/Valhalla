@@ -145,7 +145,7 @@ func (server *Server) playerConnect(conn *mnet.Client, reader mpacket.Reader) {
 	//
 	//server.addPlayer(&plr)
 	server.clients.Set(msg.UuId, conn)
-	conn.SetPlayer(player)
+	conn.SetPlayer(*player)
 
 	if msg.IsBot == 1 {
 		conn.GetPlayer().Character.Top = constant.RandomTop[rand2.Intn(4)]

@@ -18,7 +18,7 @@ type client struct {
 	regionID   int64
 	adminLevel int
 	uID        string
-	player     *model.Player
+	player     model.Player
 }
 
 type BaseConn struct {
@@ -150,10 +150,10 @@ func (c *client) SetAdminLevel(level int) {
 }
 
 func (c *client) GetPlayer() *model.Player {
-	return c.player
+	return &c.player
 }
 
-func (c *client) SetPlayer(player *model.Player) {
+func (c *client) SetPlayer(player model.Player) {
 	c.player = player
 }
 
