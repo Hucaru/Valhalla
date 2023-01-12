@@ -38,8 +38,7 @@ func (server *Server) playerAction(conn *mnet.Client, reader RequestedParam) {
 		server.playerActions.Set(conn.String(), c)
 		go func(server *Server, conn *mnet.Client, c <-chan RequestedParam) {
 			for {
-				select {
-				case p := <-c:
+				for p := range c {
 					{
 						switch p.Num {
 						case constant.C2P_RequestLoginUser:
@@ -73,9 +72,8 @@ func (server *Server) playerAction(conn *mnet.Client, reader RequestedParam) {
 						default:
 						}
 					}
-				default:
-					runtime.Gosched()
 				}
+				runtime.Gosched()
 			}
 		}(server, conn, c)
 		c <- reader
