@@ -43,46 +43,46 @@ func (server *Server) HandleClientPacket(
 	switch msgProtocolType {
 	case constant.C2P_RequestLoginUser:
 		log.Println("PLAYERS ONLINE ", server.clients.Count())
-		conn.PushAction(func() { server.playerConnect(conn, tcpConn, reader) })
+		conn.PushAction(func() int { server.playerConnect(conn, tcpConn, reader); return 0 })
 	case constant.C2P_RequestMoveStart:
-		conn.PushAction(func() { server.playerMovementStart(conn, reader) })
+		conn.PushAction(func() int { server.playerMovementStart(conn, reader); return 0 })
 	case constant.C2P_RequestMove:
-		conn.PushAction(func() { server.playerMovement(conn, reader) })
+		conn.PushAction(func() int { server.playerMovement(conn, reader); return 0 })
 	case constant.C2P_RequestMoveEnd:
-		conn.PushAction(func() { server.playerMovementEnd(conn, reader) })
+		conn.PushAction(func() int { server.playerMovementEnd(conn, reader); return 0 })
 	case constant.C2P_RequestLogoutUser:
-		log.Println("DATA_BUFFER_LOGOUT", reader.GetBuffer())
-		conn.PushAction(func() { server.playerLogout(conn, reader) })
+		//log.Println("DATA_BUFFER_LOGOUT", reader.GetBuffer())
+		conn.PushAction(func() int { server.playerLogout(conn, reader); return 0 })
 	case constant.C2P_RequestPlayerInfo:
-		log.Println("DATA_PLAYER_INFO", reader.GetBuffer())
-		conn.PushAction(func() { server.playerInfo(conn, reader) })
+		//log.Println("DATA_PLAYER_INFO", reader.GetBuffer())
+		conn.PushAction(func() int { server.playerInfo(conn, reader); return 0 })
 	case constant.C2P_RequestAllChat:
-		log.Println("DATA_ALL_CHAT", reader.GetBuffer())
-		conn.PushAction(func() { server.chatSendAll(conn, reader) })
+		// log.Println("DATA_ALL_CHAT", reader.GetBuffer())
+		conn.PushAction(func() int { server.chatSendAll(conn, reader); return 0 })
 	case constant.C2P_RequestWhisper:
-		log.Println("DATA_WHISPER_CHAT", reader.GetBuffer())
-		conn.PushAction(func() { server.chatSendWhisper(conn, reader) })
+		// log.Println("DATA_WHISPER_CHAT", reader.GetBuffer())
+		conn.PushAction(func() int { server.chatSendWhisper(conn, reader); return 0 })
 	case constant.C2P_RequestRegionChat:
-		log.Println("DATA_REGION_CHAT", reader.GetBuffer())
-		conn.PushAction(func() { server.chatSendRegion(conn, reader) })
+		// log.Println("DATA_REGION_CHAT", reader.GetBuffer())
+		conn.PushAction(func() int { server.chatSendRegion(conn, reader); return 0 })
 	case constant.C2P_RequestRegionChange:
-		log.Println("DATA_REGION_CHANGE", reader.GetBuffer())
+		//log.Println("DATA_REGION_CHANGE", reader.GetBuffer())
 		//server.playerChangeChannel(conn, reader)
 	case constant.C2P_RequestInteractionAttach:
-		log.Println("DATA_INTERACTION", reader.GetBuffer())
-		server.playerInteraction(conn, reader)
+		//log.Println("DATA_INTERACTION", reader.GetBuffer())
+		//server.playerInteraction(conn, reader)
 	case constant.C2P_RequestPlayMontage:
-		log.Println("DATA_PLAY_MONTAGE", reader.GetBuffer())
-		server.playerPlayAnimation(conn, reader)
+		//log.Println("DATA_PLAY_MONTAGE", reader.GetBuffer())
+		//server.playerPlayAnimation(conn, reader)
 	case constant.C2P_RequestMetaSchoolEnter:
-		log.Println("DATA_META_SCHOOL_ENTER", reader.GetBuffer())
-		server.playerEnterToRoom(conn, reader)
+		//log.Println("DATA_META_SCHOOL_ENTER", reader.GetBuffer())
+		//server.playerEnterToRoom(conn, reader)
 	case constant.C2P_RequestMetaSchoolLeave:
-		log.Println("DATA_META_SCHOOL_ENTER", reader.GetBuffer())
-		server.playerLeaveFromRoom(conn, reader)
+		//log.Println("DATA_META_SCHOOL_ENTER", reader.GetBuffer())
+		//server.playerLeaveFromRoom(conn, reader)
 	case constant.C2P_RequestRoleChecking:
-		log.Println("DATA_ROLE_CHECKING", reader.GetBuffer())
-		server.playerRegionRoleChecking(conn, reader)
+		//log.Println("DATA_ROLE_CHECKING", reader.GetBuffer())
+		//server.playerRegionRoleChecking(conn, reader)
 	default:
 		fmt.Println("UNKNOWN MSG", reader)
 		//msg = nil
@@ -96,7 +96,7 @@ func (server *Server) playerConnect(conn mnet.Client, tcpConn net.Conn, reader m
 		log.Println("Failed to parse data:", err)
 		return
 	}
-	player := &model.Player{}
+	var player *model.Player
 
 	if msg.IsBot == 1 {
 		player, err = db.GetLoggedDataForBot(msg.GetUuId())
@@ -159,7 +159,7 @@ func (server *Server) playerConnect(conn mnet.Client, tcpConn net.Conn, reader m
 		//return
 	}
 
-	response := proto.AccountReport(&conn.GetPlayer().UId, conn.GetPlayer().Character)
+	response := proto.AccountReport(conn.GetPlayer().UId, conn.GetPlayer().Character)
 	server.sendMsgToRegion(conn, response, constant.P2C_ReportLoginUser)
 
 	account := proto.AccountResult(player)
@@ -305,44 +305,44 @@ func (server *Server) sendMsgToRegion(conn mnet.Client, msg proto2.Message, msgT
 }
 
 func (server *Server) playerChangeChannel(conn mnet.Client, reader mpacket.Reader) {
-	msg := &mc_metadata.C2P_RequestRegionChange{}
-	err := proto.Unmarshal(reader.GetBuffer(), msg)
-	if err != nil || len(msg.UuId) == 0 {
-		log.Println("Failed to parse data:", err)
-		return
-	}
-
-	plr, err := server.players.getFromConn(conn)
-	if err != nil {
-		return
-	}
-
-	db.UpdateRegionID(plr.conn.GetPlayer().CharacterID, msg.GetRegionId())
-
-	responseOld := proto.ChannelChangeForOldReport(plr.conn.GetPlayer().UId, plr.conn.GetPlayer().Character)
-	log.Println("REGION_CHANGED PREV REGION SEND", plr.conn.GetPlayer().RegionID)
-	go server.sendMsgToRegion(conn, responseOld, constant.P2C_ReportRegionLeave)
-
-	responseNew := proto.ChannelChangeForNewReport(plr.conn.GetPlayer())
-	log.Println("REGION_CHANGED TO ", msg.GetRegionId())
-	go server.sendMsgToRegion(conn, responseNew, constant.P2C_ReportRegionChange)
-
-	plr.conn.GetPlayer().RegionID = int64(msg.RegionId)
-	server.setPlayer(plr.conn.GetPlayer())
-
-	account := proto.RegionResult(plr.conn.GetPlayer())
-
-	x, y := common.FindGrid(plr.conn.GetPlayer().Character.PosX, plr.conn.GetPlayer().Character.PosY)
-	loggedAccounts := server.getPlayersOnGrids(x, y, plr.conn.GetPlayer().UId)
-
-	if err != nil {
-		log.Println("ERROR GetLoggedUsersData", plr.conn.GetPlayer().UId)
-		return
-	}
-
-	users := server.convertPlayersToRegionReport(loggedAccounts)
-	account.RegionUsers = append(account.RegionUsers, users...)
-	server.sendMsgToMe(conn, account, constant.P2C_ResultRegionChange)
+	//msg := &mc_metadata.C2P_RequestRegionChange{}
+	//err := proto.Unmarshal(reader.GetBuffer(), msg)
+	//if err != nil || len(msg.UuId) == 0 {
+	//	log.Println("Failed to parse data:", err)
+	//	return
+	//}
+	//
+	//plr, err := server.players.getFromConn(conn)
+	//if err != nil {
+	//	return
+	//}
+	//
+	//db.UpdateRegionID(plr.conn.GetPlayer().CharacterID, msg.GetRegionId())
+	//
+	//responseOld := proto.ChannelChangeForOldReport(plr.conn.GetPlayer().UId, plr.conn.GetPlayer().Character)
+	//log.Println("REGION_CHANGED PREV REGION SEND", plr.conn.GetPlayer().RegionID)
+	//go server.sendMsgToRegion(conn, responseOld, constant.P2C_ReportRegionLeave)
+	//
+	//responseNew := proto.ChannelChangeForNewReport(plr.conn.GetPlayer())
+	//log.Println("REGION_CHANGED TO ", msg.GetRegionId())
+	//go server.sendMsgToRegion(conn, responseNew, constant.P2C_ReportRegionChange)
+	//
+	//plr.conn.GetPlayer().RegionID = int64(msg.RegionId)
+	//server.setPlayer(plr.conn.GetPlayer())
+	//
+	//account := proto.RegionResult(plr.conn.GetPlayer())
+	//
+	//x, y := common.FindGrid(plr.conn.GetPlayer().Character.PosX, plr.conn.GetPlayer().Character.PosY)
+	//loggedAccounts := server.getPlayersOnGrids(x, y, plr.conn.GetPlayer().UId)
+	//
+	//if err != nil {
+	//	log.Println("ERROR GetLoggedUsersData", plr.conn.GetPlayer().UId)
+	//	return
+	//}
+	//
+	//users := server.convertPlayersToRegionReport(loggedAccounts)
+	//account.RegionUsers = append(account.RegionUsers, users...)
+	//server.sendMsgToMe(conn, account, constant.P2C_ResultRegionChange)
 }
 
 func (server *Server) playerMovementStart(conn mnet.Client, reader mpacket.Reader) {
@@ -616,72 +616,74 @@ func (server *Server) playerInteraction(conn mnet.Client, reader mpacket.Reader)
 
 func (server *Server) DeleteInteractionAndSend(conn mnet.Client, msg *mc_metadata.C2P_RequestInteractionAttach) error {
 
-	plr, err := server.players.getFromConn(conn)
-	if err != nil {
-		return err
-	}
-
-	att := &mc_metadata.P2C_ResultInteractionAttach{
-		ErrorCode: -1,
-	}
-
-	if plr.conn.GetPlayer().Interaction == nil {
-		plr.conn.GetPlayer().Interaction = &model.Interaction{}
-	}
-	plr.conn.GetPlayer().Interaction.ObjectIndex = msg.GetObjectIndex()
-	plr.conn.GetPlayer().Interaction.AttachEnabled = msg.GetAttachEnable()
-	plr.conn.GetPlayer().Interaction.AnimMontageName = msg.GetAnimMontageName()
-	plr.conn.GetPlayer().Interaction.DestinationX = msg.GetDestinationX()
-	plr.conn.GetPlayer().Interaction.DestinationY = msg.GetDestinationY()
-	plr.conn.GetPlayer().Interaction.DestinationZ = msg.GetDestinationZ()
-	server.setPlayer(plr.conn.GetPlayer())
-
-	server.sendMsgToMe(conn, att, constant.P2C_ResultInteractionAttach)
+	//plr, err := server.players.getFromConn(conn)
+	//if err != nil {
+	//	return err
+	//}
+	//
+	//att := &mc_metadata.P2C_ResultInteractionAttach{
+	//	ErrorCode: -1,
+	//}
+	//
+	//if plr.conn.GetPlayer().Interaction == nil {
+	//	plr.conn.GetPlayer().Interaction = &model.Interaction{}
+	//}
+	//plr.conn.GetPlayer().Interaction.ObjectIndex = msg.GetObjectIndex()
+	//plr.conn.GetPlayer().Interaction.AttachEnabled = msg.GetAttachEnable()
+	//plr.conn.GetPlayer().Interaction.AnimMontageName = msg.GetAnimMontageName()
+	//plr.conn.GetPlayer().Interaction.DestinationX = msg.GetDestinationX()
+	//plr.conn.GetPlayer().Interaction.DestinationY = msg.GetDestinationY()
+	//plr.conn.GetPlayer().Interaction.DestinationZ = msg.GetDestinationZ()
+	//server.setPlayer(plr.conn.GetPlayer())
+	//
+	//server.sendMsgToMe(conn, att, constant.P2C_ResultInteractionAttach)
 	return nil
 }
 
 func (server *Server) InsertInteractionAndSend(conn mnet.Client, msg *mc_metadata.C2P_RequestInteractionAttach) error {
 
-	plr, err := server.players.getFromConn(conn)
-	if err != nil {
-		return nil
-	}
+	//plr, err := server.players.getFromConn(conn)
+	//if err != nil {
+	//	return nil
+	//}
+	//
+	//att := &mc_metadata.P2C_ResultInteractionAttach{
+	//	ErrorCode: -1,
+	//}
+	//
+	//x, y := common.FindGrid(conn.GetPlayer().Character.PosX, conn.GetPlayer().Character.PosX)
+	//users := server.getGridPlayers(x, y)
+	//
+	//for i := 0; i < len(users); i++ {
+	//	if users[i].conn.GetPlayer().Interaction != nil &&
+	//		plr.conn.GetPlayer().UId != users[i].conn.GetPlayer().UId &&
+	//		msg.ObjectIndex == users[i].conn.GetPlayer().Interaction.ObjectIndex {
+	//		att.ErrorCode = constant.ErrorCodeChairNotEmpty
+	//		break
+	//	}
+	//}
+	//
+	//if att.ErrorCode == -1 {
+	//	if plr.conn.GetPlayer().Interaction == nil {
+	//		plr.conn.GetPlayer().Interaction = &model.Interaction{}
+	//	}
+	//	plr.conn.GetPlayer().Interaction.ObjectIndex = msg.GetObjectIndex()
+	//	plr.conn.GetPlayer().Interaction.AttachEnabled = msg.GetAttachEnable()
+	//	plr.conn.GetPlayer().Interaction.AnimMontageName = msg.GetAnimMontageName()
+	//	plr.conn.GetPlayer().Interaction.DestinationX = msg.GetDestinationX()
+	//	plr.conn.GetPlayer().Interaction.DestinationY = msg.GetDestinationY()
+	//	plr.conn.GetPlayer().Interaction.DestinationZ = msg.GetDestinationZ()
+	//	server.setPlayer(plr.conn.GetPlayer())
+	//}
+	//
+	//server.sendMsgToMe(conn, att, constant.P2C_ResultInteractionAttach)
+	//if att.ErrorCode == -1 {
+	//	return nil
+	//} else {
+	//	return errors.New("chair not empty")
+	//}
 
-	att := &mc_metadata.P2C_ResultInteractionAttach{
-		ErrorCode: -1,
-	}
-
-	x, y := common.FindGrid(conn.GetPlayer().Character.PosX, conn.GetPlayer().Character.PosX)
-	users := server.getGridPlayers(x, y)
-
-	for i := 0; i < len(users); i++ {
-		if users[i].conn.GetPlayer().Interaction != nil &&
-			plr.conn.GetPlayer().UId != users[i].conn.GetPlayer().UId &&
-			msg.ObjectIndex == users[i].conn.GetPlayer().Interaction.ObjectIndex {
-			att.ErrorCode = constant.ErrorCodeChairNotEmpty
-			break
-		}
-	}
-
-	if att.ErrorCode == -1 {
-		if plr.conn.GetPlayer().Interaction == nil {
-			plr.conn.GetPlayer().Interaction = &model.Interaction{}
-		}
-		plr.conn.GetPlayer().Interaction.ObjectIndex = msg.GetObjectIndex()
-		plr.conn.GetPlayer().Interaction.AttachEnabled = msg.GetAttachEnable()
-		plr.conn.GetPlayer().Interaction.AnimMontageName = msg.GetAnimMontageName()
-		plr.conn.GetPlayer().Interaction.DestinationX = msg.GetDestinationX()
-		plr.conn.GetPlayer().Interaction.DestinationY = msg.GetDestinationY()
-		plr.conn.GetPlayer().Interaction.DestinationZ = msg.GetDestinationZ()
-		server.setPlayer(plr.conn.GetPlayer())
-	}
-
-	server.sendMsgToMe(conn, att, constant.P2C_ResultInteractionAttach)
-	if att.ErrorCode == -1 {
-		return nil
-	} else {
-		return errors.New("chair not empty")
-	}
+	return nil
 }
 
 func (server *Server) playerPlayAnimation(conn mnet.Client, reader mpacket.Reader) {
@@ -733,81 +735,81 @@ func (server *Server) playerRegionRoleChecking(conn mnet.Client, reader mpacket.
 
 func (server *Server) playerEnterToRoom(conn mnet.Client, reader mpacket.Reader) {
 
-	msg := &mc_metadata.C2P_RequestMetaSchoolEnter{}
-	err := proto.Unmarshal(reader.GetBuffer(), msg)
-	if err != nil {
-		log.Println("Failed to parse data:", err)
-		return
-	}
-
-	plr, err := server.players.getFromConn(conn)
-	if err != nil {
-		return
-	}
-
-	plr.conn.GetPlayer().Character.Role = msg.TeacherEnable
-	plr.conn.GetPlayer().Interaction = &model.Interaction{
-		AttachEnabled: 1,
-		ObjectIndex:   -1,
-	}
-	server.setPlayer(plr.conn.GetPlayer())
-
-	reportEnter := &mc_metadata.P2C_ReportMetaSchoolEnter{
-		UuId:          msg.GetUuId(),
-		TeacherEnable: msg.GetTeacherEnable(),
-		PlayerInfo: &mc_metadata.P2C_PlayerInfo{
-			UuId:     plr.conn.GetPlayer().UId,
-			Nickname: plr.conn.GetPlayer().Character.NickName,
-			Role:     plr.conn.GetPlayer().Character.Role,
-			Hair:     plr.conn.GetPlayer().Character.Hair,
-			Top:      plr.conn.GetPlayer().Character.Top,
-			Bottom:   plr.conn.GetPlayer().Character.Bottom,
-			Clothes:  plr.conn.GetPlayer().Character.Clothes,
-		},
-	}
-
-	log.Println("P2C_ResultMetaSchoolEnter sendMsgToRegion")
-	go server.sendMsgToRegion(conn, reportEnter, constant.P2C_ReportMetaSchoolEnter)
-
-	res := &mc_metadata.P2C_ResultMetaSchoolEnter{
-		UuId:          msg.GetUuId(),
-		TeacherEnable: msg.GetTeacherEnable(),
-		DataSchool:    proto.ConvertPlayersToRoomReport(server.getRoomPlayers(msg.GetUuId(), plr.conn.GetPlayer().Character.PosX, plr.conn.GetPlayer().Character.PosY)),
-	}
-
-	server.sendMsgToMe(conn, res, constant.P2C_ResultMetaSchoolEnter)
+	//msg := &mc_metadata.C2P_RequestMetaSchoolEnter{}
+	//err := proto.Unmarshal(reader.GetBuffer(), msg)
+	//if err != nil {
+	//	log.Println("Failed to parse data:", err)
+	//	return
+	//}
+	//
+	//plr, err := server.players.getFromConn(conn)
+	//if err != nil {
+	//	return
+	//}
+	//
+	//plr.conn.GetPlayer().Character.Role = msg.TeacherEnable
+	//plr.conn.GetPlayer().Interaction = &model.Interaction{
+	//	AttachEnabled: 1,
+	//	ObjectIndex:   -1,
+	//}
+	//server.setPlayer(plr.conn.GetPlayer())
+	//
+	//reportEnter := &mc_metadata.P2C_ReportMetaSchoolEnter{
+	//	UuId:          msg.GetUuId(),
+	//	TeacherEnable: msg.GetTeacherEnable(),
+	//	PlayerInfo: &mc_metadata.P2C_PlayerInfo{
+	//		UuId:     plr.conn.GetPlayer().UId,
+	//		Nickname: plr.conn.GetPlayer().Character.NickName,
+	//		Role:     plr.conn.GetPlayer().Character.Role,
+	//		Hair:     plr.conn.GetPlayer().Character.Hair,
+	//		Top:      plr.conn.GetPlayer().Character.Top,
+	//		Bottom:   plr.conn.GetPlayer().Character.Bottom,
+	//		Clothes:  plr.conn.GetPlayer().Character.Clothes,
+	//	},
+	//}
+	//
+	//log.Println("P2C_ResultMetaSchoolEnter sendMsgToRegion")
+	//go server.sendMsgToRegion(conn, reportEnter, constant.P2C_ReportMetaSchoolEnter)
+	//
+	//res := &mc_metadata.P2C_ResultMetaSchoolEnter{
+	//	UuId:          msg.GetUuId(),
+	//	TeacherEnable: msg.GetTeacherEnable(),
+	//	DataSchool:    proto.ConvertPlayersToRoomReport(server.getRoomPlayers(msg.GetUuId(), plr.conn.GetPlayer().Character.PosX, plr.conn.GetPlayer().Character.PosY)),
+	//}
+	//
+	//server.sendMsgToMe(conn, res, constant.P2C_ResultMetaSchoolEnter)
 }
 
 func (server *Server) playerLeaveFromRoom(conn mnet.Client, reader mpacket.Reader) {
 
-	msg := &mc_metadata.C2P_RequestMetaSchoolLeave{}
-	err := proto.Unmarshal(reader.GetBuffer(), msg)
-	if err != nil {
-		log.Println("Failed to parse data:", err)
-		return
-	}
-
-	plr, err := server.players.getFromConn(conn)
-	if err != nil {
-		return
-	}
-
-	plr.conn.GetPlayer().Interaction = nil
-	server.setPlayer(plr.conn.GetPlayer())
-
-	res := &mc_metadata.P2C_ReportMetaSchoolLeave{
-		UuId: msg.GetUuId(),
-		PlayerInfo: &mc_metadata.P2C_PlayerInfo{
-			UuId:     plr.conn.GetPlayer().UId,
-			Nickname: plr.conn.GetPlayer().Character.NickName,
-			Role:     plr.conn.GetPlayer().Character.Role,
-			Hair:     plr.conn.GetPlayer().Character.Hair,
-			Top:      plr.conn.GetPlayer().Character.Top,
-			Bottom:   plr.conn.GetPlayer().Character.Bottom,
-			Clothes:  plr.conn.GetPlayer().Character.Clothes,
-		},
-	}
-	go server.sendMsgToRegion(conn, res, constant.P2C_ReportMetaSchoolLeave)
+	//msg := &mc_metadata.C2P_RequestMetaSchoolLeave{}
+	//err := proto.Unmarshal(reader.GetBuffer(), msg)
+	//if err != nil {
+	//	log.Println("Failed to parse data:", err)
+	//	return
+	//}
+	//
+	//plr, err := server.players.getFromConn(conn)
+	//if err != nil {
+	//	return
+	//}
+	//
+	//plr.conn.GetPlayer().Interaction = nil
+	//server.setPlayer(plr.conn.GetPlayer())
+	//
+	//res := &mc_metadata.P2C_ReportMetaSchoolLeave{
+	//	UuId: msg.GetUuId(),
+	//	PlayerInfo: &mc_metadata.P2C_PlayerInfo{
+	//		UuId:     plr.conn.GetPlayer().UId,
+	//		Nickname: plr.conn.GetPlayer().Character.NickName,
+	//		Role:     plr.conn.GetPlayer().Character.Role,
+	//		Hair:     plr.conn.GetPlayer().Character.Hair,
+	//		Top:      plr.conn.GetPlayer().Character.Top,
+	//		Bottom:   plr.conn.GetPlayer().Character.Bottom,
+	//		Clothes:  plr.conn.GetPlayer().Character.Clothes,
+	//	},
+	//}
+	//go server.sendMsgToRegion(conn, res, constant.P2C_ReportMetaSchoolLeave)
 }
 
 func (server *Server) playerMovement(conn mnet.Client, reader mpacket.Reader) {
@@ -997,7 +999,7 @@ func (server *Server) playerInfo(conn mnet.Client, reader mpacket.Reader) {
 
 	if err1 != nil {
 		log.Println("Inserting new user playerInfo", fmt.Sprintf("niickname=%s uid=%s", msg.GetNickname(), msg.GetUuId()))
-		iErr := db.AddNewAccount(&plr)
+		iErr := db.AddNewAccount(plr)
 		if iErr != nil {
 			res.ErrorCode = constant.ErrorCodeDuplicateUID
 		}
@@ -1036,7 +1038,7 @@ func (server *Server) playerLogout(conn mnet.Client, reader mpacket.Reader) {
 	}
 
 	server.sendMsgToAll(res, msg.GetUuId(), constant.P2C_ReportLogoutUser)
-	server.gridMgr.Remove(msg.GetUuId())
+	server.removePlayer(conn)
 }
 
 func (server *Server) chatSendAll(conn mnet.Client, reader mpacket.Reader) {
@@ -1177,22 +1179,22 @@ func (server *Server) chatSendWhisper(conn mnet.Client, reader mpacket.Reader) {
 }
 
 func (server *Server) findCharacterIDByUID(uID string) *model.Player {
-	SomeMapMutex.RLock()
-	p, ok := server.players[uID]
-	SomeMapMutex.RUnlock()
-	if ok {
-		return p.conn.GetPlayer()
-	}
+	//SomeMapMutex.RLock()
+	//p, ok := server.players[uID]
+	//SomeMapMutex.RUnlock()
+	//if ok {
+	//	return p.conn.GetPlayer()
+	//}
 	return nil
 }
 
 func (server *Server) findCharacterIDByNickname(nickname string) *model.Player {
 
-	for _, v := range server.players {
-		if nickname == v.conn.GetPlayer().Character.NickName {
-			return v.conn.GetPlayer()
-		}
-	}
+	//for _, v := range server.players {
+	//	if nickname == v.conn.GetPlayer().Character.NickName {
+	//		return v.conn.GetPlayer()
+	//	}
+	//}
 	return nil
 }
 

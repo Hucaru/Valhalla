@@ -22,9 +22,9 @@ func Unmarshal(buff []byte, msg proto.Message) error {
 	return proto.Unmarshal(buff, msg)
 }
 
-func AccountReport(uID *string, acc *model.Character) *mc_metadata.P2C_ReportLoginUser {
+func AccountReport(uID string, acc *model.Character) *mc_metadata.P2C_ReportLoginUser {
 	res := &mc_metadata.P2C_ReportLoginUser{
-		UuId: *uID,
+		UuId: uID,
 		PlayerInfo: &mc_metadata.P2C_PlayerInfo{
 			Nickname: acc.NickName,
 			Hair:     acc.Hair,

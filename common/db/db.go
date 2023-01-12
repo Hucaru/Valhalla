@@ -109,7 +109,7 @@ func GetLoggedDataForBot(uUID string) (*model.Player, error) {
 	return plr, nil
 }
 
-func GetLoggedDataByName(req *mc_metadata.C2P_RequestPlayerInfo) (model.Player, error) {
+func GetLoggedDataByName(req *mc_metadata.C2P_RequestPlayerInfo) (*model.Player, error) {
 
 	plr := &model.Player{
 		UId:         req.GetUuId(),
@@ -154,7 +154,7 @@ func GetLoggedDataByName(req *mc_metadata.C2P_RequestPlayerInfo) (model.Player, 
 			&plr.Character.PosX, &plr.Character.PosY, &plr.Character.PosZ,
 			&plr.Character.RotX, &plr.Character.RotY, &plr.Character.RotZ)
 
-	return *plr, err
+	return plr, err
 }
 
 func AddNewAccount(plr *model.Player) error {

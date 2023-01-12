@@ -28,8 +28,8 @@ type channelServer struct {
 func newChannelServer(configFile string) *channelServer {
 	config, dbConfig := loadChannelConfig(configFile)
 	return &channelServer{
-		eRecv:    make(chan *mnet.Event),
-		wRecv:    make(chan func()),
+		eRecv:    make(chan *mnet.Event, 1),
+		wRecv:    make(chan func(), 1),
 		config:   config,
 		dbConfig: dbConfig,
 		wg:       &sync.WaitGroup{},
@@ -166,7 +166,7 @@ func (cs *channelServer) processEvent() {
 					//	log.Println("UNKNOWN", &e.Packet)
 				//	log.Println("New client from", conn)
 				case mnet.MEClientDisconnect:
-					conn.PushAction(func() { cs.gameState.ClientDisconnected(conn) })
+					conn.PushAction(func() int { cs.gameState.ClientDisconnected(conn); return 1 })
 				}
 			case mnet.Server:
 				switch e.Type {
