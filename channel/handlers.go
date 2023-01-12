@@ -38,39 +38,43 @@ func (server *Server) playerAction(conn *mnet.Client, reader RequestedParam) {
 		server.playerActions.Set(conn.String(), c)
 		go func(server *Server, conn *mnet.Client, c <-chan RequestedParam) {
 			for {
-				p, ok := <-c
-				if ok {
-					switch p.Num {
-					case constant.C2P_RequestLoginUser:
-						server.playerConnect(conn, p.Reader)
-					case constant.C2P_RequestMoveStart:
-						server.playerMovementStart(conn, p.Reader)
-					case constant.C2P_RequestMove:
-						server.playerMovement(conn, p.Reader)
-					case constant.C2P_RequestMoveEnd:
-						server.playerMovementEnd(conn, p.Reader)
-					case constant.C2P_RequestLogoutUser:
-						server.playerLogout(conn, p.Reader)
-					case constant.C2P_RequestPlayerInfo:
-						server.playerInfo(conn, p.Reader)
-					case constant.C2P_RequestAllChat:
-						server.chatSendAll(conn, p.Reader)
-					case constant.C2P_RequestWhisper:
-						server.chatSendWhisper(conn, p.Reader)
-					case constant.C2P_RequestRegionChat:
-						server.chatSendRegion(conn, p.Reader)
-					case constant.C2P_RequestRegionChange:
-					case constant.C2P_RequestInteractionAttach:
-					case constant.C2P_RequestPlayMontage:
-					case constant.C2P_RequestMetaSchoolEnter:
-					case constant.C2P_RequestMetaSchoolLeave:
-					case constant.C2P_RequestRoleChecking:
-					case constant.OnDisconnected:
-						server.ClientDisconnected(conn)
-						server.playerActions.Remove(conn.String())
-						return
-					default:
+				select {
+				case p := <-c:
+					{
+						switch p.Num {
+						case constant.C2P_RequestLoginUser:
+							server.playerConnect(conn, p.Reader)
+						case constant.C2P_RequestMoveStart:
+							server.playerMovementStart(conn, p.Reader)
+						case constant.C2P_RequestMove:
+							server.playerMovement(conn, p.Reader)
+						case constant.C2P_RequestMoveEnd:
+							server.playerMovementEnd(conn, p.Reader)
+						case constant.C2P_RequestLogoutUser:
+							server.playerLogout(conn, p.Reader)
+						case constant.C2P_RequestPlayerInfo:
+							server.playerInfo(conn, p.Reader)
+						case constant.C2P_RequestAllChat:
+							server.chatSendAll(conn, p.Reader)
+						case constant.C2P_RequestWhisper:
+							server.chatSendWhisper(conn, p.Reader)
+						case constant.C2P_RequestRegionChat:
+							server.chatSendRegion(conn, p.Reader)
+						case constant.C2P_RequestRegionChange:
+						case constant.C2P_RequestInteractionAttach:
+						case constant.C2P_RequestPlayMontage:
+						case constant.C2P_RequestMetaSchoolEnter:
+						case constant.C2P_RequestMetaSchoolLeave:
+						case constant.C2P_RequestRoleChecking:
+						case constant.OnDisconnected:
+							server.ClientDisconnected(conn)
+							server.playerActions.Remove(conn.String())
+							return
+						default:
+						}
 					}
+				default:
+					runtime.Gosched()
 				}
 			}
 		}(server, conn, c)
