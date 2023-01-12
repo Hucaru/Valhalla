@@ -113,6 +113,11 @@ type PlayerMovement struct {
 	y    float32
 }
 
+type RequestedParam struct {
+	Num    uint32
+	Reader mpacket.Reader
+}
+
 // Server state
 type Server struct {
 	id               byte
@@ -138,8 +143,9 @@ type Server struct {
 	mapGrid          [][]map[int]*player //(y,x)[data]
 	fMovePlayers     []PlayerMovement    //(y,x)[data]
 
-	gridMgr manager.GridManager
-	clients cmap.ConcurrentMap[string, *mnet.Client]
+	gridMgr       manager.GridManager
+	clients       cmap.ConcurrentMap[string, *mnet.Client]
+	playerActions cmap.ConcurrentMap[string, chan RequestedParam]
 }
 
 // Initialize the server
@@ -223,6 +229,7 @@ func (server *Server) Initialize(work chan func(), dbuser, dbpassword, dbaddress
 	server.gridMgr.Init()
 
 	server.clients = cmap.New[*mnet.Client]()
+	server.playerActions = cmap.New[chan RequestedParam]()
 }
 
 func (server *Server) addToEmulateMoving(uid string, plrs []*player) {

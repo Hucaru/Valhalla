@@ -3,6 +3,7 @@ package main
 import (
 	"crypto/rand"
 	"fmt"
+	"github.com/Hucaru/Valhalla/constant"
 	"log"
 	"net"
 	"os"
@@ -156,17 +157,20 @@ func (cs *channelServer) processEvent() {
 			case *mnet.Client:
 				switch e.Type {
 				case mnet.MEClientConnected:
+					cs.gameState.HandleClientPacket(
+						conn,
+						mpacket.Reader{},
+						constant.OnConnected)
 				case mnet.MEClientPacket:
 					cs.gameState.HandleClientPacket(
 						conn,
-						e.Conn,
 						mpacket.NewReader(&e.Packet, time.Now().Unix()),
 						e.Protocol)
-					//default:
-					//	log.Println("UNKNOWN", &e.Packet)
-				//	log.Println("New client from", conn)
 				case mnet.MEClientDisconnect:
-					conn.PushAction(func() int { cs.gameState.ClientDisconnected(conn); return 1 })
+					cs.gameState.HandleClientPacket(
+						conn,
+						mpacket.Reader{},
+						constant.OnDisconnected)
 				}
 			case mnet.Server:
 				switch e.Type {

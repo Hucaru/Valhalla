@@ -1,7 +1,6 @@
 package mnet
 
 import (
-	"log"
 	"net"
 
 	"github.com/Hucaru/Valhalla/common/db/model"
@@ -20,7 +19,6 @@ type client struct {
 	adminLevel int
 	uID        string
 	player     *model.Player
-	goChannel  chan func() int
 }
 
 type BaseConn struct {
@@ -100,26 +98,6 @@ func NewClientMeta(conn net.Conn, eRecv chan *Event, queueSize int, latency, jit
 			}
 		}(c.pSend, conn)
 	}
-
-	c.goChannel = make(chan func() int, 1)
-
-	go func(goChannel <-chan func() int) {
-		for {
-			select {
-			case p, ok := <-goChannel:
-				if !ok {
-					log.Println("goChannel ok fail")
-					return
-				}
-
-				r := p()
-				if r == 1 {
-					return
-				}
-			}
-		}
-	}(c.goChannel)
-
 	return c
 }
 
@@ -182,10 +160,6 @@ func (c *client) SetPlayer(player *model.Player) {
 //func (c *client) EventLoop(f <-chan func()) {
 //
 //}
-
-func (c *Client) PushAction(f func() int) {
-	c.goChannel <- f
-}
 
 func (c *Client) String() string {
 	return c.baseConn.String()

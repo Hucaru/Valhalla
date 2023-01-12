@@ -6,7 +6,6 @@ import (
 	"golang.org/x/exp/maps"
 	"log"
 	rand2 "math/rand"
-	"net"
 	"runtime"
 	"strconv"
 	"strings"
@@ -29,67 +28,65 @@ import (
 
 // HandleClientPacket data
 func (server *Server) HandleClientPacket(
-	conn *mnet.Client, tcpConn net.Conn, reader mpacket.Reader, msgProtocolType uint32) {
+	conn *mnet.Client, reader mpacket.Reader, msgProtocolType uint32) {
+	server.playerAction(conn, RequestedParam{Num: msgProtocolType, Reader: reader})
+}
 
-	//if msgProtocolType != constant.C2P_RequestLoginUser && msgProtocolType != constant.C2P_RequestPlayerInfo {
-	//	_, err := server.players.getFromConn(conn)
-	//	if err != nil {
-	//		log.Println("Disconnected: Access Denied", "IP:", conn)
-	//		tcpConn.Close()
-	//		return
-	//	}
-	//}
-
-	switch msgProtocolType {
-	case constant.C2P_RequestLoginUser:
-		log.Println("PLAYERS ONLINE ", server.clients.Count())
-		conn.PushAction(func() int { server.playerConnect(conn, tcpConn, reader); return 0 })
-	case constant.C2P_RequestMoveStart:
-		conn.PushAction(func() int { server.playerMovementStart(conn, reader); return 0 })
-	case constant.C2P_RequestMove:
-		conn.PushAction(func() int { server.playerMovement(conn, reader); return 0 })
-	case constant.C2P_RequestMoveEnd:
-		conn.PushAction(func() int { server.playerMovementEnd(conn, reader); return 0 })
-	case constant.C2P_RequestLogoutUser:
-		//log.Println("DATA_BUFFER_LOGOUT", reader.GetBuffer())
-		conn.PushAction(func() int { server.playerLogout(conn, reader); return 0 })
-	case constant.C2P_RequestPlayerInfo:
-		//log.Println("DATA_PLAYER_INFO", reader.GetBuffer())
-		conn.PushAction(func() int { server.playerInfo(conn, reader); return 0 })
-	case constant.C2P_RequestAllChat:
-		// log.Println("DATA_ALL_CHAT", reader.GetBuffer())
-		conn.PushAction(func() int { server.chatSendAll(conn, reader); return 0 })
-	case constant.C2P_RequestWhisper:
-		// log.Println("DATA_WHISPER_CHAT", reader.GetBuffer())
-		conn.PushAction(func() int { server.chatSendWhisper(conn, reader); return 0 })
-	case constant.C2P_RequestRegionChat:
-		// log.Println("DATA_REGION_CHAT", reader.GetBuffer())
-		conn.PushAction(func() int { server.chatSendRegion(conn, reader); return 0 })
-	case constant.C2P_RequestRegionChange:
-		//log.Println("DATA_REGION_CHANGE", reader.GetBuffer())
-		//server.playerChangeChannel(conn, reader)
-	case constant.C2P_RequestInteractionAttach:
-		//log.Println("DATA_INTERACTION", reader.GetBuffer())
-		//server.playerInteraction(conn, reader)
-	case constant.C2P_RequestPlayMontage:
-		//log.Println("DATA_PLAY_MONTAGE", reader.GetBuffer())
-		//server.playerPlayAnimation(conn, reader)
-	case constant.C2P_RequestMetaSchoolEnter:
-		//log.Println("DATA_META_SCHOOL_ENTER", reader.GetBuffer())
-		//server.playerEnterToRoom(conn, reader)
-	case constant.C2P_RequestMetaSchoolLeave:
-		//log.Println("DATA_META_SCHOOL_ENTER", reader.GetBuffer())
-		//server.playerLeaveFromRoom(conn, reader)
-	case constant.C2P_RequestRoleChecking:
-		//log.Println("DATA_ROLE_CHECKING", reader.GetBuffer())
-		//server.playerRegionRoleChecking(conn, reader)
-	default:
-		fmt.Println("UNKNOWN MSG", reader)
-		//msg = nil
+func (server *Server) playerAction(conn *mnet.Client, reader RequestedParam) {
+	if reader.Num == constant.OnConnected {
+		c := make(chan RequestedParam)
+		server.playerActions.Set(conn.String(), c)
+		go func(server *Server, conn *mnet.Client, c <-chan RequestedParam) {
+			for {
+				select {
+				case p := <-c:
+					{
+						switch p.Num {
+						case constant.C2P_RequestLoginUser:
+							server.playerConnect(conn, p.Reader)
+						case constant.C2P_RequestMoveStart:
+							server.playerMovementStart(conn, p.Reader)
+						case constant.C2P_RequestMove:
+							server.playerMovement(conn, p.Reader)
+						case constant.C2P_RequestMoveEnd:
+							server.playerMovementEnd(conn, p.Reader)
+						case constant.C2P_RequestLogoutUser:
+							server.playerLogout(conn, p.Reader)
+						case constant.C2P_RequestPlayerInfo:
+							server.playerInfo(conn, p.Reader)
+						case constant.C2P_RequestAllChat:
+							server.chatSendAll(conn, p.Reader)
+						case constant.C2P_RequestWhisper:
+							server.chatSendWhisper(conn, p.Reader)
+						case constant.C2P_RequestRegionChat:
+							server.chatSendRegion(conn, p.Reader)
+						case constant.C2P_RequestRegionChange:
+						case constant.C2P_RequestInteractionAttach:
+						case constant.C2P_RequestPlayMontage:
+						case constant.C2P_RequestMetaSchoolEnter:
+						case constant.C2P_RequestMetaSchoolLeave:
+						case constant.C2P_RequestRoleChecking:
+						case constant.OnDisconnected:
+							server.ClientDisconnected(conn)
+							server.playerActions.Remove(conn.String())
+							return
+						default:
+						}
+					}
+				}
+			}
+		}(server, conn, c)
+		c <- reader
+	} else {
+		c, ok := server.playerActions.Get(conn.String())
+		if ok {
+			c <- reader
+		}
 	}
 }
 
-func (server *Server) playerConnect(conn *mnet.Client, tcpConn net.Conn, reader mpacket.Reader) {
+func (server *Server) playerConnect(conn *mnet.Client, reader mpacket.Reader) {
+
 	msg := &mc_metadata.C2P_RequestLoginUser{}
 	err := proto.Unmarshal(reader.GetBuffer(), msg)
 	if err != nil || len(msg.UuId) == 0 {
@@ -112,7 +109,7 @@ func (server *Server) playerConnect(conn *mnet.Client, tcpConn net.Conn, reader 
 				if err2 != nil {
 					log.Println("ErrorLoginResponse", err2)
 				}
-				tcpConn.Write(m)
+				conn.BaseConn.Send(m)
 				return
 			}
 		}

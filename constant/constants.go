@@ -70,6 +70,9 @@ const (
 
 	//errors
 	P2C_ResultLoginUserError = 90
+
+	OnConnected    = 10000
+	OnDisconnected = 10001
 )
 
 const (
