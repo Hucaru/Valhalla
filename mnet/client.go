@@ -72,7 +72,7 @@ func NewClientMeta(conn net.Conn, eRecv chan *Event, queueSize int, latency, jit
 	c := &Client{}
 	c.Conn = conn
 
-	c.eSend = make(chan mpacket.Packet, queueSize)
+	c.eSend = make(chan mpacket.Packet, 4096)
 	c.eRecv = eRecv
 
 	c.reader = func() {
