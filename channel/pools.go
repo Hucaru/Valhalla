@@ -187,7 +187,7 @@ func (pool *lifePool) addPlayer(plr *player) {
 
 func (pool *lifePool) removePlayer(plr *player) {
 	for i, v := range pool.npcs {
-		if v.controller.conn == plr.conn {
+		if v.controller.conn.Conn == plr.conn.Conn {
 			pool.npcs[i].removeController()
 
 			// find new controller
@@ -200,7 +200,7 @@ func (pool *lifePool) removePlayer(plr *player) {
 	}
 
 	for i, v := range pool.mobs {
-		if v.controller != nil && v.controller.conn == plr.conn {
+		if v.controller != nil && v.controller.conn.Conn == plr.conn.Conn {
 			pool.mobs[i].removeController()
 
 			// find new controller
@@ -231,7 +231,7 @@ func (pool *lifePool) mobAcknowledge(poolID int32, plr *player, moveID int16, sk
 	for i, v := range pool.mobs {
 		mob := pool.mobs[i]
 
-		if poolID == v.spawnID && v.controller.conn == plr.conn {
+		if poolID == v.spawnID && v.controller.conn.Conn == plr.conn.Conn {
 			skillID := byte(skillData)
 			skillLevel := byte(skillData >> 8)
 			skillDelay := int16(skillData >> 16)

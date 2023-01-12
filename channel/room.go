@@ -96,7 +96,7 @@ func (r *room) addPlayer(plr *player) bool {
 
 func (r *room) removePlayer(plr *player) bool {
 	for i, v := range r.players {
-		if v.conn == plr.conn {
+		if v.conn.Conn == plr.conn.Conn {
 			r.players = append(r.players[:i], r.players[i+1:]...) // preserve order for slot numbers
 			return true
 		}
@@ -113,7 +113,7 @@ func (r room) send(p mpacket.Packet) {
 
 func (r room) sendExcept(p mpacket.Packet, plr *player) {
 	for _, v := range r.players {
-		if v.conn == plr.conn {
+		if v.conn.Conn == plr.conn.Conn {
 			continue
 		}
 		v.send(p)
@@ -130,7 +130,7 @@ func (r room) closed() bool {
 
 func (r room) chatMsg(plr *player, msg string) {
 	for i, v := range r.players {
-		if v.conn == plr.conn {
+		if v.conn.Conn == plr.conn.Conn {
 			r.send(packetRoomChat(plr.name, msg, byte(i)))
 		}
 	}
@@ -197,7 +197,7 @@ func (r gameRoom) checkPassword(password string, plr *player) bool {
 
 func (r *gameRoom) kickPlayer(plr *player, reason byte) bool {
 	for i, v := range r.players {
-		if v.conn == plr.conn {
+		if v.conn.Conn == plr.conn.Conn {
 			if r.inProgress {
 				r.gameEnd(false, true, plr, 0)
 			}
@@ -239,7 +239,7 @@ func (r *gameRoom) expel() bool {
 
 func (r *gameRoom) ready(plr *player) {
 	for i, v := range r.players {
-		if v.conn == plr.conn && i == 1 {
+		if v.conn.Conn == plr.conn.Conn && i == 1 {
 			r.send(packetRoomReady())
 		}
 	}
@@ -247,7 +247,7 @@ func (r *gameRoom) ready(plr *player) {
 
 func (r *gameRoom) unready(plr *player) {
 	for i, v := range r.players {
-		if v.conn == plr.conn && i == 1 {
+		if v.conn.Conn == plr.conn.Conn && i == 1 {
 			r.send(packetRoomUnready())
 		}
 	}
@@ -262,7 +262,7 @@ func (r *gameRoom) gameEnd(draw, forfeit bool, plr *player, winningSlot byte) {
 	r.inProgress = false
 
 	if forfeit {
-		if plr.conn == r.players[0].conn {
+		if plr.conn.Conn == r.players[0].conn.Conn {
 			winningSlot = 0x01
 		} else {
 			winningSlot = 0x00
@@ -328,7 +328,7 @@ func (r *gameRoom) assignPoints(draw bool, winningSlot byte) {
 
 func (r *gameRoom) requestTie(plr *player) {
 	for _, v := range r.players {
-		if v.conn != plr.conn {
+		if v.conn.Conn != plr.conn.Conn {
 			v.send(packetRoomRequestTie())
 			return
 		}
@@ -340,7 +340,7 @@ func (r *gameRoom) requestTieResult(tie bool, plr *player) {
 		r.gameEnd(true, false, nil, 0)
 	} else {
 		for _, v := range r.players {
-			if v.conn != plr.conn {
+			if v.conn.Conn != plr.conn.Conn {
 				v.send(packetRoomRejectTie())
 				return
 			}
@@ -350,7 +350,7 @@ func (r *gameRoom) requestTieResult(tie bool, plr *player) {
 
 func (r *gameRoom) forfeit(plr *player) {
 	for _, v := range r.players {
-		if v.conn == plr.conn {
+		if v.conn.Conn == plr.conn.Conn {
 			r.gameEnd(false, true, plr, 0)
 			return
 		}
@@ -359,7 +359,7 @@ func (r *gameRoom) forfeit(plr *player) {
 
 func (r *gameRoom) requestExit(exit bool, plr *player) {
 	for i, v := range r.players {
-		if v.conn == plr.conn {
+		if v.conn.Conn == plr.conn.Conn {
 			r.exit[i] = exit
 			return
 		}
@@ -406,9 +406,9 @@ func (r *omokRoom) placePiece(x, y int32, piece byte, plr *player) bool {
 	}
 
 	// Turns are out of sync with client probably due to hacking
-	if r.p1Turn && plr.conn != r.players[0].conn {
+	if r.p1Turn && plr.conn.Conn != r.players[0].conn.Conn {
 		r.players[1].send(packetRoomOmokInvalidPlaceMsg())
-	} else if !r.p1Turn && plr.conn != r.players[1].conn {
+	} else if !r.p1Turn && plr.conn.Conn != r.players[1].conn.Conn {
 		r.players[0].send(packetRoomOmokInvalidPlaceMsg())
 	}
 
@@ -464,7 +464,7 @@ func (r *omokRoom) placePiece(x, y int32, piece byte, plr *player) bool {
 
 func (r *omokRoom) requestUndo(plr *player) {
 	for i, v := range r.players {
-		if v.conn != plr.conn {
+		if v.conn.Conn != plr.conn.Conn {
 			if (i == 0 && r.p1Plays == 0) || (i == 1 && r.p2Plays == 0) {
 				return
 			}
@@ -479,7 +479,7 @@ func (r *omokRoom) requestUndo(plr *player) {
 func (r *omokRoom) requestUndoResult(undo bool, plr *player) {
 	if undo {
 		for i, v := range r.players {
-			if v.conn != plr.conn {
+			if v.conn.Conn != plr.conn.Conn {
 				turns := byte(1)
 				slot := byte(i)
 
@@ -527,7 +527,7 @@ func (r *omokRoom) requestUndoResult(undo bool, plr *player) {
 		}
 	} else {
 		for _, v := range r.players {
-			if v.conn != plr.conn {
+			if v.conn.Conn != plr.conn.Conn {
 				v.send(packetRoomRejectUndo())
 				return
 			}
@@ -779,7 +779,7 @@ func (r *tradeRoom) addPlayer(plr *player) bool {
 func (r *tradeRoom) removePlayer(plr *player) {
 	// Note: since anyone leaving the room causes it to close we don't need to remove players
 	for i, v := range r.players {
-		if v.conn != plr.conn {
+		if v.conn.Conn != plr.conn.Conn {
 			v.send(packetRoomLeave(byte(i), 0x02))
 		}
 	}

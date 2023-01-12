@@ -82,14 +82,14 @@ func (server *Server) handleLoginRequest(conn mnet.Client, reader mpacket.Reader
 		conn.SetAccountID(accountID)
 	}
 
-	conn.Send(packetLoginResponse(result, accountID, gender, adminLevel > 0, username, isBanned))
+	conn.BaseConn.Send(packetLoginResponse(result, accountID, gender, adminLevel > 0, username, isBanned))
 }
 
 func (server *Server) handlePinRegistration(conn mnet.Client, reader mpacket.Reader) {
 	b1 := reader.ReadByte()
 
 	if b1 == 0 { // Client canceled pin change request
-		conn.Send(packetCancelPin())
+		conn.BaseConn.Send(packetCancelPin())
 		return
 	}
 	reader.Skip(2)
@@ -102,12 +102,12 @@ func (server *Server) handlePinRegistration(conn mnet.Client, reader mpacket.Rea
 		log.Println("handlePinRegistration database pin update issue for accountID:", accountID, err)
 	}
 
-	conn.Send(packetRequestPin())
+	conn.BaseConn.Send(packetRequestPin())
 
 }
 
 func (server *Server) handleGoodLogin(conn mnet.Client, reader mpacket.Reader) {
-	server.migrating[conn] = false
+	server.migrating[conn.BaseConn] = false
 	accountID := conn.GetAccountID()
 
 	if server.withPin {
@@ -126,9 +126,9 @@ func (server *Server) handleGoodLogin(conn mnet.Client, reader mpacket.Reader) {
 
 		if b1 == 1 && b2 == 1 { // First attempt, request for pin
 			if len(pinDB) == 0 {
-				conn.Send(packetRegisterPin())
+				conn.BaseConn.Send(packetRegisterPin())
 			} else {
-				conn.Send(packetRequestPin())
+				conn.BaseConn.Send(packetRequestPin())
 			}
 
 		} else if b1 == 1 || b1 == 2 { // Client assigned pin
@@ -136,17 +136,17 @@ func (server *Server) handleGoodLogin(conn mnet.Client, reader mpacket.Reader) {
 			pin := string(reader.GetRestAsBytes())
 
 			if pin != pinDB {
-				conn.Send(packetRequestPinAfterFailure())
+				conn.BaseConn.Send(packetRequestPinAfterFailure())
 
 			} else if b1 == 2 { // Changing pin request
-				conn.Send(packetRegisterPin())
+				conn.BaseConn.Send(packetRegisterPin())
 
 			} else { // Authenticated successfully
 				authDone = true
 			}
 
 		} else if b1 == 0 { // Client cancels pin request
-			conn.Send(packetCancelPin())
+			conn.BaseConn.Send(packetCancelPin())
 		}
 
 		if !authDone {
@@ -166,10 +166,10 @@ func (server *Server) handleGoodLogin(conn mnet.Client, reader mpacket.Reader) {
 	const maxNumberOfWorlds = 14
 
 	for i := len(server.worlds) - 1; i > -1; i-- {
-		conn.Send(packetLoginWorldListing(byte(i), server.worlds[i]))
+		conn.BaseConn.Send(packetLoginWorldListing(byte(i), server.worlds[i]))
 	}
 
-	conn.Send(packetLoginEndWorldList())
+	conn.BaseConn.Send(packetLoginEndWorldList())
 }
 
 func (server *Server) handleWorldSelect(conn mnet.Client, reader mpacket.Reader) {

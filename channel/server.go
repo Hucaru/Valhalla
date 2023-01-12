@@ -37,7 +37,7 @@ type players map[string]*player
 var SomeMapMutex = &sync.RWMutex{}
 var gorotinesManager = manager.Init()
 
-func (p players) getFromConn(conn mnet.Client) (*player, error) {
+func (p players) getFromConn(conn *mnet.Client) (*player, error) {
 	SomeMapMutex.Lock()
 	plr, ok := p[conn.GetPlayer().UId]
 	SomeMapMutex.Unlock()
@@ -127,7 +127,7 @@ type Server struct {
 	channels         [20]internal.Channel
 	fields           map[int32]*field
 	header           string
-	npcChat          map[mnet.Client]*npcScriptController
+	npcChat          map[string]*npcScriptController
 	npcScriptStore   *scriptStore
 	eventCtrl        map[string]*eventScriptController
 	eventScriptStore *scriptStore
@@ -352,7 +352,7 @@ func (server *Server) moveEmulate(conn *mnet.Client) {
 }
 
 func (server *Server) loadScripts() {
-	server.npcChat = make(map[mnet.Client]*npcScriptController)
+	server.npcChat = make(map[string]*npcScriptController)
 	server.eventCtrl = make(map[string]*eventScriptController)
 
 	server.npcScriptStore = createScriptStore("scripts/npc", server.dispatch) // make folder a config param
@@ -454,7 +454,7 @@ func (server *Server) clearSessions() {
 }
 
 // ClientDisconnected from server
-func (server *Server) ClientDisconnected(conn mnet.Client) {
+func (server *Server) ClientDisconnected(conn *mnet.Client) {
 	//_, err := server.players.getFromConn(conn)
 	//if err != nil {
 	//	return
@@ -463,8 +463,6 @@ func (server *Server) ClientDisconnected(conn mnet.Client) {
 	//if _, ok := server.npcChat[conn]; ok {
 	//	delete(server.npcChat, conn)
 	//}
-
-	conn.OnDisconnected()
 
 	server.removePlayer(conn)
 
@@ -566,7 +564,7 @@ func (server *Server) addPlayerToGrid(plr *player, x1, y1 float32) {
 	//}
 }
 
-func (server *Server) removePlayer(conn mnet.Client) {
+func (server *Server) removePlayer(conn *mnet.Client) {
 
 	server.gridMgr.Remove(conn.GetPlayer().UId)
 	server.clients.Remove(conn.GetPlayer().UId)

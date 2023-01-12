@@ -618,7 +618,7 @@ func (inst *fieldInstance) removePlayer(plr *player) error {
 	index := -1
 
 	for i, v := range inst.players {
-		if v.conn == plr.conn {
+		if v.conn.Conn == plr.conn.Conn {
 			index = i
 			break
 		}
@@ -670,7 +670,7 @@ func (inst fieldInstance) send(p mpacket.Packet) error {
 
 func (inst fieldInstance) sendExcept(p mpacket.Packet, exception mnet.Client) error {
 	for _, v := range inst.players {
-		if v.conn == exception {
+		if v.conn.Conn == exception.Conn {
 			continue
 		}
 

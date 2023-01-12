@@ -161,7 +161,7 @@ type player struct {
 
 // Send the Data a packet
 func (d player) send(packet mpacket.Packet) {
-	if d.conn == nil {
+	if d.conn.Conn == nil {
 		return
 	}
 

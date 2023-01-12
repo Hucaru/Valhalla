@@ -10,46 +10,30 @@ import (
 	"github.com/Hucaru/Valhalla/mpacket"
 )
 
-type Client interface {
-	MConn
-
-	GetLogedIn() bool
-	SetLogedIn(bool)
-	GetAccountID() int32
-	SetAccountID(int32)
-	GetGender() byte
-	SetGender(byte)
-	GetWorldID() byte
-	SetWorldID(byte)
-	GetChannelID() byte
-	SetChannelID(byte)
-	GetAdminLevel() int
-	SetAdminLevel(int)
-	GetPlayer() *model.Player
-	SetPlayer(player *model.Player)
-
-	PushAction(f func())
-	OnDisconnected()
-}
-
 type client struct {
-	baseConn
-
-	logedIn        bool
-	accountID      int32
-	gender         byte
-	worldID        byte
-	channelID      byte
-	regionID       int64
-	adminLevel     int
-	uID            string
-	player         *model.Player
-	goChannel      chan func()
-	goDisconnected chan func()
+	logedIn    bool
+	accountID  int32
+	gender     byte
+	worldID    byte
+	channelID  byte
+	regionID   int64
+	adminLevel int
+	uID        string
+	player     *model.Player
+	goChannel  chan func() int
 }
 
-func NewClient(conn net.Conn, eRecv chan *Event, queueSize int, keySend, keyRecv [4]byte, latency, jitter int) *client {
-	c := &client{}
+type BaseConn struct {
+	baseConn
+}
+
+type Client struct {
+	BaseConn
+	client
+}
+
+func NewClient(conn net.Conn, eRecv chan *Event, queueSize int, keySend, keyRecv [4]byte, latency, jitter int) *Client {
+	c := &Client{}
 	c.Conn = conn
 
 	c.eSend = make(chan mpacket.Packet, queueSize)
@@ -83,25 +67,11 @@ func NewClient(conn net.Conn, eRecv chan *Event, queueSize int, keySend, keyRecv
 		}(c.pSend, conn)
 	}
 
-	c.goChannel = make(chan func())
-	go func(goChannel chan func()) {
-		for {
-			select {
-			case p, ok := <-goChannel:
-				if !ok {
-					return
-				}
-
-				p()
-			}
-		}
-	}(c.goChannel)
-
 	return c
 }
 
-func NewClientMeta(conn net.Conn, eRecv chan *Event, queueSize int, latency, jitter int) *client {
-	c := &client{}
+func NewClientMeta(conn net.Conn, eRecv chan *Event, queueSize int, latency, jitter int) *Client {
+	c := &Client{}
 	c.Conn = conn
 
 	c.eSend = make(chan mpacket.Packet, queueSize)
@@ -131,10 +101,9 @@ func NewClientMeta(conn net.Conn, eRecv chan *Event, queueSize int, latency, jit
 		}(c.pSend, conn)
 	}
 
-	c.goChannel = make(chan func(), 1)
-	c.goDisconnected = make(chan func(), 1)
+	c.goChannel = make(chan func() int, 1)
 
-	go func(goChannel <-chan func(), goDisconnected <-chan func()) {
+	go func(goChannel <-chan func() int) {
 		for {
 			select {
 			case p, ok := <-goChannel:
@@ -143,12 +112,13 @@ func NewClientMeta(conn net.Conn, eRecv chan *Event, queueSize int, latency, jit
 					return
 				}
 
-				p()
-			case <-goDisconnected:
-				return
+				r := p()
+				if r == 1 {
+					return
+				}
 			}
 		}
-	}(c.goChannel, c.goDisconnected)
+	}(c.goChannel)
 
 	return c
 }
@@ -213,10 +183,10 @@ func (c *client) SetPlayer(player *model.Player) {
 //
 //}
 
-func (c *client) PushAction(f func()) {
+func (c *Client) PushAction(f func() int) {
 	c.goChannel <- f
 }
 
-func (c *client) OnDisconnected() {
-	c.goDisconnected <- func() {}
+func (c *Client) String() string {
+	return c.baseConn.String()
 }

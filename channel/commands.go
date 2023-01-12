@@ -19,7 +19,7 @@ import (
 // Game Master  - can ban, can run channel wide commands, can spawn monsters
 // Support  - can assist with issues such as missing passes in PQ, stuck players, misc issues
 // Community - can start and moderate events
-func (server *Server) gmCommand(conn mnet.Client, msg string) {
+func (server *Server) gmCommand(conn *mnet.Client, msg string) {
 	ind := strings.Index(msg, "/")
 	command := strings.SplitN(msg[ind+1:], " ", -1)
 
@@ -32,14 +32,14 @@ func (server *Server) gmCommand(conn mnet.Client, msg string) {
 		}
 
 		if len(command) < 3 {
-			conn.Send(packetMessageRedText("Command structure is /rate <exp | drop | mesos> <rate>"))
+			conn.BaseConn.Send(packetMessageRedText("Command structure is /rate <exp | drop | mesos> <rate>"))
 			return
 		}
 
 		mode := command[1]
 		mFunc, ok := rates[mode]
 		if !ok {
-			conn.Send(packetMessageRedText("Choose between exp/drop/mesos rates"))
+			conn.BaseConn.Send(packetMessageRedText("Choose between exp/drop/mesos rates"))
 			return
 		}
 
@@ -47,13 +47,13 @@ func (server *Server) gmCommand(conn mnet.Client, msg string) {
 		r, err := strconv.ParseFloat(rate, 32)
 		if err != nil {
 			log.Println("Failed parsing rate: ", err)
-			conn.Send(packetMessageRedText("<rate> should be a number"))
+			conn.BaseConn.Send(packetMessageRedText("<rate> should be a number"))
 			return
 		}
 
 		server.world.Send(mFunc(float32(r)))
 	case "showRates":
-		conn.Send(packetMessageNotice(fmt.Sprintf("Exp: x%.2f, Drop: x%.2f, Mesos: x%.2f", server.rates.exp, server.rates.drop, server.rates.mesos)))
+		conn.BaseConn.Send(packetMessageNotice(fmt.Sprintf("Exp: x%.2f, Drop: x%.2f, Mesos: x%.2f", server.rates.exp, server.rates.drop, server.rates.mesos)))
 
 	case "packet":
 		if len(command) < 2 {
@@ -68,12 +68,12 @@ func (server *Server) gmCommand(conn mnet.Client, msg string) {
 		}
 		log.Println("Sent packet:", hex.EncodeToString(data))
 		data = append(make([]byte, 4), data...)
-		conn.Send(data)
+		conn.BaseConn.Send(data)
 	case "mapInfo":
 		player, err := server.players.getFromConn(conn)
 
 		if err != nil {
-			conn.Send(packetMessageRedText(err.Error()))
+			conn.BaseConn.Send(packetMessageRedText(err.Error()))
 			return
 		}
 
@@ -85,15 +85,15 @@ func (server *Server) gmCommand(conn mnet.Client, msg string) {
 
 		for i, v := range field.instances {
 			info := "instance " + strconv.Itoa(i) + ":"
-			conn.Send(packetMessageNotice(info))
+			conn.BaseConn.Send(packetMessageNotice(info))
 			info = v.String()
-			conn.Send(packetMessageNotice(info))
+			conn.BaseConn.Send(packetMessageNotice(info))
 		}
 	case "pos":
 		player, err := server.players.getFromConn(conn)
 
 		if err != nil {
-			conn.Send(packetMessageRedText(err.Error()))
+			conn.BaseConn.Send(packetMessageRedText(err.Error()))
 			return
 		}
 

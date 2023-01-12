@@ -39,7 +39,7 @@ func (d *npc) removeController() {
 }
 
 func (d npc) acknowledgeController(plr *player, inst *fieldInstance, data []byte) {
-	if d.controller.conn != plr.conn {
+	if d.controller.conn.Conn != plr.conn.Conn {
 		plr.send(packetNpcSetController(d.spawnID, false))
 		return
 	}

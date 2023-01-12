@@ -3,6 +3,7 @@ package login
 import (
 	"github.com/Hucaru/Valhalla/common/db"
 	"log"
+	"net"
 
 	"github.com/Hucaru/Valhalla/internal"
 	"github.com/Hucaru/Valhalla/mnet"
@@ -10,7 +11,7 @@ import (
 
 // Server state
 type Server struct {
-	migrating map[mnet.Client]bool
+	migrating map[net.Conn]bool
 	// db        *sql.DB
 	worlds  []internal.World
 	withPin bool
@@ -18,7 +19,7 @@ type Server struct {
 
 // Initialise the server
 func (server *Server) Initialise(dbuser, dbpassword, dbaddress, dbport, dbdatabase string, withpin bool) {
-	server.migrating = make(map[mnet.Client]bool)
+	server.migrating = make(map[net.Conn]bool)
 	server.withPin = withpin
 
 	err := db.ConnectToDB(dbuser, dbpassword, dbaddress, dbport, dbdatabase)
