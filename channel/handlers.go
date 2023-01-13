@@ -35,6 +35,7 @@ func (server *Server) HandleClientPacket(
 func (server *Server) playerAction(conn *mnet.Client, reader RequestedParam) {
 	if reader.Num == constant.OnConnected {
 		c := make(chan RequestedParam, 4096*4)
+
 		server.playerActions.Set(conn.String(), c)
 		go func(server *Server, conn *mnet.Client, c chan RequestedParam) {
 			for {

@@ -155,6 +155,9 @@ func (cs *channelServer) acceptNewConnections() {
 					cs.gameState.HandleClientPacket(client, mpacket.Reader{}, constant.OnDisconnected)
 					return
 				}
+
+				log.Println(msgProtocol)
+
 				cs.gameState.HandleClientPacket(client, mpacket.NewReader(&buff, time.Now().Unix()), msgProtocol)
 
 				time.Sleep(10 * time.Millisecond)
