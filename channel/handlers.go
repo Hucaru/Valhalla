@@ -28,58 +28,81 @@ import (
 
 // HandleClientPacket data
 func (server *Server) HandleClientPacket(
-	conn *mnet.Client, reader mpacket.Reader, msgProtocolType uint32) {
-	server.playerAction(conn, RequestedParam{Num: msgProtocolType, Reader: reader})
+	conn *mnet.Client, reader mpacket.Reader, msgProtocolType uint32) int {
+	return server.playerAction(conn, RequestedParam{Num: msgProtocolType, Reader: reader})
 }
 
-func (server *Server) playerAction(conn *mnet.Client, reader RequestedParam) {
-	if reader.Num == constant.OnConnected {
-		c := make(chan RequestedParam, 4096*4096)
-
-		server.playerActions.Set(conn.String(), c)
-		go func(server *Server, conn *mnet.Client, c chan RequestedParam) {
-			for {
-				// Kioni
-				select {
-				case p, ok2 := <-c:
-					if !ok2 {
-						server.PlayerActionHandler[p.Num](conn, p.Reader)
-						server.playerActions.Remove(conn.String())
-						log.Println("state : ", runtime.NumGoroutine(), runtime.NumCPU())
-						log.Println("constant.OnDisconnected")
-						return
-					}
-
-					if _, ok := server.PlayerActionHandler[p.Num]; ok {
-						if p.Num == constant.OnDisconnected {
-							server.PlayerActionHandler[p.Num](conn, p.Reader)
-							server.playerActions.Remove(conn.String())
-							log.Println("Close Begin")
-							close(c)
-							log.Println("Close End")
-							log.Println("state : ", runtime.NumGoroutine(), runtime.NumCPU())
-							log.Println("constant.OnDisconnected")
-							return
-						} else {
-							server.PlayerActionHandler[p.Num](conn, p.Reader)
-							//server.Pools.Submit(func() {
-							//
-							//})
-						}
-					}
-				default:
-					//log.Println("state : ", runtime.NumGoroutine(), runtime.NumCPU())
-					runtime.Gosched()
-				}
-			}
-		}(server, conn, c)
-		c <- reader
-	} else {
-		c, ok := server.playerActions.Get(conn.String())
-		if ok {
-			c <- reader
-		}
+func (server *Server) playerAction(conn *mnet.Client, reader RequestedParam) int {
+	if reader.Num == constant.OnDisconnected {
+		server.ClientDisconnected(conn, reader.Reader)
+		server.playerActions.Remove(conn.String())
+		log.Println("Close Begin")
+		log.Println("Close End")
+		log.Println("state : ", runtime.NumGoroutine(), runtime.NumCPU())
+		log.Println("constant.OnDisconnected")
+		return -1
 	}
+
+	f, ok := server.PlayerActionHandler[reader.Num]
+	if !ok {
+		server.ClientDisconnected(conn, reader.Reader)
+		server.playerActions.Remove(conn.String())
+		log.Println("state : ", runtime.NumGoroutine(), runtime.NumCPU())
+		log.Println("constant.OnDisconnected")
+		return -1
+	}
+
+	f(conn, reader.Reader)
+
+	return 0
+
+	//if reader.Num == constant.OnConnected {
+	//	c := make(chan RequestedParam, 4096*4096)
+	//
+	//	server.playerActions.Set(conn.String(), c)
+	//	go func(server *Server, conn *mnet.Client, c chan RequestedParam) {
+	//		for {
+	//			// Kioni
+	//			select {
+	//			case p, ok2 := <-c:
+	//				if !ok2 {
+	//					server.PlayerActionHandler[p.Num](conn, p.Reader)
+	//					server.playerActions.Remove(conn.String())
+	//					log.Println("state : ", runtime.NumGoroutine(), runtime.NumCPU())
+	//					log.Println("constant.OnDisconnected")
+	//					return
+	//				}
+	//
+	//				if _, ok := server.PlayerActionHandler[p.Num]; ok {
+	//					if p.Num == constant.OnDisconnected {
+	//						server.PlayerActionHandler[p.Num](conn, p.Reader)
+	//						server.playerActions.Remove(conn.String())
+	//						log.Println("Close Begin")
+	//						close(c)
+	//						log.Println("Close End")
+	//						log.Println("state : ", runtime.NumGoroutine(), runtime.NumCPU())
+	//						log.Println("constant.OnDisconnected")
+	//						return
+	//					} else {
+	//						server.PlayerActionHandler[p.Num](conn, p.Reader)
+	//						//server.Pools.Submit(func() {
+	//						//
+	//						//})
+	//					}
+	//				}
+	//			default:
+	//				//log.Println("state : ", runtime.NumGoroutine(), runtime.NumCPU())
+	//				runtime.Gosched()
+	//			}
+	//		}
+	//	}(server, conn, c)
+	//	c <- reader
+	//} else {
+	//	c, ok := server.playerActions.Get(conn.String())
+	//	if ok {
+	//		c <- reader
+	//	}
+	//}
 }
 
 func (server *Server) playerConnect(conn *mnet.Client, reader mpacket.Reader) {
