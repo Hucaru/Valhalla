@@ -156,9 +156,12 @@ func (cs *channelServer) acceptNewConnections() {
 					return
 				}
 
-				cs.gameState.HandleClientPacket(client, mpacket.NewReader(&buff, time.Now().Unix()), msgProtocol)
-
-				runtime.Gosched()
+				result := cs.gameState.HandleClientPacket(client, mpacket.NewReader(&buff, time.Now().Unix()), msgProtocol)
+				if result == -1 {
+					fmt.Println("Error result:")
+					cs.gameState.HandleClientPacket(client, mpacket.Reader{}, constant.OnDisconnected)
+					return
+				}
 			}
 		}()
 

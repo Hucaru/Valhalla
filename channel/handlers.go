@@ -36,8 +36,6 @@ func (server *Server) playerAction(conn *mnet.Client, reader RequestedParam) int
 	if reader.Num == constant.OnDisconnected {
 		server.ClientDisconnected(conn, reader.Reader)
 		server.playerActions.Remove(conn.String())
-		log.Println("Close Begin")
-		log.Println("Close End")
 		log.Println("state : ", runtime.NumGoroutine(), runtime.NumCPU())
 		log.Println("constant.OnDisconnected")
 		return -1
