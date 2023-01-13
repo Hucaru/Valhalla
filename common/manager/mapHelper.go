@@ -71,9 +71,9 @@ func (m ConcurrentMap[K, V]) MSet(data map[K]V) {
 func (m ConcurrentMap[K, V]) Set(key K, value V) {
 	// Get map shard.
 	shard := m.GetShard(key)
+	defer shard.Unlock()
 	shard.Lock()
 	shard.items[key] = value
-	shard.Unlock()
 }
 
 // Callback to return new element to be inserted into the map
@@ -110,10 +110,10 @@ func (m ConcurrentMap[K, V]) SetIfAbsent(key K, value V) bool {
 func (m ConcurrentMap[K, V]) Get(key K) (V, bool) {
 	// Get shard
 	shard := m.GetShard(key)
+	defer shard.RUnlock()
 	shard.RLock()
 	// Get item from shard.
 	val, ok := shard.items[key]
-	shard.RUnlock()
 	return val, ok
 }
 
@@ -134,9 +134,10 @@ func (m ConcurrentMap[K, V]) Has(key K) bool {
 	// Get shard
 	shard := m.GetShard(key)
 	shard.RLock()
+	defer shard.RUnlock()
 	// See if element is within shard.
 	_, ok := shard.items[key]
-	shard.RUnlock()
+
 	return ok
 }
 
@@ -145,8 +146,9 @@ func (m ConcurrentMap[K, V]) Remove(key K) {
 	// Try to get shard.
 	shard := m.GetShard(key)
 	shard.Lock()
+	defer shard.Unlock()
 	delete(shard.items, key)
-	shard.Unlock()
+
 }
 
 // RemoveCb is a callback executed in a map.RemoveCb() call, while Lock is held
