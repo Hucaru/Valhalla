@@ -97,17 +97,9 @@ func (gridMgr *GridManager) fillPlayers(GridX, GridY int) map[string]*mnet.Clien
 	}
 
 	itemChan := gridMgr.grids[GridX][GridY].IterBuffered()
-	for {
-		item, ok := <-itemChan
-		if ok {
-			result[item.Key] = item.Val
-		} else {
-			break
-		}
+	for item := range itemChan {
+		result[item.Key] = item.Val
 	}
-	//for item := range itemChan {
-	//	result[item.Key] = item.Val
-	//}
 
 	return result
 }
@@ -121,9 +113,10 @@ func (gridMgr *GridManager) OnMove(newX, newY float32, uId string) (map[string]*
 			//gridMgr.mtx.Lock()
 			//defer gridMgr.mtx.Unlock()
 
-			_plr := gridMgr.Remove(uId)
-			if _plr != nil {
-				gridMgr.Add(newGridX, newGridY, _plr)
+		} else {
+			//_plr := gridMgr.Remove(uId)
+			if true {
+				//gridMgr.Add(newGridX, newGridY, _plr)
 				gridMgr.plrs.Set(uId, GridInfo{newGridX, newGridY})
 
 				oldList := map[string]*mnet.Client{}
@@ -168,7 +161,6 @@ func (gridMgr *GridManager) OnMove(newX, newY float32, uId string) (map[string]*
 
 				return addList, removeList, newList
 			}
-		} else {
 			newList := map[string]*mnet.Client{}
 			for i := -1; i <= 1; i++ {
 				for j := -1; j <= 1; j++ {
