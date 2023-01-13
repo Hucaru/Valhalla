@@ -69,17 +69,12 @@ func NewClient(conn net.Conn, eRecv chan *Event, queueSize int, keySend, keyRecv
 	return c
 }
 
-func NewClientMeta(conn net.Conn, eRecv chan *Event, queueSize int, latency, jitter int) *Client {
+func NewClientMeta(conn net.Conn, queueSize int, latency, jitter int) *Client {
 	c := &Client{}
 	c.Conn = conn
 	c.sendChannelLock = sync.RWMutex{}
 
 	c.eSend = make(chan mpacket.Packet, 4096*4)
-	c.eRecv = eRecv
-
-	c.reader = func() {
-		clientReaderMeta(c, c.eRecv, constant.MetaClientHeaderSize)
-	}
 
 	c.interServer = false
 	c.latency = latency

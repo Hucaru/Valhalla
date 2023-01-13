@@ -2,8 +2,10 @@ package main
 
 import (
 	"crypto/rand"
+	"encoding/binary"
 	"fmt"
 	"github.com/Hucaru/Valhalla/constant"
+	"io"
 	"log"
 	"net"
 	"os"
@@ -131,12 +133,32 @@ func (cs *channelServer) acceptNewConnections() {
 		keyRecv := [4]byte{}
 		rand.Read(keyRecv[:])
 
-		client := mnet.NewClientMeta(conn, cs.eRecv, cs.config.PacketQueueSize, cs.config.Latency, cs.config.Jitter)
+		client := mnet.NewClientMeta(conn, cs.config.PacketQueueSize, cs.config.Latency, cs.config.Jitter)
 
-		go client.Reader()
+		go func() {
+			cs.gameState.HandleClientPacket(client, mpacket.Reader{}, constant.OnConnected)
+			for {
+				buff := make(mpacket.Packet, constant.MetaClientHeaderSize)
+				if _, err := conn.Read(buff); err == io.EOF || err != nil {
+					fmt.Println("Error reading:", err.Error())
+					cs.gameState.HandleClientPacket(client, mpacket.Reader{}, constant.OnDisconnected)
+					return
+				}
+
+				msgLen := binary.BigEndian.Uint32(buff[:4])
+				msgProtocol := binary.BigEndian.Uint32(buff[4:8])
+
+				buff = make([]byte, msgLen)
+				if _, err := conn.Read(buff); err == io.EOF || err != nil {
+					fmt.Println("Error reading:", err.Error())
+					cs.gameState.HandleClientPacket(client, mpacket.Reader{}, constant.OnDisconnected)
+					return
+				}
+				cs.gameState.HandleClientPacket(client, mpacket.NewReader(&buff, time.Now().Unix()), msgProtocol)
+			}
+		}()
+
 		go client.MetaWriter()
-
-		//conn.Write(packetClientHandshake(constant.MapleVersion, keyRecv[:], keySend[:]))
 	}
 }
 
@@ -154,24 +176,6 @@ func (cs *channelServer) processEvent() {
 			}
 
 			switch conn := e.Conn.(type) {
-			case *mnet.Client:
-				switch e.Type {
-				case mnet.MEClientConnected:
-					cs.gameState.HandleClientPacket(
-						conn,
-						mpacket.Reader{},
-						constant.OnConnected)
-				case mnet.MEClientPacket:
-					cs.gameState.HandleClientPacket(
-						conn,
-						mpacket.NewReader(&e.Packet, time.Now().Unix()),
-						e.Protocol)
-				case mnet.MEClientDisconnect:
-					cs.gameState.HandleClientPacket(
-						conn,
-						mpacket.Reader{},
-						constant.OnDisconnected)
-				}
 			case mnet.Server:
 				switch e.Type {
 				case mnet.MEServerDisconnect:

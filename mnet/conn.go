@@ -1,9 +1,6 @@
 package mnet
 
 import (
-	"encoding/binary"
-	"fmt"
-	"io"
 	"math/rand"
 	"net"
 	"sync"
@@ -46,30 +43,6 @@ func clientReader(conn net.Conn, eRecv chan *Event, mapleVersion int16, headerSi
 		}
 
 		header = !header
-	}
-}
-
-func clientReaderMeta(conn net.Conn, eRecv chan *Event, headerSize int) {
-	eRecv <- &Event{Type: MEClientConnected, Conn: conn}
-
-	for {
-		buff := make([]byte, headerSize)
-		if _, err := conn.Read(buff); err == io.EOF || err != nil {
-			fmt.Println("Error reading:", err.Error())
-			eRecv <- &Event{Type: MEClientDisconnect, Conn: conn}
-			break
-		}
-
-		msgLen := binary.BigEndian.Uint32(buff[:4])
-		msgProtocol := binary.BigEndian.Uint32(buff[4:8])
-
-		buff = make([]byte, msgLen)
-		if _, err := conn.Read(buff); err == io.EOF || err != nil {
-			fmt.Println("Error reading:", err.Error())
-			eRecv <- &Event{Type: MEClientDisconnect, Conn: conn}
-			break
-		}
-		eRecv <- &Event{Type: MEClientPacket, Conn: conn, Packet: buff, Protocol: msgProtocol}
 	}
 }
 
