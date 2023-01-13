@@ -53,9 +53,10 @@ func (server *Server) playerAction(conn *mnet.Client, reader RequestedParam) {
 							log.Println("constant.OnDisconnected")
 							return
 						} else {
-							server.Pools.Submit(func() {
-								server.PlayerActionHandler[p.Num](conn, p.Reader)
-							})
+							server.PlayerActionHandler[p.Num](conn, p.Reader)
+							//server.Pools.Submit(func() {
+							//
+							//})
 						}
 					}
 				default:
