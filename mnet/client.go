@@ -2,6 +2,7 @@ package mnet
 
 import (
 	"net"
+	"sync"
 
 	"github.com/Hucaru/Valhalla/common/db/model"
 	"github.com/Hucaru/Valhalla/constant"
@@ -71,6 +72,7 @@ func NewClient(conn net.Conn, eRecv chan *Event, queueSize int, keySend, keyRecv
 func NewClientMeta(conn net.Conn, eRecv chan *Event, queueSize int, latency, jitter int) *Client {
 	c := &Client{}
 	c.Conn = conn
+	c.sendChannelLock = sync.RWMutex{}
 
 	c.eSend = make(chan mpacket.Packet, 4096)
 	c.eRecv = eRecv

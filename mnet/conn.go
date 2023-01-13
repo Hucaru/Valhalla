@@ -6,6 +6,7 @@ import (
 	"io"
 	"math/rand"
 	"net"
+	"sync"
 	"time"
 
 	"github.com/Hucaru/Valhalla/mnet/crypt"
@@ -106,6 +107,8 @@ type baseConn struct {
 	reader func()
 	closed bool
 
+	sendChannelLock sync.RWMutex
+
 	cryptSend *crypt.Maple
 	cryptRecv *crypt.Maple
 
@@ -173,6 +176,8 @@ func (bc *baseConn) MetaWriter() {
 }
 
 func (bc *baseConn) Send(p mpacket.Packet) {
+	bc.sendChannelLock.RLock()
+	defer bc.sendChannelLock.RUnlock()
 	if bc.closed {
 		return
 	}
@@ -185,6 +190,8 @@ func (bc *baseConn) String() string {
 }
 
 func (bc *baseConn) Cleanup() {
+	bc.sendChannelLock.Lock()
+	defer bc.sendChannelLock.Unlock()
 	if bc.closed {
 		return
 	}
