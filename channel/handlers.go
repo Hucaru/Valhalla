@@ -42,6 +42,10 @@ func (server *Server) playerAction(conn *mnet.Client, reader RequestedParam) {
 				p := <-c
 				if _, ok := server.PlayerActionHandler[p.Num]; ok {
 					server.PlayerActionHandler[p.Num](conn, p.Reader)
+
+					if p.Num == constant.OnDisconnected {
+						return
+					}
 				}
 			}
 		}(server, conn, c)
