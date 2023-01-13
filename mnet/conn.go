@@ -169,10 +169,7 @@ func (bc *baseConn) MetaWriter() {
 			return
 		}
 
-		tmp := make(mpacket.Packet, len(p))
-		copy(tmp, p)
-
-		go bc.Conn.Write(tmp)
+		go bc.Conn.Write(p)
 	}
 }
 
