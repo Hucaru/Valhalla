@@ -3,25 +3,18 @@ package channel
 import (
 	"encoding/binary"
 	"fmt"
-	cmap "github.com/orcaman/concurrent-map/v2"
-	"github.com/pemistahl/lingua-go"
-	"log"
-	rand2 "math/rand"
-	"runtime"
-	"sync"
-	"time"
-
 	"github.com/Hucaru/Valhalla/common/db"
 	"github.com/Hucaru/Valhalla/common/db/model"
 	"github.com/Hucaru/Valhalla/common/manager"
-	proto2 "github.com/Hucaru/Valhalla/common/proto"
 	"github.com/Hucaru/Valhalla/constant"
 	"github.com/Hucaru/Valhalla/meta-proto/go/mc_metadata"
-	"google.golang.org/protobuf/proto"
-
-	"github.com/dop251/goja"
 	_ "github.com/go-sql-driver/mysql" // don't need full import
+	cmap "github.com/orcaman/concurrent-map/v2"
+	"github.com/pemistahl/lingua-go"
 	"github.com/prometheus/client_golang/prometheus"
+	"google.golang.org/protobuf/proto"
+	"log"
+	"runtime"
 
 	"github.com/Hucaru/Valhalla/common"
 	"github.com/Hucaru/Valhalla/common/opcode"
@@ -33,13 +26,10 @@ import (
 
 type players map[string]*player
 
-var SomeMapMutex = &sync.RWMutex{}
 var gorotinesManager = manager.Init()
 
 func (p players) getFromConn(conn *mnet.Client) (*player, error) {
-	SomeMapMutex.Lock()
 	plr, ok := p[conn.GetPlayer().UId]
-	SomeMapMutex.Unlock()
 	if ok {
 		return plr, nil
 	}
@@ -48,9 +38,7 @@ func (p players) getFromConn(conn *mnet.Client) (*player, error) {
 }
 
 func (p players) getFromConnByUID(uID string) (*player, error) {
-	SomeMapMutex.RLock()
 	plr, ok := p[uID]
-	SomeMapMutex.RUnlock()
 	if ok {
 		return plr, nil
 	}
@@ -228,8 +216,6 @@ func (server *Server) Initialize(work chan func(), dbuser, dbpassword, dbaddress
 	common.StartMetrics()
 	log.Println("Started serving metrics on :" + common.MetricsPort)
 
-	server.loadScripts()
-
 	detector := lingua.NewLanguageDetectorBuilder().
 		FromLanguages([]lingua.Language{
 			lingua.English,
@@ -258,180 +244,6 @@ func (server *Server) addToEmulateMoving(uid string, plrs []*player) {
 	//	server.moveEmulate(arr[i])
 	//}
 	//arr = nil
-}
-
-func (server *Server) addToEmulateMove(conn *mnet.Client) {
-	server.moveEmulate(conn)
-}
-
-func (server *Server) moveEmulate(conn *mnet.Client) {
-
-	//if gorotinesManager.Get(uID) {
-	//	return
-	//}
-
-	ch := make(chan bool)
-	gorotinesManager.Add(ch, (*conn).GetPlayer().UId)
-	go func(chan bool) {
-		for {
-			select {
-
-			case <-ch:
-				return
-			default:
-			}
-
-			xq := 0
-			xw := 1
-
-			ox := (*conn).GetPlayer().Character.PosX
-			oy := (*conn).GetPlayer().Character.PosY
-
-			if (rand2.Intn(10) - 5) < 0 {
-				xq = 1
-				xw = 0
-			}
-			s := &mc_metadata.P2C_ReportMoveStart{
-				MovementData: &mc_metadata.Movement{
-					UuId:         (*conn).GetPlayer().UId,
-					DestinationX: (*conn).GetPlayer().Character.PosX,
-					DestinationY: (*conn).GetPlayer().Character.PosY,
-					DestinationZ: (*conn).GetPlayer().Character.PosZ,
-					InterpTime:   300,
-				},
-			}
-			//log.Println("P2C_ReportMoveStart", uID, x, y)
-			if res, errR := proto2.MakeResponse(s, constant.P2C_ReportMoveStart); errR == nil {
-
-				for i := 0; i < len(server.fMovePlayers); i++ {
-					if plr, err := server.players.getFromConnByUID(server.fMovePlayers[i].name); err == nil {
-						x1, y1 := common.FindGrid(plr.conn.GetPlayer().Character.PosX, plr.conn.GetPlayer().Character.PosY)
-						x2, y2 := common.FindGrid(plr.conn.GetPlayer().Character.PosX, plr.conn.GetPlayer().Character.PosY)
-
-						if common.FindLocationInGrid(x1, y1, x2, y2) {
-							plr.conn.Send(res)
-						}
-					}
-				}
-
-			} else if errR != nil {
-				log.Println("DATA_RESPONSE_ERROR", errR)
-			}
-
-			for k := 1; k <= 10; k++ {
-				m := &mc_metadata.P2C_ReportMove{
-					MovementData: &mc_metadata.Movement{
-						UuId:         (*conn).GetPlayer().UId,
-						DestinationX: (*conn).GetPlayer().Character.PosX + float32(k*100*xq),
-						DestinationY: (*conn).GetPlayer().Character.PosY + float32(k*100*xw),
-						DestinationZ: (*conn).GetPlayer().Character.PosZ,
-						InterpTime:   300,
-					},
-				}
-
-				if res, errR := proto2.MakeResponse(m, constant.P2C_ReportMove); errR == nil {
-					for i := 0; i < len(server.fMovePlayers); i++ {
-						if plr, err := server.players.getFromConnByUID(server.fMovePlayers[i].name); err == nil {
-							x1, y1 := common.FindGrid(plr.conn.GetPlayer().Character.PosX, plr.conn.GetPlayer().Character.PosY)
-							x2, y2 := common.FindGrid(plr.conn.GetPlayer().Character.PosX, plr.conn.GetPlayer().Character.PosY)
-
-							if common.FindLocationInGrid(x1, y1, x2, y2) {
-								plr.conn.Send(res)
-							}
-						}
-					}
-				} else if errR != nil {
-					log.Println("DATA_RESPONSE_ERROR", errR)
-				}
-				time.Sleep(300 * time.Millisecond)
-			}
-
-			e := &mc_metadata.P2C_ReportMoveEnd{
-				MovementData: &mc_metadata.Movement{
-					UuId:         (*conn).GetPlayer().UId,
-					DestinationX: ox,
-					DestinationY: oy,
-					DestinationZ: (*conn).GetPlayer().Character.PosZ,
-					InterpTime:   300,
-				},
-			}
-
-			if res, errR := proto2.MakeResponse(e, constant.P2C_ReportMoveEnd); errR == nil {
-				for i := 0; i < len(server.fMovePlayers); i++ {
-					if plr, err := server.players.getFromConnByUID(server.fMovePlayers[i].name); err == nil {
-						x1, y1 := common.FindGrid(plr.conn.GetPlayer().Character.PosX, plr.conn.GetPlayer().Character.PosY)
-						x2, y2 := common.FindGrid(plr.conn.GetPlayer().Character.PosX, plr.conn.GetPlayer().Character.PosY)
-
-						if common.FindLocationInGrid(x1, y1, x2, y2) {
-							plr.conn.Send(res)
-						}
-					}
-				}
-			} else if errR != nil {
-				log.Println("DATA_RESPONSE_ERROR", errR)
-			}
-		}
-	}(ch)
-
-}
-
-func (server *Server) loadScripts() {
-	server.npcChat = make(map[string]*npcScriptController)
-	server.eventCtrl = make(map[string]*eventScriptController)
-
-	server.npcScriptStore = createScriptStore("scripts/npc", server.dispatch) // make folder a config param
-	start := time.Now()
-	server.npcScriptStore.loadScripts()
-	elapsed := time.Since(start)
-	log.Println("Loaded npc scripts in", elapsed)
-	go server.npcScriptStore.monitor(func(name string, program *goja.Program) {})
-
-	server.eventScriptStore = createScriptStore("scripts/event", server.dispatch) // make folder a config param
-	start = time.Now()
-	server.eventScriptStore.loadScripts()
-	elapsed = time.Since(start)
-	log.Println("Loaded event scripts in", elapsed)
-
-	go server.eventScriptStore.monitor(func(name string, program *goja.Program) {
-		if controller, ok := server.eventCtrl[name]; ok && controller != nil {
-			controller.Terminate()
-		}
-
-		if program == nil {
-			if _, ok := server.eventCtrl[name]; ok {
-				delete(server.eventCtrl, name)
-			}
-
-			return
-		}
-
-		controller, start, err := createNewEventScriptController(name, program, server.fields, server.dispatch, server.warpPlayer)
-
-		if err != nil || controller == nil {
-			return
-		}
-
-		server.eventCtrl[name] = controller
-
-		if start {
-			controller.init()
-		}
-
-	})
-
-	for name, program := range server.eventScriptStore.scripts {
-		controller, start, err := createNewEventScriptController(name, program, server.fields, server.dispatch, server.warpPlayer)
-
-		if err != nil {
-			continue
-		}
-
-		server.eventCtrl[name] = controller
-
-		if start {
-			controller.init()
-		}
-	}
 }
 
 // SendCountdownToPlayers - Send a countdown to players that appears as a clock

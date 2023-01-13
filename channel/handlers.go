@@ -1045,12 +1045,11 @@ func (server *Server) chatSendAll(conn *mnet.Client, reader mpacket.Reader) {
 	}
 
 	server.sendMsgToAll(res, msg.GetUuId(), constant.P2C_ReportAllChat)
-	plr, err := server.players.getFromConn(conn)
 	if err != nil {
 		return
 	}
 
-	db.AddPublicMessage(plr.conn.GetPlayer().CharacterID, constant.World, msg.GetChat())
+	db.AddPublicMessage(conn.GetPlayer().CharacterID, constant.World, msg.GetChat())
 
 	toMe := &mc_metadata.P2C_ResultAllChat{
 		UuId:     msg.GetUuId(),
@@ -1085,15 +1084,10 @@ func (server *Server) chatSendRegion(conn *mnet.Client, reader mpacket.Reader) {
 		res.Translate = papagoTranslate
 	}
 
-	plr, err := server.players.getFromConn(conn)
-	if err != nil {
-		return
-	}
-
-	go server.sendMsgToRegion(conn, res, constant.P2C_ReportRegionChat)
+	server.sendMsgToRegion(conn, res, constant.P2C_ReportRegionChat)
 	db.AddPublicMessage(
-		plr.conn.GetPlayer().CharacterID,
-		plr.conn.GetPlayer().RegionID,
+		conn.GetPlayer().CharacterID,
+		conn.GetPlayer().RegionID,
 		msg.GetChat())
 
 	toMe := &mc_metadata.P2C_ResultRegionChat{
@@ -1204,9 +1198,7 @@ func (server *Server) switchPlayerCell(conn *mnet.Client, msg *mc_metadata.Movem
 		conn.GetPlayer().Character.PosX,
 		conn.GetPlayer().Character.PosY)
 
-	SomeMapMutex.RLock()
 	_, ok := server.players[conn.GetPlayer().UId]
-	SomeMapMutex.RUnlock()
 	if ok {
 		server.addPlayerToGrid(server.players[conn.GetPlayer().UId], msg.GetDestinationX(), msg.GetDestinationY())
 	}
@@ -1253,7 +1245,6 @@ func (server *Server) switchPlayerCell(conn *mnet.Client, msg *mc_metadata.Movem
 //}
 
 func (server *Server) updateUserLocation(conn *mnet.Client, msg *mc_metadata.Movement) {
-	SomeMapMutex.RLock()
 	_, ok := server.players[conn.GetPlayer().UId]
 	if ok {
 		server.players[conn.GetPlayer().UId].conn.GetPlayer().Character.PosX = msg.GetDestinationX()
@@ -1263,7 +1254,6 @@ func (server *Server) updateUserLocation(conn *mnet.Client, msg *mc_metadata.Mov
 		server.players[conn.GetPlayer().UId].conn.GetPlayer().Character.RotY = msg.GetDeatinationRotationY()
 		server.players[conn.GetPlayer().UId].conn.GetPlayer().Character.RotZ = msg.GetDeatinationRotationZ()
 	}
-	SomeMapMutex.RUnlock()
 }
 
 func (server *Server) translateMessage(msg string) *mc_metadata.P2C_Translate {
