@@ -1,7 +1,6 @@
 package mnet
 
 import (
-	"log"
 	"math/rand"
 	"net"
 	"runtime"
@@ -144,9 +143,7 @@ func (bc *baseConn) MetaWriter() {
 				bc.Cleanup()
 				return
 			}
-			log.Print("write begin")
 			bc.Conn.Write(p)
-			log.Print("write end")
 		default:
 			runtime.Gosched()
 		}

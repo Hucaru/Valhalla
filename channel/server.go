@@ -15,6 +15,8 @@ import (
 	"google.golang.org/protobuf/proto"
 	"log"
 	"runtime"
+	"sync"
+	"time"
 
 	"github.com/Hucaru/Valhalla/common"
 	"github.com/Hucaru/Valhalla/common/opcode"
@@ -136,6 +138,9 @@ type Server struct {
 
 	// Kioni
 	PlayerActionHandler map[uint32]func(*mnet.Client, mpacket.Reader)
+
+	movedPlayers     map[string]*mnet.Client
+	movedPlayersLock sync.RWMutex
 }
 
 // Initialize the server
@@ -233,6 +238,24 @@ func (server *Server) Initialize(work chan func(), dbuser, dbpassword, dbaddress
 
 	server.clients = cmap.New[*mnet.Client]()
 	server.playerActions = cmap.New[chan RequestedParam]()
+
+	server.movedPlayers = map[string]*mnet.Client{}
+	server.movedPlayersLock = sync.RWMutex{}
+
+	go func() {
+		for {
+			server.movedPlayersLock.Lock()
+			movedPlayer := server.movedPlayers
+			server.movedPlayers = map[string]*mnet.Client{}
+			server.movedPlayersLock.Unlock()
+
+			for _, v := range movedPlayer {
+				server.moveProcess_Temp(v, v.GetPlayer().Character.PosX, v.GetPlayer().Character.PosY)
+			}
+
+			time.Sleep(1000 * time.Millisecond)
+		}
+	}()
 }
 
 func (server *Server) addToEmulateMoving(uid string, plrs []*player) {
