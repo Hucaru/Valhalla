@@ -1295,15 +1295,8 @@ func (server *Server) translateMessage(msg string) *mc_metadata.P2C_Translate {
 			return nil
 		}
 
-		if originID > 0 {
+		if originID < 0 {
 			db.AddTranslate(originID, targetIsoCode, text)
-		} else {
-			id, err := db.AddTranslate(-1, isoCode, msg)
-			if err != nil {
-				fmt.Println("ERROR: FindOriginIDTranslate", err)
-				return nil
-			}
-			db.AddTranslate(id, targetIsoCode, text)
 		}
 
 		return &mc_metadata.P2C_Translate{

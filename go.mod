@@ -15,7 +15,6 @@ require (
 	github.com/prometheus/client_golang v1.13.1
 	github.com/spf13/pflag v1.0.5
 	golang.org/x/exp v0.0.0-20221106115401-f9659909a136
-	golang.org/x/sync v0.0.0-20220601150217-0de741cfad7f
 	google.golang.org/protobuf v1.28.1
 )
 
