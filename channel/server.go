@@ -3,25 +3,27 @@ package channel
 import (
 	"encoding/binary"
 	"fmt"
-	"github.com/Hucaru/Valhalla/common"
 	"github.com/Hucaru/Valhalla/common/db"
 	"github.com/Hucaru/Valhalla/common/db/model"
 	"github.com/Hucaru/Valhalla/common/manager"
-	"github.com/Hucaru/Valhalla/common/opcode"
 	"github.com/Hucaru/Valhalla/constant"
-	"github.com/Hucaru/Valhalla/internal"
 	"github.com/Hucaru/Valhalla/meta-proto/go/mc_metadata"
-	"github.com/Hucaru/Valhalla/mnet"
-	"github.com/Hucaru/Valhalla/mpacket"
-	"github.com/Hucaru/Valhalla/nx"
 	_ "github.com/go-sql-driver/mysql" // don't need full import
 	cmap "github.com/orcaman/concurrent-map/v2"
-	"github.com/panjf2000/ants/v2"
 	"github.com/pemistahl/lingua-go"
 	"github.com/prometheus/client_golang/prometheus"
 	"google.golang.org/protobuf/proto"
 	"log"
 	"runtime"
+	"sync"
+	"time"
+
+	"github.com/Hucaru/Valhalla/common"
+	"github.com/Hucaru/Valhalla/common/opcode"
+	"github.com/Hucaru/Valhalla/internal"
+	"github.com/Hucaru/Valhalla/mnet"
+	"github.com/Hucaru/Valhalla/mpacket"
+	"github.com/Hucaru/Valhalla/nx"
 )
 
 type players map[string]*player
@@ -137,14 +139,12 @@ type Server struct {
 	// Kioni
 	PlayerActionHandler map[uint32]func(*mnet.Client, mpacket.Reader)
 
-	Pools *ants.Pool
+	movedPlayers     map[string]*mnet.Client
+	movedPlayersLock sync.RWMutex
 }
 
 // Initialize the server
 func (server *Server) Initialize(work chan func(), dbuser, dbpassword, dbaddress, dbport, dbdatabase string) {
-
-	pools, err := ants.NewPool(1000000)
-	server.Pools = pools
 
 	// Kioni
 	server.PlayerActionHandler = make(map[uint32]func(*mnet.Client, mpacket.Reader), 0)
@@ -163,7 +163,7 @@ func (server *Server) Initialize(work chan func(), dbuser, dbpassword, dbaddress
 	runtime.GOMAXPROCS(runtime.NumCPU())
 	server.dispatch = work
 
-	err = db.ConnectToDB(dbuser, dbpassword, dbaddress, dbport, dbdatabase)
+	err := db.ConnectToDB(dbuser, dbpassword, dbaddress, dbport, dbdatabase)
 
 	if err != nil {
 		log.Fatal(err.Error())
@@ -238,6 +238,24 @@ func (server *Server) Initialize(work chan func(), dbuser, dbpassword, dbaddress
 
 	server.clients = cmap.New[*mnet.Client]()
 	server.playerActions = cmap.New[chan RequestedParam]()
+
+	server.movedPlayers = map[string]*mnet.Client{}
+	server.movedPlayersLock = sync.RWMutex{}
+
+	go func() {
+		for {
+			server.movedPlayersLock.Lock()
+			movedPlayer := server.movedPlayers
+			server.movedPlayers = map[string]*mnet.Client{}
+			server.movedPlayersLock.Unlock()
+
+			for _, v := range movedPlayer {
+				server.moveProcess_Temp(v, v.GetPlayer().Character.PosX, v.GetPlayer().Character.PosY)
+			}
+
+			time.Sleep(250 * time.Millisecond)
+		}
+	}()
 }
 
 func (server *Server) addToEmulateMoving(uid string, plrs []*player) {
