@@ -351,8 +351,9 @@ func (server *Server) playerMovementStart(conn *mnet.Client, reader mpacket.Read
 	//	MovementData: msg.GetMovementData(),
 	//}
 
-	server.moveProcess(conn, msg.GetMovementData().DestinationX, msg.GetMovementData().DestinationY, msg.GetMovementData().GetUuId(), msg.GetMovementData(), constant.P2C_ReportMoveStart)
-
+	conn.MoveChannel <- func() {
+		server.moveProcess(conn, msg.GetMovementData().DestinationX, msg.GetMovementData().DestinationY, msg.GetMovementData().GetUuId(), msg.GetMovementData(), constant.P2C_ReportMoveStart)
+	}
 	//server.sendMsgToRegion(conn, res, constant.P2C_ReportMoveStart)
 	//server.updateUserLocation(conn, msg.GetMovementData())
 }
@@ -383,8 +384,9 @@ func (server *Server) playerMovementEnd(conn *mnet.Client, reader mpacket.Reader
 	//	MovementData: msg.GetMovementData(),
 	//}
 
-	server.moveProcess(conn, msg.GetMovementData().DestinationX, msg.GetMovementData().DestinationY, msg.GetMovementData().GetUuId(), msg.GetMovementData(), constant.P2C_ReportMoveEnd)
-
+	conn.MoveChannel <- func() {
+		server.moveProcess(conn, msg.GetMovementData().DestinationX, msg.GetMovementData().DestinationY, msg.GetMovementData().GetUuId(), msg.GetMovementData(), constant.P2C_ReportMoveEnd)
+	}
 	//server.sendMsgToRegion(conn, res, constant.P2C_ReportMoveEnd)
 	//server.updateUserLocation(conn, msg.GetMovementData())
 }
@@ -801,7 +803,9 @@ func (server *Server) playerMovement(conn *mnet.Client, reader mpacket.Reader) {
 		return
 	}
 
-	server.moveProcess(conn, msg.GetMovementData().DestinationX, msg.GetMovementData().DestinationY, msg.GetMovementData().GetUuId(), msg.GetMovementData(), constant.P2C_ReportMove)
+	conn.MoveChannel <- func() {
+		server.moveProcess(conn, msg.GetMovementData().DestinationX, msg.GetMovementData().DestinationY, msg.GetMovementData().GetUuId(), msg.GetMovementData(), constant.P2C_ReportMove)
+	}
 
 	//if server.isCellChanged(conn, msg.GetMovementData()) {
 	//	oldPlr, newPlr := server.getNineCellsPlayers(conn, msg.GetMovementData())

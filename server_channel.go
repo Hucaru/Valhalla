@@ -156,12 +156,14 @@ func (cs *channelServer) acceptNewConnections() {
 					return
 				}
 
-				log.Println(msgProtocol)
-
 				cs.gameState.HandleClientPacket(client, mpacket.NewReader(&buff, time.Now().Unix()), msgProtocol)
 
 				runtime.Gosched()
 			}
+		}()
+
+		go func() {
+			client.
 		}()
 
 		go client.MetaWriter()
