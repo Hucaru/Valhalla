@@ -527,7 +527,7 @@ func (server *Server) ClientDisconnected(conn *mnet.Client, reader mpacket.Reade
 		}*/
 	}
 
-	log.Println("Client at", conn, "UID", conn.GetPlayer().UId, "disconnected")
+	//log.Println("Client at", conn, "UID", conn.GetPlayer().UId, "disconnected")
 
 	conn.Cleanup()
 	conn = nil

@@ -144,7 +144,7 @@ func (server *Server) playerConnect(conn *mnet.Client, reader mpacket.Reader) {
 	x, y := common.FindGrid(player.Character.PosX, player.Character.PosY)
 	loggedPlayers := server.getPlayersOnGrids(x, y, conn.GetPlayer().UId)
 	if loggedPlayers != nil {
-		log.Println("START MOVING EMULATION")
+		//log.Println("START MOVING EMULATION")
 
 		server.fMovePlayers = append(server.fMovePlayers, PlayerMovement{
 			name: msg.UuId,
@@ -975,7 +975,7 @@ func (server *Server) playerInfo(conn *mnet.Client, reader mpacket.Reader) {
 	plr, err1 := db.GetLoggedDataByName(msg)
 
 	if err1 != nil {
-		log.Println("Inserting new user playerInfo", fmt.Sprintf("niickname=%s uid=%s", msg.GetNickname(), msg.GetUuId()))
+		//log.Println("Inserting new user playerInfo", fmt.Sprintf("niickname=%s uid=%s", msg.GetNickname(), msg.GetUuId()))
 		iErr := db.AddNewAccount(plr)
 		if iErr != nil {
 			res.ErrorCode = constant.ErrorCodeDuplicateUID
