@@ -56,13 +56,12 @@ func (gridMgr *GridManager) Init() {
 
 	gridMgr.grids = x
 
-	gridMgr.GridChannel = make(chan func() *mnet.Client, 4096*4096)
+	gridMgr.GridChannel = make(chan func() *mnet.Client, 4096*4)
 	go func() {
 		for {
 			f, ok := <-gridMgr.GridChannel
 			if !ok {
-				gridMgr.GridChannel = make(chan func() *mnet.Client, 4096*4096)
-				continue
+				return
 			}
 
 			f()
