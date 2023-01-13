@@ -918,7 +918,18 @@ func (server *Server) moveProcess_Temp(conn *mnet.Client, x, y float32) {
 
 func (server *Server) moveProcess_Temp2(conn *mnet.Client, x, y float32, uId string, movement *mc_metadata.Movement, moveType int) {
 	gridX, gridY := common.FindGrid(x, y)
-	aroundList := server.gridMgr.FillPlayers(gridX, gridY)
+
+	aroundList := map[string]*mnet.Client{}
+
+	for i := -1; i <= 1; i++ {
+		for j := -1; j <= 1; j++ {
+			GridX := gridX + i
+			GridY := gridY + j
+
+			maps.Copy(aroundList, server.gridMgr.FillPlayers(GridX, GridY))
+		}
+	}
+
 	switch moveType {
 	case constant.P2C_ReportMoveStart:
 		res := &mc_metadata.P2C_ReportMoveStart{

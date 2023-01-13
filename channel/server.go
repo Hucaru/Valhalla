@@ -253,7 +253,7 @@ func (server *Server) Initialize(work chan func(), dbuser, dbpassword, dbaddress
 				server.moveProcess_Temp(v, v.GetPlayer().Character.PosX, v.GetPlayer().Character.PosY)
 			}
 
-			time.Sleep(1000 * time.Millisecond)
+			time.Sleep(250 * time.Millisecond)
 		}
 	}()
 }
