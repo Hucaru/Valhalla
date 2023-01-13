@@ -44,14 +44,17 @@ func (server *Server) playerAction(conn *mnet.Client, reader RequestedParam) {
 					if _, ok := server.PlayerActionHandler[p.Num]; ok {
 						server.PlayerActionHandler[p.Num](conn, p.Reader)
 						if p.Num == constant.OnDisconnected {
-							log.Println("constant.OnDisconnected")
+							log.Println("Close Begin")
 							close(c)
+							log.Println("Close End")
+							log.Println("state : ", runtime.NumGoroutine(), runtime.NumCPU())
+							log.Println("constant.OnDisconnected")
 							return
 						}
 					}
 				default:
 					//log.Println("state : ", runtime.NumGoroutine(), runtime.NumCPU())
-					time.Sleep(10 * time.Millisecond)
+					time.Sleep(50 * time.Millisecond)
 					runtime.Gosched()
 				}
 			}
