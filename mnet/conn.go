@@ -161,6 +161,7 @@ func (bc *baseConn) MetaWriter() {
 	for {
 		p, ok := <-bc.eSend
 		if !ok {
+			bc.Cleanup()
 			return
 		}
 
