@@ -185,6 +185,10 @@ func (bc *baseConn) String() string {
 }
 
 func (bc *baseConn) Cleanup() {
+	if bc.closed {
+		return
+	}
+
 	bc.closed = true
 	close(bc.eSend)
 }
