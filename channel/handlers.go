@@ -36,7 +36,7 @@ func (server *Server) playerAction(conn *mnet.Client, reader RequestedParam) {
 	if reader.Num == constant.OnConnected {
 		c := make(chan RequestedParam, 4096*4)
 		server.playerActions.Set(conn.String(), c)
-		go func(server *Server, conn *mnet.Client, c <-chan RequestedParam) {
+		go func(server *Server, conn *mnet.Client, c <-chan RequestedParam, c2 chan RequestedParam) {
 			for {
 				// Kioni
 				select {
@@ -45,6 +45,7 @@ func (server *Server) playerAction(conn *mnet.Client, reader RequestedParam) {
 						server.PlayerActionHandler[p.Num](conn, p.Reader)
 
 						if p.Num == constant.OnDisconnected {
+							close(c2)
 							return
 						}
 					}
@@ -53,7 +54,7 @@ func (server *Server) playerAction(conn *mnet.Client, reader RequestedParam) {
 					runtime.Gosched()
 				}
 			}
-		}(server, conn, c)
+		}(server, conn, c, c)
 		c <- reader
 	} else {
 		c, ok := server.playerActions.Get(conn.String())
