@@ -162,15 +162,24 @@ func (bc *baseConn) Writer() {
 
 func (bc *baseConn) MetaWriter() {
 	defer bc.Conn.Close()
+	wg := sync.WaitGroup{}
 	for {
 		p, ok := <-bc.eSend
 		if !ok {
 			bc.Cleanup()
 			return
 		}
+		wg.Add(1)
 
-		go bc.Conn.Write(p)
+		go bc.WriteGoroutine(wg, p)
+
+		wg.Wait()
 	}
+}
+
+func (bc *baseConn) WriteGoroutine(wg sync.WaitGroup, packet mpacket.Packet) {
+	defer wg.Done()
+	bc.Conn.Write(packet)
 }
 
 func (bc *baseConn) Send(p mpacket.Packet) {
