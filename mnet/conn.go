@@ -145,7 +145,6 @@ func (bc *baseConn) MetaWriter() {
 			}
 			bc.Conn.Write(p)
 		default:
-			time.Sleep(10 * time.Millisecond)
 			runtime.Gosched()
 		}
 	}

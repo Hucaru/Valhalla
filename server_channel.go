@@ -160,7 +160,6 @@ func (cs *channelServer) acceptNewConnections() {
 
 				cs.gameState.HandleClientPacket(client, mpacket.NewReader(&buff, time.Now().Unix()), msgProtocol)
 
-				time.Sleep(10 * time.Millisecond)
 				runtime.Gosched()
 			}
 		}()
@@ -199,7 +198,6 @@ func (cs *channelServer) processEvent() {
 				work()
 			}
 		default:
-			time.Sleep(10 * time.Millisecond)
 			runtime.Gosched()
 		}
 
