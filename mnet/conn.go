@@ -3,6 +3,7 @@ package mnet
 import (
 	"math/rand"
 	"net"
+	"runtime"
 	"sync"
 	"time"
 
@@ -136,21 +137,26 @@ func (bc *baseConn) Writer() {
 func (bc *baseConn) MetaWriter() {
 	defer bc.Conn.Close()
 	for {
-		p, ok := <-bc.eSend
-		if !ok {
-			bc.Cleanup()
-			return
+		select {
+		case p, ok := <-bc.eSend:
+			if !ok {
+				bc.Cleanup()
+				return
+			}
+			bc.Conn.Write(p)
+		default:
+			time.Sleep(10 * time.Millisecond)
+			runtime.Gosched()
 		}
-		bc.Conn.Write(p)
 	}
 }
 
 func (bc *baseConn) Send(p mpacket.Packet) {
-	bc.sendChannelLock.RLock()
-	defer bc.sendChannelLock.RUnlock()
-	if bc.closed {
-		return
-	}
+	//bc.sendChannelLock.RLock()
+	//defer bc.sendChannelLock.RUnlock()
+	//if bc.closed {
+	//	return
+	//}
 
 	bc.eSend <- p
 }
@@ -160,12 +166,12 @@ func (bc *baseConn) String() string {
 }
 
 func (bc *baseConn) Cleanup() {
-	bc.sendChannelLock.Lock()
-	defer bc.sendChannelLock.Unlock()
-	if bc.closed {
-		return
-	}
-
-	bc.closed = true
-	close(bc.eSend)
+	//bc.sendChannelLock.Lock()
+	//defer bc.sendChannelLock.Unlock()
+	//if bc.closed {
+	//	return
+	//}
+	//
+	//bc.closed = true
+	//close(bc.eSend)
 }
