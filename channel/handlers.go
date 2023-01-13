@@ -41,15 +41,13 @@ func (server *Server) playerAction(conn *mnet.Client, reader RequestedParam) {
 				// Kioni
 				select {
 				case p := <-c:
-					if p.Num == constant.OnDisconnected {
-						log.Println("constant.OnDisconnected")
-						server.ClientDisconnected(conn, p.Reader)
-						close(c)
-						return
-					}
-
 					if _, ok := server.PlayerActionHandler[p.Num]; ok {
 						server.PlayerActionHandler[p.Num](conn, p.Reader)
+						if p.Num == constant.OnDisconnected {
+							log.Println("constant.OnDisconnected")
+							close(c)
+							return
+						}
 					}
 				default:
 					//log.Println("state : ", runtime.NumGoroutine(), runtime.NumCPU())
