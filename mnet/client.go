@@ -2,6 +2,7 @@ package mnet
 
 import (
 	"net"
+	"runtime"
 	"sync"
 
 	"github.com/Hucaru/Valhalla/common/db/model"
@@ -86,12 +87,18 @@ func NewClientMeta(conn net.Conn, queueSize int, latency, jitter int) *Client {
 	c.MoveChannel = make(chan func(), 4096*8)
 
 	go func() {
-		f, ok := <-c.MoveChannel
-		if !ok {
-			return
-		}
+		for {
+			select {
+			case f, ok := <-c.MoveChannel:
+				if !ok {
+					return
+				}
 
-		f()
+				f()
+			default:
+				runtime.Gosched()
+			}
+		}
 	}()
 
 	if latency > 0 {
