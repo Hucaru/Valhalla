@@ -143,7 +143,7 @@ type Server struct {
 // Initialize the server
 func (server *Server) Initialize(work chan func(), dbuser, dbpassword, dbaddress, dbport, dbdatabase string) {
 
-	pools, err := ants.NewPool(1000000, ants.WithNonblocking(true), ants.WithPreAlloc(true), ants.WithExpiryDuration(1000))
+	pools, err := ants.NewPool(1000000)
 	server.Pools = pools
 
 	// Kioni
