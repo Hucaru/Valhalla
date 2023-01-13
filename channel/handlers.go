@@ -43,14 +43,19 @@ func (server *Server) playerAction(conn *mnet.Client, reader RequestedParam) {
 				select {
 				case p := <-c:
 					if _, ok := server.PlayerActionHandler[p.Num]; ok {
-						server.PlayerActionHandler[p.Num](conn, p.Reader)
 						if p.Num == constant.OnDisconnected {
+							server.PlayerActionHandler[p.Num](conn, p.Reader)
+							server.playerActions.Remove(conn.String())
 							log.Println("Close Begin")
 							close(c)
 							log.Println("Close End")
 							log.Println("state : ", runtime.NumGoroutine(), runtime.NumCPU())
 							log.Println("constant.OnDisconnected")
 							return
+						} else {
+							server.Pools.Submit(func() {
+								server.PlayerActionHandler[p.Num](conn, p.Reader)
+							})
 						}
 					}
 				default:
@@ -963,10 +968,6 @@ func (server *Server) moveProcess_Temp2(conn *mnet.Client, x, y float32, uId str
 	conn.GetPlayer().Character.RotX = movement.GetDeatinationRotationX()
 	conn.GetPlayer().Character.RotY = movement.GetDeatinationRotationY()
 	conn.GetPlayer().Character.RotZ = movement.GetDeatinationRotationZ()
-
-	server.movedPlayersLock.Lock()
-	server.movedPlayers[conn.GetPlayer().UId] = conn
-	server.movedPlayersLock.Unlock()
 }
 
 func (server *Server) moveProcess(conn *mnet.Client, x, y float32, uId string, movement *mc_metadata.Movement, moveType int) {
