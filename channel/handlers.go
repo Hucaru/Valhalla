@@ -51,6 +51,7 @@ func (server *Server) playerAction(conn *mnet.Client, reader RequestedParam) {
 					}
 				default:
 					//log.Println("state : ", runtime.NumGoroutine(), runtime.NumCPU())
+					time.Sleep(10 * time.Millisecond)
 					runtime.Gosched()
 				}
 			}
