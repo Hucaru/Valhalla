@@ -9,7 +9,6 @@ import (
 	"log"
 	"net"
 	"os"
-	"runtime"
 	"strconv"
 	"sync"
 	"time"
@@ -198,8 +197,6 @@ func (cs *channelServer) processEvent() {
 			if ok {
 				work()
 			}
-		default:
-			runtime.Gosched()
 		}
 
 	}

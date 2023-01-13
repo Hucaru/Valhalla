@@ -137,16 +137,12 @@ func (bc *baseConn) Writer() {
 func (bc *baseConn) MetaWriter() {
 	defer bc.Conn.Close()
 	for {
-		select {
-		case p, ok := <-bc.eSend:
+		p, ok := <-bc.eSend:
 			if !ok {
 				bc.Cleanup()
 				return
 			}
 			bc.Conn.Write(p)
-		default:
-			runtime.Gosched()
-		}
 	}
 }
 
