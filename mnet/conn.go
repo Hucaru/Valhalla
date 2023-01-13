@@ -171,13 +171,13 @@ func (bc *baseConn) MetaWriter() {
 		}
 		wg.Add(1)
 
-		go bc.WriteGoroutine(wg, p)
+		go bc.WriteGoroutine(&wg, p)
 
 		wg.Wait()
 	}
 }
 
-func (bc *baseConn) WriteGoroutine(wg sync.WaitGroup, packet mpacket.Packet) {
+func (bc *baseConn) WriteGoroutine(wg *sync.WaitGroup, packet mpacket.Packet) {
 	defer wg.Done()
 	bc.Conn.Write(packet)
 }
