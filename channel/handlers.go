@@ -28,68 +28,44 @@ import (
 
 // HandleClientPacket data
 func (server *Server) HandleClientPacket(
-	conn *mnet.Client, reader mpacket.Reader, msgProtocolType uint32) int {
-	return server.playerAction(conn, RequestedParam{Num: msgProtocolType, Reader: reader})
+	conn *mnet.Client, reader mpacket.Reader, msgProtocolType uint32) {
+	server.playerAction(conn, RequestedParam{Num: msgProtocolType, Reader: reader})
 }
 
-func (server *Server) playerAction(conn *mnet.Client, reader RequestedParam) int {
-	if reader.Num == constant.OnDisconnected {
-		server.ClientDisconnected(conn, reader.Reader)
-		server.playerActions.Remove(conn.String())
-		log.Println("state : ", runtime.NumGoroutine(), runtime.NumCPU())
-		log.Println("constant.OnDisconnected")
-		return -1
+func (server *Server) playerAction(conn *mnet.Client, reader RequestedParam) {
+
+	if _, ok := server.PlayerActionHandler[reader.Num]; ok {
+		server.PlayerActionHandler[reader.Num](conn, reader.Reader)
+		if reader.Num == constant.OnDisconnected {
+			log.Println("state : ", runtime.NumGoroutine(), runtime.NumCPU())
+			log.Println("constant.OnDisconnected")
+			return
+		}
 	}
-
-	f, ok := server.PlayerActionHandler[reader.Num]
-	if !ok {
-		server.ClientDisconnected(conn, reader.Reader)
-		server.playerActions.Remove(conn.String())
-		log.Println("state : ", runtime.NumGoroutine(), runtime.NumCPU())
-		log.Println("constant.OnDisconnected")
-		return -1
-	}
-
-	f(conn, reader.Reader)
-
-	return 0
 
 	//if reader.Num == constant.OnConnected {
-	//	c := make(chan RequestedParam, 4096*4096)
+	//	c := make(chan RequestedParam, 4096*4)
 	//
 	//	server.playerActions.Set(conn.String(), c)
 	//	go func(server *Server, conn *mnet.Client, c chan RequestedParam) {
 	//		for {
 	//			// Kioni
 	//			select {
-	//			case p, ok2 := <-c:
-	//				if !ok2 {
-	//					server.PlayerActionHandler[p.Num](conn, p.Reader)
-	//					server.playerActions.Remove(conn.String())
-	//					log.Println("state : ", runtime.NumGoroutine(), runtime.NumCPU())
-	//					log.Println("constant.OnDisconnected")
-	//					return
-	//				}
-	//
+	//			case p := <-c:
 	//				if _, ok := server.PlayerActionHandler[p.Num]; ok {
+	//					server.PlayerActionHandler[p.Num](conn, p.Reader)
 	//					if p.Num == constant.OnDisconnected {
-	//						server.PlayerActionHandler[p.Num](conn, p.Reader)
-	//						server.playerActions.Remove(conn.String())
 	//						log.Println("Close Begin")
 	//						close(c)
 	//						log.Println("Close End")
 	//						log.Println("state : ", runtime.NumGoroutine(), runtime.NumCPU())
 	//						log.Println("constant.OnDisconnected")
 	//						return
-	//					} else {
-	//						server.PlayerActionHandler[p.Num](conn, p.Reader)
-	//						//server.Pools.Submit(func() {
-	//						//
-	//						//})
 	//					}
 	//				}
 	//			default:
 	//				//log.Println("state : ", runtime.NumGoroutine(), runtime.NumCPU())
+	//				time.Sleep(50 * time.Millisecond)
 	//				runtime.Gosched()
 	//			}
 	//		}
@@ -437,6 +413,7 @@ func (server *Server) getPlayersOnGrids(x, y int, uID string) map[string]*mnet.C
 	}
 
 	delete(oldList, uID)
+
 	return oldList
 
 	//for _, v := range oldList {
@@ -889,8 +866,8 @@ func (server *Server) playerMovement(conn *mnet.Client, reader mpacket.Reader) {
 
 }
 
-func (server *Server) moveProcess_Temp(conn *mnet.Client, x, y float32) {
-	addList, removeList, _ := server.gridMgr.OnMove(x, y, conn.GetPlayer().UId)
+func (server *Server) moveProcess(conn *mnet.Client, x, y float32, uId string, movement *mc_metadata.Movement, moveType int) {
+	addList, removeList, aroundList := server.gridMgr.OnMove(x, y, uId)
 
 	for k, v := range addList {
 		res := &mc_metadata.P2C_ReportGridNew{
@@ -949,21 +926,6 @@ func (server *Server) moveProcess_Temp(conn *mnet.Client, x, y float32) {
 		server.sendMsgToMe(conn, res, constant.P2C_ReportGridOld)
 		server.sendMsgToMe(v, res2, constant.P2C_ReportGridOld)
 	}
-}
-
-func (server *Server) moveProcess_Temp2(conn *mnet.Client, x, y float32, uId string, movement *mc_metadata.Movement, moveType int) {
-	gridX, gridY := common.FindGrid(x, y)
-
-	aroundList := map[string]*mnet.Client{}
-
-	for i := -1; i <= 1; i++ {
-		for j := -1; j <= 1; j++ {
-			GridX := gridX + i
-			GridY := gridY + j
-
-			maps.Copy(aroundList, server.gridMgr.FillPlayers(GridX, GridY))
-		}
-	}
 
 	switch moveType {
 	case constant.P2C_ReportMoveStart:
@@ -998,106 +960,6 @@ func (server *Server) moveProcess_Temp2(conn *mnet.Client, x, y float32, uId str
 	conn.GetPlayer().Character.RotX = movement.GetDeatinationRotationX()
 	conn.GetPlayer().Character.RotY = movement.GetDeatinationRotationY()
 	conn.GetPlayer().Character.RotZ = movement.GetDeatinationRotationZ()
-}
-
-func (server *Server) moveProcess(conn *mnet.Client, x, y float32, uId string, movement *mc_metadata.Movement, moveType int) {
-	server.gridMgr.GridChannel <- func() *mnet.Client {
-		addList, removeList, aroundList := server.gridMgr.OnMove(x, y, uId)
-
-		for k, v := range addList {
-			res := &mc_metadata.P2C_ReportGridNew{
-				PlayerInfo: &mc_metadata.P2C_PlayerInfo{
-					Nickname: k,
-					UuId:     k,
-					Top:      (*v).GetPlayer().Character.Top,
-					Bottom:   (*v).GetPlayer().Character.Bottom,
-					Clothes:  (*v).GetPlayer().Character.Clothes,
-					Hair:     (*v).GetPlayer().Character.Hair,
-				},
-				SpawnPosX: (*v).GetPlayer().Character.PosX,
-				SpawnPosY: (*v).GetPlayer().Character.PosY,
-				SpawnPosZ: (*v).GetPlayer().Character.PosZ,
-				SpawnRotX: (*v).GetPlayer().Character.RotX,
-				SpawnRotY: (*v).GetPlayer().Character.RotY,
-				SpawnRotZ: (*v).GetPlayer().Character.RotZ,
-			}
-
-			res2 := &mc_metadata.P2C_ReportGridNew{
-				PlayerInfo: &mc_metadata.P2C_PlayerInfo{
-					UuId:     conn.GetPlayer().UId,
-					Nickname: conn.GetPlayer().UId,
-					Top:      conn.GetPlayer().Character.Top,
-					Bottom:   conn.GetPlayer().Character.Bottom,
-					Clothes:  conn.GetPlayer().Character.Clothes,
-					Hair:     conn.GetPlayer().Character.Hair,
-				},
-				SpawnPosX: conn.GetPlayer().Character.PosX,
-				SpawnPosY: conn.GetPlayer().Character.PosY,
-				SpawnPosZ: conn.GetPlayer().Character.PosZ,
-				SpawnRotX: conn.GetPlayer().Character.RotX,
-				SpawnRotY: conn.GetPlayer().Character.RotY,
-				SpawnRotZ: conn.GetPlayer().Character.RotZ,
-			}
-
-			server.sendMsgToMe(conn, res, constant.P2C_ReportGridNew)
-			server.sendMsgToMe(v, res2, constant.P2C_ReportGridNew)
-		}
-
-		for k, v := range removeList {
-			res := &mc_metadata.P2C_ReportGridOld{
-				PlayerInfo: &mc_metadata.P2C_PlayerInfo{
-					UuId: k,
-				},
-			}
-
-			res2 := &mc_metadata.P2C_ReportGridOld{
-				PlayerInfo: &mc_metadata.P2C_PlayerInfo{
-					UuId: conn.GetPlayer().UId,
-				},
-			}
-
-			//fmt.Println(fmt.Sprintf("conn : %s v : %s res : %s res2 : %s", conn.GetPlayer().UId, (*v).GetPlayer().UId, res.PlayerInfo.UuId, res2.PlayerInfo.UuId))
-
-			server.sendMsgToMe(conn, res, constant.P2C_ReportGridOld)
-			server.sendMsgToMe(v, res2, constant.P2C_ReportGridOld)
-		}
-
-		switch moveType {
-		case constant.P2C_ReportMoveStart:
-			res := &mc_metadata.P2C_ReportMoveStart{
-				MovementData: movement,
-			}
-
-			for _, v := range aroundList {
-				server.sendMsgToMe(v, res, constant.P2C_ReportMoveStart)
-			}
-		case constant.P2C_ReportMove:
-			res := &mc_metadata.P2C_ReportMove{
-				MovementData: movement,
-			}
-
-			for _, v := range aroundList {
-				server.sendMsgToMe(v, res, constant.P2C_ReportMove)
-			}
-		case constant.P2C_ReportMoveEnd:
-			res := &mc_metadata.P2C_ReportMoveEnd{
-				MovementData: movement,
-			}
-
-			for _, v := range aroundList {
-				server.sendMsgToMe(v, res, constant.P2C_ReportMoveEnd)
-			}
-		}
-
-		conn.GetPlayer().Character.PosX = movement.GetDestinationX()
-		conn.GetPlayer().Character.PosY = movement.GetDestinationY()
-		conn.GetPlayer().Character.PosZ = movement.GetDestinationZ()
-		conn.GetPlayer().Character.RotX = movement.GetDeatinationRotationX()
-		conn.GetPlayer().Character.RotY = movement.GetDeatinationRotationY()
-		conn.GetPlayer().Character.RotZ = movement.GetDeatinationRotationZ()
-
-		return nil
-	}
 }
 
 func (server *Server) playerInfo(conn *mnet.Client, reader mpacket.Reader) {
