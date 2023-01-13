@@ -9,6 +9,7 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/Hucaru/Valhalla/common"
@@ -43,10 +44,6 @@ func (server *Server) playerAction(conn *mnet.Client, reader RequestedParam) {
 				select {
 				case p, ok2 := <-c:
 					if !ok2 {
-						server.PlayerActionHandler[p.Num](conn, p.Reader)
-						server.playerActions.Remove(conn.String())
-						log.Println("state : ", runtime.NumGoroutine(), runtime.NumCPU())
-						log.Println("constant.OnDisconnected")
 						return
 					}
 
@@ -365,8 +362,12 @@ func (server *Server) playerMovementStart(conn *mnet.Client, reader mpacket.Read
 	//	MovementData: msg.GetMovementData(),
 	//}
 
-	server.moveProcess(conn, msg.GetMovementData().DestinationX, msg.GetMovementData().DestinationY, msg.GetMovementData().GetUuId(), msg.GetMovementData(), constant.P2C_ReportMoveStart)
+	wg := sync.WaitGroup{}
 
+	wg.Add(1)
+	server.moveProcess(conn, msg.GetMovementData().DestinationX, msg.GetMovementData().DestinationY, msg.GetMovementData().GetUuId(), msg.GetMovementData(), constant.P2C_ReportMoveStart, &wg)
+
+	wg.Wait()
 	//server.sendMsgToRegion(conn, res, constant.P2C_ReportMoveStart)
 	//server.updateUserLocation(conn, msg.GetMovementData())
 }
@@ -396,8 +397,12 @@ func (server *Server) playerMovementEnd(conn *mnet.Client, reader mpacket.Reader
 	//res := &mc_metadata.P2C_ReportMoveEnd{
 	//	MovementData: msg.GetMovementData(),
 	//}
+	wg := sync.WaitGroup{}
 
-	server.moveProcess(conn, msg.GetMovementData().DestinationX, msg.GetMovementData().DestinationY, msg.GetMovementData().GetUuId(), msg.GetMovementData(), constant.P2C_ReportMoveEnd)
+	wg.Add(1)
+	server.moveProcess(conn, msg.GetMovementData().DestinationX, msg.GetMovementData().DestinationY, msg.GetMovementData().GetUuId(), msg.GetMovementData(), constant.P2C_ReportMoveEnd, &wg)
+
+	wg.Wait()
 
 	//server.sendMsgToRegion(conn, res, constant.P2C_ReportMoveEnd)
 	//server.updateUserLocation(conn, msg.GetMovementData())
@@ -814,7 +819,13 @@ func (server *Server) playerMovement(conn *mnet.Client, reader mpacket.Reader) {
 		return
 	}
 
-	server.moveProcess(conn, msg.GetMovementData().DestinationX, msg.GetMovementData().DestinationY, msg.GetMovementData().GetUuId(), msg.GetMovementData(), constant.P2C_ReportMove)
+	wg := sync.WaitGroup{}
+
+	wg.Add(1)
+
+	server.moveProcess(conn, msg.GetMovementData().DestinationX, msg.GetMovementData().DestinationY, msg.GetMovementData().GetUuId(), msg.GetMovementData(), constant.P2C_ReportMove, &wg)
+
+	wg.Wait()
 
 	//if server.isCellChanged(conn, msg.GetMovementData()) {
 	//	oldPlr, newPlr := server.getNineCellsPlayers(conn, msg.GetMovementData())
@@ -979,104 +990,102 @@ func (server *Server) moveProcess_Temp2(conn *mnet.Client, x, y float32, uId str
 	conn.GetPlayer().Character.RotZ = movement.GetDeatinationRotationZ()
 }
 
-func (server *Server) moveProcess(conn *mnet.Client, x, y float32, uId string, movement *mc_metadata.Movement, moveType int) {
-	server.gridMgr.GridChannel <- func() *mnet.Client {
-		addList, removeList, aroundList := server.gridMgr.OnMove(x, y, uId)
+func (server *Server) moveProcess(conn *mnet.Client, x, y float32, uId string, movement *mc_metadata.Movement, moveType int, wg *sync.WaitGroup) {
+	defer wg.Done()
 
-		for k, v := range addList {
-			res := &mc_metadata.P2C_ReportGridNew{
-				PlayerInfo: &mc_metadata.P2C_PlayerInfo{
-					Nickname: k,
-					UuId:     k,
-					Top:      (*v).GetPlayer().Character.Top,
-					Bottom:   (*v).GetPlayer().Character.Bottom,
-					Clothes:  (*v).GetPlayer().Character.Clothes,
-					Hair:     (*v).GetPlayer().Character.Hair,
-				},
-				SpawnPosX: (*v).GetPlayer().Character.PosX,
-				SpawnPosY: (*v).GetPlayer().Character.PosY,
-				SpawnPosZ: (*v).GetPlayer().Character.PosZ,
-				SpawnRotX: (*v).GetPlayer().Character.RotX,
-				SpawnRotY: (*v).GetPlayer().Character.RotY,
-				SpawnRotZ: (*v).GetPlayer().Character.RotZ,
-			}
+	addList, removeList, aroundList := server.gridMgr.OnMove(x, y, uId)
 
-			res2 := &mc_metadata.P2C_ReportGridNew{
-				PlayerInfo: &mc_metadata.P2C_PlayerInfo{
-					UuId:     conn.GetPlayer().UId,
-					Nickname: conn.GetPlayer().UId,
-					Top:      conn.GetPlayer().Character.Top,
-					Bottom:   conn.GetPlayer().Character.Bottom,
-					Clothes:  conn.GetPlayer().Character.Clothes,
-					Hair:     conn.GetPlayer().Character.Hair,
-				},
-				SpawnPosX: conn.GetPlayer().Character.PosX,
-				SpawnPosY: conn.GetPlayer().Character.PosY,
-				SpawnPosZ: conn.GetPlayer().Character.PosZ,
-				SpawnRotX: conn.GetPlayer().Character.RotX,
-				SpawnRotY: conn.GetPlayer().Character.RotY,
-				SpawnRotZ: conn.GetPlayer().Character.RotZ,
-			}
-
-			server.sendMsgToMe(conn, res, constant.P2C_ReportGridNew)
-			server.sendMsgToMe(v, res2, constant.P2C_ReportGridNew)
+	for k, v := range addList {
+		res := &mc_metadata.P2C_ReportGridNew{
+			PlayerInfo: &mc_metadata.P2C_PlayerInfo{
+				Nickname: k,
+				UuId:     k,
+				Top:      (*v).GetPlayer().Character.Top,
+				Bottom:   (*v).GetPlayer().Character.Bottom,
+				Clothes:  (*v).GetPlayer().Character.Clothes,
+				Hair:     (*v).GetPlayer().Character.Hair,
+			},
+			SpawnPosX: (*v).GetPlayer().Character.PosX,
+			SpawnPosY: (*v).GetPlayer().Character.PosY,
+			SpawnPosZ: (*v).GetPlayer().Character.PosZ,
+			SpawnRotX: (*v).GetPlayer().Character.RotX,
+			SpawnRotY: (*v).GetPlayer().Character.RotY,
+			SpawnRotZ: (*v).GetPlayer().Character.RotZ,
 		}
 
-		for k, v := range removeList {
-			res := &mc_metadata.P2C_ReportGridOld{
-				PlayerInfo: &mc_metadata.P2C_PlayerInfo{
-					UuId: k,
-				},
-			}
-
-			res2 := &mc_metadata.P2C_ReportGridOld{
-				PlayerInfo: &mc_metadata.P2C_PlayerInfo{
-					UuId: conn.GetPlayer().UId,
-				},
-			}
-
-			//fmt.Println(fmt.Sprintf("conn : %s v : %s res : %s res2 : %s", conn.GetPlayer().UId, (*v).GetPlayer().UId, res.PlayerInfo.UuId, res2.PlayerInfo.UuId))
-
-			server.sendMsgToMe(conn, res, constant.P2C_ReportGridOld)
-			server.sendMsgToMe(v, res2, constant.P2C_ReportGridOld)
+		res2 := &mc_metadata.P2C_ReportGridNew{
+			PlayerInfo: &mc_metadata.P2C_PlayerInfo{
+				UuId:     conn.GetPlayer().UId,
+				Nickname: conn.GetPlayer().UId,
+				Top:      conn.GetPlayer().Character.Top,
+				Bottom:   conn.GetPlayer().Character.Bottom,
+				Clothes:  conn.GetPlayer().Character.Clothes,
+				Hair:     conn.GetPlayer().Character.Hair,
+			},
+			SpawnPosX: conn.GetPlayer().Character.PosX,
+			SpawnPosY: conn.GetPlayer().Character.PosY,
+			SpawnPosZ: conn.GetPlayer().Character.PosZ,
+			SpawnRotX: conn.GetPlayer().Character.RotX,
+			SpawnRotY: conn.GetPlayer().Character.RotY,
+			SpawnRotZ: conn.GetPlayer().Character.RotZ,
 		}
 
-		switch moveType {
-		case constant.P2C_ReportMoveStart:
-			res := &mc_metadata.P2C_ReportMoveStart{
-				MovementData: movement,
-			}
-
-			for _, v := range aroundList {
-				server.sendMsgToMe(v, res, constant.P2C_ReportMoveStart)
-			}
-		case constant.P2C_ReportMove:
-			res := &mc_metadata.P2C_ReportMove{
-				MovementData: movement,
-			}
-
-			for _, v := range aroundList {
-				server.sendMsgToMe(v, res, constant.P2C_ReportMove)
-			}
-		case constant.P2C_ReportMoveEnd:
-			res := &mc_metadata.P2C_ReportMoveEnd{
-				MovementData: movement,
-			}
-
-			for _, v := range aroundList {
-				server.sendMsgToMe(v, res, constant.P2C_ReportMoveEnd)
-			}
-		}
-
-		conn.GetPlayer().Character.PosX = movement.GetDestinationX()
-		conn.GetPlayer().Character.PosY = movement.GetDestinationY()
-		conn.GetPlayer().Character.PosZ = movement.GetDestinationZ()
-		conn.GetPlayer().Character.RotX = movement.GetDeatinationRotationX()
-		conn.GetPlayer().Character.RotY = movement.GetDeatinationRotationY()
-		conn.GetPlayer().Character.RotZ = movement.GetDeatinationRotationZ()
-
-		return nil
+		server.sendMsgToMe(conn, res, constant.P2C_ReportGridNew)
+		server.sendMsgToMe(v, res2, constant.P2C_ReportGridNew)
 	}
+
+	for k, v := range removeList {
+		res := &mc_metadata.P2C_ReportGridOld{
+			PlayerInfo: &mc_metadata.P2C_PlayerInfo{
+				UuId: k,
+			},
+		}
+
+		res2 := &mc_metadata.P2C_ReportGridOld{
+			PlayerInfo: &mc_metadata.P2C_PlayerInfo{
+				UuId: conn.GetPlayer().UId,
+			},
+		}
+
+		//fmt.Println(fmt.Sprintf("conn : %s v : %s res : %s res2 : %s", conn.GetPlayer().UId, (*v).GetPlayer().UId, res.PlayerInfo.UuId, res2.PlayerInfo.UuId))
+
+		server.sendMsgToMe(conn, res, constant.P2C_ReportGridOld)
+		server.sendMsgToMe(v, res2, constant.P2C_ReportGridOld)
+	}
+
+	switch moveType {
+	case constant.P2C_ReportMoveStart:
+		res := &mc_metadata.P2C_ReportMoveStart{
+			MovementData: movement,
+		}
+
+		for _, v := range aroundList {
+			server.sendMsgToMe(v, res, constant.P2C_ReportMoveStart)
+		}
+	case constant.P2C_ReportMove:
+		res := &mc_metadata.P2C_ReportMove{
+			MovementData: movement,
+		}
+
+		for _, v := range aroundList {
+			server.sendMsgToMe(v, res, constant.P2C_ReportMove)
+		}
+	case constant.P2C_ReportMoveEnd:
+		res := &mc_metadata.P2C_ReportMoveEnd{
+			MovementData: movement,
+		}
+
+		for _, v := range aroundList {
+			server.sendMsgToMe(v, res, constant.P2C_ReportMoveEnd)
+		}
+	}
+
+	conn.GetPlayer().Character.PosX = movement.GetDestinationX()
+	conn.GetPlayer().Character.PosY = movement.GetDestinationY()
+	conn.GetPlayer().Character.PosZ = movement.GetDestinationZ()
+	conn.GetPlayer().Character.RotX = movement.GetDeatinationRotationX()
+	conn.GetPlayer().Character.RotY = movement.GetDeatinationRotationY()
+	conn.GetPlayer().Character.RotZ = movement.GetDeatinationRotationZ()
 }
 
 func (server *Server) playerInfo(conn *mnet.Client, reader mpacket.Reader) {

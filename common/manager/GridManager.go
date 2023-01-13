@@ -14,12 +14,11 @@ type GridInfo struct {
 }
 
 type GridManager struct {
-	GridChannel chan func() *mnet.Client
-	gridLock    deadlock.RWMutex
-	grids2      map[int]map[int]map[string]*mnet.Client
-	plrs2       map[string]GridInfo
-	grids       [][]ConcurrentMap[string, *mnet.Client]
-	plrs        ConcurrentMap[string, GridInfo]
+	gridLock deadlock.RWMutex
+	grids2   map[int]map[int]map[string]*mnet.Client
+	plrs2    map[string]GridInfo
+	grids    [][]ConcurrentMap[string, *mnet.Client]
+	plrs     ConcurrentMap[string, GridInfo]
 }
 
 //func (gridMgr *GridManager) Loop(f <-chan func()) {
@@ -55,63 +54,43 @@ func (gridMgr *GridManager) Init() {
 	}
 
 	gridMgr.grids = x
-
-	gridMgr.GridChannel = make(chan func() *mnet.Client, 4096*4)
-	go func() {
-		for {
-			f, ok := <-gridMgr.GridChannel
-			if !ok {
-				return
-			}
-
-			f()
-		}
-	}()
 }
 
 func (gridMgr *GridManager) Add(gridX, gridY int, cl *mnet.Client) {
+	plr := (*cl).GetPlayer()
 
-	gridMgr.GridChannel <- func() *mnet.Client {
-		plr := (*cl).GetPlayer()
+	gridMgr.gridLock.Lock()
+	gridMgr.grids2[gridX][gridY][plr.UId] = cl
+	gridMgr.plrs2[plr.UId] = GridInfo{gridX, gridY}
+	gridMgr.gridLock.Unlock()
 
-		//gridMgr.gridLock.Lock()
-		gridMgr.grids2[gridX][gridY][plr.UId] = cl
-		gridMgr.plrs2[plr.UId] = GridInfo{gridX, gridY}
-		//gridMgr.gridLock.Unlock()
-
-		//gridMgr.grids[gridX][gridY].Set(plr.UId, cl)
-		//gridMgr.plrs.Set(plr.UId, GridInfo{gridX, gridY})
-
-		return nil
-	}
+	//gridMgr.grids[gridX][gridY].Set(plr.UId, cl)
+	//gridMgr.plrs.Set(plr.UId, GridInfo{gridX, gridY})
 }
 
 func (gridMgr *GridManager) Remove(uId string) *mnet.Client {
 
-	gridMgr.GridChannel <- func() *mnet.Client {
-		//	gridMgr.gridLock.RLock()
-		info, ok := gridMgr.plrs2[uId]
-		if !ok {
-			//	gridMgr.gridLock.RUnlock()
-			return nil
-		}
-
-		//gridMgr.gridLock.RUnlock()
-
-		//gridMgr.gridLock.Lock()
-		delete(gridMgr.plrs2, uId)
-
-		gridInfo := info
-		plr, ok2 := gridMgr.grids2[gridInfo.GridX][gridInfo.GridY][uId]
-		if ok2 {
-			delete(gridMgr.grids2[gridInfo.GridX][gridInfo.GridY], uId)
-			//gridMgr.gridLock.Unlock()
-			return plr
-		}
-
+	gridMgr.gridLock.RLock()
+	info, ok := gridMgr.plrs2[uId]
+	if !ok {
+		gridMgr.gridLock.RUnlock()
 		return nil
 	}
-	//gridMgr.gridLock.Unlock()
+
+	gridMgr.gridLock.RUnlock()
+
+	gridMgr.gridLock.Lock()
+	delete(gridMgr.plrs2, uId)
+
+	gridInfo := info
+	plr, ok2 := gridMgr.grids2[gridInfo.GridX][gridInfo.GridY][uId]
+	if ok2 {
+		delete(gridMgr.grids2[gridInfo.GridX][gridInfo.GridY], uId)
+		gridMgr.gridLock.Unlock()
+		return plr
+	}
+
+	gridMgr.gridLock.Unlock()
 
 	//info, ok := gridMgr.plrs.Get(uId)
 	//if ok {
@@ -125,42 +104,6 @@ func (gridMgr *GridManager) Remove(uId string) *mnet.Client {
 	//	}
 	//}
 
-	return nil
-}
-
-func (gridMgr *GridManager) Add_Local(gridX, gridY int, cl *mnet.Client) {
-
-	plr := (*cl).GetPlayer()
-
-	//gridMgr.gridLock.Lock()
-	gridMgr.grids2[gridX][gridY][plr.UId] = cl
-	gridMgr.plrs2[plr.UId] = GridInfo{gridX, gridY}
-	//gridMgr.gridLock.Unlock()
-
-	//gridMgr.grids[gridX][gridY].Set(plr.UId, cl)
-	//gridMgr.plrs.Set(plr.UId, GridInfo{gridX, gridY})
-}
-
-func (gridMgr *GridManager) Remove_Local(uId string) *mnet.Client {
-	//	gridMgr.gridLock.RLock()
-	info, ok := gridMgr.plrs2[uId]
-	if !ok {
-		//	gridMgr.gridLock.RUnlock()
-		return nil
-	}
-
-	//gridMgr.gridLock.RUnlock()
-
-	//gridMgr.gridLock.Lock()
-	delete(gridMgr.plrs2, uId)
-
-	gridInfo := info
-	plr, ok2 := gridMgr.grids2[gridInfo.GridX][gridInfo.GridY][uId]
-	if ok2 {
-		delete(gridMgr.grids2[gridInfo.GridX][gridInfo.GridY], uId)
-		//gridMgr.gridLock.Unlock()
-		return plr
-	}
 	return nil
 }
 
@@ -190,9 +133,9 @@ func (gridMgr *GridManager) fillPlayers(GridX, GridY int) map[string]*mnet.Clien
 		GridY = MaxY - 1
 	}
 
-	//gridMgr.gridLock.RLock()
+	gridMgr.gridLock.RLock()
 	result = gridMgr.grids2[GridX][GridY]
-	//gridMgr.gridLock.RUnlock()
+	gridMgr.gridLock.RUnlock()
 
 	return result
 
@@ -205,9 +148,9 @@ func (gridMgr *GridManager) fillPlayers(GridX, GridY int) map[string]*mnet.Clien
 }
 
 func (gridMgr *GridManager) OnMove(newX, newY float32, uId string) (map[string]*mnet.Client, map[string]*mnet.Client, map[string]*mnet.Client) {
-	//gridMgr.gridLock.RLock()
+	gridMgr.gridLock.RLock()
 	info, ok := gridMgr.plrs2[uId]
-	//gridMgr.gridLock.RUnlock()
+	gridMgr.gridLock.RUnlock()
 	if ok {
 		newGridX, newGridY := common.FindGrid(newX, newY)
 		gridInfo := info
@@ -215,9 +158,9 @@ func (gridMgr *GridManager) OnMove(newX, newY float32, uId string) (map[string]*
 			//gridMgr.mtx.Lock()
 			//defer gridMgr.mtx.Unlock()
 
-			_plr := gridMgr.Remove_Local(uId)
+			_plr := gridMgr.Remove(uId)
 			if _plr != nil {
-				gridMgr.Add_Local(newGridX, newGridY, _plr)
+				gridMgr.Add(newGridX, newGridY, _plr)
 
 				oldList := map[string]*mnet.Client{}
 				newList := map[string]*mnet.Client{}
