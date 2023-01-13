@@ -4,6 +4,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	cmap "github.com/orcaman/concurrent-map/v2"
+	"github.com/pemistahl/lingua-go"
 	"log"
 	rand2 "math/rand"
 	"runtime"
@@ -17,7 +18,6 @@ import (
 	proto2 "github.com/Hucaru/Valhalla/common/proto"
 	"github.com/Hucaru/Valhalla/constant"
 	"github.com/Hucaru/Valhalla/meta-proto/go/mc_metadata"
-	"github.com/pemistahl/lingua-go"
 	"google.golang.org/protobuf/proto"
 
 	"github.com/dop251/goja"
@@ -146,10 +146,28 @@ type Server struct {
 	gridMgr       manager.GridManager
 	clients       cmap.ConcurrentMap[string, *mnet.Client]
 	playerActions cmap.ConcurrentMap[string, chan RequestedParam]
+
+	// Kioni
+	PlayerActionHandler map[uint32]func(*mnet.Client, mpacket.Reader)
 }
 
 // Initialize the server
 func (server *Server) Initialize(work chan func(), dbuser, dbpassword, dbaddress, dbport, dbdatabase string) {
+
+	// Kioni
+	server.PlayerActionHandler = make(map[uint32]func(*mnet.Client, mpacket.Reader), 0)
+
+	server.PlayerActionHandler[constant.C2P_RequestLoginUser] = server.playerConnect
+	server.PlayerActionHandler[constant.C2P_RequestMoveStart] = server.playerMovementStart
+	server.PlayerActionHandler[constant.C2P_RequestMove] = server.playerMovement
+	server.PlayerActionHandler[constant.C2P_RequestMoveEnd] = server.playerMovementEnd
+	server.PlayerActionHandler[constant.C2P_RequestLogoutUser] = server.playerLogout
+	server.PlayerActionHandler[constant.C2P_RequestPlayerInfo] = server.playerInfo
+	server.PlayerActionHandler[constant.C2P_RequestAllChat] = server.chatSendAll
+	server.PlayerActionHandler[constant.C2P_RequestWhisper] = server.chatSendWhisper
+	server.PlayerActionHandler[constant.C2P_RequestRegionChat] = server.chatSendRegion
+	server.PlayerActionHandler[constant.OnDisconnected] = server.ClientDisconnected
+
 	runtime.GOMAXPROCS(runtime.NumCPU())
 	server.dispatch = work
 
@@ -460,8 +478,9 @@ func (server *Server) clearSessions() {
 	}
 }
 
+// Kioni
 // ClientDisconnected from server
-func (server *Server) ClientDisconnected(conn *mnet.Client) {
+func (server *Server) ClientDisconnected(conn *mnet.Client, reader mpacket.Reader) {
 	//_, err := server.players.getFromConn(conn)
 	//if err != nil {
 	//	return
