@@ -9,6 +9,7 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/Hucaru/Valhalla/common"
@@ -361,8 +362,12 @@ func (server *Server) playerMovementStart(conn *mnet.Client, reader mpacket.Read
 	//	MovementData: msg.GetMovementData(),
 	//}
 
-	server.moveProcess(conn, msg.GetMovementData().DestinationX, msg.GetMovementData().DestinationY, msg.GetMovementData().GetUuId(), msg.GetMovementData(), constant.P2C_ReportMoveStart)
+	wg := sync.WaitGroup{}
 
+	wg.Add(1)
+	server.moveProcess(conn, msg.GetMovementData().DestinationX, msg.GetMovementData().DestinationY, msg.GetMovementData().GetUuId(), msg.GetMovementData(), constant.P2C_ReportMoveStart, &wg)
+
+	wg.Wait()
 	//server.sendMsgToRegion(conn, res, constant.P2C_ReportMoveStart)
 	//server.updateUserLocation(conn, msg.GetMovementData())
 }
@@ -392,8 +397,12 @@ func (server *Server) playerMovementEnd(conn *mnet.Client, reader mpacket.Reader
 	//res := &mc_metadata.P2C_ReportMoveEnd{
 	//	MovementData: msg.GetMovementData(),
 	//}
+	wg := sync.WaitGroup{}
 
-	server.moveProcess(conn, msg.GetMovementData().DestinationX, msg.GetMovementData().DestinationY, msg.GetMovementData().GetUuId(), msg.GetMovementData(), constant.P2C_ReportMoveEnd)
+	wg.Add(1)
+	server.moveProcess(conn, msg.GetMovementData().DestinationX, msg.GetMovementData().DestinationY, msg.GetMovementData().GetUuId(), msg.GetMovementData(), constant.P2C_ReportMoveEnd, &wg)
+
+	wg.Wait()
 
 	//server.sendMsgToRegion(conn, res, constant.P2C_ReportMoveEnd)
 	//server.updateUserLocation(conn, msg.GetMovementData())
@@ -810,7 +819,13 @@ func (server *Server) playerMovement(conn *mnet.Client, reader mpacket.Reader) {
 		return
 	}
 
-	server.moveProcess(conn, msg.GetMovementData().DestinationX, msg.GetMovementData().DestinationY, msg.GetMovementData().GetUuId(), msg.GetMovementData(), constant.P2C_ReportMove)
+	wg := sync.WaitGroup{}
+
+	wg.Add(1)
+
+	server.moveProcess(conn, msg.GetMovementData().DestinationX, msg.GetMovementData().DestinationY, msg.GetMovementData().GetUuId(), msg.GetMovementData(), constant.P2C_ReportMove, &wg)
+
+	wg.Wait()
 
 	//if server.isCellChanged(conn, msg.GetMovementData()) {
 	//	oldPlr, newPlr := server.getNineCellsPlayers(conn, msg.GetMovementData())
@@ -975,7 +990,9 @@ func (server *Server) moveProcess_Temp2(conn *mnet.Client, x, y float32, uId str
 	conn.GetPlayer().Character.RotZ = movement.GetDeatinationRotationZ()
 }
 
-func (server *Server) moveProcess(conn *mnet.Client, x, y float32, uId string, movement *mc_metadata.Movement, moveType int) {
+func (server *Server) moveProcess(conn *mnet.Client, x, y float32, uId string, movement *mc_metadata.Movement, moveType int, wg *sync.WaitGroup) {
+	defer wg.Done()
+
 	addList, removeList, aroundList := server.gridMgr.OnMove(x, y, uId)
 
 	for k, v := range addList {
