@@ -4,7 +4,6 @@ import (
 	"github.com/Hucaru/Valhalla/common"
 	"github.com/Hucaru/Valhalla/constant"
 	"github.com/Hucaru/Valhalla/mnet"
-	cmap "github.com/orcaman/concurrent-map/v2"
 	"golang.org/x/exp/maps"
 )
 
@@ -14,8 +13,8 @@ type GridInfo struct {
 }
 
 type GridManager struct {
-	grids [][]cmap.ConcurrentMap[string, *mnet.Client]
-	plrs  cmap.ConcurrentMap[string, GridInfo]
+	grids [][]ConcurrentMap[string, *mnet.Client]
+	plrs  ConcurrentMap[string, GridInfo]
 }
 
 //func (gridMgr *GridManager) Loop(f <-chan func()) {
@@ -27,19 +26,19 @@ type GridManager struct {
 //}
 
 func (gridMgr *GridManager) Init() {
-	gridMgr.grids = make([][]cmap.ConcurrentMap[string, *mnet.Client], 1)
-	gridMgr.plrs = cmap.New[GridInfo]()
+	gridMgr.grids = make([][]ConcurrentMap[string, *mnet.Client], 1)
+	gridMgr.plrs = New[GridInfo]()
 
 	columns := (constant.LAND_X2 - constant.LAND_X1) / constant.LAND_VIEW_RANGE
 	rows := (constant.LAND_Y2 - constant.LAND_Y1) / constant.LAND_VIEW_RANGE
 
-	x := make([][]cmap.ConcurrentMap[string, *mnet.Client], columns)
+	x := make([][]ConcurrentMap[string, *mnet.Client], columns)
 
 	for i := 0; i < columns; i++ {
-		y := make([]cmap.ConcurrentMap[string, *mnet.Client], rows)
+		y := make([]ConcurrentMap[string, *mnet.Client], rows)
 
 		for j := 0; j < rows; j++ {
-			d := cmap.New[*mnet.Client]()
+			d := New[*mnet.Client]()
 			y[j] = d
 		}
 		x[i] = y
