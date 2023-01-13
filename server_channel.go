@@ -162,10 +162,6 @@ func (cs *channelServer) acceptNewConnections() {
 			}
 		}()
 
-		go func() {
-			client.
-		}()
-
 		go client.MetaWriter()
 	}
 }
