@@ -9,7 +9,6 @@ import (
 	"log"
 	"net"
 	"os"
-	"runtime"
 	"strconv"
 	"sync"
 	"time"
@@ -157,8 +156,6 @@ func (cs *channelServer) acceptNewConnections() {
 				}
 
 				cs.gameState.HandleClientPacket(client, mpacket.NewReader(&buff, time.Now().Unix()), msgProtocol)
-
-				runtime.Gosched()
 			}
 		}()
 
@@ -195,8 +192,6 @@ func (cs *channelServer) processEvent() {
 			if ok {
 				work()
 			}
-		default:
-			runtime.Gosched()
 		}
 
 	}

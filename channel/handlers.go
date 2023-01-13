@@ -29,7 +29,13 @@ import (
 // HandleClientPacket data
 func (server *Server) HandleClientPacket(
 	conn *mnet.Client, reader mpacket.Reader, msgProtocolType uint32) {
-	server.playerAction(conn, RequestedParam{Num: msgProtocolType, Reader: reader})
+
+	f, ok := server.PlayerActionHandler[msgProtocolType]
+	if ok {
+		f(conn, reader)
+	}
+
+	//server.playerAction(conn, RequestedParam{Num: msgProtocolType, Reader: reader})
 }
 
 func (server *Server) playerAction(conn *mnet.Client, reader RequestedParam) {
@@ -53,9 +59,6 @@ func (server *Server) playerAction(conn *mnet.Client, reader RequestedParam) {
 							return
 						}
 					}
-				default:
-					//log.Println("state : ", runtime.NumGoroutine(), runtime.NumCPU())
-					runtime.Gosched()
 				}
 			}
 		}(server, conn, c)
