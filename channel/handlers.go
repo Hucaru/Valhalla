@@ -42,6 +42,7 @@ func (server *Server) playerAction(conn *mnet.Client, reader RequestedParam) {
 				select {
 				case p := <-c:
 					if p.Num == constant.OnDisconnected {
+						log.Println("constant.OnDisconnected")
 						server.ClientDisconnected(conn, p.Reader)
 						close(c)
 						return
