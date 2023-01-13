@@ -6,7 +6,6 @@ import (
 	"github.com/Hucaru/Valhalla/mnet"
 	cmap "github.com/orcaman/concurrent-map/v2"
 	"golang.org/x/exp/maps"
-	"sync"
 )
 
 type GridInfo struct {
@@ -17,8 +16,6 @@ type GridInfo struct {
 type GridManager struct {
 	grids [][]cmap.ConcurrentMap[string, *mnet.Client]
 	plrs  cmap.ConcurrentMap[string, GridInfo]
-
-	mtx *sync.RWMutex
 }
 
 //func (gridMgr *GridManager) Loop(f <-chan func()) {
@@ -32,7 +29,6 @@ type GridManager struct {
 func (gridMgr *GridManager) Init() {
 	gridMgr.grids = make([][]cmap.ConcurrentMap[string, *mnet.Client], 1)
 	gridMgr.plrs = cmap.New[GridInfo]()
-	gridMgr.mtx = &sync.RWMutex{}
 
 	columns := (constant.LAND_X2 - constant.LAND_X1) / constant.LAND_VIEW_RANGE
 	rows := (constant.LAND_Y2 - constant.LAND_Y1) / constant.LAND_VIEW_RANGE

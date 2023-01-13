@@ -195,6 +195,10 @@ func (cs *channelServer) processEvent() {
 			if ok {
 				work()
 			}
+		default:
+			time.Sleep(10 * time.Millisecond)
+			runtime.Gosched()
 		}
+
 	}
 }
