@@ -96,10 +96,10 @@ func (gridMgr *GridManager) fillPlayers(GridX, GridY int) map[string]*mnet.Clien
 		GridY = MaxY - 1
 	}
 
-	//itemChan := gridMgr.grids[GridX][GridY].IterBuffered()
-	//for item := range itemChan {
-	//	result[item.Key] = item.Val
-	//}
+	itemChan := gridMgr.grids[GridX][GridY].IterBuffered()
+	for item := range itemChan {
+		result[item.Key] = item.Val
+	}
 
 	return result
 }
