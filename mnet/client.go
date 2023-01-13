@@ -74,7 +74,7 @@ func NewClientMeta(conn net.Conn, eRecv chan *Event, queueSize int, latency, jit
 	c.Conn = conn
 	c.sendChannelLock = sync.RWMutex{}
 
-	c.eSend = make(chan mpacket.Packet, 4096*2)
+	c.eSend = make(chan mpacket.Packet, 4096*4)
 	c.eRecv = eRecv
 
 	c.reader = func() {

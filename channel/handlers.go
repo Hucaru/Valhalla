@@ -34,18 +34,23 @@ func (server *Server) HandleClientPacket(
 
 func (server *Server) playerAction(conn *mnet.Client, reader RequestedParam) {
 	if reader.Num == constant.OnConnected {
-		c := make(chan RequestedParam, 4096*2)
+		c := make(chan RequestedParam, 4096*4)
 		server.playerActions.Set(conn.String(), c)
 		go func(server *Server, conn *mnet.Client, c <-chan RequestedParam) {
 			for {
 				// Kioni
-				p := <-c
-				if _, ok := server.PlayerActionHandler[p.Num]; ok {
-					server.PlayerActionHandler[p.Num](conn, p.Reader)
+				select {
+				case p := <-c:
+					if _, ok := server.PlayerActionHandler[p.Num]; ok {
+						server.PlayerActionHandler[p.Num](conn, p.Reader)
 
-					if p.Num == constant.OnDisconnected {
-						return
+						if p.Num == constant.OnDisconnected {
+							return
+						}
 					}
+				default:
+					log.Println("state : ", runtime.NumGoroutine(), runtime.NumCPU())
+					runtime.Gosched()
 				}
 			}
 		}(server, conn, c)

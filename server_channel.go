@@ -29,8 +29,8 @@ type channelServer struct {
 func newChannelServer(configFile string) *channelServer {
 	config, dbConfig := loadChannelConfig(configFile)
 	return &channelServer{
-		eRecv:    make(chan *mnet.Event, 4096*2),
-		wRecv:    make(chan func(), 4096*2),
+		eRecv:    make(chan *mnet.Event, 4096*4),
+		wRecv:    make(chan func(), 4096*4),
 		config:   config,
 		dbConfig: dbConfig,
 		wg:       &sync.WaitGroup{},
@@ -40,7 +40,7 @@ func newChannelServer(configFile string) *channelServer {
 func (cs *channelServer) run() {
 	log.Println("Channel Server")
 
-	cs.establishWorldConnection()
+	//cs.establishWorldConnection()
 
 	start := time.Now()
 	//nx.LoadFile("Data.nx")
