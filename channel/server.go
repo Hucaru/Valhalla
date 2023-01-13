@@ -15,6 +15,7 @@ import (
 	"github.com/Hucaru/Valhalla/mpacket"
 	"github.com/Hucaru/Valhalla/nx"
 	_ "github.com/go-sql-driver/mysql" // don't need full import
+	cmap "github.com/orcaman/concurrent-map/v2"
 	"github.com/panjf2000/ants/v2"
 	"github.com/pemistahl/lingua-go"
 	"google.golang.org/protobuf/proto"
@@ -129,8 +130,8 @@ type Server struct {
 	fMovePlayers     []PlayerMovement    //(y,x)[data]
 
 	gridMgr       manager.GridManager
-	clients       manager.ConcurrentMap[string, *mnet.Client]
-	playerActions manager.ConcurrentMap[string, chan RequestedParam]
+	clients       cmap.ConcurrentMap[string, *mnet.Client]
+	playerActions cmap.ConcurrentMap[string, chan RequestedParam]
 
 	// Kioni
 	PlayerActionHandler map[uint32]func(*mnet.Client, mpacket.Reader)
@@ -236,8 +237,8 @@ func (server *Server) Initialize(work chan func(), dbuser, dbpassword, dbaddress
 	server.gridMgr = manager.GridManager{}
 	server.gridMgr.Init()
 
-	server.clients = manager.New[*mnet.Client]()
-	server.playerActions = manager.New[chan RequestedParam]()
+	server.clients = cmap.New[*mnet.Client]()
+	server.playerActions = cmap.New[chan RequestedParam]()
 }
 
 func (server *Server) addToEmulateMoving(uid string, plrs []*player) {
