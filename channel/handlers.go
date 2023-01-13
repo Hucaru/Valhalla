@@ -860,6 +860,9 @@ func (server *Server) playerMovement(conn *mnet.Client, reader mpacket.Reader) {
 }
 
 func (server *Server) moveProcess(conn *mnet.Client, x, y float32, uId string, movement *mc_metadata.Movement, moveType int) {
+
+	log.Println("Move Begin")
+
 	addList, removeList, aroundList := server.gridMgr.OnMove(x, y, uId)
 
 	for k, v := range addList {
@@ -953,6 +956,8 @@ func (server *Server) moveProcess(conn *mnet.Client, x, y float32, uId string, m
 	conn.GetPlayer().Character.RotX = movement.GetDeatinationRotationX()
 	conn.GetPlayer().Character.RotY = movement.GetDeatinationRotationY()
 	conn.GetPlayer().Character.RotZ = movement.GetDeatinationRotationZ()
+	
+	log.Println("Move End")
 }
 
 func (server *Server) playerInfo(conn *mnet.Client, reader mpacket.Reader) {
