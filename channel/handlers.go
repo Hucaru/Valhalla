@@ -687,7 +687,7 @@ func (server *Server) playerRegionRoleChecking(conn *mnet.Client, reader mpacket
 
 	is := 0
 	for i := 0; i < len(users); i++ {
-		if users[i].conn.GetPlayer().Interaction != nil &&
+		if users[i].conn.GetPlayer().Interaction.IsInteraction &&
 			users[i].conn.GetPlayer().Character.Role > 1 {
 			is = 1
 			break
@@ -1312,7 +1312,7 @@ func (server *Server) convertPlayersToLoginResult(plrs map[string]*mnet.Client) 
 
 	for _, v := range plrs {
 		intr := &mc_metadata.P2C_ReportInteractionAttach{}
-		if (*v).GetPlayer().Interaction != nil {
+		if (*v).GetPlayer().Interaction.IsInteraction {
 			intr.AttachEnable = (*v).GetPlayer().Interaction.AttachEnabled
 			intr.UuId = (*v).GetPlayer().UId
 			intr.ObjectIndex = (*v).GetPlayer().Interaction.ObjectIndex
@@ -1348,7 +1348,7 @@ func (server *Server) convertPlayersToRegionReport(plrs map[string]*mnet.Client)
 
 	for _, v := range plrs {
 		intr := &mc_metadata.P2C_ReportInteractionAttach{}
-		if (*v).GetPlayer().Interaction != nil {
+		if (*v).GetPlayer().Interaction.IsInteraction {
 			intr.UuId = (*v).GetPlayer().UId
 			intr.AttachEnable = (*v).GetPlayer().Interaction.AttachEnabled
 			intr.ObjectIndex = (*v).GetPlayer().Interaction.ObjectIndex
@@ -1386,7 +1386,7 @@ func (server *Server) convertPlayersToGridChanged(plrs map[string]*mnet.Client) 
 
 	for _, v := range plrs {
 		intr := &mc_metadata.P2C_ReportInteractionAttach{}
-		if (*v).GetPlayer().Interaction != nil {
+		if (*v).GetPlayer().Interaction.IsInteraction {
 			intr.UuId = (*v).GetPlayer().UId
 			intr.AttachEnable = (*v).GetPlayer().Interaction.AttachEnabled
 			intr.ObjectIndex = (*v).GetPlayer().Interaction.ObjectIndex

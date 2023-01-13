@@ -5,8 +5,8 @@ type Player struct {
 	UId         string
 	CharacterID int64
 	RegionID    int64
-	Character   *Character
-	Interaction *Interaction
+	Character   Character
+	Interaction Interaction
 	IsBot       int32
 	ModifiedAt  int64
 }

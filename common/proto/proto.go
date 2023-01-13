@@ -22,7 +22,7 @@ func Unmarshal(buff []byte, msg proto.Message) error {
 	return proto.Unmarshal(buff, msg)
 }
 
-func AccountReport(uID string, acc *model.Character) *mc_metadata.P2C_ReportLoginUser {
+func AccountReport(uID string, acc model.Character) *mc_metadata.P2C_ReportLoginUser {
 	res := &mc_metadata.P2C_ReportLoginUser{
 		UuId: uID,
 		PlayerInfo: &mc_metadata.P2C_PlayerInfo{
@@ -131,7 +131,7 @@ func ConvertPlayersToRoomReport(plrs []*model.Player) []*mc_metadata.DataSchool 
 	for i := 0; i < len(plrs); i++ {
 		interaction := &mc_metadata.P2C_ReportInteractionAttach{}
 
-		if plrs[i].Interaction != nil {
+		if plrs[i].Interaction.IsInteraction {
 			interaction.ObjectIndex = plrs[i].Interaction.ObjectIndex
 			interaction.AttachEnable = plrs[i].Interaction.AttachEnabled
 			interaction.AnimMontageName = plrs[i].Interaction.AnimMontageName

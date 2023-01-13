@@ -40,7 +40,7 @@ func GetLoggedData(uUID string) (*model.Player, error) {
 		AccountID:   constant.UNKNOWN,
 		CharacterID: constant.UNKNOWN,
 		RegionID:    constant.World,
-		Character: &model.Character{
+		Character: model.Character{
 			Role:     constant.User,
 			NickName: "",
 			Hair:     "",
@@ -55,7 +55,7 @@ func GetLoggedData(uUID string) (*model.Player, error) {
 			RotY:     constant.RotY,
 			RotZ:     constant.RotZ,
 		},
-		Interaction: nil,
+		Interaction: model.NewInteraction(),
 	}
 
 	err := Maria.QueryRow(
@@ -88,7 +88,7 @@ func GetLoggedDataForBot(uUID string) (*model.Player, error) {
 		AccountID:   constant.UNKNOWN,
 		CharacterID: constant.UNKNOWN,
 		RegionID:    constant.World,
-		Character: &model.Character{
+		Character: model.Character{
 			Role:     constant.User,
 			NickName: uUID,
 			Hair:     "",
@@ -103,7 +103,7 @@ func GetLoggedDataForBot(uUID string) (*model.Player, error) {
 			RotY:     constant.RotY,
 			RotZ:     constant.RotZ,
 		},
-		Interaction: nil,
+		Interaction: model.NewInteraction(),
 	}
 
 	return plr, nil
@@ -116,7 +116,7 @@ func GetLoggedDataByName(req *mc_metadata.C2P_RequestPlayerInfo) (*model.Player,
 		AccountID:   constant.UNKNOWN,
 		CharacterID: constant.UNKNOWN,
 		RegionID:    constant.World,
-		Character: &model.Character{
+		Character: model.Character{
 			Role:     constant.User,
 			NickName: req.GetNickname(),
 			Hair:     req.GetHair(),
@@ -131,7 +131,7 @@ func GetLoggedDataByName(req *mc_metadata.C2P_RequestPlayerInfo) (*model.Player,
 			RotY:     constant.RotY,
 			RotZ:     constant.RotZ,
 		},
-		Interaction: nil,
+		Interaction: model.NewInteraction(),
 	}
 
 	err := Maria.QueryRow(
