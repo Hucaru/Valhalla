@@ -43,7 +43,7 @@ func (server *Server) playerAction(conn *mnet.Client, reader RequestedParam) {
 				select {
 				case p, ok2 := <-c:
 					if !ok2 {
-						return
+						break
 					}
 
 					if _, ok := server.PlayerActionHandler[p.Num]; ok {
