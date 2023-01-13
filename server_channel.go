@@ -32,8 +32,8 @@ type channelServer struct {
 func newChannelServer(configFile string) *channelServer {
 	config, dbConfig := loadChannelConfig(configFile)
 	return &channelServer{
-		eRecv:    make(chan *mnet.Event, 4096*4),
-		wRecv:    make(chan func(), 4096*4),
+		eRecv:    make(chan *mnet.Event, 4096*4096),
+		wRecv:    make(chan func(), 4096*4096),
 		config:   config,
 		dbConfig: dbConfig,
 		wg:       &sync.WaitGroup{},
