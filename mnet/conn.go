@@ -161,6 +161,7 @@ func (bc *baseConn) Writer() {
 }
 
 func (bc *baseConn) MetaWriter() {
+	defer bc.Conn.Close()
 	for {
 		p, ok := <-bc.eSend
 		if !ok {
