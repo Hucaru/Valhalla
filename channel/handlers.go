@@ -41,7 +41,11 @@ func (server *Server) playerAction(conn *mnet.Client, reader RequestedParam) {
 			for {
 				// Kioni
 				select {
-				case p := <-c:
+				case p, ok2 := <-c:
+					if !ok2 {
+						break
+					}
+
 					if _, ok := server.PlayerActionHandler[p.Num]; ok {
 						if p.Num == constant.OnDisconnected {
 							server.PlayerActionHandler[p.Num](conn, p.Reader)

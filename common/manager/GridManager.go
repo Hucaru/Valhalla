@@ -97,16 +97,17 @@ func (gridMgr *GridManager) fillPlayers(GridX, GridY int) map[string]*mnet.Clien
 	}
 
 	itemChan := gridMgr.grids[GridX][GridY].IterBuffered()
-	//for {
-	//	item, ok := <-itemChan
-	//	if ok {
-	//		result[item.Key] = item.Val
-	//	}
-	//}
-
-	for item := range itemChan {
-		result[item.Key] = item.Val
+	for {
+		item, ok := <-itemChan
+		if ok {
+			result[item.Key] = item.Val
+		} else {
+			break
+		}
 	}
+	//for item := range itemChan {
+	//	result[item.Key] = item.Val
+	//}
 
 	return result
 }
