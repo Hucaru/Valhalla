@@ -139,7 +139,7 @@ func (bc *baseConn) Writer() {
 }
 
 func (bc *baseConn) MetaWriter() *chann.Chann[mpacket.Packet] {
-	ch := chann.New[mpacket.Packet]()
+	ch := chann.New[mpacket.Packet](chann.Cap(4096 * 4))
 
 	go func() {
 		for {
