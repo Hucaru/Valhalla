@@ -143,8 +143,10 @@ func (bc *baseConn) MetaWriter() {
 			return
 		}
 
-		v := bc.sendChannelQueue.Deque().(mpacket.Packet)
-		bc.Conn.Write(v)
+		for bc.sendChannelQueue.Len() > 0 {
+			v := bc.sendChannelQueue.Deque().(mpacket.Packet)
+			bc.Conn.Write(v)
+		}
 		runtime.Gosched()
 	}
 }
