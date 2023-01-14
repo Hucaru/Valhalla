@@ -4,6 +4,7 @@ import (
 	"github.com/dustinxie/lockfree"
 	"math/rand"
 	"net"
+	"runtime"
 	"sync"
 	"time"
 
@@ -161,7 +162,7 @@ func (bc *baseConn) MetaWriter() {
 				bc.Conn.Write(v)
 			}
 		}
-		//runtime.Gosched()
+		runtime.Gosched()
 	}
 }
 
