@@ -1,13 +1,11 @@
 package mnet
 
 import (
-	"net"
-	"sync"
-
 	"github.com/Hucaru/Valhalla/common/db/model"
 	"github.com/Hucaru/Valhalla/constant"
 	"github.com/Hucaru/Valhalla/mnet/crypt"
 	"github.com/Hucaru/Valhalla/mpacket"
+	"net"
 )
 
 type client struct {
@@ -72,10 +70,10 @@ func NewClient(conn net.Conn, eRecv chan *Event, queueSize int, keySend, keyRecv
 func NewClientMeta(conn net.Conn, queueSize int, latency, jitter int) *Client {
 	c := &Client{}
 	c.Conn = conn
-	c.sendChannelLock = sync.RWMutex{}
+	//c.sendChannelLock = sync.RWMutex{}
 	//c.sendChannelQueue = lockfree.NewQueue()
-	c.sendChannelPakcets = []mpacket.Packet{}
-	c.sendChannelPacketMtx = sync.Mutex{}
+	//c.sendChannelPakcets = []mpacket.Packet{}
+	//c.sendChannelPacketMtx = sync.Mutex{}
 	//c.eSend = make(chan mpacket.Packet, 4096*4)
 
 	c.interServer = false

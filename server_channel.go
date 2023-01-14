@@ -163,7 +163,7 @@ func (cs *channelServer) acceptNewConnections() {
 			}
 		}()
 
-		go client.MetaWriter()
+		client.Send_Packet_Channel = client.MetaWriter()
 	}
 }
 
