@@ -134,9 +134,9 @@ func (cs *channelServer) acceptNewConnections() {
 		rand.Read(keyRecv[:])
 
 		client := mnet.NewClientMeta(conn, cs.config.PacketQueueSize, cs.config.Latency, cs.config.Jitter)
+		cs.gameState.HandleClientPacket(client, mpacket.Reader{}, constant.OnConnected)
 
 		go func() {
-			cs.gameState.HandleClientPacket(client, mpacket.Reader{}, constant.OnConnected)
 			for {
 				buff := make(mpacket.Packet, constant.MetaClientHeaderSize)
 				if _, err := conn.Read(buff); err == io.EOF || err != nil {
@@ -164,7 +164,7 @@ func (cs *channelServer) acceptNewConnections() {
 		}()
 
 		go client.MetaWriter()
-	}
++	}
 }
 
 func (cs *channelServer) processEvent() {
