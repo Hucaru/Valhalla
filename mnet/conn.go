@@ -152,8 +152,9 @@ func (bc *baseConn) MetaWriter() {
 		} else if bc.closed {
 			bc.sendChannelLock.RUnlock()
 			return
+		} else {
+			bc.sendChannelLock.RUnlock()
 		}
-		bc.sendChannelLock.RUnlock()
 		runtime.Gosched()
 	}
 
@@ -179,7 +180,7 @@ func (bc *baseConn) Send(p mpacket.Packet) {
 
 	bc.sendChannelQueue = append(bc.sendChannelQueue, p)
 
-	bc.eSend <- p
+	//bc.eSend <- p
 }
 
 func (bc *baseConn) String() string {
