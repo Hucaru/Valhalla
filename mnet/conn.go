@@ -1,12 +1,14 @@
 package mnet
 
 import (
-	"github.com/Hucaru/Valhalla/mnet/crypt"
-	"github.com/Hucaru/Valhalla/mpacket"
-	"golang.design/x/chann"
+	"github.com/dustinxie/lockfree"
 	"math/rand"
 	"net"
+	"sync"
 	"time"
+
+	"github.com/Hucaru/Valhalla/mnet/crypt"
+	"github.com/Hucaru/Valhalla/mpacket"
 )
 
 type MConn interface {
@@ -78,14 +80,12 @@ type baseConn struct {
 	eRecv  chan *Event
 	reader func()
 	closed bool
-	//
-	//sendChannelLock  sync.RWMutex
-	//sendChannelQueue lockfree.Queue
-	//
-	//sendChannelPakcets   []mpacket.Packet
-	//sendChannelPacketMtx sync.Mutex
 
-	Send_Packet_Channel *chann.Chann[mpacket.Packet]
+	sendChannelLock  sync.RWMutex
+	sendChannelQueue lockfree.Queue
+
+	sendChannelPakcets   []mpacket.Packet
+	sendChannelPacketMtx sync.Mutex
 
 	cryptSend *crypt.Maple
 	cryptRecv *crypt.Maple
@@ -138,25 +138,39 @@ func (bc *baseConn) Writer() {
 	}
 }
 
-func (bc *baseConn) MetaWriter() *chann.Chann[mpacket.Packet] {
-	ch := chann.New[mpacket.Packet]()
+func (bc *baseConn) MetaWriter() {
 
-	go func() {
-		for {
-			select {
-			case p, ok := <-ch.Out():
-				if !ok {
-					return
-				}
-				bc.Conn.Write(p)
+	for {
+		if bc.closed {
+			return
+		}
+
+		//for bc.sendChannelQueue.Len() > 0 {
+		//	v := bc.sendChannelQueue.Deque().(mpacket.Packet)
+		//	bc.Conn.Write(v)
+		//}
+
+		if len(bc.sendChannelPakcets) > 0 {
+			bc.sendChannelPacketMtx.Lock()
+			sendChannelPakcets := make([]mpacket.Packet, len(bc.sendChannelPakcets))
+			copy(sendChannelPakcets, bc.sendChannelPakcets)
+			bc.sendChannelPakcets = []mpacket.Packet{}
+			bc.sendChannelPacketMtx.Unlock()
+
+			for _, v := range sendChannelPakcets {
+				bc.Conn.Write(v)
 			}
 		}
-	}()
-
-	return ch
+		//runtime.Gosched()
+	}
 }
+
 func (bc *baseConn) Send(p mpacket.Packet) {
-	bc.Send_Packet_Channel.In() <- p
+	//bc.sendChannelQueue.Enque(p)
+
+	bc.sendChannelPacketMtx.Lock()
+	bc.sendChannelPakcets = append(bc.sendChannelPakcets, p)
+	bc.sendChannelPacketMtx.Unlock()
 }
 
 func (bc *baseConn) String() string {
@@ -164,5 +178,5 @@ func (bc *baseConn) String() string {
 }
 
 func (bc *baseConn) Cleanup() {
-	bc.Send_Packet_Channel.Close()
+	bc.closed = true
 }

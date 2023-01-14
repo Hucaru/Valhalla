@@ -68,7 +68,7 @@ func (server *Server) playerConnect(conn *mnet.Client, reader mpacket.Reader) {
 				if err2 != nil {
 					log.Println("ErrorLoginResponse", err2)
 				}
-				conn.Send(m)
+				conn.BaseConn.Send(m)
 				return
 			}
 		}
@@ -1084,7 +1084,7 @@ func (server *Server) playerInfo(conn *mnet.Client, reader mpacket.Reader) {
 		return
 	}
 
-	conn.Send(data)
+	conn.BaseConn.Send(data)
 
 	//server.sendMsgToMe(data, conn)
 	data = nil
