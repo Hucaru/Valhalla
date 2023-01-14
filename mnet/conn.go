@@ -140,7 +140,9 @@ func (bc *baseConn) MetaWriter() {
 	for {
 		bc.sendChannelLock.RLock()
 		if len(bc.sendChannelQueue) > 0 {
-			sendChannelQueue := bc.sendChannelQueue
+			for _, v := range bc.sendChannelQueue {
+				bc.Conn.Write(v)
+			}
 			bc.sendChannelLock.RUnlock()
 			bc.sendChannelLock.Lock()
 			bc.sendChannelQueue = []mpacket.Packet{}
