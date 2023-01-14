@@ -3,6 +3,7 @@ package mnet
 import (
 	"math/rand"
 	"net"
+	"runtime"
 	"sync"
 	"time"
 
@@ -80,7 +81,8 @@ type baseConn struct {
 	reader func()
 	closed bool
 
-	sendChannelLock sync.RWMutex
+	sendChannelLock  sync.RWMutex
+	sendChannelQueue []mpacket.Packet
 
 	cryptSend *crypt.Maple
 	cryptRecv *crypt.Maple
@@ -134,6 +136,27 @@ func (bc *baseConn) Writer() {
 }
 
 func (bc *baseConn) MetaWriter() {
+
+	for {
+		bc.sendChannelLock.RLock()
+		if len(bc.sendChannelQueue) > 0 {
+			sendChannelQueue := bc.sendChannelQueue
+			bc.sendChannelLock.RUnlock()
+			bc.sendChannelLock.Lock()
+			bc.sendChannelQueue = []mpacket.Packet{}
+			bc.sendChannelLock.Unlock()
+
+			for _, v := range sendChannelQueue {
+				bc.Conn.Write(v)
+			}
+		} else if bc.closed {
+			bc.sendChannelLock.RUnlock()
+			return
+		}
+		bc.sendChannelLock.RUnlock()
+		runtime.Gosched()
+	}
+
 	//defer bc.Conn.Close()
 	//for {
 	//	select {
@@ -148,15 +171,15 @@ func (bc *baseConn) MetaWriter() {
 }
 
 func (bc *baseConn) Send(p mpacket.Packet) {
-	bc.Conn.Write(p)
+	bc.sendChannelLock.Lock()
+	defer bc.sendChannelLock.Unlock()
+	if bc.closed {
+		return
+	}
 
-	//bc.sendChannelLock.RLock()
-	//defer bc.sendChannelLock.RUnlock()
-	//if bc.closed {
-	//	return
-	//}
-	//
-	//bc.eSend <- p
+	bc.sendChannelQueue = append(bc.sendChannelQueue, p)
+
+	bc.eSend <- p
 }
 
 func (bc *baseConn) String() string {
@@ -164,12 +187,13 @@ func (bc *baseConn) String() string {
 }
 
 func (bc *baseConn) Cleanup() {
-	/*	bc.sendChannelLock.Lock()
-		defer bc.sendChannelLock.Unlock()
-		if bc.closed {
-			return
-		}
+	bc.sendChannelLock.Lock()
+	defer bc.sendChannelLock.Unlock()
+	if bc.closed {
+		bc.sendChannelQueue = []mpacket.Packet{}
+		return
+	}
 
-		bc.closed = true
-		close(bc.eSend)*/
+	bc.closed = true
+	close(bc.eSend)
 }
