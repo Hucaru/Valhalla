@@ -282,7 +282,6 @@ func (server *Server) registerWithWorld() {
 func (server *Server) clearSessions() {
 	err := db.ResetLoginState(false)
 	if err != nil {
-		log.Println("ERROR LOGOUT PLAYER_ID", err)
 	}
 }
 
@@ -303,7 +302,7 @@ func (server *Server) ClientDisconnected(conn *mnet.Client, reader mpacket.Reade
 	fmt.Println("NumGoroutine COUNT", runtime.NumGoroutine())
 	err1 := db.UpdateLoginState(conn.GetPlayer().UId, false)
 	if err1 != nil {
-		log.Println("ERROR LOGOUT PLAYER_ID", conn.GetPlayer().UId)
+		//log.Println("ERROR LOGOUT PLAYER_ID", conn.GetPlayer().UId)
 	}
 
 	if conn.GetPlayer().IsBot != 1 {
