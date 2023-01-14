@@ -155,6 +155,10 @@ func (cs *channelServer) acceptNewConnections() {
 					return
 				}
 
+				if client.GetPlayer().IsBot == 0 {
+					log.Println("handleClientPacket call handle Client")
+				}
+
 				cs.gameState.HandleClientPacket(client, mpacket.NewReader(&buff, time.Now().Unix()), msgProtocol)
 			}
 		}()
