@@ -34,41 +34,6 @@ func (server *Server) HandleClientPacket(
 	if ok {
 		f(conn, reader)
 	}
-
-	//server.playerAction(conn, RequestedParam{Num: msgProtocolType, Reader: reader})
-}
-
-func (server *Server) playerAction(conn *mnet.Client, reader RequestedParam) {
-	if reader.Num == constant.OnConnected {
-		c := make(chan RequestedParam, 4096*4)
-
-		server.playerActions.Set(conn.String(), c)
-		go func(server *Server, conn *mnet.Client, c chan RequestedParam) {
-			for {
-				// Kioni
-				select {
-				case p := <-c:
-					if _, ok := server.PlayerActionHandler[p.Num]; ok {
-						server.PlayerActionHandler[p.Num](conn, p.Reader)
-						if p.Num == constant.OnDisconnected {
-							log.Println("Close Begin")
-							close(c)
-							log.Println("Close End")
-							log.Println("state : ", runtime.NumGoroutine(), runtime.NumCPU())
-							log.Println("constant.OnDisconnected")
-							return
-						}
-					}
-				}
-			}
-		}(server, conn, c)
-		c <- reader
-	} else {
-		c, ok := server.playerActions.Get(conn.String())
-		if ok {
-			c <- reader
-		}
-	}
 }
 
 func (server *Server) playerConnect(conn *mnet.Client, reader mpacket.Reader) {
@@ -243,15 +208,13 @@ func (server *Server) sendMsgToAll(msg proto2.Message, uID string, msgType int) 
 		log.Println("DATA_RESPONSE_ERROR", err)
 	}
 
-	itemChan := server.clients.IterBuffered()
-
-	for item := range itemChan {
-		if (*item.Val).GetPlayer().UId == uID {
-			continue
+	server.clients.IterCb(func(k string, v *mnet.Client) {
+		if k == uID {
+			return
 		}
 
-		(*item.Val).Send(res)
-	}
+		v.Send(res)
+	})
 
 	//for _, v := range server.clients {
 	//	if uID == (*v).GetPlayer().UId {
@@ -805,6 +768,8 @@ func (server *Server) playerMovement(conn *mnet.Client, reader mpacket.Reader) {
 
 	server.moveProcess(conn, msg.GetMovementData().DestinationX, msg.GetMovementData().DestinationY, msg.GetMovementData().GetUuId(), msg.GetMovementData(), constant.P2C_ReportMove)
 
+	log.Println(runtime.NumCgoCall(), runtime.NumGoroutine())
+
 	//if server.isCellChanged(conn, msg.GetMovementData()) {
 	//	oldPlr, newPlr := server.getNineCellsPlayers(conn, msg.GetMovementData())
 	//	if len(oldPlr) > 0 || len(newPlr) > 0 {
@@ -966,10 +931,6 @@ func (server *Server) moveProcess_Temp2(conn *mnet.Client, x, y float32, uId str
 	conn.GetPlayer().Character.RotX = movement.GetDeatinationRotationX()
 	conn.GetPlayer().Character.RotY = movement.GetDeatinationRotationY()
 	conn.GetPlayer().Character.RotZ = movement.GetDeatinationRotationZ()
-
-	server.movedPlayersLock.Lock()
-	server.movedPlayers[conn.GetPlayer().UId] = conn
-	server.movedPlayersLock.Unlock()
 }
 
 func (server *Server) moveProcess(conn *mnet.Client, x, y float32, uId string, movement *mc_metadata.Movement, moveType int) {

@@ -79,23 +79,23 @@ func NewClientMeta(conn net.Conn, queueSize int, latency, jitter int) *Client {
 	c.interServer = false
 	c.latency = latency
 	c.jitter = jitter
-	c.pSend = make(chan func(), queueSize*10) // Used only when simulating latency
-
-	if latency > 0 {
-		go func(pSend chan func(), conn net.Conn) {
-			for {
-				select {
-				case p, ok := <-pSend:
-					if !ok {
-						return
-					}
-
-					p()
-				default:
-				}
-			}
-		}(c.pSend, conn)
-	}
+	//c.pSend = make(chan func(), queueSize*10) // Used only when simulating latency
+	//
+	//if latency > 0 {
+	//	go func(pSend chan func(), conn net.Conn) {
+	//		for {
+	//			select {
+	//			case p, ok := <-pSend:
+	//				if !ok {
+	//					return
+	//				}
+	//
+	//				p()
+	//			default:
+	//			}
+	//		}
+	//	}(c.pSend, conn)
+	//}
 	return c
 }
 
