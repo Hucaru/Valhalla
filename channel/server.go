@@ -16,7 +16,6 @@ import (
 	"github.com/Hucaru/Valhalla/nx"
 	_ "github.com/go-sql-driver/mysql" // don't need full import
 	"github.com/pemistahl/lingua-go"
-	"github.com/prometheus/client_golang/prometheus"
 	"google.golang.org/protobuf/proto"
 	"log"
 	"runtime"
@@ -204,15 +203,15 @@ func (server *Server) Initialize(work chan func(), dbuser, dbpassword, dbaddress
 	}
 	server.mapGrid = x
 
-	log.Println("Initialised game state")
-	common.MetricsGauges["player_count"] = prometheus.NewGaugeVec(prometheus.GaugeOpts{
-		Name: "player_count",
-		Help: "Number of players in this channel",
-	}, []string{"channel", "world"})
-
-	prometheus.MustRegister(common.MetricsGauges["player_count"])
-	common.StartMetrics()
-	log.Println("Started serving metrics on :" + common.MetricsPort)
+	//log.Println("Initialised game state")
+	//common.MetricsGauges["player_count"] = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+	//	Name: "player_count",
+	//	Help: "Number of players in this channel",
+	//}, []string{"channel", "world"})
+	//
+	//prometheus.MustRegister(common.MetricsGauges["player_count"])
+	//common.StartMetrics()
+	//log.Println("Started serving metrics on :" + common.MetricsPort)
 
 	detector := lingua.NewLanguageDetectorBuilder().
 		FromLanguages([]lingua.Language{

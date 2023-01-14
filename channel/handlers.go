@@ -31,7 +31,7 @@ func (server *Server) HandleClientPacket(
 	conn *mnet.Client, reader mpacket.Reader, msgProtocolType uint32) {
 
 	if conn.GetPlayer().IsBot == 0 {
-		log.Println("before call handle Client")
+		log.Println("before call handle Client : ", msgProtocolType)
 	}
 
 	f, ok := server.PlayerActionHandler[msgProtocolType]
@@ -40,7 +40,7 @@ func (server *Server) HandleClientPacket(
 	}
 
 	if conn.GetPlayer().IsBot == 0 {
-		log.Println("before call handle Client")
+		log.Println("after call handle Client : ", msgProtocolType)
 	}
 }
 
