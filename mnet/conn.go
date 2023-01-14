@@ -196,5 +196,5 @@ func (bc *baseConn) Cleanup() {
 	}
 
 	bc.closed = true
-	close(bc.eSend)
+	//close(bc.eSend)
 }
