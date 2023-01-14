@@ -1,6 +1,7 @@
 package mnet
 
 import (
+	"github.com/dustinxie/lockfree"
 	"net"
 	"sync"
 
@@ -73,7 +74,7 @@ func NewClientMeta(conn net.Conn, queueSize int, latency, jitter int) *Client {
 	c := &Client{}
 	c.Conn = conn
 	c.sendChannelLock = sync.RWMutex{}
-	c.sendChannelQueue = []mpacket.Packet{}
+	c.sendChannelQueue = lockfree.NewQueue()
 
 	//c.eSend = make(chan mpacket.Packet, 4096*4)
 

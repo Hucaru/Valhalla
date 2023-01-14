@@ -1,6 +1,7 @@
 package mnet
 
 import (
+	"github.com/dustinxie/lockfree"
 	"math/rand"
 	"net"
 	"runtime"
@@ -82,7 +83,7 @@ type baseConn struct {
 	closed bool
 
 	sendChannelLock  sync.RWMutex
-	sendChannelQueue []mpacket.Packet
+	sendChannelQueue lockfree.Queue
 
 	cryptSend *crypt.Maple
 	cryptRecv *crypt.Maple
@@ -138,49 +139,18 @@ func (bc *baseConn) Writer() {
 func (bc *baseConn) MetaWriter() {
 
 	for {
-		bc.sendChannelLock.RLock()
-		if len(bc.sendChannelQueue) > 0 {
-			bc.sendChannelLock.RUnlock()
-			for i, v := range bc.sendChannelQueue {
-				bc.Conn.Write(v)
-
-				bc.sendChannelLock.Lock()
-				bc.sendChannelQueue[i] = bc.sendChannelQueue[len(bc.sendChannelQueue)-1]
-				bc.sendChannelQueue = bc.sendChannelQueue[:len(bc.sendChannelQueue)-1]
-				bc.sendChannelLock.Unlock()
-			}
-		} else if bc.closed {
-			bc.sendChannelLock.RUnlock()
+		if bc.closed {
 			return
-		} else {
-			bc.sendChannelLock.RUnlock()
 		}
+
+		v := bc.sendChannelQueue.Deque().(mpacket.Packet)
+		bc.Conn.Write(v)
 		runtime.Gosched()
 	}
-
-	//defer bc.Conn.Close()
-	//for {
-	//	select {
-	//	case p, ok := <-bc.eSend:
-	//		if !ok {
-	//			bc.Cleanup()
-	//			return
-	//		}
-	//		bc.Conn.Write(p)
-	//	}
-	//}
 }
 
 func (bc *baseConn) Send(p mpacket.Packet) {
-	bc.sendChannelLock.Lock()
-	defer bc.sendChannelLock.Unlock()
-	if bc.closed {
-		return
-	}
-
-	bc.sendChannelQueue = append(bc.sendChannelQueue, p)
-
-	//bc.eSend <- p
+	bc.sendChannelQueue.Enque(p)
 }
 
 func (bc *baseConn) String() string {
@@ -188,13 +158,5 @@ func (bc *baseConn) String() string {
 }
 
 func (bc *baseConn) Cleanup() {
-	bc.sendChannelLock.Lock()
-	defer bc.sendChannelLock.Unlock()
-	if bc.closed {
-		bc.sendChannelQueue = []mpacket.Packet{}
-		return
-	}
-
 	bc.closed = true
-	//close(bc.eSend)
 }

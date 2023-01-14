@@ -21,7 +21,9 @@ require (
 require (
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cespare/xxhash/v2 v2.1.2 // indirect
+	github.com/dchest/siphash v1.2.2 // indirect
 	github.com/dlclark/regexp2 v1.7.0 // indirect
+	github.com/dustinxie/lockfree v0.0.0-20210712051436-ed0ed42fd0d6 // indirect
 	github.com/go-sourcemap/sourcemap v2.1.3+incompatible // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/matttproud/golang_protobuf_extensions v1.0.1 // indirect
