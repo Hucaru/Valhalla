@@ -134,27 +134,29 @@ func (bc *baseConn) Writer() {
 }
 
 func (bc *baseConn) MetaWriter() {
-	defer bc.Conn.Close()
-	for {
-		select {
-		case p, ok := <-bc.eSend:
-			if !ok {
-				bc.Cleanup()
-				return
-			}
-			bc.Conn.Write(p)
-		}
-	}
+	//defer bc.Conn.Close()
+	//for {
+	//	select {
+	//	case p, ok := <-bc.eSend:
+	//		if !ok {
+	//			bc.Cleanup()
+	//			return
+	//		}
+	//		bc.Conn.Write(p)
+	//	}
+	//}
 }
 
 func (bc *baseConn) Send(p mpacket.Packet) {
-	bc.sendChannelLock.RLock()
-	defer bc.sendChannelLock.RUnlock()
-	if bc.closed {
-		return
-	}
+	bc.Conn.Write(p)
 
-	bc.eSend <- p
+	//bc.sendChannelLock.RLock()
+	//defer bc.sendChannelLock.RUnlock()
+	//if bc.closed {
+	//	return
+	//}
+	//
+	//bc.eSend <- p
 }
 
 func (bc *baseConn) String() string {
@@ -162,12 +164,12 @@ func (bc *baseConn) String() string {
 }
 
 func (bc *baseConn) Cleanup() {
-	bc.sendChannelLock.Lock()
-	defer bc.sendChannelLock.Unlock()
-	if bc.closed {
-		return
-	}
+	/*	bc.sendChannelLock.Lock()
+		defer bc.sendChannelLock.Unlock()
+		if bc.closed {
+			return
+		}
 
-	bc.closed = true
-	close(bc.eSend)
+		bc.closed = true
+		close(bc.eSend)*/
 }
