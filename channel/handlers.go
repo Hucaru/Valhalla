@@ -768,7 +768,7 @@ func (server *Server) playerMovement(conn *mnet.Client, reader mpacket.Reader) {
 
 	server.moveProcess(conn, msg.GetMovementData().DestinationX, msg.GetMovementData().DestinationY, msg.GetMovementData().GetUuId(), msg.GetMovementData(), constant.P2C_ReportMove)
 
-	log.Println(runtime.NumCgoCall(), runtime.NumGoroutine())
+	//log.Println(runtime.NumCgoCall(), runtime.NumGoroutine())
 
 	//if server.isCellChanged(conn, msg.GetMovementData()) {
 	//	oldPlr, newPlr := server.getNineCellsPlayers(conn, msg.GetMovementData())
