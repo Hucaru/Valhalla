@@ -157,7 +157,7 @@ func (bc *baseConn) Send(p mpacket.Packet) {
 	}
 
 	if bc.sendChannelWrappwer.chFinish.Load() {
-		bc.sendChannelWrappwer.ch = make(chan mpacket.Packet, 4)
+		bc.sendChannelWrappwer.ch = make(chan mpacket.Packet, 4096)
 		go func(c <-chan mpacket.Packet) {
 			for _c := range c {
 				bc.Write(_c)
