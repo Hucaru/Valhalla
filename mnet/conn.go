@@ -186,9 +186,12 @@ func (bc *baseConn) Send(p mpacket.Packet) {
 
 			log.Println("finish channel : ", len(c))
 		}(bc.sendChannel)
+
+		bc.sendChannel <- p
+	} else {
+		bc.sendChannel <- p
 	}
 
-	bc.sendChannel <- p
 }
 
 func (bc *baseConn) String() string {
