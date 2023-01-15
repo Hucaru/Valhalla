@@ -1,7 +1,6 @@
 package dataController
 
 import (
-	"github.com/Hucaru/Valhalla/mpacket"
 	"sync"
 )
 
@@ -13,28 +12,28 @@ type CQueue struct {
 	tlock sync.Mutex
 }
 type cnode struct {
-	value mpacket.Packet
+	value interface{}
 	next  *cnode
 }
 
 // NewCQueue returns an empty CQueue.
 func NewCQueue() *CQueue {
-	n := cnode{}
-	return &CQueue{head: &n, tail: &n}
+	n := &cnode{}
+	return &CQueue{head: n, tail: n}
 }
 
 // Enqueue puts the given value v at the tail of the queue.
-func (q *CQueue) Enqueue(v mpacket.Packet) {
-	n := cnode{value: v}
+func (q *CQueue) Enqueue(v interface{}) {
+	n := &cnode{value: v}
 	q.tlock.Lock()
-	q.tail.next = &n // Link node at the end of the linked list
-	q.tail = &n      // Swing Tail to node
+	q.tail.next = n // Link node at the end of the linked list
+	q.tail = n      // Swing Tail to node
 	q.tlock.Unlock()
 }
 
 // Dequeue removes and returns the value at the head of the queue.
 // It returns nil if the queue is empty.
-func (q *CQueue) Dequeue() mpacket.Packet {
+func (q *CQueue) Dequeue() interface{} {
 	q.hlock.Lock()
 	n := q.head
 	newHead := n.next

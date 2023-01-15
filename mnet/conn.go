@@ -4,6 +4,7 @@ import (
 	"github.com/Hucaru/Valhalla/common/dataController"
 	"math/rand"
 	"net"
+	"runtime"
 	"sync"
 	"time"
 
@@ -87,7 +88,7 @@ type baseConn struct {
 	closed bool
 
 	sendChannelLock  sync.RWMutex
-	sendChannelQueue *dataController.LKQueue
+	sendChannelQueue *dataController.SliceQueue
 
 	cryptSend *crypt.Maple
 	cryptRecv *crypt.Maple
@@ -150,6 +151,8 @@ func (bc *baseConn) MetaWriter() {
 		if v != nil {
 			bc.Write(v)
 		}
+
+		runtime.Gosched()
 	}
 }
 
