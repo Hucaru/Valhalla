@@ -19,7 +19,6 @@ import (
 	"google.golang.org/protobuf/proto"
 	"log"
 	"runtime"
-	"runtime/debug"
 	"time"
 )
 
@@ -247,7 +246,7 @@ func (server *Server) Initialize(work chan func(), dbuser, dbpassword, dbaddress
 		}
 	}()
 
-	debug.SetGCPercent(1)
+	//debug.SetGCPercent(1)
 }
 
 func bToMb(b uint64) uint64 {
