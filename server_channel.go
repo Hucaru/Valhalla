@@ -9,8 +9,10 @@ import (
 	"log"
 	"net"
 	"os"
+	"os/signal"
 	"strconv"
 	"sync"
+	"syscall"
 	"time"
 
 	"github.com/Hucaru/Valhalla/channel"
@@ -61,6 +63,17 @@ func (cs *channelServer) run() {
 
 	cs.wg.Add(1)
 	go cs.processEvent()
+
+	var gracefulStop = make(chan os.Signal)
+	signal.Notify(gracefulStop, syscall.SIGTERM)
+	signal.Notify(gracefulStop, syscall.SIGINT)
+	go func() {
+		sig := <-gracefulStop
+		fmt.Printf("caught sig: %+v", sig)
+		fmt.Println("Wait for 5 second to finish processing")
+		time.Sleep(5 * time.Second)
+		os.Exit(0)
+	}()
 
 	cs.wg.Wait()
 }
