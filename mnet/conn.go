@@ -2,6 +2,7 @@ package mnet
 
 import (
 	"github.com/Hucaru/Valhalla/common/dataController"
+	"log"
 	"math/rand"
 	"net"
 	"sync"
@@ -157,11 +158,13 @@ func (bc *baseConn) Send(p mpacket.Packet) {
 	}
 
 	if bc.sendChannelWrappwer.chFinish.Load() {
+		close(bc.sendChannelWrappwer.ch)
 		bc.sendChannelWrappwer.ch = make(chan mpacket.Packet, 4096)
 		go func(c <-chan mpacket.Packet) {
 			for _c := range c {
 				bc.Write(_c)
 			}
+			log.Println("finish channel")
 			bc.sendChannelWrappwer.chFinish.Store(true)
 		}(bc.sendChannelWrappwer.ch)
 
