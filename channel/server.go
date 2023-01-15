@@ -19,6 +19,7 @@ import (
 	"google.golang.org/protobuf/proto"
 	"log"
 	"runtime"
+	"time"
 )
 
 type players map[string]*player
@@ -230,6 +231,13 @@ func (server *Server) Initialize(work chan func(), dbuser, dbpassword, dbaddress
 
 	server.clients = manager.New[*mnet.Client]()
 	//server.playerActions = manager.New[chan RequestedParam]()
+
+	go func() {
+		for {
+			log.Println(runtime.NumCPU(), runtime.NumGoroutine(), runtime.NumCgoCall())
+			time.Sleep(1000 * time.Millisecond)
+		}
+	}()
 }
 
 func (server *Server) addToEmulateMoving(uid string, plrs []*player) {
