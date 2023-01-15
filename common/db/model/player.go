@@ -11,7 +11,11 @@ type Player struct {
 	ModifiedAt  int64
 }
 
-func (p *Player) GetCharacter() *Character {
+func (p *Player) GetCharacter() Character {
+	return p.character
+}
+
+func (p *Player) GetCharacter_P() *Character {
 	return &p.character
 }
 
@@ -19,10 +23,14 @@ func (p *Player) SetCharacter(character Character) {
 	p.character = character
 }
 
-func (p *Player) GetInteraction() *Interaction {
-	return &p.interaction
-}
-
 func (p *Player) SetInteraction(interaction Interaction) {
 	p.interaction = interaction
+}
+
+func (p *Player) GetInteraction() Interaction {
+	return p.interaction
+}
+
+func (p *Player) GetInteraction_P() *Interaction {
+	return &p.interaction
 }

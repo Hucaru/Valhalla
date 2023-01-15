@@ -66,16 +66,18 @@ func (server *Server) playerConnect(conn *mnet.Client, reader mpacket.Reader) {
 		}
 	}
 
+	ch := player.GetCharacter_P()
+
 	if msg.GetSpawnPosX() != 0 {
-		player.GetCharacter().PosX = msg.GetSpawnPosX()
+		ch.PosX = msg.GetSpawnPosX()
 	}
 
 	if msg.GetSpawnPosY() != 0 {
-		player.GetCharacter().PosY = msg.GetSpawnPosY()
+		ch.PosY = msg.GetSpawnPosY()
 	}
 
 	if msg.GetSpawnPosZ() != 0 {
-		player.GetCharacter().PosZ = msg.GetSpawnPosZ()
+		ch.PosZ = msg.GetSpawnPosZ()
 	}
 
 	player.IsBot = msg.IsBot
@@ -83,9 +85,9 @@ func (server *Server) playerConnect(conn *mnet.Client, reader mpacket.Reader) {
 	// TMP part, will be moved later
 	if player.RegionID == constant.MetaClassRoom {
 		player.RegionID = constant.MetaSchool
-		player.GetCharacter().PosX = -8597
-		player.GetCharacter().PosY = -23392
-		player.GetCharacter().PosZ = 2180
+		ch.PosX = -8597
+		ch.PosY = -23392
+		ch.PosZ = 2180
 
 		db.UpdateRegionID(player.CharacterID, int32(player.RegionID))
 	}
@@ -98,16 +100,18 @@ func (server *Server) playerConnect(conn *mnet.Client, reader mpacket.Reader) {
 	server.clients.Set(msg.UuId, conn)
 	conn.SetPlayer(*player)
 
+	ch = conn.GetPlayer_P().GetCharacter_P()
+
 	if msg.IsBot == 1 {
-		conn.GetPlayer().GetCharacter().Top = constant.RandomTop[rand2.Intn(4)]
-		conn.GetPlayer().GetCharacter().Bottom = constant.RandomBottom[rand2.Intn(4)]
-		conn.GetPlayer().GetCharacter().Clothes = constant.RandomClothes[rand2.Intn(4)]
-		conn.GetPlayer().GetCharacter().Hair = constant.RandomHair[rand2.Intn(5)]
+		ch.Top = constant.RandomTop[rand2.Intn(4)]
+		ch.Bottom = constant.RandomBottom[rand2.Intn(4)]
+		ch.Clothes = constant.RandomClothes[rand2.Intn(4)]
+		ch.Hair = constant.RandomHair[rand2.Intn(5)]
 		//go server.addToEmulateMove(&plr)
 		//return
 	}
 
-	response := proto.AccountReport(conn.GetPlayer().UId, *conn.GetPlayer().GetCharacter())
+	response := proto.AccountReport(conn.GetPlayer().UId, *ch)
 	server.sendMsgToRegion(conn, response, constant.P2C_ReportLoginUser)
 
 	account := proto.AccountResult(player)
@@ -131,7 +135,7 @@ func (server *Server) playerConnect(conn *mnet.Client, reader mpacket.Reader) {
 
 	//fmt.Println(" Client at ", conn, "UID:", msg.GetUuId(), "LOCATION:", player.Character.PosX, player.Character.PosY)
 
-	GridX, GridY := common.FindGrid(conn.GetPlayer().GetCharacter().PosX, conn.GetPlayer().GetCharacter().PosY)
+	GridX, GridY := common.FindGrid(conn.GetPlayer_P().GetCharacter().PosX, conn.GetPlayer_P().GetCharacter().PosY)
 	server.gridMgr.Add(conn.GetPlayer().RegionID, GridX, GridY, conn)
 
 	server.sendMsgToMe(conn, account, constant.P2C_ResultLoginUser)
@@ -217,10 +221,10 @@ func (server *Server) sendMsgToAll(msg proto2.Message, uID string, msgType int) 
 	})
 
 	//for _, v := range server.clients {
-	//	if uID == (*v).GetPlayer().UId {
+	//	if uID == v.GetPlayer().UId {
 	//		continue
 	//	}
-	//	(*v).Send(res)
+	//	v.Send(res)
 	//}
 }
 
@@ -232,7 +236,7 @@ func (server *Server) sendMsgToRegion(conn *mnet.Client, msg proto2.Message, msg
 	//	return
 	//}
 
-	x, y := common.FindGrid(conn.GetPlayer().GetCharacter().PosX, conn.GetPlayer().GetCharacter().PosY)
+	x, y := common.FindGrid(conn.GetPlayer_P().GetCharacter().PosX, conn.GetPlayer_P().GetCharacter().PosY)
 	plrs := server.getPlayersOnGrids(conn.GetPlayer().RegionID, x, y, conn.GetPlayer().UId)
 
 	//log.Println("getPlayersOnGrids", len(plrs))
@@ -371,18 +375,18 @@ func (server *Server) getPlayersOnGrids(regionId int64, x, y int, uID string) ma
 	return oldList
 
 	//for _, v := range oldList {
-	//	if (*v).GetPlayer().UId == uID {
+	//	if v.GetPlayer().UId == uID {
 	//		continue
 	//	}
 	//
-	//	//p, err := server.players.getFromConn(*v)
+	//	//p, err := server.players.getFromConnv
 	//	//
 	//	//if err != nil {
 	//	//	log.Println("getPlayersOnGrids :", err)
 	//	//	continue
 	//	//}
 	//
-	//	(*v).send
+	//	v.send
 	//
 	//	players = append(players, p)
 	//}
@@ -564,16 +568,18 @@ func (server *Server) DeleteInteractionAndSend(conn *mnet.Client, msg *mc_metada
 		ErrorCode: -1,
 	}
 
-	if conn.GetPlayer().GetInteraction().IsInteraction == false {
-		conn.GetPlayer().SetInteraction(model.NewInteraction())
+	p := conn.GetPlayer_P()
+	interaction := p.GetInteraction_P()
+
+	if p.GetInteraction().IsInteraction == false {
+		p.SetInteraction(model.NewInteraction())
 	}
-	conn.GetPlayer().GetInteraction().ObjectIndex = msg.GetObjectIndex()
-	conn.GetPlayer().GetInteraction().AttachEnabled = msg.GetAttachEnable()
-	conn.GetPlayer().GetInteraction().AnimMontageName = msg.GetAnimMontageName()
-	conn.GetPlayer().GetInteraction().DestinationX = msg.GetDestinationX()
-	conn.GetPlayer().GetInteraction().DestinationY = msg.GetDestinationY()
-	conn.GetPlayer().GetInteraction().DestinationZ = msg.GetDestinationZ()
-	server.setPlayer(conn.GetPlayer())
+	interaction.ObjectIndex = msg.GetObjectIndex()
+	interaction.AttachEnabled = msg.GetAttachEnable()
+	interaction.AnimMontageName = msg.GetAnimMontageName()
+	interaction.DestinationX = msg.GetDestinationX()
+	interaction.DestinationY = msg.GetDestinationY()
+	interaction.DestinationZ = msg.GetDestinationZ()
 
 	server.sendMsgToMe(conn, att, constant.P2C_ResultInteractionAttach)
 	return nil
@@ -584,29 +590,34 @@ func (server *Server) InsertInteractionAndSend(conn *mnet.Client, msg *mc_metada
 		ErrorCode: -1,
 	}
 
-	x, y := common.FindGrid(conn.GetPlayer().GetCharacter().PosX, conn.GetPlayer().GetCharacter().PosX)
+	p := conn.GetPlayer_P()
+
+	x, y := common.FindGrid(p.GetCharacter().PosX, p.GetCharacter().PosX)
 	users := server.getGridPlayers(x, y)
 
 	for i := 0; i < len(users); i++ {
-		if users[i].conn.GetPlayer().GetInteraction().IsInteraction == false &&
+		u := users[i].conn.GetPlayer_P()
+		if u.GetInteraction().IsInteraction == false &&
 			conn.GetPlayer().UId != users[i].conn.GetPlayer().UId &&
-			msg.ObjectIndex == users[i].conn.GetPlayer().GetInteraction().ObjectIndex {
+			msg.ObjectIndex == u.GetInteraction().ObjectIndex {
 			att.ErrorCode = constant.ErrorCodeChairNotEmpty
 			break
 		}
 	}
 
 	if att.ErrorCode == -1 {
-		if conn.GetPlayer().GetInteraction().IsInteraction == false {
-			conn.GetPlayer().SetInteraction(model.NewInteraction())
+		if p.GetInteraction().IsInteraction == false {
+			p.SetInteraction(model.NewInteraction())
 		}
-		conn.GetPlayer().GetInteraction().ObjectIndex = msg.GetObjectIndex()
-		conn.GetPlayer().GetInteraction().AttachEnabled = msg.GetAttachEnable()
-		conn.GetPlayer().GetInteraction().AnimMontageName = msg.GetAnimMontageName()
-		conn.GetPlayer().GetInteraction().DestinationX = msg.GetDestinationX()
-		conn.GetPlayer().GetInteraction().DestinationY = msg.GetDestinationY()
-		conn.GetPlayer().GetInteraction().DestinationZ = msg.GetDestinationZ()
-		server.setPlayer(conn.GetPlayer())
+
+		interaction := p.GetInteraction_P()
+
+		interaction.ObjectIndex = msg.GetObjectIndex()
+		interaction.AttachEnabled = msg.GetAttachEnable()
+		interaction.AnimMontageName = msg.GetAnimMontageName()
+		interaction.DestinationX = msg.GetDestinationX()
+		interaction.DestinationY = msg.GetDestinationY()
+		interaction.DestinationZ = msg.GetDestinationZ()
 	}
 
 	server.sendMsgToMe(conn, att, constant.P2C_ResultInteractionAttach)
@@ -645,13 +656,14 @@ func (server *Server) playerRegionRoleChecking(conn *mnet.Client, reader mpacket
 		return
 	}
 
-	x, y := common.FindGrid(conn.GetPlayer().GetCharacter().PosX, conn.GetPlayer().GetCharacter().PosX)
+	x, y := common.FindGrid(conn.GetPlayer_P().GetCharacter().PosX, conn.GetPlayer_P().GetCharacter().PosX)
 	users := server.getGridPlayers(x, y)
 
 	is := 0
 	for i := 0; i < len(users); i++ {
-		if users[i].conn.GetPlayer().GetInteraction().IsInteraction &&
-			users[i].conn.GetPlayer().GetCharacter().Role > 1 {
+		p := users[i].conn.GetPlayer()
+		if p.GetInteraction().IsInteraction &&
+			users[i].conn.GetPlayer_P().GetCharacter().Role > 1 {
 			is = 1
 			break
 		}
@@ -810,153 +822,46 @@ func (server *Server) playerMovement(conn *mnet.Client, reader mpacket.Reader) {
 
 }
 
-func (server *Server) moveProcess_Temp(conn *mnet.Client, x, y float32) {
-	addList, removeList, _ := server.gridMgr.OnMove(conn.GetPlayer().RegionID, x, y, conn.GetPlayer().UId)
-
-	for k, v := range addList {
-		res := &mc_metadata.P2C_ReportGridNew{
-			PlayerInfo: &mc_metadata.P2C_PlayerInfo{
-				Nickname: k,
-				UuId:     k,
-				Top:      (*v).GetPlayer().GetCharacter().Top,
-				Bottom:   (*v).GetPlayer().GetCharacter().Bottom,
-				Clothes:  (*v).GetPlayer().GetCharacter().Clothes,
-				Hair:     (*v).GetPlayer().GetCharacter().Hair,
-			},
-			SpawnPosX: (*v).GetPlayer().GetCharacter().PosX,
-			SpawnPosY: (*v).GetPlayer().GetCharacter().PosY,
-			SpawnPosZ: (*v).GetPlayer().GetCharacter().PosZ,
-			SpawnRotX: (*v).GetPlayer().GetCharacter().RotX,
-			SpawnRotY: (*v).GetPlayer().GetCharacter().RotY,
-			SpawnRotZ: (*v).GetPlayer().GetCharacter().RotZ,
-		}
-
-		res2 := &mc_metadata.P2C_ReportGridNew{
-			PlayerInfo: &mc_metadata.P2C_PlayerInfo{
-				UuId:     conn.GetPlayer().UId,
-				Nickname: conn.GetPlayer().UId,
-				Top:      conn.GetPlayer().GetCharacter().Top,
-				Bottom:   conn.GetPlayer().GetCharacter().Bottom,
-				Clothes:  conn.GetPlayer().GetCharacter().Clothes,
-				Hair:     conn.GetPlayer().GetCharacter().Hair,
-			},
-			SpawnPosX: conn.GetPlayer().GetCharacter().PosX,
-			SpawnPosY: conn.GetPlayer().GetCharacter().PosY,
-			SpawnPosZ: conn.GetPlayer().GetCharacter().PosZ,
-			SpawnRotX: conn.GetPlayer().GetCharacter().RotX,
-			SpawnRotY: conn.GetPlayer().GetCharacter().RotY,
-			SpawnRotZ: conn.GetPlayer().GetCharacter().RotZ,
-		}
-
-		server.sendMsgToMe(conn, res, constant.P2C_ReportGridNew)
-		server.sendMsgToMe(v, res2, constant.P2C_ReportGridNew)
-	}
-
-	for k, v := range removeList {
-		res := &mc_metadata.P2C_ReportGridOld{
-			PlayerInfo: &mc_metadata.P2C_PlayerInfo{
-				UuId: k,
-			},
-		}
-
-		res2 := &mc_metadata.P2C_ReportGridOld{
-			PlayerInfo: &mc_metadata.P2C_PlayerInfo{
-				UuId: conn.GetPlayer().UId,
-			},
-		}
-
-		//fmt.Println(fmt.Sprintf("conn : %s v : %s res : %s res2 : %s", conn.GetPlayer().UId, (*v).GetPlayer().UId, res.PlayerInfo.UuId, res2.PlayerInfo.UuId))
-
-		server.sendMsgToMe(conn, res, constant.P2C_ReportGridOld)
-		server.sendMsgToMe(v, res2, constant.P2C_ReportGridOld)
-	}
-}
-
-func (server *Server) moveProcess_Temp2(conn *mnet.Client, x, y float32, uId string, movement *mc_metadata.Movement, moveType int) {
-	gridX, gridY := common.FindGrid(x, y)
-
-	aroundList := map[string]*mnet.Client{}
-
-	for i := -1; i <= 1; i++ {
-		for j := -1; j <= 1; j++ {
-			GridX := gridX + i
-			GridY := gridY + j
-
-			maps.Copy(aroundList, server.gridMgr.FillPlayers(conn.GetPlayer().RegionID, GridX, GridY))
-		}
-	}
-
-	switch moveType {
-	case constant.P2C_ReportMoveStart:
-		res := &mc_metadata.P2C_ReportMoveStart{
-			MovementData: movement,
-		}
-
-		for _, v := range aroundList {
-			server.sendMsgToMe(v, res, constant.P2C_ReportMoveStart)
-		}
-	case constant.P2C_ReportMove:
-		res := &mc_metadata.P2C_ReportMove{
-			MovementData: movement,
-		}
-
-		for _, v := range aroundList {
-			server.sendMsgToMe(v, res, constant.P2C_ReportMove)
-		}
-	case constant.P2C_ReportMoveEnd:
-		res := &mc_metadata.P2C_ReportMoveEnd{
-			MovementData: movement,
-		}
-
-		for _, v := range aroundList {
-			server.sendMsgToMe(v, res, constant.P2C_ReportMoveEnd)
-		}
-	}
-
-	conn.GetPlayer().GetCharacter().PosX = movement.GetDestinationX()
-	conn.GetPlayer().GetCharacter().PosY = movement.GetDestinationY()
-	conn.GetPlayer().GetCharacter().PosZ = movement.GetDestinationZ()
-	conn.GetPlayer().GetCharacter().RotX = movement.GetDeatinationRotationX()
-	conn.GetPlayer().GetCharacter().RotY = movement.GetDeatinationRotationY()
-	conn.GetPlayer().GetCharacter().RotZ = movement.GetDeatinationRotationZ()
-}
-
 func (server *Server) moveProcess(conn *mnet.Client, x, y float32, uId string, movement *mc_metadata.Movement, moveType int) {
 	addList, removeList, aroundList := server.gridMgr.OnMove(conn.GetPlayer().RegionID, x, y, uId)
 
 	for k, v := range addList {
+		c := v.GetPlayer_P().GetCharacter()
 		res := &mc_metadata.P2C_ReportGridNew{
 			PlayerInfo: &mc_metadata.P2C_PlayerInfo{
 				Nickname: k,
 				UuId:     k,
-				Top:      (*v).GetPlayer().GetCharacter().Top,
-				Bottom:   (*v).GetPlayer().GetCharacter().Bottom,
-				Clothes:  (*v).GetPlayer().GetCharacter().Clothes,
-				Hair:     (*v).GetPlayer().GetCharacter().Hair,
+				Top:      c.Top,
+				Bottom:   c.Bottom,
+				Clothes:  c.Clothes,
+				Hair:     c.Hair,
 			},
-			SpawnPosX: (*v).GetPlayer().GetCharacter().PosX,
-			SpawnPosY: (*v).GetPlayer().GetCharacter().PosY,
-			SpawnPosZ: (*v).GetPlayer().GetCharacter().PosZ,
-			SpawnRotX: (*v).GetPlayer().GetCharacter().RotX,
-			SpawnRotY: (*v).GetPlayer().GetCharacter().RotY,
-			SpawnRotZ: (*v).GetPlayer().GetCharacter().RotZ,
+			SpawnPosX: c.PosX,
+			SpawnPosY: c.PosY,
+			SpawnPosZ: c.PosZ,
+			SpawnRotX: c.RotX,
+			SpawnRotY: c.RotY,
+			SpawnRotZ: c.RotZ,
 		}
+
+		p := conn.GetPlayer_P()
+		ch := p.GetCharacter()
 
 		res2 := &mc_metadata.P2C_ReportGridNew{
 			PlayerInfo: &mc_metadata.P2C_PlayerInfo{
-				UuId:     conn.GetPlayer().UId,
-				Nickname: conn.GetPlayer().UId,
-				Top:      conn.GetPlayer().GetCharacter().Top,
-				Bottom:   conn.GetPlayer().GetCharacter().Bottom,
-				Clothes:  conn.GetPlayer().GetCharacter().Clothes,
-				Hair:     conn.GetPlayer().GetCharacter().Hair,
+				UuId:     p.UId,
+				Nickname: p.UId,
+				Top:      ch.Top,
+				Bottom:   ch.Bottom,
+				Clothes:  ch.Clothes,
+				Hair:     ch.Hair,
 			},
-			SpawnPosX: conn.GetPlayer().GetCharacter().PosX,
-			SpawnPosY: conn.GetPlayer().GetCharacter().PosY,
-			SpawnPosZ: conn.GetPlayer().GetCharacter().PosZ,
-			SpawnRotX: conn.GetPlayer().GetCharacter().RotX,
-			SpawnRotY: conn.GetPlayer().GetCharacter().RotY,
-			SpawnRotZ: conn.GetPlayer().GetCharacter().RotZ,
+			SpawnPosX: ch.PosX,
+			SpawnPosY: ch.PosY,
+			SpawnPosZ: ch.PosZ,
+			SpawnRotX: ch.RotX,
+			SpawnRotY: ch.RotY,
+			SpawnRotZ: ch.RotZ,
 		}
 
 		server.sendMsgToMe(conn, res, constant.P2C_ReportGridNew)
@@ -976,7 +881,7 @@ func (server *Server) moveProcess(conn *mnet.Client, x, y float32, uId string, m
 			},
 		}
 
-		//fmt.Println(fmt.Sprintf("conn : %s v : %s res : %s res2 : %s", conn.GetPlayer().UId, (*v).GetPlayer().UId, res.PlayerInfo.UuId, res2.PlayerInfo.UuId))
+		//fmt.Println(fmt.Sprintf("conn : %s v : %s res : %s res2 : %s", conn.GetPlayer().UId, v.GetPlayer().UId, res.PlayerInfo.UuId, res2.PlayerInfo.UuId))
 
 		server.sendMsgToMe(conn, res, constant.P2C_ReportGridOld)
 		server.sendMsgToMe(v, res2, constant.P2C_ReportGridOld)
@@ -1009,12 +914,13 @@ func (server *Server) moveProcess(conn *mnet.Client, x, y float32, uId string, m
 		}
 	}
 
-	conn.GetPlayer().GetCharacter().PosX = movement.GetDestinationX()
-	conn.GetPlayer().GetCharacter().PosY = movement.GetDestinationY()
-	conn.GetPlayer().GetCharacter().PosZ = movement.GetDestinationZ()
-	conn.GetPlayer().GetCharacter().RotX = movement.GetDeatinationRotationX()
-	conn.GetPlayer().GetCharacter().RotY = movement.GetDeatinationRotationY()
-	conn.GetPlayer().GetCharacter().RotZ = movement.GetDeatinationRotationZ()
+	ch := conn.GetPlayer_P().GetCharacter()
+	ch.PosX = movement.GetDestinationX()
+	ch.PosY = movement.GetDestinationY()
+	ch.PosZ = movement.GetDestinationZ()
+	ch.RotX = movement.GetDeatinationRotationX()
+	ch.RotY = movement.GetDeatinationRotationY()
+	ch.RotZ = movement.GetDeatinationRotationZ()
 }
 
 func (server *Server) playerInfo(conn *mnet.Client, reader mpacket.Reader) {
@@ -1220,7 +1126,7 @@ func (server *Server) chatSendWhisper(conn *mnet.Client, reader mpacket.Reader) 
 
 func (server *Server) findCharacterIDByUID(uID string) *model.Player {
 	p, _ := server.clients.Get(uID)
-	return p.GetPlayer()
+	return p.GetPlayer_P()
 
 	//SomeMapMutex.RLock()
 	//p, ok := server.players[uID]
@@ -1242,7 +1148,7 @@ func (server *Server) findCharacterIDByNickname(nickname string) *model.Player {
 }
 
 func (server *Server) isCellChanged(conn *mnet.Client, msg *mc_metadata.Movement) bool {
-	x1, y1 := common.FindGrid(conn.GetPlayer().GetCharacter().PosX, conn.GetPlayer().GetCharacter().PosY)
+	x1, y1 := common.FindGrid(conn.GetPlayer_P().GetCharacter().PosX, conn.GetPlayer_P().GetCharacter().PosY)
 	x2, y2 := common.FindGrid(msg.GetDestinationX(), msg.GetDestinationY())
 
 	return x1 != x2 || y1 != y2
@@ -1254,23 +1160,23 @@ func (server *Server) switchPlayerCell(conn *mnet.Client, msg *mc_metadata.Movem
 	// }
 
 	// conn.GetPlayer().ModifiedAt = msg.ModifiedAt / 1000
-	x1, y1 := common.FindGrid(conn.GetPlayer().GetCharacter().PosX, conn.GetPlayer().GetCharacter().PosY)
-	x2, y2 := common.FindGrid(msg.DestinationX, msg.DestinationY)
-
-	if (x1 == x2 && y1 == y2) && !server.existsPlayerFromGrid(conn.GetPlayer().UId, x1, y1) {
-		return
-	}
-
-	server.removePlayerFromGrid(
-		server.getGridPlayers(x1, y1),
-		conn.GetPlayer().UId,
-		conn.GetPlayer().GetCharacter().PosX,
-		conn.GetPlayer().GetCharacter().PosY)
-
-	_, ok := server.players[conn.GetPlayer().UId]
-	if ok {
-		server.addPlayerToGrid(server.players[conn.GetPlayer().UId], msg.GetDestinationX(), msg.GetDestinationY())
-	}
+	//x1, y1 := common.FindGrid(conn.GetPlayer_P().GetCharacter().PosX, conn.GetPlayer_P().GetCharacter().PosY)
+	//x2, y2 := common.FindGrid(msg.DestinationX, msg.DestinationY)
+	//
+	//if (x1 == x2 && y1 == y2) && !server.existsPlayerFromGrid(conn.GetPlayer().UId, x1, y1) {
+	//	return
+	//}
+	//
+	//server.removePlayerFromGrid(
+	//	server.getGridPlayers(x1, y1),
+	//	conn.GetPlayer().UId,
+	//	conn.GetPlayer().GetCharacter().PosX,
+	//	conn.GetPlayer().GetCharacter().PosY)
+	//
+	//_, ok := server.players[conn.GetPlayer().UId]
+	//if ok {
+	//	server.addPlayerToGrid(server.players[conn.GetPlayer().UId], msg.GetDestinationX(), msg.GetDestinationY())
+	//}
 }
 
 //
@@ -1314,15 +1220,15 @@ func (server *Server) switchPlayerCell(conn *mnet.Client, msg *mc_metadata.Movem
 //}
 
 func (server *Server) updateUserLocation(conn *mnet.Client, msg *mc_metadata.Movement) {
-	_, ok := server.players[conn.GetPlayer().UId]
-	if ok {
-		server.players[conn.GetPlayer().UId].conn.GetPlayer().GetCharacter().PosX = msg.GetDestinationX()
-		server.players[conn.GetPlayer().UId].conn.GetPlayer().GetCharacter().PosY = msg.GetDestinationY()
-		server.players[conn.GetPlayer().UId].conn.GetPlayer().GetCharacter().PosZ = msg.GetDestinationZ()
-		server.players[conn.GetPlayer().UId].conn.GetPlayer().GetCharacter().RotX = msg.GetDeatinationRotationX()
-		server.players[conn.GetPlayer().UId].conn.GetPlayer().GetCharacter().RotY = msg.GetDeatinationRotationY()
-		server.players[conn.GetPlayer().UId].conn.GetPlayer().GetCharacter().RotZ = msg.GetDeatinationRotationZ()
-	}
+	//_, ok := server.players[conn.GetPlayer().UId]
+	//if ok {
+	//	.GetCharacter().PosX = msg.GetDestinationX()
+	//	server.players[conn.GetPlayer().UId].conn.GetPlayer().GetCharacter().PosY = msg.GetDestinationY()
+	//	server.players[conn.GetPlayer().UId].conn.GetPlayer().GetCharacter().PosZ = msg.GetDestinationZ()
+	//	server.players[conn.GetPlayer().UId].conn.GetPlayer().GetCharacter().RotX = msg.GetDeatinationRotationX()
+	//	server.players[conn.GetPlayer().UId].conn.GetPlayer().GetCharacter().RotY = msg.GetDeatinationRotationY()
+	//	server.players[conn.GetPlayer().UId].conn.GetPlayer().GetCharacter().RotZ = msg.GetDeatinationRotationZ()
+	//}
 }
 
 func (server *Server) translateMessage(msg string) *mc_metadata.P2C_Translate {
@@ -1379,32 +1285,36 @@ func (server *Server) convertPlayersToLoginResult(plrs map[string]*mnet.Client) 
 
 	for _, v := range plrs {
 		intr := &mc_metadata.P2C_ReportInteractionAttach{}
-		if (*v).GetPlayer().GetInteraction().IsInteraction {
-			intr.AttachEnable = (*v).GetPlayer().GetInteraction().AttachEnabled
-			intr.UuId = (*v).GetPlayer().UId
-			intr.ObjectIndex = (*v).GetPlayer().GetInteraction().ObjectIndex
-			intr.AnimMontageName = (*v).GetPlayer().GetInteraction().AnimMontageName
-			intr.DestinationX = (*v).GetPlayer().GetInteraction().DestinationX
-			intr.DestinationY = (*v).GetPlayer().GetInteraction().DestinationY
-			intr.DestinationZ = (*v).GetPlayer().GetInteraction().DestinationZ
+		p := v.GetPlayer()
+		interaction := v.GetPlayer_P().GetInteraction()
+		if interaction.IsInteraction {
+			intr.AttachEnable = interaction.AttachEnabled
+			intr.UuId = p.UId
+			intr.ObjectIndex = interaction.ObjectIndex
+			intr.AnimMontageName = interaction.AnimMontageName
+			intr.DestinationX = interaction.DestinationX
+			intr.DestinationY = interaction.DestinationY
+			intr.DestinationZ = interaction.DestinationZ
 		}
 
+		ch := p.GetCharacter()
+
 		res = append(res, &mc_metadata.P2C_ReportLoginUser{
-			UuId: (*v).GetPlayer().UId,
+			UuId: p.UId,
 			PlayerInfo: &mc_metadata.P2C_PlayerInfo{
-				Nickname: (*v).GetPlayer().GetCharacter().NickName,
-				Hair:     (*v).GetPlayer().GetCharacter().Hair,
-				Top:      (*v).GetPlayer().GetCharacter().Top,
-				Bottom:   (*v).GetPlayer().GetCharacter().Bottom,
-				Clothes:  (*v).GetPlayer().GetCharacter().Clothes,
+				Nickname: ch.NickName,
+				Hair:     ch.Hair,
+				Top:      ch.Top,
+				Bottom:   ch.Bottom,
+				Clothes:  ch.Clothes,
 			},
 			InteractionData: intr,
-			SpawnPosX:       (*v).GetPlayer().GetCharacter().PosX,
-			SpawnPosY:       (*v).GetPlayer().GetCharacter().PosY,
-			SpawnPosZ:       (*v).GetPlayer().GetCharacter().PosZ,
-			SpawnRotX:       (*v).GetPlayer().GetCharacter().RotX,
-			SpawnRotY:       (*v).GetPlayer().GetCharacter().RotY,
-			SpawnRotZ:       (*v).GetPlayer().GetCharacter().RotZ,
+			SpawnPosX:       ch.PosX,
+			SpawnPosY:       ch.PosY,
+			SpawnPosZ:       ch.PosZ,
+			SpawnRotX:       ch.RotX,
+			SpawnRotY:       ch.RotY,
+			SpawnRotZ:       ch.RotZ,
 		})
 	}
 	return res
@@ -1415,34 +1325,38 @@ func (server *Server) convertPlayersToRegionReport(plrs map[string]*mnet.Client)
 
 	for _, v := range plrs {
 		intr := &mc_metadata.P2C_ReportInteractionAttach{}
-		if (*v).GetPlayer().GetInteraction().IsInteraction {
-			intr.UuId = (*v).GetPlayer().UId
-			intr.AttachEnable = (*v).GetPlayer().GetInteraction().AttachEnabled
-			intr.ObjectIndex = (*v).GetPlayer().GetInteraction().ObjectIndex
-			intr.AnimMontageName = (*v).GetPlayer().GetInteraction().AnimMontageName
-			intr.DestinationX = (*v).GetPlayer().GetInteraction().DestinationX
-			intr.DestinationY = (*v).GetPlayer().GetInteraction().DestinationY
-			intr.DestinationZ = (*v).GetPlayer().GetInteraction().DestinationZ
+		p := v.GetPlayer()
+		ch := p.GetCharacter()
+		interaction := v.GetPlayer_P().GetInteraction()
+
+		if interaction.IsInteraction {
+			intr.UuId = p.UId
+			intr.AttachEnable = interaction.AttachEnabled
+			intr.ObjectIndex = interaction.ObjectIndex
+			intr.AnimMontageName = interaction.AnimMontageName
+			intr.DestinationX = interaction.DestinationX
+			intr.DestinationY = interaction.DestinationY
+			intr.DestinationZ = interaction.DestinationZ
 		}
 		res = append(res, &mc_metadata.P2C_ReportRegionChange{
-			UuId:     (*v).GetPlayer().UId,
-			RegionId: int32((*v).GetPlayer().RegionID),
+			UuId:     p.UId,
+			RegionId: int32(p.RegionID),
 			PlayerInfo: &mc_metadata.P2C_PlayerInfo{
-				UuId:     (*v).GetPlayer().UId,
-				Role:     (*v).GetPlayer().GetCharacter().Role,
-				Nickname: (*v).GetPlayer().GetCharacter().NickName,
-				Hair:     (*v).GetPlayer().GetCharacter().Hair,
-				Top:      (*v).GetPlayer().GetCharacter().Top,
-				Bottom:   (*v).GetPlayer().GetCharacter().Bottom,
-				Clothes:  (*v).GetPlayer().GetCharacter().Clothes,
+				UuId:     p.UId,
+				Role:     ch.Role,
+				Nickname: ch.NickName,
+				Hair:     ch.Hair,
+				Top:      ch.Top,
+				Bottom:   ch.Bottom,
+				Clothes:  ch.Clothes,
 			},
 			InteractionData: intr,
-			SpawnPosX:       (*v).GetPlayer().GetCharacter().PosX,
-			SpawnPosY:       (*v).GetPlayer().GetCharacter().PosY,
-			SpawnPosZ:       (*v).GetPlayer().GetCharacter().PosZ,
-			SpawnRotX:       (*v).GetPlayer().GetCharacter().RotX,
-			SpawnRotY:       (*v).GetPlayer().GetCharacter().RotY,
-			SpawnRotZ:       (*v).GetPlayer().GetCharacter().RotZ,
+			SpawnPosX:       ch.PosX,
+			SpawnPosY:       ch.PosY,
+			SpawnPosZ:       ch.PosZ,
+			SpawnRotX:       ch.RotX,
+			SpawnRotY:       ch.RotY,
+			SpawnRotZ:       ch.RotZ,
 		})
 	}
 	return res
@@ -1451,38 +1365,38 @@ func (server *Server) convertPlayersToRegionReport(plrs map[string]*mnet.Client)
 func (server *Server) convertPlayersToGridChanged(plrs map[string]*mnet.Client) []*mc_metadata.GridPlayers {
 	res := []*mc_metadata.GridPlayers{}
 
-	for _, v := range plrs {
-		intr := &mc_metadata.P2C_ReportInteractionAttach{}
-		if (*v).GetPlayer().GetInteraction().IsInteraction {
-			intr.UuId = (*v).GetPlayer().UId
-			intr.AttachEnable = (*v).GetPlayer().GetInteraction().AttachEnabled
-			intr.ObjectIndex = (*v).GetPlayer().GetInteraction().ObjectIndex
-			intr.AnimMontageName = (*v).GetPlayer().GetInteraction().AnimMontageName
-			intr.DestinationX = (*v).GetPlayer().GetInteraction().DestinationX
-			intr.DestinationY = (*v).GetPlayer().GetInteraction().DestinationY
-			intr.DestinationZ = (*v).GetPlayer().GetInteraction().DestinationZ
-		}
-
-		res = append(res, &mc_metadata.GridPlayers{
-
-			PlayerInfo: &mc_metadata.P2C_PlayerInfo{
-				UuId:     (*v).GetPlayer().UId,
-				Role:     (*v).GetPlayer().GetCharacter().Role,
-				Nickname: (*v).GetPlayer().GetCharacter().NickName,
-				Hair:     (*v).GetPlayer().GetCharacter().Hair,
-				Top:      (*v).GetPlayer().GetCharacter().Top,
-				Bottom:   (*v).GetPlayer().GetCharacter().Bottom,
-				Clothes:  (*v).GetPlayer().GetCharacter().Clothes,
-			},
-			InteractionData: intr,
-			SpawnPosX:       (*v).GetPlayer().GetCharacter().PosX,
-			SpawnPosY:       (*v).GetPlayer().GetCharacter().PosY,
-			SpawnPosZ:       (*v).GetPlayer().GetCharacter().PosZ,
-			SpawnRotX:       (*v).GetPlayer().GetCharacter().RotX,
-			SpawnRotY:       (*v).GetPlayer().GetCharacter().RotY,
-			SpawnRotZ:       (*v).GetPlayer().GetCharacter().RotZ,
-		})
-	}
+	//for _, v := range plrs {
+	//	intr := &mc_metadata.P2C_ReportInteractionAttach{}
+	//	if v.GetPlayer().GetInteraction().IsInteraction {
+	//		intr.UuId = v.GetPlayer().UId
+	//		intr.AttachEnable = v.GetPlayer().GetInteraction().AttachEnabled
+	//		intr.ObjectIndex = v.GetPlayer().GetInteraction().ObjectIndex
+	//		intr.AnimMontageName = v.GetPlayer().GetInteraction().AnimMontageName
+	//		intr.DestinationX = v.GetPlayer().GetInteraction().DestinationX
+	//		intr.DestinationY = v.GetPlayer().GetInteraction().DestinationY
+	//		intr.DestinationZ = v.GetPlayer().GetInteraction().DestinationZ
+	//	}
+	//
+	//	res = append(res, &mc_metadata.GridPlayers{
+	//
+	//		PlayerInfo: &mc_metadata.P2C_PlayerInfo{
+	//			UuId:     v.GetPlayer().UId,
+	//			Role:     v.GetPlayer().GetCharacter().Role,
+	//			Nickname: v.GetPlayer().GetCharacter().NickName,
+	//			Hair:     v.GetPlayer().GetCharacter().Hair,
+	//			Top:      v.GetPlayer().GetCharacter().Top,
+	//			Bottom:   v.GetPlayer().GetCharacter().Bottom,
+	//			Clothes:  v.GetPlayer().GetCharacter().Clothes,
+	//		},
+	//		InteractionData: intr,
+	//		SpawnPosX:       v.GetPlayer().GetCharacter().PosX,
+	//		SpawnPosY:       v.GetPlayer().GetCharacter().PosY,
+	//		SpawnPosZ:       v.GetPlayer().GetCharacter().PosZ,
+	//		SpawnRotX:       v.GetPlayer().GetCharacter().RotX,
+	//		SpawnRotY:       v.GetPlayer().GetCharacter().RotY,
+	//		SpawnRotZ:       v.GetPlayer().GetCharacter().RotZ,
+	//	})
+	//}
 	return res
 }
 

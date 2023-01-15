@@ -149,7 +149,11 @@ func (c *client) SetAdminLevel(level int) {
 	c.adminLevel = level
 }
 
-func (c *client) GetPlayer() *model.Player {
+func (c *client) GetPlayer() model.Player {
+	return c.player
+}
+
+func (c *client) GetPlayer_P() *model.Player {
 	return &c.player
 }
 

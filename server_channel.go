@@ -64,6 +64,7 @@ func (cs *channelServer) run() {
 	cs.wg.Add(1)
 	go cs.processEvent()
 
+	cs.wg.Add(1)
 	var gracefulStop = make(chan os.Signal)
 	signal.Notify(gracefulStop, syscall.SIGTERM)
 	signal.Notify(gracefulStop, syscall.SIGINT)
@@ -73,6 +74,7 @@ func (cs *channelServer) run() {
 		sig := <-gracefulStop
 		fmt.Printf("caught sig: %+v", sig)
 		fmt.Println("Wait for 5 second to finish processing")
+		cs.wg.Done()
 		time.Sleep(5 * time.Second)
 		os.Exit(0)
 	}()

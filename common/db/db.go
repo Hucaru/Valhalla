@@ -60,6 +60,8 @@ func GetLoggedData(uUID string) (*model.Player, error) {
 	plr.SetCharacter(Character)
 	plr.SetInteraction(model.NewInteraction())
 
+	ch := plr.GetCharacter_P()
+
 	err := Maria.QueryRow(
 		"SELECT a.accountID, "+
 			"a.uId, c.id as characterID, c.channelID, "+
@@ -75,10 +77,10 @@ func GetLoggedData(uUID string) (*model.Player, error) {
 			"LIMIT 1", uUID).
 		Scan(&plr.AccountID,
 			&plr.UId, &plr.CharacterID, &plr.RegionID,
-			&plr.GetCharacter().NickName, &plr.GetCharacter().Hair, &plr.GetCharacter().Top, &plr.GetCharacter().Bottom, &plr.GetCharacter().Clothes,
-			&plr.GetCharacter().Time,
-			&plr.GetCharacter().PosX, &plr.GetCharacter().PosY, &plr.GetCharacter().PosZ,
-			&plr.GetCharacter().RotX, &plr.GetCharacter().RotY, &plr.GetCharacter().RotZ)
+			&ch.NickName, &ch.Hair, &ch.Top, &ch.Bottom, &ch.Clothes,
+			&ch.Time,
+			&ch.PosX, &ch.PosY, &ch.PosZ,
+			&ch.RotX, &ch.RotY, &ch.RotZ)
 
 	return plr, err
 }
@@ -141,6 +143,8 @@ func GetLoggedDataByName(req *mc_metadata.C2P_RequestPlayerInfo) (*model.Player,
 	plr.SetCharacter(Character)
 	plr.SetInteraction(model.NewInteraction())
 
+	ch := plr.GetCharacter_P()
+
 	err := Maria.QueryRow(
 		"SELECT a.accountID, "+
 			"a.uId, c.id as characterID, c.channelID, "+
@@ -156,10 +160,10 @@ func GetLoggedDataByName(req *mc_metadata.C2P_RequestPlayerInfo) (*model.Player,
 			"LIMIT 1", req.GetNickname()).
 		Scan(&plr.AccountID,
 			&plr.UId, &plr.CharacterID, &plr.RegionID,
-			&plr.GetCharacter().NickName, &plr.GetCharacter().Hair, &plr.GetCharacter().Top, &plr.GetCharacter().Bottom, &plr.GetCharacter().Clothes,
-			&plr.GetCharacter().Time,
-			&plr.GetCharacter().PosX, &plr.GetCharacter().PosY, &plr.GetCharacter().PosZ,
-			&plr.GetCharacter().RotX, &plr.GetCharacter().RotY, &plr.GetCharacter().RotZ)
+			&ch.NickName, &ch.Hair, &ch.Top, &ch.Bottom, &ch.Clothes,
+			&ch.Time,
+			&ch.PosX, &ch.PosY, &ch.PosZ,
+			&ch.RotX, &ch.RotY, &ch.RotZ)
 
 	return plr, err
 }
@@ -174,8 +178,10 @@ func AddNewAccount(plr *model.Player) error {
 	}
 	err = nil
 
-	if plr.GetCharacter().NickName == "" {
-		plr.GetCharacter().NickName = fmt.Sprintf("player#%d", time.Now().UnixNano()/int64(time.Millisecond))
+	ch := plr.GetCharacter_P()
+
+	if ch.NickName == "" {
+		plr.GetCharacter_P().NickName = fmt.Sprintf("player#%d", time.Now().UnixNano()/int64(time.Millisecond))
 	}
 
 	plr.AccountID, err = res.LastInsertId()
@@ -184,8 +190,8 @@ func AddNewAccount(plr *model.Player) error {
 		"gender, hair, top, bottom, clothes, channelID) "+
 		"VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
 		plr.AccountID, 1,
-		plr.GetCharacter().NickName, 1,
-		plr.GetCharacter().Hair, plr.GetCharacter().Top, plr.GetCharacter().Bottom, plr.GetCharacter().Clothes, constant.World)
+		ch.NickName, 1,
+		ch.Hair, ch.Top, ch.Bottom, ch.Clothes, constant.World)
 
 	if cErr != nil {
 		log.Println("INSERTING ERROR", cErr)

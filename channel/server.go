@@ -229,7 +229,7 @@ func (server *Server) Initialize(work chan func(), dbuser, dbpassword, dbaddress
 	server.gridMgr.Init()
 
 	server.clients = manager.New[*mnet.Client]()
-	server.playerActions = manager.New[chan RequestedParam]()
+	//server.playerActions = manager.New[chan RequestedParam]()
 }
 
 func (server *Server) addToEmulateMoving(uid string, plrs []*player) {
@@ -299,21 +299,23 @@ func (server *Server) ClientDisconnected(conn *mnet.Client, reader mpacket.Reade
 
 	server.removePlayer(conn)
 
+	p := conn.GetPlayer_P()
+	ch := p.GetCharacter()
 	fmt.Println("NumGoroutine COUNT", runtime.NumGoroutine())
-	err1 := db.UpdateLoginState(conn.GetPlayer().UId, false)
+	err1 := db.UpdateLoginState(p.UId, false)
 	if err1 != nil {
 		//log.Println("ERROR LOGOUT PLAYER_ID", conn.GetPlayer().UId)
 	}
 
 	if conn.GetPlayer().IsBot != 1 {
 		err2 := db.UpdateMovement(
-			conn.GetPlayer().CharacterID,
-			conn.GetPlayer().GetCharacter().PosX,
-			conn.GetPlayer().GetCharacter().PosY,
-			conn.GetPlayer().GetCharacter().PosZ,
-			conn.GetPlayer().GetCharacter().RotX,
-			conn.GetPlayer().GetCharacter().RotY,
-			conn.GetPlayer().GetCharacter().RotZ,
+			p.CharacterID,
+			ch.PosX,
+			ch.PosY,
+			ch.PosZ,
+			ch.RotX,
+			ch.RotY,
+			ch.RotZ,
 		)
 
 		if err2 != nil {
@@ -323,11 +325,11 @@ func (server *Server) ClientDisconnected(conn *mnet.Client, reader mpacket.Reade
 
 	msg, errR := makeDisconnectedResponse(conn.GetPlayer().UId)
 	if errR == nil {
-		x, y := common.FindGrid(conn.GetPlayer().GetCharacter().PosX, conn.GetPlayer().GetCharacter().PosY)
+		x, y := common.FindGrid(conn.GetPlayer_P().GetCharacter().PosX, conn.GetPlayer_P().GetCharacter().PosY)
 		loggedPlayers := server.getPlayersOnGrids(conn.GetPlayer().RegionID, x, y, conn.GetPlayer().UId)
 
 		for _, v := range loggedPlayers {
-			(*v).Send(msg)
+			v.Send(msg)
 		}
 
 		/*for i := 0; i < len(loggedPlayers); i++ {
