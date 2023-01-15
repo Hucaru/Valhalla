@@ -5,6 +5,7 @@ import (
 	"math/rand"
 	"net"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/Hucaru/Valhalla/mnet/crypt"
@@ -76,7 +77,7 @@ func serverReader(conn net.Conn, eRecv chan *Event, headerSize int) {
 
 type SendChannelWrapper struct {
 	ch       chan mpacket.Packet
-	chFinish bool
+	chFinish atomic.Bool
 }
 
 type baseConn struct {
@@ -155,16 +156,16 @@ func (bc *baseConn) Send(p mpacket.Packet) {
 		return
 	}
 
-	if bc.sendChannelWrappwer.chFinish {
+	if bc.sendChannelWrappwer.chFinish.Load() {
 		bc.sendChannelWrappwer.ch = make(chan mpacket.Packet, 4)
 		go func(c <-chan mpacket.Packet) {
 			for _c := range c {
 				bc.Write(_c)
 			}
-			bc.sendChannelWrappwer.chFinish = true
+			bc.sendChannelWrappwer.chFinish.Store(true)
 		}(bc.sendChannelWrappwer.ch)
 
-		bc.sendChannelWrappwer.chFinish = false
+		bc.sendChannelWrappwer.chFinish.Store(false)
 		bc.sendChannelWrappwer.ch <- p
 	} else {
 		bc.sendChannelWrappwer.ch <- p
