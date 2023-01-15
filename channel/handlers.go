@@ -823,7 +823,7 @@ func (server *Server) playerMovement(conn *mnet.Client, reader mpacket.Reader) {
 }
 
 func (server *Server) moveProcess(conn *mnet.Client, x, y float32, uId string, movement *mc_metadata.Movement, moveType int) {
-	_, _, _ := server.gridMgr.OnMove(conn.GetPlayer().RegionID, x, y, uId)
+	_, _, _ = server.gridMgr.OnMove(conn.GetPlayer().RegionID, x, y, uId)
 
 	//for k, v := range addList {
 	//	c := v.GetPlayer_P().GetCharacter()
