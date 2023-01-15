@@ -167,9 +167,12 @@ func (bc *baseConn) MetaWriter() {
 			return
 		}
 
-		for c := range bc.sendChannel {
-			bc.Write(c)
+		c := bc.sendChannel
+		for _v := range c {
+			bc.Write(_v)
 		}
+
+		log.Println("finish channel : ", len(c))
 
 		runtime.Gosched()
 	}
@@ -181,13 +184,11 @@ func (bc *baseConn) Send(p mpacket.Packet) {
 	}
 
 	if len(bc.sendChannel) == cap(bc.sendChannel) {
-		log.Println("channel full")
-		bc.Write(p)
 		bc.sendChannel = make(chan mpacket.Packet, 4096)
-	} else {
-		bc.sendChannel <- p
+		log.Println("full realloc len : ", len(bc.sendChannel))
 	}
-	//bc.sendChannelQueue.Enqueue(p)
+
+	bc.sendChannel <- p
 }
 
 func (bc *baseConn) String() string {
