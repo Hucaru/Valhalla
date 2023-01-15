@@ -4,7 +4,6 @@ import (
 	"github.com/Hucaru/Valhalla/common/dataController"
 	"math/rand"
 	"net"
-	"runtime"
 	"sync"
 	"time"
 
@@ -154,11 +153,11 @@ func (bc *baseConn) MetaWriter() {
 	//
 	for {
 		b := bc.sendChannelQueue.Dequeue()
-		if b != nil {
-			go bc.Conn.Write(b)
-		} else {
-			runtime.Gosched()
-		}
+		//if b != nil {
+		//	go bc.Conn.Write(b)
+		//} else {
+		//	runtime.Gosched()
+		//}
 	}
 
 	//for {
@@ -189,6 +188,8 @@ func (bc *baseConn) Send(p mpacket.Packet) {
 	}
 
 	bc.sendChannelQueue.Enqueue(p)
+
+	time.Sleep(100 * time.Millisecond)
 
 	//go func() {
 	//	bc.Conn.Write(bc.sendChannelQueue.Dequeue())
