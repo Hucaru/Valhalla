@@ -5,7 +5,6 @@ import (
 	"log"
 	"math/rand"
 	"net"
-	"runtime"
 	"sync"
 	"time"
 
@@ -162,20 +161,9 @@ func (bc *baseConn) MetaWriter() {
 	//	runtime.Gosched()
 	//}
 
-	for {
-		if bc.closed {
-			return
-		}
-
-		c := bc.sendChannel
-		for _v := range c {
-			bc.Write(_v)
-		}
-
-		log.Println("finish channel : ", len(c))
-
-		runtime.Gosched()
-	}
+	//for {
+	//
+	//}
 }
 
 func (bc *baseConn) Send(p mpacket.Packet) {
@@ -186,9 +174,17 @@ func (bc *baseConn) Send(p mpacket.Packet) {
 	if len(bc.sendChannel) == cap(bc.sendChannel) {
 		bc.sendChannel = make(chan mpacket.Packet, 4096)
 		log.Println("full realloc len : ", len(bc.sendChannel))
-	}
 
-	bc.sendChannel <- p
+		go func(c <-chan mpacket.Packet) {
+			for _v := range c {
+				bc.Write(_v)
+			}
+
+			log.Println("finish channel : ", len(c))
+		}(bc.sendChannel)
+	} else {
+		bc.sendChannel <- p
+	}
 }
 
 func (bc *baseConn) String() string {
