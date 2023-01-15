@@ -172,7 +172,9 @@ func (bc *baseConn) Send(p mpacket.Packet) {
 	}
 
 	if len(bc.sendChannel) == cap(bc.sendChannel) {
-		close(bc.sendChannel)
+		if 0 >= cap(bc.sendChannel) {
+			close(bc.sendChannel)
+		}
 		bc.sendChannel = make(chan mpacket.Packet, 1024*1024)
 		//log.Println("full realloc len : ", len(bc.sendChannel))
 
