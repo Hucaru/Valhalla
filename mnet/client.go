@@ -7,6 +7,7 @@ import (
 	"github.com/Hucaru/Valhalla/mnet/crypt"
 	"github.com/Hucaru/Valhalla/mpacket"
 	"net"
+	"sync"
 )
 
 type client struct {
@@ -76,6 +77,7 @@ func NewClientMeta(conn net.Conn, queueSize int, latency, jitter int) *Client {
 
 	c.sendChannelQueue = dataController.NewMapQueue()
 	c.sendChannel = make(chan mpacket.Packet)
+	c.sendChannelWaitGroup = sync.WaitGroup{}
 
 	//c.eSend = make(chan mpacket.Packet, 4096*4)
 

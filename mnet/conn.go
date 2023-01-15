@@ -2,7 +2,6 @@ package mnet
 
 import (
 	"github.com/Hucaru/Valhalla/common/dataController"
-	"log"
 	"math/rand"
 	"net"
 	"sync"
@@ -90,7 +89,8 @@ type baseConn struct {
 	sendChannelLock  sync.RWMutex
 	sendChannelQueue *dataController.MapQueue
 
-	sendChannel chan mpacket.Packet
+	sendChannel          chan mpacket.Packet
+	sendChannelWaitGroup sync.WaitGroup
 
 	cryptSend *crypt.Maple
 	cryptRecv *crypt.Maple
@@ -164,6 +164,19 @@ func (bc *baseConn) MetaWriter() {
 	//for {
 	//
 	//}
+
+	for {
+		select {
+		case b, ok := <-bc.sendChannel:
+			if ok {
+				bc.Conn.Write(b)
+				bc.sendChannelWaitGroup.Done()
+			} else {
+				bc.sendChannelWaitGroup.Done()
+				return
+			}
+		}
+	}
 }
 
 func (bc *baseConn) Send(p mpacket.Packet) {
@@ -171,30 +184,40 @@ func (bc *baseConn) Send(p mpacket.Packet) {
 		return
 	}
 
-	if len(bc.sendChannel) == cap(bc.sendChannel) {
-		bc.sendChannel = make(chan mpacket.Packet, 1024*1024)
-		go func(c <-chan mpacket.Packet) {
-			for _v := range c {
-				if _v == nil {
-					break
-				}
-				bc.Write(_v)
-			}
+	bc.sendChannelWaitGroup.Add(1)
 
-			log.Println("finish channel : ", len(c), cap(c))
-		}(bc.sendChannel)
+	bc.sendChannel <- p
 
-		log.Println("send")
-		bc.sendChannel <- p
+	bc.sendChannelWaitGroup.Wait()
 
-		log.Println("send Finish")
-	} else {
-		log.Println("send2")
-		bc.sendChannel <- p
+	//if len(bc.sendChannel) == cap(bc.sendChannel) {
+	//	bc.sendChannel = make(chan mpacket.Packet, 1024*1024)
+	//	go func(c <-chan mpacket.Packet) {
+	//		for _v := range c {
+	//			if _v == nil {
+	//				break
+	//			}
+	//			bc.Write(_v)
+	//		}
+	//
+	//		log.Println("finish channel : ", len(c), cap(c))
+	//	}(bc.sendChannel)
+	//
+	//	log.Println("send")
+	//	bc.sendChannel <- p
+	//} else {
+	//	bc.sendChannel <- p
+	//}
 
-		log.Println("send Finish2")
+}
+
+func (bc *baseConn) safeCheck(ch <-chan mpacket.Packet) bool {
+	select {
+	case <-ch:
+		return false
+	default:
 	}
-
+	return true
 }
 
 func (bc *baseConn) String() string {
