@@ -74,8 +74,8 @@ func NewClientMeta(conn net.Conn, queueSize int, latency, jitter int) *Client {
 	//c.sendChannelQueue = *dataController.NewLKQueue()
 
 	c.sendChannelWrappwer = SendChannelWrapper{}
-	c.sendChannelWrappwer.ch = make(chan mpacket.Packet, 4096)
-	c.sendChannelWrappwer.chFinish.Store(false)
+	//c.sendChannelWrappwer.ch = make(chan mpacket.Packet, 1)
+	c.sendChannelWrappwer.chFinish.Store(true)
 
 	//c.eSend = make(chan mpacket.Packet, 4096*4)
 
