@@ -1,7 +1,7 @@
 package mnet
 
 import (
-	"github.com/dustinxie/lockfree"
+	"github.com/Hucaru/Valhalla/common/dataController"
 	"math/rand"
 	"net"
 	"runtime"
@@ -83,7 +83,7 @@ type baseConn struct {
 	closed bool
 
 	sendChannelLock  sync.RWMutex
-	sendChannelQueue lockfree.Queue
+	sendChannelQueue dataController.LKQueue
 
 	cryptSend *crypt.Maple
 	cryptRecv *crypt.Maple
@@ -143,17 +143,18 @@ func (bc *baseConn) MetaWriter() {
 			return
 		}
 
-		for bc.sendChannelQueue.Len() > 0 {
-			v := bc.sendChannelQueue.Deque().(mpacket.Packet)
-			bc.Conn.Write(v)
+		for {
+			for !bc.sendChannelQueue.IsEmpty() {
+				v := bc.sendChannelQueue.Dequeue()
+				bc.Conn.Write(v)
+			}
 		}
 		runtime.Gosched()
 	}
 }
 
 func (bc *baseConn) Send(p mpacket.Packet) {
-	//bc.sendChannelQueue.Enque(p)
-	bc.Conn.Write(p)
+	bc.sendChannelQueue.Enqueue(p)
 }
 
 func (bc *baseConn) String() string {
