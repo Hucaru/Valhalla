@@ -8,9 +8,8 @@ import (
 
 // LKQueue is a lock-free unbounded queue.
 type LKQueue struct {
-	head      unsafe.Pointer
-	tail      unsafe.Pointer
-	queueSize atomic.Int32
+	head unsafe.Pointer
+	tail unsafe.Pointer
 }
 type node struct {
 	value mpacket.Packet
@@ -23,10 +22,6 @@ func NewLKQueue() *LKQueue {
 	return &LKQueue{head: n, tail: n}
 }
 
-func (q *LKQueue) IsEmpty() bool {
-	return 0 >= q.queueSize.Load()
-}
-
 // Enqueue puts the given value v at the tail of the queue.
 func (q *LKQueue) Enqueue(v mpacket.Packet) {
 	n := &node{value: v}
@@ -37,13 +32,11 @@ func (q *LKQueue) Enqueue(v mpacket.Packet) {
 			if next == nil {
 				if cas(&tail.next, next, n) {
 					cas(&q.tail, tail, n) // Enqueue is done.  try to swing tail to the inserted node
-					q.queueSize.Add(1)
 					return
 				}
 			} else { // tail was not pointing to the last node
 				// try to swing Tail to the next node
 				cas(&q.tail, tail, next)
-				q.queueSize.Add(1)
 			}
 		}
 	}
@@ -63,12 +56,10 @@ func (q *LKQueue) Dequeue() mpacket.Packet {
 				}
 				// tail is falling behind.  try to advance it
 				cas(&q.tail, tail, next)
-				q.queueSize.Add(-1)
 			} else {
 				// read value before CAS otherwise another dequeue might free the next node
 				v := next.value
 				if cas(&q.head, head, next) {
-					q.queueSize.Add(-1)
 					return v // Dequeue is done.  return
 				}
 			}

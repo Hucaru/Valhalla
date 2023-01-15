@@ -89,7 +89,7 @@ type baseConn struct {
 	closedFromBufferOver bool
 
 	sendChannelLock  sync.RWMutex
-	sendChannelQueue *dataController.MapQueue
+	sendChannelQueue *dataController.LKQueue
 
 	sendChannel          chan mpacket.Packet
 	sendChannelWaitGroup sync.WaitGroup
@@ -167,19 +167,22 @@ func (bc *baseConn) MetaWriter() {
 	//
 	//}
 
-	for {
-		select {
-		case b, ok := <-bc.sendChannel:
-			if ok {
-				bc.Conn.Write(b)
-				bc.sendChannelWaitGroup.Done()
-			} else {
-				bc.closedFromBufferOver = true
-				bc.sendChannelWaitGroup.Done()
-				return
-			}
-		}
-	}
+	//for {
+	//	select {
+	//	case b, ok := <-bc.sendChannel:
+	//		if ok {
+	//			bc.Conn.Write(b)
+	//			bc.sendChannelWaitGroup.Done()
+	//		} else {
+	//			bc.closedFromBufferOver = true
+	//			bc.sendChannelWaitGroup.Done()
+	//			return
+	//		}
+	//	}
+	//}
+}
+
+type Test struct {
 }
 
 func (bc *baseConn) Send(p mpacket.Packet) {
@@ -187,14 +190,24 @@ func (bc *baseConn) Send(p mpacket.Packet) {
 		return
 	}
 
-	bc.sendChannelWaitGroup.Add(1)
-	bc.sendChannel <- p
-	bc.sendChannelWaitGroup.Wait()
+	bc.sendChannelQueue.Enqueue(p)
 
-	if bc.closedFromBufferOver {
-		bc.sendChannel = make(chan mpacket.Packet, 1024)
-		bc.closedFromBufferOver = false
-	}
+	go func() {
+		bc.Conn.Write(bc.sendChannelQueue.Dequeue())
+	}()
+
+	//go func(p mpacket.Packet) {
+	//	bc.Conn.Write(p)
+	//}(p)
+
+	//bc.sendChannelWaitGroup.Add(1)
+	//bc.sendChannel <- p
+	//bc.sendChannelWaitGroup.Wait()
+	//
+	//if bc.closedFromBufferOver {
+	//	bc.sendChannel = make(chan mpacket.Packet, 1024)
+	//	bc.closedFromBufferOver = false
+	//}
 
 	//if len(bc.sendChannel) == cap(bc.sendChannel) {
 	//	bc.sendChannel = make(chan mpacket.Packet, 1024*1024)

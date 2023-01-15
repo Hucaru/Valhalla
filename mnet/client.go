@@ -75,7 +75,7 @@ func NewClientMeta(conn net.Conn, queueSize int, latency, jitter int) *Client {
 	//c.sendChannelLock = sync.RWMutex{}
 	//c.sendChannelQueue = *dataController.NewLKQueue()
 
-	c.sendChannelQueue = dataController.NewMapQueue()
+	c.sendChannelQueue = dataController.NewLKQueue()
 	c.sendChannel = make(chan mpacket.Packet)
 	c.sendChannelWaitGroup = sync.WaitGroup{}
 
