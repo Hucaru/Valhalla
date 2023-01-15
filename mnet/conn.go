@@ -86,6 +86,8 @@ type baseConn struct {
 	reader func()
 	closed bool
 
+	closedFromBufferOver bool
+
 	sendChannelLock  sync.RWMutex
 	sendChannelQueue *dataController.MapQueue
 
@@ -172,6 +174,7 @@ func (bc *baseConn) MetaWriter() {
 				bc.Conn.Write(b)
 				bc.sendChannelWaitGroup.Done()
 			} else {
+				bc.closedFromBufferOver = true
 				bc.sendChannelWaitGroup.Done()
 				return
 			}
@@ -185,10 +188,13 @@ func (bc *baseConn) Send(p mpacket.Packet) {
 	}
 
 	bc.sendChannelWaitGroup.Add(1)
-
 	bc.sendChannel <- p
-
 	bc.sendChannelWaitGroup.Wait()
+
+	if bc.closedFromBufferOver {
+		bc.sendChannel = make(chan mpacket.Packet, 1024)
+		bc.closedFromBufferOver = false
+	}
 
 	//if len(bc.sendChannel) == cap(bc.sendChannel) {
 	//	bc.sendChannel = make(chan mpacket.Packet, 1024*1024)
