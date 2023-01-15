@@ -192,9 +192,9 @@ func (bc *baseConn) Send(p mpacket.Packet) {
 
 	bc.sendChannelQueue.Enqueue(p)
 
-	go func() {
-		bc.Conn.Write(bc.sendChannelQueue.Dequeue())
-	}()
+	//go func() {
+	//	bc.Conn.Write(bc.sendChannelQueue.Dequeue())
+	//}()
 
 	//go func(p mpacket.Packet) {
 	//	bc.Conn.Write(p)
