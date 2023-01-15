@@ -83,7 +83,7 @@ type baseConn struct {
 	closed bool
 
 	sendChannelLock  sync.RWMutex
-	sendChannelQueue dataController.LKQueue
+	sendChannelQueue dataController.CQueue
 
 	cryptSend *crypt.Maple
 	cryptRecv *crypt.Maple

@@ -74,7 +74,7 @@ func NewClientMeta(conn net.Conn, queueSize int, latency, jitter int) *Client {
 	c := &Client{}
 	c.Conn = conn
 	c.sendChannelLock = sync.RWMutex{}
-	c.sendChannelQueue = *dataController.NewLKQueue()
+	c.sendChannelQueue = *dataController.NewCQueue()
 
 	//c.eSend = make(chan mpacket.Packet, 4096*4)
 
