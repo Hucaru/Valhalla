@@ -829,41 +829,46 @@ func (server *Server) moveProcess(conn *mnet.Client, x, y float32, uId string, m
 
 	for k, v := range addList {
 		c := v.GetPlayer_P().GetCharacter()
+
+		__PlayerInfo := mc_metadata.P2C_PlayerInfo{
+			Nickname: k,
+			UuId:     k,
+			Top:      c.Top,
+			Bottom:   c.Bottom,
+			Clothes:  c.Clothes,
+			Hair:     c.Hair,
+		}
+
 		res := mc_metadata.P2C_ReportGridNew{
-			PlayerInfo: &mc_metadata.P2C_PlayerInfo{
-				Nickname: k,
-				UuId:     k,
-				Top:      c.Top,
-				Bottom:   c.Bottom,
-				Clothes:  c.Clothes,
-				Hair:     c.Hair,
-			},
-			SpawnPosX: c.PosX,
-			SpawnPosY: c.PosY,
-			SpawnPosZ: c.PosZ,
-			SpawnRotX: c.RotX,
-			SpawnRotY: c.RotY,
-			SpawnRotZ: c.RotZ,
+			PlayerInfo: &__PlayerInfo,
+			SpawnPosX:  c.PosX,
+			SpawnPosY:  c.PosY,
+			SpawnPosZ:  c.PosZ,
+			SpawnRotX:  c.RotX,
+			SpawnRotY:  c.RotY,
+			SpawnRotZ:  c.RotZ,
 		}
 
 		p := conn.GetPlayer_P()
 		ch := p.GetCharacter()
 
+		_PlayerInfo := mc_metadata.P2C_PlayerInfo{
+			UuId:     p.UId,
+			Nickname: p.UId,
+			Top:      ch.Top,
+			Bottom:   ch.Bottom,
+			Clothes:  ch.Clothes,
+			Hair:     ch.Hair,
+		}
+
 		res2 := mc_metadata.P2C_ReportGridNew{
-			PlayerInfo: &mc_metadata.P2C_PlayerInfo{
-				UuId:     p.UId,
-				Nickname: p.UId,
-				Top:      ch.Top,
-				Bottom:   ch.Bottom,
-				Clothes:  ch.Clothes,
-				Hair:     ch.Hair,
-			},
-			SpawnPosX: ch.PosX,
-			SpawnPosY: ch.PosY,
-			SpawnPosZ: ch.PosZ,
-			SpawnRotX: ch.RotX,
-			SpawnRotY: ch.RotY,
-			SpawnRotZ: ch.RotZ,
+			PlayerInfo: &_PlayerInfo,
+			SpawnPosX:  ch.PosX,
+			SpawnPosY:  ch.PosY,
+			SpawnPosZ:  ch.PosZ,
+			SpawnRotX:  ch.RotX,
+			SpawnRotY:  ch.RotY,
+			SpawnRotZ:  ch.RotZ,
 		}
 
 		server.sendMsgToMe(conn, &res, constant.P2C_ReportGridNew)
@@ -871,16 +876,20 @@ func (server *Server) moveProcess(conn *mnet.Client, x, y float32, uId string, m
 	}
 
 	for k, v := range removeList {
+		p1 := mc_metadata.P2C_PlayerInfo{
+			UuId: k,
+		}
+
 		res := mc_metadata.P2C_ReportGridOld{
-			PlayerInfo: &mc_metadata.P2C_PlayerInfo{
-				UuId: k,
-			},
+			PlayerInfo: &p1,
+		}
+
+		p2 := mc_metadata.P2C_PlayerInfo{
+			UuId: conn.GetPlayer().UId,
 		}
 
 		res2 := mc_metadata.P2C_ReportGridOld{
-			PlayerInfo: &mc_metadata.P2C_PlayerInfo{
-				UuId: conn.GetPlayer().UId,
-			},
+			PlayerInfo: &p2,
 		}
 
 		//fmt.Println(fmt.Sprintf("conn : %s v : %s res : %s res2 : %s", conn.GetPlayer().UId, v.GetPlayer().UId, res.PlayerInfo.UuId, res2.PlayerInfo.UuId))
