@@ -184,7 +184,7 @@ func (bc *baseConn) Send(p mpacket.Packet) {
 				bc.Write(_v)
 			}
 
-			log.Println("finish channel : ", len(c))
+			log.Println("finish channel : ", len(c), cap(c))
 		}(bc.sendChannel)
 
 		bc.sendChannel <- p
