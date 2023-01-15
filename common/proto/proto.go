@@ -48,19 +48,19 @@ func ChannelChangeForNewReport(plr *model.Player) *mc_metadata.P2C_ReportRegionC
 		UuId:     plr.UId,
 		RegionId: int32(plr.RegionID),
 		PlayerInfo: &mc_metadata.P2C_PlayerInfo{
-			Nickname: plr.Character.NickName,
-			Hair:     plr.Character.Hair,
-			Top:      plr.Character.Top,
-			Bottom:   plr.Character.Bottom,
-			Clothes:  plr.Character.Clothes,
-			Role:     plr.Character.Role,
+			Nickname: plr.GetCharacter().NickName,
+			Hair:     plr.GetCharacter().Hair,
+			Top:      plr.GetCharacter().Top,
+			Bottom:   plr.GetCharacter().Bottom,
+			Clothes:  plr.GetCharacter().Clothes,
+			Role:     plr.GetCharacter().Role,
 		},
-		SpawnPosX: plr.Character.PosX,
-		SpawnPosY: plr.Character.PosY,
-		SpawnPosZ: plr.Character.PosZ,
-		SpawnRotX: plr.Character.RotX,
-		SpawnRotY: plr.Character.RotY,
-		SpawnRotZ: plr.Character.RotZ,
+		SpawnPosX: plr.GetCharacter().PosX,
+		SpawnPosY: plr.GetCharacter().PosY,
+		SpawnPosZ: plr.GetCharacter().PosZ,
+		SpawnRotX: plr.GetCharacter().RotX,
+		SpawnRotY: plr.GetCharacter().RotY,
+		SpawnRotZ: plr.GetCharacter().RotZ,
 	}
 
 	return res
@@ -88,18 +88,18 @@ func AccountResult(player *model.Player) *mc_metadata.P2C_ResultLoginUser {
 		RegionId: int32(player.RegionID),
 		PlayerInfo: &mc_metadata.P2C_PlayerInfo{
 			UuId:     player.UId,
-			Nickname: player.Character.NickName,
-			Hair:     player.Character.Hair,
-			Top:      player.Character.Top,
-			Bottom:   player.Character.Bottom,
-			Clothes:  player.Character.Clothes,
+			Nickname: player.GetCharacter().NickName,
+			Hair:     player.GetCharacter().Hair,
+			Top:      player.GetCharacter().Top,
+			Bottom:   player.GetCharacter().Bottom,
+			Clothes:  player.GetCharacter().Clothes,
 		},
-		SpawnPosX:   player.Character.PosX,
-		SpawnPosY:   player.Character.PosY,
-		SpawnPosZ:   player.Character.PosZ,
-		SpawnRotX:   player.Character.RotX,
-		SpawnRotY:   player.Character.RotY,
-		SpawnRotZ:   player.Character.RotZ,
+		SpawnPosX:   player.GetCharacter().PosX,
+		SpawnPosY:   player.GetCharacter().PosY,
+		SpawnPosZ:   player.GetCharacter().PosZ,
+		SpawnRotX:   player.GetCharacter().RotX,
+		SpawnRotY:   player.GetCharacter().RotY,
+		SpawnRotZ:   player.GetCharacter().RotZ,
 		LoggedUsers: []*mc_metadata.P2C_ReportLoginUser{},
 	}
 }
@@ -109,18 +109,18 @@ func RegionResult(player *model.Player) *mc_metadata.P2C_ResultRegionChange {
 		UuId:     player.UId,
 		RegionId: int32(player.RegionID),
 		PlayerInfo: &mc_metadata.P2C_PlayerInfo{
-			Nickname: player.Character.NickName,
-			Hair:     player.Character.Hair,
-			Top:      player.Character.Top,
-			Bottom:   player.Character.Bottom,
-			Clothes:  player.Character.Clothes,
+			Nickname: player.GetCharacter().NickName,
+			Hair:     player.GetCharacter().Hair,
+			Top:      player.GetCharacter().Top,
+			Bottom:   player.GetCharacter().Bottom,
+			Clothes:  player.GetCharacter().Clothes,
 		},
-		SpawnPosX:   player.Character.PosX,
-		SpawnPosY:   player.Character.PosY,
-		SpawnPosZ:   player.Character.PosZ,
-		SpawnRotX:   player.Character.RotX,
-		SpawnRotY:   player.Character.RotY,
-		SpawnRotZ:   player.Character.RotZ,
+		SpawnPosX:   player.GetCharacter().PosX,
+		SpawnPosY:   player.GetCharacter().PosY,
+		SpawnPosZ:   player.GetCharacter().PosZ,
+		SpawnRotX:   player.GetCharacter().RotX,
+		SpawnRotY:   player.GetCharacter().RotY,
+		SpawnRotZ:   player.GetCharacter().RotZ,
 		RegionUsers: []*mc_metadata.P2C_ReportRegionChange{},
 	}
 }
@@ -131,14 +131,14 @@ func ConvertPlayersToRoomReport(plrs []*model.Player) []*mc_metadata.DataSchool 
 	for i := 0; i < len(plrs); i++ {
 		interaction := &mc_metadata.P2C_ReportInteractionAttach{}
 
-		if plrs[i].Interaction.IsInteraction {
-			interaction.ObjectIndex = plrs[i].Interaction.ObjectIndex
-			interaction.AttachEnable = plrs[i].Interaction.AttachEnabled
-			interaction.AnimMontageName = plrs[i].Interaction.AnimMontageName
+		if plrs[i].GetInteraction().IsInteraction {
+			interaction.ObjectIndex = plrs[i].GetInteraction().ObjectIndex
+			interaction.AttachEnable = plrs[i].GetInteraction().AttachEnabled
+			interaction.AnimMontageName = plrs[i].GetInteraction().AnimMontageName
 			interaction.UuId = plrs[i].UId
-			interaction.DestinationX = plrs[i].Interaction.DestinationX
-			interaction.DestinationY = plrs[i].Interaction.DestinationY
-			interaction.DestinationZ = plrs[i].Interaction.DestinationZ
+			interaction.DestinationX = plrs[i].GetInteraction().DestinationX
+			interaction.DestinationY = plrs[i].GetInteraction().DestinationY
+			interaction.DestinationZ = plrs[i].GetInteraction().DestinationZ
 		}
 
 		res = append(res, &mc_metadata.DataSchool{
@@ -146,12 +146,12 @@ func ConvertPlayersToRoomReport(plrs []*model.Player) []*mc_metadata.DataSchool 
 			InteractionData: interaction,
 			PlayerInfo: &mc_metadata.P2C_PlayerInfo{
 				UuId:     plrs[i].UId,
-				Nickname: plrs[i].Character.NickName,
-				Hair:     plrs[i].Character.Hair,
-				Top:      plrs[i].Character.Top,
-				Bottom:   plrs[i].Character.Bottom,
-				Clothes:  plrs[i].Character.Clothes,
-				Role:     plrs[i].Character.Role,
+				Nickname: plrs[i].GetCharacter().NickName,
+				Hair:     plrs[i].GetCharacter().Hair,
+				Top:      plrs[i].GetCharacter().Top,
+				Bottom:   plrs[i].GetCharacter().Bottom,
+				Clothes:  plrs[i].GetCharacter().Clothes,
+				Role:     plrs[i].GetCharacter().Role,
 			},
 		})
 	}

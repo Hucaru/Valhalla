@@ -116,6 +116,7 @@ const (
 	MetaBank      = 4
 	MetaInvest    = 5
 	MetaClassRoom = 6
+	RegionMax     = 7
 )
 
 const (

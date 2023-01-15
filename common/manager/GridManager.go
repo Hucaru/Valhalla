@@ -8,12 +8,13 @@ import (
 )
 
 type GridInfo struct {
-	GridX int
-	GridY int
+	GridX    int
+	GridY    int
+	RegionId int64
 }
 
 type GridManager struct {
-	grids [][]ConcurrentMap[string, *mnet.Client]
+	grids [][][]ConcurrentMap[string, *mnet.Client]
 	plrs  ConcurrentMap[string, GridInfo]
 }
 
@@ -26,32 +27,39 @@ type GridManager struct {
 //}
 
 func (gridMgr *GridManager) Init() {
-	gridMgr.grids = make([][]ConcurrentMap[string, *mnet.Client], 1)
+	gridMgr.grids = make([][][]ConcurrentMap[string, *mnet.Client], 1)
 	gridMgr.plrs = New[GridInfo]()
 
 	columns := (constant.LAND_X2 - constant.LAND_X1) / constant.LAND_VIEW_RANGE
 	rows := (constant.LAND_Y2 - constant.LAND_Y1) / constant.LAND_VIEW_RANGE
 
-	x := make([][]ConcurrentMap[string, *mnet.Client], columns)
+	regions := constant.RegionMax
 
-	for i := 0; i < columns; i++ {
-		y := make([]ConcurrentMap[string, *mnet.Client], rows)
+	r := make([][][]ConcurrentMap[string, *mnet.Client], regions)
 
-		for j := 0; j < rows; j++ {
-			d := New[*mnet.Client]()
-			y[j] = d
+	for _k := 0; _k < regions; _k++ {
+		x := make([][]ConcurrentMap[string, *mnet.Client], columns)
+
+		for i := 0; i < columns; i++ {
+			y := make([]ConcurrentMap[string, *mnet.Client], rows)
+
+			for j := 0; j < rows; j++ {
+				d := New[*mnet.Client]()
+				y[j] = d
+			}
+			x[i] = y
 		}
-		x[i] = y
-	}
 
-	gridMgr.grids = x
+		r[_k] = x
+	}
+	gridMgr.grids = r
 }
 
-func (gridMgr *GridManager) Add(gridX, gridY int, cl *mnet.Client) {
+func (gridMgr *GridManager) Add(region int64, gridX, gridY int, cl *mnet.Client) {
 	plr := (*cl).GetPlayer()
 
-	gridMgr.grids[gridX][gridY].Set(plr.UId, cl)
-	gridMgr.plrs.Set(plr.UId, GridInfo{gridX, gridY})
+	gridMgr.grids[region][gridX][gridY].Set(plr.UId, cl)
+	gridMgr.plrs.Set(plr.UId, GridInfo{gridX, gridY, region})
 }
 
 func (gridMgr *GridManager) Remove(uId string) *mnet.Client {
@@ -60,9 +68,9 @@ func (gridMgr *GridManager) Remove(uId string) *mnet.Client {
 		gridMgr.plrs.Remove(uId)
 		gridInfo := info
 
-		plr, ok2 := gridMgr.grids[gridInfo.GridX][gridInfo.GridY].Get(uId)
+		plr, ok2 := gridMgr.grids[gridInfo.RegionId][gridInfo.GridX][gridInfo.GridY].Get(uId)
 		if ok2 {
-			gridMgr.grids[gridInfo.GridX][gridInfo.GridY].Remove(uId)
+			gridMgr.grids[gridInfo.RegionId][gridInfo.GridX][gridInfo.GridY].Remove(uId)
 			return plr
 		}
 	}
@@ -70,15 +78,23 @@ func (gridMgr *GridManager) Remove(uId string) *mnet.Client {
 	return nil
 }
 
-func (gridMgr *GridManager) FillPlayers(GridX, GridY int) map[string]*mnet.Client {
-	return gridMgr.fillPlayers(GridX, GridY)
+func (gridMgr *GridManager) FillPlayers(RegionId int64, GridX, GridY int) map[string]*mnet.Client {
+	return gridMgr.fillPlayers(RegionId, GridX, GridY)
 }
 
-func (gridMgr *GridManager) fillPlayers(GridX, GridY int) map[string]*mnet.Client {
+func (gridMgr *GridManager) fillPlayers(RegionId int64, GridX, GridY int) map[string]*mnet.Client {
 	result := map[string]*mnet.Client{}
 
 	MaxX := (constant.LAND_X2 - constant.LAND_X1) / constant.LAND_VIEW_RANGE
 	MaxY := (constant.LAND_Y2 - constant.LAND_Y1) / constant.LAND_VIEW_RANGE
+
+	if 0 > RegionId {
+		RegionId = 0
+	}
+
+	if RegionId >= constant.RegionMax {
+		RegionId = constant.RegionMax - 1
+	}
 
 	if 0 > GridX {
 		GridX = 0
@@ -96,26 +112,26 @@ func (gridMgr *GridManager) fillPlayers(GridX, GridY int) map[string]*mnet.Clien
 		GridY = MaxY - 1
 	}
 
-	gridMgr.grids[GridX][GridY].IterCb(func(k string, v *mnet.Client) {
+	gridMgr.grids[RegionId][GridX][GridY].IterCb(func(k string, v *mnet.Client) {
 		result[k] = v
 	})
 
 	return result
 }
 
-func (gridMgr *GridManager) OnMove(newX, newY float32, uId string) (map[string]*mnet.Client, map[string]*mnet.Client, map[string]*mnet.Client) {
+func (gridMgr *GridManager) OnMove(regionId int64, newX, newY float32, uId string) (map[string]*mnet.Client, map[string]*mnet.Client, map[string]*mnet.Client) {
 	info, ok := gridMgr.plrs.Get(uId)
 	if ok {
 		newGridX, newGridY := common.FindGrid(newX, newY)
 		gridInfo := info
-		if newGridX != gridInfo.GridX || newGridY != gridInfo.GridY {
+		if gridInfo.RegionId != regionId || newGridX != gridInfo.GridX || newGridY != gridInfo.GridY {
 			//gridMgr.mtx.Lock()
 			//defer gridMgr.mtx.Unlock()
 
 			_plr := gridMgr.Remove(uId)
 			if _plr != nil {
-				gridMgr.Add(newGridX, newGridY, _plr)
-				gridMgr.plrs.Set(uId, GridInfo{newGridX, newGridY})
+				gridMgr.Add(regionId, newGridX, newGridY, _plr)
+				gridMgr.plrs.Set(uId, GridInfo{newGridX, newGridY, regionId})
 
 				oldList := map[string]*mnet.Client{}
 				newList := map[string]*mnet.Client{}
@@ -128,8 +144,8 @@ func (gridMgr *GridManager) OnMove(newX, newY float32, uId string) (map[string]*
 						_newGridX := newGridX + i
 						_newGridY := newGridY + j
 
-						maps.Copy(oldList, gridMgr.fillPlayers(oldGridX, oldGridY))
-						maps.Copy(newList, gridMgr.fillPlayers(_newGridX, _newGridY))
+						maps.Copy(oldList, gridMgr.fillPlayers(gridInfo.RegionId, oldGridX, oldGridY))
+						maps.Copy(newList, gridMgr.fillPlayers(regionId, _newGridX, _newGridY))
 					}
 				}
 
@@ -166,7 +182,7 @@ func (gridMgr *GridManager) OnMove(newX, newY float32, uId string) (map[string]*
 					_newGridX := newGridX + i
 					_newGridY := newGridY + j
 
-					maps.Copy(newList, gridMgr.fillPlayers(_newGridX, _newGridY))
+					maps.Copy(newList, gridMgr.fillPlayers(regionId, _newGridX, _newGridY))
 				}
 			}
 

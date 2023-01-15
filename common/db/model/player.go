@@ -5,8 +5,24 @@ type Player struct {
 	UId         string
 	CharacterID int64
 	RegionID    int64
-	Character   Character
-	Interaction Interaction
+	character   Character
+	interaction Interaction
 	IsBot       int32
 	ModifiedAt  int64
+}
+
+func (p *Player) GetCharacter() *Character {
+	return &p.character
+}
+
+func (p *Player) SetCharacter(character Character) {
+	p.character = character
+}
+
+func (p *Player) GetInteraction() *Interaction {
+	return &p.interaction
+}
+
+func (p *Player) SetInteraction(interaction Interaction) {
+	p.interaction = interaction
 }

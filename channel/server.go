@@ -308,12 +308,12 @@ func (server *Server) ClientDisconnected(conn *mnet.Client, reader mpacket.Reade
 	if conn.GetPlayer().IsBot != 1 {
 		err2 := db.UpdateMovement(
 			conn.GetPlayer().CharacterID,
-			conn.GetPlayer().Character.PosX,
-			conn.GetPlayer().Character.PosY,
-			conn.GetPlayer().Character.PosZ,
-			conn.GetPlayer().Character.RotX,
-			conn.GetPlayer().Character.RotY,
-			conn.GetPlayer().Character.RotZ,
+			conn.GetPlayer().GetCharacter().PosX,
+			conn.GetPlayer().GetCharacter().PosY,
+			conn.GetPlayer().GetCharacter().PosZ,
+			conn.GetPlayer().GetCharacter().RotX,
+			conn.GetPlayer().GetCharacter().RotY,
+			conn.GetPlayer().GetCharacter().RotZ,
 		)
 
 		if err2 != nil {
@@ -323,8 +323,8 @@ func (server *Server) ClientDisconnected(conn *mnet.Client, reader mpacket.Reade
 
 	msg, errR := makeDisconnectedResponse(conn.GetPlayer().UId)
 	if errR == nil {
-		x, y := common.FindGrid(conn.GetPlayer().Character.PosX, conn.GetPlayer().Character.PosY)
-		loggedPlayers := server.getPlayersOnGrids(x, y, conn.GetPlayer().UId)
+		x, y := common.FindGrid(conn.GetPlayer().GetCharacter().PosX, conn.GetPlayer().GetCharacter().PosY)
+		loggedPlayers := server.getPlayersOnGrids(conn.GetPlayer().RegionID, x, y, conn.GetPlayer().UId)
 
 		for _, v := range loggedPlayers {
 			(*v).Send(msg)

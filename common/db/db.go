@@ -40,23 +40,25 @@ func GetLoggedData(uUID string) (*model.Player, error) {
 		AccountID:   constant.UNKNOWN,
 		CharacterID: constant.UNKNOWN,
 		RegionID:    constant.World,
-		Character: model.Character{
-			Role:     constant.User,
-			NickName: "",
-			Hair:     "",
-			Top:      "",
-			Bottom:   "",
-			Clothes:  "",
-			Time:     constant.DEFAULT_TIME,
-			PosX:     constant.PosX,
-			PosY:     constant.PosY,
-			PosZ:     constant.PosZ,
-			RotX:     constant.RotX,
-			RotY:     constant.RotY,
-			RotZ:     constant.RotZ,
-		},
-		Interaction: model.NewInteraction(),
 	}
+
+	Character := model.Character{
+		Role:     constant.User,
+		NickName: "",
+		Hair:     "",
+		Top:      "",
+		Bottom:   "",
+		Clothes:  "",
+		Time:     constant.DEFAULT_TIME,
+		PosX:     constant.PosX,
+		PosY:     constant.PosY,
+		PosZ:     constant.PosZ,
+		RotX:     constant.RotX,
+		RotY:     constant.RotY,
+		RotZ:     constant.RotZ,
+	}
+	plr.SetCharacter(Character)
+	plr.SetInteraction(model.NewInteraction())
 
 	err := Maria.QueryRow(
 		"SELECT a.accountID, "+
@@ -73,10 +75,10 @@ func GetLoggedData(uUID string) (*model.Player, error) {
 			"LIMIT 1", uUID).
 		Scan(&plr.AccountID,
 			&plr.UId, &plr.CharacterID, &plr.RegionID,
-			&plr.Character.NickName, &plr.Character.Hair, &plr.Character.Top, &plr.Character.Bottom, &plr.Character.Clothes,
-			&plr.Character.Time,
-			&plr.Character.PosX, &plr.Character.PosY, &plr.Character.PosZ,
-			&plr.Character.RotX, &plr.Character.RotY, &plr.Character.RotZ)
+			&plr.GetCharacter().NickName, &plr.GetCharacter().Hair, &plr.GetCharacter().Top, &plr.GetCharacter().Bottom, &plr.GetCharacter().Clothes,
+			&plr.GetCharacter().Time,
+			&plr.GetCharacter().PosX, &plr.GetCharacter().PosY, &plr.GetCharacter().PosZ,
+			&plr.GetCharacter().RotX, &plr.GetCharacter().RotY, &plr.GetCharacter().RotZ)
 
 	return plr, err
 }
@@ -88,23 +90,26 @@ func GetLoggedDataForBot(uUID string) (*model.Player, error) {
 		AccountID:   constant.UNKNOWN,
 		CharacterID: constant.UNKNOWN,
 		RegionID:    constant.World,
-		Character: model.Character{
-			Role:     constant.User,
-			NickName: uUID,
-			Hair:     "",
-			Top:      "",
-			Bottom:   "",
-			Clothes:  "",
-			Time:     constant.DEFAULT_TIME,
-			PosX:     constant.PosX,
-			PosY:     constant.PosY,
-			PosZ:     constant.PosZ,
-			RotX:     constant.RotX,
-			RotY:     constant.RotY,
-			RotZ:     constant.RotZ,
-		},
-		Interaction: model.NewInteraction(),
 	}
+
+	Character := model.Character{
+		Role:     constant.User,
+		NickName: uUID,
+		Hair:     "",
+		Top:      "",
+		Bottom:   "",
+		Clothes:  "",
+		Time:     constant.DEFAULT_TIME,
+		PosX:     constant.PosX,
+		PosY:     constant.PosY,
+		PosZ:     constant.PosZ,
+		RotX:     constant.RotX,
+		RotY:     constant.RotY,
+		RotZ:     constant.RotZ,
+	}
+
+	plr.SetCharacter(Character)
+	plr.SetInteraction(model.NewInteraction())
 
 	return plr, nil
 }
@@ -116,23 +121,25 @@ func GetLoggedDataByName(req *mc_metadata.C2P_RequestPlayerInfo) (*model.Player,
 		AccountID:   constant.UNKNOWN,
 		CharacterID: constant.UNKNOWN,
 		RegionID:    constant.World,
-		Character: model.Character{
-			Role:     constant.User,
-			NickName: req.GetNickname(),
-			Hair:     req.GetHair(),
-			Top:      req.GetTop(),
-			Bottom:   req.GetBottom(),
-			Clothes:  req.GetClothes(),
-			Time:     constant.DEFAULT_TIME,
-			PosX:     constant.PosX,
-			PosY:     constant.PosY,
-			PosZ:     constant.PosZ,
-			RotX:     constant.RotX,
-			RotY:     constant.RotY,
-			RotZ:     constant.RotZ,
-		},
-		Interaction: model.NewInteraction(),
 	}
+
+	Character := model.Character{
+		Role:     constant.User,
+		NickName: req.GetNickname(),
+		Hair:     req.GetHair(),
+		Top:      req.GetTop(),
+		Bottom:   req.GetBottom(),
+		Clothes:  req.GetClothes(),
+		Time:     constant.DEFAULT_TIME,
+		PosX:     constant.PosX,
+		PosY:     constant.PosY,
+		PosZ:     constant.PosZ,
+		RotX:     constant.RotX,
+		RotY:     constant.RotY,
+		RotZ:     constant.RotZ,
+	}
+	plr.SetCharacter(Character)
+	plr.SetInteraction(model.NewInteraction())
 
 	err := Maria.QueryRow(
 		"SELECT a.accountID, "+
@@ -149,10 +156,10 @@ func GetLoggedDataByName(req *mc_metadata.C2P_RequestPlayerInfo) (*model.Player,
 			"LIMIT 1", req.GetNickname()).
 		Scan(&plr.AccountID,
 			&plr.UId, &plr.CharacterID, &plr.RegionID,
-			&plr.Character.NickName, &plr.Character.Hair, &plr.Character.Top, &plr.Character.Bottom, &plr.Character.Clothes,
-			&plr.Character.Time,
-			&plr.Character.PosX, &plr.Character.PosY, &plr.Character.PosZ,
-			&plr.Character.RotX, &plr.Character.RotY, &plr.Character.RotZ)
+			&plr.GetCharacter().NickName, &plr.GetCharacter().Hair, &plr.GetCharacter().Top, &plr.GetCharacter().Bottom, &plr.GetCharacter().Clothes,
+			&plr.GetCharacter().Time,
+			&plr.GetCharacter().PosX, &plr.GetCharacter().PosY, &plr.GetCharacter().PosZ,
+			&plr.GetCharacter().RotX, &plr.GetCharacter().RotY, &plr.GetCharacter().RotZ)
 
 	return plr, err
 }
@@ -167,8 +174,8 @@ func AddNewAccount(plr *model.Player) error {
 	}
 	err = nil
 
-	if plr.Character.NickName == "" {
-		plr.Character.NickName = fmt.Sprintf("player#%d", time.Now().UnixNano()/int64(time.Millisecond))
+	if plr.GetCharacter().NickName == "" {
+		plr.GetCharacter().NickName = fmt.Sprintf("player#%d", time.Now().UnixNano()/int64(time.Millisecond))
 	}
 
 	plr.AccountID, err = res.LastInsertId()
@@ -177,8 +184,8 @@ func AddNewAccount(plr *model.Player) error {
 		"gender, hair, top, bottom, clothes, channelID) "+
 		"VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
 		plr.AccountID, 1,
-		plr.Character.NickName, 1,
-		plr.Character.Hair, plr.Character.Top, plr.Character.Bottom, plr.Character.Clothes, constant.World)
+		plr.GetCharacter().NickName, 1,
+		plr.GetCharacter().Hair, plr.GetCharacter().Top, plr.GetCharacter().Bottom, plr.GetCharacter().Clothes, constant.World)
 
 	if cErr != nil {
 		log.Println("INSERTING ERROR", cErr)
