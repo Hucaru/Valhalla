@@ -152,7 +152,8 @@ func (bc *baseConn) MetaWriter() {
 }
 
 func (bc *baseConn) Send(p mpacket.Packet) {
-	bc.sendChannelQueue.Enque(p)
+	//bc.sendChannelQueue.Enque(p)
+	bc.Conn.Write(p)
 }
 
 func (bc *baseConn) String() string {
