@@ -190,7 +190,7 @@ func (bc *baseConn) Send(p mpacket.Packet) {
 
 	bc.sendChannelQueue.Enqueue(p)
 
-	time.Sleep(100 * time.Millisecond)
+	runtime.Gosched()
 
 	//go func() {
 	//	bc.Conn.Write(bc.sendChannelQueue.Dequeue())
