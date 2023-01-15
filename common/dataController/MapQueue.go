@@ -34,7 +34,7 @@ func (q *MapQueue) Enqueue(v mpacket.Packet) {
 			continue
 		}
 
-		break;
+		break
 	}
 
 	q.data[q.lastNum] = mapElement{ele: v, nextNum: curNum}
