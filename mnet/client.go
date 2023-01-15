@@ -1,6 +1,7 @@
 package mnet
 
 import (
+	"github.com/Hucaru/Valhalla/common/dataController"
 	"github.com/Hucaru/Valhalla/common/db/model"
 	"github.com/Hucaru/Valhalla/constant"
 	"github.com/Hucaru/Valhalla/mnet/crypt"
@@ -73,9 +74,7 @@ func NewClientMeta(conn net.Conn, queueSize int, latency, jitter int) *Client {
 	//c.sendChannelLock = sync.RWMutex{}
 	//c.sendChannelQueue = *dataController.NewLKQueue()
 
-	c.sendChannelWrappwer = SendChannelWrapper{}
-	c.sendChannelWrappwer.ch = make(chan mpacket.Packet, 1)
-	c.sendChannelWrappwer.chFinish.Store(true)
+	c.sendChannelQueue = dataController.NewLKQueue()
 
 	//c.eSend = make(chan mpacket.Packet, 4096*4)
 

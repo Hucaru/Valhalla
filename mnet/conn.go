@@ -2,11 +2,9 @@ package mnet
 
 import (
 	"github.com/Hucaru/Valhalla/common/dataController"
-	"log"
 	"math/rand"
 	"net"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/Hucaru/Valhalla/mnet/crypt"
@@ -78,7 +76,7 @@ func serverReader(conn net.Conn, eRecv chan *Event, headerSize int) {
 
 type SendChannelWrapper struct {
 	ch       chan mpacket.Packet
-	chFinish atomic.Bool
+	chFinish bool
 }
 
 type baseConn struct {
@@ -89,9 +87,7 @@ type baseConn struct {
 	closed bool
 
 	sendChannelLock  sync.RWMutex
-	sendChannelQueue dataController.LKQueue
-
-	sendChannelWrappwer SendChannelWrapper
+	sendChannelQueue *dataController.LKQueue
 
 	cryptSend *crypt.Maple
 	cryptRecv *crypt.Maple
@@ -145,11 +141,16 @@ func (bc *baseConn) Writer() {
 }
 
 func (bc *baseConn) MetaWriter() {
-	//for c := range bc.sendChannelWrappwer.ch {
-	//	bc.Write(c)
-	//}
-	//
-	//bc.sendChannelWrappwer.chFinish = true
+	for {
+		if bc.closed {
+			return
+		}
+
+		v := bc.sendChannelQueue.Dequeue()
+		if v != nil {
+			bc.Write(v)
+		}
+	}
 }
 
 func (bc *baseConn) Send(p mpacket.Packet) {
@@ -157,36 +158,7 @@ func (bc *baseConn) Send(p mpacket.Packet) {
 		return
 	}
 
-	if bc.sendChannelWrappwer.chFinish.Load() {
-		//close(bc.sendChannelWrappwer.ch)
-		bc.sendChannelWrappwer.ch = make(chan mpacket.Packet, 1)
-		go func(c <-chan mpacket.Packet) {
-			for _c := range c {
-				bc.Write(_c)
-			}
-			log.Println("finish channel")
-			bc.sendChannelWrappwer.chFinish.Store(true)
-		}(bc.sendChannelWrappwer.ch)
-
-		bc.sendChannelWrappwer.chFinish.Store(false)
-		bc.sendChannelWrappwer.ch <- p
-	} else {
-		bc.sendChannelWrappwer.ch <- p
-	}
-
-	//if bc.sendChannelWrappwer.chFinish {
-	//	if bc.closed {
-	//		return
-	//	}
-	//
-	//	bc.sendChannelWrappwer.chFinish = false
-	//	bc.sendChannelWrappwer.ch = make(chan mpacket.Packet, 4)
-	//	go bc.MetaWriter()
-	//} else {
-	//	bc.sendChannelWrappwer.ch <- p
-	//}
-
-	//bc.sendChannelWrappwer.ch <- p
+	bc.sendChannelQueue.Enqueue(p)
 }
 
 func (bc *baseConn) String() string {
@@ -195,5 +167,4 @@ func (bc *baseConn) String() string {
 
 func (bc *baseConn) Cleanup() {
 	bc.closed = true
-	close(bc.sendChannelWrappwer.ch)
 }

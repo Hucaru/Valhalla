@@ -19,16 +19,16 @@ type cnode struct {
 
 // NewCQueue returns an empty CQueue.
 func NewCQueue() *CQueue {
-	n := &cnode{}
-	return &CQueue{head: n, tail: n}
+	n := cnode{}
+	return &CQueue{head: &n, tail: &n}
 }
 
 // Enqueue puts the given value v at the tail of the queue.
 func (q *CQueue) Enqueue(v mpacket.Packet) {
-	n := &cnode{value: v}
+	n := cnode{value: v}
 	q.tlock.Lock()
-	q.tail.next = n // Link node at the end of the linked list
-	q.tail = n      // Swing Tail to node
+	q.tail.next = &n // Link node at the end of the linked list
+	q.tail = &n      // Swing Tail to node
 	q.tlock.Unlock()
 }
 
