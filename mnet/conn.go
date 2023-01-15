@@ -147,9 +147,13 @@ func (bc *baseConn) MetaWriter() {
 			return
 		}
 
-		v := bc.sendChannelQueue.Dequeue()
-		if v != nil {
-			bc.Write(v)
+		for {
+			v := bc.sendChannelQueue.Dequeue()
+			if v != nil {
+				bc.Write(v)
+			} else {
+				break
+			}
 		}
 
 		runtime.Gosched()
