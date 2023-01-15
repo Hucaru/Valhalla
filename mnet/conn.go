@@ -207,5 +207,5 @@ func (bc *baseConn) String() string {
 
 func (bc *baseConn) Cleanup() {
 	bc.closed = true
-	close(bc.sendChannel)
+	//close(bc.sendChannel)
 }
