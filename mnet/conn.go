@@ -103,6 +103,8 @@ type baseConn struct {
 	latency int
 	jitter  int
 	pSend   chan func()
+
+	TempIsBot bool
 }
 
 func (bc *baseConn) Reader() {
@@ -147,37 +149,20 @@ func (bc *baseConn) Writer() {
 }
 
 func (bc *baseConn) MetaWriter() {
-	//for {
-	//	if bc.closed {
-	//		return
-	//	}
-	//
 	for {
 		b := bc.sendChannelQueue.Dequeue()
 		if b != nil {
-			go bc.Conn.Write(b)
+			if bc.TempIsBot == true {
+				continue
+			}
+
+			bc.Conn.Write(b)
+		} else if bc.closed {
+			return
 		} else {
 			runtime.Gosched()
 		}
 	}
-
-	//for {
-	//
-	//}
-
-	//for {
-	//	select {
-	//	case b, ok := <-bc.sendChannel:
-	//		if ok {
-	//			bc.Conn.Write(b)
-	//			bc.sendChannelWaitGroup.Done()
-	//		} else {
-	//			bc.closedFromBufferOver = true
-	//			bc.sendChannelWaitGroup.Done()
-	//			return
-	//		}
-	//	}
-	//}
 }
 
 type Test struct {
@@ -191,52 +176,6 @@ func (bc *baseConn) Send(p mpacket.Packet) {
 	bc.sendChannelQueue.Enqueue(p)
 
 	runtime.Gosched()
-
-	//go func() {
-	//	bc.Conn.Write(bc.sendChannelQueue.Dequeue())
-	//}()
-
-	//go func(p mpacket.Packet) {
-	//	bc.Conn.Write(p)
-	//}(p)
-
-	//bc.sendChannelWaitGroup.Add(1)
-	//bc.sendChannel <- p
-	//bc.sendChannelWaitGroup.Wait()
-	//
-	//if bc.closedFromBufferOver {
-	//	bc.sendChannel = make(chan mpacket.Packet, 1024)
-	//	bc.closedFromBufferOver = false
-	//}
-
-	//if len(bc.sendChannel) == cap(bc.sendChannel) {
-	//	bc.sendChannel = make(chan mpacket.Packet, 1024*1024)
-	//	go func(c <-chan mpacket.Packet) {
-	//		for _v := range c {
-	//			if _v == nil {
-	//				break
-	//			}
-	//			bc.Write(_v)
-	//		}
-	//
-	//		log.Println("finish channel : ", len(c), cap(c))
-	//	}(bc.sendChannel)
-	//
-	//	log.Println("send")
-	//	bc.sendChannel <- p
-	//} else {
-	//	bc.sendChannel <- p
-	//}
-
-}
-
-func (bc *baseConn) safeCheck(ch <-chan mpacket.Packet) bool {
-	select {
-	case <-ch:
-		return false
-	default:
-	}
-	return true
 }
 
 func (bc *baseConn) String() string {

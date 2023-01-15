@@ -99,7 +99,7 @@ func (server *Server) playerConnect(conn *mnet.Client, reader mpacket.Reader) {
 	//server.addPlayer(&plr)
 	server.clients.Set(msg.UuId, conn)
 	conn.SetPlayer(*player)
-
+	conn.TempIsBot = msg.IsBot == 1
 	ch = conn.GetPlayer_P().GetCharacter_P()
 
 	if msg.IsBot == 1 {
