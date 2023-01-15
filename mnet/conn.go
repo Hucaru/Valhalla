@@ -2,7 +2,6 @@ package mnet
 
 import (
 	"github.com/Hucaru/Valhalla/common/dataController"
-	"log"
 	"math/rand"
 	"net"
 	"sync"
@@ -160,13 +159,13 @@ func (bc *baseConn) MetaWriter() {
 					break
 				}
 
-				_, err := bc.Write(p)
-				if err != nil {
-					log.Println(err)
-					if bc.closed {
-						break
-					}
-				}
+				bc.Write(p)
+				//if err != nil {
+				//	log.Println(err)
+				//	if bc.closed {
+				//		break
+				//	}
+				//}
 
 				if len(bc.sendChannelWrappwer.ch) >= cap(bc.sendChannelWrappwer.ch) {
 					close(bc.sendChannelWrappwer.ch)
@@ -186,6 +185,11 @@ func (bc *baseConn) MetaWriter() {
 }
 
 func (bc *baseConn) Send(p mpacket.Packet) {
+
+	if bc.closed {
+		return
+	}
+
 	bc.sendChannelWrappwer.ch <- p
 }
 
