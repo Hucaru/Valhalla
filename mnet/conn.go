@@ -186,9 +186,14 @@ func (bc *baseConn) Send(p mpacket.Packet) {
 
 			log.Println("finish channel : ", len(c), cap(c))
 		}(bc.sendChannel)
-
+		if bc.closed {
+			return
+		}
 		bc.sendChannel <- p
 	} else {
+		if bc.closed {
+			return
+		}
 		bc.sendChannel <- p
 	}
 
