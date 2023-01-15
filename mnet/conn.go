@@ -144,10 +144,11 @@ func (bc *baseConn) MetaWriter() {
 		}
 
 		for {
-			for !bc.sendChannelQueue.IsEmpty() {
-				v := bc.sendChannelQueue.Dequeue()
-				bc.Conn.Write(v)
+			v := bc.sendChannelQueue.Dequeue()
+			if v == nil {
+				break
 			}
+			bc.Conn.Write(v)
 		}
 		runtime.Gosched()
 	}
