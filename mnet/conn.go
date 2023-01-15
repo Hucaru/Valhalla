@@ -183,6 +183,7 @@ func (bc *baseConn) Send(p mpacket.Packet) {
 	if len(bc.sendChannel) == cap(bc.sendChannel) {
 		log.Println("channel full")
 		bc.Write(p)
+		bc.sendChannel = make(chan mpacket.Packet, 4096)
 	} else {
 		bc.sendChannel <- p
 	}
