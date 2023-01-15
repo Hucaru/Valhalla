@@ -152,7 +152,7 @@ func (bc *baseConn) MetaWriter() {
 	//	}
 	//
 	for {
-		b := bc.sendChannelQueue.Dequeue()
+		bc.sendChannelQueue.Dequeue()
 		//if b != nil {
 		//	go bc.Conn.Write(b)
 		//} else {
@@ -189,7 +189,7 @@ func (bc *baseConn) Send(p mpacket.Packet) {
 
 	bc.sendChannelQueue.Enqueue(p)
 
-	time.Sleep(100 * time.Millisecond)
+	//time.Sleep(100 * time.Millisecond)
 
 	//go func() {
 	//	bc.Conn.Write(bc.sendChannelQueue.Dequeue())
