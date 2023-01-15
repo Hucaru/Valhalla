@@ -88,7 +88,7 @@ type baseConn struct {
 	closed bool
 
 	sendChannelLock  sync.RWMutex
-	sendChannelQueue *dataController.SliceQueue
+	sendChannelQueue *dataController.MapQueue
 
 	cryptSend *crypt.Maple
 	cryptRecv *crypt.Maple
