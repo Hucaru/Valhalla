@@ -196,7 +196,7 @@ func (server *Server) sendMsgToPlayer(msg proto2.Message, uID string, msgType in
 
 	c, ok := server.clients.Get(uID)
 	if ok {
-		(*c).Send(res)
+		c.Send(res)
 	}
 	//SomeMapMutex.RLock()
 	//_, ok := server.players[uID]
@@ -246,11 +246,13 @@ func (server *Server) sendMsgToRegion(conn *mnet.Client, msg proto2.Message, msg
 		log.Println("DATA_RESPONSE_ERROR", err)
 	}
 
+	uId := conn.GetPlayer().UId
+
 	for _, p := range plrs {
-		if conn.GetPlayer().UId == (*p).GetPlayer().UId {
+		if uId == p.GetPlayer().UId {
 			continue
 		}
-		(*p).Send(res)
+		p.Send(res)
 	}
 }
 
@@ -297,8 +299,8 @@ func (server *Server) playerChangeChannel(conn *mnet.Client, reader mpacket.Read
 
 func (server *Server) playerMovementStart(conn *mnet.Client, reader mpacket.Reader) {
 
-	msg := &mc_metadata.C2P_RequestMoveStart{}
-	err := proto.Unmarshal(reader.GetBuffer(), msg)
+	msg := mc_metadata.C2P_RequestMoveStart{}
+	err := proto.Unmarshal(reader.GetBuffer(), &msg)
 	if err != nil || len(msg.GetMovementData().GetUuId()) == 0 {
 		log.Println("Failed to parse data:", err)
 		return
@@ -329,8 +331,8 @@ func (server *Server) playerMovementStart(conn *mnet.Client, reader mpacket.Read
 
 func (server *Server) playerMovementEnd(conn *mnet.Client, reader mpacket.Reader) {
 
-	msg := &mc_metadata.C2P_RequestMoveEnd{}
-	err := proto.Unmarshal(reader.GetBuffer(), msg)
+	msg := mc_metadata.C2P_RequestMoveEnd{}
+	err := proto.Unmarshal(reader.GetBuffer(), &msg)
 	if err != nil || len(msg.GetMovementData().GetUuId()) == 0 {
 		log.Println("Failed to parse data:", err)
 		return
@@ -823,96 +825,96 @@ func (server *Server) playerMovement(conn *mnet.Client, reader mpacket.Reader) {
 }
 
 func (server *Server) moveProcess(conn *mnet.Client, x, y float32, uId string, movement *mc_metadata.Movement, moveType int) {
-	_, _, _ = server.gridMgr.OnMove(conn.GetPlayer().RegionID, x, y, uId)
+	addList, removeList, aroundList := server.gridMgr.OnMove(conn.GetPlayer().RegionID, x, y, uId)
 
-	//for k, v := range addList {
-	//	c := v.GetPlayer_P().GetCharacter()
-	//	res := &mc_metadata.P2C_ReportGridNew{
-	//		PlayerInfo: &mc_metadata.P2C_PlayerInfo{
-	//			Nickname: k,
-	//			UuId:     k,
-	//			Top:      c.Top,
-	//			Bottom:   c.Bottom,
-	//			Clothes:  c.Clothes,
-	//			Hair:     c.Hair,
-	//		},
-	//		SpawnPosX: c.PosX,
-	//		SpawnPosY: c.PosY,
-	//		SpawnPosZ: c.PosZ,
-	//		SpawnRotX: c.RotX,
-	//		SpawnRotY: c.RotY,
-	//		SpawnRotZ: c.RotZ,
-	//	}
-	//
-	//	p := conn.GetPlayer_P()
-	//	ch := p.GetCharacter()
-	//
-	//	res2 := &mc_metadata.P2C_ReportGridNew{
-	//		PlayerInfo: &mc_metadata.P2C_PlayerInfo{
-	//			UuId:     p.UId,
-	//			Nickname: p.UId,
-	//			Top:      ch.Top,
-	//			Bottom:   ch.Bottom,
-	//			Clothes:  ch.Clothes,
-	//			Hair:     ch.Hair,
-	//		},
-	//		SpawnPosX: ch.PosX,
-	//		SpawnPosY: ch.PosY,
-	//		SpawnPosZ: ch.PosZ,
-	//		SpawnRotX: ch.RotX,
-	//		SpawnRotY: ch.RotY,
-	//		SpawnRotZ: ch.RotZ,
-	//	}
-	//
-	//	server.sendMsgToMe(conn, res, constant.P2C_ReportGridNew)
-	//	server.sendMsgToMe(v, res2, constant.P2C_ReportGridNew)
-	//}
-	//
-	//for k, v := range removeList {
-	//	res := &mc_metadata.P2C_ReportGridOld{
-	//		PlayerInfo: &mc_metadata.P2C_PlayerInfo{
-	//			UuId: k,
-	//		},
-	//	}
-	//
-	//	res2 := &mc_metadata.P2C_ReportGridOld{
-	//		PlayerInfo: &mc_metadata.P2C_PlayerInfo{
-	//			UuId: conn.GetPlayer().UId,
-	//		},
-	//	}
-	//
-	//	//fmt.Println(fmt.Sprintf("conn : %s v : %s res : %s res2 : %s", conn.GetPlayer().UId, v.GetPlayer().UId, res.PlayerInfo.UuId, res2.PlayerInfo.UuId))
-	//
-	//	server.sendMsgToMe(conn, res, constant.P2C_ReportGridOld)
-	//	server.sendMsgToMe(v, res2, constant.P2C_ReportGridOld)
-	//}
-	//
-	//switch moveType {
-	//case constant.P2C_ReportMoveStart:
-	//	res := &mc_metadata.P2C_ReportMoveStart{
-	//		MovementData: movement,
-	//	}
-	//
-	//	for _, v := range aroundList {
-	//		server.sendMsgToMe(v, res, constant.P2C_ReportMoveStart)
-	//	}
-	//case constant.P2C_ReportMove:
-	//	res := &mc_metadata.P2C_ReportMove{
-	//		MovementData: movement,
-	//	}
-	//
-	//	for _, v := range aroundList {
-	//		server.sendMsgToMe(v, res, constant.P2C_ReportMove)
-	//	}
-	//case constant.P2C_ReportMoveEnd:
-	//	res := &mc_metadata.P2C_ReportMoveEnd{
-	//		MovementData: movement,
-	//	}
-	//
-	//	for _, v := range aroundList {
-	//		server.sendMsgToMe(v, res, constant.P2C_ReportMoveEnd)
-	//	}
-	//}
+	for k, v := range addList {
+		c := v.GetPlayer_P().GetCharacter()
+		res := mc_metadata.P2C_ReportGridNew{
+			PlayerInfo: &mc_metadata.P2C_PlayerInfo{
+				Nickname: k,
+				UuId:     k,
+				Top:      c.Top,
+				Bottom:   c.Bottom,
+				Clothes:  c.Clothes,
+				Hair:     c.Hair,
+			},
+			SpawnPosX: c.PosX,
+			SpawnPosY: c.PosY,
+			SpawnPosZ: c.PosZ,
+			SpawnRotX: c.RotX,
+			SpawnRotY: c.RotY,
+			SpawnRotZ: c.RotZ,
+		}
+
+		p := conn.GetPlayer_P()
+		ch := p.GetCharacter()
+
+		res2 := mc_metadata.P2C_ReportGridNew{
+			PlayerInfo: &mc_metadata.P2C_PlayerInfo{
+				UuId:     p.UId,
+				Nickname: p.UId,
+				Top:      ch.Top,
+				Bottom:   ch.Bottom,
+				Clothes:  ch.Clothes,
+				Hair:     ch.Hair,
+			},
+			SpawnPosX: ch.PosX,
+			SpawnPosY: ch.PosY,
+			SpawnPosZ: ch.PosZ,
+			SpawnRotX: ch.RotX,
+			SpawnRotY: ch.RotY,
+			SpawnRotZ: ch.RotZ,
+		}
+
+		server.sendMsgToMe(conn, &res, constant.P2C_ReportGridNew)
+		server.sendMsgToMe(v, &res2, constant.P2C_ReportGridNew)
+	}
+
+	for k, v := range removeList {
+		res := mc_metadata.P2C_ReportGridOld{
+			PlayerInfo: &mc_metadata.P2C_PlayerInfo{
+				UuId: k,
+			},
+		}
+
+		res2 := mc_metadata.P2C_ReportGridOld{
+			PlayerInfo: &mc_metadata.P2C_PlayerInfo{
+				UuId: conn.GetPlayer().UId,
+			},
+		}
+
+		//fmt.Println(fmt.Sprintf("conn : %s v : %s res : %s res2 : %s", conn.GetPlayer().UId, v.GetPlayer().UId, res.PlayerInfo.UuId, res2.PlayerInfo.UuId))
+
+		server.sendMsgToMe(conn, &res, constant.P2C_ReportGridOld)
+		server.sendMsgToMe(v, &res2, constant.P2C_ReportGridOld)
+	}
+
+	switch moveType {
+	case constant.P2C_ReportMoveStart:
+		res := mc_metadata.P2C_ReportMoveStart{
+			MovementData: movement,
+		}
+
+		for _, v := range aroundList {
+			server.sendMsgToMe(v, &res, constant.P2C_ReportMoveStart)
+		}
+	case constant.P2C_ReportMove:
+		res := mc_metadata.P2C_ReportMove{
+			MovementData: movement,
+		}
+
+		for _, v := range aroundList {
+			server.sendMsgToMe(v, &res, constant.P2C_ReportMove)
+		}
+	case constant.P2C_ReportMoveEnd:
+		res := mc_metadata.P2C_ReportMoveEnd{
+			MovementData: movement,
+		}
+
+		for _, v := range aroundList {
+			server.sendMsgToMe(v, &res, constant.P2C_ReportMoveEnd)
+		}
+	}
 
 	ch := conn.GetPlayer_P().GetCharacter()
 	ch.PosX = movement.GetDestinationX()
