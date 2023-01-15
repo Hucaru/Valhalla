@@ -2,6 +2,7 @@ package mnet
 
 import (
 	"github.com/Hucaru/Valhalla/common/dataController"
+	"log"
 	"math/rand"
 	"net"
 	"runtime"
@@ -90,6 +91,8 @@ type baseConn struct {
 	sendChannelLock  sync.RWMutex
 	sendChannelQueue *dataController.MapQueue
 
+	sendChannel chan mpacket.Packet
+
 	cryptSend *crypt.Maple
 	cryptRecv *crypt.Maple
 
@@ -142,18 +145,30 @@ func (bc *baseConn) Writer() {
 }
 
 func (bc *baseConn) MetaWriter() {
+	//for {
+	//	if bc.closed {
+	//		return
+	//	}
+	//
+	//	for {
+	//		v := bc.sendChannelQueue.Dequeue()
+	//		if v != nil {
+	//			bc.Write(v)
+	//		} else {
+	//			break
+	//		}
+	//	}
+	//
+	//	runtime.Gosched()
+	//}
+
 	for {
 		if bc.closed {
 			return
 		}
 
-		for {
-			v := bc.sendChannelQueue.Dequeue()
-			if v != nil {
-				bc.Write(v)
-			} else {
-				break
-			}
+		for c := range bc.sendChannel {
+			bc.Write(c)
 		}
 
 		runtime.Gosched()
@@ -165,7 +180,13 @@ func (bc *baseConn) Send(p mpacket.Packet) {
 		return
 	}
 
-	bc.sendChannelQueue.Enqueue(p)
+	if len(bc.sendChannel) == cap(bc.sendChannel) {
+		log.Println("channel full")
+		bc.Write(p)
+	} else {
+		bc.sendChannel <- p
+	}
+	//bc.sendChannelQueue.Enqueue(p)
 }
 
 func (bc *baseConn) String() string {
@@ -174,4 +195,5 @@ func (bc *baseConn) String() string {
 
 func (bc *baseConn) Cleanup() {
 	bc.closed = true
+	close(bc.sendChannel)
 }

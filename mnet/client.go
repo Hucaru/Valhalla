@@ -75,6 +75,7 @@ func NewClientMeta(conn net.Conn, queueSize int, latency, jitter int) *Client {
 	//c.sendChannelQueue = *dataController.NewLKQueue()
 
 	c.sendChannelQueue = dataController.NewMapQueue()
+	c.sendChannel = make(chan mpacket.Packet, 4096)
 
 	//c.eSend = make(chan mpacket.Packet, 4096*4)
 
