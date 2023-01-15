@@ -75,9 +75,8 @@ func serverReader(conn net.Conn, eRecv chan *Event, headerSize int) {
 }
 
 type SendChannelWrapper struct {
-	ch    chan mpacket.Packet
-	chNew chan bool
-	lock  sync.RWMutex
+	ch       chan mpacket.Packet
+	chFinish bool
 }
 
 type baseConn struct {
@@ -144,44 +143,11 @@ func (bc *baseConn) Writer() {
 }
 
 func (bc *baseConn) MetaWriter() {
-
-	for {
-		if bc.closed {
-			return
-		}
-
-		//alloced := false
-
-		select {
-		case p, ok := <-bc.sendChannelWrappwer.ch:
-			{
-				if !ok {
-					break
-				}
-
-				bc.Write(p)
-				//if err != nil {
-				//	log.Println(err)
-				//	if bc.closed {
-				//		break
-				//	}
-				//}
-
-				//if len(bc.sendChannelWrappwer.ch) >= cap(bc.sendChannelWrappwer.ch) {
-				//	close(bc.sendChannelWrappwer.ch)
-				//	bc.sendChannelWrappwer.ch = make(chan mpacket.Packet, 4)
-				//	alloced = true
-				//}
-			}
-		}
-
-		//if bc.closed {
-		//	if alloced {
-		//		close(bc.sendChannelWrappwer.ch)
-		//	}
-		//	return
-		//}
-	}
+	//for c := range bc.sendChannelWrappwer.ch {
+	//	bc.Write(c)
+	//}
+	//
+	//bc.sendChannelWrappwer.chFinish = true
 }
 
 func (bc *baseConn) Send(p mpacket.Packet) {
@@ -189,7 +155,34 @@ func (bc *baseConn) Send(p mpacket.Packet) {
 		return
 	}
 
-	bc.sendChannelWrappwer.ch <- p
+	if bc.sendChannelWrappwer.chFinish {
+		bc.sendChannelWrappwer.ch = make(chan mpacket.Packet, 4)
+		go func(c <-chan mpacket.Packet) {
+			for _c := range c {
+				bc.Write(_c)
+			}
+			bc.sendChannelWrappwer.chFinish = true
+		}(bc.sendChannelWrappwer.ch)
+
+		bc.sendChannelWrappwer.chFinish = false
+		bc.sendChannelWrappwer.ch <- p
+	} else {
+		bc.sendChannelWrappwer.ch <- p
+	}
+
+	//if bc.sendChannelWrappwer.chFinish {
+	//	if bc.closed {
+	//		return
+	//	}
+	//
+	//	bc.sendChannelWrappwer.chFinish = false
+	//	bc.sendChannelWrappwer.ch = make(chan mpacket.Packet, 4)
+	//	go bc.MetaWriter()
+	//} else {
+	//	bc.sendChannelWrappwer.ch <- p
+	//}
+
+	//bc.sendChannelWrappwer.ch <- p
 }
 
 func (bc *baseConn) String() string {
