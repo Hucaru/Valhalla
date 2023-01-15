@@ -150,7 +150,7 @@ func (bc *baseConn) MetaWriter() {
 			return
 		}
 
-		alloced := false
+		//alloced := false
 
 		select {
 		case p, ok := <-bc.sendChannelWrappwer.ch:
@@ -167,25 +167,24 @@ func (bc *baseConn) MetaWriter() {
 				//	}
 				//}
 
-				if len(bc.sendChannelWrappwer.ch) >= cap(bc.sendChannelWrappwer.ch) {
-					close(bc.sendChannelWrappwer.ch)
-					bc.sendChannelWrappwer.ch = make(chan mpacket.Packet, 4)
-					alloced = true
-				}
+				//if len(bc.sendChannelWrappwer.ch) >= cap(bc.sendChannelWrappwer.ch) {
+				//	close(bc.sendChannelWrappwer.ch)
+				//	bc.sendChannelWrappwer.ch = make(chan mpacket.Packet, 4)
+				//	alloced = true
+				//}
 			}
 		}
 
-		if bc.closed {
-			if alloced {
-				close(bc.sendChannelWrappwer.ch)
-			}
-			return
-		}
+		//if bc.closed {
+		//	if alloced {
+		//		close(bc.sendChannelWrappwer.ch)
+		//	}
+		//	return
+		//}
 	}
 }
 
 func (bc *baseConn) Send(p mpacket.Packet) {
-
 	if bc.closed {
 		return
 	}
