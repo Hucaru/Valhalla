@@ -2,9 +2,9 @@ package mnet
 
 import (
 	"github.com/Hucaru/Valhalla/common/dataController"
+	"log"
 	"math/rand"
 	"net"
-	"runtime"
 	"sync"
 	"time"
 
@@ -75,6 +75,12 @@ func serverReader(conn net.Conn, eRecv chan *Event, headerSize int) {
 	}
 }
 
+type SendChannelWrapper struct {
+	ch    chan mpacket.Packet
+	chNew chan bool
+	lock  sync.RWMutex
+}
+
 type baseConn struct {
 	net.Conn
 	eSend  chan mpacket.Packet
@@ -84,6 +90,8 @@ type baseConn struct {
 
 	sendChannelLock  sync.RWMutex
 	sendChannelQueue dataController.LKQueue
+
+	sendChannelWrappwer SendChannelWrapper
 
 	cryptSend *crypt.Maple
 	cryptRecv *crypt.Maple
@@ -143,19 +151,36 @@ func (bc *baseConn) MetaWriter() {
 			return
 		}
 
-		for {
-			v := bc.sendChannelQueue.Dequeue()
-			if v == nil {
-				break
+		select {
+		case p, ok := <-bc.sendChannelWrappwer.ch:
+			{
+				if !ok {
+					break
+				}
+
+				_, err := bc.Write(p)
+				if err != nil {
+					log.Println(err)
+					if bc.closed {
+						break
+					}
+				}
+
+				if len(bc.sendChannelWrappwer.ch) >= cap(bc.sendChannelWrappwer.ch) {
+					close(bc.sendChannelWrappwer.ch)
+					bc.sendChannelWrappwer.ch = make(chan mpacket.Packet, 4)
+				}
 			}
-			bc.Conn.Write(v)
 		}
-		runtime.Gosched()
+
+		if bc.closed {
+			return
+		}
 	}
 }
 
 func (bc *baseConn) Send(p mpacket.Packet) {
-	bc.sendChannelQueue.Enqueue(p)
+	bc.sendChannelWrappwer.ch <- p
 }
 
 func (bc *baseConn) String() string {
@@ -164,4 +189,5 @@ func (bc *baseConn) String() string {
 
 func (bc *baseConn) Cleanup() {
 	bc.closed = true
+	close(bc.sendChannelWrappwer.ch)
 }
