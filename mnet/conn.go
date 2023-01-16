@@ -175,7 +175,7 @@ func (bc *baseConn) Send(p mpacket.Packet) {
 
 	bc.sendChannelQueue.Enqueue(p)
 
-	runtime.Gosched()
+	//runtime.Gosched()
 }
 
 func (bc *baseConn) String() string {
