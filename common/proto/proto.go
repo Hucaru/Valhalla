@@ -22,8 +22,8 @@ func Unmarshal(buff []byte, msg proto.Message) error {
 	return proto.Unmarshal(buff, msg)
 }
 
-func AccountReport(uID string, acc model.Character) *mc_metadata.P2C_ReportLoginUser {
-	res := &mc_metadata.P2C_ReportLoginUser{
+func AccountReport(uID string, acc model.Character) mc_metadata.P2C_ReportLoginUser {
+	res := mc_metadata.P2C_ReportLoginUser{
 		UuId: uID,
 		PlayerInfo: &mc_metadata.P2C_PlayerInfo{
 			Nickname: acc.NickName,
@@ -82,18 +82,20 @@ func ChannelChangeForOldReport(uID string, acc *model.Character) *mc_metadata.P2
 	return res
 }
 
-func AccountResult(player *model.Player) *mc_metadata.P2C_ResultLoginUser {
-	return &mc_metadata.P2C_ResultLoginUser{
+func AccountResult(player *model.Player) mc_metadata.P2C_ResultLoginUser {
+	PlayerInfo := mc_metadata.P2C_PlayerInfo{
 		UuId:     player.UId,
-		RegionId: int32(player.RegionID),
-		PlayerInfo: &mc_metadata.P2C_PlayerInfo{
-			UuId:     player.UId,
-			Nickname: player.GetCharacter().NickName,
-			Hair:     player.GetCharacter().Hair,
-			Top:      player.GetCharacter().Top,
-			Bottom:   player.GetCharacter().Bottom,
-			Clothes:  player.GetCharacter().Clothes,
-		},
+		Nickname: player.GetCharacter().NickName,
+		Hair:     player.GetCharacter().Hair,
+		Top:      player.GetCharacter().Top,
+		Bottom:   player.GetCharacter().Bottom,
+		Clothes:  player.GetCharacter().Clothes,
+	}
+
+	return mc_metadata.P2C_ResultLoginUser{
+		UuId:        player.UId,
+		RegionId:    int32(player.RegionID),
+		PlayerInfo:  &PlayerInfo,
 		SpawnPosX:   player.GetCharacter().PosX,
 		SpawnPosY:   player.GetCharacter().PosY,
 		SpawnPosZ:   player.GetCharacter().PosZ,

@@ -6,7 +6,6 @@ import (
 	"golang.org/x/exp/maps"
 	"log"
 	rand2 "math/rand"
-	"runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -97,7 +96,6 @@ func (server *Server) playerConnect(conn *mnet.Client, reader mpacket.Reader) {
 	//plr.conn.SetPlayer(*player)
 	//
 	//server.addPlayer(&plr)
-	server.clients.Set(msg.UuId, conn)
 	conn.SetPlayer(*player)
 	conn.TempIsBot = msg.IsBot == 1
 	ch = conn.GetPlayer_P().GetCharacter_P()
@@ -111,35 +109,84 @@ func (server *Server) playerConnect(conn *mnet.Client, reader mpacket.Reader) {
 		//return
 	}
 
-	response := proto.AccountReport(conn.GetPlayer().UId, *ch)
-	server.sendMsgToRegion(conn, response, constant.P2C_ReportLoginUser)
+	GridX, GridY := common.FindGrid(ch.PosX, ch.PosY)
 
-	account := proto.AccountResult(player)
-	fmt.Println("NumGoroutine COUNT CONNECT", runtime.NumGoroutine())
-	x, y := common.FindGrid(player.GetCharacter().PosX, player.GetCharacter().PosY)
-	loggedPlayers := server.getPlayersOnGrids(conn.GetPlayer().RegionID, x, y, conn.GetPlayer().UId)
-	if loggedPlayers != nil {
-		//log.Println("START MOVING EMULATION")
+	server.gridMgr.Add(conn.GetPlayer().RegionID, GridX, GridY, conn)
+	server.clients.Set(msg.UuId, conn)
 
-		server.fMovePlayers = append(server.fMovePlayers, PlayerMovement{
-			name: msg.UuId,
-			x:    player.GetCharacter().PosX,
-			y:    player.GetCharacter().PosY,
-		})
-
-		//go server.addToEmulateMoving(plr.conn.GetPlayer().UId, loggedPlayers)
-		fmt.Println("NumGoroutine COUNT EMULATE", runtime.NumGoroutine())
-		users := server.convertPlayersToLoginResult(loggedPlayers)
-		account.LoggedUsers = append(account.LoggedUsers, users...)
+	reportLoginUserPacket := mc_metadata.P2C_ReportLoginUser{
+		UuId: player.UId,
+		PlayerInfo: &mc_metadata.P2C_PlayerInfo{
+			Nickname: ch.NickName,
+			Hair:     ch.Hair,
+			Top:      ch.Top,
+			Bottom:   ch.Bottom,
+			Clothes:  ch.Clothes,
+		},
+		SpawnPosX: ch.PosX,
+		SpawnPosY: ch.PosY,
+		SpawnPosZ: ch.PosZ,
+		SpawnRotX: ch.RotX,
+		SpawnRotY: ch.RotY,
+		SpawnRotZ: ch.RotZ,
 	}
 
-	//fmt.Println(" Client at ", conn, "UID:", msg.GetUuId(), "LOCATION:", player.Character.PosX, player.Character.PosY)
+	server.sendMsgToRegion(conn, &reportLoginUserPacket, constant.P2C_ReportLoginUser)
+	_, _, newList := server.gridMgr.OnMove(player.RegionID, ch.PosX, ch.PosY, player.UId)
+	//
 
-	GridX, GridY := common.FindGrid(conn.GetPlayer_P().GetCharacter().PosX, conn.GetPlayer_P().GetCharacter().PosY)
-	server.gridMgr.Add(conn.GetPlayer().RegionID, GridX, GridY, conn)
+	resultLoginUserPacket := proto.AccountResult(player)
+	for _, v := range newList {
+		_v := v.GetPlayer()
+		_ch := _v.GetCharacter()
+		_r := mc_metadata.P2C_ReportLoginUser{
+			UuId: _v.UId,
+			PlayerInfo: &mc_metadata.P2C_PlayerInfo{
+				Nickname: _ch.NickName,
+				Hair:     _ch.Hair,
+				Top:      _ch.Top,
+				Bottom:   _ch.Bottom,
+				Clothes:  _ch.Clothes,
+			},
+			SpawnPosX: _ch.PosX,
+			SpawnPosY: _ch.PosY,
+			SpawnPosZ: _ch.PosZ,
+			SpawnRotX: _ch.RotX,
+			SpawnRotY: _ch.RotY,
+			SpawnRotZ: _ch.RotZ,
+		}
+		resultLoginUserPacket.LoggedUsers = append(resultLoginUserPacket.LoggedUsers, &_r)
+	}
 
-	server.sendMsgToMe(conn, account, constant.P2C_ResultLoginUser)
-	response = nil
+	server.sendMsgToMe(conn, &resultLoginUserPacket, constant.P2C_ResultLoginUser)
+
+	//account := proto.AccountResult(player)
+	//fmt.Println("NumGoroutine COUNT CONNECT", runtime.NumGoroutine())
+	//x, y := common.FindGrid(player.GetCharacter().PosX, player.GetCharacter().PosY)
+	//loggedPlayers := server.getPlayersOnGrids(conn.GetPlayer().RegionID, x, y, conn.GetPlayer().UId)
+	//if loggedPlayers != nil {
+	//	//log.Println("START MOVING EMULATION")
+	//
+	//	server.fMovePlayers = append(server.fMovePlayers, PlayerMovement{
+	//		name: msg.UuId,
+	//		x:    player.GetCharacter().PosX,
+	//		y:    player.GetCharacter().PosY,
+	//	})
+	//
+	//	//go server.addToEmulateMoving(plr.conn.GetPlayer().UId, loggedPlayers)
+	//	fmt.Println("NumGoroutine COUNT EMULATE", runtime.NumGoroutine())
+	//	users := server.convertPlayersToLoginResult(loggedPlayers)
+	//	for _, v := range users {
+	//		account.LoggedUsers = append(account.LoggedUsers, &v)
+	//	}
+	//}
+	//
+	////fmt.Println(" Client at ", conn, "UID:", msg.GetUuId(), "LOCATION:", player.Character.PosX, player.Character.PosY)
+	//
+	//GridX, GridY := common.FindGrid(conn.GetPlayer_P().GetCharacter().PosX, conn.GetPlayer_P().GetCharacter().PosY)
+	//server.gridMgr.Add(conn.GetPlayer().RegionID, GridX, GridY, conn)
+	//
+	//server.sendMsgToMe(conn, account, constant.P2C_ResultLoginUser)
 }
 
 func (server *Server) getRoomPlayers(uID string, mX, mY float32) []*model.Player {
@@ -925,7 +972,7 @@ func (server *Server) moveProcess(conn *mnet.Client, x, y float32, uId string, m
 		}
 	}
 
-	ch := conn.GetPlayer_P().GetCharacter()
+	ch := conn.GetPlayer_P().GetCharacter_P()
 	ch.PosX = movement.GetDestinationX()
 	ch.PosY = movement.GetDestinationY()
 	ch.PosZ = movement.GetDestinationZ()
@@ -1291,11 +1338,11 @@ func (server *Server) translateMessage(msg string) *mc_metadata.P2C_Translate {
 	return nil
 }
 
-func (server *Server) convertPlayersToLoginResult(plrs map[string]*mnet.Client) []*mc_metadata.P2C_ReportLoginUser {
-	res := make([]*mc_metadata.P2C_ReportLoginUser, 0)
+func (server *Server) convertPlayersToLoginResult(plrs map[string]*mnet.Client) []mc_metadata.P2C_ReportLoginUser {
+	res := make([]mc_metadata.P2C_ReportLoginUser, 0)
 
 	for _, v := range plrs {
-		intr := &mc_metadata.P2C_ReportInteractionAttach{}
+		intr := mc_metadata.P2C_ReportInteractionAttach{}
 		p := v.GetPlayer()
 		interaction := v.GetPlayer_P().GetInteraction()
 		if interaction.IsInteraction {
@@ -1310,7 +1357,7 @@ func (server *Server) convertPlayersToLoginResult(plrs map[string]*mnet.Client) 
 
 		ch := p.GetCharacter()
 
-		res = append(res, &mc_metadata.P2C_ReportLoginUser{
+		res = append(res, mc_metadata.P2C_ReportLoginUser{
 			UuId: p.UId,
 			PlayerInfo: &mc_metadata.P2C_PlayerInfo{
 				Nickname: ch.NickName,
@@ -1319,7 +1366,7 @@ func (server *Server) convertPlayersToLoginResult(plrs map[string]*mnet.Client) 
 				Bottom:   ch.Bottom,
 				Clothes:  ch.Clothes,
 			},
-			InteractionData: intr,
+			InteractionData: &intr,
 			SpawnPosX:       ch.PosX,
 			SpawnPosY:       ch.PosY,
 			SpawnPosZ:       ch.PosZ,
