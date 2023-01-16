@@ -37,8 +37,8 @@ func (server *Server) HandleClientPacket(
 
 func (server *Server) playerConnect(conn *mnet.Client, reader mpacket.Reader) {
 
-	msg := &mc_metadata.C2P_RequestLoginUser{}
-	err := proto.Unmarshal(reader.GetBuffer(), msg)
+	msg := mc_metadata.C2P_RequestLoginUser{}
+	err := proto.Unmarshal(reader.GetBuffer(), &msg)
 	if err != nil || len(msg.UuId) == 0 {
 		log.Println("Failed to parse data:", err)
 		return
@@ -139,21 +139,22 @@ func (server *Server) playerConnect(conn *mnet.Client, reader mpacket.Reader) {
 	for _, v := range newList {
 		_v := v.GetPlayer()
 		_ch := _v.GetCharacter()
+		PlayerInfo := mc_metadata.P2C_PlayerInfo{
+			Nickname: _ch.NickName,
+			Hair:     _ch.Hair,
+			Top:      _ch.Top,
+			Bottom:   _ch.Bottom,
+			Clothes:  _ch.Clothes,
+		}
 		_r := mc_metadata.P2C_ReportLoginUser{
-			UuId: _v.UId,
-			PlayerInfo: &mc_metadata.P2C_PlayerInfo{
-				Nickname: _ch.NickName,
-				Hair:     _ch.Hair,
-				Top:      _ch.Top,
-				Bottom:   _ch.Bottom,
-				Clothes:  _ch.Clothes,
-			},
-			SpawnPosX: _ch.PosX,
-			SpawnPosY: _ch.PosY,
-			SpawnPosZ: _ch.PosZ,
-			SpawnRotX: _ch.RotX,
-			SpawnRotY: _ch.RotY,
-			SpawnRotZ: _ch.RotZ,
+			UuId:       _v.UId,
+			PlayerInfo: &PlayerInfo,
+			SpawnPosX:  _ch.PosX,
+			SpawnPosY:  _ch.PosY,
+			SpawnPosZ:  _ch.PosZ,
+			SpawnRotX:  _ch.RotX,
+			SpawnRotY:  _ch.RotY,
+			SpawnRotZ:  _ch.RotZ,
 		}
 		resultLoginUserPacket.LoggedUsers = append(resultLoginUserPacket.LoggedUsers, &_r)
 	}

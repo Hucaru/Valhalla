@@ -63,18 +63,7 @@ func GetLoggedData(uUID string) (*model.Player, error) {
 	ch := plr.GetCharacter_P()
 
 	err := Maria.QueryRow(
-		"SELECT a.accountID, "+
-			"a.uId, c.id as characterID, c.channelID, "+
-			"c.nickname, c.hair, c.top, c.bottom, c.clothes, "+
-			"IFNULL(m.time, 0) as time, "+
-			"IFNULL(m.pos_x, 0) as pos_x, IFNULL(m.pos_y, 0) as pos_y, IFNULL(m.pos_z, 0) as pos_z, "+
-			"IFNULL(m.rot_x, 0) as rot_x, IFNULL(m.rot_y, 0) as rot_y, IFNULL(m.rot_z, 0) as rot_z "+
-			"FROM accounts a "+
-			"LEFT JOIN characters c ON c.accountID = a.accountID "+
-			"LEFT JOIN movement m ON m.characterID = characterID "+
-			"WHERE a.uId=? "+
-			"ORDER BY time DESC "+
-			"LIMIT 1", uUID).
+		"SELECT a.accountID, a.uId, c.id as characterID, c.channelID, c.nickname, c.hair, c.top, c.bottom, c.clothes, IFNULL(m.time, 0) as time, IFNULL(m.pos_x, 0) as pos_x, IFNULL(m.pos_y, 0) as pos_y, IFNULL(m.pos_z, 0) as pos_z, IFNULL(m.rot_x, 0) as rot_x, IFNULL(m.rot_y, 0) as rot_y, IFNULL(m.rot_z, 0) as rot_z FROM accounts a LEFT JOIN characters c ON c.accountID = a.accountID LEFT JOIN (select characterID, pos_x, pos_y, pos_z, rot_x, rot_y, rot_z, time from movement) as m ON m.characterID = c.id WHERE a.uId=?  ORDER BY m.time DESC limit 1;", uUID).
 		Scan(&plr.AccountID,
 			&plr.UId, &plr.CharacterID, &plr.RegionID,
 			&ch.NickName, &ch.Hair, &ch.Top, &ch.Bottom, &ch.Clothes,
