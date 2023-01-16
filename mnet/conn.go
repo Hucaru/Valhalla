@@ -152,9 +152,9 @@ func (bc *baseConn) MetaWriter() {
 	for {
 		b := bc.sendChannelQueue.Dequeue()
 		if b != nil {
-			//if bc.TempIsBot == true {
-			//	continue
-			//}
+			if bc.TempIsBot == true {
+				continue
+			}
 
 			bc.Conn.Write(b)
 		} else if bc.closed {
