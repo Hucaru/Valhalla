@@ -540,7 +540,7 @@ func (server *Server) playerEnterToRoom(conn *mnet.Client, reader mpacket.Reader
 	res := mc_metadata.P2C_ResultMetaSchoolEnter{
 		UuId:          msg.GetUuId(),
 		TeacherEnable: msg.GetTeacherEnable(),
-		DataSchool:    proto.ConvertPlayersToRoomReport(server.getRoomPlayers(msg.GetUuId(), plr.conn.GetPlayer().Character.PosX, plr.conn.GetPlayer().Character.PosY)),
+		DataSchool:    proto.ConvertPlayersToRoomReport(server.getRoomPlayers(msg.GetUuId(), vCh.PosX, vCh.PosY)),
 	}
 
 	server.sendMsgToMe(conn, &res, constant.P2C_ResultMetaSchoolEnter)
@@ -549,7 +549,7 @@ func (server *Server) playerEnterToRoom(conn *mnet.Client, reader mpacket.Reader
 func (server *Server) playerLeaveFromRoom(conn *mnet.Client, reader mpacket.Reader) {
 
 	msg := mc_metadata.C2P_RequestMetaSchoolLeave{}
-	err := proto.Unmarshal(reader.GetBuffer(), msg)
+	err := proto.Unmarshal(reader.GetBuffer(), &msg)
 	if err != nil {
 		log.Println("Failed to parse data:", err)
 		return
@@ -849,7 +849,7 @@ func (server *Server) chatSendRegion(conn *mnet.Client, reader mpacket.Reader) {
 
 func (server *Server) chatSendWhisper(conn *mnet.Client, reader mpacket.Reader) {
 	msg := mc_metadata.C2P_RequestWhisper{}
-	err := proto.Unmarshal(reader.GetBuffer(), msg)
+	err := proto.Unmarshal(reader.GetBuffer(), &msg)
 	if err != nil || len(msg.GetUuId()) == 0 {
 		log.Println("Failed to parse data:", err)
 		return
