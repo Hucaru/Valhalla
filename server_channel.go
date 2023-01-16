@@ -153,6 +153,7 @@ func (cs *channelServer) acceptNewConnections() {
 		client := mnet.NewClientMeta(conn, cs.config.PacketQueueSize, cs.config.Latency, cs.config.Jitter)
 		cs.gameState.HandleClientPacket(client, mpacket.Reader{}, constant.OnConnected)
 
+		// 문제 생기면 https://blog.kesuskim.com/2018/08/go-tcp-implementation/ 참고해서 도입할것
 		go func() {
 			for {
 				buff := make(mpacket.Packet, constant.MetaClientHeaderSize)
