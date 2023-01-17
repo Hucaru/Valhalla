@@ -29,6 +29,8 @@ type BaseConn struct {
 type Client struct {
 	BaseConn
 	client
+
+	Bot_ID int64
 }
 
 func NewClient(conn net.Conn, eRecv chan *Event, queueSize int, keySend, keyRecv [4]byte, latency, jitter int) *Client {
