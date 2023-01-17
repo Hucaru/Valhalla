@@ -29,7 +29,7 @@ func (server *Server) clientBot(conn *mnet.Client, reader mpacket.Reader) {
 	msg := mc_metadata.C2P_Request_BOT{}
 	err := proto.Unmarshal(reader.GetBuffer(), &msg)
 	if err != nil || len(msg.GetNickname()) == 0 {
-		log.Println("Failed to parse data:", err)
+		log.Println("Failed to parse data: ", err, "clientBot")
 		return
 	}
 
@@ -126,7 +126,7 @@ func (server *Server) playerConnect(conn *mnet.Client, reader mpacket.Reader) {
 	msg := mc_metadata.C2P_RequestLoginUser{}
 	err := proto.Unmarshal(reader.GetBuffer(), &msg)
 	if err != nil || msg.GetUuId() == 0 {
-		log.Println("Failed to parse data:", err)
+		log.Println("Failed to parse data: ", err, "playerConnect")
 		return
 	}
 	var player *model.Player
@@ -386,7 +386,7 @@ func (server *Server) playerMovementStart(conn *mnet.Client, reader mpacket.Read
 	msg := mc_metadata.C2P_RequestMoveStart{}
 	err := proto.Unmarshal(reader.GetBuffer(), &msg)
 	if err != nil || msg.GetMovementData().GetUuId() == 0 {
-		log.Println("Failed to parse data:", err)
+		log.Println("Failed to parse data: ", err, "playerMovementStart")
 		return
 	}
 
@@ -398,7 +398,7 @@ func (server *Server) playerMovementEnd(conn *mnet.Client, reader mpacket.Reader
 	msg := mc_metadata.C2P_RequestMoveEnd{}
 	err := proto.Unmarshal(reader.GetBuffer(), &msg)
 	if err != nil || msg.GetMovementData().GetUuId() == 0 {
-		log.Println("Failed to parse data:", err)
+		log.Println("Failed to parse data: ", err, "playerMovementEnd")
 		return
 	}
 	server.moveProcess(conn, msg.GetMovementData().DestinationX, msg.GetMovementData().DestinationY, msg.GetMovementData().GetUuId(), msg.GetMovementData(), constant.P2C_ReportMoveEnd)
@@ -685,7 +685,7 @@ func (server *Server) playerMovement(conn *mnet.Client, reader mpacket.Reader) {
 	msg := &mc_metadata.C2P_RequestMove{}
 	err := proto.Unmarshal(reader.GetBuffer(), msg)
 	if err != nil || msg.GetMovementData().GetUuId() == 0 {
-		log.Println("Failed to parse data:", err)
+		log.Println("Failed to parse data: ", err, "playerMovement")
 		return
 	}
 
