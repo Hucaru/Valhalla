@@ -33,6 +33,12 @@ func (server *Server) clientBot(conn *mnet.Client, reader mpacket.Reader) {
 		return
 	}
 
+	if conn.GetPlayer().UId == 0 {
+		conn.Cleanup()
+		conn.Close()
+		return
+	}
+
 	switch msg.GetActionType() {
 	case 0:
 		packet := mc_metadata.C2P_RequestPlayerInfo{
@@ -680,7 +686,7 @@ func (server *Server) playerLeaveFromRoom(conn *mnet.Client, reader mpacket.Read
 	go server.sendMsgToRegion(conn, res, constant.P2C_ReportMetaSchoolLeave)
 }
 
-func (server *Server) playerMovement(conn *mnet.Client, reader mpacket.Reader) {
+func (server *Server) playerMovementplayerMovement(conn *mnet.Client, reader mpacket.Reader) {
 
 	msg := &mc_metadata.C2P_RequestMove{}
 	err := proto.Unmarshal(reader.GetBuffer(), msg)
@@ -839,7 +845,6 @@ func (server *Server) playerInfo(conn *mnet.Client, reader mpacket.Reader) {
 		return
 	}
 
-	conn.Bot_ID = plr.UId
 	conn.BaseConn.Send(data)
 
 	//server.sendMsgToMe(data, conn)
