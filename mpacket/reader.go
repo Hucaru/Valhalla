@@ -1,6 +1,6 @@
 package mpacket
 
-// Reader -
+// Reader -ㅔ
 type Reader struct {
 	pos    int
 	packet *Packet
