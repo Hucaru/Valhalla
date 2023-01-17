@@ -135,6 +135,7 @@ func (server *Server) Initialize(work chan func(), dbuser, dbpassword, dbaddress
 	server.PlayerActionHandler[constant.C2P_RequestRegionChat] = server.chatSendRegion
 	server.PlayerActionHandler[constant.C2P_Request_BOT] = server.chatSendRegion
 	server.PlayerActionHandler[constant.OnDisconnected] = server.ClientDisconnected
+	server.PlayerActionHandler[constant.C2P_Request_BOT] = server.clientBot
 
 	runtime.GOMAXPROCS(runtime.NumCPU())
 	server.dispatch = work
