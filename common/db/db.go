@@ -8,12 +8,14 @@ import (
 	"github.com/Hucaru/Valhalla/constant"
 	"github.com/Hucaru/Valhalla/meta-proto/go/mc_metadata"
 	"log"
+	"sync"
 	"time"
 )
 import _ "github.com/go-sql-driver/mysql"
 
 // DB object used for queries
 var Maria *sql.DB
+var AccountLock sync.Mutex
 
 // ConnectToDB - connect to a MySQL instance
 func ConnectToDB(user, password, address, port, database string) error {
@@ -158,6 +160,8 @@ func GetLoggedDataByName(req *mc_metadata.C2P_RequestPlayerInfo) (*model.Player,
 }
 
 func AddNewAccount(plr *model.Player) error {
+	AccountLock.Lock()
+	defer AccountLock.Unlock()
 	res, err := Maria.Exec("INSERT INTO accounts (username, password, pin, dob, isLogedIn) VALUES ( ?, ?, ?, ?, ?)",
 		plr.GetCharacter().NickName, "password", "1", 1, 1)
 
