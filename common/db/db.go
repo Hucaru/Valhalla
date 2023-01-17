@@ -7,6 +7,7 @@ import (
 	"github.com/Hucaru/Valhalla/common/db/model"
 	"github.com/Hucaru/Valhalla/constant"
 	"github.com/Hucaru/Valhalla/meta-proto/go/mc_metadata"
+	"github.com/Hucaru/Valhalla/mnet"
 	"log"
 	"sync"
 	"time"
@@ -35,7 +36,7 @@ func ConnectToDB(user, password, address, port, database string) error {
 	return nil
 }
 
-func GetLoggedData(uId int64) (*model.Player, error) {
+func GetLoggedData(uId int64, client mnet.Client) (*model.Player, error) {
 
 	plr := &model.Player{
 		UId:         uId,
@@ -46,11 +47,11 @@ func GetLoggedData(uId int64) (*model.Player, error) {
 
 	Character := model.Character{
 		Role:     constant.User,
-		NickName: "",
-		Hair:     "",
-		Top:      "",
-		Bottom:   "",
-		Clothes:  "",
+		NickName: client.TempPlayerInfo.Nickname,
+		Hair:     client.TempPlayerInfo.Hair,
+		Top:      client.TempPlayerInfo.Top,
+		Bottom:   client.TempPlayerInfo.Bottom,
+		Clothes:  client.TempPlayerInfo.Clothes,
 		Time:     constant.DEFAULT_TIME,
 		PosX:     constant.PosX,
 		PosY:     constant.PosY,

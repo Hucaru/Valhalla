@@ -4,6 +4,7 @@ import (
 	"github.com/Hucaru/Valhalla/common/dataController"
 	"github.com/Hucaru/Valhalla/common/db/model"
 	"github.com/Hucaru/Valhalla/constant"
+	"github.com/Hucaru/Valhalla/meta-proto/go/mc_metadata"
 	"github.com/Hucaru/Valhalla/mnet/crypt"
 	"github.com/Hucaru/Valhalla/mpacket"
 	"net"
@@ -29,6 +30,8 @@ type BaseConn struct {
 type Client struct {
 	BaseConn
 	client
+
+	TempPlayerInfo mc_metadata.C2P_RequestPlayerInfo
 }
 
 func NewClient(conn net.Conn, eRecv chan *Event, queueSize int, keySend, keyRecv [4]byte, latency, jitter int) *Client {
