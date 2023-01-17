@@ -58,7 +58,7 @@ func (gridMgr *GridManager) Init() {
 func (gridMgr *GridManager) Add(region int64, gridX, gridY int, cl *mnet.Client) {
 	plr := (*cl).GetPlayer()
 
-	gridMgr.grids[0][gridX][gridY].Set(plr.UId, cl)
+	gridMgr.grids[region][gridX][gridY].Set(plr.UId, cl)
 	gridMgr.plrs.Set(plr.UId, GridInfo{gridX, gridY, region})
 }
 
@@ -68,9 +68,9 @@ func (gridMgr *GridManager) Remove(uId int64) *mnet.Client {
 		gridMgr.plrs.Remove(uId)
 		gridInfo := info
 
-		plr, ok2 := gridMgr.grids[0][gridInfo.GridX][gridInfo.GridY].Get(uId)
+		plr, ok2 := gridMgr.grids[gridInfo.RegionId][gridInfo.GridX][gridInfo.GridY].Get(uId)
 		if ok2 {
-			gridMgr.grids[0][gridInfo.GridX][gridInfo.GridY].Remove(uId)
+			gridMgr.grids[gridInfo.RegionId][gridInfo.GridX][gridInfo.GridY].Remove(uId)
 			return plr
 		}
 	}
@@ -112,9 +112,13 @@ func (gridMgr *GridManager) fillPlayers(RegionId int64, GridX, GridY int) map[in
 		GridY = MaxY - 1
 	}
 
-	gridMgr.grids[0][GridX][GridY].IterCb(func(k int64, v *mnet.Client) {
-		result[k] = v
-	})
+	for v := range gridMgr.grids[RegionId][GridX][GridY].IterBuffered() {
+		result[v.Key] = v.Val
+	}
+
+	//gridMgr.grids[RegionId][GridX][GridY].IterCb(func(k int64, v *mnet.Client) {
+	//	result[k] = v
+	//})
 
 	return result
 }
@@ -124,7 +128,7 @@ func (gridMgr *GridManager) OnMove(regionId int64, newX, newY float32, uId int64
 	if ok {
 		newGridX, newGridY := common.FindGrid(newX, newY)
 		gridInfo := info
-		if newGridX != gridInfo.GridX || newGridY != gridInfo.GridY {
+		if gridInfo.RegionId != regionId || newGridX != gridInfo.GridX || newGridY != gridInfo.GridY {
 			//gridMgr.mtx.Lock()
 			//defer gridMgr.mtx.Unlock()
 
