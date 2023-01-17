@@ -131,8 +131,7 @@ func (gridMgr *GridManager) OnMove(regionId int64, newX, newY float32, uId strin
 			_plr := gridMgr.Remove(uId)
 			if _plr != nil {
 				gridMgr.Add(regionId, newGridX, newGridY, _plr)
-				gridMgr.plrs.Set(uId, GridInfo{newGridX, newGridY, regionId})
-
+				
 				oldList := map[string]*mnet.Client{}
 				newList := map[string]*mnet.Client{}
 
