@@ -37,7 +37,7 @@ func (server *Server) clientBot(conn *mnet.Client, reader mpacket.Reader) {
 	case 0:
 		packet := mc_metadata.C2P_RequestPlayerInfo{
 			Nickname: msg.Nickname,
-		}
+		}m
 
 		sendData, _ := proto2.Marshal(&packet)
 		data := mpacket.Packet{}
@@ -46,7 +46,7 @@ func (server *Server) clientBot(conn *mnet.Client, reader mpacket.Reader) {
 		server.playerInfo(conn, reader)
 	case 1:
 		packet := mc_metadata.C2P_RequestLoginUser{
-			UuId:      conn.Bot_ID,
+			UuId:      msg.UId,
 			IsBot:     1,
 			SpawnPosX: msg.SpawnPosX,
 			SpawnPosY: msg.SpawnPosY,
@@ -61,7 +61,7 @@ func (server *Server) clientBot(conn *mnet.Client, reader mpacket.Reader) {
 		server.playerConnect(conn, reader)
 	case 2:
 		MovementData := mc_metadata.Movement{}
-		MovementData.UuId = conn.Bot_ID
+		MovementData.UuId = msg.UId
 		MovementData.DestinationX = msg.SpawnPosX
 		MovementData.DestinationY = msg.SpawnPosY
 		MovementData.DestinationZ = msg.SpawnPosZ
@@ -78,7 +78,7 @@ func (server *Server) clientBot(conn *mnet.Client, reader mpacket.Reader) {
 		server.playerMovementStart(conn, reader)
 	case 3:
 		MovementData := mc_metadata.Movement{}
-		MovementData.UuId = conn.Bot_ID
+		MovementData.UuId = msg.UId
 		MovementData.DestinationX = msg.SpawnPosX
 		MovementData.DestinationY = msg.SpawnPosY
 		MovementData.DestinationZ = msg.SpawnPosZ
@@ -94,7 +94,7 @@ func (server *Server) clientBot(conn *mnet.Client, reader mpacket.Reader) {
 		server.playerMovement(conn, reader)
 	case 4:
 		MovementData := mc_metadata.Movement{}
-		MovementData.UuId = conn.Bot_ID
+		MovementData.UuId = msg.UId
 		MovementData.DestinationX = msg.SpawnPosX
 		MovementData.DestinationY = msg.SpawnPosY
 		MovementData.DestinationZ = msg.SpawnPosZ
