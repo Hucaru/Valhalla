@@ -131,7 +131,7 @@ func (server *Server) playerConnect(conn *mnet.Client, reader mpacket.Reader) {
 	}
 	var player *model.Player
 
-	player, err = db.GetLoggedData(msg.GetUuId())
+	player, err = db.GetLoggedData(msg.GetUuId(), *conn)
 	if err != nil {
 		db.AddNewAccount(player)
 	} else {
