@@ -37,7 +37,7 @@ func (server *Server) clientBot(conn *mnet.Client, reader mpacket.Reader) {
 	case 0:
 		packet := mc_metadata.C2P_RequestPlayerInfo{
 			Nickname: msg.Nickname,
-		}m
+		}
 
 		sendData, _ := proto2.Marshal(&packet)
 		data := mpacket.Packet{}
