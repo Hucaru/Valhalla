@@ -131,19 +131,23 @@ func (server *Server) playerConnect(conn *mnet.Client, reader mpacket.Reader) {
 	}
 	var player *model.Player
 
-	player, err = db.GetLoggedData(msg.GetUuId())
-	if err != nil {
-		db.AddNewAccount(player)
+	if msg.IsBot == 1 {
+		player, err = db.GetLoggedDataForBot(msg.GetUuId())
 	} else {
-		err1 := db.UpdateLoginState(player.UId, true)
-		if err1 != nil {
-			log.Println("Unable to complete login for ", player.UId)
-			m, err2 := proto.ErrorLoginResponse(err.Error(), player.UId)
-			if err2 != nil {
-				log.Println("ErrorLoginResponse", err2)
+		player, err = db.GetLoggedData(msg.GetUuId())
+		if err != nil {
+			db.AddNewAccount(player)
+		} else {
+			err1 := db.UpdateLoginState(player.UId, true)
+			if err1 != nil {
+				log.Println("Unable to complete login for ", player.UId)
+				m, err2 := proto.ErrorLoginResponse(err.Error(), player.UId)
+				if err2 != nil {
+					log.Println("ErrorLoginResponse", err2)
+				}
+				conn.BaseConn.Send(m)
+				return
 			}
-			conn.BaseConn.Send(m)
-			return
 		}
 	}
 
