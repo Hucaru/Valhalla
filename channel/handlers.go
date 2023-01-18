@@ -686,7 +686,7 @@ func (server *Server) playerLeaveFromRoom(conn *mnet.Client, reader mpacket.Read
 	go server.sendMsgToRegion(conn, res, constant.P2C_ReportMetaSchoolLeave)
 }
 
-func (server *Server) playerMovement(conn *mnet.Client, reader mpacket.Reader) {
+func (server *Server) playerMovementplayerMovement(conn *mnet.Client, reader mpacket.Reader) {
 
 	msg := &mc_metadata.C2P_RequestMove{}
 	err := proto.Unmarshal(reader.GetBuffer(), msg)
