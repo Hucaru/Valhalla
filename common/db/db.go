@@ -8,12 +8,14 @@ import (
 	"github.com/Hucaru/Valhalla/constant"
 	"github.com/Hucaru/Valhalla/meta-proto/go/mc_metadata"
 	"log"
+	"sync"
 	"time"
 )
 import _ "github.com/go-sql-driver/mysql"
 
 // DB object used for queries
 var Maria *sql.DB
+var AccountLock sync.Mutex
 
 // ConnectToDB - connect to a MySQL instance
 func ConnectToDB(user, password, address, port, database string) error {
@@ -60,18 +62,18 @@ func GetLoggedData(uId int64) (*model.Player, error) {
 	plr.SetCharacter(Character)
 	plr.SetInteraction(model.NewInteraction())
 
-	//ch := plr.GetCharacter_P()
-	//
-	//err := Maria.QueryRow(
-	//	"SELECT a.accountID, a.accountID, c.id as characterID, c.channelID, c.nickname, c.hair, c.top, c.bottom, c.clothes, IFNULL(m.time, 0) as time, IFNULL(m.pos_x, 0) as pos_x, IFNULL(m.pos_y, 0) as pos_y, IFNULL(m.pos_z, 0) as pos_z, IFNULL(m.rot_x, 0) as rot_x, IFNULL(m.rot_y, 0) as rot_y, IFNULL(m.rot_z, 0) as rot_z FROM accounts a LEFT JOIN characters c ON c.accountID = a.accountID LEFT JOIN (select characterID, pos_x, pos_y, pos_z, rot_x, rot_y, rot_z, time from movement) as m ON m.characterID = c.id WHERE a.accountID=?  ORDER BY m.time DESC limit 1;", uId).
-	//	Scan(&plr.AccountID,
-	//		&plr.UId, &plr.CharacterID, &plr.RegionID,
-	//		&ch.NickName, &ch.Hair, &ch.Top, &ch.Bottom, &ch.Clothes,
-	//		&ch.Time,
-	//		&ch.PosX, &ch.PosY, &ch.PosZ,
-	//		&ch.RotX, &ch.RotY, &ch.RotZ)
+	ch := plr.GetCharacter_P()
 
-	return plr, nil
+	err := Maria.QueryRow(
+		"SELECT a.accountID, a.accountID, c.id as characterID, c.channelID, c.nickname, c.hair, c.top, c.bottom, c.clothes, IFNULL(m.time, 0) as time, IFNULL(m.pos_x, 0) as pos_x, IFNULL(m.pos_y, 0) as pos_y, IFNULL(m.pos_z, 0) as pos_z, IFNULL(m.rot_x, 0) as rot_x, IFNULL(m.rot_y, 0) as rot_y, IFNULL(m.rot_z, 0) as rot_z FROM accounts a LEFT JOIN characters c ON c.accountID = a.accountID LEFT JOIN (select characterID, pos_x, pos_y, pos_z, rot_x, rot_y, rot_z, time from movement) as m ON m.characterID = c.id WHERE a.accountID=?  ORDER BY m.time DESC limit 1;", uId).
+		Scan(&plr.AccountID,
+			&plr.UId, &plr.CharacterID, &plr.RegionID,
+			&ch.NickName, &ch.Hair, &ch.Top, &ch.Bottom, &ch.Clothes,
+			&ch.Time,
+			&ch.PosX, &ch.PosY, &ch.PosZ,
+			&ch.RotX, &ch.RotY, &ch.RotZ)
+
+	return plr, err
 }
 
 func GetLoggedDataForBot(uuid int64) (*model.Player, error) {
@@ -158,6 +160,8 @@ func GetLoggedDataByName(req *mc_metadata.C2P_RequestPlayerInfo) (*model.Player,
 }
 
 func AddNewAccount(plr *model.Player) error {
+	AccountLock.Lock()
+	defer AccountLock.Unlock()
 	res, err := Maria.Exec("INSERT INTO accounts (username, password, pin, dob, isLogedIn) VALUES ( ?, ?, ?, ?, ?)",
 		plr.GetCharacter().NickName, "password", "1", 1, 1)
 
