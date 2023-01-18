@@ -71,9 +71,8 @@ const (
 	//errors
 	P2C_ResultLoginUserError = 90
 
-	OnConnected     = 10000
-	OnDisconnected  = 10001
-	C2P_Request_BOT = 10002
+	OnConnected    = 10000
+	OnDisconnected = 10001
 )
 
 const (
