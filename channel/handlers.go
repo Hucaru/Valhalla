@@ -39,22 +39,21 @@ func (server *Server) clientBot(conn *mnet.Client, reader mpacket.Reader) {
 			Nickname: msg.Nickname,
 		}
 
-		sendData, _ := proto2.Marshal(&packet)
+		sendData, _ := proto.MakeResponse(&packet, constant.C2P_RequestPlayerInfo)
 		data := mpacket.Packet{}
 		data.Append(sendData)
 		reader := mpacket.NewReader(&data, time.Now().Unix())
 		server.playerInfo(conn, reader)
 	case 1:
 		packet := mc_metadata.C2P_RequestLoginUser{
-			UuId:      conn.Bot_ID,
+			UuId:      conn.GetPlayer().UId,
 			IsBot:     1,
 			SpawnPosX: msg.SpawnPosX,
 			SpawnPosY: msg.SpawnPosY,
 			SpawnPosZ: msg.SpawnPosZ,
 		}
 
-		sendData, _ := proto2.Marshal(&packet)
-
+		sendData, _ := proto.MakeResponse(&packet, constant.C2P_RequestLoginUser)
 		data := mpacket.Packet{}
 		data.Append(sendData)
 		reader := mpacket.NewReader(&data, time.Now().Unix())
@@ -70,11 +69,10 @@ func (server *Server) clientBot(conn *mnet.Client, reader mpacket.Reader) {
 			MovementData: &MovementData,
 		}
 
-		sendData, _ := proto2.Marshal(&packet)
+		sendData, _ := proto.MakeResponse(&packet, constant.C2P_RequestMoveStart)
 		data := mpacket.Packet{}
 		data.Append(sendData)
 		reader := mpacket.NewReader(&data, time.Now().Unix())
-
 		server.playerMovementStart(conn, reader)
 	case 3:
 		MovementData := mc_metadata.Movement{}
@@ -87,11 +85,11 @@ func (server *Server) clientBot(conn *mnet.Client, reader mpacket.Reader) {
 			MovementData: &MovementData,
 		}
 
-		sendData, _ := proto2.Marshal(&packet)
+		sendData, _ := proto.MakeResponse(&packet, constant.C2P_RequestMove)
 		data := mpacket.Packet{}
 		data.Append(sendData)
 		reader := mpacket.NewReader(&data, time.Now().Unix())
-		server.playerMovement(conn, reader)
+		server.playerMovementStart(conn, reader)
 	case 4:
 		MovementData := mc_metadata.Movement{}
 		MovementData.UuId = conn.GetPlayer().UId
@@ -103,11 +101,11 @@ func (server *Server) clientBot(conn *mnet.Client, reader mpacket.Reader) {
 			MovementData: &MovementData,
 		}
 
-		sendData, _ := proto2.Marshal(&packet)
+		sendData, _ := proto.MakeResponse(&packet, constant.C2P_RequestMoveEnd)
 		data := mpacket.Packet{}
 		data.Append(sendData)
 		reader := mpacket.NewReader(&data, time.Now().Unix())
-		server.playerMovementEnd(conn, reader)
+		server.playerMovementStart(conn, reader)
 	}
 }
 
@@ -839,7 +837,6 @@ func (server *Server) playerInfo(conn *mnet.Client, reader mpacket.Reader) {
 		return
 	}
 
-	conn.Bot_ID = plr.UId
 	conn.BaseConn.Send(data)
 
 	//server.sendMsgToMe(data, conn)
