@@ -92,7 +92,13 @@ func GetPlayerAccountIDByNickName(nickname string) (int64, error) {
 			"FROM accounts a "+
 			"WHERE a.username=? ", nickname).Scan(&accountID)
 
-	return accountID, err
+	if err == nil || err == sql.ErrNoRows {
+		return accountID, nil
+	}
+
+	log.Print(err)
+
+	return 0, nil
 }
 
 func AddNewAccount(msg mc_metadata.C2P_RequestLoginUser) (model.Player, error) {

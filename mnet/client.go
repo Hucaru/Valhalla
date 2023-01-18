@@ -18,7 +18,6 @@ type client struct {
 	channelID  byte
 	regionID   int64
 	adminLevel int
-	uID        string
 	player     model.Player
 }
 

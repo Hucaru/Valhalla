@@ -212,7 +212,7 @@ func (server *Server) Initialize(work chan func(), dbuser, dbpassword, dbaddress
 			fmt.Printf("\tTotalAlloc = %v MiB", bToMb(m.TotalAlloc))
 			fmt.Printf("\tSys = %v MiB", bToMb(m.Sys))
 			fmt.Printf("\tNumGC = %v\n", m.NumGC)
-			time.Sleep(1000 * time.Millisecond)
+			time.Sleep(5000 * time.Millisecond)
 		}
 	}()
 }

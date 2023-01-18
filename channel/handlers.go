@@ -175,6 +175,16 @@ func (server *Server) playerConnect(conn *mnet.Client, reader mpacket.Reader) {
 		resultLoginUserPacket.LoggedUsers = append(resultLoginUserPacket.LoggedUsers, &_r)
 	}
 
+	if conn.TempIsBot {
+		res, err := proto.MakeResponse(&resultLoginUserPacket, uint32(constant.P2C_ResultLoginUser))
+		if err != nil {
+			log.Println("DATA_RESPONSE_ERROR", err)
+		}
+
+		conn.Write(res)
+		return
+	}
+
 	server.sendMsgToMe(conn, &resultLoginUserPacket, constant.P2C_ResultLoginUser)
 }
 
