@@ -19,6 +19,7 @@ import (
 	"google.golang.org/protobuf/proto"
 	"log"
 	"runtime"
+	"sync/atomic"
 	"time"
 )
 
@@ -116,6 +117,8 @@ type Server struct {
 
 	// Kioni
 	PlayerActionHandler map[uint32]func(*mnet.Client, mpacket.Reader)
+
+	FakeAccountId atomic.Int64
 }
 
 // Initialize the server
@@ -218,6 +221,8 @@ func (server *Server) Initialize(work chan func(), dbuser, dbpassword, dbaddress
 			time.Sleep(1000 * time.Millisecond)
 		}
 	}()
+
+	server.FakeAccountId.Store(10000)
 }
 
 func bToMb(b uint64) uint64 {

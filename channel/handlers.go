@@ -132,37 +132,39 @@ func (server *Server) playerConnect(conn *mnet.Client, reader mpacket.Reader) {
 	var player *model.Player
 
 	player, err = db.GetLoggedData(msg.GetUuId())
-	if err != nil {
-		db.AddNewAccount(player)
-	} else {
-		err1 := db.UpdateLoginState(player.UId, true)
-		if err1 != nil {
-			log.Println("Unable to complete login for ", player.UId)
-			m, err2 := proto.ErrorLoginResponse(err.Error(), player.UId)
-			if err2 != nil {
-				log.Println("ErrorLoginResponse", err2)
-			}
-			conn.BaseConn.Send(m)
-			return
-		}
-	}
+	player.UId = msg.GetUuId()
 
-	res := &mc_metadata.P2C_ResultPlayerInfo{
-		ErrorCode: constant.NoError,
-	}
-
-	if server.isPlayerOnline(msg.GetUuId()) {
-		res.UId = msg.GetUuId()
-		res.ErrorCode = constant.ErrorCodeAlreadyOnline
-
-		data, err := proto.MakeResponse(res, constant.P2C_ResultPlayerInfo)
-		if err != nil {
-			log.Println("ERROR P2C_ResultPlayerInfo Already Online", msg.GetUuId())
-			return
-		}
-		conn.Send(data)
-		return
-	}
+	//if err != nil {
+	//	db.AddNewAccount(player)
+	//} else {
+	//	err1 := db.UpdateLoginState(player.UId, true)
+	//	if err1 != nil {
+	//		log.Println("Unable to complete login for ", player.UId)
+	//		m, err2 := proto.ErrorLoginResponse(err.Error(), player.UId)
+	//		if err2 != nil {
+	//			log.Println("ErrorLoginResponse", err2)
+	//		}
+	//		conn.BaseConn.Send(m)
+	//		return
+	//	}
+	//}
+	//
+	//res := &mc_metadata.P2C_ResultLoginUser{
+	//	ErrorCode: constant.NoError,
+	//}
+	//
+	//if server.isPlayerOnline(msg.GetUuId()) {
+	//	res.UId = msg.GetUuId()
+	//	res.ErrorCode = constant.ErrorCodeAlreadyOnline
+	//
+	//	data, err := proto.MakeResponse(res, constant.P2C_ResultPlayerInfo)
+	//	if err != nil {
+	//		log.Println("ERROR P2C_ResultPlayerInfo Already Online", msg.GetUuId())
+	//		return
+	//	}
+	//	conn.Send(data)
+	//	return
+	//}
 
 	ch := player.GetCharacter_P()
 
@@ -190,7 +192,7 @@ func (server *Server) playerConnect(conn *mnet.Client, reader mpacket.Reader) {
 		db.UpdateRegionID(player.CharacterID, int32(player.RegionID))
 	}
 
-	res.UId = player.UId
+	//res.UId = player.UId
 
 	//plr := loadPlayer(conn, *msg)
 	//plr.rates = &server.rates
@@ -799,8 +801,8 @@ func (server *Server) moveProcess(conn *mnet.Client, x, y float32, uId int64, mo
 }
 
 func (server *Server) playerInfo(conn *mnet.Client, reader mpacket.Reader) {
-	msg := &mc_metadata.C2P_RequestPlayerInfo{}
-	err := proto.Unmarshal(reader.GetBuffer(), msg)
+	msg := mc_metadata.C2P_RequestPlayerInfo{}
+	err := proto.Unmarshal(reader.GetBuffer(), &msg)
 	if err != nil || len(msg.GetNickname()) == 0 {
 		log.Println("Failed to parse data:", err)
 		return
@@ -811,31 +813,31 @@ func (server *Server) playerInfo(conn *mnet.Client, reader mpacket.Reader) {
 		ErrorCode: constant.NoError,
 	}
 
-	plr, err1 := db.GetLoggedDataByName(msg)
+	//plr, err1 := db.GetLoggedDataByName(&msg)
+	//
+	//if err1 != nil {
+	//	//log.Println("Inserting new user playerInfo", fmt.Sprintf("niickname=%s uid=%s", msg.GetNickname(), msg.GetUuId()))
+	//	iErr := db.AddNewAccount(plr)
+	//	if iErr != nil {
+	//		res.ErrorCode = constant.ErrorCodeDuplicateUID
+	//	}
+	//} else {
+	//	db.UpdatePlayerInfo(
+	//		plr.CharacterID,
+	//		msg.GetHair(),
+	//		msg.GetTop(),
+	//		msg.GetBottom(),
+	//		msg.GetClothes())
+	//}
 
-	if err1 != nil {
-		//log.Println("Inserting new user playerInfo", fmt.Sprintf("niickname=%s uid=%s", msg.GetNickname(), msg.GetUuId()))
-		iErr := db.AddNewAccount(plr)
-		if iErr != nil {
-			res.ErrorCode = constant.ErrorCodeDuplicateUID
-		}
-	} else {
-		db.UpdatePlayerInfo(
-			plr.CharacterID,
-			msg.GetHair(),
-			msg.GetTop(),
-			msg.GetBottom(),
-			msg.GetClothes())
-	}
-
-	res.UId = plr.UId
+	res.UId = server.FakeAccountId.Load() // plr.UId
 	data, err := proto.MakeResponse(res, constant.P2C_ResultPlayerInfo)
-	if err != nil {
-		log.Println("ERROR P2C_ResultLoginUser", msg.GetNickname())
-		return
-	}
+	//if err != nil {
+	//	log.Println("ERROR P2C_ResultLoginUser", msg.GetNickname())
+	//	return
+	//}
 
-	conn.BaseConn.Send(data)
+	conn.Send(data)
 
 	//server.sendMsgToMe(data, conn)
 	data = nil
