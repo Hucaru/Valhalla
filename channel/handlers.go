@@ -131,7 +131,7 @@ func (server *Server) playerConnect(conn *mnet.Client, reader mpacket.Reader) {
 	}
 	var player *model.Player
 
-	player, err = db.GetLoggedData(msg.GetUuId())
+	player, err = db.GetLoggedData(msg.GetUuId(), *conn)
 	if err != nil {
 		db.AddNewAccount(player)
 	} else {
@@ -799,8 +799,8 @@ func (server *Server) moveProcess(conn *mnet.Client, x, y float32, uId int64, mo
 }
 
 func (server *Server) playerInfo(conn *mnet.Client, reader mpacket.Reader) {
-	msg := &mc_metadata.C2P_RequestPlayerInfo{}
-	err := proto.Unmarshal(reader.GetBuffer(), msg)
+	msg := mc_metadata.C2P_RequestPlayerInfo{}
+	err := proto.Unmarshal(reader.GetBuffer(), &msg)
 	if err != nil || len(msg.GetNickname()) == 0 {
 		log.Println("Failed to parse data:", err)
 		return
@@ -811,22 +811,27 @@ func (server *Server) playerInfo(conn *mnet.Client, reader mpacket.Reader) {
 		ErrorCode: constant.NoError,
 	}
 
-	plr, err1 := db.GetLoggedDataByName(msg)
+	plr, err1 := db.GetLoggedDataByName(&msg)
 
 	if err1 != nil {
-		//log.Println("Inserting new user playerInfo", fmt.Sprintf("niickname=%s uid=%s", msg.GetNickname(), msg.GetUuId()))
-		iErr := db.AddNewAccount(plr)
-		if iErr != nil {
-			res.ErrorCode = constant.ErrorCodeDuplicateUID
-		}
-	} else {
-		db.UpdatePlayerInfo(
-			plr.CharacterID,
-			msg.GetHair(),
-			msg.GetTop(),
-			msg.GetBottom(),
-			msg.GetClothes())
+		res.ErrorCode = constant.ErrorCodeDuplicateUID
 	}
+	conn.TempPlayerInfo = msg
+
+	//if err1 != nil {
+	//	//log.Println("Inserting new user playerInfo", fmt.Sprintf("niickname=%s uid=%s", msg.GetNickname(), msg.GetUuId()))
+	//	iErr := db.AddNewAccount(plr)
+	//	if iErr != nil {
+	//		res.ErrorCode = constant.ErrorCodeDuplicateUID
+	//	}
+	//} else {
+	//	db.UpdatePlayerInfo(
+	//		plr.CharacterID,
+	//		msg.GetHair(),
+	//		msg.GetTop(),
+	//		msg.GetBottom(),
+	//		msg.GetClothes())
+	//}
 
 	res.UId = plr.UId
 	data, err := proto.MakeResponse(res, constant.P2C_ResultPlayerInfo)
