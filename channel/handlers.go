@@ -39,96 +39,93 @@ func (server *Server) playerConnect(conn *mnet.Client, reader mpacket.Reader) {
 
 	msg := mc_metadata.C2P_RequestLoginUser{}
 	err := proto.Unmarshal(reader.GetBuffer(), &msg)
-	if err != nil || msg.GetUuId() == 0 {
+	pInfo := msg.PlayerInfo
+	if err != nil || len(pInfo.GetNickname()) == 0 {
 		log.Println("Failed to parse data:", err)
 		return
 	}
-	var player *model.Player
 
-	if msg.IsBot == 1 {
-		player, err = db.GetLoggedDataForBot(msg.GetUuId())
-	} else {
-		player, err = db.GetLoggedData(msg.GetUuId())
-		if err != nil {
-			db.AddNewAccount(player)
+	var player model.Player
+
+	accountId, err := db.GetPlayerAccountIDByNickName(msg.PlayerInfo.Nickname)
+	if err != nil {
+		log.Println("GetPlayerAccountIDByNickName ", err)
+		failPacket := mc_metadata.P2C_ResultLoginUser{}
+		failPacket.ErrorCode = constant.ErrorCodeAny
+		server.sendMsgToMe(conn, &failPacket, constant.P2C_ResultLoginUser)
+		return
+	} else if accountId != 0 {
+		if server.isPlayerOnline(accountId) {
+			failPacket := mc_metadata.P2C_ResultLoginUser{}
+			failPacket.ErrorCode = constant.ErrorCodeAlreadyOnline
+			server.sendMsgToMe(conn, &failPacket, constant.P2C_ResultLoginUser)
+			return
 		} else {
-			err1 := db.UpdateLoginState(player.UId, true)
-			if err1 != nil {
-				log.Println("Unable to complete login for ", player.UId)
-				m, err2 := proto.ErrorLoginResponse(err.Error(), player.UId)
-				if err2 != nil {
-					log.Println("ErrorLoginResponse", err2)
-				}
-				conn.BaseConn.Send(m)
-				return
-			}
+			// 회원가입과 로그인이 분리가 안되어 있음
 		}
+		db.UpdatePlayerInfo(accountId, pInfo.GetHair(), pInfo.GetTop(), pInfo.GetBottom(), pInfo.GetClothes())
+		p, err := db.GetLoggedData(accountId)
+		if err != nil {
+			log.Println("GetLoggedData ", err)
+			failPacket := mc_metadata.P2C_ResultLoginUser{}
+			failPacket.ErrorCode = constant.ErrorCodeAny
+			server.sendMsgToMe(conn, &failPacket, constant.P2C_ResultLoginUser)
+			return
+		}
+		player = p
+	} else {
+		p, err := db.AddNewAccount(msg)
+		if err != nil {
+			log.Println("AddNewAccount ", err)
+			failPacket := mc_metadata.P2C_ResultLoginUser{}
+			failPacket.ErrorCode = constant.ErrorCodeAny
+			server.sendMsgToMe(conn, &failPacket, constant.P2C_ResultLoginUser)
+			return
+		}
+		player = p
+	}
+
+	err1 := db.UpdateLoginState(player.UId, true)
+	if err1 != nil {
+		log.Println("Unable to complete login for ", player.UId)
+		m, err2 := proto.ErrorLoginResponse(err.Error(), player.UId)
+		if err2 != nil {
+			log.Println("ErrorLoginResponse", err2)
+		}
+		conn.Send(m)
+		return
 	}
 
 	res := &mc_metadata.P2C_ResultPlayerInfo{
 		ErrorCode: constant.NoError,
 	}
 
-	if server.isPlayerOnline(msg.GetUuId()) {
-		res.UId = msg.GetUuId()
-		res.ErrorCode = constant.ErrorCodeAlreadyOnline
-
-		data, err := proto.MakeResponse(res, constant.P2C_ResultPlayerInfo)
-		if err != nil {
-			log.Println("ERROR P2C_ResultPlayerInfo Already Online", msg.GetUuId())
-			return
-		}
-		conn.Send(data)
-		return
-	}
-
-	ch := player.GetCharacter_P()
-
-	if msg.GetSpawnPosX() != 0 {
-		ch.PosX = msg.GetSpawnPosX()
-	}
-
-	if msg.GetSpawnPosY() != 0 {
-		ch.PosY = msg.GetSpawnPosY()
-	}
-
-	if msg.GetSpawnPosZ() != 0 {
-		ch.PosZ = msg.GetSpawnPosZ()
-	}
-
 	player.IsBot = msg.IsBot
+	curChar := player.GetCharacter_P()
 
 	// TMP part, will be moved later
 	if player.RegionID == constant.MetaClassRoom {
 		player.RegionID = constant.MetaSchool
-		ch.PosX = -8597
-		ch.PosY = -23392
-		ch.PosZ = 2180
+		curChar.PosX = -8597
+		curChar.PosY = -23392
+		curChar.PosZ = 2180
 
 		db.UpdateRegionID(player.CharacterID, int32(player.RegionID))
 	}
 
-	res.UId = player.UId
+	res.UuId = player.UId
 
-	//plr := loadPlayer(conn, *msg)
-	//plr.rates = &server.rates
-	//plr.conn.SetPlayer(*player)
-	//
-	//server.addPlayer(&plr)
-	conn.SetPlayer(*player)
 	conn.TempIsBot = msg.IsBot == 1
-	ch = conn.GetPlayer_P().GetCharacter_P()
-
-	if msg.IsBot == 1 {
-		ch.Top = constant.RandomTop[rand2.Intn(4)]
-		ch.Bottom = constant.RandomBottom[rand2.Intn(4)]
-		ch.Clothes = constant.RandomClothes[rand2.Intn(4)]
-		ch.Hair = constant.RandomHair[rand2.Intn(5)]
-		//go server.addToEmulateMove(&plr)
-		//return
+	if player.IsBot == 1 {
+		curChar.Top = constant.RandomTop[rand2.Intn(4)]
+		curChar.Bottom = constant.RandomBottom[rand2.Intn(4)]
+		curChar.Clothes = constant.RandomClothes[rand2.Intn(4)]
+		curChar.Hair = constant.RandomHair[rand2.Intn(5)]
 	}
 
-	GridX, GridY := common.FindGrid(ch.PosX, ch.PosY)
+	GridX, GridY := common.FindGrid(curChar.PosX, curChar.PosY)
+
+	conn.SetPlayer(player)
 
 	server.gridMgr.Add(conn.GetPlayer().RegionID, GridX, GridY, conn)
 	server.clients.Set(conn.GetPlayer().UId, conn)
@@ -136,22 +133,22 @@ func (server *Server) playerConnect(conn *mnet.Client, reader mpacket.Reader) {
 	reportLoginUserPacket := mc_metadata.P2C_ReportLoginUser{
 		UuId: player.UId,
 		PlayerInfo: &mc_metadata.P2C_PlayerInfo{
-			Nickname: ch.NickName,
-			Hair:     ch.Hair,
-			Top:      ch.Top,
-			Bottom:   ch.Bottom,
-			Clothes:  ch.Clothes,
+			Nickname: curChar.NickName,
+			Hair:     curChar.Hair,
+			Top:      curChar.Top,
+			Bottom:   curChar.Bottom,
+			Clothes:  curChar.Clothes,
 		},
-		SpawnPosX: ch.PosX,
-		SpawnPosY: ch.PosY,
-		SpawnPosZ: ch.PosZ,
-		SpawnRotX: ch.RotX,
-		SpawnRotY: ch.RotY,
-		SpawnRotZ: ch.RotZ,
+		SpawnPosX: curChar.PosX,
+		SpawnPosY: curChar.PosY,
+		SpawnPosZ: curChar.PosZ,
+		SpawnRotX: curChar.RotX,
+		SpawnRotY: curChar.RotY,
+		SpawnRotZ: curChar.RotZ,
 	}
 
 	server.sendMsgToRegion(conn, &reportLoginUserPacket, constant.P2C_ReportLoginUser)
-	_, _, newList := server.gridMgr.OnMove(player.RegionID, ch.PosX, ch.PosY, player.UId)
+	_, _, newList := server.gridMgr.OnMove(player.RegionID, curChar.PosX, curChar.PosY, player.UId)
 	//
 
 	resultLoginUserPacket := proto.AccountResult(player)
@@ -714,49 +711,6 @@ func (server *Server) moveProcess(conn *mnet.Client, x, y float32, uId int64, mo
 	ch.RotX = movement.GetDeatinationRotationX()
 	ch.RotY = movement.GetDeatinationRotationY()
 	ch.RotZ = movement.GetDeatinationRotationZ()
-}
-
-func (server *Server) playerInfo(conn *mnet.Client, reader mpacket.Reader) {
-	msg := &mc_metadata.C2P_RequestPlayerInfo{}
-	err := proto.Unmarshal(reader.GetBuffer(), msg)
-	if err != nil || len(msg.GetNickname()) == 0 {
-		log.Println("Failed to parse data:", err)
-		return
-	}
-
-	res := &mc_metadata.P2C_ResultPlayerInfo{
-
-		ErrorCode: constant.NoError,
-	}
-
-	plr, err1 := db.GetLoggedDataByName(msg)
-
-	if err1 != nil {
-		//log.Println("Inserting new user playerInfo", fmt.Sprintf("niickname=%s uid=%s", msg.GetNickname(), msg.GetUuId()))
-		iErr := db.AddNewAccount(plr)
-		if iErr != nil {
-			res.ErrorCode = constant.ErrorCodeDuplicateUID
-		}
-	} else {
-		db.UpdatePlayerInfo(
-			plr.CharacterID,
-			msg.GetHair(),
-			msg.GetTop(),
-			msg.GetBottom(),
-			msg.GetClothes())
-	}
-
-	res.UId = plr.UId
-	data, err := proto.MakeResponse(res, constant.P2C_ResultPlayerInfo)
-	if err != nil {
-		log.Println("ERROR P2C_ResultLoginUser", msg.GetNickname())
-		return
-	}
-
-	conn.BaseConn.Send(data)
-
-	//server.sendMsgToMe(data, conn)
-	data = nil
 }
 
 func (server *Server) playerLogout(conn *mnet.Client, reader mpacket.Reader) {

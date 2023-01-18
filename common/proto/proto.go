@@ -73,26 +73,27 @@ func ChannelChangeForOldReport(uID int64, acc *model.Character) *mc_metadata.P2C
 	return res
 }
 
-func AccountResult(player *model.Player) mc_metadata.P2C_ResultLoginUser {
+func AccountResult(player model.Player) mc_metadata.P2C_ResultLoginUser {
+	curChar := player.GetCharacter()
 	PlayerInfo := mc_metadata.P2C_PlayerInfo{
 		UuId:     player.UId,
-		Nickname: player.GetCharacter().NickName,
-		Hair:     player.GetCharacter().Hair,
-		Top:      player.GetCharacter().Top,
-		Bottom:   player.GetCharacter().Bottom,
-		Clothes:  player.GetCharacter().Clothes,
+		Nickname: curChar.NickName,
+		Hair:     curChar.Hair,
+		Top:      curChar.Top,
+		Bottom:   curChar.Bottom,
+		Clothes:  curChar.Clothes,
 	}
 
 	return mc_metadata.P2C_ResultLoginUser{
 		UuId:        player.UId,
 		RegionId:    int32(player.RegionID),
 		PlayerInfo:  &PlayerInfo,
-		SpawnPosX:   player.GetCharacter().PosX,
-		SpawnPosY:   player.GetCharacter().PosY,
-		SpawnPosZ:   player.GetCharacter().PosZ,
-		SpawnRotX:   player.GetCharacter().RotX,
-		SpawnRotY:   player.GetCharacter().RotY,
-		SpawnRotZ:   player.GetCharacter().RotZ,
+		SpawnPosX:   curChar.PosX,
+		SpawnPosY:   curChar.PosY,
+		SpawnPosZ:   curChar.PosZ,
+		SpawnRotX:   curChar.RotX,
+		SpawnRotY:   curChar.RotY,
+		SpawnRotZ:   curChar.RotZ,
 		LoggedUsers: []*mc_metadata.P2C_ReportLoginUser{},
 	}
 }

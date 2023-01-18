@@ -129,7 +129,6 @@ func (server *Server) Initialize(work chan func(), dbuser, dbpassword, dbaddress
 	server.PlayerActionHandler[constant.C2P_RequestMove] = server.playerMovement
 	server.PlayerActionHandler[constant.C2P_RequestMoveEnd] = server.playerMovementEnd
 	server.PlayerActionHandler[constant.C2P_RequestLogoutUser] = server.playerLogout
-	server.PlayerActionHandler[constant.C2P_RequestPlayerInfo] = server.playerInfo
 	server.PlayerActionHandler[constant.C2P_RequestAllChat] = server.chatSendAll
 	server.PlayerActionHandler[constant.C2P_RequestWhisper] = server.chatSendWhisper
 	server.PlayerActionHandler[constant.C2P_RequestRegionChat] = server.chatSendRegion

@@ -93,6 +93,8 @@ const (
 
 	ErrorCodeChairNotEmpty = 400
 	ErrorCodeDBorServer    = 500
+
+	ErrorCodeAny = 600
 )
 
 const (

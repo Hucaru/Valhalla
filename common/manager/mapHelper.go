@@ -358,8 +358,8 @@ func do(key int64) int64 {
 }
 
 func fnv64(key string) int64 {
-	hash := int64(2166136261 * 2166136261)
-	const prime32 = int64(16777619 * 16777619)
+	hash := int64(216613626173821)
+	const prime32 = int64(167776193)
 	keyLength := len(key)
 	for i := 0; i < keyLength; i++ {
 		hash *= prime32

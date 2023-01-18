@@ -3,7 +3,6 @@ package db
 import (
 	"database/sql"
 	"errors"
-	"fmt"
 	"github.com/Hucaru/Valhalla/common/db/model"
 	"github.com/Hucaru/Valhalla/constant"
 	"github.com/Hucaru/Valhalla/meta-proto/go/mc_metadata"
@@ -33,30 +32,11 @@ func ConnectToDB(user, password, address, port, database string) error {
 	return nil
 }
 
-func GetLoggedData(uId int64) (*model.Player, error) {
+func GetLoggedData(uId int64) (model.Player, error) {
 
-	plr := &model.Player{
-		UId:         uId,
-		AccountID:   constant.UNKNOWN,
-		CharacterID: constant.UNKNOWN,
-		RegionID:    constant.World,
-	}
+	plr := model.Player{}
+	Character := model.Character{}
 
-	Character := model.Character{
-		Role:     constant.User,
-		NickName: "",
-		Hair:     "",
-		Top:      "",
-		Bottom:   "",
-		Clothes:  "",
-		Time:     constant.DEFAULT_TIME,
-		PosX:     constant.PosX,
-		PosY:     constant.PosY,
-		PosZ:     constant.PosZ,
-		RotX:     constant.RotX,
-		RotY:     constant.RotY,
-		RotZ:     constant.RotZ,
-	}
 	plr.SetCharacter(Character)
 	plr.SetInteraction(model.NewInteraction())
 
@@ -105,93 +85,85 @@ func GetLoggedDataForBot(uuid int64) (*model.Player, error) {
 	return plr, nil
 }
 
-func GetLoggedDataByName(req *mc_metadata.C2P_RequestPlayerInfo) (*model.Player, error) {
-
-	plr := &model.Player{
-		UId:         0,
-		AccountID:   constant.UNKNOWN,
-		CharacterID: constant.UNKNOWN,
-		RegionID:    constant.World,
-	}
-
-	Character := model.Character{
-		Role:     constant.User,
-		NickName: req.GetNickname(),
-		Hair:     req.GetHair(),
-		Top:      req.GetTop(),
-		Bottom:   req.GetBottom(),
-		Clothes:  req.GetClothes(),
-		Time:     constant.DEFAULT_TIME,
-		PosX:     constant.PosX,
-		PosY:     constant.PosY,
-		PosZ:     constant.PosZ,
-		RotX:     constant.RotX,
-		RotY:     constant.RotY,
-		RotZ:     constant.RotZ,
-	}
-	plr.SetCharacter(Character)
-	plr.SetInteraction(model.NewInteraction())
-
-	ch := plr.GetCharacter_P()
-
+func GetPlayerAccountIDByNickName(nickname string) (int64, error) {
+	accountID := int64(0)
 	err := Maria.QueryRow(
-		"SELECT a.accountID, "+
-			"c.id, c.id as characterID, c.channelID, "+
-			"c.nickname, c.hair, c.top, c.bottom, c.clothes, "+
-			"IFNULL(m.time, 0) as time, "+
-			"IFNULL(m.pos_x, 0) as pos_x, IFNULL(m.pos_y, 0) as pos_y, IFNULL(m.pos_z, 0) as pos_z, "+
-			"IFNULL(m.rot_x, 0) as rot_x, IFNULL(m.rot_y, 0) as rot_y, IFNULL(m.rot_z, 0) as rot_z "+
+		"SELECT a.accountID "+
 			"FROM accounts a "+
-			"LEFT JOIN characters c ON c.accountID = a.accountID "+
-			"LEFT JOIN movement m ON m.characterID = characterID "+
-			"WHERE c.nickname=? "+
-			"ORDER BY time DESC "+
-			"LIMIT 1", req.GetNickname()).
-		Scan(&plr.AccountID,
-			&plr.UId, &plr.CharacterID, &plr.RegionID,
-			&ch.NickName, &ch.Hair, &ch.Top, &ch.Bottom, &ch.Clothes,
-			&ch.Time,
-			&ch.PosX, &ch.PosY, &ch.PosZ,
-			&ch.RotX, &ch.RotY, &ch.RotZ)
+			"WHERE a.username=? ", nickname).Scan(&accountID)
 
-	return plr, err
+	return accountID, err
 }
 
-func AddNewAccount(plr *model.Player) error {
+func AddNewAccount(msg mc_metadata.C2P_RequestLoginUser) (model.Player, error) {
+	pInfo := msg.GetPlayerInfo()
+
 	res, err := Maria.Exec("INSERT INTO accounts (username, password, pin, dob, isLogedIn) VALUES ( ?, ?, ?, ?, ?)",
-		plr.GetCharacter().NickName, "password", "1", 1, 1)
+		pInfo.Nickname, "password", "1", 1, 1)
 
 	if err != nil {
 		log.Println("INSERT account", err)
-		return err
-	}
-	err = nil
-
-	ch := plr.GetCharacter_P()
-
-	if ch.NickName == "" {
-		plr.GetCharacter_P().NickName = fmt.Sprintf("player#%d", time.Now().UnixNano()/int64(time.Millisecond))
+		return model.Player{}, err
 	}
 
-	plr.AccountID, err = res.LastInsertId()
+	resultPlayer := model.Player{}
+
+	resultPlayer.AccountID, err = res.LastInsertId()
 	cRes, cErr := Maria.Exec("INSERT INTO characters "+
 		"(accountID, worldID, nickname, "+
 		"gender, hair, top, bottom, clothes, channelID) "+
 		"VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-		plr.AccountID, 1,
-		ch.NickName, 1,
-		ch.Hair, ch.Top, ch.Bottom, ch.Clothes, constant.World)
+		resultPlayer.AccountID, 1,
+		pInfo.Nickname, 1,
+		pInfo.Hair, pInfo.Top, pInfo.Bottom, pInfo.Clothes, constant.World)
 
 	if cErr != nil {
 		log.Println("INSERTING ERROR", cErr)
-		return cErr
+		return model.Player{}, cErr
 	}
-	err = nil
-	plr.UId, err = cRes.LastInsertId()
-	plr.CharacterID, err = cRes.LastInsertId()
-	return AddMovement(plr.CharacterID,
-		constant.PosX, constant.PosY, constant.PosZ,
+
+	spawnPosX := float32(constant.PosX)
+	if msg.SpawnPosX != 0 {
+		spawnPosX = msg.SpawnPosX
+	}
+
+	spawnPosY := float32(constant.PosY)
+	if msg.SpawnPosY != 0 {
+		spawnPosY = msg.SpawnPosY
+	}
+
+	spawnPosZ := float32(constant.PosZ)
+	if msg.SpawnPosZ != 0 {
+		spawnPosZ = msg.SpawnPosZ
+	}
+
+	resultPlayer.CharacterID, err = cRes.LastInsertId()
+	AddMovement(resultPlayer.CharacterID,
+		spawnPosX, spawnPosY, spawnPosZ,
 		constant.RotX, constant.RotY, constant.RotZ)
+
+	ch := model.Character{}
+	ch.PosX = spawnPosX
+	ch.PosY = spawnPosY
+	ch.PosZ = spawnPosZ
+
+	ch.RotX = constant.RotX
+	ch.RotY = constant.RotY
+	ch.RotZ = constant.RotZ
+
+	ch.NickName = pInfo.Nickname
+	ch.Hair = pInfo.Hair
+	ch.Top = pInfo.Top
+	ch.Bottom = pInfo.Bottom
+	ch.Clothes = pInfo.Clothes
+
+	resultPlayer.UId = resultPlayer.AccountID
+	resultPlayer.RegionID = constant.World
+
+	resultPlayer.SetCharacter(ch)
+	resultPlayer.SetInteraction(model.NewInteraction())
+
+	return resultPlayer, nil
 }
 
 func UpdateMovement(
