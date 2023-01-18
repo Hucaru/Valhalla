@@ -33,7 +33,7 @@ func ConnectToDB(user, password, address, port, database string) error {
 	return nil
 }
 
-func GetLoggedData(uUID int64) (*model.Player, error) {
+func GetLoggedData(uUID string) (*model.Player, error) {
 
 	plr := &model.Player{
 		UId:         uUID,
@@ -74,7 +74,7 @@ func GetLoggedData(uUID int64) (*model.Player, error) {
 	return plr, err
 }
 
-func GetLoggedDataForBot(uUID int64) (*model.Player, error) {
+func GetLoggedDataForBot(uUID string) (*model.Player, error) {
 
 	plr := &model.Player{
 		UId:         uUID,
@@ -85,7 +85,7 @@ func GetLoggedDataForBot(uUID int64) (*model.Player, error) {
 
 	Character := model.Character{
 		Role:     constant.User,
-		NickName: fmt.Sprintf("%d", uUID),
+		NickName: uUID,
 		Hair:     "",
 		Top:      "",
 		Bottom:   "",

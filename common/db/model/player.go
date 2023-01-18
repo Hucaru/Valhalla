@@ -2,7 +2,7 @@ package model
 
 type Player struct {
 	AccountID   int64
-	UId         int64
+	UId         string
 	CharacterID int64
 	RegionID    int64
 	character   Character

@@ -5,7 +5,7 @@ SET sql_mode = 'NO_AUTO_VALUE_ON_ZERO';
 
 CREATE TABLE IF NOT EXISTS `accounts` (
   `accountID` int(10) unsigned NOT NULL AUTO_INCREMENT,
-  `uId` int(11) NOT NULL,
+  `uId` tinytext NOT NULL,
   `username` tinytext NOT NULL,
   `password` tinytext NOT NULL,
   `pin` tinytext NOT NULL,
