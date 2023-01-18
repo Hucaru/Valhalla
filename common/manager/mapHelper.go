@@ -17,7 +17,7 @@ type Stringer interface {
 // To avoid lock bottlenecks this map is dived to several (SHARD_COUNT) map shards.
 type ConcurrentMap[K comparable, V any] struct {
 	shards   []*ConcurrentMapShared[K, V]
-	sharding func(key K) uint32
+	sharding func(key K) int64
 }
 
 // A "thread" safe string to anything map.
@@ -26,7 +26,18 @@ type ConcurrentMapShared[K comparable, V any] struct {
 	sync.RWMutex // Read Write mutex, guards access to internal map.
 }
 
-func create[K comparable, V any](sharding func(key K) uint32) ConcurrentMap[K, V] {
+func create[K comparable, V any](sharding func(key K) int64) ConcurrentMap[K, V] {
+	m := ConcurrentMap[K, V]{
+		sharding: sharding,
+		shards:   make([]*ConcurrentMapShared[K, V], SHARD_COUNT),
+	}
+	for i := 0; i < SHARD_COUNT; i++ {
+		m.shards[i] = &ConcurrentMapShared[K, V]{items: make(map[K]V)}
+	}
+	return m
+}
+
+func create_int64[K comparable, V any](sharding func(key K) int64) ConcurrentMap[K, V] {
 	m := ConcurrentMap[K, V]{
 		sharding: sharding,
 		shards:   make([]*ConcurrentMapShared[K, V], SHARD_COUNT),
@@ -38,8 +49,8 @@ func create[K comparable, V any](sharding func(key K) uint32) ConcurrentMap[K, V
 }
 
 // Creates a new concurrent map.
-func New[V any]() ConcurrentMap[string, V] {
-	return create[string, V](fnv32)
+func New[V any]() ConcurrentMap[int64, V] {
+	return create[int64, V](do)
 }
 
 // Creates a new concurrent map.
@@ -48,7 +59,7 @@ func NewStringer[K Stringer, V any]() ConcurrentMap[K, V] {
 }
 
 // Creates a new concurrent map.
-func NewWithCustomShardingFunction[K comparable, V any](sharding func(key K) uint32) ConcurrentMap[K, V] {
+func NewWithCustomShardingFunction[K comparable, V any](sharding func(key K) int64) ConcurrentMap[K, V] {
 	return create[K, V](sharding)
 }
 
@@ -338,17 +349,21 @@ func (m ConcurrentMap[K, V]) MarshalJSON() ([]byte, error) {
 	}
 	return json.Marshal(tmp)
 }
-func strfnv32[K fmt.Stringer](key K) uint32 {
-	return fnv32(key.String())
+func strfnv32[K fmt.Stringer](key K) int64 {
+	return fnv64(key.String())
 }
 
-func fnv32(key string) uint32 {
-	hash := uint32(2166136261)
-	const prime32 = uint32(16777619)
+func do(key int64) int64 {
+	return key
+}
+
+func fnv64(key string) int64 {
+	hash := int64(2166136261 * 2166136261)
+	const prime32 = int64(16777619 * 16777619)
 	keyLength := len(key)
 	for i := 0; i < keyLength; i++ {
 		hash *= prime32
-		hash ^= uint32(key[i])
+		hash ^= int64(key[i])
 	}
 	return hash
 }

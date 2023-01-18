@@ -39,7 +39,7 @@ func (server *Server) playerConnect(conn *mnet.Client, reader mpacket.Reader) {
 
 	msg := mc_metadata.C2P_RequestLoginUser{}
 	err := proto.Unmarshal(reader.GetBuffer(), &msg)
-	if err != nil || len(msg.UuId) == 0 {
+	if err != nil || msg.GetUuId() == 0 {
 		log.Println("Failed to parse data:", err)
 		return
 	}
@@ -52,10 +52,10 @@ func (server *Server) playerConnect(conn *mnet.Client, reader mpacket.Reader) {
 		if err != nil {
 			db.AddNewAccount(player)
 		} else {
-			err1 := db.UpdateLoginState(msg.GetUuId(), true)
+			err1 := db.UpdateLoginState(player.UId, true)
 			if err1 != nil {
-				log.Println("Unable to complete login for ", msg.GetUuId())
-				m, err2 := proto.ErrorLoginResponse(err.Error(), msg.GetUuId())
+				log.Println("Unable to complete login for ", player.UId)
+				m, err2 := proto.ErrorLoginResponse(err.Error(), player.UId)
 				if err2 != nil {
 					log.Println("ErrorLoginResponse", err2)
 				}
@@ -63,6 +63,23 @@ func (server *Server) playerConnect(conn *mnet.Client, reader mpacket.Reader) {
 				return
 			}
 		}
+	}
+
+	res := &mc_metadata.P2C_ResultPlayerInfo{
+		ErrorCode: constant.NoError,
+	}
+
+	if server.isPlayerOnline(msg.GetUuId()) {
+		res.UId = msg.GetUuId()
+		res.ErrorCode = constant.ErrorCodeAlreadyOnline
+
+		data, err := proto.MakeResponse(res, constant.P2C_ResultPlayerInfo)
+		if err != nil {
+			log.Println("ERROR P2C_ResultPlayerInfo Already Online", msg.GetUuId())
+			return
+		}
+		conn.Send(data)
+		return
 	}
 
 	ch := player.GetCharacter_P()
@@ -91,6 +108,8 @@ func (server *Server) playerConnect(conn *mnet.Client, reader mpacket.Reader) {
 		db.UpdateRegionID(player.CharacterID, int32(player.RegionID))
 	}
 
+	res.UId = player.UId
+
 	//plr := loadPlayer(conn, *msg)
 	//plr.rates = &server.rates
 	//plr.conn.SetPlayer(*player)
@@ -112,7 +131,7 @@ func (server *Server) playerConnect(conn *mnet.Client, reader mpacket.Reader) {
 	GridX, GridY := common.FindGrid(ch.PosX, ch.PosY)
 
 	server.gridMgr.Add(conn.GetPlayer().RegionID, GridX, GridY, conn)
-	server.clients.Set(msg.UuId, conn)
+	server.clients.Set(conn.GetPlayer().UId, conn)
 
 	reportLoginUserPacket := mc_metadata.P2C_ReportLoginUser{
 		UuId: player.UId,
@@ -162,7 +181,7 @@ func (server *Server) playerConnect(conn *mnet.Client, reader mpacket.Reader) {
 	server.sendMsgToMe(conn, &resultLoginUserPacket, constant.P2C_ResultLoginUser)
 }
 
-func (server *Server) getRoomPlayers(uID string, mX, mY float32) []*model.Player {
+func (server *Server) getRoomPlayers(uID int64, mX, mY float32) []*model.Player {
 	plrs := make([]*model.Player, 0)
 	return plrs
 }
@@ -170,7 +189,7 @@ func (server *Server) getRoomPlayers(uID string, mX, mY float32) []*model.Player
 func (server *Server) setPlayer(plr *model.Player) {
 }
 
-func (server *Server) isPlayerOnline(uID string) bool {
+func (server *Server) isPlayerOnline(uID int64) bool {
 	return server.clients.Has(uID)
 }
 
@@ -186,7 +205,7 @@ func (server *Server) sendMsgToMe(conn *mnet.Client, msg proto2.Message, msgType
 	conn.Send(res)
 }
 
-func (server *Server) sendMsgToPlayer(msg proto2.Message, uID string, msgType int) {
+func (server *Server) sendMsgToPlayer(msg proto2.Message, uID int64, msgType int) {
 
 	res, err := proto.MakeResponse(msg, uint32(msgType))
 	if err != nil {
@@ -199,13 +218,13 @@ func (server *Server) sendMsgToPlayer(msg proto2.Message, uID string, msgType in
 	}
 }
 
-func (server *Server) sendMsgToAll(msg proto2.Message, uID string, msgType int) {
+func (server *Server) sendMsgToAll(msg proto2.Message, uID int64, msgType int) {
 	res, err := proto.MakeResponse(msg, uint32(msgType))
 	if err != nil {
 		log.Println("DATA_RESPONSE_ERROR", err)
 	}
 
-	server.clients.IterCb(func(k string, v *mnet.Client) {
+	server.clients.IterCb(func(k int64, v *mnet.Client) {
 		if k == uID {
 			return
 		}
@@ -280,7 +299,7 @@ func (server *Server) playerMovementStart(conn *mnet.Client, reader mpacket.Read
 
 	msg := mc_metadata.C2P_RequestMoveStart{}
 	err := proto.Unmarshal(reader.GetBuffer(), &msg)
-	if err != nil || len(msg.GetMovementData().GetUuId()) == 0 {
+	if err != nil || msg.GetMovementData().GetUuId() == 0 {
 		log.Println("Failed to parse data:", err)
 		return
 	}
@@ -292,15 +311,15 @@ func (server *Server) playerMovementEnd(conn *mnet.Client, reader mpacket.Reader
 
 	msg := mc_metadata.C2P_RequestMoveEnd{}
 	err := proto.Unmarshal(reader.GetBuffer(), &msg)
-	if err != nil || len(msg.GetMovementData().GetUuId()) == 0 {
+	if err != nil || msg.GetMovementData().GetUuId() == 0 {
 		log.Println("Failed to parse data:", err)
 		return
 	}
 	server.moveProcess(conn, msg.GetMovementData().DestinationX, msg.GetMovementData().DestinationY, msg.GetMovementData().GetUuId(), msg.GetMovementData(), constant.P2C_ReportMoveEnd)
 }
 
-func (server *Server) getPlayersOnGrids(regionId int64, x, y int, uID string) map[string]*mnet.Client {
-	oldList := map[string]*mnet.Client{}
+func (server *Server) getPlayersOnGrids(regionId int64, x, y int, uID int64) map[int64]*mnet.Client {
+	oldList := map[int64]*mnet.Client{}
 
 	for i := -1; i <= 1; i++ {
 		for j := -1; j <= 1; j++ {
@@ -315,7 +334,7 @@ func (server *Server) getPlayersOnGrids(regionId int64, x, y int, uID string) ma
 	return oldList
 }
 
-func (server *Server) existsPlayerFromGrid(uID string, x, y int) bool {
+func (server *Server) existsPlayerFromGrid(uID int64, x, y int) bool {
 	plrs := server.getGridPlayers(x, y)
 	for i := 0; i < len(plrs); i++ {
 		return plrs[i] != nil && plrs[i].conn.GetPlayer().UId == uID
@@ -579,7 +598,7 @@ func (server *Server) playerMovement(conn *mnet.Client, reader mpacket.Reader) {
 
 	msg := &mc_metadata.C2P_RequestMove{}
 	err := proto.Unmarshal(reader.GetBuffer(), msg)
-	if err != nil || len(msg.GetMovementData().GetUuId()) == 0 {
+	if err != nil || msg.GetMovementData().GetUuId() == 0 {
 		log.Println("Failed to parse data:", err)
 		return
 	}
@@ -587,15 +606,15 @@ func (server *Server) playerMovement(conn *mnet.Client, reader mpacket.Reader) {
 	server.moveProcess(conn, msg.GetMovementData().DestinationX, msg.GetMovementData().DestinationY, msg.GetMovementData().GetUuId(), msg.GetMovementData(), constant.P2C_ReportMove)
 }
 
-func (server *Server) moveProcess(conn *mnet.Client, x, y float32, uId string, movement *mc_metadata.Movement, moveType int) {
+func (server *Server) moveProcess(conn *mnet.Client, x, y float32, uId int64, movement *mc_metadata.Movement, moveType int) {
 	addList, removeList, aroundList := server.gridMgr.OnMove(conn.GetPlayer().RegionID, x, y, uId)
 
-	for k, v := range addList {
+	for _, v := range addList {
 		c := v.GetPlayer_P().GetCharacter()
 
 		__PlayerInfo := mc_metadata.P2C_PlayerInfo{
-			Nickname: k,
-			UuId:     k,
+			Nickname: c.NickName,
+			UuId:     uId,
 			Top:      c.Top,
 			Bottom:   c.Bottom,
 			Clothes:  c.Clothes,
@@ -617,7 +636,7 @@ func (server *Server) moveProcess(conn *mnet.Client, x, y float32, uId string, m
 
 		_PlayerInfo := mc_metadata.P2C_PlayerInfo{
 			UuId:     p.UId,
-			Nickname: p.UId,
+			Nickname: ch.NickName,
 			Top:      ch.Top,
 			Bottom:   ch.Bottom,
 			Clothes:  ch.Clothes,
@@ -700,25 +719,14 @@ func (server *Server) moveProcess(conn *mnet.Client, x, y float32, uId string, m
 func (server *Server) playerInfo(conn *mnet.Client, reader mpacket.Reader) {
 	msg := &mc_metadata.C2P_RequestPlayerInfo{}
 	err := proto.Unmarshal(reader.GetBuffer(), msg)
-	if err != nil || len(msg.GetUuId()) == 0 {
+	if err != nil || len(msg.GetNickname()) == 0 {
 		log.Println("Failed to parse data:", err)
 		return
 	}
 
 	res := &mc_metadata.P2C_ResultPlayerInfo{
+
 		ErrorCode: constant.NoError,
-	}
-
-	if server.isPlayerOnline(msg.GetUuId()) {
-		res.ErrorCode = constant.ErrorCodeAlreadyOnline
-
-		data, err := proto.MakeResponse(res, constant.P2C_ResultPlayerInfo)
-		if err != nil {
-			log.Println("ERROR P2C_ResultPlayerInfo Already Online", msg.GetUuId())
-			return
-		}
-		conn.Send(data)
-		return
 	}
 
 	plr, err1 := db.GetLoggedDataByName(msg)
@@ -738,9 +746,10 @@ func (server *Server) playerInfo(conn *mnet.Client, reader mpacket.Reader) {
 			msg.GetClothes())
 	}
 
+	res.UId = plr.UId
 	data, err := proto.MakeResponse(res, constant.P2C_ResultPlayerInfo)
 	if err != nil {
-		log.Println("ERROR P2C_ResultLoginUser", msg.GetUuId())
+		log.Println("ERROR P2C_ResultLoginUser", msg.GetNickname())
 		return
 	}
 
@@ -754,7 +763,7 @@ func (server *Server) playerLogout(conn *mnet.Client, reader mpacket.Reader) {
 
 	msg := &mc_metadata.C2P_RequestLogoutUser{}
 	err := proto.Unmarshal(reader.GetBuffer(), msg)
-	if err != nil || len(msg.GetUuId()) == 0 {
+	if err != nil || msg.GetUuId() == 0 {
 		log.Println("Failed to parse data:", err)
 		return
 	}
@@ -770,7 +779,7 @@ func (server *Server) playerLogout(conn *mnet.Client, reader mpacket.Reader) {
 func (server *Server) chatSendAll(conn *mnet.Client, reader mpacket.Reader) {
 	msg := &mc_metadata.C2P_RequestAllChat{}
 	err := proto.Unmarshal(reader.GetBuffer(), msg)
-	if err != nil || len(msg.GetUuId()) == 0 {
+	if err != nil || msg.GetUuId() == 0 {
 		log.Println("Failed to parse data:", err)
 		return
 	}
@@ -810,7 +819,7 @@ func (server *Server) chatSendAll(conn *mnet.Client, reader mpacket.Reader) {
 func (server *Server) chatSendRegion(conn *mnet.Client, reader mpacket.Reader) {
 	msg := mc_metadata.C2P_RequestRegionChat{}
 	err := proto.Unmarshal(reader.GetBuffer(), &msg)
-	if err != nil || len(msg.GetUuId()) == 0 {
+	if err != nil || msg.GetUuId() == 0 {
 		log.Println("Failed to parse data:", err)
 		return
 	}
@@ -850,7 +859,7 @@ func (server *Server) chatSendRegion(conn *mnet.Client, reader mpacket.Reader) {
 func (server *Server) chatSendWhisper(conn *mnet.Client, reader mpacket.Reader) {
 	msg := mc_metadata.C2P_RequestWhisper{}
 	err := proto.Unmarshal(reader.GetBuffer(), &msg)
-	if err != nil || len(msg.GetUuId()) == 0 {
+	if err != nil || msg.GetUuId() == 0 {
 		log.Println("Failed to parse data:", err)
 		return
 	}
@@ -893,7 +902,7 @@ func (server *Server) chatSendWhisper(conn *mnet.Client, reader mpacket.Reader) 
 	server.sendMsgToMe(conn, &toMe, constant.P2C_ResultWhisper)
 }
 
-func (server *Server) findCharacterID(uId string) *model.Player {
+func (server *Server) findCharacterID(uId int64) *model.Player {
 	v, _ := server.clients.Get(uId)
 	return v.GetPlayer_P()
 }

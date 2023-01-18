@@ -27,12 +27,14 @@ type players map[string]*player
 var gorotinesManager = manager.Init()
 
 func (p players) getFromConn(conn *mnet.Client) (*player, error) {
-	plr, ok := p[conn.GetPlayer().UId]
-	if ok {
-		return plr, nil
-	}
+	return nil, nil
 
-	return new(player), fmt.Errorf("Could not retrieve Data")
+	//plr, ok := p[conn.GetPlayer().UId]
+	//if ok {
+	//	return plr, nil
+	//}
+	//
+	//return new(player), fmt.Errorf("Could not retrieve Data")
 }
 
 func (p players) getFromConnByUID(uID string) (*player, error) {
@@ -65,26 +67,6 @@ func (p players) getFromID(id int32) (*player, error) {
 
 	return new(player), fmt.Errorf("Could not retrieve Data")
 }
-
-// RemoveFromConn removes the Data based on the connection
-//func (p *players) removeFromConn(conn mnet.Client) error {
-//	i := -1
-//	for j, v := range *p {
-//		if v.conn == conn {
-//			i = j
-//			break
-//		}
-//	}
-//
-//	if i == -1 {
-//		return fmt.Errorf("Could not find Data")
-//	}
-//
-//	(*p)[i] = (*p)[len((*p))-1]
-//	(*p) = (*p)[:len((*p))-1]
-//
-//	return nil
-//}
 
 type rates struct {
 	exp   float32
@@ -129,8 +111,8 @@ type Server struct {
 	fMovePlayers     []PlayerMovement    //(y,x)[data]
 
 	gridMgr       manager.GridManager
-	clients       manager.ConcurrentMap[string, *mnet.Client]
-	playerActions manager.ConcurrentMap[string, chan RequestedParam]
+	clients       manager.ConcurrentMap[int64, *mnet.Client]
+	playerActions manager.ConcurrentMap[int64, chan RequestedParam]
 
 	// Kioni
 	PlayerActionHandler map[uint32]func(*mnet.Client, mpacket.Reader)
@@ -204,16 +186,6 @@ func (server *Server) Initialize(work chan func(), dbuser, dbpassword, dbaddress
 	}
 	server.mapGrid = x
 
-	//log.Println("Initialised game state")
-	//common.MetricsGauges["player_count"] = prometheus.NewGaugeVec(prometheus.GaugeOpts{
-	//	Name: "player_count",
-	//	Help: "Number of players in this channel",
-	//}, []string{"channel", "world"})
-	//
-	//prometheus.MustRegister(common.MetricsGauges["player_count"])
-	//common.StartMetrics()
-	//log.Println("Started serving metrics on :" + common.MetricsPort)
-
 	detector := lingua.NewLanguageDetectorBuilder().
 		FromLanguages([]lingua.Language{
 			lingua.English,
@@ -230,7 +202,6 @@ func (server *Server) Initialize(work chan func(), dbuser, dbpassword, dbaddress
 	server.gridMgr.Init()
 
 	server.clients = manager.New[*mnet.Client]()
-	//server.playerActions = manager.New[chan RequestedParam]()
 
 	go func() {
 		for {
@@ -245,23 +216,10 @@ func (server *Server) Initialize(work chan func(), dbuser, dbpassword, dbaddress
 			time.Sleep(1000 * time.Millisecond)
 		}
 	}()
-
-	//debug.SetGCPercent(1)
 }
 
 func bToMb(b uint64) uint64 {
 	return b / 1024 / 1024
-}
-
-func (server *Server) addToEmulateMoving(uid string, plrs []*player) {
-	//arr := plrs
-	//for i := 0; i < len(arr); i++ {
-	//	if plrs[i].conn.GetPlayer().IsBot != 1 {
-	//		return
-	//	}
-	//	server.moveEmulate(arr[i])
-	//}
-	//arr = nil
 }
 
 // SendCountdownToPlayers - Send a countdown to players that appears as a clock
@@ -309,15 +267,6 @@ func (server *Server) clearSessions() {
 // Kioni
 // ClientDisconnected from server
 func (server *Server) ClientDisconnected(conn *mnet.Client, reader mpacket.Reader) {
-	//_, err := server.players.getFromConn(conn)
-	//if err != nil {
-	//	return
-	//}
-	//
-	//if _, ok := server.npcChat[conn]; ok {
-	//	delete(server.npcChat, conn)
-	//}
-
 	server.removePlayer(conn)
 
 	p := conn.GetPlayer_P()
@@ -365,7 +314,7 @@ func (server *Server) ClientDisconnected(conn *mnet.Client, reader mpacket.Reade
 	//common.MetricsGauges["player_count"].With(prometheus.Labels{"channel": strconv.Itoa(int(server.id)), "world": server.worldName}).Dec()
 }
 
-func makeDisconnectedResponse(uUID string) ([]byte, error) {
+func makeDisconnectedResponse(uUID int64) ([]byte, error) {
 	r := new(mc_metadata.C2P_RequestLogoutUser)
 	r.UuId = uUID
 
@@ -386,110 +335,17 @@ func makeDisconnectedResponse(uUID string) ([]byte, error) {
 }
 
 func (server *Server) addPlayer(plr *player) {
-	//if plr == nil || plr.conn.GetPlayer() == nil {
-	//	return
-	//}
-	//if server.players == nil {
-	//	server.players = make(map[string]*player)
-	//}
-	//server.addPlayerToGrid(plr, plr.conn.GetPlayer().Character.PosX, plr.conn.GetPlayer().Character.PosY)
-	//SomeMapMutex.Lock()
-	//server.players[plr.conn.GetPlayer().UId] = plr
-	//SomeMapMutex.Unlock()
 
 }
 
 func (server *Server) addPlayerToGrid(plr *player, x1, y1 float32) {
-	//if plr == nil {
-	//	return
-	//}
-	//x, y := common.FindGrid(x1, y1)
-	//
-	//is := false
-	//for i := 0; i < len(server.mapGrid[x][y]); i++ {
-	//	SomeMapMutex.RLock()
-	//	if server.mapGrid[x][y][i] != nil && server.mapGrid[x][y][i].conn.GetPlayer().UId == plr.conn.GetPlayer().UId {
-	//		is = true
-	//	}
-	//	SomeMapMutex.RUnlock()
-	//}
-	//if !is {
-	//	SomeMapMutex.Lock()
-	//	server.mapGrid[x][y][len(server.mapGrid[x][y])] = plr
-	//	SomeMapMutex.Unlock()
-	//}
 }
 
 func (server *Server) removePlayer(conn *mnet.Client) {
 
 	server.gridMgr.Remove(conn.GetPlayer().UId)
 	server.clients.Remove(conn.GetPlayer().UId)
-	//for i := 0; i < len(server.mapGrid); i++ {
-	//	x, y := common.FindGrid(conn.GetPlayer().Character.PosX, conn.GetPlayer().Character.PosY)
-	//	SomeMapMutex.RLock()
-	//	_, ok := server.mapGrid[x][y][i]
-	//	SomeMapMutex.RUnlock()
-	//	if ok {
-	//		if server.mapGrid[x][y][i].conn.GetPlayer().UId == conn.GetPlayer().UId {
-	//			SomeMapMutex.Lock()
-	//			delete(server.mapGrid[x][y], i)
-	//			SomeMapMutex.Unlock()
-	//			break
-	//		}
-	//	}
-	//}
-	//
-	//SomeMapMutex.RLock()
-	//_, ok := server.players[conn.GetPlayer().UId]
-	//SomeMapMutex.RUnlock()
-	//
-	//if ok {
-	//	SomeMapMutex.Lock()
-	//	delete(server.players, conn.GetPlayer().UId)
-	//	SomeMapMutex.Unlock()
-	//}
-
-	//server.removeFromMovingLoop(uid)
-	//go gorotinesManager.ClearAll()
 }
 
 func (server *Server) removePlayerFromGrid(plr map[int]*player, uID string, x1, y1 float32) {
-	//if plr == nil {
-	//	return
-	//}
-	//x, y := common.FindGrid(x1, y1)
-	//for i := 0; i < len(plr); i++ {
-	//
-	//	if plr[i] != nil && plr[i].conn.GetPlayer().UId == uID {
-	//		delete(server.mapGrid[x][y], i)
-	//	}
-	//}
 }
-
-func (server *Server) removeFromMovingLoop(uid string) {
-	for i := 0; i < len(server.fMovePlayers); i++ {
-		if server.fMovePlayers[i].name == uid {
-			server.fMovePlayers = append(server.fMovePlayers[:i], server.fMovePlayers[i+1:]...)
-			//server.removePlayersFromMovementLoop(v[i])
-		}
-	}
-
-}
-
-func (server *Server) removeFromEmulateMoving(uid string, plrs []*player) {
-	for i := 0; i < len(plrs); i++ {
-		server.removePlayersFromMovementLoop(plrs[i].conn.GetPlayer().UId)
-	}
-}
-
-func (server *Server) removePlayersFromMovementLoop(uID string) {
-	gorotinesManager.Remove(uID)
-}
-
-// SetScrollingHeaderMessage that appears at the top of game window
-// func (server *Server) SetScrollingHeaderMessage(msg string) {
-// 	server.header = msg
-// 	for _, v := range server.players {
-// 		v.send(message.PacketMessageScrollingHeader(msg))
-// 	}
-// }
