@@ -33,6 +33,12 @@ func (server *Server) clientBot(conn *mnet.Client, reader mpacket.Reader) {
 		return
 	}
 
+	if conn.GetPlayer().UId == 0 {
+		conn.Cleanup()
+		conn.Close()
+		return
+	}
+
 	switch msg.GetActionType() {
 	case 0:
 		packet := mc_metadata.C2P_RequestPlayerInfo{
@@ -61,7 +67,7 @@ func (server *Server) clientBot(conn *mnet.Client, reader mpacket.Reader) {
 		server.playerConnect(conn, reader)
 	case 2:
 		MovementData := mc_metadata.Movement{}
-		MovementData.UuId = conn.Bot_ID
+		MovementData.UuId = conn.GetPlayer().UId
 		MovementData.DestinationX = msg.SpawnPosX
 		MovementData.DestinationY = msg.SpawnPosY
 		MovementData.DestinationZ = msg.SpawnPosZ
@@ -78,7 +84,7 @@ func (server *Server) clientBot(conn *mnet.Client, reader mpacket.Reader) {
 		server.playerMovementStart(conn, reader)
 	case 3:
 		MovementData := mc_metadata.Movement{}
-		MovementData.UuId = conn.Bot_ID
+		MovementData.UuId = conn.GetPlayer().UId
 		MovementData.DestinationX = msg.SpawnPosX
 		MovementData.DestinationY = msg.SpawnPosY
 		MovementData.DestinationZ = msg.SpawnPosZ
@@ -94,7 +100,7 @@ func (server *Server) clientBot(conn *mnet.Client, reader mpacket.Reader) {
 		server.playerMovement(conn, reader)
 	case 4:
 		MovementData := mc_metadata.Movement{}
-		MovementData.UuId = conn.Bot_ID
+		MovementData.UuId = conn.GetPlayer().UId
 		MovementData.DestinationX = msg.SpawnPosX
 		MovementData.DestinationY = msg.SpawnPosY
 		MovementData.DestinationZ = msg.SpawnPosZ
