@@ -306,13 +306,13 @@ func (server *Server) sendMsgToAll(msg proto2.Message, uID int64, msgType int) {
 		log.Println("DATA_RESPONSE_ERROR", err)
 	}
 
-	for v := range server.clients.IterBuffered() {
-		if v.Key == uID {
+	server.clients.IterCb(func(k int64, v *mnet.Client) {
+		if k == uID {
 			return
 		}
 
-		v.Val.Send(res)
-	}
+		v.Send(res)
+	})
 }
 
 func (server *Server) sendMsgToRegion(conn *mnet.Client, msg proto2.Message, msgType int) {
