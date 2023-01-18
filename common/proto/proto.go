@@ -9,11 +9,20 @@ import (
 	"log"
 )
 
+func GetRequestLoginUser(buff []byte) (*mc_metadata.C2P_RequestLoginUser, error) {
+	msg := &mc_metadata.C2P_RequestLoginUser{}
+	if err := proto.Unmarshal(buff, msg); err != nil || len(msg.UuId) == 0 {
+		log.Fatalln("Failed to parse data:", err)
+		return nil, err
+	}
+	return msg, nil
+}
+
 func Unmarshal(buff []byte, msg proto.Message) error {
 	return proto.Unmarshal(buff, msg)
 }
 
-func AccountReport(uID int64, acc model.Character) mc_metadata.P2C_ReportLoginUser {
+func AccountReport(uID string, acc model.Character) mc_metadata.P2C_ReportLoginUser {
 	res := mc_metadata.P2C_ReportLoginUser{
 		UuId: uID,
 		PlayerInfo: &mc_metadata.P2C_PlayerInfo{
@@ -57,7 +66,7 @@ func ChannelChangeForNewReport(plr *model.Player) *mc_metadata.P2C_ReportRegionC
 	return res
 }
 
-func ChannelChangeForOldReport(uID int64, acc *model.Character) *mc_metadata.P2C_ReportRegionLeave {
+func ChannelChangeForOldReport(uID string, acc *model.Character) *mc_metadata.P2C_ReportRegionLeave {
 	res := &mc_metadata.P2C_ReportRegionLeave{
 		PlayerInfo: &mc_metadata.P2C_PlayerInfo{
 			UuId:     uID,
@@ -151,7 +160,7 @@ func ConvertPlayersToRoomReport(plrs []*model.Player) []*mc_metadata.DataSchool 
 	return res
 }
 
-func ErrorLoginResponse(_err string, uID int64) ([]byte, error) {
+func ErrorLoginResponse(_err string, uID string) ([]byte, error) {
 	return MakeResponse(&mc_metadata.P2C_ResultLoginUserError{
 		UuId:  uID,
 		Error: _err,

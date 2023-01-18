@@ -15,6 +15,8 @@ import (
 	"github.com/Hucaru/Valhalla/constant"
 	"github.com/Hucaru/Valhalla/mnet"
 	"github.com/Hucaru/Valhalla/mpacket"
+
+	"github.com/Hucaru/Valhalla/meta-proto/go/mc_metadata"
 )
 
 type buddy struct {
@@ -1151,6 +1153,60 @@ func (d *player) removeBuddy(id int32) {
 			return
 		}
 	}
+}
+
+func loadPlayer(conn mnet.Client, msg mc_metadata.C2P_RequestLoginUser) player {
+	c := player{}
+	c.id = rand.Int31n(100000)
+	c.name = fmt.Sprintf("Player#%v", c.id)
+	c.playerID = msg.UuId
+	c.mapID = 888
+	c.conn = conn
+	return c
+}
+
+func loadPlayerFromID(id int32, conn mnet.Client) player {
+	c := player{}
+
+	filter := "id,accountID,worldID,name,gender,skin,hair,face,level,job,str,dex,intt," +
+		"luk,hp,maxHP,mp,maxMP,ap,sp, exp,fame,mapID,mapPos,previousMapID,mesos," +
+		"equipSlotSize,useSlotSize,setupSlotSize,etcSlotSize,cashSlotSize,miniGameWins," +
+		"miniGameDraw,miniGameLoss,miniGamePoints,buddyListSize"
+
+	err := db.Maria.QueryRow("SELECT "+filter+" FROM characters where id=?", id).Scan(&c.id,
+		&c.accountID, &c.worldID, &c.name, &c.gender, &c.skin, &c.hair, &c.face,
+		&c.level, &c.job, &c.str, &c.dex, &c.intt, &c.luk, &c.hp, &c.maxHP, &c.mp,
+		&c.maxMP, &c.ap, &c.sp, &c.exp, &c.fame, &c.mapID, &c.mapPos,
+		&c.previousMap, &c.mesos, &c.equipSlotSize, &c.useSlotSize, &c.setupSlotSize,
+		&c.etcSlotSize, &c.cashSlotSize, &c.miniGameWins, &c.miniGameDraw, &c.miniGameLoss,
+		&c.miniGamePoints, &c.buddyListSize)
+
+	if err != nil {
+		log.Println(err)
+		return c
+	}
+
+	c.skills = make(map[int32]playerSkill)
+
+	for _, s := range getSkillsFromCharID(c.id) {
+		c.skills[s.ID] = s
+	}
+
+	nxMap, err := nx.GetMap(c.mapID)
+
+	if err != nil {
+		log.Println(err)
+		return c
+	}
+
+	c.pos.x = nxMap.Portals[c.mapPos].X
+	c.pos.y = nxMap.Portals[c.mapPos].Y
+
+	c.equip, c.use, c.setUp, c.etc, c.cash = loadInventoryFromDb(c.id)
+	c.buddyList = getBuddyList(c.id, c.buddyListSize)
+
+	c.conn = conn
+	return c
 }
 
 func getBuddyList(playerID int32, buddySize byte) []buddy {

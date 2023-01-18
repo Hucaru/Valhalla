@@ -33,10 +33,10 @@ func ConnectToDB(user, password, address, port, database string) error {
 	return nil
 }
 
-func GetLoggedData(uId int64) (*model.Player, error) {
+func GetLoggedData(uUID int64) (*model.Player, error) {
 
 	plr := &model.Player{
-		UId:         uId,
+		UId:         uUID,
 		AccountID:   constant.UNKNOWN,
 		CharacterID: constant.UNKNOWN,
 		RegionID:    constant.World,
@@ -63,7 +63,7 @@ func GetLoggedData(uId int64) (*model.Player, error) {
 	ch := plr.GetCharacter_P()
 
 	err := Maria.QueryRow(
-		"SELECT a.accountID, a.accountID, c.id as characterID, c.channelID, c.nickname, c.hair, c.top, c.bottom, c.clothes, IFNULL(m.time, 0) as time, IFNULL(m.pos_x, 0) as pos_x, IFNULL(m.pos_y, 0) as pos_y, IFNULL(m.pos_z, 0) as pos_z, IFNULL(m.rot_x, 0) as rot_x, IFNULL(m.rot_y, 0) as rot_y, IFNULL(m.rot_z, 0) as rot_z FROM accounts a LEFT JOIN characters c ON c.accountID = a.accountID LEFT JOIN (select characterID, pos_x, pos_y, pos_z, rot_x, rot_y, rot_z, time from movement) as m ON m.characterID = c.id WHERE a.accountID=?  ORDER BY m.time DESC limit 1;", uId).
+		"SELECT a.accountID, a.uId, c.id as characterID, c.channelID, c.nickname, c.hair, c.top, c.bottom, c.clothes, IFNULL(m.time, 0) as time, IFNULL(m.pos_x, 0) as pos_x, IFNULL(m.pos_y, 0) as pos_y, IFNULL(m.pos_z, 0) as pos_z, IFNULL(m.rot_x, 0) as rot_x, IFNULL(m.rot_y, 0) as rot_y, IFNULL(m.rot_z, 0) as rot_z FROM accounts a LEFT JOIN characters c ON c.accountID = a.accountID LEFT JOIN (select characterID, pos_x, pos_y, pos_z, rot_x, rot_y, rot_z, time from movement) as m ON m.characterID = c.id WHERE a.uId=?  ORDER BY m.time DESC limit 1;", uUID).
 		Scan(&plr.AccountID,
 			&plr.UId, &plr.CharacterID, &plr.RegionID,
 			&ch.NickName, &ch.Hair, &ch.Top, &ch.Bottom, &ch.Clothes,
@@ -74,10 +74,10 @@ func GetLoggedData(uId int64) (*model.Player, error) {
 	return plr, err
 }
 
-func GetLoggedDataForBot(uuid int64) (*model.Player, error) {
+func GetLoggedDataForBot(uUID int64) (*model.Player, error) {
 
 	plr := &model.Player{
-		UId:         uuid,
+		UId:         uUID,
 		AccountID:   constant.UNKNOWN,
 		CharacterID: constant.UNKNOWN,
 		RegionID:    constant.World,
@@ -85,7 +85,7 @@ func GetLoggedDataForBot(uuid int64) (*model.Player, error) {
 
 	Character := model.Character{
 		Role:     constant.User,
-		NickName: "",
+		NickName: fmt.Sprintf("%d", uUID),
 		Hair:     "",
 		Top:      "",
 		Bottom:   "",
@@ -108,7 +108,7 @@ func GetLoggedDataForBot(uuid int64) (*model.Player, error) {
 func GetLoggedDataByName(req *mc_metadata.C2P_RequestPlayerInfo) (*model.Player, error) {
 
 	plr := &model.Player{
-		UId:         0,
+		UId:         req.GetUuId(),
 		AccountID:   constant.UNKNOWN,
 		CharacterID: constant.UNKNOWN,
 		RegionID:    constant.World,
@@ -136,7 +136,7 @@ func GetLoggedDataByName(req *mc_metadata.C2P_RequestPlayerInfo) (*model.Player,
 
 	err := Maria.QueryRow(
 		"SELECT a.accountID, "+
-			"c.id, c.id as characterID, c.channelID, "+
+			"a.uId, c.id as characterID, c.channelID, "+
 			"c.nickname, c.hair, c.top, c.bottom, c.clothes, "+
 			"IFNULL(m.time, 0) as time, "+
 			"IFNULL(m.pos_x, 0) as pos_x, IFNULL(m.pos_y, 0) as pos_y, IFNULL(m.pos_z, 0) as pos_z, "+
@@ -144,7 +144,7 @@ func GetLoggedDataByName(req *mc_metadata.C2P_RequestPlayerInfo) (*model.Player,
 			"FROM accounts a "+
 			"LEFT JOIN characters c ON c.accountID = a.accountID "+
 			"LEFT JOIN movement m ON m.characterID = characterID "+
-			"WHERE c.nickname=? "+
+			"WHERE a.nickname=? "+
 			"ORDER BY time DESC "+
 			"LIMIT 1", req.GetNickname()).
 		Scan(&plr.AccountID,
@@ -158,8 +158,8 @@ func GetLoggedDataByName(req *mc_metadata.C2P_RequestPlayerInfo) (*model.Player,
 }
 
 func AddNewAccount(plr *model.Player) error {
-	res, err := Maria.Exec("INSERT INTO accounts (username, password, pin, dob, isLogedIn) VALUES ( ?, ?, ?, ?, ?)",
-		plr.GetCharacter().NickName, "password", "1", 1, 1)
+	res, err := Maria.Exec("INSERT INTO accounts (uId, username, password, pin, dob, isLogedIn) VALUES (?, ?, ?, ?, ?, ?)",
+		plr.UId, "test", "password", "1", 1, 1)
 
 	if err != nil {
 		log.Println("INSERT account", err)
@@ -187,7 +187,6 @@ func AddNewAccount(plr *model.Player) error {
 		return cErr
 	}
 	err = nil
-	plr.UId, err = cRes.LastInsertId()
 	plr.CharacterID, err = cRes.LastInsertId()
 	return AddMovement(plr.CharacterID,
 		constant.PosX, constant.PosY, constant.PosZ,
@@ -327,19 +326,19 @@ func addChatMessage(
 	}
 }
 
-func UpdateLoginState(uUID int64, isLogedIn bool) error {
+func UpdateLoginState(uUID string, isLogedIn bool) error {
 	in := 0
 	if isLogedIn {
 		in = 1
 	} else {
 		in = 0
 	}
-	_, err := Maria.Exec("UPDATE accounts SET isLogedIn=? WHERE accountID=?", in, uUID)
+	_, err := Maria.Exec("UPDATE accounts SET isLogedIn=? WHERE uId=?", in, uUID)
 	return err
 }
 
 func UpdateRegionID(cID int64, channelID int32) error {
-	_, err := Maria.Exec("UPDATE characters SET channelID=? WHERE accountID=?", channelID, cID)
+	_, err := Maria.Exec("UPDATE characters SET channelID=? WHERE id=?", channelID, cID)
 	return err
 }
 

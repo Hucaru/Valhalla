@@ -5,6 +5,7 @@ SET sql_mode = 'NO_AUTO_VALUE_ON_ZERO';
 
 CREATE TABLE IF NOT EXISTS `accounts` (
   `accountID` int(10) unsigned NOT NULL AUTO_INCREMENT,
+  `uId` int(11) NOT NULL,
   `username` tinytext NOT NULL,
   `password` tinytext NOT NULL,
   `pin` tinytext NOT NULL,
@@ -13,7 +14,8 @@ CREATE TABLE IF NOT EXISTS `accounts` (
   `isBanned` int(11) NOT NULL DEFAULT '0',
   `gender` tinyint(4) NOT NULL DEFAULT '0',
   `dob` int(11) NOT NULL,
-  PRIMARY KEY (`accountID`)
+  PRIMARY KEY (`accountID`),
+  UNIQUE KEY `unique_index_uID` (`uId`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 DEFAULT COLLATE='utf8mb4_bin';
 
 
