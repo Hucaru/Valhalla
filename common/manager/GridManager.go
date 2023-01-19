@@ -22,7 +22,10 @@ type GridManager struct {
 	plrs  ConcurrentMap[int64, GridInfo]
 
 	pClients        *ConcurrentMap[int64, *mnet.Client]
-	gridChangeQueue *dataController.GridLKQueue
+	gridChangeQueue []*dataController.GridLKQueue
+
+	GridChangeQueueBrancher int
+
 	//gridChangeQueue *dataController.GridLKQueue
 }
 
@@ -60,10 +63,17 @@ func (gridMgr *GridManager) Init(_clients *ConcurrentMap[int64, *mnet.Client], f
 
 		r[_k] = x
 	}
+
 	gridMgr.grids = r
 	gridMgr.pClients = _clients
-	gridMgr.gridChangeQueue = dataController.NewGridLKQueue()
-	go gridMgr.Run(fn)
+	gridMgr.GridChangeQueueBrancher = 0
+
+	for i := 0; i < constant.MoveQueueUseCount; i++ {
+		newQueue := dataController.NewGridLKQueue()
+		gridMgr.gridChangeQueue = append(gridMgr.gridChangeQueue, newQueue)
+		go gridMgr.Run(fn, newQueue)
+	}
+
 }
 
 func (gridMgr *GridManager) Add(region int64, gridX, gridY int, cl *mnet.Client) {
@@ -134,7 +144,7 @@ func (gridMgr *GridManager) fillPlayers(RegionId int64, GridX, GridY int) map[in
 	return result
 }
 
-func (gridMgr *GridManager) TestFunction(oldRegionId, NewRegionId int64, oldX, oldY, newX, newY float32, accountID int64, isNew bool) {
+func (gridMgr *GridManager) TestFunction(oldRegionId, NewRegionId int64, oldX, oldY, newX, newY float32, accountID int64, moveQueueIndex int, isNew bool) {
 	oldGridX, oldGridY := common.FindGrid(oldX, oldY)
 	newGridX, newGridY := common.FindGrid(newX, newY)
 
@@ -149,12 +159,13 @@ func (gridMgr *GridManager) TestFunction(oldRegionId, NewRegionId int64, oldX, o
 		IsNew:       isNew,
 	}
 
-	gridMgr.gridChangeQueue.Enqueue(info)
+	gridMgr.gridChangeQueue[moveQueueIndex].Enqueue(info)
 }
 
-func (gridMgr *GridManager) Run(fn func(conn *mnet.Client, msg proto2.Message, msgType int)) {
+func (gridMgr *GridManager) Run(fn func(conn *mnet.Client, msg proto2.Message, msgType int), _gridChangeQueue *dataController.GridLKQueue) {
+
 	for {
-		v := gridMgr.gridChangeQueue.Dequeue()
+		v := _gridChangeQueue.Dequeue()
 		if v == nil {
 			runtime.Gosched()
 			continue

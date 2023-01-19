@@ -1,14 +1,15 @@
 package model
 
 type Player struct {
-	AccountID   int64
-	UId         int64
-	CharacterID int64
-	RegionID    int64
-	character   Character
-	interaction Interaction
-	IsBot       int32
-	ModifiedAt  int64
+	AccountID      int64
+	UId            int64
+	CharacterID    int64
+	RegionID       int64
+	character      Character
+	interaction    Interaction
+	IsBot          int32
+	ModifiedAt     int64
+	MoveQueueIndex int
 }
 
 func (p *Player) GetCharacter() Character {
