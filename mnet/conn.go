@@ -4,7 +4,6 @@ import (
 	"github.com/Hucaru/Valhalla/common/dataController"
 	"math/rand"
 	"net"
-	"runtime"
 	"sync"
 	"time"
 
@@ -160,7 +159,7 @@ func (bc *baseConn) MetaWriter() {
 		} else if bc.closed {
 			return
 		} else {
-			runtime.Gosched()
+			//runtime.Gosched()
 		}
 	}
 }
