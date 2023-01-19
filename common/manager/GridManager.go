@@ -66,13 +66,13 @@ func (gridMgr *GridManager) Init(_clients *ConcurrentMap[int64, *mnet.Client], f
 
 	gridMgr.grids = r
 	gridMgr.pClients = _clients
-	gridMgr.GridChangeQueueBrancher = 0
-
-	for i := 0; i < constant.MoveQueueUseCount; i++ {
-		newQueue := dataController.NewGridLKQueue()
-		gridMgr.gridChangeQueue = append(gridMgr.gridChangeQueue, newQueue)
-		go gridMgr.Run(fn, newQueue)
-	}
+	//gridMgr.GridChangeQueueBrancher = 0
+	//
+	//for i := 0; i < constant.MoveQueueUseCount; i++ {
+	//	newQueue := dataController.NewGridLKQueue()
+	//	gridMgr.gridChangeQueue = append(gridMgr.gridChangeQueue, newQueue)
+	//	go gridMgr.Run(fn, newQueue)
+	//}
 
 }
 
@@ -144,7 +144,7 @@ func (gridMgr *GridManager) fillPlayers(RegionId int64, GridX, GridY int) map[in
 	return result
 }
 
-func (gridMgr *GridManager) TestFunction(oldRegionId, NewRegionId int64, oldX, oldY, newX, newY float32, accountID int64, moveQueueIndex int, isNew bool) {
+func (gridMgr *GridManager) TestFunction(oldRegionId, NewRegionId int64, oldX, oldY, newX, newY float32, accountID int64, moveQueueIndex int, isNew bool, fn func(conn *mnet.Client, msg proto2.Message, msgType int)) {
 	oldGridX, oldGridY := common.FindGrid(oldX, oldY)
 	newGridX, newGridY := common.FindGrid(newX, newY)
 
@@ -160,162 +160,59 @@ func (gridMgr *GridManager) TestFunction(oldRegionId, NewRegionId int64, oldX, o
 		Time:        time.Now().UnixNano(),
 	}
 
-	gridMgr.gridChangeQueue[moveQueueIndex].Enqueue(info)
-}
+	OldRegionId := info.OldRegionId
+	//NewRegionId := v.NewRegionId
+	OldGridX := info.OldGridX
+	OldGridY := info.OldGridY
+	NewGridX := info.NewGridX
+	NewGridY := info.NewGridY
+	AccountId := info.AccountID
+	//Time := v.Time
 
-func (gridMgr *GridManager) Run(fn func(conn *mnet.Client, msg proto2.Message, msgType int), _gridChangeQueue *dataController.GridLKQueue) {
+	pClient, ok := gridMgr.pClients.Get(info.AccountID)
+	if !ok {
+		// emmm....
+		return
+	}
 
-	for {
-		v := _gridChangeQueue.Dequeue()
-		if v == nil {
-			//runtime.Gosched()
-			continue
-		}
+	p := pClient.GetPlayer_P()
+	ch := p.GetCharacter()
 
-		OldRegionId := v.OldRegionId
-		//NewRegionId := v.NewRegionId
-		OldGridX := v.OldGridX
-		OldGridY := v.OldGridY
-		NewGridX := v.NewGridX
-		NewGridY := v.NewGridY
-		AccountId := v.AccountID
-		//Time := v.Time
+	_PlayerInfo := mc_metadata.P2C_PlayerInfo{
+		UuId:     p.UId,
+		Nickname: ch.NickName,
+		Top:      ch.Top,
+		Bottom:   ch.Bottom,
+		Clothes:  ch.Clothes,
+		Hair:     ch.Hair,
+	}
 
-		pClient, ok := gridMgr.pClients.Get(v.AccountID)
-		if !ok {
-			// emmm....
-			continue
-		}
+	newMe := mc_metadata.P2C_ReportGridNew{
+		PlayerInfo: &_PlayerInfo,
+		SpawnPosX:  ch.PosX,
+		SpawnPosY:  ch.PosY,
+		SpawnPosZ:  ch.PosZ,
+		SpawnRotX:  ch.RotX,
+		SpawnRotY:  ch.RotY,
+		SpawnRotZ:  ch.RotZ,
+	}
 
-		p := pClient.GetPlayer_P()
-		ch := p.GetCharacter()
+	oldMe := mc_metadata.P2C_ReportGridOld{
+		PlayerInfo: &_PlayerInfo,
+	}
 
-		_PlayerInfo := mc_metadata.P2C_PlayerInfo{
-			UuId:     p.UId,
-			Nickname: ch.NickName,
-			Top:      ch.Top,
-			Bottom:   ch.Bottom,
-			Clothes:  ch.Clothes,
-			Hair:     ch.Hair,
-		}
-
-		newMe := mc_metadata.P2C_ReportGridNew{
-			PlayerInfo: &_PlayerInfo,
-			SpawnPosX:  ch.PosX,
-			SpawnPosY:  ch.PosY,
-			SpawnPosZ:  ch.PosZ,
-			SpawnRotX:  ch.RotX,
-			SpawnRotY:  ch.RotY,
-			SpawnRotZ:  ch.RotZ,
-		}
-
-		oldMe := mc_metadata.P2C_ReportGridOld{
-			PlayerInfo: &_PlayerInfo,
-		}
-
-		if v.IsNew {
-			spawnList := map[int64]*mnet.Client{}
-
-			for i := -1; i <= 1; i++ {
-				for j := -1; j <= 1; j++ {
-					_newGridX := NewGridX + i
-					_newGridY := NewGridY + j
-
-					maps.Copy(spawnList, gridMgr.fillPlayers(OldRegionId, _newGridX, _newGridY))
-				}
-			}
-
-			delete(spawnList, AccountId)
-
-			for _, v := range spawnList {
-				_p := v.GetPlayer()
-				_ch := _p.GetCharacter()
-				_PlayerInfo := mc_metadata.P2C_PlayerInfo{
-					UuId:     _p.UId,
-					Nickname: _ch.NickName,
-					Top:      _ch.Top,
-					Bottom:   _ch.Bottom,
-					Clothes:  _ch.Clothes,
-					Hair:     _ch.Hair,
-				}
-
-				sP := mc_metadata.P2C_ReportGridNew{
-					PlayerInfo: &_PlayerInfo,
-					SpawnPosX:  _ch.PosX,
-					SpawnPosY:  _ch.PosY,
-					SpawnPosZ:  _ch.PosZ,
-					SpawnRotX:  _ch.RotX,
-					SpawnRotY:  _ch.RotY,
-					SpawnRotZ:  _ch.RotZ,
-				}
-
-				fn(pClient, &sP, constant.P2C_ReportGridNew)
-				fn(v, &newMe, constant.P2C_ReportGridNew)
-
-				//pClient.MoveQueue.Enqueue(dataController.ActionSync{
-				//	Fn:   func() { fn(pClient, &sP, constant.P2C_ReportGridNew) },
-				//	Time: Time,
-				//})
-				//
-				//v.MoveQueue.Enqueue(dataController.ActionSync{
-				//	Fn:   func() { fn(v, &newMe, constant.P2C_ReportGridNew) },
-				//	Time: Time,
-				//})
-			}
-
-			continue
-		}
-
-		if OldGridX == NewGridX && OldGridY == NewGridY {
-			continue
-		}
-
-		plr := gridMgr.Remove(AccountId)
-		gridMgr.Add(OldRegionId, NewGridX, NewGridY, plr)
-
-		oldGridList := map[int]GridInfo{}
-		newGridList := map[int]GridInfo{}
+	if info.IsNew {
+		spawnList := map[int64]*mnet.Client{}
 
 		for i := -1; i <= 1; i++ {
 			for j := -1; j <= 1; j++ {
-				_oldGridX := OldGridX + i
-				_oldGridY := OldGridY + j
-
-				oldGridList[_oldGridX*1000+_oldGridY] = GridInfo{GridX: _oldGridX, GridY: _oldGridY}
-
 				_newGridX := NewGridX + i
 				_newGridY := NewGridY + j
 
-				newGridList[_newGridX*1000+_newGridY] = GridInfo{GridX: _newGridX, GridY: _newGridY}
+				maps.Copy(spawnList, gridMgr.fillPlayers(OldRegionId, _newGridX, _newGridY))
 			}
 		}
 
-		_newGridList := map[int]GridInfo{}
-		_oldGridList := map[int]GridInfo{}
-
-		maps.Copy(_newGridList, newGridList)
-		maps.Copy(_oldGridList, oldGridList)
-
-		for k, _ := range oldGridList {
-			delete(_newGridList, k)
-		}
-
-		for k, _ := range newGridList {
-			delete(_oldGridList, k)
-		}
-
-		spawnList := map[int64]*mnet.Client{}
-		removeList := map[int64]*mnet.Client{}
-
-		for _, v := range _newGridList {
-			maps.Copy(spawnList, gridMgr.fillPlayers(OldRegionId, v.GridX, v.GridY))
-		}
-
-		for _, v := range _oldGridList {
-			maps.Copy(removeList, gridMgr.fillPlayers(OldRegionId, v.GridX, v.GridY))
-		}
-
-		delete(removeList, AccountId)
 		delete(spawnList, AccountId)
 
 		for _, v := range spawnList {
@@ -342,207 +239,519 @@ func (gridMgr *GridManager) Run(fn func(conn *mnet.Client, msg proto2.Message, m
 
 			fn(pClient, &sP, constant.P2C_ReportGridNew)
 			fn(v, &newMe, constant.P2C_ReportGridNew)
+
 			//pClient.MoveQueue.Enqueue(dataController.ActionSync{
 			//	Fn:   func() { fn(pClient, &sP, constant.P2C_ReportGridNew) },
 			//	Time: Time,
 			//})
-
+			//
 			//v.MoveQueue.Enqueue(dataController.ActionSync{
 			//	Fn:   func() { fn(v, &newMe, constant.P2C_ReportGridNew) },
 			//	Time: Time,
 			//})
 		}
 
-		for _, v := range removeList {
-			_p := v.GetPlayer()
-			_ch := _p.GetCharacter()
-			_PlayerInfo := mc_metadata.P2C_PlayerInfo{
-				UuId:     _p.UId,
-				Nickname: _ch.NickName,
-				Top:      _ch.Top,
-				Bottom:   _ch.Bottom,
-				Clothes:  _ch.Clothes,
-				Hair:     _ch.Hair,
-			}
+		return
+	}
 
-			rP := mc_metadata.P2C_ReportGridOld{
-				PlayerInfo: &_PlayerInfo,
-			}
+	if OldGridX == NewGridX && OldGridY == NewGridY {
+		return
+	}
 
-			fn(pClient, &rP, constant.P2C_ReportGridOld)
-			fn(v, &oldMe, constant.P2C_ReportGridOld)
+	plr := gridMgr.Remove(AccountId)
+	gridMgr.Add(OldRegionId, NewGridX, NewGridY, plr)
 
-			//pClient.MoveQueue.Enqueue(dataController.ActionSync{
-			//	Fn:   func() { fn(pClient, &rP, constant.P2C_ReportGridOld) },
-			//	Time: Time + 1,
-			//})
-			//
-			//v.MoveQueue.Enqueue(dataController.ActionSync{
-			//	Fn:   func() { fn(v, &oldMe, constant.P2C_ReportGridOld) },
-			//	Time: Time + 1,
-			//})
+	oldGridList := map[int]GridInfo{}
+	newGridList := map[int]GridInfo{}
+
+	for i := -1; i <= 1; i++ {
+		for j := -1; j <= 1; j++ {
+			_oldGridX := OldGridX + i
+			_oldGridY := OldGridY + j
+
+			oldGridList[_oldGridX*1000+_oldGridY] = GridInfo{GridX: _oldGridX, GridY: _oldGridY}
+
+			_newGridX := NewGridX + i
+			_newGridY := NewGridY + j
+
+			newGridList[_newGridX*1000+_newGridY] = GridInfo{GridX: _newGridX, GridY: _newGridY}
 		}
 	}
 
-	//for {
-	//
-	//	addList := map[int64]*mnet.Client{}
-	//	removeList := map[int64]*mnet.Client{}
-	//
-	//	v := gridMgr.gridChangeQueue.Dequeue()
-	//	if v == nil {
-	//		runtime.Gosched()
-	//		continue
-	//	}
-	//
-	//	OldRegionId := v.OldRegionId
-	//	NewRegionId := v.NewRegionId
-	//	OldGridX := v.OldGridX
-	//	OldGridY := v.OldGridY
-	//	NewGridX := v.NewGridX
-	//	NewGridY := v.NewGridY
-	//	AccountId := v.AccountID
-	//
-	//	log.Println(OldGridX, OldGridY, NewGridX, NewGridY)
-	//
-	//	conn, _ := gridMgr.pClients.Get(AccountId)
-	//
-	//	if OldRegionId != NewRegionId {
-	//
-	//	} else if OldGridX != NewGridX || OldGridY != NewGridY {
-	//		_plr := gridMgr.Remove(AccountId)
-	//		if _plr != nil {
-	//			gridMgr.Add(OldRegionId, NewGridX, NewGridY, _plr)
-	//
-	//			oldList := map[int64]*mnet.Client{}
-	//			newList := map[int64]*mnet.Client{}
-	//
-	//			for i := -1; i <= 1; i++ {
-	//				for j := -1; j <= 1; j++ {
-	//					_oldGridX := OldGridX + i
-	//					_oldGridY := OldGridY + j
-	//
-	//					_newGridX := NewGridX + i
-	//					_newGridY := NewGridY + j
-	//
-	//					if !v.IsNew {
-	//						maps.Copy(oldList, gridMgr.fillPlayers(OldRegionId, _oldGridX, _oldGridY))
-	//					}
-	//					maps.Copy(newList, gridMgr.fillPlayers(OldRegionId, _newGridX, _newGridY))
-	//				}
-	//			}
-	//
-	//			delete(oldList, AccountId)
-	//			delete(newList, AccountId)
-	//
-	//			for k, v := range oldList {
-	//				//_, ok := newList[k]
-	//				//if ok {
-	//				//	continue
-	//				//}
-	//
-	//				removeList[k] = v
-	//			}
-	//
-	//			for k, v := range newList {
-	//				//_, ok := oldList[k]
-	//				//if ok {
-	//				//	continue
-	//				//}
-	//
-	//				addList[k] = v
-	//			}
-	//		}
-	//	} else if v.IsNew {
-	//		gridMgr.Add(OldRegionId, NewGridX, NewGridY, conn)
-	//		newList := map[int64]*mnet.Client{}
-	//
-	//		for i := -1; i <= 1; i++ {
-	//			for j := -1; j <= 1; j++ {
-	//
-	//				_newGridX := NewGridX + i
-	//				_newGridY := NewGridY + j
-	//
-	//				maps.Copy(newList, gridMgr.fillPlayers(OldRegionId, _newGridX, _newGridY))
-	//			}
-	//		}
-	//
-	//		addList = newList
-	//		delete(addList, AccountId)
-	//	}
-	//
-	//	for _, v := range addList {
-	//		c := v.GetPlayer_P().GetCharacter()
-	//
-	//		__PlayerInfo := mc_metadata.P2C_PlayerInfo{
-	//			Nickname: c.NickName,
-	//			UuId:     AccountId,
-	//			Top:      c.Top,
-	//			Bottom:   c.Bottom,
-	//			Clothes:  c.Clothes,
-	//			Hair:     c.Hair,
-	//		}
-	//
-	//		res := mc_metadata.P2C_ReportGridNew{
-	//			PlayerInfo: &__PlayerInfo,
-	//			SpawnPosX:  c.PosX,
-	//			SpawnPosY:  c.PosY,
-	//			SpawnPosZ:  c.PosZ,
-	//			SpawnRotX:  c.RotX,
-	//			SpawnRotY:  c.RotY,
-	//			SpawnRotZ:  c.RotZ,
-	//		}
-	//
-	//		p := conn.GetPlayer_P()
-	//		ch := p.GetCharacter()
-	//
-	//		_PlayerInfo := mc_metadata.P2C_PlayerInfo{
-	//			UuId:     p.UId,
-	//			Nickname: ch.NickName,
-	//			Top:      ch.Top,
-	//			Bottom:   ch.Bottom,
-	//			Clothes:  ch.Clothes,
-	//			Hair:     ch.Hair,
-	//		}
-	//
-	//		res2 := mc_metadata.P2C_ReportGridNew{
-	//			PlayerInfo: &_PlayerInfo,
-	//			SpawnPosX:  ch.PosX,
-	//			SpawnPosY:  ch.PosY,
-	//			SpawnPosZ:  ch.PosZ,
-	//			SpawnRotX:  ch.RotX,
-	//			SpawnRotY:  ch.RotY,
-	//			SpawnRotZ:  ch.RotZ,
-	//		}
-	//
-	//		fn(conn, &res, constant.P2C_ReportGridNew)
-	//		fn(v, &res2, constant.P2C_ReportGridNew)
-	//	}
-	//
-	//	for k, v := range removeList {
-	//		p1 := mc_metadata.P2C_PlayerInfo{
-	//			UuId: k,
-	//		}
-	//
-	//		res := mc_metadata.P2C_ReportGridOld{
-	//			PlayerInfo: &p1,
-	//		}
-	//
-	//		p2 := mc_metadata.P2C_PlayerInfo{
-	//			UuId: conn.GetPlayer().UId,
-	//		}
-	//
-	//		res2 := mc_metadata.P2C_ReportGridOld{
-	//			PlayerInfo: &p2,
-	//		}
-	//
-	//		//fmt.Println(fmt.Sprintf("conn : %s v : %s res : %s res2 : %s", conn.GetPlayer().UId, v.GetPlayer().UId, res.PlayerInfo.UuId, res2.PlayerInfo.UuId))
-	//
-	//		fn(conn, &res, constant.P2C_ReportGridOld)
-	//		fn(v, &res2, constant.P2C_ReportGridOld)
-	//	}
-	//}
+	_newGridList := map[int]GridInfo{}
+	_oldGridList := map[int]GridInfo{}
+
+	maps.Copy(_newGridList, newGridList)
+	maps.Copy(_oldGridList, oldGridList)
+
+	for k, _ := range oldGridList {
+		delete(_newGridList, k)
+	}
+
+	for k, _ := range newGridList {
+		delete(_oldGridList, k)
+	}
+
+	spawnList := map[int64]*mnet.Client{}
+	removeList := map[int64]*mnet.Client{}
+
+	for _, v := range _newGridList {
+		maps.Copy(spawnList, gridMgr.fillPlayers(OldRegionId, v.GridX, v.GridY))
+	}
+
+	for _, v := range _oldGridList {
+		maps.Copy(removeList, gridMgr.fillPlayers(OldRegionId, v.GridX, v.GridY))
+	}
+
+	delete(removeList, AccountId)
+	delete(spawnList, AccountId)
+
+	for _, v := range spawnList {
+		_p := v.GetPlayer()
+		_ch := _p.GetCharacter()
+		_PlayerInfo := mc_metadata.P2C_PlayerInfo{
+			UuId:     _p.UId,
+			Nickname: _ch.NickName,
+			Top:      _ch.Top,
+			Bottom:   _ch.Bottom,
+			Clothes:  _ch.Clothes,
+			Hair:     _ch.Hair,
+		}
+
+		sP := mc_metadata.P2C_ReportGridNew{
+			PlayerInfo: &_PlayerInfo,
+			SpawnPosX:  _ch.PosX,
+			SpawnPosY:  _ch.PosY,
+			SpawnPosZ:  _ch.PosZ,
+			SpawnRotX:  _ch.RotX,
+			SpawnRotY:  _ch.RotY,
+			SpawnRotZ:  _ch.RotZ,
+		}
+
+		fn(pClient, &sP, constant.P2C_ReportGridNew)
+		fn(v, &newMe, constant.P2C_ReportGridNew)
+		//pClient.MoveQueue.Enqueue(dataController.ActionSync{
+		//	Fn:   func() { fn(pClient, &sP, constant.P2C_ReportGridNew) },
+		//	Time: Time,
+		//})
+
+		//v.MoveQueue.Enqueue(dataController.ActionSync{
+		//	Fn:   func() { fn(v, &newMe, constant.P2C_ReportGridNew) },
+		//	Time: Time,
+		//})
+	}
+
+	for _, v := range removeList {
+		_p := v.GetPlayer()
+		_ch := _p.GetCharacter()
+		_PlayerInfo := mc_metadata.P2C_PlayerInfo{
+			UuId:     _p.UId,
+			Nickname: _ch.NickName,
+			Top:      _ch.Top,
+			Bottom:   _ch.Bottom,
+			Clothes:  _ch.Clothes,
+			Hair:     _ch.Hair,
+		}
+
+		rP := mc_metadata.P2C_ReportGridOld{
+			PlayerInfo: &_PlayerInfo,
+		}
+
+		fn(pClient, &rP, constant.P2C_ReportGridOld)
+		fn(v, &oldMe, constant.P2C_ReportGridOld)
+
+		//pClient.MoveQueue.Enqueue(dataController.ActionSync{
+		//	Fn:   func() { fn(pClient, &rP, constant.P2C_ReportGridOld) },
+		//	Time: Time + 1,
+		//})
+		//
+		//v.MoveQueue.Enqueue(dataController.ActionSync{
+		//	Fn:   func() { fn(v, &oldMe, constant.P2C_ReportGridOld) },
+		//	Time: Time + 1,
+		//})
+	}
 }
+
+//
+//func (gridMgr *GridManager) Run(fn func(conn *mnet.Client, msg proto2.Message, msgType int), _gridChangeQueue *dataController.GridLKQueue) {
+//	for {
+//		v := _gridChangeQueue.Dequeue()
+//		if v == nil {
+//			//runtime.Gosched()
+//			continue
+//		}
+//
+//		OldRegionId := v.OldRegionId
+//		//NewRegionId := v.NewRegionId
+//		OldGridX := v.OldGridX
+//		OldGridY := v.OldGridY
+//		NewGridX := v.NewGridX
+//		NewGridY := v.NewGridY
+//		AccountId := v.AccountID
+//		//Time := v.Time
+//
+//		pClient, ok := gridMgr.pClients.Get(v.AccountID)
+//		if !ok {
+//			// emmm....
+//			continue
+//		}
+//
+//		p := pClient.GetPlayer_P()
+//		ch := p.GetCharacter()
+//
+//		_PlayerInfo := mc_metadata.P2C_PlayerInfo{
+//			UuId:     p.UId,
+//			Nickname: ch.NickName,
+//			Top:      ch.Top,
+//			Bottom:   ch.Bottom,
+//			Clothes:  ch.Clothes,
+//			Hair:     ch.Hair,
+//		}
+//
+//		newMe := mc_metadata.P2C_ReportGridNew{
+//			PlayerInfo: &_PlayerInfo,
+//			SpawnPosX:  ch.PosX,
+//			SpawnPosY:  ch.PosY,
+//			SpawnPosZ:  ch.PosZ,
+//			SpawnRotX:  ch.RotX,
+//			SpawnRotY:  ch.RotY,
+//			SpawnRotZ:  ch.RotZ,
+//		}
+//
+//		oldMe := mc_metadata.P2C_ReportGridOld{
+//			PlayerInfo: &_PlayerInfo,
+//		}
+//
+//		if v.IsNew {
+//			spawnList := map[int64]*mnet.Client{}
+//
+//			for i := -1; i <= 1; i++ {
+//				for j := -1; j <= 1; j++ {
+//					_newGridX := NewGridX + i
+//					_newGridY := NewGridY + j
+//
+//					maps.Copy(spawnList, gridMgr.fillPlayers(OldRegionId, _newGridX, _newGridY))
+//				}
+//			}
+//
+//			delete(spawnList, AccountId)
+//
+//			for _, v := range spawnList {
+//				_p := v.GetPlayer()
+//				_ch := _p.GetCharacter()
+//				_PlayerInfo := mc_metadata.P2C_PlayerInfo{
+//					UuId:     _p.UId,
+//					Nickname: _ch.NickName,
+//					Top:      _ch.Top,
+//					Bottom:   _ch.Bottom,
+//					Clothes:  _ch.Clothes,
+//					Hair:     _ch.Hair,
+//				}
+//
+//				sP := mc_metadata.P2C_ReportGridNew{
+//					PlayerInfo: &_PlayerInfo,
+//					SpawnPosX:  _ch.PosX,
+//					SpawnPosY:  _ch.PosY,
+//					SpawnPosZ:  _ch.PosZ,
+//					SpawnRotX:  _ch.RotX,
+//					SpawnRotY:  _ch.RotY,
+//					SpawnRotZ:  _ch.RotZ,
+//				}
+//
+//				fn(pClient, &sP, constant.P2C_ReportGridNew)
+//				fn(v, &newMe, constant.P2C_ReportGridNew)
+//
+//				//pClient.MoveQueue.Enqueue(dataController.ActionSync{
+//				//	Fn:   func() { fn(pClient, &sP, constant.P2C_ReportGridNew) },
+//				//	Time: Time,
+//				//})
+//				//
+//				//v.MoveQueue.Enqueue(dataController.ActionSync{
+//				//	Fn:   func() { fn(v, &newMe, constant.P2C_ReportGridNew) },
+//				//	Time: Time,
+//				//})
+//			}
+//
+//			continue
+//		}
+//
+//		if OldGridX == NewGridX && OldGridY == NewGridY {
+//			continue
+//		}
+//
+//		plr := gridMgr.Remove(AccountId)
+//		gridMgr.Add(OldRegionId, NewGridX, NewGridY, plr)
+//
+//		oldGridList := map[int]GridInfo{}
+//		newGridList := map[int]GridInfo{}
+//
+//		for i := -1; i <= 1; i++ {
+//			for j := -1; j <= 1; j++ {
+//				_oldGridX := OldGridX + i
+//				_oldGridY := OldGridY + j
+//
+//				oldGridList[_oldGridX*1000+_oldGridY] = GridInfo{GridX: _oldGridX, GridY: _oldGridY}
+//
+//				_newGridX := NewGridX + i
+//				_newGridY := NewGridY + j
+//
+//				newGridList[_newGridX*1000+_newGridY] = GridInfo{GridX: _newGridX, GridY: _newGridY}
+//			}
+//		}
+//
+//		_newGridList := map[int]GridInfo{}
+//		_oldGridList := map[int]GridInfo{}
+//
+//		maps.Copy(_newGridList, newGridList)
+//		maps.Copy(_oldGridList, oldGridList)
+//
+//		for k, _ := range oldGridList {
+//			delete(_newGridList, k)
+//		}
+//
+//		for k, _ := range newGridList {
+//			delete(_oldGridList, k)
+//		}
+//
+//		spawnList := map[int64]*mnet.Client{}
+//		removeList := map[int64]*mnet.Client{}
+//
+//		for _, v := range _newGridList {
+//			maps.Copy(spawnList, gridMgr.fillPlayers(OldRegionId, v.GridX, v.GridY))
+//		}
+//
+//		for _, v := range _oldGridList {
+//			maps.Copy(removeList, gridMgr.fillPlayers(OldRegionId, v.GridX, v.GridY))
+//		}
+//
+//		delete(removeList, AccountId)
+//		delete(spawnList, AccountId)
+//
+//		for _, v := range spawnList {
+//			_p := v.GetPlayer()
+//			_ch := _p.GetCharacter()
+//			_PlayerInfo := mc_metadata.P2C_PlayerInfo{
+//				UuId:     _p.UId,
+//				Nickname: _ch.NickName,
+//				Top:      _ch.Top,
+//				Bottom:   _ch.Bottom,
+//				Clothes:  _ch.Clothes,
+//				Hair:     _ch.Hair,
+//			}
+//
+//			sP := mc_metadata.P2C_ReportGridNew{
+//				PlayerInfo: &_PlayerInfo,
+//				SpawnPosX:  _ch.PosX,
+//				SpawnPosY:  _ch.PosY,
+//				SpawnPosZ:  _ch.PosZ,
+//				SpawnRotX:  _ch.RotX,
+//				SpawnRotY:  _ch.RotY,
+//				SpawnRotZ:  _ch.RotZ,
+//			}
+//
+//			fn(pClient, &sP, constant.P2C_ReportGridNew)
+//			fn(v, &newMe, constant.P2C_ReportGridNew)
+//			//pClient.MoveQueue.Enqueue(dataController.ActionSync{
+//			//	Fn:   func() { fn(pClient, &sP, constant.P2C_ReportGridNew) },
+//			//	Time: Time,
+//			//})
+//
+//			//v.MoveQueue.Enqueue(dataController.ActionSync{
+//			//	Fn:   func() { fn(v, &newMe, constant.P2C_ReportGridNew) },
+//			//	Time: Time,
+//			//})
+//		}
+//
+//		for _, v := range removeList {
+//			_p := v.GetPlayer()
+//			_ch := _p.GetCharacter()
+//			_PlayerInfo := mc_metadata.P2C_PlayerInfo{
+//				UuId:     _p.UId,
+//				Nickname: _ch.NickName,
+//				Top:      _ch.Top,
+//				Bottom:   _ch.Bottom,
+//				Clothes:  _ch.Clothes,
+//				Hair:     _ch.Hair,
+//			}
+//
+//			rP := mc_metadata.P2C_ReportGridOld{
+//				PlayerInfo: &_PlayerInfo,
+//			}
+//
+//			fn(pClient, &rP, constant.P2C_ReportGridOld)
+//			fn(v, &oldMe, constant.P2C_ReportGridOld)
+//
+//			//pClient.MoveQueue.Enqueue(dataController.ActionSync{
+//			//	Fn:   func() { fn(pClient, &rP, constant.P2C_ReportGridOld) },
+//			//	Time: Time + 1,
+//			//})
+//			//
+//			//v.MoveQueue.Enqueue(dataController.ActionSync{
+//			//	Fn:   func() { fn(v, &oldMe, constant.P2C_ReportGridOld) },
+//			//	Time: Time + 1,
+//			//})
+//		}
+//	}
+
+//for {
+//
+//	addList := map[int64]*mnet.Client{}
+//	removeList := map[int64]*mnet.Client{}
+//
+//	v := gridMgr.gridChangeQueue.Dequeue()
+//	if v == nil {
+//		runtime.Gosched()
+//		continue
+//	}
+//
+//	OldRegionId := v.OldRegionId
+//	NewRegionId := v.NewRegionId
+//	OldGridX := v.OldGridX
+//	OldGridY := v.OldGridY
+//	NewGridX := v.NewGridX
+//	NewGridY := v.NewGridY
+//	AccountId := v.AccountID
+//
+//	log.Println(OldGridX, OldGridY, NewGridX, NewGridY)
+//
+//	conn, _ := gridMgr.pClients.Get(AccountId)
+//
+//	if OldRegionId != NewRegionId {
+//
+//	} else if OldGridX != NewGridX || OldGridY != NewGridY {
+//		_plr := gridMgr.Remove(AccountId)
+//		if _plr != nil {
+//			gridMgr.Add(OldRegionId, NewGridX, NewGridY, _plr)
+//
+//			oldList := map[int64]*mnet.Client{}
+//			newList := map[int64]*mnet.Client{}
+//
+//			for i := -1; i <= 1; i++ {
+//				for j := -1; j <= 1; j++ {
+//					_oldGridX := OldGridX + i
+//					_oldGridY := OldGridY + j
+//
+//					_newGridX := NewGridX + i
+//					_newGridY := NewGridY + j
+//
+//					if !v.IsNew {
+//						maps.Copy(oldList, gridMgr.fillPlayers(OldRegionId, _oldGridX, _oldGridY))
+//					}
+//					maps.Copy(newList, gridMgr.fillPlayers(OldRegionId, _newGridX, _newGridY))
+//				}
+//			}
+//
+//			delete(oldList, AccountId)
+//			delete(newList, AccountId)
+//
+//			for k, v := range oldList {
+//				//_, ok := newList[k]
+//				//if ok {
+//				//	continue
+//				//}
+//
+//				removeList[k] = v
+//			}
+//
+//			for k, v := range newList {
+//				//_, ok := oldList[k]
+//				//if ok {
+//				//	continue
+//				//}
+//
+//				addList[k] = v
+//			}
+//		}
+//	} else if v.IsNew {
+//		gridMgr.Add(OldRegionId, NewGridX, NewGridY, conn)
+//		newList := map[int64]*mnet.Client{}
+//
+//		for i := -1; i <= 1; i++ {
+//			for j := -1; j <= 1; j++ {
+//
+//				_newGridX := NewGridX + i
+//				_newGridY := NewGridY + j
+//
+//				maps.Copy(newList, gridMgr.fillPlayers(OldRegionId, _newGridX, _newGridY))
+//			}
+//		}
+//
+//		addList = newList
+//		delete(addList, AccountId)
+//	}
+//
+//	for _, v := range addList {
+//		c := v.GetPlayer_P().GetCharacter()
+//
+//		__PlayerInfo := mc_metadata.P2C_PlayerInfo{
+//			Nickname: c.NickName,
+//			UuId:     AccountId,
+//			Top:      c.Top,
+//			Bottom:   c.Bottom,
+//			Clothes:  c.Clothes,
+//			Hair:     c.Hair,
+//		}
+//
+//		res := mc_metadata.P2C_ReportGridNew{
+//			PlayerInfo: &__PlayerInfo,
+//			SpawnPosX:  c.PosX,
+//			SpawnPosY:  c.PosY,
+//			SpawnPosZ:  c.PosZ,
+//			SpawnRotX:  c.RotX,
+//			SpawnRotY:  c.RotY,
+//			SpawnRotZ:  c.RotZ,
+//		}
+//
+//		p := conn.GetPlayer_P()
+//		ch := p.GetCharacter()
+//
+//		_PlayerInfo := mc_metadata.P2C_PlayerInfo{
+//			UuId:     p.UId,
+//			Nickname: ch.NickName,
+//			Top:      ch.Top,
+//			Bottom:   ch.Bottom,
+//			Clothes:  ch.Clothes,
+//			Hair:     ch.Hair,
+//		}
+//
+//		res2 := mc_metadata.P2C_ReportGridNew{
+//			PlayerInfo: &_PlayerInfo,
+//			SpawnPosX:  ch.PosX,
+//			SpawnPosY:  ch.PosY,
+//			SpawnPosZ:  ch.PosZ,
+//			SpawnRotX:  ch.RotX,
+//			SpawnRotY:  ch.RotY,
+//			SpawnRotZ:  ch.RotZ,
+//		}
+//
+//		fn(conn, &res, constant.P2C_ReportGridNew)
+//		fn(v, &res2, constant.P2C_ReportGridNew)
+//	}
+//
+//	for k, v := range removeList {
+//		p1 := mc_metadata.P2C_PlayerInfo{
+//			UuId: k,
+//		}
+//
+//		res := mc_metadata.P2C_ReportGridOld{
+//			PlayerInfo: &p1,
+//		}
+//
+//		p2 := mc_metadata.P2C_PlayerInfo{
+//			UuId: conn.GetPlayer().UId,
+//		}
+//
+//		res2 := mc_metadata.P2C_ReportGridOld{
+//			PlayerInfo: &p2,
+//		}
+//
+//		//fmt.Println(fmt.Sprintf("conn : %s v : %s res : %s res2 : %s", conn.GetPlayer().UId, v.GetPlayer().UId, res.PlayerInfo.UuId, res2.PlayerInfo.UuId))
+//
+//		fn(conn, &res, constant.P2C_ReportGridOld)
+//		fn(v, &res2, constant.P2C_ReportGridOld)
+//	}
+//}
+//}
 
 func (gridMgr *GridManager) OnMove(regionId int64, newX, newY float32, uId int64) (map[int64]*mnet.Client, map[int64]*mnet.Client, map[int64]*mnet.Client) {
 	info, ok := gridMgr.plrs.Get(uId)

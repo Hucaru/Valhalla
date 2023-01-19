@@ -159,7 +159,7 @@ func (server *Server) playerConnect(conn *mnet.Client, reader mpacket.Reader) {
 
 	player.MoveQueueIndex = queueIndex
 
-	server.gridMgr.TestFunction(player.RegionID, player.RegionID, myChar.PosX, myChar.PosY, myChar.PosX, myChar.PosY, player.UId, player.MoveQueueIndex, true)
+	server.gridMgr.TestFunction(player.RegionID, player.RegionID, myChar.PosX, myChar.PosY, myChar.PosX, myChar.PosY, player.UId, player.MoveQueueIndex, true, server.sendMsgToMe)
 	//_, _, newList := server.gridMgr.OnMove(player.RegionID, curChar.PosX, curChar.PosY, player.UId)
 	//
 
@@ -638,7 +638,7 @@ func (server *Server) moveProcess(conn *mnet.Client, x, y float32, uId int64, mo
 	p := conn.GetPlayer()
 	c := p.GetCharacter()
 
-	server.gridMgr.TestFunction(p.RegionID, p.RegionID, c.PosX, c.PosY, movement.DestinationX, movement.DestinationY, p.UId, p.MoveQueueIndex, false)
+	server.gridMgr.TestFunction(p.RegionID, p.RegionID, c.PosX, c.PosY, movement.DestinationX, movement.DestinationY, p.UId, p.MoveQueueIndex, false, server.sendMsgToMe)
 
 	_x, _y := common.FindGrid(c.PosX, c.PosY)
 	aroundList := server.getPlayersOnGrids(p.RegionID, _x, _y, p.UId)
