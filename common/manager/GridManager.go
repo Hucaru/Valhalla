@@ -8,7 +8,6 @@ import (
 	"github.com/Hucaru/Valhalla/mnet"
 	"golang.org/x/exp/maps"
 	proto2 "google.golang.org/protobuf/proto"
-	"runtime"
 	"time"
 )
 
@@ -169,7 +168,7 @@ func (gridMgr *GridManager) Run(fn func(conn *mnet.Client, msg proto2.Message, m
 	for {
 		v := _gridChangeQueue.Dequeue()
 		if v == nil {
-			runtime.Gosched()
+			//runtime.Gosched()
 			continue
 		}
 
