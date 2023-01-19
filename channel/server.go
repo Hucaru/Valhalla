@@ -110,9 +110,8 @@ type Server struct {
 	mapGrid          [][]map[int]*player //(y,x)[data]
 	fMovePlayers     []PlayerMovement    //(y,x)[data]
 
-	gridMgr       manager.GridManager
-	clients       manager.ConcurrentMap[int64, *mnet.Client]
-	playerActions manager.ConcurrentMap[int64, chan RequestedParam]
+	gridMgr manager.GridManager
+	clients manager.ConcurrentMap[int64, *mnet.Client]
 
 	// Kioni
 	PlayerActionHandler map[uint32]func(*mnet.Client, mpacket.Reader)
@@ -197,9 +196,6 @@ func (server *Server) Initialize(work chan func(), dbuser, dbpassword, dbaddress
 
 	server.parties = make(map[int32]*party)
 
-	server.gridMgr = manager.GridManager{}
-	server.gridMgr.Init()
-
 	server.clients = manager.New[*mnet.Client]()
 
 	go func() {
@@ -215,6 +211,9 @@ func (server *Server) Initialize(work chan func(), dbuser, dbpassword, dbaddress
 			time.Sleep(5000 * time.Millisecond)
 		}
 	}()
+
+	server.gridMgr = manager.GridManager{}
+	server.gridMgr.Init(&server.clients, server.sendMsgToMe)
 }
 
 func bToMb(b uint64) uint64 {

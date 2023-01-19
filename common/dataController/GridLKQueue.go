@@ -13,6 +13,7 @@ type NewGridInfo struct {
 	NewGridX    int
 	NewGridY    int
 	AccountID   int64
+	IsNew       bool
 }
 
 // GridLKQueue is a lock-free unbounded queue.
