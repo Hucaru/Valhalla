@@ -113,6 +113,8 @@ type Server struct {
 	gridMgr manager.GridManager
 	clients manager.ConcurrentMap[int64, *mnet.Client]
 
+	MoveFunctions map[int]func(movement *mc_metadata.Movement, aroundList map[int64]*mnet.Client)
+
 	// Kioni
 	PlayerActionHandler map[uint32]func(*mnet.Client, mpacket.Reader)
 }
@@ -132,6 +134,38 @@ func (server *Server) Initialize(work chan func(), dbuser, dbpassword, dbaddress
 	server.PlayerActionHandler[constant.C2P_RequestWhisper] = server.chatSendWhisper
 	server.PlayerActionHandler[constant.C2P_RequestRegionChat] = server.chatSendRegion
 	server.PlayerActionHandler[constant.OnDisconnected] = server.ClientDisconnected
+
+	server.MoveFunctions = make(map[int]func(movement *mc_metadata.Movement, aroundList map[int64]*mnet.Client), 0)
+
+	server.MoveFunctions[constant.P2C_ReportMoveStart] = func(movement *mc_metadata.Movement, aroundList map[int64]*mnet.Client) {
+		res := mc_metadata.P2C_ReportMoveStart{
+			MovementData: movement,
+		}
+
+		for _, v := range aroundList {
+			server.sendMsgToMe(v, &res, constant.P2C_ReportMoveStart)
+		}
+	}
+
+	server.MoveFunctions[constant.P2C_ReportMove] = func(movement *mc_metadata.Movement, aroundList map[int64]*mnet.Client) {
+		res := mc_metadata.P2C_ReportMove{
+			MovementData: movement,
+		}
+
+		for _, v := range aroundList {
+			server.sendMsgToMe(v, &res, constant.P2C_ReportMove)
+		}
+	}
+
+	server.MoveFunctions[constant.P2C_ReportMoveEnd] = func(movement *mc_metadata.Movement, aroundList map[int64]*mnet.Client) {
+		res := mc_metadata.C2P_RequestMoveEnd{
+			MovementData: movement,
+		}
+
+		for _, v := range aroundList {
+			server.sendMsgToMe(v, &res, constant.P2C_ReportMoveEnd)
+		}
+	}
 
 	runtime.GOMAXPROCS(runtime.NumCPU())
 	server.dispatch = work

@@ -704,32 +704,7 @@ func (server *Server) moveProcess(conn *mnet.Client, x, y float32, uId int64, mo
 	//	server.sendMsgToMe(v, &res2, constant.P2C_ReportGridOld)
 	//}
 
-	switch moveType {
-	case constant.P2C_ReportMoveStart:
-		res := mc_metadata.P2C_ReportMoveStart{
-			MovementData: movement,
-		}
-
-		for _, v := range aroundList {
-			server.sendMsgToMe(v, &res, constant.P2C_ReportMoveStart)
-		}
-	case constant.P2C_ReportMove:
-		res := mc_metadata.P2C_ReportMove{
-			MovementData: movement,
-		}
-
-		for _, v := range aroundList {
-			server.sendMsgToMe(v, &res, constant.P2C_ReportMove)
-		}
-	case constant.P2C_ReportMoveEnd:
-		res := mc_metadata.P2C_ReportMoveEnd{
-			MovementData: movement,
-		}
-
-		for _, v := range aroundList {
-			server.sendMsgToMe(v, &res, constant.P2C_ReportMoveEnd)
-		}
-	}
+	server.MoveFunctions[moveType](movement, aroundList)
 
 	ch := conn.GetPlayer_P().GetCharacter_P()
 	ch.PosX = movement.GetDestinationX()
