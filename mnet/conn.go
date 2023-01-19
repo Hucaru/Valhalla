@@ -160,7 +160,7 @@ func (bc *baseConn) MetaWriter() {
 			return
 		} else {
 			//runtime.Gosched()
-			//time.Sleep(10 * time.Millisecond)
+			time.Sleep(10 * time.Millisecond)
 		}
 	}
 }
