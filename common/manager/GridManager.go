@@ -246,6 +246,9 @@ func (gridMgr *GridManager) Run(fn func(conn *mnet.Client, msg proto2.Message, m
 			continue
 		}
 
+		plr := gridMgr.Remove(AccountId)
+		gridMgr.Add(OldRegionId, NewGridX, NewGridY, plr)
+
 		oldGridList := map[int]GridInfo{}
 		newGridList := map[int]GridInfo{}
 
