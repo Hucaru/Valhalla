@@ -171,6 +171,7 @@ func (gridMgr *GridManager) Run(fn func(conn *mnet.Client, msg proto2.Message, m
 		pClient, ok := gridMgr.pClients.Get(v.AccountID)
 		if !ok {
 			// emmm....
+			continue
 		}
 
 		p := pClient.GetPlayer_P()
