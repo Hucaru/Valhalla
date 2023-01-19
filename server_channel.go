@@ -175,6 +175,7 @@ func (cs *channelServer) acceptNewConnections() {
 		}()
 
 		go client.MetaWriter()
+		//go client.MetaMovoSync()
 	}
 }
 

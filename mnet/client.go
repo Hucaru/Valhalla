@@ -7,6 +7,7 @@ import (
 	"github.com/Hucaru/Valhalla/mnet/crypt"
 	"github.com/Hucaru/Valhalla/mpacket"
 	"net"
+	"runtime"
 	"sync"
 )
 
@@ -28,6 +29,29 @@ type BaseConn struct {
 type Client struct {
 	BaseConn
 	client
+	MoveQueue        *dataController.MoveSyncLKQueue
+	LastMoveSyncTime int64
+}
+
+func (c *Client) MetaMovoSync() {
+	for {
+		if c.closed {
+			return
+		}
+
+		for {
+			b := c.MoveQueue.Dequeue()
+			if b == nil {
+				break
+			}
+
+			if b.Time > c.LastMoveSyncTime {
+				c.LastMoveSyncTime = b.Time
+				b.Fn()
+			}
+		}
+		runtime.Gosched()
+	}
 }
 
 func NewClient(conn net.Conn, eRecv chan *Event, queueSize int, keySend, keyRecv [4]byte, latency, jitter int) *Client {
@@ -77,6 +101,9 @@ func NewClientMeta(conn net.Conn, queueSize int, latency, jitter int) *Client {
 	c.sendChannelQueue = dataController.NewLKQueue()
 	c.sendChannel = make(chan mpacket.Packet)
 	c.sendChannelWaitGroup = sync.WaitGroup{}
+
+	c.MoveQueue = dataController.NewMoveSyncLKQueue()
+	c.LastMoveSyncTime = 0
 
 	//c.eSend = make(chan mpacket.Packet, 4096*4)
 

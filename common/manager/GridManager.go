@@ -9,6 +9,7 @@ import (
 	"golang.org/x/exp/maps"
 	proto2 "google.golang.org/protobuf/proto"
 	"runtime"
+	"time"
 )
 
 type GridInfo struct {
@@ -157,6 +158,7 @@ func (gridMgr *GridManager) TestFunction(oldRegionId, NewRegionId int64, oldX, o
 		NewGridY:    newGridY,
 		AccountID:   accountID,
 		IsNew:       isNew,
+		Time:        time.Now().UnixNano(),
 	}
 
 	gridMgr.gridChangeQueue[moveQueueIndex].Enqueue(info)
@@ -178,6 +180,7 @@ func (gridMgr *GridManager) Run(fn func(conn *mnet.Client, msg proto2.Message, m
 		NewGridX := v.NewGridX
 		NewGridY := v.NewGridY
 		AccountId := v.AccountID
+		//Time := v.Time
 
 		pClient, ok := gridMgr.pClients.Get(v.AccountID)
 		if !ok {
@@ -249,6 +252,16 @@ func (gridMgr *GridManager) Run(fn func(conn *mnet.Client, msg proto2.Message, m
 
 				fn(pClient, &sP, constant.P2C_ReportGridNew)
 				fn(v, &newMe, constant.P2C_ReportGridNew)
+
+				//pClient.MoveQueue.Enqueue(dataController.ActionSync{
+				//	Fn:   func() { fn(pClient, &sP, constant.P2C_ReportGridNew) },
+				//	Time: Time,
+				//})
+				//
+				//v.MoveQueue.Enqueue(dataController.ActionSync{
+				//	Fn:   func() { fn(v, &newMe, constant.P2C_ReportGridNew) },
+				//	Time: Time,
+				//})
 			}
 
 			continue
@@ -330,6 +343,15 @@ func (gridMgr *GridManager) Run(fn func(conn *mnet.Client, msg proto2.Message, m
 
 			fn(pClient, &sP, constant.P2C_ReportGridNew)
 			fn(v, &newMe, constant.P2C_ReportGridNew)
+			//pClient.MoveQueue.Enqueue(dataController.ActionSync{
+			//	Fn:   func() { fn(pClient, &sP, constant.P2C_ReportGridNew) },
+			//	Time: Time,
+			//})
+
+			//v.MoveQueue.Enqueue(dataController.ActionSync{
+			//	Fn:   func() { fn(v, &newMe, constant.P2C_ReportGridNew) },
+			//	Time: Time,
+			//})
 		}
 
 		for _, v := range removeList {
@@ -350,6 +372,16 @@ func (gridMgr *GridManager) Run(fn func(conn *mnet.Client, msg proto2.Message, m
 
 			fn(pClient, &rP, constant.P2C_ReportGridOld)
 			fn(v, &oldMe, constant.P2C_ReportGridOld)
+
+			//pClient.MoveQueue.Enqueue(dataController.ActionSync{
+			//	Fn:   func() { fn(pClient, &rP, constant.P2C_ReportGridOld) },
+			//	Time: Time + 1,
+			//})
+			//
+			//v.MoveQueue.Enqueue(dataController.ActionSync{
+			//	Fn:   func() { fn(v, &oldMe, constant.P2C_ReportGridOld) },
+			//	Time: Time + 1,
+			//})
 		}
 	}
 

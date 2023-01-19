@@ -130,24 +130,24 @@ func (server *Server) playerConnect(conn *mnet.Client, reader mpacket.Reader) {
 	server.gridMgr.Add(conn.GetPlayer().RegionID, GridX, GridY, conn)
 	server.clients.Set(conn.GetPlayer().UId, conn)
 
-	reportLoginUserPacket := mc_metadata.P2C_ReportLoginUser{
-		UuId: player.UId,
-		PlayerInfo: &mc_metadata.P2C_PlayerInfo{
-			Nickname: curChar.NickName,
-			Hair:     curChar.Hair,
-			Top:      curChar.Top,
-			Bottom:   curChar.Bottom,
-			Clothes:  curChar.Clothes,
-		},
-		SpawnPosX: curChar.PosX,
-		SpawnPosY: curChar.PosY,
-		SpawnPosZ: curChar.PosZ,
-		SpawnRotX: curChar.RotX,
-		SpawnRotY: curChar.RotY,
-		SpawnRotZ: curChar.RotZ,
-	}
-
-	server.sendMsgToRegion(conn, &reportLoginUserPacket, constant.P2C_ReportLoginUser)
+	//reportLoginUserPacket := mc_metadata.P2C_ReportLoginUser{
+	//	UuId: player.UId,
+	//	PlayerInfo: &mc_metadata.P2C_PlayerInfo{
+	//		Nickname: curChar.NickName,
+	//		Hair:     curChar.Hair,
+	//		Top:      curChar.Top,
+	//		Bottom:   curChar.Bottom,
+	//		Clothes:  curChar.Clothes,
+	//	},
+	//	SpawnPosX: curChar.PosX,
+	//	SpawnPosY: curChar.PosY,
+	//	SpawnPosZ: curChar.PosZ,
+	//	SpawnRotX: curChar.RotX,
+	//	SpawnRotY: curChar.RotY,
+	//	SpawnRotZ: curChar.RotZ,
+	//}
+	//
+	//server.sendMsgToRegion(conn, &reportLoginUserPacket, constant.P2C_ReportLoginUser)
 	myChar := player.GetCharacter()
 
 	queueIndex := server.gridMgr.GridChangeQueueBrancher
@@ -159,7 +159,7 @@ func (server *Server) playerConnect(conn *mnet.Client, reader mpacket.Reader) {
 
 	player.MoveQueueIndex = queueIndex
 
-	server.gridMgr.TestFunction(player.RegionID, player.RegionID, myChar.PosX, myChar.PosY, myChar.PosX, myChar.PosX, player.UId, player.MoveQueueIndex, true)
+	server.gridMgr.TestFunction(player.RegionID, player.RegionID, myChar.PosX, myChar.PosY, myChar.PosX, myChar.PosY, player.UId, player.MoveQueueIndex, true)
 	//_, _, newList := server.gridMgr.OnMove(player.RegionID, curChar.PosX, curChar.PosY, player.UId)
 	//
 

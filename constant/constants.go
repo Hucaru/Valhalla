@@ -10,7 +10,7 @@ var RandomTop = [...]string{"SKM_Male_Top001", "SKM_None_Top002", "SKM_None_Top0
 var RandomBody = [...]string{"SKM_None_Body_upper", "SKM_None_Body_Lower", "SKM_None_Body_foot"}
 
 const (
-	MoveQueueUseCount = 1
+	MoveQueueUseCount = 50
 )
 
 const (
