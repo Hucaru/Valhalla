@@ -238,6 +238,14 @@ func (server *Server) sendMsgToAll(msg proto2.Message, uID int64, msgType int) {
 
 		v.Send(res)
 	})
+
+	for v := range server.clients.IterBuffered() {
+		if v.Key == uID {
+			return
+		}
+
+		v.Val.Send(res)
+	}
 }
 
 func (server *Server) sendMsgToRegion(conn *mnet.Client, msg proto2.Message, msgType int) {

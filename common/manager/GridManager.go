@@ -16,6 +16,8 @@ type GridInfo struct {
 type GridManager struct {
 	grids [][][]ConcurrentMap[int64, *mnet.Client]
 	plrs  ConcurrentMap[int64, GridInfo]
+
+	//gridChangeQueue *dataController.GridLKQueue
 }
 
 //func (gridMgr *GridManager) Loop(f <-chan func()) {
@@ -53,6 +55,9 @@ func (gridMgr *GridManager) Init() {
 		r[_k] = x
 	}
 	gridMgr.grids = r
+	//gridMgr.gridChangeQueue = dataController.NewGridLKQueue()
+	//gridMgr.server = _server
+	//go gridMgr.Run()
 }
 
 func (gridMgr *GridManager) Add(region int64, gridX, gridY int, cl *mnet.Client) {
@@ -112,12 +117,110 @@ func (gridMgr *GridManager) fillPlayers(RegionId int64, GridX, GridY int) map[in
 		GridY = MaxY - 1
 	}
 
-	gridMgr.grids[RegionId][GridX][GridY].IterCb(func(k int64, v *mnet.Client) {
-		result[k] = v
-	})
+	for v := range gridMgr.grids[RegionId][GridX][GridY].IterBuffered() {
+		result[v.Key] = v.Val
+	}
 
 	return result
 }
+
+//func (gridMgr *GridManager) TestFunction(oldRegionId, NewRegionId int64, oldX, oldY, newX, newY float32, accountID uint64) {
+//	oldGridX, oldGridY := common.FindGrid(oldX, oldY)
+//	newGridX, newGridY := common.FindGrid(newX, newY)
+//
+//	info := dataController.NewGridInfo{
+//		OldRegionId: oldRegionId,
+//		NewRegionId: NewRegionId,
+//		OldGridX:    oldGridX,
+//		OldGridY:    oldGridY,
+//		NewGridX:    newGridX,
+//		NewGridY:    newGridY,
+//	}
+//
+//	gridMgr.gridChangeQueue.Enqueue(info)
+//}
+
+/*func (gridMgr *GridManager) TestFunction2(info NewGridInfo) {
+
+		newGridX := info.NewGridX
+		newGridY := info.NewGridY
+		OldGridX := info.OldGridX
+		OldGridY := info.OldGridY
+		OldRegionId := info.OldRegionId
+		NewRegionId := info.NewRegionId
+		AccountID := info.AccountID
+
+		if OldRegionId != NewRegionId {
+		} else if newGridX != OldGridX || newGridY != OldGridY {
+			oldList := map[int64]*mnet.Client{}
+				newList := map[int64]*mnet.Client{}
+
+				for i := -1; i <= 1; i++ {
+					for j := -1; j <= 1; j++ {
+						_oldGridX := OldGridX + i
+						_oldGridY := OldGridY + j
+
+						_newGridX := newGridX + i
+						_newGridY := newGridY + j
+
+						maps.Copy(oldList, gridMgr.fillPlayers(NewRegionId, _oldGridX, _oldGridY))
+						maps.Copy(newList, gridMgr.fillPlayers(NewRegionId, _newGridX, _newGridY))
+					}
+				}
+
+				delete(oldList, AccountID)
+				delete(newList, AccountID)
+
+				removeList := map[int64]*mnet.Client{}
+				addList := map[int64]*mnet.Client{}
+
+				for k, v := range oldList {
+					_, ok := newList[k]
+					if ok {
+						continue
+					}
+
+					removeList[k] = v
+				}
+
+				for k, v := range newList {
+					_, ok := oldList[k]
+					if ok {
+						continue
+					}
+
+					addList[k] = v
+				}
+			}
+		} else {
+			newList := map[int64]*mnet.Client{}
+			for i := -1; i <= 1; i++ {
+				for j := -1; j <= 1; j++ {
+					_newGridX := newGridX + i
+					_newGridY := newGridY + j
+
+					maps.Copy(newList, gridMgr.fillPlayers(regionId, _newGridX, _newGridY))
+				}
+			}
+
+			delete(newList, uId)
+
+			return nil, nil, newList
+		}
+	}
+
+	return nil, nil, nil
+}*/
+//
+//func (gridMgr *GridManager) Run() {
+//	for {
+//		for v := range gridMgr.gridChangeQueue.Dequeue() {
+//			gridMgr.OnMove()
+//		}
+//
+//		runtime.Gosched()
+//	}
+//}
 
 func (gridMgr *GridManager) OnMove(regionId int64, newX, newY float32, uId int64) (map[int64]*mnet.Client, map[int64]*mnet.Client, map[int64]*mnet.Client) {
 	info, ok := gridMgr.plrs.Get(uId)
