@@ -43,7 +43,7 @@ func (q *GenericLKQueue[V]) Enqueue(v V) {
 
 // Dequeue removes and returns the value at the head of the queue.
 // It returns nil if the queue is empty.
-func (q *GenericLKQueue[V]) Dequeue() V {
+func (q *GenericLKQueue[V]) Dequeue() *V {
 	for {
 		head := q.load_generic(&q.head)
 		tail := q.load_generic(&q.tail)
@@ -59,7 +59,7 @@ func (q *GenericLKQueue[V]) Dequeue() V {
 				// read value before CAS otherwise another dequeue might free the next node
 
 				if q.cas_generic(&q.head, head, next) {
-					return next.value // Dequeue is done.  return
+					return &next.value // Dequeue is done.  return
 				}
 			}
 		}
