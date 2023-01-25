@@ -19,7 +19,6 @@ import (
 	"google.golang.org/protobuf/proto"
 	"log"
 	"runtime"
-	"time"
 )
 
 type players map[string]*player
@@ -232,19 +231,19 @@ func (server *Server) Initialize(work chan func(), dbuser, dbpassword, dbaddress
 
 	server.clients = manager.New[*mnet.Client]()
 
-	go func() {
-		for {
-			log.Println(runtime.NumCPU(), runtime.NumGoroutine(), runtime.NumCgoCall())
-			var m runtime.MemStats
-			runtime.ReadMemStats(&m)
-			// For info on each, see: https://golang.org/pkg/runtime/#MemStats
-			fmt.Printf("Alloc = %v MiB", bToMb(m.Alloc))
-			fmt.Printf("\tTotalAlloc = %v MiB", bToMb(m.TotalAlloc))
-			fmt.Printf("\tSys = %v MiB", bToMb(m.Sys))
-			fmt.Printf("\tNumGC = %v\n", m.NumGC)
-			time.Sleep(5000 * time.Millisecond)
-		}
-	}()
+	//go func() {
+	//	for {
+	//		log.Println(runtime.NumCPU(), runtime.NumGoroutine(), runtime.NumCgoCall())
+	//		var m runtime.MemStats
+	//		runtime.ReadMemStats(&m)
+	//		// For info on each, see: https://golang.org/pkg/runtime/#MemStats
+	//		fmt.Printf("Alloc = %v MiB", bToMb(m.Alloc))
+	//		fmt.Printf("\tTotalAlloc = %v MiB", bToMb(m.TotalAlloc))
+	//		fmt.Printf("\tSys = %v MiB", bToMb(m.Sys))
+	//		fmt.Printf("\tNumGC = %v\n", m.NumGC)
+	//		time.Sleep(5000 * time.Millisecond)
+	//	}
+	//}()
 
 	server.gridMgr = manager.GridManager{}
 	server.gridMgr.Init(&server.clients, server.sendMsgToMe)
