@@ -79,6 +79,18 @@ func (gridMgr *GridManager) Init(_clients *ConcurrentMap[int64, *mnet.Client], f
 func (gridMgr *GridManager) Add(region int64, gridX, gridY int, cl *mnet.Client) {
 	plr := (*cl).GetPlayer()
 
+	if region >= int64(len(gridMgr.grids)) {
+		return
+	}
+
+	if gridX >= int(len(gridMgr.grids[region])) {
+		return
+	}
+
+	if gridY >= int(len(gridMgr.grids[region][gridX])) {
+		return
+	}
+
 	gridMgr.grids[region][gridX][gridY].Set(plr.UId, cl)
 	gridMgr.plrs.Set(plr.UId, GridInfo{gridX, gridY, region})
 }
@@ -88,6 +100,18 @@ func (gridMgr *GridManager) Remove(uId int64) *mnet.Client {
 	if ok {
 		gridMgr.plrs.Remove(uId)
 		gridInfo := info
+
+		if gridInfo.RegionId >= int64(len(gridMgr.grids)) {
+			return nil
+		}
+
+		if gridInfo.GridX >= int(len(gridMgr.grids[gridInfo.RegionId])) {
+			return nil
+		}
+
+		if gridInfo.GridY >= int(len(gridMgr.grids[gridInfo.RegionId][gridInfo.GridX])) {
+			return nil
+		}
 
 		plr, ok2 := gridMgr.grids[gridInfo.RegionId][gridInfo.GridX][gridInfo.GridY].Get(uId)
 		if ok2 {
