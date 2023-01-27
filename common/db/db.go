@@ -317,7 +317,7 @@ func UpdateLoginState(uUID int64, isLogedIn bool) error {
 }
 
 func UpdateRegionID(cID int64, channelID int32) error {
-	_, err := Maria.Exec("UPDATE characters SET channelID=? WHERE accountID=?", channelID, cID)
+	_, err := Maria.Exec("UPDATE characters SET channelID=? WHERE id=?", channelID, cID)
 	return err
 }
 

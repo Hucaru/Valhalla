@@ -128,6 +128,12 @@ func (server *Server) Initialize(work chan func(), dbuser, dbpassword, dbaddress
 	server.PlayerActionHandler[constant.C2P_RequestMoveStart] = server.playerMovementStart
 	server.PlayerActionHandler[constant.C2P_RequestMove] = server.playerMovement
 	server.PlayerActionHandler[constant.C2P_RequestMoveEnd] = server.playerMovementEnd
+	server.PlayerActionHandler[constant.C2P_RequestRegionChange] = server.playerChangeChannel
+	server.PlayerActionHandler[constant.C2P_RequestRoleChecking] = server.playerRegionRoleChecking
+	server.PlayerActionHandler[constant.C2P_RequestMetaSchoolEnter] = server.playerEnterToRoom
+	server.PlayerActionHandler[constant.C2P_RequestMetaSchoolLeave] = server.playerLeaveFromRoom
+	server.PlayerActionHandler[constant.C2P_RequestInteractionAttach] = server.playerInteraction
+	server.PlayerActionHandler[constant.C2P_RequestPlayMontage] = server.playerPlayAnimation
 	server.PlayerActionHandler[constant.C2P_RequestLogoutUser] = server.playerLogout
 	server.PlayerActionHandler[constant.C2P_RequestAllChat] = server.chatSendAll
 	server.PlayerActionHandler[constant.C2P_RequestWhisper] = server.chatSendWhisper

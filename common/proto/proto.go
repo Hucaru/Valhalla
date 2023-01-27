@@ -99,10 +99,14 @@ func AccountResult(player model.Player) mc_metadata.P2C_ResultLoginUser {
 }
 
 func RegionResult(player *model.Player) *mc_metadata.P2C_ResultRegionChange {
+
+	regionUsers := []*mc_metadata.P2C_ReportRegionChange{}
+	log.Println(len(regionUsers))
 	return &mc_metadata.P2C_ResultRegionChange{
 		UuId:     player.UId,
 		RegionId: int32(player.RegionID),
 		PlayerInfo: &mc_metadata.P2C_PlayerInfo{
+			UuId:     player.UId,
 			Nickname: player.GetCharacter().NickName,
 			Hair:     player.GetCharacter().Hair,
 			Top:      player.GetCharacter().Top,
@@ -115,7 +119,7 @@ func RegionResult(player *model.Player) *mc_metadata.P2C_ResultRegionChange {
 		SpawnRotX:   player.GetCharacter().RotX,
 		SpawnRotY:   player.GetCharacter().RotY,
 		SpawnRotZ:   player.GetCharacter().RotZ,
-		RegionUsers: []*mc_metadata.P2C_ReportRegionChange{},
+		RegionUsers: regionUsers,
 	}
 }
 
