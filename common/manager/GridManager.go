@@ -278,12 +278,12 @@ func (gridMgr *GridManager) TestFunction(oldRegionId, NewRegionId int64, oldX, o
 		return
 	}
 
-	if OldGridX == NewGridX && OldGridY == NewGridY {
+	if OldGridX == NewGridX && OldGridY == NewGridY && oldRegionId == NewRegionId {
 		return
 	}
 
 	plr := gridMgr.Remove(AccountId)
-	gridMgr.Add(OldRegionId, NewGridX, NewGridY, plr)
+	gridMgr.Add(NewRegionId, NewGridX, NewGridY, plr)
 
 	oldGridList := map[int]GridInfo{}
 	newGridList := map[int]GridInfo{}
