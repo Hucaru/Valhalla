@@ -298,8 +298,8 @@ func (server *Server) playerChangeChannel(conn *mnet.Client, reader mpacket.Read
 	server.gridMgr.TestFunction(p.RegionID, int64(msg.RegionId), p.GetCharacter_P().PosX, p.GetCharacter_P().PosY, p.GetCharacter_P().PosX, p.GetCharacter_P().PosY, p.UId, p.MoveQueueIndex, false, server.sendMsgToMe)
 	p.RegionID = int64(msg.RegionId)
 
-	account := proto.RegionResult(p)
-	server.sendMsgToMe(conn, account, constant.P2C_ResultRegionChange)
+	//account := proto.RegionResult(p)
+	//server.sendMsgToMe(conn, account, constant.P2C_ResultRegionChange)
 
 	db.UpdateRegionID(conn.GetPlayer().CharacterID, msg.GetRegionId())
 }

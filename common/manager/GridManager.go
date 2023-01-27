@@ -168,13 +168,13 @@ func (gridMgr *GridManager) fillPlayers(RegionId int64, GridX, GridY int) map[in
 	return result
 }
 
-func (gridMgr *GridManager) TestFunction(oldRegionId, NewRegionId int64, oldX, oldY, newX, newY float32, accountID int64, moveQueueIndex int, isNew bool, fn func(conn *mnet.Client, msg proto2.Message, msgType int)) {
+func (gridMgr *GridManager) TestFunction(oldRegionId, newRegionId int64, oldX, oldY, newX, newY float32, accountID int64, moveQueueIndex int, isNew bool, fn func(conn *mnet.Client, msg proto2.Message, msgType int)) {
 	oldGridX, oldGridY := common.FindGrid(oldX, oldY)
 	newGridX, newGridY := common.FindGrid(newX, newY)
 
 	info := dataController.NewGridInfo{
 		OldRegionId: oldRegionId,
-		NewRegionId: NewRegionId,
+		NewRegionId: newRegionId,
 		OldGridX:    oldGridX,
 		OldGridY:    oldGridY,
 		NewGridX:    newGridX,
@@ -185,7 +185,7 @@ func (gridMgr *GridManager) TestFunction(oldRegionId, NewRegionId int64, oldX, o
 	}
 
 	OldRegionId := info.OldRegionId
-	//NewRegionId := v.NewRegionId
+	NewRegionId := info.NewRegionId
 	OldGridX := info.OldGridX
 	OldGridY := info.OldGridY
 	NewGridX := info.NewGridX
@@ -278,7 +278,80 @@ func (gridMgr *GridManager) TestFunction(oldRegionId, NewRegionId int64, oldX, o
 		return
 	}
 
-	if OldGridX == NewGridX && OldGridY == NewGridY && oldRegionId == NewRegionId {
+	if oldRegionId != NewRegionId {
+		plr := gridMgr.Remove(AccountId)
+		gridMgr.Add(NewRegionId, NewGridX, NewGridY, plr)
+
+		spawnList := map[int64]*mnet.Client{}
+		removeList := map[int64]*mnet.Client{}
+
+		for i := -1; i <= 1; i++ {
+			for j := -1; j <= 1; j++ {
+				_oldGridX := OldGridX + i
+				_oldGridY := OldGridY + j
+
+				maps.Copy(removeList, gridMgr.fillPlayers(oldRegionId, _oldGridX, _oldGridY))
+
+				_newGridX := NewGridX + i
+				_newGridY := NewGridY + j
+
+				maps.Copy(spawnList, gridMgr.fillPlayers(NewRegionId, _newGridX, _newGridY))
+			}
+		}
+
+		delete(removeList, AccountId)
+		delete(spawnList, AccountId)
+
+		for _, v := range spawnList {
+			_p := v.GetPlayer()
+			_ch := _p.GetCharacter()
+			_PlayerInfo := mc_metadata.P2C_PlayerInfo{
+				UuId:     _p.UId,
+				Nickname: _ch.NickName,
+				Top:      _ch.Top,
+				Bottom:   _ch.Bottom,
+				Clothes:  _ch.Clothes,
+				Hair:     _ch.Hair,
+			}
+
+			sP := mc_metadata.P2C_ReportGridNew{
+				PlayerInfo: &_PlayerInfo,
+				SpawnPosX:  _ch.PosX,
+				SpawnPosY:  _ch.PosY,
+				SpawnPosZ:  _ch.PosZ,
+				SpawnRotX:  _ch.RotX,
+				SpawnRotY:  _ch.RotY,
+				SpawnRotZ:  _ch.RotZ,
+			}
+
+			fn(pClient, &sP, constant.P2C_ReportGridNew)
+			fn(v, &newMe, constant.P2C_ReportGridNew)
+		}
+
+		for _, v := range removeList {
+			_p := v.GetPlayer()
+			_ch := _p.GetCharacter()
+			_PlayerInfo := mc_metadata.P2C_PlayerInfo{
+				UuId:     _p.UId,
+				Nickname: _ch.NickName,
+				Top:      _ch.Top,
+				Bottom:   _ch.Bottom,
+				Clothes:  _ch.Clothes,
+				Hair:     _ch.Hair,
+			}
+
+			rP := mc_metadata.P2C_ReportGridOld{
+				PlayerInfo: &_PlayerInfo,
+			}
+
+			fn(pClient, &rP, constant.P2C_ReportGridOld)
+			fn(v, &oldMe, constant.P2C_ReportGridOld)
+		}
+
+		return
+	}
+
+	if OldGridX == NewGridX && OldGridY == NewGridY {
 		return
 	}
 
@@ -293,12 +366,12 @@ func (gridMgr *GridManager) TestFunction(oldRegionId, NewRegionId int64, oldX, o
 			_oldGridX := OldGridX + i
 			_oldGridY := OldGridY + j
 
-			oldGridList[_oldGridX*1000+_oldGridY] = GridInfo{GridX: _oldGridX, GridY: _oldGridY}
+			oldGridList[_oldGridX*1000+_oldGridY] = GridInfo{RegionId: oldRegionId, GridX: _oldGridX, GridY: _oldGridY}
 
 			_newGridX := NewGridX + i
 			_newGridY := NewGridY + j
 
-			newGridList[_newGridX*1000+_newGridY] = GridInfo{GridX: _newGridX, GridY: _newGridY}
+			newGridList[_newGridX*1000+_newGridY] = GridInfo{RegionId: newRegionId, GridX: _newGridX, GridY: _newGridY}
 		}
 	}
 
@@ -320,11 +393,11 @@ func (gridMgr *GridManager) TestFunction(oldRegionId, NewRegionId int64, oldX, o
 	removeList := map[int64]*mnet.Client{}
 
 	for _, v := range _newGridList {
-		maps.Copy(spawnList, gridMgr.fillPlayers(OldRegionId, v.GridX, v.GridY))
+		maps.Copy(spawnList, gridMgr.fillPlayers(v.RegionId, v.GridX, v.GridY))
 	}
 
 	for _, v := range _oldGridList {
-		maps.Copy(removeList, gridMgr.fillPlayers(OldRegionId, v.GridX, v.GridY))
+		maps.Copy(removeList, gridMgr.fillPlayers(v.RegionId, v.GridX, v.GridY))
 	}
 
 	delete(removeList, AccountId)
@@ -354,15 +427,6 @@ func (gridMgr *GridManager) TestFunction(oldRegionId, NewRegionId int64, oldX, o
 
 		fn(pClient, &sP, constant.P2C_ReportGridNew)
 		fn(v, &newMe, constant.P2C_ReportGridNew)
-		//pClient.MoveQueue.Enqueue(dataController.ActionSync{
-		//	Fn:   func() { fn(pClient, &sP, constant.P2C_ReportGridNew) },
-		//	Time: Time,
-		//})
-
-		//v.MoveQueue.Enqueue(dataController.ActionSync{
-		//	Fn:   func() { fn(v, &newMe, constant.P2C_ReportGridNew) },
-		//	Time: Time,
-		//})
 	}
 
 	for _, v := range removeList {
@@ -383,16 +447,6 @@ func (gridMgr *GridManager) TestFunction(oldRegionId, NewRegionId int64, oldX, o
 
 		fn(pClient, &rP, constant.P2C_ReportGridOld)
 		fn(v, &oldMe, constant.P2C_ReportGridOld)
-
-		//pClient.MoveQueue.Enqueue(dataController.ActionSync{
-		//	Fn:   func() { fn(pClient, &rP, constant.P2C_ReportGridOld) },
-		//	Time: Time + 1,
-		//})
-		//
-		//v.MoveQueue.Enqueue(dataController.ActionSync{
-		//	Fn:   func() { fn(v, &oldMe, constant.P2C_ReportGridOld) },
-		//	Time: Time + 1,
-		//})
 	}
 }
 
