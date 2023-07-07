@@ -116,7 +116,7 @@ func parseMovement(reader mpacket.Reader) (movement, movementFrag) {
 			reader.ReadByte() // what is this
 
 		default:
-			fmt.Println("unkown movement fragment type: ", frag.mType)
+			fmt.Println("Unknown movement fragment type: ", frag.mType)
 			frag.stance = reader.ReadByte()
 			frag.duration = reader.ReadInt16()
 		}

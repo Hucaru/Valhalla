@@ -124,7 +124,7 @@ func (server *Server) handleChannelUpdate(conn mnet.Server, reader mpacket.Reade
 	case 0: //population
 		server.Info.Channels[id].Pop = reader.ReadInt16()
 	default:
-		log.Println("Unkown channel update type", op)
+		log.Println("Unknown channel update type", op)
 	}
 	server.login.Send(server.Info.GenerateInfoPacket())
 }

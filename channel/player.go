@@ -206,7 +206,7 @@ func (d *player) levelUp() {
 		d.maxHP += constant.AdminHpAdd
 		d.maxMP += constant.AdminMpAdd
 	default:
-		log.Println("Unkown job during level up", d.job)
+		log.Println("Unknown job during level up", d.job)
 	}
 
 	d.hp = d.maxHP
@@ -673,7 +673,7 @@ func (d *player) giveItem(newItem item) error { // TODO: Refactor
 		d.cash = append(d.cash, newItem)
 		d.send(packetInventoryAddItem(newItem, true))
 	default:
-		return fmt.Errorf("Unkown inventory id: %d", newItem.invID)
+		return fmt.Errorf("Unknown inventory id: %d", newItem.invID)
 	}
 
 	return nil
@@ -1731,7 +1731,7 @@ func packetHideCountdown() mpacket.Packet {
 	return p
 }
 
-func packetBuddyUnkownError() mpacket.Packet {
+func packetBuddyUnknownError() mpacket.Packet {
 	return packetBuddyRequestResult(0x16)
 }
 

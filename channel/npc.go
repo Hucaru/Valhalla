@@ -156,7 +156,7 @@ func packetNpcChatPet(npcID int32, msg string, pets map[int64]byte) mpacket.Pack
 	return p
 }
 
-func packetNpcChatUnkown(npcID int32, msg string) mpacket.Packet {
+func packetNpcChatUnknown(npcID int32, msg string) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelNpcDialogueBox)
 	p.WriteByte(4)
 	p.WriteInt32(npcID)

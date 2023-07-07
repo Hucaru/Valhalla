@@ -52,7 +52,7 @@ func PacketChannelBuddyEvent(op byte, recepientID, fromID int32, fromName string
 		p.WriteInt32(fromID)
 		p.WriteByte(channelID)
 	default:
-		log.Println("unkown internal buddy event type:", op)
+		log.Println("Unknown internal buddy event type:", op)
 	}
 
 	return p

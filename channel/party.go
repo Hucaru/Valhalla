@@ -371,7 +371,7 @@ func updateParty(p *mpacket.Packet, party *party) {
 	}
 }
 
-func packetPartyCreateUnkownError() mpacket.Packet {
+func packetPartyCreateUnknownError() mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelPartyInfo)
 	p.WriteByte(0)
 

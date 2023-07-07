@@ -17,7 +17,7 @@ const (
 	roomAccept                = 4
 	roomChat                  = 6
 	roomCloseWindow           = 10
-	roomUnkownOp              = 11
+	roomUnknownOp              = 11
 	roomInsertItem            = 13
 	roomMesos                 = 14
 	roomAcceptTrade           = 16
@@ -736,7 +736,7 @@ func (r *memoryRoom) shuffleCards() {
 	case 2:
 		loopCounter = 15
 	default:
-		fmt.Println("Cannot shuffle unkown card type")
+		fmt.Println("Cannot shuffle Unknown card type")
 	}
 
 	r.cards = make([]byte, 0)

@@ -1200,7 +1200,7 @@ func (server Server) chatSlashCommand(conn mnet.Client, reader mpacket.Reader) {
 			receiver.send(packetMessageWhisper(plr.name, msg, server.id))
 		}
 	default:
-		log.Println("Unkown slash command type:", op, reader)
+		log.Println("Unknown slash command type:", op, reader)
 	}
 }
 
@@ -1866,7 +1866,7 @@ func (server *Server) npcChatContinue(conn mnet.Client, reader mpacket.Reader) {
 	case 6:
 		fmt.Println("pet window:", reader)
 	default:
-		log.Println("Unkown npc chat continue packet:", reader)
+		log.Println("Unknown npc chat continue packet:", reader)
 	}
 
 	plr, err := server.players.getFromConn(conn)
@@ -1952,7 +1952,7 @@ func (server *Server) npcShop(conn mnet.Client, reader mpacket.Reader) {
 			delete(server.npcChat, conn) // delete here as we need access to shop goods
 		}
 	default:
-		log.Println("Unkown shop operation packet:", reader)
+		log.Println("Unknown shop operation packet:", reader)
 	}
 }
 

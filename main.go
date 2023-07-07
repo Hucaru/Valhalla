@@ -30,6 +30,6 @@ func main() {
 		s := newChannelServer(*configPtr)
 		s.run()
 	default:
-		log.Println("Unkown server type:", *typePtr)
+		log.Println("Unknown server type:", *typePtr)
 	}
 }

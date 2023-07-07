@@ -786,7 +786,7 @@ func displayBoat(plr *player, show bool, boatType byte) {
 	case 1: // crog
 		plr.send(packetMapShowMovingObject(show))
 	default:
-		log.Println("Unkown docked boat type:", boatType)
+		log.Println("Unknown docked boat type:", boatType)
 	}
 }
 

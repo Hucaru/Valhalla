@@ -885,7 +885,7 @@ func (server *Server) gmCommand(conn mnet.Client, msg string) {
 		conn.Send(packetMessageRedText(fmt.Sprintf("%d", player.mapID)))
 
 	default:
-		conn.Send(packetMessageRedText("Unkown gm command " + command[0]))
+		conn.Send(packetMessageRedText("Unknown gm command " + command[0]))
 	}
 }
 
@@ -1019,5 +1019,5 @@ func covnertMobNameToID(name string) ([]int32, error) {
 		return []int32{6300005}, nil
 	}
 
-	return nil, fmt.Errorf("Unkown mob name")
+	return nil, fmt.Errorf("Unknown mob name")
 }
