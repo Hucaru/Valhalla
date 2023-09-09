@@ -8,13 +8,7 @@ This project exists to preserve and archive an early version of the game (v28 of
 
 ## Client modifications
 
-- 00663007 - change to jmp for multiclient
-- 0041BD17 - fill with nop to remove internet explorer iframe advert after client close
-- 0066520B - push to stack resolution in y
-- 00665211 - push to stack resolution in x
-- 0066519c - mov 0x0 instead of 0x10 for windowed mode
-
-To do this in a way that does not involve modifying the client go [here](https://github.com/Hucaru/maplestory-client-hook)
+A DLL which will auto hook the functions to make a localhost and window mode can be found [here](https://github.com/Hucaru/maplestory-client-hook)
 
 ## Features
 

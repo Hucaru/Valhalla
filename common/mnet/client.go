@@ -55,7 +55,7 @@ func NewClient(conn net.Conn, eRecv chan *Event, queueSize int, keySend, keyRecv
 	c.jitter = jitter
 	c.pSend = make(chan func(), queueSize*10) // Used only when simulating latency
 	if latency > 0 {
-		// Note: this routing doesn't close and evenrtually enough re-logs will start to eat more and more cpu, and should therefore be used when testing lag effects
+		// Note: this routing doesn't close and eventually enough re-logs will start to eat more and more cpu, and should therefore be used when testing lag effects
 		go func(pSend chan func(), conn net.Conn) {
 			for {
 				select {
