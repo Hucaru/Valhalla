@@ -1,13 +1,9 @@
 // Ellinia station boarding
 
-function run(npc, player) {
-    var inst = npc.getInstance(player)
+var props = plr.instanceProperties()
 
-    if ("canSellTickets" in inst.properties() && inst.properties()["canSellTickets"]) {
-        npc.warpPlayer(player, 101000301)
-    } else {
-        npc.sendOK("Cannot board")
-    }
-
-    npc.terminate()
+if ("canSellTickets" in props && props["canSellTickets"]) {
+    plr.warp(101000301)
+} else {
+    npc.sendOk("Cannot board")
 }

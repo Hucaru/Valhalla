@@ -1774,13 +1774,13 @@ func (server *Server) npcChatStart(conn mnet.Client, reader mpacket.Reader) {
 	}
 
 	// Start npc session
-	var controller *npcScriptController
+	var controller *npcChatController
 
 	if program, ok := server.npcScriptStore.scripts[strconv.Itoa(int(npcData.id))]; ok {
-		controller, err = createNewnpcScriptController(npcData.id, conn, program, server.warpPlayer, server.fields)
+		controller, err = createNpcChatController(npcData.id, conn, program, plr, server.fields, server.warpPlayer)
 	} else {
 		if program, ok := server.npcScriptStore.scripts["default"]; ok {
-			controller, err = createNewnpcScriptController(npcData.id, conn, program, server.warpPlayer, server.fields)
+			controller, err = createNpcChatController(npcData.id, conn, program, plr, server.fields, server.warpPlayer)
 		}
 	}
 
@@ -1794,7 +1794,8 @@ func (server *Server) npcChatStart(conn mnet.Client, reader mpacket.Reader) {
 	}
 
 	server.npcChat[conn] = controller
-	if controller.run(plr) {
+
+	if controller.run() {
 		delete(server.npcChat, conn)
 	}
 }
@@ -1805,7 +1806,7 @@ func (server *Server) npcChatContinue(conn mnet.Client, reader mpacket.Reader) {
 	}
 
 	controller := server.npcChat[conn]
-	controller.state.ClearFlags()
+	controller.clearUserInput()
 
 	terminate := false
 
@@ -1817,9 +1818,9 @@ func (server *Server) npcChatContinue(conn mnet.Client, reader mpacket.Reader) {
 
 		switch value {
 		case 0: // back
-			controller.state.SetNextBack(false, true)
+			controller.stateTracker.popState()
 		case 1: // next
-			controller.state.SetNextBack(true, false)
+			controller.stateTracker.addState(npcNextState)
 		case 255: // 255/0xff end chat
 			terminate = true
 		default:
@@ -1831,9 +1832,9 @@ func (server *Server) npcChatContinue(conn mnet.Client, reader mpacket.Reader) {
 
 		switch value {
 		case 0: // no
-			controller.state.SetYesNo(false, true)
+			controller.stateTracker.addState(npcNoState)
 		case 1: // yes, ok
-			controller.state.SetYesNo(true, false)
+			controller.stateTracker.addState(npcYesState)
 		case 255: // 255/0xff end chat
 			terminate = true
 		default:
@@ -1841,42 +1842,41 @@ func (server *Server) npcChatContinue(conn mnet.Client, reader mpacket.Reader) {
 		}
 	case 2: // string input
 		if reader.ReadBool() {
-			controller.state.SetTextInput(reader.ReadString(reader.ReadInt16()))
+			controller.stateTracker.addState(npcStringInputState)
+			controller.lastInputString = reader.ReadString(reader.ReadInt16())
 		} else {
 			terminate = true
 		}
 	case 3: // number input
 		if reader.ReadBool() {
-			controller.state.SetNumberInput(reader.ReadInt32())
+			controller.stateTracker.addState(npcNumberInputState)
+			controller.lastInputNumber = reader.ReadInt32()
 		} else {
 			terminate = true
 		}
 	case 4: // select option
 		if reader.ReadBool() {
-			controller.state.SetOptionSelect(reader.ReadInt32())
+			controller.stateTracker.addState(npcSelectionState)
+			controller.lastSelection = reader.ReadInt32()
 		} else {
 			terminate = true
 		}
 	case 5: // style window (no way to discern between cancel button and end chat selection)
 		if reader.ReadBool() {
-			controller.state.SetOptionSelect(int32(reader.ReadByte()))
+			controller.stateTracker.addState(npcSelectionState)
+			controller.lastSelection = int32(reader.ReadByte())
 		} else {
 			terminate = true
 		}
 	case 6:
-		fmt.Println("pet window:", reader)
+		fmt.Println("npc pet window:", reader)
 	default:
 		log.Println("Unkown npc chat continue packet:", reader)
 	}
 
-	plr, err := server.players.getFromConn(conn)
-
-	if err != nil {
+	if terminate {
 		delete(server.npcChat, conn)
-		return
-	}
-
-	if terminate || controller.run(plr) {
+	} else if controller.run() {
 		delete(server.npcChat, conn)
 	}
 }
@@ -1906,7 +1906,7 @@ func (server *Server) npcShop(conn mnet.Client, reader mpacket.Reader) {
 		}
 
 		if controller, ok := server.npcChat[conn]; ok {
-			goods := controller.state.Goods()
+			goods := controller.goods
 
 			if int(index) < len(goods) && index > -1 {
 				if len(goods[index]) == 1 { // Default price

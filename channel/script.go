@@ -2,7 +2,6 @@ package channel
 
 import (
 	"fmt"
-	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
@@ -39,12 +38,12 @@ func (s *scriptStore) loadScripts() error {
 			return nil
 		}
 
-		name, program, err := createScriptProgramFromFilename(path)
+		name, program, errComp := createScriptProgramFromFilename(path)
 
-		if err == nil {
+		if errComp == nil {
 			s.scripts[name] = program
 		} else {
-			log.Println("Script compiling:", err)
+			log.Println("Script compiling:", errComp)
 		}
 
 		return nil
@@ -112,7 +111,7 @@ func (s *scriptStore) monitor(task func(name string, program *goja.Program)) {
 }
 
 func createScriptProgramFromFilename(filename string) (string, *goja.Program, error) {
-	data, err := ioutil.ReadFile(filename)
+	data, err := os.ReadFile(filename)
 
 	if err != nil {
 		return "", nil, err
@@ -130,248 +129,265 @@ func createScriptProgramFromFilename(filename string) (string, *goja.Program, er
 	return name, program, nil
 }
 
+type npcChatNodeType int
+
+const (
+	npcYesState npcChatNodeType = iota
+	npcNoState
+	npcNextState
+	// npcBackState we don't use this as this condition is a pop rather than insert
+	npcSelectionState
+	npcStringInputState
+	npcNumberInputState
+	npcIncorrectState
+)
+
+type npcChatStateTracker struct {
+	lastPos    int
+	currentPos int
+
+	list []npcChatNodeType
+}
+
+func (tracker *npcChatStateTracker) addState(stateType npcChatNodeType) {
+	if tracker.currentPos >= len(tracker.list) {
+		tracker.list = append(tracker.list, stateType)
+	} else {
+		tracker.list[tracker.currentPos] = stateType
+	}
+
+	tracker.currentPos++
+	tracker.lastPos = tracker.currentPos
+}
+
+func (tracker *npcChatStateTracker) performInterrupt() bool {
+	if tracker.currentPos == tracker.lastPos {
+		return true
+	}
+
+	tracker.currentPos++
+
+	return false
+}
+
+func (tracker *npcChatStateTracker) getCurrentState() npcChatNodeType {
+	if tracker.currentPos >= len(tracker.list) {
+		return npcIncorrectState
+	}
+
+	return tracker.list[tracker.currentPos]
+}
+
+func (tracker *npcChatStateTracker) popState() {
+	tracker.lastPos--
+}
+
 type warpFn func(plr *player, dstField *field, dstPortal portal) error
 
-type npcScriptState struct {
-	npcID       int32
-	conn        mnet.Client
-	terminate   bool
-	selection   int32
-	inputString string
-	inputNumber int32
-
-	yes, no, next, back bool // flags - covnert to bitfieds?
-
-	goods [][]int32
-
-	warpFunc warpFn
+type npcChatPlayerController struct {
+	plr      *player
 	fields   map[int32]*field
+	warpFunc warpFn
 }
 
-// Id of npc
-func (state *npcScriptState) Id() int32 {
-	return state.npcID
-}
-
-// SendBackNext packet to player
-func (state *npcScriptState) SendBackNext(msg string, back, next bool) {
-	state.conn.Send(packetNpcChatBackNext(state.npcID, msg, next, back))
-}
-
-// SendOK packet to player
-func (state *npcScriptState) SendOK(msg string) {
-	state.conn.Send(packetNpcChatOk(state.npcID, msg))
-}
-
-// SendYesNo packet to player
-func (state *npcScriptState) SendYesNo(msg string) {
-	state.conn.Send(packetNpcChatYesNo(state.npcID, msg))
-}
-
-// SendInputText packet to player
-func (state *npcScriptState) SendInputText(msg, defaultInput string, minLength, maxLength int16) {
-	state.conn.Send(packetNpcChatUserString(state.npcID, msg, defaultInput, minLength, maxLength))
-}
-
-// SendInputNumber packet to player
-func (state *npcScriptState) SendInputNumber(msg string, defaultInput, minLength, maxLength int32) {
-	state.conn.Send(packetNpcChatUserNumber(state.npcID, msg, defaultInput, minLength, maxLength))
-}
-
-// SendSelection packet to player
-func (state *npcScriptState) SendSelection(msg string) {
-	state.conn.Send(packetNpcChatSelection(state.npcID, msg))
-}
-
-// SendStyles packet to player
-func (state *npcScriptState) SendStyles(msg string, styles []int32) {
-	state.conn.Send(packetNpcChatStyleWindow(state.npcID, msg, styles))
-}
-
-// SendShop packet to player
-func (state *npcScriptState) SendShop(goods [][]int32) {
-	state.goods = goods
-	state.conn.Send(packetNpcShop(state.npcID, goods))
-}
-
-// Terminate the scriopt
-func (state *npcScriptState) Terminate() {
-	state.terminate = true
-}
-
-// Selection value
-func (state npcScriptState) Selection() int32 {
-	return state.selection
-}
-
-// InputString value
-func (state npcScriptState) InputString() string {
-	return state.inputString
-}
-
-// InputNumber value
-func (state npcScriptState) InputNumber() int32 {
-	return state.inputNumber
-}
-
-// Yes flag
-func (state npcScriptState) Yes() bool {
-	return state.yes
-}
-
-// No flag
-func (state npcScriptState) No() bool {
-	return state.no
-}
-
-// Next Flag
-func (state npcScriptState) Next() bool {
-	return state.next
-}
-
-// Back flag
-func (state npcScriptState) Back() bool {
-	return state.back
-}
-
-// Goods in the shop
-func (state npcScriptState) Goods() [][]int32 {
-	return state.goods
-}
-
-// ClearFlags within the state
-func (state *npcScriptState) ClearFlags() {
-	state.next = false
-	state.back = false
-	state.inputNumber = -1
-	state.inputString = ""
-	state.selection = -1
-	state.yes = false
-	state.no = false
-}
-
-// SetNextBack flags
-func (state *npcScriptState) SetNextBack(next, back bool) {
-	state.next = next
-	state.back = back
-}
-
-// SetYesNo flags
-func (state *npcScriptState) SetYesNo(yes, no bool) {
-	state.yes = yes
-	state.no = no
-}
-
-// SetTextInput option
-func (state *npcScriptState) SetTextInput(input string) {
-	state.inputString = input
-}
-
-// SetNumberInput option
-func (state *npcScriptState) SetNumberInput(input int32) {
-	state.inputNumber = input
-}
-
-// SetOptionSelect index
-func (state *npcScriptState) SetOptionSelect(selection int32) {
-	state.selection = selection
-}
-
-// WarpPlayer to specific field
-func (state npcScriptState) WarpPlayer(p *playerWrapper, mapID int32) bool {
-	if field, ok := state.fields[mapID]; ok {
+func (ctrl *npcChatPlayerController) Warp(id int32) {
+	if field, ok := ctrl.fields[id]; ok {
 		inst, err := field.getInstance(0)
 
 		if err != nil {
-			return false
+			return
 		}
 
 		portal, err := inst.getRandomSpawnPortal()
 
-		state.warpFunc(p.player, field, portal)
+		_ = ctrl.warpFunc(ctrl.plr, field, portal)
+	}
+}
 
+func (ctrl *npcChatPlayerController) InstanceProperties() map[string]interface{} {
+	return ctrl.plr.inst.properties
+}
+
+func (ctrl *npcChatPlayerController) Mesos() int32 {
+	return ctrl.plr.mesos
+}
+
+func (ctrl *npcChatPlayerController) GiveMesos(amount int32) {
+	ctrl.plr.giveMesos(amount)
+}
+
+func (ctrl *npcChatPlayerController) GiveItem(id int32, amount int16) bool {
+	item, err := createItemFromID(id, amount)
+
+	if err != nil {
+		return false
+	}
+
+	if err = ctrl.plr.giveItem(item); err != nil {
+		return false
+	}
+
+	return true
+}
+
+func (ctrl *npcChatPlayerController) Job() int16 {
+	return ctrl.plr.job
+}
+
+func (ctrl *npcChatPlayerController) SetJob(id int16) {
+	ctrl.plr.setJob(id)
+}
+
+func (ctrl *npcChatPlayerController) Level() byte {
+	return ctrl.plr.level
+}
+
+type npcChatController struct {
+	npcID int32
+	conn  mnet.Client
+
+	lastSelection   int32
+	lastInputString string
+	lastInputNumber int32
+
+	goods [][]int32
+
+	stateTracker npcChatStateTracker
+
+	vm      *goja.Runtime
+	program *goja.Program
+}
+
+func createNpcChatController(npcID int32, conn mnet.Client, program *goja.Program, plr *player, fields map[int32]*field, warpFunc warpFn) (*npcChatController, error) {
+	ctrl := &npcChatController{
+		npcID:   npcID,
+		conn:    conn,
+		vm:      goja.New(),
+		program: program,
+	}
+
+	plrCtrl := &npcChatPlayerController{
+		plr:      plr,
+		fields:   fields,
+		warpFunc: warpFunc,
+	}
+
+	ctrl.vm.SetFieldNameMapper(goja.UncapFieldNameMapper())
+	ctrl.vm.Set("npc", ctrl)
+	ctrl.vm.Set("plr", plrCtrl)
+
+	return ctrl, nil
+}
+
+// Id of npc
+func (ctrl *npcChatController) Id() int32 {
+	return ctrl.npcID
+}
+
+// SendBackNext packet to player
+func (ctrl *npcChatController) SendBackNext(msg string, back, next bool) {
+	if ctrl.stateTracker.performInterrupt() {
+		ctrl.conn.Send(packetNpcChatBackNext(ctrl.npcID, msg, next, back))
+		ctrl.vm.Interrupt("SendBackNext")
+	}
+}
+
+// SendOK packet to player
+func (ctrl *npcChatController) SendOk(msg string) {
+	if ctrl.stateTracker.performInterrupt() {
+		ctrl.conn.Send(packetNpcChatOk(ctrl.npcID, msg))
+		ctrl.vm.Interrupt("SendOk")
+	}
+}
+
+// SendYesNo packet to player
+func (ctrl *npcChatController) SendYesNo(msg string) bool {
+	state := ctrl.stateTracker.getCurrentState()
+
+	if ctrl.stateTracker.performInterrupt() {
+		ctrl.conn.Send(packetNpcChatYesNo(ctrl.npcID, msg))
+		ctrl.vm.Interrupt("SendYesNo")
+		return false
+	}
+
+	if state == npcYesState {
 		return true
+	} else if state == npcNoState {
+		return false
 	}
 
 	return false
 }
 
-// GetInstance that the passed in player belongs to
-func (state npcScriptState) GetInstance(p *player) *fieldInstanceWrapper {
-	if field, ok := state.fields[p.mapID]; ok {
-		inst, err := field.getInstance(p.inst.id)
+// SendInputText packet to player
+func (ctrl *npcChatController) SendInputText(msg, defaultInput string, minLength, maxLength int16) {
+	if ctrl.stateTracker.performInterrupt() {
+		ctrl.conn.Send(packetNpcChatUserString(ctrl.npcID, msg, defaultInput, minLength, maxLength))
+		ctrl.vm.Interrupt("SendInputText")
+	}
+}
 
-		if err != nil {
-			return nil
-		}
+// SendInputNumber packet to player
+func (ctrl *npcChatController) SendInputNumber(msg string, defaultInput, minLength, maxLength int32) {
+	if ctrl.stateTracker.performInterrupt() {
+		ctrl.conn.Send(packetNpcChatUserNumber(ctrl.npcID, msg, defaultInput, minLength, maxLength))
+		ctrl.vm.Interrupt("SendInputNumber")
+	}
+}
 
-		return &fieldInstanceWrapper{inst}
+// SendSelection packet to player
+func (ctrl *npcChatController) SendSelection(msg string) {
+	if ctrl.stateTracker.performInterrupt() {
+		ctrl.conn.Send(packetNpcChatSelection(ctrl.npcID, msg))
+		ctrl.vm.Interrupt("SendSelection")
+	}
+}
+
+// SendStyles packet to player
+func (ctrl *npcChatController) SendStyles(msg string, styles []int32) {
+	if ctrl.stateTracker.performInterrupt() {
+		ctrl.conn.Send(packetNpcChatStyleWindow(ctrl.npcID, msg, styles))
+		ctrl.vm.Interrupt("SendStyles")
+	}
+}
+
+// SendShop packet to player
+func (ctrl *npcChatController) SendShop(goods [][]int32) {
+	ctrl.goods = goods
+	ctrl.conn.Send(packetNpcShop(ctrl.npcID, goods))
+}
+
+func (ctrl *npcChatController) clearUserInput() {
+	ctrl.lastSelection = 0
+	ctrl.lastInputString = ""
+	ctrl.lastInputNumber = 0
+}
+
+// Selection value
+func (ctrl *npcChatController) Selection() int32 {
+	return ctrl.lastSelection
+}
+
+// InputString value
+func (ctrl *npcChatController) InputString() string {
+	return ctrl.lastInputString
+}
+
+// InputNumber value
+func (ctrl *npcChatController) InputNumber() int32 {
+	return ctrl.lastInputNumber
+}
+
+func (ctrl *npcChatController) run() bool {
+	ctrl.stateTracker.currentPos = 0
+
+	_, err := ctrl.vm.RunProgram(ctrl.program)
+
+	if _, ok := err.(*goja.InterruptedError); ok {
+		return false
 	}
 
-	return &fieldInstanceWrapper{}
-}
-
-type fieldInstanceWrapper struct {
-	*fieldInstance
-}
-
-func (f *fieldInstanceWrapper) Properties(inst int) map[string]interface{} {
-	if f.fieldInstance == nil {
-		return make(map[string]interface{})
-	}
-
-	return f.properties
-}
-
-type npcScriptController struct {
-	state npcScriptState
-
-	vm      *goja.Runtime
-	program *goja.Program
-
-	runFunc func(*npcScriptState, *playerWrapper)
-}
-
-func createNewnpcScriptController(npcID int32, conn mnet.Client, program *goja.Program, warpFunc warpFn, fields map[int32]*field) (*npcScriptController, error) {
-	vm := goja.New()
-	vm.SetFieldNameMapper(goja.UncapFieldNameMapper())
-
-	_, err := vm.RunProgram(program)
-
-	if err != nil {
-		return nil, err
-	}
-
-	controller := &npcScriptController{vm: vm, program: program}
-
-	defer func() {
-		if r := recover(); r != nil {
-			log.Println("Error in running script:", r)
-		}
-	}()
-
-	err = vm.ExportTo(vm.Get("run"), &controller.runFunc)
-
-	if err != nil {
-		return nil, err
-	}
-
-	controller.state = npcScriptState{npcID: npcID, conn: conn, warpFunc: warpFunc, fields: fields}
-
-	return controller, nil
-}
-
-// Run the npc script
-func (controller *npcScriptController) run(p *player) bool {
-	defer func() {
-		if r := recover(); r != nil {
-			log.Println("Error in running script:", r)
-		}
-	}()
-
-	controller.runFunc(&controller.state, &playerWrapper{player: p})
-
-	return controller.state.terminate
+	return true
 }
 
 type eventScriptController struct {

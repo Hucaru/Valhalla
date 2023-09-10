@@ -1,13 +1,9 @@
 // Ellinia station ticket seller
 
-function run(npc, player) {
-    var inst = npc.getInstance(player)
+var props = plr.instanceProperties()
 
-    if ("canSellTickets" in inst.properties() && inst.properties()["canSellTickets"]) {
-        npc.sendOK("Buy ticket")
-        npc.terminate()
-    } else {
-        npc.sendOK("Cannot buy ticket")
-        npc.terminate()
-    }
+if ("canSellTickets" in props && props["canSellTickets"]) {
+    npc.sendOk("Buy ticket")
+} else {
+    npc.sendOk("Cannot buy ticket")
 }

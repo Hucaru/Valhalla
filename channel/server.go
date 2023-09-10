@@ -93,7 +93,7 @@ type Server struct {
 	channels         [20]internal.Channel
 	fields           map[int32]*field
 	header           string
-	npcChat          map[mnet.Client]*npcScriptController
+	npcChat          map[mnet.Client]*npcChatController
 	npcScriptStore   *scriptStore
 	eventCtrl        map[string]*eventScriptController
 	eventScriptStore *scriptStore
@@ -151,7 +151,7 @@ func (server *Server) Initialise(work chan func(), dbuser, dbpassword, dbaddress
 }
 
 func (server *Server) loadScripts() {
-	server.npcChat = make(map[mnet.Client]*npcScriptController)
+	server.npcChat = make(map[mnet.Client]*npcChatController)
 	server.eventCtrl = make(map[string]*eventScriptController)
 
 	server.npcScriptStore = createScriptStore("scripts/npc", server.dispatch) // make folder a config param
