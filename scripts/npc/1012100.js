@@ -11,10 +11,10 @@ if (plr.job() == 0) {
             npc.sendOk("So be it! Now go, and go with pride.")
         }
     } else {
-        npc.sendOK("Train a bit more and I can show you the way of the #rBowman#k.")
+        npc.sendOk("Train a bit more and I can show you the way of the #rBowman#k.")
     }
 } else if (plr.job() == 300) {
     npc.sendOk("Not implemented")
 } else {
-    npc.sendOK("The progress you have made is astonishing.")
+    npc.sendOk("The progress you have made is astonishing.")
 }
