@@ -35,50 +35,57 @@ type playerSkill struct {
 
 func createPlayerSkillFromData(ID int32, level byte) (playerSkill, error) {
 	skill, err := nx.GetPlayerSkill(ID)
-
 	if err != nil {
-		return playerSkill{}, fmt.Errorf("Not a valid skill ID %v level %v", ID, level)
+		return playerSkill{}, fmt.Errorf("invalid skill ID %d (level %d): %w", ID, level, err)
+	}
+	if level == 0 || int(level) > len(skill) {
+		return playerSkill{}, fmt.Errorf("invalid skill level %d for skill ID %d (max %d)", level, ID, len(skill))
 	}
 
-	if int(level) > len(skill) {
-		return playerSkill{}, fmt.Errorf("Invalid skill level")
-	}
-
-	return playerSkill{ID: ID,
+	return playerSkill{
+		ID:           ID,
 		Level:        level,
 		Mastery:      byte(skill[level-1].Mastery),
 		Cooldown:     0,
 		CooldownTime: int16(skill[level-1].Time),
-		TimeLastUsed: 0}, nil
+		TimeLastUsed: 0,
+	}, nil
 }
 
 func getSkillsFromCharID(id int32) []playerSkill {
 	skills := []playerSkill{}
 
-	filter := "skillID, level, cooldown"
-
-	row, err := common.DB.Query("SELECT "+filter+" FROM skills where characterID=?", id)
-
+	const filter = "skillID, level, cooldown"
+	row, err := common.DB.Query("SELECT "+filter+" FROM skills WHERE characterID=?", id)
 	if err != nil {
-		panic(err)
+		log.Printf("getSkillsFromCharID: query failed for character %d: %v", id, err)
+		return skills
 	}
-
 	defer row.Close()
 
 	for row.Next() {
-		skill := playerSkill{}
-
-		row.Scan(&skill.ID, &skill.Level, &skill.Cooldown)
-
-		skillData, err := nx.GetPlayerSkill(skill.ID)
-
-		if err != nil {
-			return skills
+		var ps playerSkill
+		if err := row.Scan(&ps.ID, &ps.Level, &ps.Cooldown); err != nil {
+			log.Printf("getSkillsFromCharID: scan failed for character %d: %v", id, err)
+			continue
 		}
 
-		skill.CooldownTime = int16(skillData[skill.Level-1].Time)
+		skillData, err := nx.GetPlayerSkill(ps.ID)
+		if err != nil {
+			log.Printf("getSkillsFromCharID: missing nx data for skill %d: %v", ps.ID, err)
+			continue
+		}
+		if ps.Level == 0 || int(ps.Level) > len(skillData) {
+			log.Printf("getSkillsFromCharID: invalid level %d for skill %d (max %d), skipping", ps.Level, ps.ID, len(skillData))
+			continue
+		}
 
-		skills = append(skills, skill)
+		ps.CooldownTime = int16(skillData[ps.Level-1].Time)
+		skills = append(skills, ps)
+	}
+
+	if err := row.Err(); err != nil {
+		log.Printf("getSkillsFromCharID: rows error for character %d: %v", id, err)
 	}
 
 	return skills
@@ -154,14 +161,70 @@ type player struct {
 	UpdatePartyInfo updatePartyInfoFunc
 
 	rates *rates
+
+	// Per-player RNG for deterministic randomness
+	rng *rand.Rand
+}
+
+// SeedRNGDeterministic seeds the per-player RNG using stable identifiers so
+// gain sequences are reproducible across restarts and processes.
+func (d *player) SeedRNGDeterministic() {
+	// Compose as uint64 to avoid int64 constant overflow, then cast at runtime.
+	const gamma uint64 = 0x9e3779b97f4a7c15
+	seed64 := gamma ^
+		(uint64(uint32(d.id)) << 1) ^
+		(uint64(uint32(d.accountID)) << 33) ^
+		(uint64(d.worldID) << 52)
+
+	seed := int64(seed64) // two's complement wrapping is fine for rand.Source
+	d.rng = rand.New(rand.NewSource(seed))
+}
+
+// ensureRNG guarantees d.rng is initialized. If a deterministic seed has not
+// been set yet, it will use a time-based seed (non-deterministic).
+func (d *player) ensureRNG() {
+	if d.rng == nil {
+		// Default to deterministic seeding for stability unless you want variability:
+		d.SeedRNGDeterministic()
+	}
+}
+
+func (d *player) randIntn(n int) int {
+	d.ensureRNG()
+	return d.rng.Intn(n)
+}
+
+// levelUpGains returns (hpGain, mpGain) using per-player RNG and job family.
+// The random component uses a small range similar to legacy behavior.
+// Tweak the constants to match your balance targets if needed.
+func (d *player) levelUpGains() (int16, int16) {
+	r := int16(d.randIntn(3) + 1) // legacy-style variance 1..3
+
+	mainClass := d.job / 100
+	switch {
+	case d.job == 0 || mainClass == 0: // Beginner and pre-advancement
+		// Balanced but modest growth
+		return r + 12, r + 10
+	case mainClass == 1: // Warrior
+		// High HP, low MP growth
+		return r + 24, r + 4
+	case mainClass == 2: // Magician
+		// Low HP, high MP growth
+		return r + 10, r + 22
+	case mainClass == 3 || mainClass == 4: // Bowman / Thief
+		// Moderate HP/MP growth
+		return r + 20, r + 14
+	default:
+		// Fallback for any other jobs/classes
+		return r + 16, r + 12
+	}
 }
 
 // Send the Data a packet
-func (d player) send(packet mpacket.Packet) {
-	if d.conn == nil {
+func (d *player) send(packet mpacket.Packet) {
+	if d == nil || d.conn == nil {
 		return
 	}
-
 	d.conn.Send(packet)
 }
 
@@ -178,39 +241,25 @@ func (d *player) levelUp() {
 	d.giveAP(5)
 	d.giveSP(3)
 
-	levelUpHp := func(classIncrease int16, bonus int16) int16 {
-		return int16(rand.Intn(3)+1) + classIncrease + bonus // deterministic rand, maybe seed with time?
-	}
+	// Use per-player RNG and job-based helper for deterministic gains.
+	hpGain, mpGain := d.levelUpGains()
 
-	levelUpMp := func(classIncrease int16, bonus int16) int16 {
-		return int16(rand.Intn(1)+1) + classIncrease + bonus // deterministic rand, maybe seed with time?
-	}
+	// Apply gains; clamp to avoid overflow/underflow
+	newMaxHP := d.maxHP + hpGain
+	newMaxMP := d.maxMP + mpGain
 
-	switch d.job / 100 { // add effects from skills e.g. improve max mp
-	case 0:
-		d.maxHP += levelUpHp(constant.BeginnerHpAdd, 0)
-		d.maxMP += levelUpMp(constant.BeginnerMpAdd, d.intt)
-	case 1:
-		d.maxHP += levelUpHp(constant.WarriorHpAdd, 0)
-		d.maxMP += levelUpMp(constant.WarriorMpAdd, d.intt)
-	case 2:
-		d.maxHP += levelUpHp(constant.MagicianHpAdd, 0)
-		d.maxMP += levelUpMp(constant.MagicianMpAdd, 2*d.intt)
-	case 3:
-		d.maxHP += levelUpHp(constant.BowmanHpAdd, 0)
-		d.maxMP += levelUpMp(constant.BowmanMpAdd, d.intt)
-	case 4:
-		d.maxHP += levelUpHp(constant.ThiefHpAdd, 0)
-		d.maxMP += levelUpMp(constant.ThiefMpAdd, d.intt)
-	case 5:
-		d.maxHP += constant.AdminHpAdd
-		d.maxMP += constant.AdminMpAdd
-	default:
-		log.Println("Unkown job during level up", d.job)
+	// Basic sanity caps; adjust to your server balance
+	if newMaxHP < 1 {
+		newMaxHP = 1
 	}
-
-	d.hp = d.maxHP
-	d.mp = d.maxMP
+	if newMaxMP < 0 {
+		newMaxMP = 0
+	}
+	// Update current HP/MP minimally: keep at least previous current + gains
+	d.maxHP = newMaxHP
+	d.maxMP = newMaxMP
+	d.hp = int16(math.Min(float64(d.maxHP), float64(d.hp+hpGain)))
+	d.mp = int16(math.Min(float64(d.maxMP), float64(d.mp+mpGain)))
 
 	d.setHP(d.hp)
 	d.setMaxHP(d.hp)
@@ -835,7 +884,11 @@ func (d *player) removeItem(item item) {
 		}
 	}
 
-	item.delete()
+	err := item.delete()
+	if err != nil {
+		log.Println(err)
+		return
+	}
 	d.send(packetInventoryRemoveItem(item))
 }
 
@@ -845,6 +898,7 @@ func (d *player) dropMesos(amount int32) error {
 	}
 
 	d.takeMesos(amount)
+	d.inst.dropPool.createDrop(dropSpawnNormal, dropFreeForAll, amount, d.pos, true, d.id, d.id)
 
 	return nil
 }
@@ -861,7 +915,10 @@ func (d *player) moveItem(start, end, amount int16, invID byte) error {
 		dropItem.amount = amount
 		dropItem.dbID = 0
 
-		d.takeItem(item.id, item.slotID, amount, item.invID)
+		_, err = d.takeItem(item.id, item.slotID, amount, item.invID)
+		if err != nil {
+			return fmt.Errorf("unable to take item")
+		}
 
 		d.inst.dropPool.createDrop(dropSpawnNormal, dropFreeForAll, 0, d.pos, true, d.id, 0, dropItem)
 	} else if end < 0 { // Move to equip slot
@@ -1301,9 +1358,9 @@ func packetPlayerSkillBookUpdate(skillID int32, level int32) mpacket.Packet {
 	return p
 }
 
-func packetPlayerStatChange(unknown bool, stat int32, value int32) mpacket.Packet {
+func packetPlayerStatChange(isMesos bool, stat int32, value int32) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelStatChange)
-	p.WriteBool(unknown)
+	p.WriteBool(isMesos)
 	p.WriteInt32(stat)
 	p.WriteInt32(value)
 
@@ -1571,13 +1628,42 @@ func packetInventoryRemoveItem(item item) mpacket.Packet {
 	return p
 }
 
-func packetInventoryChangeEquip(char player) mpacket.Packet {
+func packetInventoryChangeEquip(chr player) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelPlayerChangeAvatar)
-	p.WriteInt32(char.id)
-	p.WriteByte(1)
-	p.WriteBytes(char.displayBytes())
+	p.WriteInt32(chr.id)
+	p.WriteByte(0x01)
+
+	p.WriteByte(chr.gender)
+	p.WriteByte(chr.skin)
+	p.WriteInt32(chr.face)
+	p.WriteByte(0x00)
+	p.WriteInt32(chr.hair)
+
+	// Equips: visible (-1..-19)
+	for _, it := range chr.equip {
+		if it.slotID < 0 && it.slotID > -20 {
+			p.WriteByte(byte(-it.slotID)) // abs
+			p.WriteInt32(it.id)
+		}
+	}
+	// Masked/cash-overrides: (< -100), -111 handled as cash weapon, skip here
+	for _, it := range chr.equip {
+		if it.slotID < -100 && it.slotID != -111 {
+			p.WriteByte(byte(-(it.slotID + 100))) // abs(slot+100)
+			p.WriteInt32(it.id)
+		}
+	}
+
+	// End of equip section
 	p.WriteByte(0xFF)
-	p.WriteUint64(0) //?
+
+	// Pet ID (spawned pet item id).
+	p.WriteInt32(0)
+
+	// 15 x long(0) placeholders
+	for i := 0; i < 15; i++ {
+		p.WriteUint64(0)
+	}
 
 	return p
 }

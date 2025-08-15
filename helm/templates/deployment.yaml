@@ -1,0 +1,121 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: login-server
+  namespace: valhalla
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: login-server
+  template:
+    metadata:
+      labels:
+        app: login-server
+    spec:
+      containers:
+        - name: valhalla
+          image: {{ .Values.image }}
+          command: ["/bin/sh", "-c"]
+          args: ["/app/Valhalla -type login -config /app/docker/docker_config_login.toml"]
+          ports:
+            - containerPort: 8484
+          volumeMounts:
+            - name: cfg
+              mountPath: /app/docker/docker_config_login.toml
+              subPath: docker_config_login.toml
+          readinessProbe:
+            tcpSocket:
+              port: 8484
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            failureThreshold: 12
+      volumes:
+        - name: cfg
+          configMap:
+            name: login-config
+            items:
+              - key: config_login.toml
+                path: docker_config_login.toml
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: world-server
+  namespace: valhalla
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: world-server
+  template:
+    metadata:
+      labels:
+        app: world-server
+    spec:
+      containers:
+        - name: valhalla
+          image: {{ .Values.image }}
+          command: ["/bin/sh", "-c"]
+          args: ["/app/Valhalla -type world -config /app/docker/docker_config_world.toml"]
+          ports:
+            - containerPort: 8584
+          volumeMounts:
+            - name: cfg
+              mountPath: /app/docker/docker_config_world.toml
+              subPath: docker_config_world.toml
+          readinessProbe:
+            tcpSocket:
+              port: 8584
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            failureThreshold: 12
+      volumes:
+        - name: cfg
+          configMap:
+            name: world-config
+            items:
+              - key: config_world.toml
+                path: docker_config_world.toml
+
+{{- $root := . -}}
+{{ $replicas := int .Values.channel.replicas -}}
+{{- range $i, $_ := until $replicas }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: channel-server-{{ add $i 1 }}
+  namespace: valhalla
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: channel-server-{{ add $i 1 }}
+  template:
+    metadata:
+      labels:
+        app: channel-server-{{ add $i 1 }}
+    spec:
+      containers:
+        - name: valhalla
+          imagePullPolicy: Always
+          image: {{ $root.Values.image }}
+          command: ["/bin/sh", "-c"]
+          args: ["/app/Valhalla -type channel -config /app/docker/docker_config_channel.toml"]
+          volumeMounts:
+            - name: cfg
+              mountPath: /app/docker/docker_config_channel.toml
+              subPath: docker_config_channel.toml
+          ports:
+            - containerPort: 8685
+      volumes:
+        - name: cfg
+          configMap:
+            name: channel-config
+            items:
+              - key: config_channel.toml
+                path: docker_config_channel.toml
+{{- end }}

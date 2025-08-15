@@ -1,12 +1,15 @@
 package main
 
 import (
+	"context"
 	"crypto/rand"
 	"log"
 	"net"
 	"os"
+	"os/signal"
 	"strconv"
 	"sync"
+	"syscall"
 	"time"
 
 	"github.com/Hucaru/Valhalla/channel"
@@ -25,10 +28,16 @@ type channelServer struct {
 	wg        *sync.WaitGroup
 	worldConn mnet.Server
 	gameState channel.Server
+
+	// graceful shutdown & listener
+	ctx      context.Context
+	cancel   context.CancelFunc
+	listener net.Listener
 }
 
 func newChannelServer(configFile string) *channelServer {
 	config, dbConfig := channelConfigFromFile(configFile)
+	ctx, cancel := context.WithCancel(context.Background())
 
 	return &channelServer{
 		eRecv:    make(chan *mnet.Event),
@@ -36,11 +45,27 @@ func newChannelServer(configFile string) *channelServer {
 		config:   config,
 		dbConfig: dbConfig,
 		wg:       &sync.WaitGroup{},
+		ctx:      ctx,
+		cancel:   cancel,
 	}
 }
 
 func (cs *channelServer) run() {
 	log.Println("Channel Server")
+
+	// Signal handler for graceful shutdown
+	cs.wg.Add(1)
+	go func() {
+		defer cs.wg.Done()
+		sigCh := make(chan os.Signal, 1)
+		signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
+		select {
+		case <-sigCh:
+			log.Println("Shutdown signal received")
+			cs.shutdown()
+		case <-cs.ctx.Done():
+		}
+	}()
 
 	cs.establishWorldConnection()
 
@@ -63,38 +88,62 @@ func (cs *channelServer) run() {
 	go cs.processEvent()
 
 	cs.wg.Wait()
+	log.Println("Channel Server stopped")
+}
+
+func (cs *channelServer) shutdown() {
+	// Cancel context so loops can exit
+	cs.cancel()
+	// Close listener to unblock Accept()
+	if cs.listener != nil {
+		_ = cs.listener.Close()
+	}
+	// Note: we intentionally do NOT close cs.eRecv or cs.wRecv here since
+	// other goroutines may still attempt to publish work/events.
 }
 
 func (cs *channelServer) establishWorldConnection() {
-
-	ticker := time.NewTicker(5 * time.Second)
-	for !cs.connectToWorld() {
-		cs.gameState.SendCountdownToPlayers(5)
-		<-ticker.C
+	// Context-aware exponential backoff retry
+	backoff := time.Second
+	for {
+		select {
+		case <-cs.ctx.Done():
+			return
+		default:
+		}
+		if cs.connectToWorld() {
+			ip := net.ParseIP(cs.config.ClientConnectionAddress)
+			port, err := strconv.Atoi(cs.config.ListenPort)
+			if err != nil {
+				log.Println("invalid listen port:", err)
+				return
+			}
+			cs.gameState.RegisterWithWorld(cs.worldConn, ip.To4(), int16(port), cs.config.MaxPop)
+			cs.gameState.SendCountdownToPlayers(0)
+			return
+		}
+		// If connection failed, notify players and back off
+		cs.gameState.SendLostWorldConnectionMessage()
+		cs.gameState.SendCountdownToPlayers(int32(backoff / time.Second))
+		time.Sleep(backoff)
+		if backoff < 10*time.Second {
+			backoff *= 2
+			if backoff > 10*time.Second {
+				backoff = 10 * time.Second
+			}
+		}
 	}
-	ticker.Stop()
-
-	ip := net.ParseIP(cs.config.ClientConnectionAddress)
-	port, err := strconv.Atoi(cs.config.ListenPort)
-
-	if err != nil {
-		panic(err)
-	}
-
-	cs.gameState.RegisterWithWorld(cs.worldConn, ip.To4(), int16(port), cs.config.MaxPop)
-	cs.gameState.SendCountdownToPlayers(0)
 }
 
 func (cs *channelServer) connectToWorld() bool {
-	conn, err := net.Dial("tcp", cs.config.WorldAddress+":"+cs.config.WorldPort)
-
+	addr := cs.config.WorldAddress + ":" + cs.config.WorldPort
+	conn, err := net.Dial("tcp", addr)
 	if err != nil {
-		log.Println("Could not connect to world server at", cs.config.WorldAddress+":"+cs.config.WorldPort)
-		cs.gameState.SendLostWorldConnectionMessage()
+		log.Println("Could not connect to world server at", addr)
 		return false
 	}
 
-	log.Println("Connected to world server at", cs.config.WorldAddress+":"+cs.config.WorldPort)
+	log.Println("Connected to world server at", addr)
 
 	world := mnet.NewServer(conn, cs.eRecv, cs.config.PacketQueueSize)
 
@@ -102,42 +151,54 @@ func (cs *channelServer) connectToWorld() bool {
 	go world.Writer()
 
 	cs.worldConn = world
-
 	return true
 }
 
 func (cs *channelServer) acceptNewConnections() {
 	defer cs.wg.Done()
 
-	listener, err := net.Listen("tcp", cs.config.ListenAddress+":"+cs.config.ListenPort)
-
+	l, err := net.Listen("tcp", cs.config.ListenAddress+":"+cs.config.ListenPort)
 	if err != nil {
-		log.Println(err)
-		os.Exit(1)
+		log.Println("channel listen error:", err)
+		cs.shutdown()
+		return
 	}
-
+	cs.listener = l
 	log.Println("Client listener ready:", cs.config.ListenAddress+":"+cs.config.ListenPort)
+	defer func() { _ = l.Close() }()
 
 	for {
-		conn, err := listener.Accept()
-
+		conn, err := l.Accept()
 		if err != nil {
-			log.Println("Error in accepting client", err)
-			close(cs.eRecv)
+			if cs.ctx.Err() != nil {
+				// shutting down
+				return
+			}
+			if isTempNetErr(err) {
+				log.Println("temporary client Accept error:", err)
+				time.Sleep(150 * time.Millisecond)
+				continue
+			}
+			log.Println("fatal client Accept error:", err)
+			// Do not close cs.eRecv; just stop this accept loop
 			return
 		}
 
 		keySend := [4]byte{}
-		rand.Read(keySend[:])
+		_, _ = rand.Read(keySend[:])
 		keyRecv := [4]byte{}
-		rand.Read(keyRecv[:])
+		_, _ = rand.Read(keyRecv[:])
 
 		client := mnet.NewClient(conn, cs.eRecv, cs.config.PacketQueueSize, keySend, keyRecv, cs.config.Latency, cs.config.Jitter)
 
 		go client.Reader()
 		go client.Writer()
 
-		conn.Write(packetClientHandshake(constant.MapleVersion, keyRecv[:], keySend[:]))
+		// Best-effort initial handshake
+		if _, err := conn.Write(packetClientHandshake(constant.MapleVersion, keyRecv[:], keySend[:])); err != nil {
+			// If this fails immediately, let the client's goroutines handle cleanup via disconnect
+			log.Println("handshake write failed:", err)
+		}
 	}
 }
 
@@ -146,10 +207,13 @@ func (cs *channelServer) processEvent() {
 
 	for {
 		select {
-		case e, ok := <-cs.eRecv:
+		case <-cs.ctx.Done():
+			log.Println("Stopping event handling: shutdown")
+			return
 
+		case e, ok := <-cs.eRecv:
 			if !ok {
-				log.Println("Stopping event handling due to channel error")
+				log.Println("Stopping event handling due to event channel close")
 				return
 			}
 
@@ -168,16 +232,27 @@ func (cs *channelServer) processEvent() {
 				switch e.Type {
 				case mnet.MEServerDisconnect:
 					log.Println("Server at", conn, "disconnected")
-					log.Println("Attempting to re-establish world server connection")
-					cs.establishWorldConnection()
+					// Attempt to re-establish world connection asynchronously so we don't block event loop
+					go cs.establishWorldConnection()
 				case mnet.MEServerPacket:
 					cs.gameState.HandleServerPacket(conn, mpacket.NewReader(&e.Packet, time.Now().Unix()))
 				}
 			}
+
 		case work, ok := <-cs.wRecv:
-			if ok {
-				work()
+			if !ok {
+				// Work channel closed elsewhere; keep serving events
+				continue
 			}
+			// Protect against panics in scheduled work
+			func() {
+				defer func() {
+					if r := recover(); r != nil {
+						log.Println("panic in scheduled work:", r)
+					}
+				}()
+				work()
+			}()
 		}
 	}
 }

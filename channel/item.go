@@ -300,6 +300,14 @@ func (v item) isStackable() bool {
 	return false
 }
 
+func (v item) getSlots() int {
+	return int(v.upgradeSlots)
+}
+
+func (v *item) setSlots(slots int) {
+	v.upgradeSlots = byte(slots)
+}
+
 func (v item) isRechargeable() bool {
 	return (math.Floor(float64(v.id/10000)) == 207) // Taken from cliet
 }
