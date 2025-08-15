@@ -184,36 +184,17 @@ Prerequisites:
 - A container registry or a way to load local images into your cluster
 
 Build and load the image:
-- Build the image from the Dockerfile: `docker build -t valhalla:latest -f docker/Dockerfile .`
+- Build the image from the Dockerfile: `docker build -t valhalla:latest -f Dockerfile .`
 - If using kind: `kind load docker-image valhalla:latest`
 - If using minikube: `minikube image load valhalla:latest`
-- Otherwise, push `valhalla:latest` to a registry your cluster can pull from and update the image reference if needed in k8s/valhalla.yaml.
+- Otherwise, push `valhalla:latest` to a registry your cluster can pull from and update the image in your helm values.
 
-Deploy all components:
-- Apply the manifest: `kubectl apply -f k8s/valhalla.yaml`
-
-What gets created:
-- Namespace: valhalla
-- MySQL (db) with a PersistentVolumeClaim and schema init (from ConfigMap)
-- Valhalla services: login-server, world-server, channel-server-1, channel-server-2
-- Monitoring: prometheus and grafana
-- Adminer for DB inspection
-
+Deploy:
+- `helm install valhalla ./helm`
+- 
 Service discovery changes (compared to docker-compose):
 - K8s services use hyphens. Configs inside the pods are adjusted accordingly:
   - login-server, world-server, db
 
-Ports exposed via NodePort (adjust in the YAML if needed):
-- Login client: 30484 -> 8484
-- World: 30584 -> 8584
-- Channel 1: 30685 -> 8685
-- Channel 2: 30686 -> 8686
-- Adminer: 30080 -> 8080
-- Prometheus: 30090 -> 9090
-- Grafana: 30030 -> 3000
+All ports are via ClusterIP at the moment. This can be adjusted to LoadBalancer if desired.
 
-Notes:
-- The game image includes repository contents (including Data.nx) per docker/Dockerfile. If you prefer mounting external data/config, adapt the Deployments to use PersistentVolumes.
-- Channel configs set `ClientConnectionAddress = "127.0.0.1"` as in docker-compose. If clients connect from outside the cluster/host, update this to the node’s IP or a LoadBalancer address.
-- Prometheus static targets are set to `channel-server-1:9000` and `channel-server-2:9000` within the cluster.
-- Default MySQL credentials match docker-compose (root/password, db: maplestory). Change these for production and rotate accordingly.
