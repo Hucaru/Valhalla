@@ -33,7 +33,7 @@ func PopulateDropTable(dropJSON string) error {
 	jsonFile, err := os.Open(dropJSON)
 
 	if err != nil {
-		return fmt.Errorf(err.Error())
+		return err
 	}
 
 	defer jsonFile.Close()
