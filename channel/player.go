@@ -1351,7 +1351,7 @@ func packetPlayerLevelUpAnimation(charID int32) mpacket.Packet {
 }
 
 func packetPlayerSkillAnimSelf(charID int32, skillID int32, level byte) mpacket.Packet {
-	p := mpacket.CreateWithOpcode(opcode.SendChannelPlayerAnimation)
+	p := mpacket.CreateWithOpcode(opcode.SendChannelSkillAnimation)
 	p.WriteInt32(charID)
 	p.WriteByte(0x01)
 	p.WriteInt32(skillID)
@@ -1362,9 +1362,9 @@ func packetPlayerSkillAnimSelf(charID int32, skillID int32, level byte) mpacket.
 func packetPlayerSkillAnimThirdParty(charID int32, party bool, self bool, skillID int32, level byte) mpacket.Packet {
 	var p mpacket.Packet
 	if party && self {
-		p = mpacket.CreateWithOpcode(0x6C)
+		p = mpacket.CreateWithOpcode(opcode.SendChannelSkillAnimation)
 	} else {
-		p = mpacket.CreateWithOpcode(0x64)
+		p = mpacket.CreateWithOpcode(opcode.SendChannelSkillAnimation)
 		p.WriteInt32(charID)
 	}
 

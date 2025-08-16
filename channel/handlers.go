@@ -114,7 +114,7 @@ func (server *Server) HandleClientPacket(conn mnet.Client, reader mpacket.Reader
 	case opcode.RecvChannelAddSkillPoint:
 		server.playerAddSkillPoint(conn, reader)
 	case opcode.RecvChannelSpecialSkill:
-		// server.playerSpecialSkill(conn, reader)
+		server.playerSpecialSkill(conn, reader)
 	case opcode.RecvChannelCharacterInfo:
 		server.playerRequestAvatarInfoWindow(conn, reader)
 	case opcode.RecvChannelLieDetectorResult:
@@ -3119,7 +3119,6 @@ func (server *Server) playerSpecialSkill(conn mnet.Client, reader mpacket.Reader
 		plr.send(packetPlayerNoChange())
 		return
 	}
-	log.Println("Player", plr.name, "casted skill", skillID, "level", skillLevel)
 
 	// Consume extra fields per skill to keep reader aligned with client.
 	// Note: We intentionally keep gameplay effects minimal here; focus is on correctness and safety.
@@ -3151,15 +3150,16 @@ func (server *Server) playerSpecialSkill(conn mnet.Client, reader mpacket.Reader
 		skill.ILMeditation,
 		skill.MesoUp: // Hermit
 		readPartyFlagsDelay()
-		log.Printf("Player %s used %s", plr.name, skill.Skill(skillID))
-		plr.addBuff(skillID, skillLevel)
-		plr.send(packetPlayerSkillAnimThirdParty(plr.id, false, true, skillID, skillLevel))
-		if plr.party.id != -1 {
+
+		if plr.party == nil {
 			plr.addBuff(skillID, skillLevel)
 			plr.send(packetPlayerSkillAnimThirdParty(plr.id, false, true, skillID, skillLevel))
 		} else {
 			affected := server.getAffectedPartyMembers(plr.party, 0)
 			for _, member := range affected {
+				if member == nil {
+					break
+				}
 				member.addBuff(skillID, skillLevel)
 				member.send(packetPlayerSkillAnimThirdParty(member.id, true, false, skillID, skillLevel))
 				member.send(packetPlayerSkillAnimThirdParty(member.id, true, true, skillID, skillLevel))
