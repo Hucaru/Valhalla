@@ -11,6 +11,7 @@ import (
 	"github.com/Hucaru/Valhalla/common"
 	"github.com/Hucaru/Valhalla/common/opcode"
 	"github.com/Hucaru/Valhalla/constant"
+	"github.com/Hucaru/Valhalla/constant/skill"
 	"github.com/Hucaru/Valhalla/internal"
 	"github.com/Hucaru/Valhalla/mnet"
 	"github.com/Hucaru/Valhalla/mpacket"
@@ -3067,4 +3068,156 @@ func (server Server) handleChatEvent(conn mnet.Server, reader mpacket.Reader) {
 	default:
 		log.Println("Unknown chat event type:", op)
 	}
+}
+
+func (d *player) removeAllCooldowns() {
+	if d == nil || d.skills == nil {
+		return
+	}
+	for id, ps := range d.skills {
+		ps.Cooldown = 0
+		ps.TimeLastUsed = 0
+		d.updateSkill(ps)
+		_ = id
+	}
+}
+
+func (server *Server) getAffectedPartyMembers(p *party, affectedMask byte) []*player {
+	if p == nil {
+		return nil
+	}
+
+	members := make([]*player, 0, constant.MaxPartySize)
+	for _, member := range p.players { // ensure party has a method to enumerate member IDs
+		members = append(members, member)
+	}
+	_ = affectedMask // apply bit filtering here when member order is known
+	return members
+}
+
+func (server *Server) playerSpecialSkill(conn mnet.Client, reader mpacket.Reader) {
+	// Minimal, safe implementation to keep packet stream in sync and apply basic validations/costs.
+	plr, err := server.players.getFromConn(conn)
+	if err != nil {
+		return
+	}
+
+	// Dead players cannot cast
+	if plr.hp == 0 {
+		plr.send(packetPlayerNoChange())
+		return
+	}
+
+	// The packet layout for special skills generally starts with [skillID int32][skillLevel byte]
+	skillID := reader.ReadInt32()
+	skillLevel := reader.ReadByte()
+
+	// Validate the player owns the skill and level does not exceed learned level
+	ps, ok := plr.skills[skillID]
+	if !ok || skillLevel == 0 || skillLevel > ps.Level {
+		// Possible hack/desync; drop request
+		plr.send(packetPlayerNoChange())
+		return
+	}
+	log.Println("Player", plr.name, "casted skill", skillID, "level", skillLevel)
+
+	// Consume extra fields per skill to keep reader aligned with client.
+	// Note: We intentionally keep gameplay effects minimal here; focus is on correctness and safety.
+	readPartyFlagsDelay := func() {
+		_ = reader.ReadByte()  // party flags
+		_ = reader.ReadInt16() // delay
+	}
+
+	readMobListAndDelay := func() {
+		count := int(reader.ReadByte())
+		for i := 0; i < count; i++ {
+			_ = reader.ReadInt32() // mob spawn id
+		}
+		_ = reader.ReadInt16() // delay
+	}
+	readXY := func() {
+		_ = reader.ReadInt16()
+		_ = reader.ReadInt16()
+	}
+
+	switch skill.Skill(skillID) {
+	// Common party buffs that send [flags][delay]
+	case skill.Haste,      // Assassin
+		skill.BanditHaste, // Bandit
+		skill.Bless,       // Cleric
+		skill.IronWill,    // Spearman
+		skill.Rage,        // Fighter
+		skill.Meditation,  // FP Wizard
+		skill.ILMeditation,
+		skill.MesoUp: // Hermit
+		readPartyFlagsDelay()
+		log.Printf("Player %s used %s", plr.name, skill.Skill(skillID))
+		plr.addBuff(skillID, skillLevel)
+		plr.send(packetPlayerSkillAnimThirdParty(plr.id, false, true, skillID, skillLevel))
+		if plr.party.id != -1 {
+			plr.addBuff(skillID, skillLevel)
+			plr.send(packetPlayerSkillAnimThirdParty(plr.id, false, true, skillID, skillLevel))
+		} else {
+			affected := server.getAffectedPartyMembers(plr.party, 0)
+			for _, member := range affected {
+				member.addBuff(skillID, skillLevel)
+				member.send(packetPlayerSkillAnimThirdParty(member.id, true, false, skillID, skillLevel))
+				member.send(packetPlayerSkillAnimThirdParty(member.id, true, true, skillID, skillLevel))
+			}
+		}
+
+	case skill.HyperBody:
+		readPartyFlagsDelay()
+
+	case skill.Heal:
+		// [flags][delay] then the server calculates heals; we just consume
+		readPartyFlagsDelay()
+
+	case skill.Dispel:
+		// [flags][delay] then a mob list and a delay
+		readPartyFlagsDelay()
+		readMobListAndDelay()
+
+	case skill.HolySymbol:
+		readPartyFlagsDelay()
+
+	case skill.MysticDoor:
+		// [x short][y short]
+		readXY()
+		// TODO: Create/track door entity and broadcast. For now, we acknowledge usage only.
+
+	// GM variants that have no extra payload (in practice client may not send extra fields)
+	case skill.GMHaste, skill.GMHolySymbol, skill.GMBless, skill.HealPlusDispell, skill.Resurrection, skill.ItemExplosion:
+		// No extra reads
+
+	// Debuffs on mobs: [mobCount][mobIDs...][delay]
+	case skill.Threaten,
+		skill.Slow, skill.ILSlow,
+		skill.MagicCrash,
+		skill.PowerCrash,
+		skill.ArmorCrash,
+		skill.ILSeal, skill.Seal,
+		skill.ShadowWeb,
+		skill.Doom:
+		readMobListAndDelay()
+
+	// Summons and puppet: [x short][y short]
+	case skill.SummonDragon,
+		skill.SilverHawk, skill.GoldenEagle,
+		skill.Puppet, skill.SniperPuppet:
+		readXY()
+
+	default:
+		// Unknown/unsupported special-skill payload; do nothing extra.
+	}
+
+	// Apply MP cost/cooldown, if any (reuses the same flow as attack skills).
+	// If useSkill returns error we don't change state further.
+	if err := plr.useSkill(skillID, skillLevel); err != nil {
+		plr.send(packetPlayerNoChange())
+		return
+	}
+
+	plr.send(packetPlayerSkillAnimSelf(plr.id, skillID, skillLevel))
+
 }

@@ -162,6 +162,8 @@ type player struct {
 
 	rates *rates
 
+	buffs *CharacterBuffs
+
 	// Per-player RNG for deterministic randomness
 	rng *rand.Rand
 }
@@ -1248,6 +1250,10 @@ func loadPlayerFromID(id int32, conn mnet.Client) player {
 	c.equip, c.use, c.setUp, c.etc, c.cash = loadInventoryFromDb(c.id)
 
 	c.buddyList = getBuddyList(c.id, c.buddyListSize)
+
+	// Initialize the per-player buff manager so handlers can call plr.addBuff(...)
+	c.buffs = NewCharacterBuffs(&c)
+
 	c.conn = conn
 	return c
 }
@@ -1295,6 +1301,19 @@ func getBuddyList(playerID int32, buddySize byte) []buddy {
 	return buddies
 }
 
+// Convenience helper used by handlers to apply a skill buff.
+// Keeps your call sites (“plr.addBuff(...)”) simple.
+func (d *player) addBuff(skillID int32, level byte) {
+	if d == nil {
+		return
+	}
+	if d.buffs == nil {
+		d.buffs = NewCharacterBuffs(d)
+	}
+	// You can pass any extra “sinc” values you need later; 0/0 is fine for standard buffs.
+	d.buffs.AddBuff(skillID, level, 0, 0)
+}
+
 func packetPlayerReceivedDmg(charID int32, attack int8, initalAmmount, reducedAmmount, spawnID, mobID, healSkillID int32,
 	stance, reflectAction byte, reflected byte, reflectX, reflectY int16) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelPlayerTakeDmg)
@@ -1328,6 +1347,66 @@ func packetPlayerLevelUpAnimation(charID int32) mpacket.Packet {
 	p.WriteInt32(charID)
 	p.WriteByte(0x00)
 
+	return p
+}
+
+func packetPlayerSkillAnimSelf(charID int32, skillID int32, level byte) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelPlayerAnimation)
+	p.WriteInt32(charID)
+	p.WriteByte(0x01)
+	p.WriteInt32(skillID)
+	p.WriteByte(level)
+	return p
+}
+
+func packetPlayerSkillAnimThirdParty(charID int32, party bool, self bool, skillID int32, level byte) mpacket.Packet {
+	var p mpacket.Packet
+	if party && self {
+		p = mpacket.CreateWithOpcode(0x6C)
+	} else {
+		p = mpacket.CreateWithOpcode(0x64)
+		p.WriteInt32(charID)
+	}
+
+	if party {
+		p.WriteByte(0x02)
+	} else {
+		p.WriteByte(0x01)
+	}
+	p.WriteInt32(skillID)
+	// Basis uses WriteInt for level; encode as int32 to match
+	p.WriteInt32(int32(level))
+	p.WriteUint64(0)
+	p.WriteUint64(0)
+	return p
+}
+
+func packetPlayerGiveForeignBuff(charID int32, buffMask uint32, values []byte) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(0x5D)
+	p.WriteInt32(charID)
+
+	// Write mask (classic single 32-bit segment for this server version)
+	p.WriteUint32(buffMask)
+
+	// Write standard non-stacked buff values:
+	// For each active bit in the mask, the sender must append:
+	// - int16 value
+	// - int32 source id (skill>0, item<0)
+	// - int32 duration ms
+	p.WriteBytes(values)
+
+	// Pad any remaining miscellaneous block expected by client for this version
+	// If you later add special structures (e.g., Monster Riding), append them here instead.
+	p.WriteUint64(0)
+	p.WriteUint64(0)
+	p.WriteUint64(0)
+	return p
+}
+
+func packetPlayerResetForeignBuff(charID int32, buffMask uint32) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(0x5E)
+	p.WriteInt32(charID)
+	p.WriteUint32(buffMask)
 	return p
 }
 
