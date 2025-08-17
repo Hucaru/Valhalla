@@ -1303,7 +1303,7 @@ func getBuddyList(playerID int32, buddySize byte) []buddy {
 
 // Convenience helper used by handlers to apply a skill buff.
 // Keeps your call sites (“plr.addBuff(...)”) simple.
-func (d *player) addBuff(skillID int32, level byte) {
+func (d *player) addBuff(skillID int32, level byte, delay int16) {
 	if d == nil {
 		return
 	}
@@ -1311,7 +1311,7 @@ func (d *player) addBuff(skillID int32, level byte) {
 		d.buffs = NewCharacterBuffs(d)
 	}
 	// You can pass any extra “sinc” values you need later; 0/0 is fine for standard buffs.
-	d.buffs.AddBuff(skillID, level, 0, 0)
+	d.buffs.AddBuff(skillID, level, 0, 0, delay)
 }
 
 func packetPlayerReceivedDmg(charID int32, attack int8, initalAmmount, reducedAmmount, spawnID, mobID, healSkillID int32,
@@ -1351,7 +1351,7 @@ func packetPlayerLevelUpAnimation(charID int32) mpacket.Packet {
 }
 
 func packetPlayerSkillAnimSelf(charID int32, skillID int32, level byte) mpacket.Packet {
-	p := mpacket.CreateWithOpcode(opcode.SendChannelSkillAnimation)
+	p := mpacket.CreateWithOpcode(opcode.SendChannelPlayerAnimation)
 	p.WriteInt32(charID)
 	p.WriteByte(0x01)
 	p.WriteInt32(skillID)
@@ -1364,7 +1364,7 @@ func packetPlayerSkillAnimThirdParty(charID int32, party bool, self bool, skillI
 	if party && self {
 		p = mpacket.CreateWithOpcode(opcode.SendChannelSkillAnimation)
 	} else {
-		p = mpacket.CreateWithOpcode(opcode.SendChannelSkillAnimation)
+		p = mpacket.CreateWithOpcode(opcode.SendChannelPlayerAnimation)
 		p.WriteInt32(charID)
 	}
 
@@ -1382,7 +1382,7 @@ func packetPlayerSkillAnimThirdParty(charID int32, party bool, self bool, skillI
 }
 
 func packetPlayerGiveForeignBuff(charID int32, buffMask uint32, values []byte) mpacket.Packet {
-	p := mpacket.CreateWithOpcode(0x5D)
+	p := mpacket.CreateWithOpcode(0x69) // 0x69 maybe which is 105
 	p.WriteInt32(charID)
 
 	// Write mask (classic single 32-bit segment for this server version)
@@ -1404,7 +1404,7 @@ func packetPlayerGiveForeignBuff(charID int32, buffMask uint32, values []byte) m
 }
 
 func packetPlayerResetForeignBuff(charID int32, buffMask uint32) mpacket.Packet {
-	p := mpacket.CreateWithOpcode(0x5E)
+	p := mpacket.CreateWithOpcode(0x6A)
 	p.WriteInt32(charID)
 	p.WriteUint32(buffMask)
 	return p
@@ -1437,11 +1437,29 @@ func packetPlayerSkillBookUpdate(skillID int32, level int32) mpacket.Packet {
 	return p
 }
 
-func packetPlayerStatChange(isMesos bool, stat int32, value int32) mpacket.Packet {
+func packetPlayerStatChange(flag bool, stat int32, value int32) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelStatChange)
-	p.WriteBool(isMesos)
+	p.WriteBool(flag)
 	p.WriteInt32(stat)
 	p.WriteInt32(value)
+
+	return p
+}
+
+func packetPlayerSetTempStats(buffMask uint32, values []byte, delay int16) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelTempStatChange)
+	p.WriteUint32(buffMask)
+	p.WriteBytes(values)
+	p.WriteInt16(delay)
+	p.WriteUint64(0) // padding/flag block for this version
+
+	return p
+}
+
+func playerPlayerResetTempStats(removedMask uint32) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelRemoveTempStat)
+	p.WriteUint32(removedMask)
+	p.WriteUint64(0) // padding/flag block for this version
 
 	return p
 }

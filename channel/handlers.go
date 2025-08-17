@@ -3122,10 +3122,8 @@ func (server *Server) playerSpecialSkill(conn mnet.Client, reader mpacket.Reader
 
 	// Consume extra fields per skill to keep reader aligned with client.
 	// Note: We intentionally keep gameplay effects minimal here; focus is on correctness and safety.
-	readPartyFlagsDelay := func() {
-		_ = reader.ReadByte()  // party flags
-		_ = reader.ReadInt16() // delay
-	}
+	party := reader.ReadByte()  // party flags
+	delay := reader.ReadInt16() // delay
 
 	readMobListAndDelay := func() {
 		count := int(reader.ReadByte())
@@ -3149,37 +3147,31 @@ func (server *Server) playerSpecialSkill(conn mnet.Client, reader mpacket.Reader
 		skill.Meditation,  // FP Wizard
 		skill.ILMeditation,
 		skill.MesoUp: // Hermit
-		readPartyFlagsDelay()
 
 		if plr.party == nil {
-			plr.addBuff(skillID, skillLevel)
+			log.Println(party)
+			plr.addBuff(skillID, skillLevel, delay)
 			plr.send(packetPlayerSkillAnimThirdParty(plr.id, false, true, skillID, skillLevel))
 		} else {
 			affected := server.getAffectedPartyMembers(plr.party, 0)
 			for _, member := range affected {
 				if member == nil {
-					break
+					continue
 				}
-				member.addBuff(skillID, skillLevel)
+				member.addBuff(skillID, skillLevel, delay)
 				member.send(packetPlayerSkillAnimThirdParty(member.id, true, false, skillID, skillLevel))
 				member.send(packetPlayerSkillAnimThirdParty(member.id, true, true, skillID, skillLevel))
 			}
 		}
 
 	case skill.HyperBody:
-		readPartyFlagsDelay()
 
 	case skill.Heal:
-		// [flags][delay] then the server calculates heals; we just consume
-		readPartyFlagsDelay()
 
 	case skill.Dispel:
-		// [flags][delay] then a mob list and a delay
-		readPartyFlagsDelay()
 		readMobListAndDelay()
 
 	case skill.HolySymbol:
-		readPartyFlagsDelay()
 
 	case skill.MysticDoor:
 		// [x short][y short]
@@ -3208,7 +3200,7 @@ func (server *Server) playerSpecialSkill(conn mnet.Client, reader mpacket.Reader
 		readXY()
 
 	default:
-		// Unknown/unsupported special-skill payload; do nothing extra.
+		plr.send(packetPlayerSkillAnimThirdParty(plr.id, false, true, skillID, skillLevel))
 	}
 
 	// Apply MP cost/cooldown, if any (reuses the same flow as attack skills).
@@ -3217,7 +3209,5 @@ func (server *Server) playerSpecialSkill(conn mnet.Client, reader mpacket.Reader
 		plr.send(packetPlayerNoChange())
 		return
 	}
-
-	plr.send(packetPlayerSkillAnimSelf(plr.id, skillID, skillLevel))
 
 }

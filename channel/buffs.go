@@ -64,7 +64,7 @@ func (cb *CharacterBuffs) GetActiveSkillLevel(skillID int32) byte {
 
 // AddBuff applies a buff for a skill by computing its duration from nx data (Skill.Time)
 // and then saving/sending it.
-func (cb *CharacterBuffs) AddBuff(skillID int32, level byte, sinc1, sinc2 int) {
+func (cb *CharacterBuffs) AddBuff(skillID int32, level byte, sinc1, sinc2 int, delay int16) {
 	if cb == nil || cb.plr == nil {
 		return
 	}
@@ -92,35 +92,43 @@ func (cb *CharacterBuffs) AddBuff(skillID int32, level byte, sinc1, sinc2 int) {
 	}
 
 	expiresAtMs := time.Now().Add(time.Duration(durationSec) * time.Second).UnixMilli()
-	cb.AddBuffFromCC(skillID, expiresAtMs, level, sinc1, sinc2)
+	cb.AddBuffFromCC(skillID, expiresAtMs, level, sinc1, sinc2, delay)
 }
 
 // AddBuffFromCC applies a buff coming from a cross-channel or persisted source where
 // the expiration time is already known.
-func (cb *CharacterBuffs) AddBuffFromCC(skillID int32, expiresAtMs int64, level byte, sinc1, sinc2 int) {
+func (cb *CharacterBuffs) AddBuffFromCC(skillID int32, expiresAtMs int64, level byte, sinc1, sinc2 int, delay int16) {
 	if cb == nil || cb.plr == nil {
 		return
 	}
+	if skillID == 0 || level == 0 {
+		return
+	}
 
-	// Optional: apply conflict checks like in C# Check(SkillID)
 	cb.check(skillID)
 
-	// Compute buff mask for this skill and build values for each effect.
 	mask := getBuffMask(skillID)
-	if mask == 0 {
-		// Nothing to apply; persist anyway if you store by skill.
-	}
-
 	values := cb.buildBuffValues(skillID, level, mask, expiresAtMs)
 
-	// Send buff to self/others (mask + values).
-	if mask != 0 {
-		cb.plr.inst.send(packetPlayerGiveForeignBuff(cb.plr.id, mask, values))
+	// Nothing meaningful to apply
+	if mask == 0 || len(values) == 0 {
+		return
 	}
 
-	// Save to DB so buffs reload on relog.
+	// Log as hex (not string) to avoid mojibake
+	log.Printf("AddBuffFromCC: skillID=%d mask=%08x values_len=%d values_hex=% x",
+		skillID, mask, len(values), values)
+
+	// Only send if player is in an instance
+	if cb.plr.inst != nil {
+		err := cb.plr.inst.send(packetPlayerSetTempStats(mask, values, delay))
+		if err != nil {
+			log.Printf("AddBuffFromCC: failed to send packet for cid=%d bid=%d: %v", cb.plr.id, skillID, err)
+			return
+		}
+	}
+
 	cb.saveBuff(cb.plr.id, skillID, expiresAtMs, mask, level, sinc1, sinc2)
-	// Track active skill level.
 	cb.activeSkillLevels[skillID] = level
 }
 
@@ -150,8 +158,6 @@ ON DUPLICATE KEY UPDATE time=VALUES(time), flags=VALUES(flags), level=VALUES(lev
 	}
 }
 
-// LoadBuffs loads persisted buffs for the current character and reapplies them.
-// Expired buffs are ignored (and optionally cleaned up).
 func (cb *CharacterBuffs) LoadBuffs() {
 	if cb == nil || cb.plr == nil {
 		return
@@ -161,7 +167,6 @@ func (cb *CharacterBuffs) LoadBuffs() {
 		BID   int32
 		Time  int64
 		Level int
-		// flags, sinc, sinc2 are present in table but we only need level/time to reapply
 	}
 
 	rows, err := common.DB.Query(`SELECT bid, time, level FROM character_buffs WHERE cid=?`, cb.plr.id)
@@ -184,6 +189,10 @@ func (cb *CharacterBuffs) LoadBuffs() {
 		if r.Time > 0 && r.Time <= now {
 			continue
 		}
+		// Skip empty/invalid entries
+		if r.BID == 0 || r.Level <= 0 {
+			continue
+		}
 		toReapply = append(toReapply, r)
 	}
 
@@ -192,7 +201,7 @@ func (cb *CharacterBuffs) LoadBuffs() {
 	}
 
 	for _, b := range toReapply {
-		cb.AddBuffFromCC(b.BID, b.Time, byte(b.Level), 0, 0)
+		cb.AddBuffFromCC(b.BID, b.Time, byte(b.Level), 0, 0, 0)
 	}
 }
 
@@ -217,7 +226,10 @@ func (cb *CharacterBuffs) ClearBuff(skillID int32, flags uint32) {
 		flags = getBuffMask(skillID)
 	}
 	if flags != 0 {
-		cb.plr.inst.send(packetPlayerResetForeignBuff(cb.plr.id, flags))
+		err := cb.plr.inst.send(packetPlayerResetForeignBuff(cb.plr.id, flags))
+		if err != nil {
+			return
+		}
 	}
 	delete(cb.activeSkillLevels, skillID)
 
