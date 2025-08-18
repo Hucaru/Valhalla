@@ -5,35 +5,150 @@ import (
 	"time"
 
 	"github.com/Hucaru/Valhalla/common"
+	"github.com/Hucaru/Valhalla/constant/skill"
 	"github.com/Hucaru/Valhalla/nx"
 )
 
-// BuffValueTypes is a bitmask for buff flags.
+// BuffValueTypes is a bitmask for buff flags. Matches the C# enum layout.
 const (
-	BuffWeaponAttack     uint32 = 1 << 0
-	BuffWeaponDefense    uint32 = 1 << 1
-	BuffMagicAttack      uint32 = 1 << 2
-	BuffMagicDefense     uint32 = 1 << 3
-	BuffAccuracy         uint32 = 1 << 4
-	BuffAvoidability     uint32 = 1 << 5
-	BuffSpeed            uint32 = 1 << 6
-	BuffJump             uint32 = 1 << 7
-	BuffMagicGuard       uint32 = 1 << 8
-	BuffDarkSight        uint32 = 1 << 9
-	BuffBooster          uint32 = 1 << 10
-	BuffPowerGuard       uint32 = 1 << 11
-	BuffMaxHP            uint32 = 1 << 12
-	BuffMaxMP            uint32 = 1 << 13
-	BuffInvincible       uint32 = 1 << 14
-	BuffSoulArrow        uint32 = 1 << 15
-	BuffComboAttack      uint32 = 1 << 16
-	BuffCharges          uint32 = 1 << 17
-	BuffDragonBlood      uint32 = 1 << 18
-	BuffMesoUP           uint32 = 1 << 19
-	BuffShadowPartner    uint32 = 1 << 20
-	BuffPickPocketMesoUP uint32 = 1 << 21
-	BuffMesoGuard        uint32 = 1 << 22
+	// Byte 1
+	BuffWeaponAttack  uint32 = 1 << 0
+	BuffWeaponDefense uint32 = 1 << 1
+	BuffMagicAttack   uint32 = 1 << 2
+	BuffMagicDefense  uint32 = 1 << 3
+	BuffAccuracy      uint32 = 1 << 4
+	BuffAvoidability  uint32 = 1 << 5
+	BuffHands         uint32 = 1 << 6
+	BuffSpeed         uint32 = 1 << 8
+
+	// Byte 2
+	BuffJump       uint32 = 1 << 10
+	BuffMagicGuard uint32 = 1 << 9
+	BuffDarkSight  uint32 = 1 << 10
+	BuffBooster    uint32 = 1 << 11
+
+	BuffPowerGuard uint32 = 1 << 12
+	BuffMaxHP      uint32 = 1 << 13
+	BuffMaxMP      uint32 = 1 << 14
+	BuffInvincible uint32 = 1 << 15
+
+	// Byte 3
+	BuffSoulArrow   uint32 = 1 << 16
+	BuffStun        uint32 = 1 << 17
+	BuffPoison      uint32 = 1 << 18
+	BuffSeal        uint32 = 1 << 19
+	BuffDarkness    uint32 = 1 << 20
+	BuffComboAttack uint32 = 1 << 21
+	BuffCharges     uint32 = 1 << 22
+	BuffDragonBlood uint32 = 1 << 23
+
+	// Byte 4
+	BuffHolySymbol       uint32 = 1 << 24
+	BuffMesoUP           uint32 = 1 << 25
+	BuffShadowPartner    uint32 = 1 << 26
+	BuffPickPocketMesoUP uint32 = 1 << 27
+
+	BuffMesoGuard uint32 = 1 << 28
+	BuffThaw      uint32 = 1 << 29
+	BuffWeakness  uint32 = 1 << 30
+	BuffCurse     uint32 = 1 << 31
 )
+
+// skillBuffValues stores per-skill aggregate buff mask.
+var skillBuffValues map[int32]uint32
+
+// AddSkillBuff registers one or more buff flags for a skill.
+func AddSkillBuff(skillID int32, flags ...uint32) {
+	if skillBuffValues == nil {
+		skillBuffValues = make(map[int32]uint32)
+	}
+	var mask uint32
+	for _, f := range flags {
+		mask |= f
+	}
+	skillBuffValues[skillID] |= mask
+}
+
+// LoadBuffs seeds known skill -> buff mask mappings.
+// Fill this from your job constants so buffs resolve correctly at runtime.
+func LoadBuffs() {
+	skillBuffValues = make(map[int32]uint32)
+
+	// 1st Job
+	AddSkillBuff(int32(skill.IronBody), BuffWeaponDefense)
+	AddSkillBuff(int32(skill.MagicGuard), BuffMagicGuard)
+	AddSkillBuff(int32(skill.MagicArmor), BuffWeaponDefense) // some sources also set BuffMagicDefense
+	AddSkillBuff(int32(skill.Focus), BuffAvoidability)       // can add BuffAccuracy as well
+	AddSkillBuff(int32(skill.DarkSight), BuffDarkSight)
+
+	// 2nd Job - Warrior branches
+	AddSkillBuff(int32(skill.SwordBooster), BuffBooster)
+	AddSkillBuff(int32(skill.AxeBooster), BuffBooster)
+	AddSkillBuff(int32(skill.PageSwordBooster), BuffBooster)
+	AddSkillBuff(int32(skill.BwBooster), BuffBooster)
+	AddSkillBuff(int32(skill.SpearBooster), BuffBooster)
+	AddSkillBuff(int32(skill.PolearmBooster), BuffBooster)
+
+	AddSkillBuff(int32(skill.Rage), BuffWeaponAttack)
+	AddSkillBuff(int32(skill.PowerGuard), BuffPowerGuard)
+	AddSkillBuff(int32(skill.PagePowerGuard), BuffPowerGuard)
+
+	AddSkillBuff(int32(skill.IronWill), BuffWeaponDefense, BuffMagicDefense)
+	AddSkillBuff(int32(skill.HyperBody), BuffMaxHP, BuffMaxMP)
+
+	// 2nd Job - Magician branches
+	AddSkillBuff(int32(skill.Meditation), BuffMagicAttack)
+	AddSkillBuff(int32(skill.ILMeditation), BuffMagicAttack)
+	AddSkillBuff(int32(skill.Invincible), BuffInvincible) // Cleric passive/active invincible
+
+	// 2nd Job - Archer branches
+	AddSkillBuff(int32(skill.BowBooster), BuffBooster)
+	AddSkillBuff(int32(skill.CrossbowBooster), BuffBooster)
+	AddSkillBuff(int32(skill.SoulArrow), BuffSoulArrow)
+	AddSkillBuff(int32(skill.CBSoulArrow), BuffSoulArrow)
+
+	// 2nd Job - Thief branches
+	AddSkillBuff(int32(skill.ClawBooster), BuffBooster)
+	AddSkillBuff(int32(skill.DaggerBooster), BuffBooster)
+	AddSkillBuff(int32(skill.Haste), BuffSpeed, BuffJump)
+	AddSkillBuff(int32(skill.BanditHaste), BuffSpeed, BuffJump)
+
+	// 3rd Job - Warrior branches
+	AddSkillBuff(int32(skill.ComboAttack), BuffComboAttack)
+	AddSkillBuff(int32(skill.DragonBlood), BuffWeaponAttack, BuffDragonBlood)
+	AddSkillBuff(int32(skill.DragonRoar), BuffStun)
+
+	// 3rd Job - White Knight charges: magic amp + charge
+	AddSkillBuff(int32(skill.BwFireCharge), BuffMagicAttack, BuffCharges)
+	AddSkillBuff(int32(skill.BwIceCharge), BuffMagicAttack, BuffCharges)
+	AddSkillBuff(int32(skill.BwLitCharge), BuffMagicAttack, BuffCharges)
+	AddSkillBuff(int32(skill.SwordFireCharge), BuffMagicAttack, BuffCharges)
+	AddSkillBuff(int32(skill.SwordIceCharge), BuffMagicAttack, BuffCharges)
+	AddSkillBuff(int32(skill.SwordLitCharge), BuffMagicAttack, BuffCharges)
+
+	// 3rd Job - Chief Bandit
+	AddSkillBuff(int32(skill.MesoGuard), BuffMesoGuard)
+	AddSkillBuff(int32(skill.Pickpocket), BuffPickPocketMesoUP)
+
+	// 3rd Job - Hermit
+	AddSkillBuff(int32(skill.MesoUp), BuffMesoUP)
+	AddSkillBuff(int32(skill.ShadowPartner), BuffShadowPartner)
+
+	// 3rd Job - Priest
+	AddSkillBuff(int32(skill.HolySymbol), BuffHolySymbol)
+
+	// GM skills
+	AddSkillBuff(int32(skill.GMShadowPartner), BuffShadowPartner)
+	AddSkillBuff(int32(skill.GMBless), BuffWeaponAttack, BuffWeaponDefense, BuffMagicAttack, BuffMagicDefense, BuffAccuracy, BuffAvoidability)
+	AddSkillBuff(int32(skill.GMHaste), BuffSpeed, BuffJump)
+	AddSkillBuff(int32(skill.GMHolySymbol), BuffHolySymbol)
+	AddSkillBuff(int32(skill.Hide), BuffInvincible)
+}
+
+// Initialize the skill->buff map once on package load so it "just works".
+func init() {
+	LoadBuffs()
+}
 
 // CharacterBuffs is a Go adaptation of the provided C# CharacterBuffs class.
 type CharacterBuffs struct {
@@ -51,7 +166,11 @@ func NewCharacterBuffs(p *player) *CharacterBuffs {
 }
 
 func (cb *CharacterBuffs) HasGMHide() bool {
-	return false
+	if cb == nil {
+		return false
+	}
+	_, ok := cb.activeSkillLevels[int32(skill.Hide)]
+	return ok
 }
 
 // GetActiveSkillLevel returns the cached active level for a skill if set.
@@ -86,17 +205,16 @@ func (cb *CharacterBuffs) AddBuff(skillID int32, level byte, sinc1, sinc2 int, d
 		return
 	}
 	durationSec := skillInfo[level-1].Time
-	if durationSec <= 0 {
-		// Some buffs can be 0 => treat as immediate/visual if needed. Here we bail.
-		// Adjust if you want to allow "infinite" buffs.
-	}
 
-	expiresAtMs := time.Now().Add(time.Duration(durationSec) * time.Second).UnixMilli()
+	expiresAtMs := int64(0)
+	if durationSec > 0 {
+		expiresAtMs = time.Now().Add(time.Duration(durationSec) * time.Second).UnixMilli()
+	}
 	cb.AddBuffFromCC(skillID, expiresAtMs, level, sinc1, sinc2, delay)
 }
 
 // AddBuffFromCC applies a buff coming from a cross-channel or persisted source where
-// the expiration time is already known.
+// the expiration time is already known (ms since epoch).
 func (cb *CharacterBuffs) AddBuffFromCC(skillID int32, expiresAtMs int64, level byte, sinc1, sinc2 int, delay int16) {
 	if cb == nil || cb.plr == nil {
 		return
@@ -115,26 +233,15 @@ func (cb *CharacterBuffs) AddBuffFromCC(skillID int32, expiresAtMs int64, level 
 		return
 	}
 
-	// Log as hex (not string) to avoid mojibake
-	log.Printf("AddBuffFromCC: skillID=%d mask=%08x values_len=%d values_hex=% x",
-		skillID, mask, len(values), values)
-
-	// Only send if player is in an instance
-	if cb.plr.inst != nil {
-		err := cb.plr.inst.send(packetPlayerSetTempStats(mask, values, delay))
-		if err != nil {
-			log.Printf("AddBuffFromCC: failed to send packet for cid=%d bid=%d: %v", cb.plr.id, skillID, err)
-			return
-		}
-	}
-
+	log.Printf("AddBuffFromCC: skillID=%d level=%d mask=%d expiresAtMs=%d", skillID, level, mask, expiresAtMs)
+	cb.plr.send(packetPlayerGiveBuff(skillID))
 	cb.saveBuff(cb.plr.id, skillID, expiresAtMs, mask, level, sinc1, sinc2)
 	cb.activeSkillLevels[skillID] = level
 }
 
 // For now, it's a no-op, but you can extend this to check for conflicts.
 func (cb *CharacterBuffs) check(skillID int32) {
-	// Example: If skillID == 1101006 and buff 1001003 active, remove it.
+	// Example: If skillID == 1101006 and buff 1001003 active, remove it (Rage vs Iron Body).
 }
 
 // saveBuff persists/updates a buff record for this character.
@@ -225,11 +332,8 @@ func (cb *CharacterBuffs) ClearBuff(skillID int32, flags uint32) {
 	if flags == 0 {
 		flags = getBuffMask(skillID)
 	}
-	if flags != 0 {
-		err := cb.plr.inst.send(packetPlayerResetForeignBuff(cb.plr.id, flags))
-		if err != nil {
-			return
-		}
+	if flags != 0 && cb.plr.inst != nil {
+		_ = cb.plr.inst.send(packetPlayerResetForeignBuff(cb.plr.id, flags))
 	}
 	delete(cb.activeSkillLevels, skillID)
 
@@ -239,98 +343,122 @@ func (cb *CharacterBuffs) ClearBuff(skillID int32, flags uint32) {
 	}
 }
 
-// buildBuffValues builds the serialized per-effect values (value:int16, id:int32, duration:int32)
-// in the order of the active bits in mask (LSB to MSB within our 32-bit mask).
-// It uses nx data to pick the appropriate value per effect.
+// valueType mirrors the reference getValue selector (SkillX, SkillY, SkillSpeed, ...).
+type valueType byte
+
+const (
+	valX valueType = iota
+	valY
+	valSpeed
+	valJump
+	valWatk
+	valWdef
+	valMatk
+	valMdef
+	valAcc
+	valAvo
+	valProp
+	valLv
+)
+
+// getSkillValue returns the short value for a skill at a given level for the requested field.
+// This mirrors the reference implementation you provided.
+func getSkillValue(skillID int32, level byte, sel valueType) int16 {
+	skillLevels, err := nx.GetPlayerSkill(skillID)
+	if err != nil || level == 0 || int(level) > len(skillLevels) {
+		return 0
+	}
+	sl := skillLevels[level-1]
+
+	switch sel {
+	case valX:
+		return int16(sl.X)
+	case valY:
+		return int16(sl.Y)
+	case valSpeed:
+		return int16(sl.Speed)
+	case valJump:
+		return int16(sl.Jump)
+	case valWatk:
+		return int16(sl.Pad)
+	case valWdef:
+		return int16(sl.Pdd)
+	case valMatk:
+		return int16(sl.Mad)
+	case valMdef:
+		return int16(sl.Mdd)
+	case valAcc:
+		return int16(sl.Acc)
+	case valAvo:
+		return int16(sl.Eva)
+	case valProp:
+		return int16(sl.Prop)
+	case valLv:
+		return int16(level)
+	default:
+		return 0
+	}
+}
+
+// buildBuffValues builds the serialized per-effect values (short,int,int) for SendChannelTempStatChange.
 func (cb *CharacterBuffs) buildBuffValues(skillID int32, level byte, mask uint32, expiresAtMs int64) []byte {
-	values := make([]byte, 0, 3*4+2) // rough capacity
-	// Pull nx skill level data once
-	skillInfo, err := nx.GetPlayerSkill(skillID)
-	if err != nil || int(level) < 1 || int(level) > len(skillInfo) {
-		return values
-	}
-	sl := skillInfo[level-1]
+	values := make([]byte, 0, 32)
 
-	nowMs := time.Now().UnixMilli()
+	// Compute remaining duration in milliseconds (fits int32)
 	remain := int32(0)
-	if expiresAtMs > 0 {
-		if dur := expiresAtMs - nowMs; dur > 0 {
-			remain = int32(dur)
+	if skillLevels, err := nx.GetPlayerSkill(skillID); err == nil && level > 0 && int(level) <= len(skillLevels) {
+		if expiresAtMs > 0 {
+			if dur := expiresAtMs - time.Now().UnixMilli(); dur > 0 {
+				remain = int32(dur)
+			}
+		} else if sec := skillLevels[level-1].Time; sec > 0 {
+			remain = int32(sec * 1000)
 		}
-	} else if sl.Time > 0 {
-		remain = int32(sl.Time * 1000)
 	}
 
-	// Helper to append one effect
-	appendEffect := func(val int16) {
-		// value (int16)
+	appendTriple := func(val int16) {
+		// short value
 		values = append(values, byte(val), byte(val>>8))
-		// source id (int32, positive for skill; negative when you implement item buffs)
+		// int32 source (skill id)
 		id := skillID
 		values = append(values, byte(id), byte(id>>8), byte(id>>16), byte(id>>24))
-		// duration ms (int32)
+		// int32 duration ms
 		d := remain
 		values = append(values, byte(d), byte(d>>8), byte(d>>16), byte(d>>24))
 	}
 
-	// Iterate flags in stable order and push values for each set bit.
-	type entry struct {
+	// Minimal generic mapping (extend as needed for other buffs)
+	type m struct {
 		flag uint32
-		get  func() int16
+		sel  valueType
 	}
-	entries := []entry{
-		{BuffWeaponAttack, func() int16 { return int16(sl.X) }},
-		{BuffWeaponDefense, func() int16 { return int16(sl.X) }},
-		{BuffMagicAttack, func() int16 { return int16(sl.X) }},
-		{BuffMagicDefense, func() int16 { return int16(sl.X) }},
-		{BuffAccuracy, func() int16 { return int16(sl.X) }},
-		{BuffAvoidability, func() int16 { return int16(sl.X) }},
-		{BuffSpeed, func() int16 { return int16(sl.X) }},
-		{BuffJump, func() int16 { return int16(sl.Y) }}, // common Haste pattern: X=speed, Y=jump
-		{BuffMagicGuard, func() int16 { return int16(sl.X) }},
-		{BuffDarkSight, func() int16 { return 1 }},
-		{BuffBooster, func() int16 { return int16(sl.X) }},    // attack speed stages
-		{BuffPowerGuard, func() int16 { return int16(sl.X) }}, // percent reflect
-		{BuffMaxHP, func() int16 { return int16(sl.X) }},      // percent increase
-		{BuffMaxMP, func() int16 { return int16(sl.X) }},      // percent increase
-		{BuffInvincible, func() int16 { return 1 }},
-		{BuffSoulArrow, func() int16 { return 1 }},
-		{BuffComboAttack, func() int16 { return int16(sl.X) }},
-		{BuffCharges, func() int16 { return int16(sl.X) }},
-		{BuffDragonBlood, func() int16 { return int16(sl.X) }},
-		{BuffMesoUP, func() int16 { return int16(sl.X) }},
-		{BuffShadowPartner, func() int16 { return 1 }},
-		{BuffPickPocketMesoUP, func() int16 { return int16(sl.X) }},
-		{BuffMesoGuard, func() int16 { return int16(sl.X) }},
+	maps := []m{
+		{BuffSpeed, valSpeed},
+		{BuffJump, valJump},
+		{BuffWeaponAttack, valWatk},
+		{BuffWeaponDefense, valWdef},
+		{BuffMagicAttack, valMatk},
+		{BuffMagicDefense, valMdef},
+		{BuffAccuracy, valAcc},
+		{BuffAvoidability, valAvo},
 	}
 
-	for _, e := range entries {
+	for _, e := range maps {
 		if mask&e.flag != 0 {
-			appendEffect(e.get())
+			appendTriple(getSkillValue(skillID, level, e.sel))
 		}
 	}
 
 	return values
 }
 
-// getBuffMask maps a skill ID to a buff mask. This is a crucial place to encode
-// which flags a given skill applies. You should extend this with your skill set.
-// For now, a minimal example mapping is provided; fill in as needed.
+// getBuffMask returns the bitmask for the provided skill ID.
+// Uses the loaded skillBuffValues map; falls back to zero if unknown.
 func getBuffMask(skillID int32) uint32 {
-	switch skillID {
-	case 4101004, 8001001:
-		return BuffSpeed | BuffJump
-	case 1101004, 1201004, 1301004, 3101002, 3201002, 4101003, 4201002:
-		return BuffBooster
-	case 3101004, 3201004:
-		return BuffSoulArrow
-	case 1201007:
-		return BuffPowerGuard
-	case 1101007:
-		return BuffMaxHP | BuffMaxMP
-	case 1101006:
-		return BuffWeaponAttack
-	default:
-		return 0
+	if skillBuffValues != nil {
+		if m, ok := skillBuffValues[skillID]; ok {
+			return m
+		}
 	}
+	return 0
 }

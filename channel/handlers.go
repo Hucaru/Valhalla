@@ -3120,9 +3120,7 @@ func (server *Server) playerSpecialSkill(conn mnet.Client, reader mpacket.Reader
 		return
 	}
 
-	// Consume extra fields per skill to keep reader aligned with client.
-	// Note: We intentionally keep gameplay effects minimal here; focus is on correctness and safety.
-	party := reader.ReadByte()  // party flags
+	_ = reader.ReadByte()       // party flags
 	delay := reader.ReadInt16() // delay
 
 	readMobListAndDelay := func() {
@@ -3137,9 +3135,11 @@ func (server *Server) playerSpecialSkill(conn mnet.Client, reader mpacket.Reader
 		_ = reader.ReadInt16()
 	}
 
+	applied := false
+
 	switch skill.Skill(skillID) {
 	// Common party buffs that send [flags][delay]
-	case skill.Haste,      // Assassin
+	case skill.Haste, // Assassin
 		skill.BanditHaste, // Bandit
 		skill.Bless,       // Cleric
 		skill.IronWill,    // Spearman
@@ -3149,9 +3149,9 @@ func (server *Server) playerSpecialSkill(conn mnet.Client, reader mpacket.Reader
 		skill.MesoUp: // Hermit
 
 		if plr.party == nil {
-			log.Println(party)
 			plr.addBuff(skillID, skillLevel, delay)
 			plr.send(packetPlayerSkillAnimThirdParty(plr.id, false, true, skillID, skillLevel))
+			applied = true
 		} else {
 			affected := server.getAffectedPartyMembers(plr.party, 0)
 			for _, member := range affected {
@@ -3162,25 +3162,59 @@ func (server *Server) playerSpecialSkill(conn mnet.Client, reader mpacket.Reader
 				member.send(packetPlayerSkillAnimThirdParty(member.id, true, false, skillID, skillLevel))
 				member.send(packetPlayerSkillAnimThirdParty(member.id, true, true, skillID, skillLevel))
 			}
+			applied = true
 		}
 
 	case skill.HyperBody:
+		// Party Hyper Body support (MaxHP/MaxMP%)
+		if plr.party == nil {
+			plr.addBuff(skillID, skillLevel, delay)
+			plr.send(packetPlayerSkillAnimThirdParty(plr.id, false, true, skillID, skillLevel))
+			applied = true
+		} else {
+			affected := server.getAffectedPartyMembers(plr.party, 0)
+			for _, member := range affected {
+				if member == nil {
+					continue
+				}
+				member.addBuff(skillID, skillLevel, delay)
+				member.send(packetPlayerSkillAnimThirdParty(member.id, true, false, skillID, skillLevel))
+				member.send(packetPlayerSkillAnimThirdParty(member.id, true, true, skillID, skillLevel))
+			}
+			applied = true
+		}
 
 	case skill.Heal:
-
+		// Heal has its own AoE/HP logic; still read mob list if present in your client version
 	case skill.Dispel:
 		readMobListAndDelay()
 
 	case skill.HolySymbol:
+		if plr.party == nil {
+			plr.addBuff(skillID, skillLevel, delay)
+			plr.send(packetPlayerSkillAnimThirdParty(plr.id, false, true, skillID, skillLevel))
+			applied = true
+		} else {
+			affected := server.getAffectedPartyMembers(plr.party, 0)
+			for _, member := range affected {
+				if member == nil {
+					continue
+				}
+				member.addBuff(skillID, skillLevel, delay)
+				member.send(packetPlayerSkillAnimThirdParty(member.id, true, false, skillID, skillLevel))
+				member.send(packetPlayerSkillAnimThirdParty(member.id, true, true, skillID, skillLevel))
+			}
+			applied = true
+		}
 
 	case skill.MysticDoor:
-		// [x short][y short]
 		readXY()
-		// TODO: Create/track door entity and broadcast. For now, we acknowledge usage only.
 
-	// GM variants that have no extra payload (in practice client may not send extra fields)
+	// GM variants; we will just apply to self for now
 	case skill.GMHaste, skill.GMHolySymbol, skill.GMBless, skill.HealPlusDispell, skill.Resurrection, skill.ItemExplosion:
-		// No extra reads
+		plr.addBuff(skillID, skillLevel, delay)
+		plr.send(packetPlayerSkillAnimThirdParty(plr.id, false, true, skillID, skillLevel))
+		applied = true
 
 	// Debuffs on mobs: [mobCount][mobIDs...][delay]
 	case skill.Threaten,
@@ -3200,14 +3234,20 @@ func (server *Server) playerSpecialSkill(conn mnet.Client, reader mpacket.Reader
 		readXY()
 
 	default:
+		// Generic path: if this skill is a known buff (mask != 0), apply it to self.
+		if getBuffMask(skillID) != 0 {
+			plr.addBuff(skillID, skillLevel, delay)
+			applied = true
+		}
+		// Always send a self animation so client shows casting even for non-buffs.
 		plr.send(packetPlayerSkillAnimThirdParty(plr.id, false, true, skillID, skillLevel))
 	}
 
 	// Apply MP cost/cooldown, if any (reuses the same flow as attack skills).
-	// If useSkill returns error we don't change state further.
 	if err := plr.useSkill(skillID, skillLevel); err != nil {
 		plr.send(packetPlayerNoChange())
 		return
 	}
 
+	_ = applied // reserved for future checks (e.g., logging if an expected buff wasn't applied)
 }

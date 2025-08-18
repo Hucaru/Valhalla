@@ -1381,32 +1381,47 @@ func packetPlayerSkillAnimThirdParty(charID int32, party bool, self bool, skillI
 	return p
 }
 
-func packetPlayerGiveForeignBuff(charID int32, buffMask uint32, values []byte) mpacket.Packet {
-	p := mpacket.CreateWithOpcode(0x69) // 0x69 maybe which is 105
-	p.WriteInt32(charID)
-
-	// Write mask (classic single 32-bit segment for this server version)
+func packetPlayerGiveBuff(buffID int32, buffLengthMs int16, buffMask uint32, statValues []int16) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelTempStatChange)
 	p.WriteUint32(buffMask)
 
-	// Write standard non-stacked buff values:
-	// For each active bit in the mask, the sender must append:
-	// - int16 value
-	// - int32 source id (skill>0, item<0)
-	// - int32 duration ms
-	p.WriteBytes(values)
+	for _, val := range statValues {
+		p.WriteInt16(val)    // value
+		p.WriteInt32(buffID) // source id (skill>0, item<0)
+		p.WriteInt16(buffLengthMs)
+	}
 
-	// Pad any remaining miscellaneous block expected by client for this version
-	// If you later add special structures (e.g., Monster Riding), append them here instead.
-	p.WriteUint64(0)
+	// Two trailing long(0) per the reference layout
 	p.WriteUint64(0)
 	p.WriteUint64(0)
 	return p
 }
 
-func packetPlayerResetForeignBuff(charID int32, buffMask uint32) mpacket.Packet {
-	p := mpacket.CreateWithOpcode(0x6A)
+func packetPlayerGiveForeignBuff(charID int32, buffMask uint32, statValues []int16) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(0x69) // GIVE_FOREIGN_BUFF
 	p.WriteInt32(charID)
 	p.WriteUint32(buffMask)
+
+	for _, val := range statValues {
+		p.WriteInt16(val)
+	}
+
+	// Terminator for foreign buff block
+	p.WriteInt16(0)
+	return p
+}
+
+func packetPlayerCancelForeignBuff(charID int32, buffMask uint32) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(0x6A) // CANCEL_FOREIGN_BUFF
+	p.WriteInt32(charID)
+	p.WriteUint32(buffMask)
+	return p
+}
+
+func packetPlayerCancelBuff(buffMask uint32) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelRemoveTempStat)
+	p.WriteUint32(buffMask)
+	p.WriteUint64(0)
 	return p
 }
 
@@ -1442,24 +1457,6 @@ func packetPlayerStatChange(flag bool, stat int32, value int32) mpacket.Packet {
 	p.WriteBool(flag)
 	p.WriteInt32(stat)
 	p.WriteInt32(value)
-
-	return p
-}
-
-func packetPlayerSetTempStats(buffMask uint32, values []byte, delay int16) mpacket.Packet {
-	p := mpacket.CreateWithOpcode(opcode.SendChannelTempStatChange)
-	p.WriteUint32(buffMask)
-	p.WriteBytes(values)
-	p.WriteInt16(delay)
-	p.WriteUint64(0) // padding/flag block for this version
-
-	return p
-}
-
-func playerPlayerResetTempStats(removedMask uint32) mpacket.Packet {
-	p := mpacket.CreateWithOpcode(opcode.SendChannelRemoveTempStat)
-	p.WriteUint32(removedMask)
-	p.WriteUint64(0) // padding/flag block for this version
 
 	return p
 }
