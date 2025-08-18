@@ -1381,40 +1381,86 @@ func packetPlayerSkillAnimThirdParty(charID int32, party bool, self bool, skillI
 	return p
 }
 
-func packetPlayerGiveBuff(buffID int32, buffLengthMs int16, buffMask uint32, statValues []int16) mpacket.Packet {
+func packetPlayerGiveBuff(mask []byte, values []byte, delay int16, extra byte) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelTempStatChange)
-	p.WriteUint32(buffMask)
 
-	for _, val := range statValues {
-		p.WriteInt16(val)    // value
-		p.WriteInt32(buffID) // source id (skill>0, item<0)
-		p.WriteInt16(buffLengthMs)
+	// Ensure 8-byte mask (low dword, high dword)
+	if len(mask) < 8 {
+		tmp := make([]byte, 8)
+		copy(tmp, mask)
+		mask = tmp
+	} else if len(mask) > 8 {
+		mask = mask[:8]
+	}
+	p.WriteBytes(mask)
+
+	// Per-stat value triples (short value, int32 reason/skill, short time)
+	p.WriteBytes(values)
+
+	// Self “give buff” path: client reads a 2-byte delay next.
+	p.WriteInt16(delay)
+
+	// Then conditionally one extra byte for specific stats (e.g., Combo/Charges).
+	if buffMaskNeedsExtraByte(mask) {
+		p.WriteByte(extra)
 	}
 
-	// Two trailing long(0) per the reference layout
-	p.WriteUint64(0)
-	p.WriteUint64(0)
 	return p
 }
 
-func packetPlayerGiveForeignBuff(charID int32, buffMask uint32, statValues []int16) mpacket.Packet {
-	p := mpacket.CreateWithOpcode(0x69) // GIVE_FOREIGN_BUFF
+func packetPlayerGiveForeignBuff(charID int32, mask []byte, values []byte, extra byte) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelTempStatChange)
 	p.WriteInt32(charID)
-	p.WriteUint32(buffMask)
 
-	for _, val := range statValues {
-		p.WriteInt16(val)
+	// Ensure 8-byte mask (low dword, high dword)
+	if len(mask) < 8 {
+		tmp := make([]byte, 8)
+		copy(tmp, mask)
+		mask = tmp
+	} else if len(mask) > 8 {
+		mask = mask[:8]
 	}
+	p.WriteBytes(mask)
 
-	// Terminator for foreign buff block
-	p.WriteInt16(0)
+	// Per-stat value triples
+	p.WriteBytes(values)
+
+	// Foreign “give buff” does not have the 2-byte delay, but still may carry the optional extra byte.
+	if buffMaskNeedsExtraByte(mask) {
+		p.WriteByte(extra)
+	}
 	return p
 }
 
-func packetPlayerCancelForeignBuff(charID int32, buffMask uint32) mpacket.Packet {
-	p := mpacket.CreateWithOpcode(0x6A) // CANCEL_FOREIGN_BUFF
+// buffMaskNeedsExtraByte returns true when the mask includes bits that require
+// the extra trailing Decode1 on the client side (e.g., ComboAttack / Charges).
+func buffMaskNeedsExtraByte(mask []byte) bool {
+	isSet := func(bit int) bool {
+		idx := bit / 8
+		off := uint(bit % 8)
+		if idx < 0 || idx >= len(mask) {
+			return false
+		}
+		return (mask[idx] & (1 << off)) != 0
+	}
+	// ComboAttack and Charges require an extra byte
+	return isSet(BuffComboAttack) || isSet(BuffCharges)
+}
+
+// packetCancelForeignBuff: cid + mask.
+func packetCancelForeignBuff(charID int32, buffMask uint32) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelRemoveTempStat) // CANCEL_FOREIGN_BUFF
 	p.WriteInt32(charID)
 	p.WriteUint32(buffMask)
+	return p
+}
+
+func packetPlayerCancelForeignBuff(charID int32, mask []byte) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelRemoveTempStat)
+
+	p.WriteInt32(charID)
+	p.WriteBytes(mask)
+
 	return p
 }
 

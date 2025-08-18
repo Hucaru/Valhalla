@@ -30,6 +30,7 @@ const (
 	RecvChannelNpcShop             byte = 0x29
 	RecvChannelInvMoveItem         byte = 0x2D
 	RecvChannelInvUseItem          byte = 0x2E
+	RecvChannelAcknowledgeBuff     byte = 0x30
 	RecvChannelNearestTown         byte = 0x34
 	RecvChannelUseScroll           byte = 0x35
 	RecvChannelAddStatPoint        byte = 0x36

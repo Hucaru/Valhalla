@@ -134,6 +134,9 @@ func (server *Server) HandleClientPacket(conn mnet.Client, reader mpacket.Reader
 		server.npcMovement(conn, reader)
 	case opcode.RecvChannelBoatMap:
 		// [mapID int32][? byte]
+	case opcode.RecvChannelAcknowledgeBuff:
+		// Consume
+		log.Println("Client Acknowledged Buff")
 	default:
 		unknownPacketsTotal.Inc()
 		log.Println("UNKNOWN CLIENT PACKET:", reader)
@@ -3234,11 +3237,6 @@ func (server *Server) playerSpecialSkill(conn mnet.Client, reader mpacket.Reader
 		readXY()
 
 	default:
-		// Generic path: if this skill is a known buff (mask != 0), apply it to self.
-		if getBuffMask(skillID) != 0 {
-			plr.addBuff(skillID, skillLevel, delay)
-			applied = true
-		}
 		// Always send a self animation so client shows casting even for non-buffs.
 		plr.send(packetPlayerSkillAnimThirdParty(plr.id, false, true, skillID, skillLevel))
 	}

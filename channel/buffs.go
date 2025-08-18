@@ -9,70 +9,63 @@ import (
 	"github.com/Hucaru/Valhalla/nx"
 )
 
-// BuffValueTypes is a bitmask for buff flags. Matches the C# enum layout.
+// BuffValueTypes now represent bit positions, not bitmasks.
 const (
-	// Byte 1
-	BuffWeaponAttack  uint32 = 1 << 0
-	BuffWeaponDefense uint32 = 1 << 1
-	BuffMagicAttack   uint32 = 1 << 2
-	BuffMagicDefense  uint32 = 1 << 3
-	BuffAccuracy      uint32 = 1 << 4
-	BuffAvoidability  uint32 = 1 << 5
-	BuffHands         uint32 = 1 << 6
-	BuffSpeed         uint32 = 1 << 8
+	// Byte 1 (bits 0..7)
+	BuffWeaponAttack  = 0
+	BuffWeaponDefense = 1
+	BuffMagicAttack   = 2
+	BuffMagicDefense  = 3
+	BuffAccuracy      = 4
+	BuffAvoidability  = 5
+	BuffHands         = 6
+	BuffSpeed         = 8
 
-	// Byte 2
-	BuffJump       uint32 = 1 << 10
-	BuffMagicGuard uint32 = 1 << 9
-	BuffDarkSight  uint32 = 1 << 10
-	BuffBooster    uint32 = 1 << 11
+	// Byte 2 (bits 8..15)
+	BuffJump       = 10
+	BuffMagicGuard = 9
+	BuffDarkSight  = 10
+	BuffBooster    = 11
+	BuffPowerGuard = 12
+	BuffMaxHP      = 13
+	BuffMaxMP      = 14
+	BuffInvincible = 15
 
-	BuffPowerGuard uint32 = 1 << 12
-	BuffMaxHP      uint32 = 1 << 13
-	BuffMaxMP      uint32 = 1 << 14
-	BuffInvincible uint32 = 1 << 15
+	// Byte 3 (bits 16..23)
+	BuffSoulArrow   = 16
+	BuffStun        = 17
+	BuffPoison      = 18
+	BuffSeal        = 19
+	BuffDarkness    = 20
+	BuffComboAttack = 21
+	BuffCharges     = 22
+	BuffDragonBlood = 23
 
-	// Byte 3
-	BuffSoulArrow   uint32 = 1 << 16
-	BuffStun        uint32 = 1 << 17
-	BuffPoison      uint32 = 1 << 18
-	BuffSeal        uint32 = 1 << 19
-	BuffDarkness    uint32 = 1 << 20
-	BuffComboAttack uint32 = 1 << 21
-	BuffCharges     uint32 = 1 << 22
-	BuffDragonBlood uint32 = 1 << 23
-
-	// Byte 4
-	BuffHolySymbol       uint32 = 1 << 24
-	BuffMesoUP           uint32 = 1 << 25
-	BuffShadowPartner    uint32 = 1 << 26
-	BuffPickPocketMesoUP uint32 = 1 << 27
-
-	BuffMesoGuard uint32 = 1 << 28
-	BuffThaw      uint32 = 1 << 29
-	BuffWeakness  uint32 = 1 << 30
-	BuffCurse     uint32 = 1 << 31
+	// Byte 4 (bits 24..31)
+	BuffHolySymbol       = 24
+	BuffMesoUP           = 25
+	BuffShadowPartner    = 26
+	BuffPickPocketMesoUP = 27
+	BuffMesoGuard        = 28
+	BuffThaw             = 29
+	BuffWeakness         = 30
+	BuffCurse            = 31
 )
 
-// skillBuffValues stores per-skill aggregate buff mask.
-var skillBuffValues map[int32]uint32
+// skillBuffBits stores per-skill bit positions in the CFlag.
+var skillBuffBits map[int32][]int
 
-// AddSkillBuff registers one or more buff flags for a skill.
-func AddSkillBuff(skillID int32, flags ...uint32) {
-	if skillBuffValues == nil {
-		skillBuffValues = make(map[int32]uint32)
+// AddSkillBuff registers one or more Flag bit positions for a skill.
+func AddSkillBuff(skillID int32, bits ...int) {
+	if skillBuffBits == nil {
+		skillBuffBits = make(map[int32][]int)
 	}
-	var mask uint32
-	for _, f := range flags {
-		mask |= f
-	}
-	skillBuffValues[skillID] |= mask
+	skillBuffBits[skillID] = append(skillBuffBits[skillID], bits...)
 }
 
-// LoadBuffs seeds known skill -> buff mask mappings.
-// Fill this from your job constants so buffs resolve correctly at runtime.
+// LoadBuffs seeds known skill -> buff bit mappings.
 func LoadBuffs() {
-	skillBuffValues = make(map[int32]uint32)
+	skillBuffBits = make(map[int32][]int)
 
 	// 1st Job
 	AddSkillBuff(int32(skill.IronBody), BuffWeaponDefense)
@@ -99,7 +92,7 @@ func LoadBuffs() {
 	// 2nd Job - Magician branches
 	AddSkillBuff(int32(skill.Meditation), BuffMagicAttack)
 	AddSkillBuff(int32(skill.ILMeditation), BuffMagicAttack)
-	AddSkillBuff(int32(skill.Invincible), BuffInvincible) // Cleric passive/active invincible
+	AddSkillBuff(int32(skill.Invincible), BuffInvincible)
 
 	// 2nd Job - Archer branches
 	AddSkillBuff(int32(skill.BowBooster), BuffBooster)
@@ -118,7 +111,7 @@ func LoadBuffs() {
 	AddSkillBuff(int32(skill.DragonBlood), BuffWeaponAttack, BuffDragonBlood)
 	AddSkillBuff(int32(skill.DragonRoar), BuffStun)
 
-	// 3rd Job - White Knight charges: magic amp + charge
+	// 3rd Job - White Knight charges
 	AddSkillBuff(int32(skill.BwFireCharge), BuffMagicAttack, BuffCharges)
 	AddSkillBuff(int32(skill.BwIceCharge), BuffMagicAttack, BuffCharges)
 	AddSkillBuff(int32(skill.BwLitCharge), BuffMagicAttack, BuffCharges)
@@ -145,7 +138,6 @@ func LoadBuffs() {
 	AddSkillBuff(int32(skill.Hide), BuffInvincible)
 }
 
-// Initialize the skill->buff map once on package load so it "just works".
 func init() {
 	LoadBuffs()
 }
@@ -157,7 +149,6 @@ type CharacterBuffs struct {
 	activeSkillLevels map[int32]byte // skillID -> level
 }
 
-// NewCharacterBuffs creates a new CharacterBuffs holder for a player.
 func NewCharacterBuffs(p *player) *CharacterBuffs {
 	return &CharacterBuffs{
 		plr:               p,
@@ -173,7 +164,6 @@ func (cb *CharacterBuffs) HasGMHide() bool {
 	return ok
 }
 
-// GetActiveSkillLevel returns the cached active level for a skill if set.
 func (cb *CharacterBuffs) GetActiveSkillLevel(skillID int32) byte {
 	if lvl, ok := cb.activeSkillLevels[skillID]; ok {
 		return lvl
@@ -181,24 +171,19 @@ func (cb *CharacterBuffs) GetActiveSkillLevel(skillID int32) byte {
 	return 0
 }
 
-// AddBuff applies a buff for a skill by computing its duration from nx data (Skill.Time)
-// and then saving/sending it.
 func (cb *CharacterBuffs) AddBuff(skillID int32, level byte, sinc1, sinc2 int, delay int16) {
 	if cb == nil || cb.plr == nil {
 		return
 	}
 
-	// Resolve level if not specified (0xFF => use player's current skill level).
 	if level == 0xFF {
 		if s, ok := cb.plr.skills[skillID]; ok && s.Level > 0 {
 			level = s.Level
 		} else {
-			// No level, nothing to add.
 			return
 		}
 	}
 
-	// Lookup skill data for duration. nx.GetPlayerSkill returns []SkillLevelData (index level-1).
 	skillInfo, err := nx.GetPlayerSkill(skillID)
 	if err != nil || int(level) < 1 || int(level) > len(skillInfo) {
 		log.Printf("AddBuff: invalid skill or level for skillID=%d level=%d: %v", skillID, level, err)
@@ -210,11 +195,10 @@ func (cb *CharacterBuffs) AddBuff(skillID int32, level byte, sinc1, sinc2 int, d
 	if durationSec > 0 {
 		expiresAtMs = time.Now().Add(time.Duration(durationSec) * time.Second).UnixMilli()
 	}
+	log.Printf("AddBuff: skillID=%d level=%d durationSec= %d expiresAtMs=%d", skillID, level, durationSec, expiresAtMs)
 	cb.AddBuffFromCC(skillID, expiresAtMs, level, sinc1, sinc2, delay)
 }
 
-// AddBuffFromCC applies a buff coming from a cross-channel or persisted source where
-// the expiration time is already known (ms since epoch).
 func (cb *CharacterBuffs) AddBuffFromCC(skillID int32, expiresAtMs int64, level byte, sinc1, sinc2 int, delay int16) {
 	if cb == nil || cb.plr == nil {
 		return
@@ -225,26 +209,40 @@ func (cb *CharacterBuffs) AddBuffFromCC(skillID int32, expiresAtMs int64, level 
 
 	cb.check(skillID)
 
-	mask := getBuffMask(skillID)
-	values := cb.buildBuffValues(skillID, level, mask, expiresAtMs)
-
-	// Nothing meaningful to apply
-	if mask == 0 || len(values) == 0 {
+	mask := buildBuffMaskFromNX(skillID, level)
+	if mask == nil || mask.IsZero() {
 		return
 	}
 
-	log.Printf("AddBuffFromCC: skillID=%d level=%d mask=%d expiresAtMs=%d", skillID, level, mask, expiresAtMs)
-	cb.plr.send(packetPlayerGiveBuff(skillID))
-	cb.saveBuff(cb.plr.id, skillID, expiresAtMs, mask, level, sinc1, sinc2)
+	values := cb.buildBuffValues(skillID, level, mask, expiresAtMs)
+	if len(values) == 0 {
+		return
+	}
+
+	maskBytes := mask.ToByteArray(false)
+
+	// SELF: mask + triples + int16 delay + optional extra Decode1
+	cb.plr.send(packetPlayerGiveBuff(maskBytes, values, delay, 0))
+
+	// OTHERS: charId + mask + triples + optional extra Decode1
+	if cb.plr.inst != nil {
+		cb.plr.inst.send(packetPlayerGiveForeignBuff(cb.plr.id, maskBytes, values, 0))
+	}
+
+	// Persist flags (lowest 32 bits)
+	lastWord := uint32(0)
+	if data := mask.Data(); len(data) > 0 {
+		lastWord = data[len(data)-1]
+	}
+	cb.saveBuff(cb.plr.id, skillID, expiresAtMs, lastWord, level, sinc1, sinc2)
+
 	cb.activeSkillLevels[skillID] = level
 }
 
-// For now, it's a no-op, but you can extend this to check for conflicts.
 func (cb *CharacterBuffs) check(skillID int32) {
-	// Example: If skillID == 1101006 and buff 1001003 active, remove it (Rage vs Iron Body).
+	// Implement conflicting buff cleanup if needed.
 }
 
-// saveBuff persists/updates a buff record for this character.
 func (cb *CharacterBuffs) saveBuff(charID int32, buffID int32, expiresAtMs int64, flags uint32, level byte, sinc, sinc2 int) {
 	const insert = `
 INSERT INTO character_buffs (bid, cid, time, flags, level, sinc, sinc2)
@@ -292,11 +290,9 @@ func (cb *CharacterBuffs) LoadBuffs() {
 			log.Printf("LoadBuffs: scan error for cid=%d: %v", cb.plr.id, err)
 			continue
 		}
-		// Skip expired
 		if r.Time > 0 && r.Time <= now {
 			continue
 		}
-		// Skip empty/invalid entries
 		if r.BID == 0 || r.Level <= 0 {
 			continue
 		}
@@ -312,7 +308,6 @@ func (cb *CharacterBuffs) LoadBuffs() {
 	}
 }
 
-// RemoveExpiredBuffs deletes expired buffs for a player. Optional helper.
 func (cb *CharacterBuffs) RemoveExpiredBuffs() {
 	if cb == nil || cb.plr == nil {
 		return
@@ -323,17 +318,14 @@ func (cb *CharacterBuffs) RemoveExpiredBuffs() {
 	}
 }
 
-// ClearBuff removes a specific buff from player (packet and DB).
-// Flags param is optional; if unknown, pass 0 and only DB will be affected.
-func (cb *CharacterBuffs) ClearBuff(skillID int32, flags uint32) {
+// ClearBuff removes a specific buff from player and DB.
+func (cb *CharacterBuffs) ClearBuff(skillID int32, _ uint32) {
 	if cb == nil || cb.plr == nil {
 		return
 	}
-	if flags == 0 {
-		flags = getBuffMask(skillID)
-	}
-	if flags != 0 && cb.plr.inst != nil {
-		_ = cb.plr.inst.send(packetPlayerResetForeignBuff(cb.plr.id, flags))
+	mask := buildBuffMask(skillID)
+	if mask != nil && !mask.IsZero() && cb.plr.inst != nil {
+		cb.plr.inst.send(packetPlayerCancelForeignBuff(cb.plr.id, mask.ToByteArray(false)))
 	}
 	delete(cb.activeSkillLevels, skillID)
 
@@ -343,7 +335,6 @@ func (cb *CharacterBuffs) ClearBuff(skillID int32, flags uint32) {
 	}
 }
 
-// valueType mirrors the reference getValue selector (SkillX, SkillY, SkillSpeed, ...).
 type valueType byte
 
 const (
@@ -361,13 +352,12 @@ const (
 	valLv
 )
 
-// getSkillValue returns the short value for a skill at a given level for the requested field.
-// This mirrors the reference implementation you provided.
 func getSkillValue(skillID int32, level byte, sel valueType) int16 {
 	skillLevels, err := nx.GetPlayerSkill(skillID)
 	if err != nil || level == 0 || int(level) > len(skillLevels) {
 		return 0
 	}
+	// Use 0-based index for the selected level
 	sl := skillLevels[level-1]
 
 	switch sel {
@@ -376,8 +366,10 @@ func getSkillValue(skillID int32, level byte, sel valueType) int16 {
 	case valY:
 		return int16(sl.Y)
 	case valSpeed:
+		log.Printf("getSkillValue: speed=%d", sl.Speed)
 		return int16(sl.Speed)
 	case valJump:
+		log.Printf("getSkillValue: jump=%d", sl.Jump)
 		return int16(sl.Jump)
 	case valWatk:
 		return int16(sl.Pad)
@@ -400,65 +392,134 @@ func getSkillValue(skillID int32, level byte, sel valueType) int16 {
 	}
 }
 
-// buildBuffValues builds the serialized per-effect values (short,int,int) for SendChannelTempStatChange.
-func (cb *CharacterBuffs) buildBuffValues(skillID int32, level byte, mask uint32, expiresAtMs int64) []byte {
-	values := make([]byte, 0, 32)
+func collectBuffEntries(skillID int32, level byte) (entries map[int]int16, durationSec int16) {
+	entries = make(map[int]int16)
 
-	// Compute remaining duration in milliseconds (fits int32)
-	remain := int32(0)
-	if skillLevels, err := nx.GetPlayerSkill(skillID); err == nil && level > 0 && int(level) <= len(skillLevels) {
-		if expiresAtMs > 0 {
-			if dur := expiresAtMs - time.Now().UnixMilli(); dur > 0 {
-				remain = int32(dur)
+	levels, err := nx.GetPlayerSkill(skillID)
+	if err != nil || level == 0 || int(level) > len(levels) {
+		return entries, 0
+	}
+	sl := levels[level-1]
+
+	// Duration: prefer NX Time at level
+	if sl.Time > 0 {
+		if sl.Time > 32767 {
+			durationSec = 32767
+		} else {
+			durationSec = int16(sl.Time)
+		}
+	}
+
+	// Numeric stats -> bits. Only set if non-zero.
+	if sl.Speed != 0 {
+		entries[BuffSpeed] = int16(sl.Speed)
+	}
+	if sl.Jump != 0 {
+		entries[BuffJump] = int16(sl.Jump)
+	}
+	if sl.Pad != 0 {
+		entries[BuffWeaponAttack] = int16(sl.Pad)
+	}
+	if sl.Pdd != 0 {
+		entries[BuffWeaponDefense] = int16(sl.Pdd)
+	}
+	if sl.Mad != 0 {
+		entries[BuffMagicAttack] = int16(sl.Mad)
+	}
+	if sl.Mdd != 0 {
+		entries[BuffMagicDefense] = int16(sl.Mdd)
+	}
+	if sl.Acc != 0 {
+		entries[BuffAccuracy] = int16(sl.Acc)
+	}
+	if sl.Eva != 0 {
+		entries[BuffAvoidability] = int16(sl.Eva)
+	}
+
+	// Optional: Some skills encode “percent” effects in X/Y. Add the mapping you need:
+	// Example candidates (uncomment as you confirm for your client build):
+	// if sl.X != 0 && isMagicGuard(skillID) { entries[BuffMagicGuard] = int16(sl.X) }
+	// if sl.X != 0 && isBooster(skillID)    { entries[BuffBooster]    = int16(sl.X) }
+	// if isDarkSight(skillID)                { entries[BuffDarkSight]  = 1 }
+	// if isSoulArrow(skillID)                { entries[BuffSoulArrow]  = 1 }
+
+	return entries, durationSec
+}
+
+func buildBuffMaskFromNX(skillID int32, level byte) *Flag {
+	entries, _ := collectBuffEntries(skillID, level)
+	if len(entries) == 0 {
+		return nil
+	}
+	mask := NewFlag()
+	for bit := range entries {
+		mask.SetBitNumber(bit, 1)
+	}
+	return mask
+}
+
+// buildBuffValues builds the value triples using NX-derived entries.
+// It emits triples in canonical bit order and uses either expiresAtMs or NX Time.
+func (cb *CharacterBuffs) buildBuffValues(skillID int32, level byte, mask *Flag, expiresAtMs int64) []byte {
+	values := make([]byte, 0, 64)
+
+	// Derive which bits have values from NX
+	entries, nxDuration := collectBuffEntries(skillID, level)
+	if len(entries) == 0 {
+		return nil
+	}
+
+	// Compute remaining duration in seconds (short). Prefer expiresAtMs if present.
+	remainSec := nxDuration
+	if expiresAtMs > 0 {
+		now := time.Now().UnixMilli()
+		if dur := expiresAtMs - now; dur > 0 {
+			sec := (dur + 500) / 1000
+			if sec > 32767 {
+				sec = 32767
 			}
-		} else if sec := skillLevels[level-1].Time; sec > 0 {
-			remain = int32(sec * 1000)
+			remainSec = int16(sec)
+		} else {
+			remainSec = 0
 		}
 	}
 
 	appendTriple := func(val int16) {
 		// short value
 		values = append(values, byte(val), byte(val>>8))
-		// int32 source (skill id)
+		// int32 reason/source skill
 		id := skillID
 		values = append(values, byte(id), byte(id>>8), byte(id>>16), byte(id>>24))
-		// int32 duration ms
-		d := remain
-		values = append(values, byte(d), byte(d>>8), byte(d>>16), byte(d>>24))
+		// short time (seconds)
+		t := remainSec
+		values = append(values, byte(t), byte(t>>8))
 	}
 
-	// Minimal generic mapping (extend as needed for other buffs)
-	type m struct {
-		flag uint32
-		sel  valueType
-	}
-	maps := []m{
-		{BuffSpeed, valSpeed},
-		{BuffJump, valJump},
-		{BuffWeaponAttack, valWatk},
-		{BuffWeaponDefense, valWdef},
-		{BuffMagicAttack, valMatk},
-		{BuffMagicDefense, valMdef},
-		{BuffAccuracy, valAcc},
-		{BuffAvoidability, valAvo},
-	}
-
-	for _, e := range maps {
-		if mask&e.flag != 0 {
-			appendTriple(getSkillValue(skillID, level, e.sel))
+	// Emit triples in the same canonical order you use for mask bits.
+	nBits := len(mask.Data()) * 32
+	for bit := 0; bit < nBits; bit++ {
+		if mask.GetBitNumber(bit) == 1 {
+			if val, ok := entries[bit]; ok {
+				appendTriple(val)
+			} else {
+				// If a bit was set but we didn't derive a numeric value,
+				// either skip or append a placeholder (1). Start with skip.
+			}
 		}
 	}
 
 	return values
 }
 
-// getBuffMask returns the bitmask for the provided skill ID.
-// Uses the loaded skillBuffValues map; falls back to zero if unknown.
-func getBuffMask(skillID int32) uint32 {
-	if skillBuffValues != nil {
-		if m, ok := skillBuffValues[skillID]; ok {
-			return m
-		}
+// buildBuffMask builds a Flag (CFlag) with all relevant bits for the given skill set.
+func buildBuffMask(skillID int32) *Flag {
+	bits, ok := skillBuffBits[skillID]
+	if !ok || len(bits) == 0 {
+		return nil
 	}
-	return 0
+	uMask := NewFlag()
+	for _, bit := range bits {
+		uMask.SetBitNumber(bit, 1)
+	}
+	return uMask
 }
