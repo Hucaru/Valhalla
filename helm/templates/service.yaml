@@ -1,0 +1,50 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: login-server
+  namespace: valhalla
+spec:
+  selector:
+    app: login-server
+  ports:
+    - name: tcp-login
+      port: 8485
+      targetPort: 8485
+    - name: tcp-client
+      port: 8484
+      targetPort: 8484
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: world-server
+  namespace: valhalla
+spec:
+  selector:
+    app: world-server
+  ports:
+    - name: tcp-world
+      port: 8584
+      targetPort: 8584
+  type: ClusterIP
+
+{{- $root := . -}}
+{{ $replicas := int .Values.channel.replicas -}}
+{{- range $i, $_ := until $replicas }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: channel-server-{{ add $i 1 }}
+  namespace: valhalla
+spec:
+  selector:
+    app: channel-server-{{ add $i 1 }}
+  ports:
+    - name: tcp-channel
+      port: 8685
+      targetPort: 8685
+  type: ClusterIP
+{{- end }}

@@ -173,3 +173,28 @@ Taken from [here](http://forum.ragezone.com/f428/add-learning-npcs-start-finish-
 ![Bosses](img/bosses.PNG?raw=true "Bosses")
 
 ![Metrics](img/metrics.PNG?raw=true "Metrics")
+
+## Kubernetes deployment (optional)
+
+This repository now includes Kubernetes manifests that mirror docker-compose services.
+
+Prerequisites:
+- A Kubernetes cluster (minikube, kind, K3s, or cloud)
+- kubectl configured to point to the cluster
+- A container registry or a way to load local images into your cluster
+
+Build and load the image:
+- Build the image from the Dockerfile: `docker build -t valhalla:latest -f Dockerfile .`
+- If using kind: `kind load docker-image valhalla:latest`
+- If using minikube: `minikube image load valhalla:latest`
+- Otherwise, push `valhalla:latest` to a registry your cluster can pull from and update the image in your helm values.
+
+Deploy:
+- `helm install valhalla ./helm`
+- 
+Service discovery changes (compared to docker-compose):
+- K8s services use hyphens. Configs inside the pods are adjusted accordingly:
+  - login-server, world-server, db
+
+All ports are via ClusterIP at the moment. This can be adjusted to LoadBalancer if desired.
+

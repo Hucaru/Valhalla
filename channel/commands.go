@@ -3,11 +3,12 @@ package channel
 import (
 	"encoding/hex"
 	"fmt"
-	"github.com/Hucaru/Valhalla/internal"
 	"log"
 	"math"
 	"strconv"
 	"strings"
+
+	"github.com/Hucaru/Valhalla/internal"
 
 	"github.com/Hucaru/Valhalla/mnet"
 	"github.com/Hucaru/Valhalla/mpacket"
@@ -328,6 +329,42 @@ func (server *Server) gmCommand(conn mnet.Client, msg string) {
 		}
 
 		player.giveEXP(int32(amount), false, false)
+	case "ap":
+		plr, err := server.players.getFromConn(conn)
+
+		var amount int
+
+		if len(command) == 3 {
+			plr, err = server.players.getFromName(command[1])
+			amount, err = strconv.Atoi(command[2])
+		} else if len(command) == 2 {
+			amount, err = strconv.Atoi(command[1])
+		}
+
+		if err != nil {
+			conn.Send(packetMessageRedText(err.Error()))
+			return
+		}
+
+		plr.setAP(int16(amount))
+	case "sp":
+		plr, err := server.players.getFromConn(conn)
+
+		var amount int
+
+		if len(command) == 3 {
+			plr, err = server.players.getFromName(command[1])
+			amount, err = strconv.Atoi(command[2])
+		} else if len(command) == 2 {
+			amount, err = strconv.Atoi(command[1])
+		}
+
+		if err != nil {
+			conn.Send(packetMessageRedText(err.Error()))
+			return
+		}
+
+		plr.setSP(int16(amount))
 	case "level":
 		plr, err := server.players.getFromConn(conn)
 

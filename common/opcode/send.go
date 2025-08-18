@@ -16,6 +16,7 @@ const (
 	SendChannelInventoryOperation   byte = 0x18
 	SendChannelStatChange           byte = 0x1A
 	SendChannelSkillRecordUpdate    byte = 0x1D
+	SendChannelMessage              byte = 0x20
 	SendChannelInfoMessage          byte = 0x20
 	SendChannelMapTransferResult    byte = 0x22
 	SendChannelLieDetectorTest      byte = 0x23
@@ -40,6 +41,7 @@ const (
 	SendChannelCharacterLeaveField  byte = 0x4F
 	SendChannelAllChatMsg           byte = 0x51
 	SendChannelRoomBox              byte = 0x52
+	SendChannelUseScroll            byte = 0x54
 	SendChannelPlayerMovement       byte = 0x65
 	SendChannelPlayerUseMeleeSkill  byte = 0x66
 	SendChannelPlayerUseRangedSkill byte = 0x67

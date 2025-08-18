@@ -1,0 +1,9 @@
+apiVersion: v1
+appVersion: "0.0.1"
+type: application
+home: https://github.com/Hucaru/Valhalla
+sources:
+  - https://github.com/Hucaru/Valhalla
+description: A Helm chart for the Valhalla Maplestory Emulator
+name: valhalla
+version: 0.0.1

@@ -1,4 +1,4 @@
-FROM golang:1.16.0
+FROM golang:1.25
 
 WORKDIR /app
 COPY . /app
@@ -6,8 +6,6 @@ COPY . /app
 RUN go get
 RUN go build
 RUN chmod +x Valhalla
-
-COPY Data.nx /app/Data.nx
 
 RUN echo "#!/bin/sh" > docker-entrypoint.sh && \
   echo "set -ex" >> docker-entrypoint.sh && \

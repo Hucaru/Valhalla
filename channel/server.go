@@ -26,36 +26,30 @@ func (p players) getFromConn(conn mnet.Client) (*player, error) {
 			return v, nil
 		}
 	}
-
-	return new(player), fmt.Errorf("Could not retrieve Data")
+	return nil, fmt.Errorf("player not found for connection")
 }
 
-// GetFromName retrieve the Data from the connection
 func (p players) getFromName(name string) (*player, error) {
 	for _, v := range p {
 		if v.name == name {
 			return v, nil
 		}
 	}
-
-	return new(player), fmt.Errorf("Could not retrieve Data")
+	return nil, fmt.Errorf("player not found for name: %s", name)
 }
 
-// GetFromID retrieve the Data from the connection
 func (p players) getFromID(id int32) (*player, error) {
 	for _, v := range p {
 		if v.id == id {
 			return v, nil
 		}
 	}
-
-	return new(player), fmt.Errorf("Could not retrieve Data")
+	return nil, fmt.Errorf("player not found for id: %d", id)
 }
 
-// RemoveFromConn removes the Data based on the connection
+// RemoveFromConn removes the player based on the connection
 func (p *players) removeFromConn(conn mnet.Client) error {
 	i := -1
-
 	for j, v := range *p {
 		if v.conn == conn {
 			i = j
@@ -64,12 +58,11 @@ func (p *players) removeFromConn(conn mnet.Client) error {
 	}
 
 	if i == -1 {
-		return fmt.Errorf("Could not find Data")
+		return fmt.Errorf("player not found for removal")
 	}
 
-	(*p)[i] = (*p)[len((*p))-1]
-	(*p) = (*p)[:len((*p))-1]
-
+	(*p)[i] = (*p)[len(*p)-1]
+	*p = (*p)[:len(*p)-1]
 	return nil
 }
 
@@ -105,43 +98,42 @@ type Server struct {
 func (server *Server) Initialise(work chan func(), dbuser, dbpassword, dbaddress, dbport, dbdatabase string) {
 	server.dispatch = work
 
-	err := common.ConnectToDB(dbuser, dbpassword, dbaddress, dbport, dbdatabase)
-
-	if err != nil {
+	if err := common.ConnectToDB(dbuser, dbpassword, dbaddress, dbport, dbdatabase); err != nil {
 		log.Fatal(err)
 	}
-
 	log.Println("Connected to database")
 
 	server.fields = make(map[int32]*field)
 
-	for fieldID, nxMap := range nx.GetMaps() {
+	// Default rates (world may override later)
+	server.rates = rates{
+		exp:   1,
+		drop:  1,
+		mesos: 1,
+	}
 
+	for fieldID, nxMap := range nx.GetMaps() {
 		server.fields[fieldID] = &field{
 			id:       fieldID,
 			Data:     nxMap,
 			Dispatch: server.dispatch,
 		}
-		// For safety, as world will override this
-		server.rates = rates{
-			exp:   1,
-			drop:  1,
-			mesos: 1,
-		}
 		server.fields[fieldID].formatFootholds()
 		server.fields[fieldID].calculateFieldLimits()
 		server.fields[fieldID].createInstance(&server.rates)
-
 	}
 
 	log.Println("Initialised game state")
 
-	common.MetricsGauges["player_count"] = prometheus.NewGaugeVec(prometheus.GaugeOpts{
-		Name: "player_count",
-		Help: "Number of players in this channel",
-	}, []string{"channel", "world"})
+	// Register metrics gauge only once per process
+	if _, ok := common.MetricsGauges["player_count"]; !ok {
+		common.MetricsGauges["player_count"] = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+			Name: "player_count",
+			Help: "Number of players in this channel",
+		}, []string{"channel", "world"})
+		prometheus.MustRegister(common.MetricsGauges["player_count"])
+	}
 
-	prometheus.MustRegister(common.MetricsGauges["player_count"])
 	common.StartMetrics()
 	log.Println("Started serving metrics on :" + common.MetricsPort)
 
@@ -156,14 +148,14 @@ func (server *Server) loadScripts() {
 
 	server.npcScriptStore = createScriptStore("scripts/npc", server.dispatch) // make folder a config param
 	start := time.Now()
-	server.npcScriptStore.loadScripts()
+	_ = server.npcScriptStore.loadScripts()
 	elapsed := time.Since(start)
 	log.Println("Loaded npc scripts in", elapsed)
 	go server.npcScriptStore.monitor(func(name string, program *goja.Program) {})
 
 	server.eventScriptStore = createScriptStore("scripts/event", server.dispatch) // make folder a config param
 	start = time.Now()
-	server.eventScriptStore.loadScripts()
+	_ = server.eventScriptStore.loadScripts()
 	elapsed = time.Since(start)
 	log.Println("Loaded event scripts in", elapsed)
 
@@ -173,36 +165,27 @@ func (server *Server) loadScripts() {
 		}
 
 		if program == nil {
-			if _, ok := server.eventCtrl[name]; ok {
-				delete(server.eventCtrl, name)
-			}
-
+			delete(server.eventCtrl, name)
 			return
 		}
 
 		controller, start, err := createNewEventScriptController(name, program, server.fields, server.dispatch, server.warpPlayer)
-
 		if err != nil || controller == nil {
 			return
 		}
 
 		server.eventCtrl[name] = controller
-
 		if start {
 			controller.init()
 		}
-
 	})
 
 	for name, program := range server.eventScriptStore.scripts {
 		controller, start, err := createNewEventScriptController(name, program, server.fields, server.dispatch, server.warpPlayer)
-
 		if err != nil {
 			continue
 		}
-
 		server.eventCtrl[name] = controller
-
 		if start {
 			controller.init()
 		}
@@ -210,12 +193,12 @@ func (server *Server) loadScripts() {
 }
 
 // SendCountdownToPlayers - Send a countdown to players that appears as a clock
-func (server Server) SendCountdownToPlayers(time int32) {
+func (server *Server) SendCountdownToPlayers(t int32) {
 	for _, p := range server.players {
-		if time == 0 {
+		if t == 0 {
 			p.send(packetHideCountdown())
 		} else {
-			p.send(packetShowCountdown(time))
+			p.send(packetShowCountdown(t))
 		}
 	}
 }
@@ -248,65 +231,65 @@ func (server *Server) registerWithWorld() {
 // ClientDisconnected from server
 func (server *Server) ClientDisconnected(conn mnet.Client) {
 	plr, err := server.players.getFromConn(conn)
-
 	if err != nil {
 		return
 	}
 
-	field, ok := server.fields[plr.mapID]
+	// Always perform connection cleanup and metrics decrement
+	defer func() {
+		conn.Cleanup()
+		common.MetricsGauges["player_count"].With(prometheus.Labels{
+			"channel": strconv.Itoa(int(server.id)),
+			"world":   server.worldName,
+		}).Dec()
+	}()
 
-	if !ok {
-		return
+	// Try to remove the player from their current instance
+	if field, ok := server.fields[plr.mapID]; ok {
+		if inst, ierr := field.getInstance(plr.inst.id); ierr == nil {
+			if remErr := inst.removePlayer(plr); remErr != nil {
+				log.Println(remErr)
+			}
+		}
 	}
 
-	inst, err := field.getInstance(plr.inst.id)
-	err = inst.removePlayer(plr)
-
-	if err != nil {
-		log.Println(err)
+	// Persist character state
+	if saveErr := plr.save(); saveErr != nil {
+		log.Println(saveErr)
 	}
 
-	err = plr.save()
+	// Tear down any active NPC chat state
+	delete(server.npcChat, conn)
 
-	if err != nil {
-		log.Println(err)
+	// Remove from in-memory player list
+	if remPlrErr := server.players.removeFromConn(conn); remPlrErr != nil {
+		log.Println(remPlrErr)
 	}
 
-	if _, ok := server.npcChat[conn]; ok {
-		delete(server.npcChat, conn)
-	}
-
-	server.players.removeFromConn(conn)
-
-	index := -1
-
+	// Remove from migrating slice if present
+	migratingIdx := -1
 	for i, v := range server.migrating {
 		if v == conn {
-			index = i
+			migratingIdx = i
+			break
 		}
 	}
 
-	if index > -1 {
-		server.migrating = append(server.migrating[:index], server.migrating[index+1:]...)
-	} else {
-		server.world.Send(internal.PacketChannelPlayerDisconnect(plr.id, plr.name))
-
-		_, err = common.DB.Exec("UPDATE characters SET channelID=? WHERE id=?", -1, plr.id)
-
-		if err != nil {
-			log.Println(err)
-		}
-
-		_, err := common.DB.Exec("UPDATE accounts SET isLogedIn=0 WHERE accountID=?", conn.GetAccountID())
-
-		if err != nil {
-			log.Println("Unable to complete logout for ", conn.GetAccountID())
-		}
+	if migratingIdx > -1 {
+		server.migrating = append(server.migrating[:migratingIdx], server.migrating[migratingIdx+1:]...)
+		return
 	}
 
-	conn.Cleanup()
+	// Not migrating: notify world and clear DB session state
+	server.world.Send(internal.PacketChannelPlayerDisconnect(plr.id, plr.name))
 
-	common.MetricsGauges["player_count"].With(prometheus.Labels{"channel": strconv.Itoa(int(server.id)), "world": server.worldName}).Dec()
+	if _, dbErr := common.DB.Exec("UPDATE characters SET channelID=? WHERE id=?", -1, plr.id); dbErr != nil {
+		log.Println(dbErr)
+	}
+
+	if _, dbErr := common.DB.Exec("UPDATE accounts SET isLogedIn=0 WHERE accountID=?", conn.GetAccountID()); dbErr != nil {
+		log.Println("Unable to complete logout for ", conn.GetAccountID())
+	}
 }
 
 // SetScrollingHeaderMessage that appears at the top of game window

@@ -34,3 +34,5 @@ _testmain.go
 .idea/
 
 .DS_Store
+
+values.yaml
