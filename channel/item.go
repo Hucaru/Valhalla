@@ -465,3 +465,45 @@ func (v item) use(plr *player) {
 	// This will require timers to ensure buffs are removed once finished
 
 }
+
+// applyScrollEffects mutates the equip with the scroll increments from NX.
+func (v *item) applyScrollEffects(scroll nx.Item) {
+	v.str += scroll.IncSTR
+	v.dex += scroll.IncDEX
+	v.intt += scroll.IncINT
+	v.luk += scroll.IncLUK
+
+	v.hp += int16(scroll.IncMHP)
+	v.mp += int16(scroll.IncMMP)
+
+	v.watk += int16(scroll.IncPAD)
+	v.wdef += int16(scroll.IncPDD)
+	v.matk += int16(scroll.IncMAD)
+	v.mdef += int16(scroll.IncMDD)
+	v.accuracy += int16(scroll.IncACC)
+	v.avoid += int16(scroll.IncEVA)
+
+	v.speed += int16(scroll.IncSpeed)
+	v.jump += int16(scroll.IncJump)
+}
+
+func (v *item) incrementScrollCount() {
+	v.scrollLevel++
+}
+
+func getItemType(itemID int32) int32 {
+	return itemID / 10000
+}
+
+func itemTypeToScrollType(itemID int32) int32 {
+	return (getItemType(itemID) % 100) * 100
+}
+
+func getScrollType(itemID int32) int32 {
+	return (itemID % 10000) - (itemID % 100)
+}
+
+// validateScrollTarget performs basic compatibility checks between the scroll and target equip.
+func validateScrollTarget(scrollID int32, equipID int32) bool {
+	return itemTypeToScrollType(equipID) == getScrollType(scrollID)
+}

@@ -913,8 +913,8 @@ func (server *Server) playerUseScroll(conn mnet.Client, reader mpacket.Reader) {
 	}
 
 	// Load items
-	scroll := findUseItemBySlot(plr, scrollSlot)
-	equip := findEquipBySlot(plr, targetSlot)
+	scroll := plr.findUseItemBySlot(scrollSlot)
+	equip := plr.findEquipBySlot(targetSlot)
 	if scroll == nil || equip == nil || scroll.amount < 1 || equip.amount != 1 {
 		plr.send(packetPlayerNoChange())
 		return
@@ -951,8 +951,8 @@ func (server *Server) playerUseScroll(conn mnet.Client, reader mpacket.Reader) {
 
 	if successRoll < int(scrollMeta.Success) {
 		// Success: apply stats, decrement slot, increment scroll count
-		applyScrollEffects(equip, scrollMeta)
-		incrementScrollCount(equip)
+		equip.applyScrollEffects(scrollMeta)
+		equip.incrementScrollCount()
 
 		// Persist and update in-memory slice
 		equip.save(plr.id)
@@ -977,95 +977,6 @@ func (server *Server) playerUseScroll(conn mnet.Client, reader mpacket.Reader) {
 			plr.send(packetUseScroll(plr.id, false, false, false))
 		}
 	}
-}
-
-func getItemType(itemID int32) int32 {
-	return itemID / 10000
-}
-
-func itemTypeToScrollType(itemID int32) int32 {
-	return (getItemType(itemID) % 100) * 100
-}
-
-func getScrollType(itemID int32) int32 {
-	return (itemID % 10000) - (itemID % 100)
-}
-
-// validateScrollTarget performs basic compatibility checks between the scroll and target equip.
-func validateScrollTarget(scrollID int32, equipID int32) bool {
-	return itemTypeToScrollType(equipID) == getScrollType(scrollID)
-}
-
-// applyScrollEffects mutates the equip with the scroll increments from NX.
-func applyScrollEffects(equip *item, scroll nx.Item) {
-	equip.str += scroll.IncSTR
-	equip.dex += scroll.IncDEX
-	equip.intt += scroll.IncINT
-	equip.luk += scroll.IncLUK
-
-	equip.hp += int16(scroll.IncMHP)
-	equip.mp += int16(scroll.IncMMP)
-
-	equip.watk += int16(scroll.IncPAD)
-	equip.wdef += int16(scroll.IncPDD)
-	equip.matk += int16(scroll.IncMAD)
-	equip.mdef += int16(scroll.IncMDD)
-	equip.accuracy += int16(scroll.IncACC)
-	equip.avoid += int16(scroll.IncEVA)
-
-	equip.speed += int16(scroll.IncSpeed)
-	equip.jump += int16(scroll.IncJump)
-}
-
-func incrementScrollCount(equip *item) {
-	equip.scrollLevel++
-}
-
-// removeEquipAtSlot removes the equip from the given slot (equipped negative or inventory positive).
-func removeEquipAtSlot(plr *player, slot int16) bool {
-	if slot < 0 {
-		// Equipped item; find and clear
-		for i := range plr.equip {
-			if plr.equip[i].slotID == slot {
-				// Remove equipped item
-				plr.equip[i].amount = 0
-				return true
-			}
-		}
-		return false
-	}
-
-	// Inventory equip; remove from inventory
-	for i := range plr.equip {
-		if plr.equip[i].slotID == slot {
-			if plr.equip[i].amount != 1 {
-				return false
-			}
-			plr.equip[i].amount = 0
-			return true
-		}
-	}
-	return false
-}
-
-// findUseItemBySlot returns the use item (scroll) at the given slot from USE inventory.
-func findUseItemBySlot(plr *player, slot int16) *item {
-	for i := range plr.use {
-		if plr.use[i].slotID == slot {
-			return &plr.use[i]
-		}
-	}
-	return nil
-}
-
-// findEquipBySlot returns the equip by slot (negative = equipped, positive = inventory slot).
-func findEquipBySlot(plr *player, slot int16) *item {
-	for i := range plr.equip {
-		if plr.equip[i].slotID == slot {
-			return &plr.equip[i]
-		}
-	}
-	return nil
 }
 
 // Packet format (after ticker skip handled elsewhere):
@@ -1108,7 +1019,7 @@ func (server *Server) playerUseBuffItem(conn mnet.Client, reader mpacket.Reader)
 
 		// Apply effect to target
 		// TODO: integrate actual buff application (stats/effects based on itemID)
-		applyBuffItemToPlayer(target, itemID)
+		target.applyBuffItem(itemID)
 
 		// Consume the buff item from the user's USE inventory
 		if _, err := plr.takeItem(itemID, slot, 1, 2); err != nil {
@@ -1123,7 +1034,7 @@ func (server *Server) playerUseBuffItem(conn mnet.Client, reader mpacket.Reader)
 }
 
 // applyBuffItemToPlayer is a placeholder for your buff item usage on a target player.
-func applyBuffItemToPlayer(target *player, itemID int32) {
+func (p *player) applyBuffItem(itemID int32) {
 	// TODO: Implement item-based buff application.
 	// Example: inventory.useItem(target, itemID) equivalent
 }

@@ -1209,6 +1209,53 @@ func (d *player) removeBuddy(id int32) {
 	}
 }
 
+// removeEquipAtSlot removes the equip from the given slot (equipped negative or inventory positive).
+func (d *player) removeEquipAtSlot(slot int16) bool {
+	if slot < 0 {
+		// Equipped item; find and clear
+		for i := range d.equip {
+			if d.equip[i].slotID == slot {
+				// Remove equipped item
+				d.equip[i].amount = 0
+				return true
+			}
+		}
+		return false
+	}
+
+	// Inventory equip; remove from inventory
+	for i := range d.equip {
+		if d.equip[i].slotID == slot {
+			if d.equip[i].amount != 1 {
+				return false
+			}
+			d.equip[i].amount = 0
+			return true
+		}
+	}
+	return false
+}
+
+// findUseItemBySlot returns the use item (scroll) at the given slot from USE inventory.
+func (d *player) findUseItemBySlot(slot int16) *item {
+	for i := range d.use {
+		if d.use[i].slotID == slot {
+			return &d.use[i]
+		}
+	}
+	return nil
+}
+
+// findEquipBySlot returns the equip by slot (negative = equipped, positive = inventory slot).
+func (d *player) findEquipBySlot(slot int16) *item {
+	for i := range d.equip {
+		if d.equip[i].slotID == slot {
+			return &d.equip[i]
+		}
+	}
+	return nil
+}
+
 func loadPlayerFromID(id int32, conn mnet.Client) player {
 	c := player{}
 	filter := "id,accountID,worldID,name,gender,skin,hair,face,level,job,str,dex,intt," +
@@ -1631,31 +1678,8 @@ func packetInventoryRemoveItem(item item) mpacket.Packet {
 func packetInventoryChangeEquip(chr player) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelPlayerChangeAvatar)
 	p.WriteInt32(chr.id)
-	p.WriteByte(0x01)
-
-	p.WriteByte(chr.gender)
-	p.WriteByte(chr.skin)
-	p.WriteInt32(chr.face)
-	p.WriteByte(0x00)
-	p.WriteInt32(chr.hair)
-
-	// Equips: visible (-1..-19)
-	for _, it := range chr.equip {
-		if it.slotID < 0 && it.slotID > -20 {
-			p.WriteByte(byte(-it.slotID)) // abs
-			p.WriteInt32(it.id)
-		}
-	}
-	// Masked/cash-overrides: (< -100), -111 handled as cash weapon, skip here
-	for _, it := range chr.equip {
-		if it.slotID < -100 && it.slotID != -111 {
-			p.WriteByte(byte(-(it.slotID + 100))) // abs(slot+100)
-			p.WriteInt32(it.id)
-		}
-	}
-
-	// End of equip section
-	p.WriteByte(0xFF)
+	p.WriteByte(1)
+	p.WriteBytes(chr.displayBytes())
 
 	// Pet ID (spawned pet item id).
 	p.WriteInt32(0)
