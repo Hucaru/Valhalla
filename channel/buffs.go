@@ -16,13 +16,14 @@ const (
 	BuffWeaponDefense = 1
 	BuffMagicAttack   = 2
 	BuffMagicDefense  = 3
-	BuffAccuracy      = 4
-	BuffAvoidability  = 5
-	BuffHands         = 6
-	BuffSpeed         = 8
+
+	BuffAccuracy     = 4
+	BuffAvoidability = 5
+	BuffHands        = 6
+	BuffSpeed        = 7
 
 	// Byte 2 (bits 8..15)
-	BuffJump       = 10
+	BuffJump       = 8
 	BuffMagicGuard = 9
 	BuffDarkSight  = 10
 	BuffBooster    = 11
@@ -229,83 +230,11 @@ func (cb *CharacterBuffs) AddBuffFromCC(skillID int32, expiresAtMs int64, level 
 		cb.plr.inst.send(packetPlayerGiveForeignBuff(cb.plr.id, maskBytes, values, 0))
 	}
 
-	// Persist flags (lowest 32 bits)
-	lastWord := uint32(0)
-	if data := mask.Data(); len(data) > 0 {
-		lastWord = data[len(data)-1]
-	}
-	cb.saveBuff(cb.plr.id, skillID, expiresAtMs, lastWord, level, sinc1, sinc2)
-
 	cb.activeSkillLevels[skillID] = level
 }
 
 func (cb *CharacterBuffs) check(skillID int32) {
 	// Implement conflicting buff cleanup if needed.
-}
-
-func (cb *CharacterBuffs) saveBuff(charID int32, buffID int32, expiresAtMs int64, flags uint32, level byte, sinc, sinc2 int) {
-	const insert = `
-INSERT INTO character_buffs (bid, cid, time, flags, level, sinc, sinc2)
-VALUES (?, ?, ?, ?, ?, ?, ?)
-ON DUPLICATE KEY UPDATE time=VALUES(time), flags=VALUES(flags), level=VALUES(level), sinc=VALUES(sinc), sinc2=VALUES(sinc2)
-`
-	_, err := common.DB.Exec(insert,
-		buffID,
-		charID,
-		expiresAtMs,
-		flags,
-		int(level),
-		sinc,
-		sinc2,
-	)
-	if err != nil {
-		log.Printf("saveBuff: failed for cid=%d bid=%d: %v", charID, buffID, err)
-	}
-}
-
-func (cb *CharacterBuffs) LoadBuffs() {
-	if cb == nil || cb.plr == nil {
-		return
-	}
-
-	type buffRow struct {
-		BID   int32
-		Time  int64
-		Level int
-	}
-
-	rows, err := common.DB.Query(`SELECT bid, time, level FROM character_buffs WHERE cid=?`, cb.plr.id)
-	if err != nil {
-		log.Printf("LoadBuffs: query error for cid=%d: %v", cb.plr.id, err)
-		return
-	}
-	defer rows.Close()
-
-	now := time.Now().UnixMilli()
-	toReapply := make([]buffRow, 0, 8)
-
-	for rows.Next() {
-		var r buffRow
-		if err := rows.Scan(&r.BID, &r.Time, &r.Level); err != nil {
-			log.Printf("LoadBuffs: scan error for cid=%d: %v", cb.plr.id, err)
-			continue
-		}
-		if r.Time > 0 && r.Time <= now {
-			continue
-		}
-		if r.BID == 0 || r.Level <= 0 {
-			continue
-		}
-		toReapply = append(toReapply, r)
-	}
-
-	if err := rows.Err(); err != nil {
-		log.Printf("LoadBuffs: rows error for cid=%d: %v", cb.plr.id, err)
-	}
-
-	for _, b := range toReapply {
-		cb.AddBuffFromCC(b.BID, b.Time, byte(b.Level), 0, 0, 0)
-	}
 }
 
 func (cb *CharacterBuffs) RemoveExpiredBuffs() {
