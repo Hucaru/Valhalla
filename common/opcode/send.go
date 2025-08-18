@@ -15,6 +15,8 @@ const (
 	SendLoginRestarter              byte = 0x15
 	SendChannelInventoryOperation   byte = 0x18
 	SendChannelStatChange           byte = 0x1A
+	SendChannelTempStatChange       byte = 0x1B
+	SendChannelRemoveTempStat       byte = 0x1C
 	SendChannelSkillRecordUpdate    byte = 0x1D
 	SendChannelMessage              byte = 0x20
 	SendChannelInfoMessage          byte = 0x20
@@ -50,7 +52,7 @@ const (
 	SendChannelPlayerEmoticon       byte = 0x6C
 	SendChannelPlayerChangeAvatar   byte = 0x6F
 	SendChannelPlayerAnimation      byte = 0x70
-	SendChannelLevelUpAnimation     byte = 0x79
+	SendChannelSkillAnimation       byte = 0x79
 	SendChannelShowMob              byte = 0x86
 	SendChannelRemoveMob            byte = 0x87
 	SendChannelControlMob           byte = 0x88

@@ -1,0 +1,1279 @@
+I always found the way Odin/Lithium handled their buffstats (or rather, their CharacterTemporaryStats) to be very awful, especially when it comes to having to update them often. Originally the way Odin handled it was using single long masks, and rather than using multiple indexes they simply set a bool for 'isFirst'. Eventually, Lithium came out and handled buffstats through using integer masks and a given index for each one.
+
+
+
+The original buffstat masks were simple: initially they were only a single 32-bit integer, and then later became a 64-bit long. Then, v56 happened, and with the implementation of Pirates came TwoStateTemporaryStats. Once Nexon had added all of these new buffstats, they had switched to a UINT128, which had existed all the way up to (a little past) bigbang. However, around v160 or so, Nexon started increasing the bit count every 5 or so versions. Upon doing so, Nexon had come up with a new way of handling the masks: through a CFlag<NumBits> class, which would universally work across all versions.
+
+
+
+First you're going to need Nexon's Flag class, here's mine:
+
+[php]/*
+
+ *     This file is part of Development, a MapleStory Emulator Project.
+
+ *     Copyright (C) 2015 Eric Smith <muffinman75013@yahoo.com>
+
+ *
+
+ *     This program is free software: you can redistribute it and/or modify
+
+ *     it under the terms of the GNU General Public License as published by
+
+ *     the Free Software Foundation, either version 3 of the License, or
+
+ *     (at your option) any later version.
+
+ *
+
+ *     This program is distributed in the hope that it will be useful,
+
+ *     but WITHOUT ANY WARRANTY; without even the implied warranty of
+
+ *     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+
+ *     GNU General Public License for more details.
+
+ *
+
+ *     You should have received a copy of the GNU General Public License
+
+ */
+
+
+
+package base.util;
+
+
+
+import base.network.packet.InPacket;
+
+import java.util.concurrent.ThreadLocalRandom;
+
+
+
+/**
+
+ * CFlag
+
+ *
+
+ * @author Eric
+
+ */
+
+public final class Flag {
+
+    public static final int
+
+            Ver_1 = 32,
+
+            Ver_14 = 64,
+
+            Ver_56 = 128,
+
+            Ver_96 = 160,//TODO: When did 160-bit end exactly?
+
+            Ver_103 = 256,//TODO: Gap between v103->v144.
+
+            Ver_144 = 384,
+
+            Ver_160 = 480,//KMST v1029 as well, somewhere around 15X/16X?
+
+            Ver_165 = 512,
+
+            Ver_174 = 544,
+
+            Ver_183 = 576,
+
+
+
+            Common_MonsterCollection = 192,//MonsterCollectionInfo
+
+            Common_ItemCollection = 320,//ItemCategoryInfo
+
+            Common_PetTemplate = 128,//PetTemplateFlag, NOTE: This stayed UINT128 until CFlag was introduced, where it later became 512.
+
+            Common_MobStat = 128,//MobStat, NOTE: This stayed UINT128 until CFlag was introduced, where it became 96.
+
+            Unknown = 65536,//Nexon uses a 2048-length CFlag beyond versions I care about.
+
+
+
+            Default = Ver_56 // Most common versions used are UINT128.
+
+    ;
+
+    private final int[] aData;
+
+
+
+    /**
+
+     * Construct a by-default Flag base (128-bit)
+
+     */
+
+    public Flag() {
+
+        this(Default);
+
+    }
+
+
+
+    /**
+
+     * Construct a specific Flag of bits.
+
+     * Please refer to the common bits used for versions/collections.
+
+     *
+
+     * [USER=2000183830]para[/USER]m uBits The number of bits this flag will contain
+
+     */
+
+    public Flag(int uBits) {
+
+        this.aData = new int[uBits >> 5];
+
+        this.SetValue(0);
+
+    }
+
+
+
+    /**
+
+     * Your standard copy-constructor.
+
+     *
+
+     * [USER=2000183830]para[/USER]m uValue The flag to replicate/copy.
+
+     * [USER=2000183830]para[/USER]m uNumBits
+
+     */
+
+    public Flag(Flag uValue, int uNumBits) {
+
+        this(32 * uValue.aData.length);
+
+        // Copy the 32bit chunk
+
+        for (int i = (uNumBits >> 5); i > 0; i--) {
+
+            this.aData[i - 1] = uValue.aData[i - 1];
+
+        }
+
+        // Copy the remaining bits
+
+        for (int i = 32 * (uNumBits >> 5); i < uNumBits; i++) {
+
+            this.SetBitNumber(i, uValue.GetBitNumber(i));
+
+        }
+
+        // Pad the remaining bits of the 32bit chunk with randoms
+
+        for (int i = uNumBits; i < (32 * this.aData.length); i++) {
+
+            int uRand = ((214013 * ThreadLocalRandom.current().nextInt(32767) + 2531011) >> 16) & 0x7FFF;
+
+            this.SetBitNumber(i, uRand % 2);
+
+        }
+
+    }
+
+
+
+    /**
+
+     * Compares the flag against an incoming value. If the flag
+
+     * is less than the value, it returns -1. If the flag is
+
+     * greater than the value, it returns 1. It will otherwise
+
+     * return 0 marking the flag as equal to the value.
+
+     *
+
+     * [USER=2000183830]para[/USER]m uOther The value to compare the flag against
+
+     * [USER=850422]return[/USER] If the flag is less than, greater than, or equal to
+
+     */
+
+    public int CompareTo(Flag uOther) {
+
+        for (int i = 0; i < this.aData.length; i++) {
+
+            if (this.aData[i] < uOther.aData[i])
+
+                return -1;
+
+            if (this.aData[i] > uOther.aData[i])
+
+                return 1;
+
+        }
+
+        return 0;
+
+    }
+
+
+
+    /**
+
+     * Compares the flag against an incoming value. If the flag
+
+     * is less than the value, it returns -1. If the flag is
+
+     * greater than the value, it returns 1. It will otherwise
+
+     * return 0 marking the flag as equal to the value.
+
+     *
+
+     * [USER=2000183830]para[/USER]m uValue The value to compare the flag against
+
+     * [USER=850422]return[/USER] If the flag is less than, greater than, or equal to
+
+     */
+
+    public int CompareTo(int uValue) {
+
+        int uLen = this.aData.length - 1;
+
+        if (this.aData[uLen] > uValue)
+
+            return 1;
+
+        for (int i = 0; i < uLen; i++) {
+
+            if (this.aData[i] != 0)
+
+                return 1;
+
+        }
+
+        return -((this.aData[uLen] < uValue) ? 1 : 0);
+
+    }
+
+
+
+    /**
+
+     * Decodes a Flag from an InPacket stream, only after knowing
+
+     * the amount of bits the Flag contains.
+
+     *
+
+     * [USER=2000183830]para[/USER]m iPacket The InPacket buffer
+
+     */
+
+    public void DecodeBuffer(InPacket iPacket) {
+
+        for (int i = 0; i < this.aData.length; i++) {
+
+            this.aData[i] = iPacket.Decode4();
+
+        }
+
+    }
+
+
+
+    /**
+
+     * Determines if the flag has been set for the specific bit.
+
+     *
+
+     * [USER=2000183830]para[/USER]m uBit The bit number to validate
+
+     * [USER=850422]return[/USER] If the flag for the specific bit has been set
+
+     */
+
+    public int GetBitNumber(int uBit) {
+
+        if (uBit < (32 * this.aData.length)) {
+
+            return (this.aData[uBit >> 5] >> (31 - (uBit & 0x1F))) & 1;
+
+        }
+
+        return 0;
+
+    }
+
+
+
+    /**
+
+     * Returns the flag's {m_uData} array containing all
+
+     * currently present bits. The data is not to be modified.
+
+     *
+
+     * [USER=850422]return[/USER] The flag's {m_uData}
+
+     */
+
+    public final int[] GetData() {
+
+        return this.aData;
+
+    }
+
+
+
+    /**
+
+     * If any of the bits within the flag is NOT zero,
+
+     * then the flag is considered set and not empty.
+
+     *
+
+     * [USER=850422]return[/USER] If the flag is not zero
+
+     */
+
+    public boolean IsSet() {//operator_bool
+
+        int i = 0;
+
+        int uLen = this.aData.length - 1;
+
+        while (this.aData[i] == 0) {
+
+            if (++i >= uLen) {
+
+                return this.aData[uLen] != 0;
+
+            }
+
+        }
+
+        return true;
+
+    }
+
+
+
+    /**
+
+     * If all of the data contained within this flag is
+
+     * equal to zero, then the flag is zero.
+
+     *
+
+     * [USER=850422]return[/USER] If the Flag is zero
+
+     */
+
+    public boolean IsZero() {//operator!
+
+        int i = this.aData.length - 1;
+
+        while (this.aData[i] == 0) {
+
+            if (--i < 0)
+
+                return true;
+
+        }
+
+        return false;
+
+    }
+
+
+
+    /**
+
+     * Performs an AND (&=) operation on every bit
+
+     * between the two flags and returns the result
+
+     * of the bitwise AND operation.
+
+     *
+
+     * [USER=2000183830]para[/USER]m uValue The flag to & the bits of
+
+     * [USER=850422]return[/USER] The result of the AND operation
+
+     */
+
+    public Flag OperatorAND(Flag uValue) {//operator&
+
+        if (this.aData.length != uValue.aData.length) {
+
+            return null;
+
+        }
+
+        int uLen = this.aData.length;
+
+        Flag temp = new Flag(32 * uLen);
+
+        for (int i = uLen; i >= 1; i--)
+
+            temp.aData[i - 1] = uValue.aData[i - 1] & this.aData[i - 1];
+
+        return temp;
+
+    }
+
+
+
+    /**
+
+     * Performs the "equals" operation on every bit
+
+     * where as such it will return true if:
+
+     *      uData <= uValue AND uData >= uValue
+
+     *
+
+     * [USER=2000183830]para[/USER]m uValue The value to compare against the current bits
+
+     * [USER=850422]return[/USER] If the value is equal
+
+     */
+
+    public boolean IsEqual(int uValue) {//operator==
+
+        int i = 0;
+
+        int uLen = this.aData.length - 1;
+
+        while (this.aData[i] == 0) {
+
+            if (++i >= uLen) {
+
+                int uData = this.aData[uLen];
+
+                if (uData <= uValue)
+
+                    return uData >= uValue;
+
+                return false;
+
+            }
+
+        }
+
+        return false;
+
+    }
+
+
+
+    /**
+
+     * Performs a bitwise OR directly on this instance.
+
+     * For a returned OR temp Flag result, refer to {OperatorOR}.
+
+     *
+
+     * [USER=2000183830]para[/USER]m uValue The flag to |= the bits of
+
+     */
+
+    public void PerformOR(Flag uValue) {//operator=|
+
+        if (this.aData.length != uValue.aData.length) {
+
+            return;
+
+        }
+
+        int i = 0;
+
+        int uLen = uValue.aData.length - 1;
+
+        while (uValue.aData[i] == 0) {
+
+            if (++i >= uLen) {
+
+                if (uValue.aData[uLen] == 0)
+
+                    return;
+
+                break;
+
+            }
+
+        }
+
+        for (int j = uLen; j >= 0; j--) {
+
+            this.aData[j] |= uValue.aData[j];
+
+        }
+
+    }
+
+
+
+    /**
+
+     * Performs an OR (|=) operation on every bit
+
+     * between the two flags and returns the result
+
+     * of the bitwise OR operation.
+
+     *
+
+     * [USER=2000183830]para[/USER]m uValue The flag to | the bits of
+
+     * [USER=850422]return[/USER] The result of the OR operation
+
+     */
+
+    public Flag OperatorOR(Flag uValue) {
+
+        if (this.aData.length != uValue.aData.length) {
+
+            return null;
+
+        }
+
+        int uLen = this.aData.length;
+
+        Flag temp = new Flag(32 * uLen);
+
+        for (int i = uLen; i >= 0; i--)
+
+            temp.aData[i - 1] = uValue.aData[i - 1] | this.aData[i - 1];
+
+        return temp;
+
+    }
+
+
+
+    /**
+
+     * Shifts the flag left by {uBits} and readjusts the {m_uData} array.
+
+     *
+
+     * [USER=2000183830]para[/USER]m uBits The amount of bits to shift left
+
+     */
+
+    public void ShiftLeft(int uBits) {
+
+        if (uBits == 0 || IsZero())
+
+            return;
+
+        int uLen = this.aData.length;
+
+        if (uBits >= (32 * uLen)) {
+
+            SetValue(0);
+
+            return;
+
+        }
+
+        int[] aBitsa = new int[uLen];
+
+        for (int i = 0; i < aBitsa.length; i++)
+
+            aBitsa[i] = 0;
+
+        int iShift = uBits >> 5;
+
+        if (iShift < uLen) {
+
+            long uShift = 0;
+
+            for (int i = (uLen - 1); i >= iShift; i--) {
+
+                uShift += ((long)this.aData[i] << (uBits & 0x1F)) + (uShift >> 32);
+
+                aBitsa[i - iShift] = (int) uShift;
+
+                uShift >>= 32;
+
+            }
+
+        }
+
+        System.arraycopy(aBitsa, 0, this.aData, 0, uLen);
+
+    }
+
+
+
+    /**
+
+     * Updates or sets the new value/flag of a specific bit.
+
+     *
+
+     * [USER=2000183830]para[/USER]m uBit The selected bit to update
+
+     * [USER=2000183830]para[/USER]m uValue The new value to be set
+
+     */
+
+    public void SetBitNumber(int uBit, int uValue) {
+
+        int uMask = 1 << (31 - (uBit & 0x1F));
+
+        int iLongNum = uBit >> 5;
+
+        this.aData[iLongNum] |= uMask;
+
+        if (uValue == 0)
+
+            this.aData[iLongNum] = uMask ^ this.aData[iLongNum];
+
+    }
+
+
+
+    /**
+
+     * Single-handled ShiftLeft operation used on
+
+     * higher versions due to the lack of support
+
+     * with UINT128::shiftLeft.
+
+     *
+
+     * Old:
+
+     * SetValue(1)
+
+     * ShiftLeft(uBits)
+
+     *
+
+     * New:
+
+     * SetData(uBits)
+
+     *
+
+     * [USER=2000183830]para[/USER]m uBits The bit value to OR
+
+     */
+
+    public void SetData(int uBits) {
+
+        int uLen = this.aData.length - 1;
+
+        int nIndex = uLen - (uBits >> 5);
+
+        int nValue = 1 << (0x1F - (uBits & 0x1F));
+
+        this.aData[nIndex] |= nValue;
+
+    }
+
+
+
+    /**
+
+     * Assigns a new value to this flag.
+
+     *
+
+     * [USER=2000183830]para[/USER]m uValue The value to set the flag to
+
+     */
+
+    public void SetValue(int uValue) {
+
+        int uLen = this.aData.length - 1;
+
+        for (int i = 0; i < uLen; i++)
+
+            this.aData[i] = 0;
+
+        this.aData[uLen] = uValue;
+
+    }
+
+
+
+    /**
+
+     * Returns a byte array representation of the
+
+     * current {m_uData} integer array.
+
+     *
+
+     * [USER=850422]return[/USER] {m_uData} as byte[]
+
+     */
+
+    public byte[] ToByteArray() {
+
+        return ToByteArray(false);
+
+    }
+
+
+
+    /**
+
+     * Returns a byte array representation of the current
+
+     * {uData} integer appropriate for the specified flag
+
+     * as an array.
+
+     *
+
+     * [USER=2000183830]para[/USER]m bNewVer If you no longer utilize UINT and require backwards destination
+
+     * [USER=850422]return[/USER] {aData} as a byte[]
+
+     */
+
+    public byte[] ToByteArray(boolean bNewVer) {
+
+        if (bNewVer)
+
+            return ToByteArrayEx();
+
+        int uLen = this.aData.length * 4;
+
+        byte[] pDest = new byte[uLen];
+
+
+
+        for (int i = this.aData.length; i >= 1; i--) {
+
+            int uData = this.aData[i - 1];
+
+
+
+            pDest[--uLen] = (byte) ((uData >>> 24) & 0xFF);
+
+            pDest[--uLen] = (byte) ((uData >>> 16) & 0xFF);
+
+            pDest[--uLen] = (byte) ((uData >>> 8) & 0xFF);
+
+            pDest[--uLen] = (byte) (uData & 0xFF);
+
+        }
+
+        return pDest;
+
+    }
+
+
+
+    /**
+
+     * Simply put: The reverse of ToByteArray
+
+     *
+
+     * [USER=850422]return[/USER] {aData} as a byte[]
+
+     */
+
+    public byte[] ToByteArrayEx() {
+
+        int uLen = 0;
+
+        byte[] pDest = new byte[this.aData.length * 4];
+
+
+
+        for (int i = this.aData.length; i >= 1; i--) {
+
+            int uData = this.aData[i - 1];
+
+
+
+            pDest[uLen++] = (byte)(uData & 0xFF);
+
+            pDest[uLen++] = (byte)((uData >>> 8) & 0xFF);
+
+            pDest[uLen++] = (byte)((uData >>> 16) & 0xFF);
+
+            pDest[uLen++] = (byte)((uData >>> 24) & 0xFF);
+
+        }
+
+        return pDest;
+
+    }
+
+
+
+    /**
+
+     * Represents this flag's current {m_uData} value as a
+
+     * readable hexadecimal string.
+
+     *
+
+     * [USER=850422]return[/USER] The flag's value in a base-16 string
+
+     */
+
+    public String ToHexString() {
+
+        String sData = "0x";
+
+        for (int i = 0; i < this.aData.length; i++) {
+
+            sData += String.format("%08X", this.aData[i]);
+
+        }
+
+        return sData;
+
+    }
+
+}[/php]
+
+
+
+As an example, here is what it would like to utilize a Flag class for v83:
+
+[php]/*
+
+ *     This file is part of Development, a MapleStory Emulator Project.
+
+ *     Copyright (C) 2015 Eric Smith <muffinman75013@yahoo.com>
+
+ *
+
+ *     This program is free software: you can redistribute it and/or modify
+
+ *     it under the terms of the GNU General Public License as published by
+
+ *     the Free Software Foundation, either version 3 of the License, or
+
+ *     (at your option) any later version.
+
+ *
+
+ *     This program is distributed in the hope that it will be useful,
+
+ *     but WITHOUT ANY WARRANTY; without even the implied warranty of
+
+ *     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+
+ *     GNU General Public License for more details.
+
+ *
+
+ *     You should have received a copy of the GNU General Public License
+
+ */
+
+package base.user.stat;
+
+
+
+import base.util.Flag;
+
+
+
+/**
+
+ * CTS -> CharacterTemporaryStat
+
+ *
+
+ * @author Eric
+
+ */
+
+public enum CharacterTemporaryStat {
+
+    PAD(0),
+
+    PDD(1),
+
+    MAD(2),
+
+    MDD(3),
+
+    ACC(4),
+
+    EVA(5),
+
+    Craft(6),
+
+    Speed(7),
+
+    Jump(8),
+
+    MagicGuard(9),
+
+    DarkSight(10),
+
+    Booster(11),
+
+    PowerGuard(12),
+
+    MaxHP(13),
+
+    MaxMP(14),
+
+    Invincible(15),
+
+    SoulArrow(16),
+
+    Stun(17), // StatType.DISEASE
+
+    Poison(18), // StatType.DISEASE
+
+    Seal(19), // StatType.DISEASE
+
+    Darkness(20), // StatType.DISEASE
+
+    ComboCounter(21),
+
+    WeaponCharge(22),
+
+    DragonBlood(23),
+
+    HolySymbol(24),
+
+    MesoUp(25),
+
+    ShadowPartner(26),
+
+    PickPocket(27),
+
+    MesoGuard(28),
+
+    Thaw(29),
+
+    Weakness(30), // StatType.DISEASE
+
+    Curse(31), // StatType.DISEASE
+
+    Slow(32), // StatType.DISEASE
+
+    Morph(33),
+
+    Regen(34),//Recovery
+
+    BasicStatUp(35),//Maple Warrior
+
+    Stance(36),
+
+    SharpEyes(37),
+
+    ManaReflection(38),
+
+    Attract(39),//Seduce | StatType.DISEASE
+
+    SpiritJavelin(40),//Spirit Claw
+
+    Infinity(41),
+
+    Holyshield(42),
+
+    HamString(43),
+
+    Blind(44),
+
+    Concentration(45),
+
+    BanMap(46),//Banish
+
+    MaxLevelBuff(47),//Echo of Hero
+
+    MesoUpByItem(48),//Meso Rate
+
+    Ghost(49),
+
+    Barrier(50),//AriantPQ "Shield"
+
+    ReverseInput(51), // StatType.DISEASE
+
+    ItemUpByItem(52),//Drop Rate
+
+    RespectPImmune(53),
+
+    RespectMImmune(54),
+
+    DefenseAtt(55),
+
+    DefenseState(56),
+
+    IncEffectHPPotion(57),
+
+    IncEffectMPPotion(58),
+
+    DojangBerserk(59),
+
+    DojangInvincible(60),
+
+    Spark(61),
+
+    DojangShield(62),
+
+    SoulMasterFinal(63),
+
+    WindBreakerFinal(64),
+
+    ElementalReset(65),
+
+    WindWalk(66),
+
+    EventRate(67),
+
+    ComboAbilityBuff(68),
+
+    ComboDrain(69),
+
+    ComboBarrier(70),
+
+    BodyPressure(71),
+
+    SmartKnockback(72),
+
+    RepeatEffect(73),
+
+    ExpBuffRate(74),
+
+    StopPortion(75), // StatType.DISEASE
+
+    StopMotion(76), // StatType.DISEASE
+
+    Fear(77), // StatType.DISEASE
+
+    EvanSlow(78),
+
+    MagicShield(79),
+
+    MagicResistance(80),
+
+    SoulStone(81),
+
+    EnergyCharged(82),
+
+    DashSpeed(83),
+
+    DashJump(84),
+
+    RideVehicle(85),//Monster Riding
+
+    PartyBooster(86),//Speed Infusion
+
+    GuidedBullet(87),//Homing Beacon
+
+    Undead(88),//Zombify
+
+    Count_Plus1(89),
+
+    None(0xFFFFFFFF);
+
+    private final Flag uMask;
+
+
+
+    private CharacterTemporaryStat(int uBits) {
+
+        // None marks every bit within the flag.
+
+        if (uBits == 0xFFFFFFFF)
+
+            uBits = Flag.Default - 1;
+
+
+
+        Flag uFlag = new Flag();
+
+        uFlag.SetValue(1);
+
+        uFlag.ShiftLeft(uBits);
+
+
+
+        this.uMask = new Flag(uFlag, Flag.Default);
+
+    }
+
+
+
+    public Flag GetMask() {
+
+        return uMask;
+
+    }
+
+}[/php]
+
+
+
+So, here's what we're doing:
+
+[php]// Construct new (by-default, 128-bit) Flag
+
+Flag uFlag = new Flag();
+
+// Set the value of the flag to 1
+
+uFlag.SetValue(1);
+
+// Perform a ShiftLeft of uBits (e.g 1 << uBits)
+
+uFlag.ShiftLeft(uBits);
+
+
+
+// Create a copy of the flag (pad remaining bits)
+
+this.uMask = new Flag(uFlag, Flag.Default);[/php]
+
+
+
+Now each time you refer to a buffstat, it returns a Flag reference. So how would we check if a mask contains a certain flag, or XOR more masks into said flag? Well, for one, you could just read the documentation of the Flag class to see that you have OperatorAND as well as OperatorOR methods to do just that, but I'll show an example anyways.
+
+
+
+Let's say we want a Flag to bitwise-or multiple masks for our EncodeForRemote's TwoState mask. In this case, we would want to use PerformOR because it modifies the current object, rather than creating a new flag with the result of the operation:
+
+[php]// Construct a new flag with a specified bit count
+
+Flag uToSend = new Flag(Flag.Default);
+
+
+
+// Perform a bitwise-or on uToSend with EnergyCharged's mask
+
+uToSend.PerformOR(CharacterTemporaryStat.EnergyCharged.GetMask());
+
+// Do the same with DashSpeed
+
+uToSend.PerformOR(CharacterTemporaryStat.DashSpeed.GetMask());
+
+// ... uToSend |= DashJump
+
+uToSend.PerformOR(CharacterTemporaryStat.DashJump.GetMask());
+
+// ... uToSend |= RideVehicle
+
+uToSend.PerformOR(CharacterTemporaryStat.RideVehicle.GetMask());
+
+// ... and so on.
+
+uToSend.PerformOR(CharacterTemporaryStat.PartyBooster.GetMask());
+
+uToSend.PerformOR(CharacterTemporaryStat.GuidedBullet.GetMask());
+
+uToSend.PerformOR(CharacterTemporaryStat.Undead.GetMask());
+
+
+
+// Now, uToSend's value contains all TwoStateTemporaryStat masks.[/php]
+
+
+
+Now if we want to check if the mask contains a flag, we could do it two ways: 1) check IsSet(), or 2) perform an OperatorAND and check if the result !IsZero(). The logical way is to just check IsSet():
+
+[php]// Check if DashSpeed was or'd into uToSend and the bits are set
+
+if (uToSend.OperatorAND(CharacterTemporaryStat.DashSpeed.GetMask()).IsSet()) {
+
+    // If the result of the bitwise-and operation says the bits were set,
+
+    // then OR some random buffstat like DarkSight.
+
+    uToSend.PerformOR(CharacterTemporaryStat.DarkSight.GetMask());
+
+}[/php]
+
+
+
+Last, but not least, is how would we encode this flag to the packet. Within the Flag class you'll see a ToByteArray() method. Simply write that byte-array reference to your packet and that's it - you've encoded the proper mask through the use of Nexon's Flag class.
+
+[php]// Odin:
+
+mplew.write(uToSend.ToByteArray());
+
+
+
+// Nexon:
+
+oPacket.EncodeBuffer(uToSend.ToByteArray());[/php]
+
+
+
+..and there we go! This should be all you need to convert your meme buffstats to a Flag class :) Now you can just update these indexes like you would an opcode if you plan to update versions a lot.
+
+
+
+Something to take note of: by default, all default Flag constructors will use the UINT128 mask. If you're on a lower version like v35/v55, or a higher version like v144, you'll want to change the Flag.Default to your version. Included within my Flag class is all of the major versions where the bit count had changed:
+
+[php]public static final int
+
+        Ver_1 = 32,
+
+        Ver_14 = 64,
+
+        Ver_56 = 128,
+
+        Ver_96 = 160,//TODO: When did 160-bit end exactly?
+
+        Ver_103 = 256,//TODO: Gap between v103->v144.
+
+        Ver_144 = 384,
+
+        Ver_160 = 480,//KMST v1029 as well, somewhere around 15X/16X?
+
+        Ver_165 = 512,
+
+        Ver_174 = 544,
+
+        Ver_183 = 576,
+
+
+
+        Common_MonsterCollection = 192,//MonsterCollectionInfo
+
+        Common_ItemCollection = 320,//ItemCategoryInfo
+
+        Common_PetTemplate = 128,//PetTemplateFlag, NOTE: This stayed UINT128 until CFlag was introduced, where it later became 512.
+
+        Common_MobStat = 128,//MobStat, NOTE: This stayed UINT128 until CFlag was introduced, where it became 96.
+
+        Unknown = 65536,//Nexon uses a 2048-length CFlag beyond versions I care about.
+
+
+
+        Default = Ver_56 // Most common versions used are UINT128.
+
+;[/php]
+
+
+
+Originally I was going to release this being used in OrionAlpha, but since I decided not to utilize the Flag class when I originally wrote that emulator, I figured I'd just release it separately.

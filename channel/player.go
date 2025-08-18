@@ -162,6 +162,8 @@ type player struct {
 
 	rates *rates
 
+	buffs *CharacterBuffs
+
 	// Per-player RNG for deterministic randomness
 	rng *rand.Rand
 }
@@ -1295,6 +1297,10 @@ func loadPlayerFromID(id int32, conn mnet.Client) player {
 	c.equip, c.use, c.setUp, c.etc, c.cash = loadInventoryFromDb(c.id)
 
 	c.buddyList = getBuddyList(c.id, c.buddyListSize)
+
+	// Initialize the per-player buff manager so handlers can call plr.addBuff(...)
+	c.buffs = NewCharacterBuffs(&c)
+
 	c.conn = conn
 	return c
 }
@@ -1342,6 +1348,19 @@ func getBuddyList(playerID int32, buddySize byte) []buddy {
 	return buddies
 }
 
+// Convenience helper used by handlers to apply a skill buff.
+// Keeps your call sites (“plr.addBuff(...)”) simple.
+func (d *player) addBuff(skillID int32, level byte, delay int16) {
+	if d == nil {
+		return
+	}
+	if d.buffs == nil {
+		d.buffs = NewCharacterBuffs(d)
+	}
+	// You can pass any extra “sinc” values you need later; 0/0 is fine for standard buffs.
+	d.buffs.AddBuff(skillID, level, 0, 0, delay)
+}
+
 func packetPlayerReceivedDmg(charID int32, attack int8, initalAmmount, reducedAmmount, spawnID, mobID, healSkillID int32,
 	stance, reflectAction byte, reflected byte, reflectX, reflectY int16) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelPlayerTakeDmg)
@@ -1378,6 +1397,139 @@ func packetPlayerLevelUpAnimation(charID int32) mpacket.Packet {
 	return p
 }
 
+func packetPlayerSkillAnimSelf(charID int32, skillID int32, level byte) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelPlayerAnimation)
+	p.WriteInt32(charID)
+	p.WriteByte(0x01)
+	p.WriteInt32(skillID)
+	p.WriteByte(level)
+	return p
+}
+
+func packetPlayerSkillAnimThirdParty(charID int32, party bool, self bool, skillID int32, level byte) mpacket.Packet {
+	var p mpacket.Packet
+	if party && self {
+		p = mpacket.CreateWithOpcode(opcode.SendChannelSkillAnimation)
+	} else {
+		p = mpacket.CreateWithOpcode(opcode.SendChannelPlayerAnimation)
+		p.WriteInt32(charID)
+	}
+
+	if party {
+		p.WriteByte(0x02)
+	} else {
+		p.WriteByte(0x01)
+	}
+	p.WriteInt32(skillID)
+	// Basis uses WriteInt for level; encode as int32 to match
+	p.WriteInt32(int32(level))
+	p.WriteUint64(0)
+	p.WriteUint64(0)
+	return p
+}
+
+func packetPlayerGiveBuff(mask []byte, values []byte, delay int16, extra byte) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelTempStatChange)
+
+	// Normalize to 8 bytes (low dword, high dword)
+	if len(mask) < 8 {
+		tmp := make([]byte, 8)
+		copy(tmp[8-len(mask):], mask)
+		mask = tmp
+	} else if len(mask) > 8 {
+		mask = mask[len(mask)-8:]
+	}
+	p.WriteBytes(mask)
+
+	// Per-stat value triples (short value, int32 skill, short time)
+	p.WriteBytes(values)
+
+	// Self path: 2-byte delay
+	p.WriteInt16(delay)
+
+	// Optional extra (only if specific bits are present)
+	writeExtra := buffMaskNeedsExtraByte(mask)
+	if writeExtra {
+		p.WriteByte(extra)
+	}
+
+	p.WriteInt64(0)
+	p.WriteInt64(0)
+
+	// Debug packet sizes to catch EOF/overflow
+	totalLen := 8 + len(values) + 2
+	if writeExtra {
+		totalLen++
+	}
+	return p
+}
+
+func packetPlayerGiveForeignBuff(charID int32, mask []byte, values []byte, extra byte) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelTempStatChange)
+	p.WriteInt32(charID)
+
+	// Normalize to 8 bytes (low dword, high dword)
+	if len(mask) < 8 {
+		tmp := make([]byte, 8)
+		copy(tmp[8-len(mask):], mask)
+		mask = tmp
+	} else if len(mask) > 8 {
+		mask = mask[len(mask)-8:]
+	}
+
+	p.WriteBytes(mask)
+
+	// Per-stat value triples
+	p.WriteBytes(values)
+
+	// Foreign path: no delay, but still optional extra byte
+	if buffMaskNeedsExtraByte(mask) {
+		p.WriteByte(extra)
+	}
+	p.WriteInt64(0)
+	p.WriteInt64(0)
+	
+	return p
+}
+
+func buffMaskNeedsExtraByte(mask []byte) bool {
+	isSetLSB := func(bit int) bool {
+		idx := bit / 8
+		if idx < 0 || idx >= len(mask) {
+			return false
+		}
+		shift := uint(bit % 8)
+		return (mask[idx] & (1 << shift)) != 0
+	}
+	return isSetLSB(BuffComboAttack) || isSetLSB(BuffCharges)
+}
+
+// Self-cancel using 8-byte mask
+func packetPlayerCancelBuff(mask []byte) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelRemoveTempStat)
+
+	// Normalize to 8 bytes
+	if len(mask) < 8 {
+		tmp := make([]byte, 8)
+		copy(tmp[8-len(mask):], mask)
+		mask = tmp
+	} else if len(mask) > 8 {
+		mask = mask[len(mask)-8:]
+	}
+	p.WriteBytes(mask)
+	p.WriteInt64(0)
+	return p
+}
+
+func packetPlayerCancelForeignBuff(charID int32, mask []byte) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelRemoveTempStat)
+	p.WriteInt32(charID)
+	p.WriteBytes(mask)
+	p.WriteInt64(0)
+
+	return p
+}
+
 func packetPlayerMove(charID int32, bytes []byte) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelPlayerMovement)
 	p.WriteInt32(charID)
@@ -1405,9 +1557,9 @@ func packetPlayerSkillBookUpdate(skillID int32, level int32) mpacket.Packet {
 	return p
 }
 
-func packetPlayerStatChange(isMesos bool, stat int32, value int32) mpacket.Packet {
+func packetPlayerStatChange(flag bool, stat int32, value int32) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelStatChange)
-	p.WriteBool(isMesos)
+	p.WriteBool(flag)
 	p.WriteInt32(stat)
 	p.WriteInt32(value)
 
