@@ -148,12 +148,16 @@ type CharacterBuffs struct {
 	plr               *player
 	comboCount        byte
 	activeSkillLevels map[int32]byte // skillID -> level
+
+	// timers per skill for expiry
+	expireTimers map[int32]*time.Timer
 }
 
 func NewCharacterBuffs(p *player) *CharacterBuffs {
 	return &CharacterBuffs{
 		plr:               p,
 		activeSkillLevels: make(map[int32]byte),
+		expireTimers:      make(map[int32]*time.Timer),
 	}
 }
 
@@ -200,6 +204,142 @@ func (cb *CharacterBuffs) AddBuff(skillID int32, level byte, sinc1, sinc2 int, d
 	cb.AddBuffFromCC(skillID, expiresAtMs, level, sinc1, sinc2, delay)
 }
 
+func buildMaskBytes64(bits []int) []byte {
+	m := make([]byte, 8)
+	for _, b := range bits {
+		if b < 0 || b >= 64 {
+			continue
+		}
+		byteIdx := b / 8
+		bitOff := uint(b % 8)
+		m[byteIdx] |= (1 << bitOff)
+	}
+	return m
+}
+
+// Derive triples by scanning maskBytes in the exact wire order we use:
+// for byte = 0..7, for bit = 0..7 (LSB-first). Append a triple for each set bit.
+func (cb *CharacterBuffs) buildBuffTriplesWireOrder(skillID int32, level byte, maskBytes []byte, expiresAtMs int64) ([]byte, int16) {
+	levels, err := nx.GetPlayerSkill(skillID)
+	if err != nil || level == 0 || int(level) > len(levels) {
+		return nil, 0
+	}
+	sl := levels[level-1]
+
+	// Compute remaining duration (seconds, int16)
+	var remainSec int16
+	if expiresAtMs > 0 {
+		now := time.Now().UnixMilli()
+		if d := expiresAtMs - now; d > 0 {
+			sec := (d + 500) / 1000
+			if sec > 32767 {
+				sec = 32767
+			}
+			remainSec = int16(sec)
+		}
+	} else if sl.Time > 0 {
+		if sl.Time > 32767 {
+			remainSec = 32767
+		} else {
+			remainSec = int16(sl.Time)
+		}
+	}
+
+	// Only concrete fields; toggles/percent-like flags -> 1
+	valueForBit := func(bitIndex int) int16 {
+		switch bitIndex {
+		case BuffSpeed:
+			if sl.Speed != 0 {
+				return int16(sl.Speed)
+			}
+			return 1
+		case BuffJump:
+			if sl.Jump != 0 {
+				return int16(sl.Jump)
+			}
+			return 1
+		case BuffWeaponAttack:
+			if sl.Pad != 0 {
+				return int16(sl.Pad)
+			}
+			return 1
+		case BuffWeaponDefense:
+			if sl.Pdd != 0 {
+				return int16(sl.Pdd)
+			}
+			return 1
+		case BuffMagicAttack:
+			if sl.Mad != 0 {
+				return int16(sl.Mad)
+			}
+			return 1
+		case BuffMagicDefense:
+			if sl.Mdd != 0 {
+				return int16(sl.Mdd)
+			}
+			return 1
+		case BuffAccuracy:
+			if sl.Acc != 0 {
+				return int16(sl.Acc)
+			}
+			return 1
+		case BuffAvoidability:
+			if sl.Eva != 0 {
+				return int16(sl.Eva)
+			}
+			return 1
+
+		// Flags that don’t have a concrete numeric field in this layout
+		case BuffMagicGuard, BuffBooster, BuffPowerGuard, BuffMaxHP, BuffMaxMP,
+			BuffHolySymbol, BuffMesoUP, BuffPickPocketMesoUP, BuffMesoGuard,
+			BuffDarkSight, BuffSoulArrow, BuffInvincible, BuffShadowPartner,
+			BuffThaw, BuffWeakness, BuffCurse, BuffComboAttack, BuffCharges:
+			return 1
+
+		case BuffDragonBlood:
+			if sl.Pad != 0 {
+				return int16(sl.Pad)
+			}
+			return 1
+
+		default:
+			return 1
+		}
+	}
+
+	values := make([]byte, 0, 64)
+	appendTriple := func(val int16) {
+		// short value
+		values = append(values, byte(val), byte(val>>8))
+		// int32 reason/source skill
+		id := skillID
+		values = append(values, byte(id), byte(id>>8), byte(id>>16), byte(id>>24))
+		// short time (seconds)
+		t := remainSec
+		values = append(values, byte(t), byte(t>>8))
+	}
+
+	hasAny := false
+	// Scan bytes 0..7, bit 0..7 (LSB-first within each byte)
+	for byteIdx := 0; byteIdx < len(maskBytes) && byteIdx < 8; byteIdx++ {
+		b := maskBytes[byteIdx]
+		if b == 0 {
+			continue
+		}
+		for bit := 0; bit < 8; bit++ {
+			if (b & (1 << uint(bit))) != 0 {
+				globalBit := byteIdx*8 + bit
+				appendTriple(valueForBit(globalBit))
+				hasAny = true
+			}
+		}
+	}
+	if !hasAny {
+		return nil, 0
+	}
+	return values, remainSec
+}
+
 func (cb *CharacterBuffs) AddBuffFromCC(skillID int32, expiresAtMs int64, level byte, sinc1, sinc2 int, delay int16) {
 	if cb == nil || cb.plr == nil {
 		return
@@ -210,27 +350,207 @@ func (cb *CharacterBuffs) AddBuffFromCC(skillID int32, expiresAtMs int64, level 
 
 	cb.check(skillID)
 
-	mask := buildBuffMaskFromNX(skillID, level)
-	if mask == nil || mask.IsZero() {
+	// Get the configured flag bits for this skill
+	bits, ok := skillBuffBits[skillID]
+	if !ok || len(bits) == 0 {
 		return
 	}
 
-	values := cb.buildBuffValues(skillID, level, mask, expiresAtMs)
+	// 64-bit mask bytes (wire order)
+	maskBytes := buildMaskBytes64(bits)
+
+	// Build value triples in the same wire-scan order
+	values, remainSec := cb.buildBuffTriplesWireOrder(skillID, level, maskBytes, expiresAtMs)
 	if len(values) == 0 {
 		return
 	}
 
-	maskBytes := mask.ToByteArray(false)
-
-	// SELF: mask + triples + int16 delay + optional extra Decode1
-	cb.plr.send(packetPlayerGiveBuff(maskBytes, values, delay, 0))
-
-	// OTHERS: charId + mask + triples + optional extra Decode1
-	if cb.plr.inst != nil {
-		cb.plr.inst.send(packetPlayerGiveForeignBuff(cb.plr.id, maskBytes, values, 0))
+	// Optional trailing byte (Combo/Charges)
+	extra := byte(0)
+	for _, b := range bits {
+		if b == BuffComboAttack {
+			extra = cb.comboCount
+			break
+		}
+		if b == BuffCharges {
+			extra = 1
+		}
 	}
 
+	// Send to self and others
+	cb.plr.send(packetPlayerGiveBuff(maskBytes, values, delay, extra))
+	if cb.plr.inst != nil {
+		cb.plr.inst.send(packetPlayerGiveForeignBuff(cb.plr.id, maskBytes, values, extra))
+	}
+
+	// Track active
 	cb.activeSkillLevels[skillID] = level
+
+	// Expiry
+	if remainSec > 0 {
+		cb.scheduleExpiry(skillID, time.Duration(remainSec)*time.Second)
+	} else if expiresAtMs > 0 {
+		cb.scheduleExpiry(skillID, 0)
+	}
+}
+
+// Concrete-only values builder across the 64-bit mask.
+// Emits triples for each set bit; values: Pad/Pdd/Mad/Mdd/Acc/Eva/Speed/Jump; toggles -> 1.
+func (cb *CharacterBuffs) buildBuffValuesForMaskConcrete(skillID int32, level byte, mask *Flag, expiresAtMs int64) ([]byte, int16) {
+	levels, err := nx.GetPlayerSkill(skillID)
+	if err != nil || level == 0 || int(level) > len(levels) {
+		return nil, 0
+	}
+	sl := levels[level-1]
+
+	// Compute remaining duration in seconds (short)
+	var remainSec int16
+	if expiresAtMs > 0 {
+		now := time.Now().UnixMilli()
+		if d := expiresAtMs - now; d > 0 {
+			sec := (d + 500) / 1000
+			if sec > 32767 {
+				sec = 32767
+			}
+			remainSec = int16(sec)
+		}
+	} else {
+		if sl.Time > 32767 {
+			remainSec = 32767
+		} else {
+			remainSec = int16(sl.Time)
+		}
+	}
+
+	getVal := func(bit int) int16 {
+		switch bit {
+		case BuffSpeed:
+			if sl.Speed != 0 {
+				return int16(sl.Speed)
+			}
+			return 1
+		case BuffJump:
+			if sl.Jump != 0 {
+				return int16(sl.Jump)
+			}
+			return 1
+		case BuffWeaponAttack:
+			if sl.Pad != 0 {
+				return int16(sl.Pad)
+			}
+			return 1
+		case BuffWeaponDefense:
+			if sl.Pdd != 0 {
+				return int16(sl.Pdd)
+			}
+			return 1
+		case BuffMagicAttack:
+			if sl.Mad != 0 {
+				return int16(sl.Mad)
+			}
+			return 1
+		case BuffMagicDefense:
+			if sl.Mdd != 0 {
+				return int16(sl.Mdd)
+			}
+			return 1
+		case BuffAccuracy:
+			if sl.Acc != 0 {
+				return int16(sl.Acc)
+			}
+			return 1
+		case BuffAvoidability:
+			if sl.Eva != 0 {
+				return int16(sl.Eva)
+			}
+			return 1
+
+		// Toggles/percent-types (no concrete field used in this layout)
+		case BuffMagicGuard, BuffBooster, BuffPowerGuard, BuffMaxHP, BuffMaxMP,
+			BuffHolySymbol, BuffMesoUP, BuffPickPocketMesoUP, BuffMesoGuard,
+			BuffDarkSight, BuffSoulArrow, BuffInvincible, BuffShadowPartner,
+			BuffThaw, BuffWeakness, BuffCurse, BuffComboAttack, BuffCharges:
+			return 1
+
+		case BuffDragonBlood:
+			if sl.Pad != 0 {
+				return int16(sl.Pad)
+			}
+			return 1
+
+		default:
+			return 1
+		}
+	}
+
+	values := make([]byte, 0, 64)
+	appendTriple := func(val int16) {
+		values = append(values, byte(val), byte(val>>8))
+		id := skillID
+		values = append(values, byte(id), byte(id>>8), byte(id>>16), byte(id>>24))
+		t := remainSec
+		values = append(values, byte(t), byte(t>>8))
+	}
+
+	nBits := len(mask.Data()) * 32 // 64 when default flag length
+	hasAny := false
+	for bit := 0; bit < nBits; bit++ {
+		if mask.GetBitNumber(bit) == 1 {
+			appendTriple(getVal(bit))
+			hasAny = true
+		}
+	}
+	if !hasAny {
+		return nil, 0
+	}
+	return values, remainSec
+}
+
+// Timers
+
+func (cb *CharacterBuffs) scheduleExpiry(skillID int32, after time.Duration) {
+	if cb.expireTimers == nil {
+		cb.expireTimers = make(map[int32]*time.Timer)
+	}
+	// Cancel previous
+	if t, ok := cb.expireTimers[skillID]; ok && t != nil {
+		t.Stop()
+		delete(cb.expireTimers, skillID)
+	}
+	if after <= 0 {
+		go cb.expireBuffNow(skillID)
+		return
+	}
+	cb.expireTimers[skillID] = time.AfterFunc(after, func() {
+		cb.expireBuffNow(skillID)
+	})
+}
+
+func (cb *CharacterBuffs) expireBuffNow(skillID int32) {
+	if cb == nil || cb.plr == nil {
+		return
+	}
+	// Clear timer handle
+	if t, ok := cb.expireTimers[skillID]; ok && t != nil {
+		delete(cb.expireTimers, skillID)
+	}
+
+	// Build cancel mask (64-bit)
+	mask := buildBuffMask(skillID)
+	if mask == nil || mask.IsZero() {
+		delete(cb.activeSkillLevels, skillID)
+		return
+	}
+	maskBytes := mask.ToByteArray(false)
+
+	// Self cancel
+	cb.plr.send(packetPlayerCancelBuff(maskBytes))
+	// Others cancel
+	if cb.plr.inst != nil {
+		cb.plr.inst.send(packetPlayerCancelForeignBuff(cb.plr.id, maskBytes))
+	}
+
+	delete(cb.activeSkillLevels, skillID)
 }
 
 func (cb *CharacterBuffs) check(skillID int32) {
@@ -438,6 +758,147 @@ func (cb *CharacterBuffs) buildBuffValues(skillID int32, level byte, mask *Flag,
 	}
 
 	return values
+}
+
+func (cb *CharacterBuffs) buildBuffValuesForMask(skillID int32, level byte, mask *Flag, expiresAtMs int64) ([]byte, int16) {
+	// Pull NX data for the skill/level
+	levels, err := nx.GetPlayerSkill(skillID)
+	if err != nil || level == 0 || int(level) > len(levels) {
+		return nil, 0
+	}
+	sl := levels[level-1]
+
+	// Duration preference: remaining time from expiresAtMs, else NX time (seconds, short)
+	var remainSec int16
+	if expiresAtMs > 0 {
+		now := time.Now().UnixMilli()
+		durMs := expiresAtMs - now
+		if durMs < 0 {
+			remainSec = 0
+		} else {
+			sec := (durMs + 500) / 1000
+			if sec > 32767 {
+				sec = 32767
+			}
+			remainSec = int16(sec)
+		}
+	} else {
+		if sl.Time > 32767 {
+			remainSec = 32767
+		} else {
+			remainSec = int16(sl.Time)
+		}
+	}
+
+	// Helper to choose a value for each bit.
+	// For boolean-style buffs, return 1 so the server-side decode registers them.
+	getValueForBit := func(bit int) int16 {
+		switch bit {
+		// Numeric direct stats
+		case BuffSpeed:
+			return int16(sl.Speed)
+		case BuffJump:
+			return int16(sl.Jump)
+		case BuffWeaponAttack:
+			return int16(sl.Pad)
+		case BuffWeaponDefense:
+			return int16(sl.Pdd)
+		case BuffMagicAttack:
+			return int16(sl.Mad)
+		case BuffMagicDefense:
+			return int16(sl.Mdd)
+		case BuffAccuracy:
+			return int16(sl.Acc)
+		case BuffAvoidability:
+			return int16(sl.Eva)
+
+		// Percent/ratio stats typically in X (or Y in rare cases)
+		case BuffMagicGuard:
+			return int16(sl.X)
+		case BuffBooster:
+			// Booster booster-speed is commonly X; if 0 in your NX, consider using 1
+			if sl.X != 0 {
+				return int16(sl.X)
+			}
+			return 1
+		case BuffPowerGuard:
+			return int16(sl.X)
+		case BuffMaxHP:
+			return int16(sl.X)
+		case BuffMaxMP:
+			return int16(sl.X)
+		case BuffHolySymbol:
+			return int16(sl.X)
+		case BuffMesoUP:
+			return int16(sl.X)
+		case BuffPickPocketMesoUP:
+			return int16(sl.X)
+		case BuffMesoGuard:
+			return int16(sl.X)
+
+		// Boolean-style toggles
+		case BuffDarkSight,
+			BuffSoulArrow,
+			BuffInvincible,
+			BuffShadowPartner,
+			BuffThaw,
+			BuffWeakness, // typically a debuff from server; keep here for completeness
+			BuffCurse:
+			return 1
+
+		// Special cases
+		case BuffComboAttack:
+			// Value is often treated as 1; the active orb count is sent as the extra trailing byte.
+			return 1
+		case BuffCharges:
+			// White Knight charges; often treated as 1. Active charge count/type is handled elsewhere/extra.
+			return 1
+		case BuffDragonBlood:
+			// Dragon Blood grants PAD in Pad and also acts like a toggle; ensure a non-zero.
+			if sl.Pad != 0 {
+				return int16(sl.Pad)
+			}
+			return 1
+
+		default:
+			// Fallback: if NX has a reasonable X/Y numeric, prefer that; else 1 to ensure application.
+			if sl.X != 0 {
+				return int16(sl.X)
+			}
+			if sl.Y != 0 {
+				return int16(sl.Y)
+			}
+			return 1
+		}
+	}
+
+	values := make([]byte, 0, 64)
+	appendTriple := func(val int16) {
+		// short value
+		values = append(values, byte(val), byte(val>>8))
+		// int32 reason/source skill
+		id := skillID
+		values = append(values, byte(id), byte(id>>8), byte(id>>16), byte(id>>24))
+		// short time (seconds)
+		t := remainSec
+		values = append(values, byte(t), byte(t>>8))
+	}
+
+	// Emit a triple for every set bit in canonical order
+	nBits := len(mask.Data()) * 32
+	hasAny := false
+	for bit := 0; bit < nBits; bit++ {
+		if mask.GetBitNumber(bit) == 1 {
+			val := getValueForBit(bit)
+			appendTriple(val)
+			hasAny = true
+		}
+	}
+
+	if !hasAny {
+		return nil, 0
+	}
+	return values, remainSec
 }
 
 // buildBuffMask builds a Flag (CFlag) with all relevant bits for the given skill set.
