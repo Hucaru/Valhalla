@@ -18,17 +18,10 @@ const (
 	Ver_1  = 32
 	Ver_14 = 64
 
-	Common_MonsterCollection = 192 // MonsterCollectionInfo
-	Common_ItemCollection    = 320 // ItemCategoryInfo
-	Common_PetTemplate       = 128
-	Common_MobStat           = 128
-
-	Unknown = 65536
-
 	Default = Ver_14 // Most common versions used are UINT128.
 )
 
-// NewFlag returns a flag with Default bits (128).
+// NewFlag returns a flag with Default bits (64).
 func NewFlag() *Flag {
 	return NewFlagBits(Default)
 }
@@ -69,9 +62,7 @@ func NewFlagCopy(uValue *Flag, uNumBits int) *Flag {
 		out.SetBitNumber(i, uValue.GetBitNumber(i))
 	}
 
-	// Pad remaining bits with pseudo-random values as per Java LCG-ish approach.
 	if uNumBits < totalBits {
-		// Java used: ((214013 * rand(0..32766) + 2531011) >> 16) & 0x7FFF
 		r := rand.New(rand.NewSource(time.Now().UnixNano()))
 		for i := uNumBits; i < totalBits; i++ {
 			uRand := ((214013*uint32(r.Intn(32767)) + 2531011) >> 16) & 0x7FFF
@@ -266,7 +257,6 @@ func (f *Flag) IsEqual(value uint32) bool {
 }
 
 // PerformOR applies an in-place OR with another flag.
-// If lengths differ, it does nothing (mirrors Java behavior).
 func (f *Flag) PerformOR(other *Flag) {
 	if f == nil || other == nil {
 		return
@@ -292,7 +282,6 @@ func (f *Flag) PerformOR(other *Flag) {
 }
 
 // OperatorOR returns a new Flag which is the bitwise OR of two flags.
-// Returns nil if lengths differ (mirrors Java behavior).
 func (f *Flag) OperatorOR(other *Flag) *Flag {
 	if f == nil || other == nil {
 		return nil
@@ -390,7 +379,7 @@ func (f *Flag) SetValue(uValue uint32) {
 // If bNewVer is false, it writes bytes in a "reverse fill" big-endian order
 // across the entire array (matching Java's decrementing uLen fill).
 // If bNewVer is true, it writes each 32-bit word in little-endian order,
-// from last word to first (ToByteArrayEx in Java).
+// from last word to first
 func (f *Flag) ToByteArray(bNewVer bool) []byte {
 	if f == nil {
 		return nil
@@ -416,7 +405,7 @@ func (f *Flag) ToByteArray(bNewVer bool) []byte {
 	return pDest
 }
 
-// ToByteArrayEx is the "reverse" of ToByteArray in Java: it outputs per-word
+// ToByteArrayEx is the "reverse" of ToByteArray: it outputs per-word
 // little-endian bytes, iterating from the end towards the beginning.
 func (f *Flag) ToByteArrayEx() []byte {
 	if f == nil {
@@ -439,7 +428,7 @@ func (f *Flag) ToByteArrayEx() []byte {
 }
 
 // ToHexString returns the hexadecimal representation, prefixed with 0x,
-// concatenating each word as 8 uppercase hex digits (like Java).
+// concatenating each word as 8 uppercase hex digits
 func (f *Flag) ToHexString() string {
 	if f == nil {
 		return "0x"

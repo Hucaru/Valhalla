@@ -1384,77 +1384,6 @@ func packetPlayerSkillAnimThirdParty(charID int32, party bool, self bool, skillI
 func packetPlayerGiveBuff(mask []byte, values []byte, delay int16, extra byte) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelTempStatChange)
 
-	// Ensure 8-byte mask (low dword, high dword)
-	if len(mask) < 8 {
-		tmp := make([]byte, 8)
-		copy(tmp, mask)
-		mask = tmp
-	} else if len(mask) > 8 {
-		mask = mask[:8]
-	}
-	p.WriteBytes(mask)
-
-	// Per-stat value triples (short value, int32 reason/skill, short time)
-	p.WriteBytes(values)
-
-	// Self “give buff” path: client reads a 2-byte delay next.
-	p.WriteInt16(delay)
-
-	// Then conditionally one extra byte for specific stats (e.g., Combo/Charges).
-	if buffMaskNeedsExtraByte(mask) {
-		p.WriteByte(extra)
-	}
-
-	return p
-}
-
-func packetPlayerGiveForeignBuff(charID int32, mask []byte, values []byte, extra byte) mpacket.Packet {
-	p := mpacket.CreateWithOpcode(opcode.SendChannelTempStatChange)
-	p.WriteInt32(charID)
-
-	// Ensure 8-byte mask (low dword, high dword)
-	if len(mask) < 8 {
-		tmp := make([]byte, 8)
-		copy(tmp, mask)
-		mask = tmp
-	} else if len(mask) > 8 {
-		mask = mask[:8]
-	}
-	p.WriteBytes(mask)
-
-	// Per-stat value triples
-	p.WriteBytes(values)
-
-	// Foreign path may carry the optional extra byte.
-	if buffMaskNeedsExtraByte(mask) {
-		p.WriteByte(extra)
-	}
-	return p
-}
-
-func buffMaskNeedsExtraByte(mask []byte) bool {
-	isSetMSB := func(bit int) bool {
-		idx := bit / 8
-		if idx < 0 || idx >= len(mask) {
-			return false
-		}
-		shift := uint(7 - (bit % 8))
-		return (mask[idx] & (1 << shift)) != 0
-	}
-	isSetLSB := func(bit int) bool {
-		idx := bit / 8
-		if idx < 0 || idx >= len(mask) {
-			return false
-		}
-		shift := uint(bit % 8)
-		return (mask[idx] & (1 << shift)) != 0
-	}
-	return isSetMSB(BuffComboAttack) || isSetMSB(BuffCharges) || isSetLSB(BuffComboAttack) || isSetLSB(BuffCharges)
-}
-
-func packetPlayerCancelBuff(mask []byte) mpacket.Packet {
-	p := mpacket.CreateWithOpcode(opcode.SendChannelRemoveTempStat)
-
 	// Normalize to 8 bytes (low dword, high dword)
 	if len(mask) < 8 {
 		tmp := make([]byte, 8)
@@ -1464,14 +1393,92 @@ func packetPlayerCancelBuff(mask []byte) mpacket.Packet {
 		mask = mask[len(mask)-8:]
 	}
 	p.WriteBytes(mask)
+
+	// Per-stat value triples (short value, int32 skill, short time)
+	p.WriteBytes(values)
+
+	// Self path: 2-byte delay
+	p.WriteInt16(delay)
+
+	// Optional extra (only if specific bits are present)
+	writeExtra := buffMaskNeedsExtraByte(mask)
+	if writeExtra {
+		p.WriteByte(extra)
+	}
+
+	p.WriteInt64(0)
+	p.WriteInt64(0)
+
+	// Debug packet sizes to catch EOF/overflow
+	totalLen := 8 + len(values) + 2
+	if writeExtra {
+		totalLen++
+	}
+	return p
+}
+
+func packetPlayerGiveForeignBuff(charID int32, mask []byte, values []byte, extra byte) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelTempStatChange)
+	p.WriteInt32(charID)
+
+	// Normalize to 8 bytes (low dword, high dword)
+	if len(mask) < 8 {
+		tmp := make([]byte, 8)
+		copy(tmp[8-len(mask):], mask)
+		mask = tmp
+	} else if len(mask) > 8 {
+		mask = mask[len(mask)-8:]
+	}
+
+	p.WriteBytes(mask)
+
+	// Per-stat value triples
+	p.WriteBytes(values)
+
+	// Foreign path: no delay, but still optional extra byte
+	if buffMaskNeedsExtraByte(mask) {
+		p.WriteByte(extra)
+	}
+	p.WriteInt64(0)
+	p.WriteInt64(0)
+	
+	return p
+}
+
+func buffMaskNeedsExtraByte(mask []byte) bool {
+	isSetLSB := func(bit int) bool {
+		idx := bit / 8
+		if idx < 0 || idx >= len(mask) {
+			return false
+		}
+		shift := uint(bit % 8)
+		return (mask[idx] & (1 << shift)) != 0
+	}
+	return isSetLSB(BuffComboAttack) || isSetLSB(BuffCharges)
+}
+
+// Self-cancel using 8-byte mask
+func packetPlayerCancelBuff(mask []byte) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelRemoveTempStat)
+
+	// Normalize to 8 bytes
+	if len(mask) < 8 {
+		tmp := make([]byte, 8)
+		copy(tmp[8-len(mask):], mask)
+		mask = tmp
+	} else if len(mask) > 8 {
+		mask = mask[len(mask)-8:]
+	}
+	p.WriteBytes(mask)
+	p.WriteInt64(0)
 	return p
 }
 
 func packetPlayerCancelForeignBuff(charID int32, mask []byte) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelRemoveTempStat)
-
 	p.WriteInt32(charID)
 	p.WriteBytes(mask)
+	p.WriteInt64(0)
 
 	return p
 }
