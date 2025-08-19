@@ -1,10 +1,14 @@
-// Henesys Regular Cab
+/*
+	NPC Name: 		Phil
+	Map(s): 		Victoria Road : Lith Harbour (104000000)
+	Description: 		Explains Victoria Island Towns and can take you to them
+*/
 
 var towns = [104000000, 102000000, 101000000, 103000000]
 var prices_text = ["800", "1,000", "1,000", "1,200"]
 var prices_num = [800, 1000, 1000, 1200]
 
-npc.sendBackNext("How's it going? I drive the Regular Cab. If you want to go from town to town safely and fast, then ride our cab. We'll gladly take you to your destination with an affordable price", false, true)
+npc.sendBackNext("There's a lot to see in this town, too. Let me know if you want to go somewhere else.", false, true)
 
 var text = "Choose your destination, for fees will change from place to place.\r\n"
 

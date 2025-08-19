@@ -5,7 +5,7 @@ const (
 	RecvLoginChannelSelect         byte = 0x04
 	RecvLoginWorldSelect           byte = 0x05
 	RecvLoginCheckLogin            byte = 0x08
-	RecvLoginCreateCharacter       byte = 0x09
+	RecvLoginRegisterPin           byte = 0x09
 	RecvLoginSelectCharacter       byte = 0x0B
 	RecvChannelPlayerLoad          byte = 0x0C
 	RecvLoginNameCheck             byte = 0x0D
@@ -34,6 +34,7 @@ const (
 	RecvChannelPassiveRegen        byte = 0x37
 	RecvChannelAddSkillPoint       byte = 0x38
 	RecvChannelSpecialSkill        byte = 0x39
+	RecvChannelPlayerDropMesos     byte = 0x3C
 	RecvChannelCharacterInfo       byte = 0x3F
 	RecvChannelLieDetectorResult   byte = 0x45
 	RecvChannelCharacterReport     byte = 0x49
@@ -48,5 +49,6 @@ const (
 	RecvChannelMobControl          byte = 0x6A
 	RecvChannelDistance            byte = 0x6B
 	RecvChannelNpcMovement         byte = 0x6F
+	RecvChannelPlayerPickup        byte = 0x73
 	RecvChannelBoatMap             byte = 0x80
 )

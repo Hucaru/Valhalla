@@ -12,12 +12,14 @@ import (
 type Server struct {
 	migrating map[mnet.Client]bool
 	// db        *sql.DB
-	worlds []internal.World
+	worlds  []internal.World
+	withPin bool
 }
 
 // Initialise the server
-func (server *Server) Initialise(dbuser, dbpassword, dbaddress, dbport, dbdatabase string) {
+func (server *Server) Initialise(dbuser, dbpassword, dbaddress, dbport, dbdatabase string, withpin bool) {
 	server.migrating = make(map[mnet.Client]bool)
+	server.withPin = withpin
 
 	err := common.ConnectToDB(dbuser, dbpassword, dbaddress, dbport, dbdatabase)
 

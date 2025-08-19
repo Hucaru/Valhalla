@@ -17,6 +17,12 @@ import (
 	"github.com/Hucaru/Valhalla/internal"
 )
 
+type rates struct {
+	exp   float32
+	drop  float32
+	mesos float32
+}
+
 // Server state
 type Server struct {
 	id               byte
@@ -31,13 +37,14 @@ type Server struct {
 	channels         [20]internal.Channel
 	fields           map[int32]*field
 	header           string
-	npcChat          map[mnet.Client]*npcScriptController
+	npcChat          map[mnet.Client]*npcChatController
 	npcScriptStore   *scriptStore
 	eventCtrl        map[string]*eventScriptController
 	eventScriptStore *scriptStore
 	parties          map[int32]*party
 	guilds           map[int32]*guild
 	guildContracts   map[int32]*guildContract
+	rates            rates
 }
 
 // Initialise the server
@@ -61,10 +68,16 @@ func (server *Server) Initialise(work chan func(), dbuser, dbpassword, dbaddress
 			Data:     nxMap,
 			Dispatch: server.dispatch,
 		}
-
+		// For safety, as world will override this
+		server.rates = rates{
+			exp:   1,
+			drop:  1,
+			mesos: 1,
+		}
 		server.fields[fieldID].formatFootholds()
 		server.fields[fieldID].calculateFieldLimits()
-		server.fields[fieldID].createInstance()
+		server.fields[fieldID].createInstance(&server.rates)
+
 	}
 
 	log.Println("Initialised game state")
@@ -86,7 +99,7 @@ func (server *Server) Initialise(work chan func(), dbuser, dbpassword, dbaddress
 }
 
 func (server *Server) loadScripts() {
-	server.npcChat = make(map[mnet.Client]*npcScriptController)
+	server.npcChat = make(map[mnet.Client]*npcChatController)
 	server.eventCtrl = make(map[string]*eventScriptController)
 
 	server.npcScriptStore = createScriptStore("scripts/npc", server.dispatch) // make folder a config param

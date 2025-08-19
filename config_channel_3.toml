@@ -5,13 +5,14 @@ user = "root"
 password = "password"
 database = "maplestory"
 
-[login]
-clientListenAddress = "0.0.0.0"
-clientListenPort = "8484"
-serverListenAddress = "0.0.0.0"
-serverListenPort = "8485"
-withPin = false
+[channel]
+worldAddress = "127.0.0.1"
+worldPort = "8584"
+listenAddress = "0.0.0.0"
+listenPort = "8683"
+ClientConnectionAddress = "127.0.0.1"
 packetQueueSize = 512
+MaxPop = 250
 # The following should be set to zero when not testing on a local network environment
 latency = 0
 jitter = 0

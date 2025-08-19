@@ -17,4 +17,5 @@ const (
 	ChannelPlayerBuddyEvent byte = 0x0c
 	ChannelPlayerPartyEvent byte = 0x0d
 	ChannelPlayerGuildEvent byte = 0x0e
+	ChangeRate              byte = 0x0f
 )

@@ -19,6 +19,7 @@ type loginConfig struct {
 	ClientListenPort    string
 	ServerListenAddress string
 	ServerListenPort    string
+	WithPin             bool
 	PacketQueueSize     int
 	Latency             int
 	Jitter              int
@@ -27,6 +28,9 @@ type loginConfig struct {
 type worldConfig struct {
 	Message         string
 	Ribbon          byte
+	ExpRate         float32
+	DropRate        float32
+	MesosRate       float32
 	LoginAddress    string
 	LoginPort       string
 	ListenAddress   string

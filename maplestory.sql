@@ -10,6 +10,7 @@ CREATE TABLE `accounts` (
   `accountID` int(10) unsigned NOT NULL AUTO_INCREMENT,
   `username` tinytext NOT NULL,
   `password` tinytext NOT NULL,
+  `pin` tinytext NOT NULL,
   `isLogedIn` tinyint(4) NOT NULL DEFAULT '0',
   `adminLevel` tinyint(4) NOT NULL DEFAULT '0',
   `isBanned` int(11) NOT NULL DEFAULT '0',

@@ -121,6 +121,15 @@ func (r *Reader) ReadUint64() uint64 {
 	return 0
 }
 
+// ReadFloat32 -
+func (r *Reader) ReadFloat32() float32 {
+	if len(*r.packet)-r.pos > 3 {
+		return r.packet.readFloat32(&r.pos)
+	}
+
+	return 0
+}
+
 // ReadString -
 func (r *Reader) ReadString(size int16) string {
 	if len(*r.packet)-r.pos >= int(size) {

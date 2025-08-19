@@ -8,10 +8,11 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/Hucaru/Valhalla/internal"
+
 	"github.com/Hucaru/Valhalla/common/mnet"
 	"github.com/Hucaru/Valhalla/common/mpacket"
 	"github.com/Hucaru/Valhalla/common/nx"
-	"github.com/Hucaru/Valhalla/internal"
 )
 
 // TODO: Split these into ranks/levels (each rank can do everything the previous can):
@@ -24,6 +25,37 @@ func (server *Server) gmCommand(conn mnet.Client, msg string) {
 	command := strings.SplitN(msg[ind+1:], " ", -1)
 
 	switch command[0] {
+	case "rate":
+		rates := map[string]func(rate float32) mpacket.Packet{
+			"exp":   internal.PacketChangeExpRate,
+			"drop":  internal.PacketChangeDropRate,
+			"mesos": internal.PacketChangeMesosRate,
+		}
+
+		if len(command) < 3 {
+			conn.Send(packetMessageRedText("Command structure is /rate <exp | drop | mesos> <rate>"))
+			return
+		}
+
+		mode := command[1]
+		mFunc, ok := rates[mode]
+		if !ok {
+			conn.Send(packetMessageRedText("Choose between exp/drop/mesos rates"))
+			return
+		}
+
+		rate := command[2]
+		r, err := strconv.ParseFloat(rate, 32)
+		if err != nil {
+			log.Println("Failed parsing rate: ", err)
+			conn.Send(packetMessageRedText("<rate> should be a number"))
+			return
+		}
+
+		server.world.Send(mFunc(float32(r)))
+	case "showRates":
+		conn.Send(packetMessageNotice(fmt.Sprintf("Exp: x%.2f, Drop: x%.2f, Mesos: x%.2f", server.rates.exp, server.rates.drop, server.rates.mesos)))
+
 	case "packet":
 		if len(command) < 2 {
 			return
@@ -135,7 +167,7 @@ func (server *Server) gmCommand(conn mnet.Client, msg string) {
 			return
 		}
 
-		id := field.createInstance()
+		id := field.createInstance(&server.rates)
 
 		conn.Send(packetMessageNotice("Created instance: " + strconv.Itoa(id)))
 	case "changeInstance":
@@ -981,7 +1013,7 @@ func (server *Server) gmCommand(conn mnet.Client, msg string) {
 		}
 
 		pool := inst.dropPool
-		pool.removeDrop(false, id)
+		pool.removeDrop(0, id)
 	case "npco":
 		// This isn't working, either incorrect opcode or script string is invalid
 		p := mpacket.CreateWithOpcode(0x9F)
@@ -995,6 +1027,15 @@ func (server *Server) gmCommand(conn mnet.Client, msg string) {
 
 		fmt.Println(p)
 		conn.Send(p)
+	case "whereami":
+		player, err := server.players.getFromConn(conn)
+
+		if err != nil {
+			conn.Send(packetMessageRedText(err.Error()))
+			return
+		}
+		conn.Send(packetMessageRedText(fmt.Sprintf("%d", player.mapID)))
+
 	default:
 		conn.Send(packetMessageRedText("Unkown gm command " + command[0]))
 	}

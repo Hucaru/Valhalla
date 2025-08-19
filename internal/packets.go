@@ -187,7 +187,8 @@ func PacketGuildDisband(guildID int32) mpacket.Packet {
 }
 
 func PacketGuildRemovePlayer(guildID, playerID int32, playerName string, reason byte) mpacket.Packet {
-	p := mpacket.CreateInternal(OpGuildRemovePlayer)
+	p := mpacket.CreateInternal(opcode.ChannelPlayerGuildEvent)
+	p.WriteByte(OpGuildRemovePlayer)
 	p.WriteInt32(guildID)
 	p.WriteInt32(playerID)
 	p.WriteByte(reason) // 0 left, 1 expelled
@@ -208,10 +209,39 @@ func PacketGuildUpdateEmblem(guildID int32, logoBg, logo int16, logoBgColour, lo
 	return p
 }
 
+func PacketGuildUpdateNotice(guildID int32, notice string) mpacket.Packet {
+	p := mpacket.CreateInternal(opcode.ChannelPlayerGuildEvent)
+	p.WriteByte(OpGuildNoticeChange)
+	p.WriteInt32(guildID)
+	p.WriteString(notice)
+
+	return p
+}
+
 // TODO: Check if this can be deleted
 func PacketLoginDeletedCharacter(playerID int32) mpacket.Packet {
 	p := mpacket.CreateInternal(opcode.LoginDeleteCharacter)
 	p.WriteInt32(playerID)
 
 	return p
+}
+
+func PacketRateOperation(mode byte, rate float32) mpacket.Packet {
+	p := mpacket.CreateInternal(opcode.ChangeRate)
+	p.WriteByte(mode)
+	p.WriteFloat32(rate)
+
+	return p
+}
+
+func PacketChangeExpRate(rate float32) mpacket.Packet {
+	return PacketRateOperation(1, rate)
+}
+
+func PacketChangeDropRate(rate float32) mpacket.Packet {
+	return PacketRateOperation(2, rate)
+}
+
+func PacketChangeMesosRate(rate float32) mpacket.Packet {
+	return PacketRateOperation(3, rate)
 }

@@ -8,8 +8,8 @@ import (
 	"github.com/Hucaru/Valhalla/internal"
 )
 
-func packetLoginResponce(result byte, userID int32, gender byte, isAdmin bool, username string, isBanned int) mpacket.Packet {
-	pac := mpacket.CreateWithOpcode(opcode.SendLoginResponce)
+func packetLoginResponse(result byte, userID int32, gender byte, isAdmin bool, username string, isBanned int) mpacket.Packet {
+	pac := mpacket.CreateWithOpcode(opcode.SendLoginResponse)
 	pac.WriteByte(result)
 	pac.WriteByte(0x00)
 	pac.WriteInt32(0)
@@ -29,6 +29,32 @@ func packetLoginResponce(result byte, userID int32, gender byte, isAdmin bool, u
 	pac.WriteInt64(0)
 	pac.WriteInt64(0)
 	pac.WriteInt64(0)
+
+	return pac
+}
+
+func packetPinOperation(mode byte) mpacket.Packet {
+	pac := mpacket.CreateWithOpcode(opcode.SendLoginPinOperation)
+	pac.WriteByte(mode)
+
+	return pac
+}
+
+func packetRegisterPin() mpacket.Packet {
+	return packetPinOperation(byte(1))
+}
+
+func packetRequestPin() mpacket.Packet {
+	return packetPinOperation(byte(4))
+}
+
+func packetRequestPinAfterFailure() mpacket.Packet {
+	return packetPinOperation(byte(2))
+}
+
+func packetCancelPin() mpacket.Packet {
+	pac := mpacket.CreateWithOpcode(opcode.SendLoginRestarter)
+	pac.WriteByte(0x01)
 
 	return pac
 }

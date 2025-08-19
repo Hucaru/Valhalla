@@ -209,7 +209,7 @@ func (g *guild) updateEmblem(logoBg, logo int16, logoBgColour, logoColour byte) 
 		g.updateAvatar(v)
 	}
 
-	g.broadcast(packetUpdateEmblem(g.id, logoBg, logo, logoBgColour, logoColour))
+	g.broadcast(packetGuildUpdateEmblem(g.id, logoBg, logo, logoBgColour, logoColour))
 }
 
 func (g *guild) addPlayer(plr *player, playerID int32, name string, jobID, level int32, rank int32) error {
@@ -341,7 +341,7 @@ func packetGuildInfo(guild *guild) mpacket.Packet {
 		return p
 	}
 
-	p.WriteBool(true) // In guild
+	p.WriteBool(true)
 	p.WriteInt32(guild.id)
 	p.WriteString(guild.name)
 
@@ -362,24 +362,37 @@ func packetGuildInfo(guild *guild) mpacket.Packet {
 
 	p.WriteByte(memberCount)
 
-	// iterate over all members and output ids
-	for i := byte(0); i < memberCount; i++ {
-		p.WriteInt32(guild.playerID[i])
+	// The first 2 id's must correspond to master and jr. master
+	for j := int32(1); j < 6; j++ {
+		for i := byte(0); i < memberCount; i++ {
+			if guild.ranks[i] != j {
+				continue
+			}
+
+			p.WriteInt32(guild.playerID[i])
+		}
 	}
 
-	// iterate over all members and input their info
-	for i := byte(0); i < memberCount; i++ {
-		p.WritePaddedString(guild.names[i], 13)
-		p.WriteInt32(guild.jobs[i])
-		p.WriteInt32(guild.levels[i])
-		p.WriteInt32(guild.ranks[i])
+	// The first 2 id's must correspond to master and jr. master
+	for j := int32(1); j < 6; j++ {
+		for i := byte(0); i < memberCount; i++ {
+			if guild.ranks[i] != j {
+				continue
+			}
 
-		if guild.online[i] {
-			p.WriteInt32(1)
-		} else {
-			p.WriteInt32(0)
+			p.WritePaddedString(guild.names[i], 13)
+			p.WriteInt32(guild.jobs[i])
+			p.WriteInt32(guild.levels[i])
+			p.WriteInt32(guild.ranks[i])
+
+			if guild.online[i] {
+				p.WriteInt32(1)
+			} else {
+				p.WriteInt32(0)
+			}
+
+			p.WriteInt32(0) // ?
 		}
-		p.WriteInt32(0) // ?
 	}
 
 	p.WriteInt32(int32(guild.capacity))
@@ -509,7 +522,7 @@ func packetGuildPlayerOnlineNotice(guildID, playerID int32, online bool) mpacket
 	return p
 }
 
-func packetUpdateEmblem(guildID int32, logoBg, logo int16, logoBgColour, logoColour byte) mpacket.Packet {
+func packetGuildUpdateEmblem(guildID int32, logoBg, logo int16, logoBgColour, logoColour byte) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelGuildInfo)
 	p.WriteByte(0x42)
 	p.WriteInt32(guildID)
@@ -517,6 +530,15 @@ func packetUpdateEmblem(guildID int32, logoBg, logo int16, logoBgColour, logoCol
 	p.WriteByte(logoBgColour)
 	p.WriteInt16(logo)
 	p.WriteByte(logoColour)
+
+	return p
+}
+
+func packetGuildUpdateNotice(guildID int32, notice string) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelGuildInfo)
+	p.WriteByte(0x44)
+	p.WriteInt32(guildID)
+	p.WriteString(notice)
 
 	return p
 }
