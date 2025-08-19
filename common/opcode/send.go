@@ -52,6 +52,8 @@ const (
 	SendChannelPlayerEmoticon       byte = 0x6C
 	SendChannelPlayerChangeAvatar   byte = 0x6F
 	SendChannelPlayerAnimation      byte = 0x70
+	SendChannelPlayerBuffed         byte = 0x71
+	SendChannelPlayerDebuff         byte = 0x72
 	SendChannelSkillAnimation       byte = 0x79
 	SendChannelShowMob              byte = 0x86
 	SendChannelRemoveMob            byte = 0x87

@@ -1428,6 +1428,25 @@ func packetPlayerSkillAnimThirdParty(charID int32, party bool, self bool, skillI
 	return p
 }
 
+func packetPlayerBuffed(charID int32, mask []byte, values []byte) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelPlayerBuffed)
+	p.WriteInt32(charID)
+	p.WriteBytes(mask)
+	p.WriteBytes(values)
+	p.WriteInt64(0)
+	p.WriteInt64(0)
+	p.WriteInt64(0)
+	return p
+}
+
+func packetPlayerDebuffed(charID int32, mask []byte, values []byte) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelPlayerDebuff)
+	p.WriteInt32(charID)
+	p.WriteBytes(mask)
+	p.WriteBytes(values)
+	return p
+}
+
 func packetPlayerGiveBuff(mask []byte, values []byte, delay int16, extra byte) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelTempStatChange)
 
