@@ -408,7 +408,6 @@ func (cb *CharacterBuffs) AddItemBuff(it item) {
 	if err != nil {
 		return
 	}
-	log.Printf("AddItemBuff: %v", meta)
 
 	bits := make([]int, 0, 6)
 	if meta.ACC > 0 {
@@ -430,7 +429,6 @@ func (cb *CharacterBuffs) AddItemBuff(it item) {
 		bits = append(bits, BuffMagicDefense)
 	}
 	if meta.PAD > 0 {
-		log.Println("PAD", meta.PAD)
 		bits = append(bits, BuffWeaponAttack)
 	}
 	if meta.PDD > 0 {
