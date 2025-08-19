@@ -1,4 +1,4 @@
--- Adminer 4.7.7 MySQL dump
+-- Adminer 5.3.0 MySQL 5.7.44 dump
 
 SET NAMES utf8;
 SET time_zone = '+00:00';
@@ -88,6 +88,7 @@ CREATE TABLE `characters` (
 DROP TABLE IF EXISTS `guilds`;
 CREATE TABLE `guilds` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
+  `worldID` int(11) NOT NULL,
   `capacity` int(11) NOT NULL DEFAULT '50',
   `name` tinytext NOT NULL,
   `notice` text NOT NULL,
@@ -153,4 +154,4 @@ CREATE TABLE `skills` (
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 
 
--- 2021-01-03 17:13:50
+-- 2025-08-19 16:51:40 UTC
