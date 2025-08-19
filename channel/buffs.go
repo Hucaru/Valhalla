@@ -510,9 +510,6 @@ func (cb *CharacterBuffs) AddBuffFromCC(skillID int32, expiresAtMs int64, level 
 		cb.plr.inst.send(packetPlayerGiveForeignBuff(cb.plr.id, maskBytes, values, extra))
 	}
 
-	// This doesn't actually do anything? But there it does show up in IDB so need to figure out what it does.
-	//cb.plr.send(packetPlayerBuffed(cb.plr.id, maskBytes, values))
-
 	cb.mu.Lock()
 	cb.activeSkillLevels[skillID] = level
 
