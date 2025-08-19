@@ -297,7 +297,10 @@ func (cb *CharacterBuffs) buildBuffTriplesWireOrder(skillID int32, level byte, m
 			BuffHolySymbol, BuffMesoUP, BuffPickPocketMesoUP, BuffMesoGuard,
 			BuffDarkSight, BuffSoulArrow, BuffInvincible, BuffShadowPartner,
 			BuffThaw, BuffWeakness, BuffCurse, BuffComboAttack, BuffCharges:
-			return int16(sl.X)
+			if sl.X != 0 {
+				return int16(sl.X)
+			}
+			return 1
 		case BuffDragonBlood:
 			if sl.Pad != 0 {
 				return int16(sl.Pad)

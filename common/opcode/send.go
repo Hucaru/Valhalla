@@ -18,6 +18,7 @@ const (
 	SendChannelTempStatChange       byte = 0x1B
 	SendChannelRemoveTempStat       byte = 0x1C
 	SendChannelSkillRecordUpdate    byte = 0x1D
+	SendChannelSkillUseResult       byte = 0x1E
 	SendChannelMessage              byte = 0x20
 	SendChannelInfoMessage          byte = 0x20
 	SendChannelMapTransferResult    byte = 0x22

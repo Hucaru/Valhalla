@@ -1448,6 +1448,7 @@ func packetPlayerGiveBuff(mask []byte, values []byte, delay int16, extra byte) m
 	p.WriteInt16(delay)
 
 	// Optional extra (only if specific bits are present)
+
 	writeExtra := buffMaskNeedsExtraByte(mask)
 	if writeExtra {
 		p.WriteByte(extra)
@@ -1456,11 +1457,6 @@ func packetPlayerGiveBuff(mask []byte, values []byte, delay int16, extra byte) m
 	p.WriteInt64(0)
 	p.WriteInt64(0)
 
-	// Debug packet sizes to catch EOF/overflow
-	totalLen := 8 + len(values) + 2
-	if writeExtra {
-		totalLen++
-	}
 	return p
 }
 
@@ -1526,6 +1522,15 @@ func packetPlayerCancelForeignBuff(charID int32, mask []byte) mpacket.Packet {
 	p.WriteInt32(charID)
 	p.WriteBytes(mask)
 	p.WriteUint64(0)
+	return p
+}
+
+func packetPlayerShowBuffEffect(charID int32, skillID int32, effectID int32) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelPlayerBuffed)
+	p.WriteInt32(charID)
+	p.WriteByte(1)
+	p.WriteInt32(skillID)
+	p.WriteInt(1)
 	return p
 }
 
