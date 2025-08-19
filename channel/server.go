@@ -258,6 +258,9 @@ func (server *Server) ClientDisconnected(conn mnet.Client) {
 		log.Println(saveErr)
 	}
 
+	// Save buff snapshot so it persists through logout (and server restarts)
+	server.saveBuffSnapshot(plr)
+
 	// Tear down any active NPC chat state
 	delete(server.npcChat, conn)
 
@@ -289,6 +292,85 @@ func (server *Server) ClientDisconnected(conn mnet.Client) {
 
 	if _, dbErr := common.DB.Exec("UPDATE accounts SET isLogedIn=0 WHERE accountID=?", conn.GetAccountID()); dbErr != nil {
 		log.Println("Unable to complete logout for ", conn.GetAccountID())
+	}
+}
+
+func (server *Server) saveBuffSnapshot(plr *player) {
+	if plr == nil || plr.buffs == nil {
+		return
+	}
+	snaps := plr.buffs.Snapshot()
+	if len(snaps) == 0 {
+		_, _ = common.DB.Exec("DELETE FROM character_buffs WHERE characterID=?", plr.id)
+		return
+	}
+
+	tx, err := common.DB.Begin()
+	if err != nil {
+		log.Println("saveBuffSnapshot: begin tx:", err)
+		return
+	}
+	defer func() { _ = tx.Commit() }()
+
+	if _, err := tx.Exec("DELETE FROM character_buffs WHERE characterID=?", plr.id); err != nil {
+		log.Println("saveBuffSnapshot: clear rows:", err)
+		return
+	}
+
+	stmt, err := tx.Prepare("INSERT INTO character_buffs(characterID, sourceID, level, expiresAtMs) VALUES(?,?,?,?)")
+	if err != nil {
+		log.Println("saveBuffSnapshot: prepare:", err)
+		return
+	}
+	defer stmt.Close()
+
+	for _, s := range snaps {
+		if _, err := stmt.Exec(plr.id, s.SourceID, s.Level, s.ExpiresAtMs); err != nil {
+			log.Println("saveBuffSnapshot: insert:", err)
+			return
+		}
+	}
+}
+
+func (server *Server) loadAndApplyBuffSnapshot(plr *player) {
+	if plr == nil {
+		return
+	}
+	rows, err := common.DB.Query("SELECT sourceID, level, expiresAtMs FROM character_buffs WHERE characterID=?", plr.id)
+	if err != nil {
+		log.Println("loadBuffSnapshot:", err)
+		return
+	}
+	defer rows.Close()
+
+	snaps := make([]BuffSnapshot, 0, 8)
+	now := time.Now().UnixMilli()
+	for rows.Next() {
+		var s BuffSnapshot
+		if err := rows.Scan(&s.SourceID, &s.Level, &s.ExpiresAtMs); err != nil {
+			log.Println("loadBuffSnapshot scan:", err)
+			return
+		}
+		if s.ExpiresAtMs > 0 && s.ExpiresAtMs <= now {
+			continue // skip already-expired
+		}
+		snaps = append(snaps, s)
+	}
+	if err := rows.Err(); err != nil {
+		log.Println("loadBuffSnapshot rows:", err)
+		return
+	}
+
+	if len(snaps) > 0 {
+		if plr.buffs == nil {
+			plr.buffs = NewCharacterBuffs(plr)
+		}
+		plr.buffs.RestoreFromSnapshot(snaps)
+		_, err = common.DB.Exec("DELETE FROM character_buffs WHERE characterID=?", plr.id)
+		if err != nil {
+			log.Println("loadBuffSnapshot delete:", err)
+			return
+		}
 	}
 }
 

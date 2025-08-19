@@ -224,6 +224,12 @@ func (server *Server) playerConnect(conn mnet.Client, reader mpacket.Reader) {
 	newPlr.UpdateGuildInfo()
 	newPlr.UpdateBuddyInfo()
 
+	// Restore buffs (if any) saved during CC or previous logout, then audit for stale
+	server.loadAndApplyBuffSnapshot(newPlr)
+	if newPlr.buffs != nil {
+		newPlr.buffs.AuditAndExpireStaleBuffs()
+	}
+
 	for _, party := range server.parties {
 		if party.member(newPlr.id) {
 			newPlr.party = party
@@ -252,6 +258,9 @@ func (server *Server) playerChangeChannel(conn mnet.Client, reader mpacket.Reade
 		log.Println("Unable to get player from connection", conn)
 		return
 	}
+
+	// Save player buffs for handoff to next channel
+	server.saveBuffSnapshot(player)
 
 	if int(id) < len(server.channels) {
 		if server.channels[id].Port == 0 {
@@ -3128,5 +3137,23 @@ func (server *Server) playerCancelBuff(conn mnet.Client, reader mpacket.Reader) 
 		return
 	}
 
-	plr.buffs.AuditAndExpireStaleBuffs()
+	cb := plr.buffs
+
+	const grace = 1500 * time.Millisecond
+	now := time.Now().Add(grace).UnixMilli()
+
+	// Collect all timed sources that should be expired by server clock
+	toExpire := make([]int32, 0, len(cb.expireAt))
+	for src, ts := range cb.expireAt {
+		if ts > 0 && ts <= now {
+			toExpire = append(toExpire, src)
+		}
+	}
+
+	for _, src := range toExpire {
+		cb.expireBuffNow(src)
+	}
+
+	// Final sweep for any edge cases
+	cb.AuditAndExpireStaleBuffs()
 }
