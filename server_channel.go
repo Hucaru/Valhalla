@@ -79,6 +79,9 @@ func (cs *channelServer) run() {
 	elapsed = time.Since(start)
 	log.Println("Loaded and parsed drop data in", elapsed)
 
+	channel.StartSaver()
+	defer channel.StopSaver()
+
 	cs.gameState.Initialise(cs.wRecv, cs.dbConfig.User, cs.dbConfig.Password, cs.dbConfig.Address, cs.dbConfig.Port, cs.dbConfig.Database)
 
 	cs.wg.Add(1)
@@ -224,7 +227,11 @@ func (cs *channelServer) processEvent() {
 					log.Println("New client from", conn)
 				case mnet.MEClientDisconnect:
 					log.Println("Client at", conn, "disconnected")
+
+					// Ensure we persist the player on socket close.
+					channel.OnDisconnect(conn)
 					cs.gameState.ClientDisconnected(conn)
+
 				case mnet.MEClientPacket:
 					cs.gameState.HandleClientPacket(conn, mpacket.NewReader(&e.Packet, time.Now().Unix()))
 				}
@@ -232,7 +239,6 @@ func (cs *channelServer) processEvent() {
 				switch e.Type {
 				case mnet.MEServerDisconnect:
 					log.Println("Server at", conn, "disconnected")
-					// Attempt to re-establish world connection asynchronously so we don't block event loop
 					go cs.establishWorldConnection()
 				case mnet.MEServerPacket:
 					cs.gameState.HandleServerPacket(conn, mpacket.NewReader(&e.Packet, time.Now().Unix()))
@@ -241,10 +247,8 @@ func (cs *channelServer) processEvent() {
 
 		case work, ok := <-cs.wRecv:
 			if !ok {
-				// Work channel closed elsewhere; keep serving events
 				continue
 			}
-			// Protect against panics in scheduled work
 			func() {
 				defer func() {
 					if r := recover(); r != nil {

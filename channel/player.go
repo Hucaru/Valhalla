@@ -164,6 +164,29 @@ type player struct {
 
 	// Per-player RNG for deterministic randomness
 	rng *rand.Rand
+
+	// write-behind persistence
+	dirty DirtyBits
+}
+
+// Helper: mark dirty and schedule debounced save.
+func (d *player) markDirty(bits DirtyBits, debounce time.Duration) {
+	d.dirty |= bits
+	if SaverInstance != nil {
+		SaverInstance.SchedulePlayer(d, debounce)
+	}
+}
+
+// Helper: clear dirty bits after successful flush.
+func (d *player) clearDirty(bits DirtyBits) {
+	d.dirty &^= bits
+}
+
+// Call this in your logout/disconnect path.
+func (d *player) FlushNow() {
+	if SaverInstance != nil {
+		SaverInstance.FlushNow(d)
+	}
 }
 
 // SeedRNGDeterministic seeds the per-player RNG using stable identifiers so
@@ -231,6 +254,7 @@ func (d *player) send(packet mpacket.Packet) {
 func (d *player) setJob(id int16) {
 	d.job = id
 	d.conn.Send(packetPlayerStatChange(true, constant.JobID, int32(id)))
+	d.markDirty(DirtyJob, 300*time.Millisecond)
 
 	if d.party != nil {
 		d.party.updateJobLevel(d.id, int32(d.job), int32(d.level))
@@ -274,17 +298,17 @@ func (d *player) setEXP(amount int32) {
 	if d.level > 199 {
 		d.exp = amount
 		d.send(packetPlayerStatChange(false, constant.ExpID, int32(amount)))
+		d.markDirty(DirtyEXP, 800*time.Millisecond)
 		return
 	}
-
 	remainder := amount - constant.ExpTable[d.level-1]
-
 	if remainder >= 0 {
 		d.levelUp()
 		d.setEXP(remainder)
 	} else {
 		d.exp = amount
 		d.send(packetPlayerStatChange(false, constant.ExpID, int32(amount)))
+		d.markDirty(DirtyEXP, 800*time.Millisecond)
 	}
 }
 
@@ -305,6 +329,7 @@ func (d *player) setLevel(amount byte) {
 	d.level = amount
 	d.send(packetPlayerStatChange(false, constant.LevelID, int32(amount)))
 	d.inst.send(packetPlayerLevelUpAnimation(d.id))
+	d.markDirty(DirtyLevel, 300*time.Millisecond)
 
 	if d.party != nil {
 		d.party.updateJobLevel(d.id, int32(d.job), int32(d.level))
@@ -318,6 +343,7 @@ func (d *player) giveLevel(amount byte) {
 func (d *player) setAP(amount int16) {
 	d.ap = amount
 	d.send(packetPlayerStatChange(false, constant.ApID, int32(amount)))
+	d.markDirty(DirtyAP, 300*time.Millisecond)
 }
 
 func (d *player) giveAP(amount int16) {
@@ -327,6 +353,7 @@ func (d *player) giveAP(amount int16) {
 func (d *player) setSP(amount int16) {
 	d.sp = amount
 	d.send(packetPlayerStatChange(false, constant.SpID, int32(amount)))
+	d.markDirty(DirtySP, 300*time.Millisecond)
 }
 
 func (d *player) giveSP(amount int16) {
@@ -336,6 +363,7 @@ func (d *player) giveSP(amount int16) {
 func (d *player) setStr(amount int16) {
 	d.str = amount
 	d.send(packetPlayerStatChange(true, constant.StrID, int32(amount)))
+	d.markDirty(DirtyStr, 500*time.Millisecond)
 }
 
 func (d *player) giveStr(amount int16) {
@@ -345,6 +373,7 @@ func (d *player) giveStr(amount int16) {
 func (d *player) setDex(amount int16) {
 	d.dex = amount
 	d.send(packetPlayerStatChange(true, constant.DexID, int32(amount)))
+	d.markDirty(DirtyDex, 500*time.Millisecond)
 }
 
 func (d *player) giveDex(amount int16) {
@@ -354,6 +383,7 @@ func (d *player) giveDex(amount int16) {
 func (d *player) setInt(amount int16) {
 	d.intt = amount
 	d.send(packetPlayerStatChange(true, constant.IntID, int32(amount)))
+	d.markDirty(DirtyInt, 500*time.Millisecond)
 }
 
 func (d *player) giveInt(amount int16) {
@@ -363,6 +393,7 @@ func (d *player) giveInt(amount int16) {
 func (d *player) setLuk(amount int16) {
 	d.luk = amount
 	d.send(packetPlayerStatChange(true, constant.LukID, int32(amount)))
+	d.markDirty(DirtyLuk, 500*time.Millisecond)
 }
 
 func (d *player) giveLuk(amount int16) {
@@ -373,9 +404,9 @@ func (d *player) setHP(amount int16) {
 	if amount > constant.MaxHpValue {
 		amount = constant.MaxHpValue
 	}
-
 	d.hp = amount
 	d.send(packetPlayerStatChange(true, constant.HpID, int32(amount)))
+	d.markDirty(DirtyHP, 500*time.Millisecond)
 }
 
 func (d *player) giveHP(amount int16) {
@@ -391,25 +422,6 @@ func (d *player) giveHP(amount int16) {
 	d.setHP(newHP)
 }
 
-func (d *player) setMaxHP(amount int16) {
-	if amount > constant.MaxHpValue {
-		amount = constant.MaxHpValue
-	}
-
-	d.maxHP = amount
-	d.send(packetPlayerStatChange(true, constant.MaxHpID, int32(amount)))
-}
-
-// SetMP of Data
-func (d *player) setMP(amount int16) {
-	if amount > constant.MaxMpValue {
-		amount = constant.MaxMpValue
-	}
-
-	d.mp = amount
-	d.send(packetPlayerStatChange(true, constant.MpID, int32(amount)))
-}
-
 func (d *player) giveMP(amount int16) {
 	newMP := d.mp + amount
 	if newMP < 0 {
@@ -423,13 +435,31 @@ func (d *player) giveMP(amount int16) {
 	d.setMP(newMP)
 }
 
+func (d *player) setMaxHP(amount int16) {
+	if amount > constant.MaxHpValue {
+		amount = constant.MaxHpValue
+	}
+	d.maxHP = amount
+	d.send(packetPlayerStatChange(true, constant.MaxHpID, int32(amount)))
+	d.markDirty(DirtyMaxHP, 500*time.Millisecond)
+}
+
+func (d *player) setMP(amount int16) {
+	if amount > constant.MaxMpValue {
+		amount = constant.MaxMpValue
+	}
+	d.mp = amount
+	d.send(packetPlayerStatChange(true, constant.MpID, int32(amount)))
+	d.markDirty(DirtyMP, 500*time.Millisecond)
+}
+
 func (d *player) setMaxMP(amount int16) {
 	if amount > constant.MaxMpValue {
 		amount = constant.MaxMpValue
 	}
-
 	d.maxMP = amount
 	d.send(packetPlayerStatChange(true, constant.MaxMpID, int32(amount)))
+	d.markDirty(DirtyMaxMP, 500*time.Millisecond)
 }
 
 func (d *player) setFame(amount int16) {
@@ -443,7 +473,8 @@ func (d *player) addEquip(item item) {
 func (d *player) setMesos(amount int32) {
 	d.mesos = amount
 	d.send(packetPlayerStatChange(true, constant.MesosID, amount))
-	d.saveMesos()
+	// write-behind instead of immediate DB write
+	d.markDirty(DirtyMesos, 200*time.Millisecond)
 }
 
 func (d *player) giveMesos(amount int32) {
@@ -456,17 +487,8 @@ func (d *player) takeMesos(amount int32) {
 
 func (d *player) saveMesos() error {
 	query := "UPDATE characters SET mesos=? WHERE accountID=? and name=?"
-
-	_, err := common.DB.Exec(query,
-		d.mesos,
-		d.accountID,
-		d.name)
-
-	if err != nil {
-		return err
-	}
-
-	return nil
+	_, err := common.DB.Exec(query, d.mesos, d.accountID, d.name)
+	return err
 }
 
 // UpdateMovement - update Data from position data
@@ -509,10 +531,11 @@ func (d *player) setMapID(id int32) {
 		d.party.updatePlayerMap(d.id, d.mapID)
 	}
 
+	// write-behind for mapID/pos (mapPos updated on save())
+	d.markDirty(DirtyMap, 500*time.Millisecond)
 	if err := d.saveMapID(id, oldMapID); err != nil {
 		log.Println(err)
 	}
-
 }
 
 func (d *player) saveMapID(newMapId, oldMapId int32) error {
@@ -1059,6 +1082,34 @@ func (d player) displayBytes() []byte {
 	return pkt
 }
 
+// Logout flushes coalesced state and does a full checkpoint save.
+func (d *player) Logout(reason string) {
+	if d == nil {
+		return
+	}
+
+	// Best-effort: compute nearest respawn portal to persist mapPos in save()
+	if d.inst != nil {
+		if pos, err := d.inst.calculateNearestSpawnPortalID(d.pos); err == nil {
+			d.mapPos = pos
+			d.markDirty(DirtyMap, 0)
+		}
+	}
+
+	// Flush write-behind deltas first (non-blocking DB jitter already coalesced).
+	d.FlushNow()
+
+	// Full checkpoint to keep everything consistent (includes skills upsert).
+	if err := d.save(); err != nil {
+		log.Printf("player(%d) logout save failed: %v", d.id, err)
+	}
+
+	// Optional: clean up party/buddy visibility, mark offline, etc.
+	// if d.party != nil { d.party.remove(d.id) }
+	// if d.conn != nil { d.conn.Close() } // only if the caller didn't already close
+	_ = reason
+}
+
 // Save data - this needs to be split to occur at relevant points in time
 func (d player) save() error {
 	query := `UPDATE characters set skin=?, hair=?, face=?, level=?,
@@ -1072,34 +1123,30 @@ func (d player) save() error {
 	if d.inst != nil {
 		mapPos, err = d.inst.calculateNearestSpawnPortalID(d.pos)
 	}
-
 	if err != nil {
 		return err
 	}
-
 	d.mapPos = mapPos
 
-	// TODO: Move mesos, to instances of it changing, otherwise items and mesos can become out of sync from
-	// any crashes
 	_, err = common.DB.Exec(query,
 		d.skin, d.hair, d.face, d.level, d.job, d.str, d.dex, d.intt, d.luk, d.hp, d.maxHP, d.mp,
 		d.maxMP, d.ap, d.sp, d.exp, d.fame, d.mapID, d.mapPos, d.mesos, d.miniGameWins,
 		d.miniGameDraw, d.miniGameLoss, d.miniGamePoints, d.buddyListSize, d.id)
-
 	if err != nil {
 		return err
 	}
 
-	query = `INSERT INTO skills(characterID,skillID,level,cooldown) VALUES(?,?,?,?) ON DUPLICATE KEY UPDATE characterID=?, skillID=?`
+	// Fix: actually update level/cooldown on duplicate
+	query = `INSERT INTO skills(characterID,skillID,level,cooldown)
+	         VALUES(?,?,?,?)
+	         ON DUPLICATE KEY UPDATE level=VALUES(level), cooldown=VALUES(cooldown)`
 	for skillID, skill := range d.skills {
-		_, err := common.DB.Exec(query, d.id, skillID, skill.Level, skill.Cooldown, d.id, skillID)
-
-		if err != nil {
+		if _, err := common.DB.Exec(query, d.id, skillID, skill.Level, skill.Cooldown); err != nil {
 			return err
 		}
 	}
 
-	return err
+	return nil
 }
 
 func (d *player) damagePlayer(damage int16) {
@@ -1296,6 +1343,10 @@ func loadPlayerFromID(id int32, conn mnet.Client) player {
 
 	c.buddyList = getBuddyList(c.id, c.buddyListSize)
 	c.conn = conn
+
+	// Register this player against the connection so we can persist on disconnect.
+	attachSession(conn, &c)
+
 	return c
 }
 
