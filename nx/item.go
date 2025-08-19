@@ -20,8 +20,11 @@ type Item struct {
 	ReqJob                                                         int64
 	ReqSTR, ReqDEX, ReqINT, ReqLUK, IncSTR, IncDEX, IncINT, IncLUK int16
 	IncACC, IncEVA, IncMDD, IncPDD, IncMAD, IncPAD, IncMHP, IncMMP float64
+	Speed, Jump, PAD, PDD, MAD, MDD, ACC, EVA                      int16
+	Poison, Darkness, Weakness, Curse, Seal                        int16
 	Attack, IncJump, IncSpeed, RecoveryHP                          float64
 	HP, MP                                                         int16
+	Time                                                           int16
 	AttackSpeed                                                    int16
 	Price                                                          int32
 	NotSale                                                        int64
@@ -243,6 +246,32 @@ func (item *Item) getItem(node *gonx.Node, nodes []gonx.Node, textLookup []strin
 			item.HP = gonx.DataToInt16(option.Data)
 		case "mp":
 			item.MP = gonx.DataToInt16(option.Data)
+		case "mdd":
+			item.MDD = gonx.DataToInt16(option.Data)
+		case "mad":
+			item.MAD = gonx.DataToInt16(option.Data)
+		case "pad":
+			item.PAD = gonx.DataToInt16(option.Data)
+		case "pdd":
+			item.PDD = gonx.DataToInt16(option.Data)
+		case "speed":
+			item.Speed = gonx.DataToInt16(option.Data)
+		case "jump":
+			item.Jump = gonx.DataToInt16(option.Data)
+		case "acc":
+			item.ACC = gonx.DataToInt16(option.Data)
+		case "eva":
+			item.EVA = gonx.DataToInt16(option.Data)
+		case "darkness":
+			item.Darkness = gonx.DataToInt16(option.Data)
+		case "weakness":
+			item.Weakness = gonx.DataToInt16(option.Data)
+		case "curse":
+			item.Curse = gonx.DataToInt16(option.Data)
+		case "poison":
+			item.Poison = gonx.DataToInt16(option.Data)
+		case "seal":
+			item.Seal = gonx.DataToInt16(option.Data)
 		case "only":
 			item.Only = gonx.DataToInt64(option.Data)
 		case "attackSpeed":
@@ -308,6 +337,7 @@ func (item *Item) getItem(node *gonx.Node, nodes []gonx.Node, textLookup []strin
 		case "dropSweep":
 			item.DropSweep = gonx.DataToInt64(option.Data)
 		case "time":
+			item.Time = gonx.DataToInt16((option.Data))
 		case "rate":
 			item.Rate = gonx.DataToInt64(option.Data)
 		case "meso":

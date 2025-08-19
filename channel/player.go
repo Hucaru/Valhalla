@@ -1488,7 +1488,7 @@ func packetPlayerGiveForeignBuff(charID int32, mask []byte, values []byte, extra
 	}
 	p.WriteInt64(0)
 	p.WriteInt64(0)
-	
+
 	return p
 }
 
@@ -1517,7 +1517,7 @@ func packetPlayerCancelBuff(mask []byte) mpacket.Packet {
 		mask = mask[len(mask)-8:]
 	}
 	p.WriteBytes(mask)
-	p.WriteInt64(0)
+	p.WriteUint64(0)
 	return p
 }
 
@@ -1525,8 +1525,7 @@ func packetPlayerCancelForeignBuff(charID int32, mask []byte) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelRemoveTempStat)
 	p.WriteInt32(charID)
 	p.WriteBytes(mask)
-	p.WriteInt64(0)
-
+	p.WriteUint64(0)
 	return p
 }
 

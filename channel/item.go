@@ -79,6 +79,7 @@ type item struct {
 	speed        int16
 	jump         int16
 	attackSpeed  int16
+	buffTime     int16
 	stand        byte // TODO: Investigate this, it doesn't appear to be saved or used anywhere
 
 	weaponType byte
@@ -206,6 +207,7 @@ func createBiasItemFromID(id int32, amount int16, bias int8, average bool) (item
 	newItem.cash = nxInfo.Cash
 	newItem.invID = byte(id / 1e6)
 	newItem.id = id
+	newItem.buffTime = nxInfo.Time
 	newItem.accuracy = randomStat(nxInfo.IncACC, average)
 	newItem.avoid = randomStat(nxInfo.IncEVA, average)
 	newItem.speed = randomStat(nxInfo.IncSpeed, average)
@@ -461,9 +463,14 @@ func (v item) use(plr *player) {
 		plr.giveMP(v.mp)
 	}
 
-	// Need to add stat buffs (W.ATT, M.ATT, etc)
-	// This will require timers to ensure buffs are removed once finished
+	if plr == nil {
+		return
+	}
+	if plr.buffs == nil {
+		plr.buffs = NewCharacterBuffs(plr)
+	}
 
+	plr.buffs.AddItemBuff(v)
 }
 
 // applyScrollEffects mutates the equip with the scroll increments from NX.

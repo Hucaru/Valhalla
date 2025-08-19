@@ -136,7 +136,8 @@ func (server *Server) HandleClientPacket(conn mnet.Client, reader mpacket.Reader
 		// [mapID int32][? byte]
 	case opcode.RecvChannelAcknowledgeBuff:
 		// Consume
-		log.Println("Client Acknowledged Buff")
+	case opcode.RecvChannelCancelBuff:
+		server.playerCancelBuff(conn, reader)
 	default:
 		unknownPacketsTotal.Inc()
 		log.Println("UNKNOWN CLIENT PACKET:", reader)
@@ -3159,4 +3160,13 @@ func (server *Server) playerSpecialSkill(conn mnet.Client, reader mpacket.Reader
 	}
 
 	_ = applied // reserved for future checks (e.g., logging if an expected buff wasn't applied)
+}
+
+func (server *Server) playerCancelBuff(conn mnet.Client, reader mpacket.Reader) {
+	plr, err := server.players.getFromConn(conn)
+	if err != nil || plr == nil || plr.buffs == nil {
+		return
+	}
+
+	plr.buffs.AuditAndExpireStaleBuffs()
 }

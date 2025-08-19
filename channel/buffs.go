@@ -2,6 +2,7 @@ package channel
 
 import (
 	"log"
+	"sync"
 	"time"
 
 	"github.com/Hucaru/Valhalla/constant/skill"
@@ -150,6 +151,16 @@ type CharacterBuffs struct {
 
 	// timers per skill for expiry
 	expireTimers map[int32]*time.Timer
+
+	// item-sourceID (-item.id) -> maskBytes used when applying the item buff
+	itemMasks map[int32][]byte
+
+	// server-authoritative expiry timestamps (Unix ms) keyed by source:
+	//  + skillID for skill buffs
+	//  + -itemID for item buffs
+	expireAt map[int32]int64
+
+	mu sync.Mutex
 }
 
 func NewCharacterBuffs(p *player) *CharacterBuffs {
@@ -157,6 +168,8 @@ func NewCharacterBuffs(p *player) *CharacterBuffs {
 		plr:               p,
 		activeSkillLevels: make(map[int32]byte),
 		expireTimers:      make(map[int32]*time.Timer),
+		itemMasks:         make(map[int32][]byte),
+		expireAt:          make(map[int32]int64),
 	}
 }
 
@@ -207,20 +220,6 @@ func buildMaskBytes64(bits []int) []byte {
 		m[byteIdx] |= (1 << shift)
 	}
 	return m
-}
-
-// Small helper to count set bits in an 8-byte mask (for sanity checks).
-func countSetBitsMaskBytes(mask []byte) int {
-	total := 0
-	for i := 0; i < len(mask) && i < 8; i++ {
-		b := mask[i]
-		for j := 0; j < 8; j++ {
-			if (b & (1 << uint(j))) != 0 {
-				total++
-			}
-		}
-	}
-	return total
 }
 
 // Emit triples by scanning maskBytes in the same wire order we send:
@@ -298,7 +297,7 @@ func (cb *CharacterBuffs) buildBuffTriplesWireOrder(skillID int32, level byte, m
 			BuffHolySymbol, BuffMesoUP, BuffPickPocketMesoUP, BuffMesoGuard,
 			BuffDarkSight, BuffSoulArrow, BuffInvincible, BuffShadowPartner,
 			BuffThaw, BuffWeakness, BuffCurse, BuffComboAttack, BuffCharges:
-			return 1
+			return int16(sl.X)
 		case BuffDragonBlood:
 			if sl.Pad != 0 {
 				return int16(sl.Pad)
@@ -342,6 +341,145 @@ func (cb *CharacterBuffs) buildBuffTriplesWireOrder(skillID int32, level byte, m
 	return out, remainSec
 }
 
+func buildItemBuffTriplesWireOrder(meta nx.Item, maskBytes []byte, durationSec int16, sourceID int32) []byte {
+	remain := durationSec
+	if remain < 0 {
+		remain = 0
+	}
+
+	valForBit := func(bit int) int16 {
+		switch bit {
+		case BuffAccuracy:
+			return meta.ACC
+		case BuffAvoidability:
+			return meta.EVA
+		case BuffSpeed:
+			return meta.Speed
+		case BuffJump:
+			return meta.Jump
+		case BuffMagicAttack:
+			return meta.MAD
+		case BuffMagicDefense:
+			return meta.MDD
+		case BuffWeaponAttack:
+			return meta.PAD
+		case BuffWeaponDefense:
+			return meta.PDD
+		default:
+			return 1
+		}
+	}
+
+	out := make([]byte, 0, 48)
+	appendTriple := func(v int16) {
+		// short value
+		out = append(out, byte(v), byte(v>>8))
+		// int32 sourceID (negative item id)
+		id := sourceID
+		out = append(out, byte(id), byte(id>>8), byte(id>>16), byte(id>>24))
+		// short time (seconds)
+		t := remain
+		out = append(out, byte(t), byte(t>>8))
+	}
+
+	for byteIdx := 0; byteIdx < 8 && byteIdx < len(maskBytes); byteIdx++ {
+		b := maskBytes[byteIdx]
+		if b == 0 {
+			continue
+		}
+		for bit := 0; bit < 8; bit++ {
+			if (b & (1 << uint(bit))) != 0 {
+				globalBit := byteIdx*8 + bit
+				appendTriple(valForBit(globalBit))
+			}
+		}
+	}
+	return out
+}
+
+// durationSec is the client-visible remaining time in seconds. Source id is encoded as -item.id.
+func (cb *CharacterBuffs) AddItemBuff(it item) {
+	var durationSec int16 = 0
+	if cb == nil || cb.plr == nil {
+		return
+	}
+
+	meta, err := nx.GetItem(it.id)
+	if err != nil {
+		return
+	}
+	log.Printf("AddItemBuff: %v", meta)
+
+	bits := make([]int, 0, 6)
+	if meta.ACC > 0 {
+		bits = append(bits, BuffAccuracy)
+	}
+	if meta.EVA > 0 {
+		bits = append(bits, BuffAvoidability)
+	}
+	if meta.Speed > 0 {
+		bits = append(bits, BuffSpeed)
+	}
+	if meta.Jump > 0 {
+		bits = append(bits, BuffJump)
+	}
+	if meta.MAD > 0 {
+		bits = append(bits, BuffMagicAttack)
+	}
+	if meta.MDD > 0 {
+		bits = append(bits, BuffMagicDefense)
+	}
+	if meta.PAD > 0 {
+		log.Println("PAD", meta.PAD)
+		bits = append(bits, BuffWeaponAttack)
+	}
+	if meta.PDD > 0 {
+		bits = append(bits, BuffWeaponDefense)
+	}
+	if len(bits) == 0 {
+		return
+	}
+
+	// NX Time is in milliseconds.
+	if meta.Time > 0 {
+		ms := int32(meta.Time)
+		// ceil(ms/1000) without floats: (ms + 999) / 1000
+		sec := int16((ms + 999) / 1000)
+		if sec > 0 {
+			durationSec = sec
+		}
+	}
+
+	// Build mask and per-stat triples in the same (LSB-first) wire order as skills.
+	maskBytes := buildMaskBytes64(bits)
+	sourceID := -it.id
+	values := buildItemBuffTriplesWireOrder(meta, maskBytes, durationSec, sourceID)
+
+	// Send to self and others (items don't need extra combo/charges byte).
+	const extra byte = 0
+	const delay int16 = 0
+	cb.plr.send(packetPlayerGiveBuff(maskBytes, values, delay, extra))
+
+	cb.mu.Lock()
+	defer cb.mu.Unlock()
+
+	if cb.itemMasks == nil {
+		cb.itemMasks = make(map[int32][]byte)
+	}
+	m := make([]byte, len(maskBytes))
+	copy(m, maskBytes)
+	cb.itemMasks[sourceID] = m
+
+	// Track authoritative expiry
+	if cb.expireAt == nil {
+		cb.expireAt = make(map[int32]int64)
+	}
+	if durationSec > 0 {
+		cb.expireAt[sourceID] = time.Now().Add(time.Duration(durationSec) * time.Second).UnixMilli()
+		cb.scheduleExpiryLocked(sourceID, time.Duration(durationSec)*time.Second)
+	}
+}
+
 func (cb *CharacterBuffs) AddBuffFromCC(skillID int32, expiresAtMs int64, level byte, sinc1, sinc2 int, delay int16) {
 	if cb == nil || cb.plr == nil {
 		return
@@ -374,19 +512,34 @@ func (cb *CharacterBuffs) AddBuffFromCC(skillID int32, expiresAtMs int64, level 
 		cb.plr.inst.send(packetPlayerGiveForeignBuff(cb.plr.id, maskBytes, values, extra))
 	}
 
+	cb.mu.Lock()
 	cb.activeSkillLevels[skillID] = level
 
-	// Expiry
-	if remainSec > 0 {
-		cb.scheduleExpiry(skillID, time.Duration(remainSec)*time.Second)
-	} else if expiresAtMs > 0 {
-		cb.scheduleExpiry(skillID, 0)
+	// Compute authoritative expiry time
+	if cb.expireAt == nil {
+		cb.expireAt = make(map[int32]int64)
 	}
+	if remainSec > 0 {
+		cb.expireAt[skillID] = time.Now().Add(time.Duration(remainSec) * time.Second).UnixMilli()
+		cb.scheduleExpiryLocked(skillID, time.Duration(remainSec)*time.Second)
+	} else if expiresAtMs > 0 {
+		cb.expireAt[skillID] = expiresAtMs
+		// If already past due, expire immediately in a goroutine.
+		d := time.Until(time.UnixMilli(expiresAtMs))
+		cb.scheduleExpiryLocked(skillID, d)
+	}
+	cb.mu.Unlock()
 }
 
 // Timers
 
 func (cb *CharacterBuffs) scheduleExpiry(skillID int32, after time.Duration) {
+	cb.mu.Lock()
+	defer cb.mu.Unlock()
+	cb.scheduleExpiryLocked(skillID, after)
+}
+
+func (cb *CharacterBuffs) scheduleExpiryLocked(skillID int32, after time.Duration) {
 	if cb.expireTimers == nil {
 		cb.expireTimers = make(map[int32]*time.Timer)
 	}
@@ -408,18 +561,22 @@ func (cb *CharacterBuffs) expireBuffNow(skillID int32) {
 	if cb == nil || cb.plr == nil {
 		return
 	}
+
+	cb.mu.Lock()
 	// Clear timer handle
 	if t, ok := cb.expireTimers[skillID]; ok && t != nil {
 		delete(cb.expireTimers, skillID)
 	}
+	// Clear authoritative expiry stamp; keep others
+	delete(cb.expireAt, skillID)
+	cb.mu.Unlock()
 
 	// Build cancel mask (64-bit)
-	mask := buildBuffMask(skillID)
-	if mask == nil || mask.IsZero() {
-		delete(cb.activeSkillLevels, skillID)
+	bits, ok := skillBuffBits[skillID]
+	if !ok || len(bits) == 0 {
 		return
 	}
-	maskBytes := mask.ToByteArray(false)
+	maskBytes := buildMaskBytes64(bits)
 
 	// Self cancel
 	cb.plr.send(packetPlayerCancelBuff(maskBytes))
@@ -428,7 +585,9 @@ func (cb *CharacterBuffs) expireBuffNow(skillID int32) {
 		cb.plr.inst.send(packetPlayerCancelForeignBuff(cb.plr.id, maskBytes))
 	}
 
+	cb.mu.Lock()
 	delete(cb.activeSkillLevels, skillID)
+	cb.mu.Unlock()
 }
 
 func (cb *CharacterBuffs) check(skillID int32) {
@@ -444,7 +603,36 @@ func (cb *CharacterBuffs) ClearBuff(skillID int32, _ uint32) {
 	if mask != nil && !mask.IsZero() && cb.plr.inst != nil {
 		cb.plr.inst.send(packetPlayerCancelForeignBuff(cb.plr.id, mask.ToByteArray(false)))
 	}
+	cb.mu.Lock()
 	delete(cb.activeSkillLevels, skillID)
+	delete(cb.expireAt, skillID)
+	if t, ok := cb.expireTimers[skillID]; ok && t != nil {
+		t.Stop()
+		delete(cb.expireTimers, skillID)
+	}
+	cb.mu.Unlock()
+}
+
+func (cb *CharacterBuffs) AuditAndExpireStaleBuffs() {
+	if cb == nil || cb.plr == nil {
+		return
+	}
+	now := time.Now().UnixMilli()
+
+	// Collect keys to expire outside the lock
+	toExpire := make([]int32, 0, 4)
+
+	cb.mu.Lock()
+	for src, ts := range cb.expireAt {
+		if ts > 0 && ts <= now {
+			toExpire = append(toExpire, src)
+		}
+	}
+	cb.mu.Unlock()
+
+	for _, src := range toExpire {
+		cb.expireBuffNow(src)
+	}
 }
 
 // buildBuffMask builds a Flag (CFlag) with all relevant bits for the given skill set.
