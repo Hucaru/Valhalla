@@ -3073,8 +3073,6 @@ func (server *Server) playerSpecialSkill(conn mnet.Client, reader mpacket.Reader
 		_ = reader.ReadInt16()
 	}
 
-	applied := false
-
 	switch skill.Skill(skillID) {
 	// Party buffs handled earlier remain unchanged...
 	case skill.Haste, skill.BanditHaste, skill.Bless, skill.IronWill, skill.Rage,
@@ -3082,7 +3080,6 @@ func (server *Server) playerSpecialSkill(conn mnet.Client, reader mpacket.Reader
 		if plr.party == nil {
 			plr.addBuff(skillID, skillLevel, delay)
 			plr.inst.send(packetPlayerSkillAnimThirdParty(plr.id, false, true, skillID, skillLevel))
-			applied = true
 		} else {
 			affected := server.getAffectedPartyMembers(plr.party, plr, partyMask, false)
 			for _, member := range affected {
@@ -3093,7 +3090,6 @@ func (server *Server) playerSpecialSkill(conn mnet.Client, reader mpacket.Reader
 				plr.inst.send(packetPlayerSkillAnimThirdParty(plr.id, false, true, skillID, skillLevel))
 				member.inst.send(packetPlayerSkillAnimThirdParty(member.id, true, false, skillID, skillLevel))
 			}
-			applied = true
 		}
 
 	// Self toggles and non-party buffs (boolean/ratio-type): apply to self
@@ -3112,7 +3108,6 @@ func (server *Server) playerSpecialSkill(conn mnet.Client, reader mpacket.Reader
 		skill.Hide:
 		plr.addBuff(skillID, skillLevel, delay)
 		plr.inst.send(packetPlayerSkillAnimThirdParty(plr.id, false, true, skillID, skillLevel))
-		applied = true
 
 	// Debuffs on mobs: [mobCount][mobIDs...][delay]
 	case skill.Threaten,
@@ -3141,8 +3136,6 @@ func (server *Server) playerSpecialSkill(conn mnet.Client, reader mpacket.Reader
 		plr.send(packetPlayerNoChange())
 		return
 	}
-
-	_ = applied
 }
 
 func (server *Server) playerCancelBuff(conn mnet.Client, reader mpacket.Reader) {
