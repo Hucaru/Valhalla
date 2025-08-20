@@ -225,7 +225,7 @@ func (server *Server) playerConnect(conn mnet.Client, reader mpacket.Reader) {
 	newPlr.UpdateBuddyInfo()
 
 	// Restore buffs (if any) saved during CC or previous logout, then audit for stale
-	server.loadAndApplyBuffSnapshot(newPlr)
+	newPlr.loadAndApplyBuffSnapshot()
 	if newPlr.buffs != nil {
 		newPlr.buffs.AuditAndExpireStaleBuffs()
 	}
@@ -260,7 +260,7 @@ func (server *Server) playerChangeChannel(conn mnet.Client, reader mpacket.Reade
 	}
 
 	// Save player buffs for handoff to next channel
-	server.saveBuffSnapshot(player)
+	player.saveBuffSnapshot()
 
 	if int(id) < len(server.channels) {
 		if server.channels[id].Port == 0 {
@@ -2994,7 +2994,7 @@ func (server Server) handleChatEvent(conn mnet.Server, reader mpacket.Reader) {
 	}
 }
 
-func (server *Server) getAffectedPartyMembers(p *party, src *player, affectedMask byte, includeSelf bool) []*player {
+func (server *Server) getAffectedPartyMembers(p *party, src *player, includeSelf bool) []*player {
 	if p == nil || src == nil {
 		return nil
 	}
@@ -3020,17 +3020,7 @@ func (server *Server) getAffectedPartyMembers(p *party, src *player, affectedMas
 		base = append(base, member)
 	}
 
-	if affectedMask == 0 || affectedMask == 0xFF {
-		return base
-	}
-
-	out := make([]*player, 0, len(base))
-	for idx, member := range base {
-		if ((affectedMask >> uint(idx)) & 0x01) != 0 {
-			out = append(out, member)
-		}
-	}
-	return out
+	return base
 }
 
 func (server *Server) playerSpecialSkill(conn mnet.Client, reader mpacket.Reader) {
@@ -3058,8 +3048,8 @@ func (server *Server) playerSpecialSkill(conn mnet.Client, reader mpacket.Reader
 		return
 	}
 
-	partyMask := reader.ReadByte() // party flags
-	delay := reader.ReadInt16()    // delay
+	_ = reader.ReadByte()       // party flags
+	delay := reader.ReadInt16() // delay
 
 	readMobListAndDelay := func() {
 		count := int(reader.ReadByte())
@@ -3081,7 +3071,7 @@ func (server *Server) playerSpecialSkill(conn mnet.Client, reader mpacket.Reader
 			plr.addBuff(skillID, skillLevel, delay)
 			plr.inst.send(packetPlayerSkillAnimThirdParty(plr.id, false, true, skillID, skillLevel))
 		} else {
-			affected := server.getAffectedPartyMembers(plr.party, plr, partyMask, false)
+			affected := server.getAffectedPartyMembers(plr.party, plr, false)
 			for _, member := range affected {
 				if member == nil {
 					continue

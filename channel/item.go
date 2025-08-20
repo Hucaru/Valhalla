@@ -463,9 +463,6 @@ func (v item) use(plr *player) {
 		plr.giveMP(v.mp)
 	}
 
-	if plr == nil {
-		return
-	}
 	if plr.buffs == nil {
 		plr.buffs = NewCharacterBuffs(plr)
 	}

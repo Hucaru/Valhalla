@@ -1372,6 +1372,82 @@ func (d *player) removeAllCooldowns() {
 	}
 }
 
+func (d *player) saveBuffSnapshot() {
+	if d.buffs == nil {
+		return
+	}
+	snaps := d.buffs.Snapshot()
+	if len(snaps) == 0 {
+		_, _ = common.DB.Exec("DELETE FROM character_buffs WHERE characterID=?", d.id)
+		return
+	}
+
+	tx, err := common.DB.Begin()
+	if err != nil {
+		log.Println("saveBuffSnapshot: begin tx:", err)
+		return
+	}
+	defer func() { _ = tx.Commit() }()
+
+	if _, err := tx.Exec("DELETE FROM character_buffs WHERE characterID=?", d.id); err != nil {
+		log.Println("saveBuffSnapshot: clear rows:", err)
+		return
+	}
+
+	stmt, err := tx.Prepare("INSERT INTO character_buffs(characterID, sourceID, level, expiresAtMs) VALUES(?,?,?,?)")
+	if err != nil {
+		log.Println("saveBuffSnapshot: prepare:", err)
+		return
+	}
+	defer stmt.Close()
+
+	for _, s := range snaps {
+		if _, err := stmt.Exec(d.id, s.SourceID, s.Level, s.ExpiresAtMs); err != nil {
+			log.Println("saveBuffSnapshot: insert:", err)
+			return
+		}
+	}
+}
+
+func (d *player) loadAndApplyBuffSnapshot() {
+	rows, err := common.DB.Query("SELECT sourceID, level, expiresAtMs FROM character_buffs WHERE characterID=?", d.id)
+	if err != nil {
+		log.Println("loadBuffSnapshot:", err)
+		return
+	}
+	defer rows.Close()
+
+	snaps := make([]BuffSnapshot, 0, 8)
+	now := time.Now().UnixMilli()
+	for rows.Next() {
+		var s BuffSnapshot
+		if err := rows.Scan(&s.SourceID, &s.Level, &s.ExpiresAtMs); err != nil {
+			log.Println("loadBuffSnapshot scan:", err)
+			return
+		}
+		if s.ExpiresAtMs > 0 && s.ExpiresAtMs <= now {
+			continue // skip already-expired
+		}
+		snaps = append(snaps, s)
+	}
+	if err := rows.Err(); err != nil {
+		log.Println("loadBuffSnapshot rows:", err)
+		return
+	}
+
+	if len(snaps) > 0 {
+		if d.buffs == nil {
+			d.buffs = NewCharacterBuffs(d)
+		}
+		d.buffs.RestoreFromSnapshot(snaps)
+		_, err = common.DB.Exec("DELETE FROM character_buffs WHERE characterID=?", d.id)
+		if err != nil {
+			log.Println("loadBuffSnapshot delete:", err)
+			return
+		}
+	}
+}
+
 func packetPlayerReceivedDmg(charID int32, attack int8, initalAmmount, reducedAmmount, spawnID, mobID, healSkillID int32,
 	stance, reflectAction byte, reflected byte, reflectX, reflectY int16) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelPlayerTakeDmg)
