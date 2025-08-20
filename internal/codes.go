@@ -19,4 +19,5 @@ const (
 	OpGuildEmblemChange     = 0x06
 	OpGuildPointsUpdate     = 0x07
 	OpGuildCharacterDeleted = 0x08
+	OpGuildTitlesChange     = 0x09
 )

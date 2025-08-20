@@ -3,6 +3,7 @@ package channel
 import (
 	"fmt"
 	"log"
+	"slices"
 
 	"github.com/Hucaru/Valhalla/common"
 	"github.com/Hucaru/Valhalla/common/mpacket"
@@ -100,16 +101,17 @@ type guild struct {
 
 	points int32
 
-	players  [constant.MaxGuildSize]*player
-	playerID [constant.MaxGuildSize]int32
-	names    [constant.MaxGuildSize]string
-	jobs     [constant.MaxGuildSize]int32
-	levels   [constant.MaxGuildSize]int32
-	online   [constant.MaxGuildSize]bool
-	ranks    [constant.MaxGuildSize]int32
+	players *players
+
+	playerID []int32
+	names    []string
+	jobs     []int32
+	levels   []int32
+	online   []bool
+	ranks    []int32
 }
 
-func loadGuildFromDb(guildID int32) (*guild, error) {
+func loadGuildFromDb(guildID int32, players *players) (*guild, error) {
 	loadedGuild := &guild{}
 
 	row, err := common.DB.Query("SELECT id, guildRankID, name, job, level, channelID FROM characters WHERE guildID=?", guildID)
@@ -120,16 +122,33 @@ func loadGuildFromDb(guildID int32) (*guild, error) {
 
 	defer row.Close()
 
-	var i int32
-	var channelID int32
-	for row.Next() {
-		err = row.Scan(&loadedGuild.playerID[i], &loadedGuild.ranks[i], &loadedGuild.names[i], &loadedGuild.jobs[i], &loadedGuild.levels[i], &channelID)
+	loadedGuild.playerID = make([]int32, 0, constant.MaxGuildSize)
+	loadedGuild.names = make([]string, 0, constant.MaxGuildSize)
+	loadedGuild.jobs = make([]int32, 0, constant.MaxGuildSize)
+	loadedGuild.levels = make([]int32, 0, constant.MaxGuildSize)
+	loadedGuild.online = make([]bool, 0, constant.MaxGuildSize)
+	loadedGuild.ranks = make([]int32, 0, constant.MaxGuildSize)
 
-		if channelID > -1 {
-			loadedGuild.online[i] = true
+	var channelID int32
+	var playerID int32
+	var rank int32
+	var name string
+	var job int32
+	var level int32
+
+	for row.Next() {
+		err = row.Scan(&playerID, &rank, &name, &job, &level, &channelID)
+
+		if err != nil {
+			log.Panicln(err)
 		}
 
-		i++
+		loadedGuild.playerID = append(loadedGuild.playerID, playerID)
+		loadedGuild.names = append(loadedGuild.names, name)
+		loadedGuild.jobs = append(loadedGuild.jobs, job)
+		loadedGuild.levels = append(loadedGuild.levels, level)
+		loadedGuild.online = append(loadedGuild.online, channelID > -1)
+		loadedGuild.ranks = append(loadedGuild.ranks, rank)
 	}
 
 	query := "id,capacity,name,notice,master,jrMaster,member1,member2,member3,logoBg,logoBgColour,logo,logoColour,points"
@@ -137,6 +156,8 @@ func loadGuildFromDb(guildID int32) (*guild, error) {
 		&loadedGuild.name, &loadedGuild.notice, &loadedGuild.master, &loadedGuild.jrMaster, &loadedGuild.member1,
 		&loadedGuild.member2, &loadedGuild.member3, &loadedGuild.logoBg, &loadedGuild.logoBgColour, &loadedGuild.logo,
 		&loadedGuild.logoColour, &loadedGuild.points)
+
+	loadedGuild.players = players
 
 	return loadedGuild, nil
 }
@@ -173,20 +194,26 @@ func createGuild(name string, worldID int32) (*guild, error) {
 }
 
 func (g *guild) broadcast(p mpacket.Packet) {
-	for _, v := range g.players {
-		if v == nil {
+	for _, v := range g.playerID {
+		plr, err := g.players.getFromID(v)
+
+		if err != nil {
 			continue
 		}
-		v.send(p)
+
+		plr.send(p)
 	}
 }
 
-func (g *guild) broadcastExcept(p mpacket.Packet, plr *player) {
-	for _, v := range g.players {
-		if v == nil || v == plr {
+func (g *guild) broadcastExcept(p mpacket.Packet, pass *player) {
+	for _, v := range g.playerID {
+		plr, err := g.players.getFromID(v)
+
+		if err != nil || plr == pass {
 			continue
 		}
-		v.send(p)
+
+		plr.send(p)
 	}
 }
 
@@ -205,11 +232,26 @@ func (g *guild) updateEmblem(logoBg, logo int16, logoBgColour, logoColour byte) 
 	g.logoBgColour = logoBgColour
 	g.logoBgColour = logoColour
 
-	for _, v := range g.players {
-		g.updateAvatar(v)
-	}
+	for _, v := range g.playerID {
+		plr, err := g.players.getFromID(v)
 
-	g.broadcast(packetGuildUpdateEmblem(g.id, logoBg, logo, logoBgColour, logoColour))
+		if err != nil {
+			continue
+		}
+
+		g.updateAvatar(plr)
+		plr.send(packetGuildUpdateEmblem(g.id, logoBg, logo, logoBgColour, logoColour))
+	}
+}
+
+func (g *guild) updateTitles(master, jrMaster, member1, member2, member3 string) {
+	g.master = master
+	g.jrMaster = jrMaster
+	g.member1 = member1
+	g.member2 = member2
+	g.member3 = member3
+
+	g.broadcast(packetGuilderTitlesUpdate(g.id, master, jrMaster, member1, member2, member3))
 }
 
 func (g *guild) addPlayer(plr *player, playerID int32, name string, jobID, level int32, rank int32) error {
@@ -222,7 +264,7 @@ func (g *guild) addPlayer(plr *player, playerID int32, name string, jobID, level
 	}
 
 	if index == -1 {
-		return fmt.Errorf("Guild at capacity")
+		return fmt.Errorf("guild at capacity")
 	}
 
 	_, err := common.DB.Exec("UPDATE characters SET guildID=?, guildRankID=? WHERE id=?", g.id, rank, playerID)
@@ -231,7 +273,6 @@ func (g *guild) addPlayer(plr *player, playerID int32, name string, jobID, level
 		return err
 	}
 
-	g.players[index] = plr
 	g.playerID[index] = playerID
 	g.names[index] = name
 	g.jobs[index] = jobID
@@ -249,11 +290,32 @@ func (g *guild) addPlayer(plr *player, playerID int32, name string, jobID, level
 	return nil
 }
 
+func (g *guild) removePlayer(playerID int32, expelled bool, name string) {
+	for i, id := range g.playerID {
+		if id == playerID {
+			g.playerID = slices.Delete(g.playerID, i, i+1)
+			g.names = slices.Delete(g.names, i, i+1)
+			g.jobs = slices.Delete(g.jobs, i, i+1)
+			g.levels = slices.Delete(g.levels, i, i+1)
+			g.online = slices.Delete(g.online, i, i+1)
+			g.ranks = slices.Delete(g.ranks, i, i+1)
+
+			if plr, err := g.players.getFromID(3); err == nil {
+				plr.guild = nil
+				plr.send(packetGuildInfo(nil))
+			}
+
+			break
+		}
+	}
+
+	g.broadcast(packetGuildRemovePlayer(g.id, playerID, name, expelled))
+}
+
 func (g *guild) playerOnline(playerID int32, plr *player, online, changeChannel bool) {
 	for i, id := range g.playerID {
 		if id == playerID {
 			g.online[i] = online
-			g.players[i] = plr
 
 			if plr != nil {
 				plr.send(packetGuildInfo(g))
@@ -279,19 +341,22 @@ func (g guild) canUnload() bool {
 }
 
 func (g guild) disband() {
-	g.broadcast(packetGuildDisbandMessage(g.id))
+	for _, v := range g.playerID {
+		plr, err := g.players.getFromID(v)
 
-	for _, plr := range g.players {
-		if plr != nil {
-			plr.guild = nil
-			g.updateAvatar(plr)
+		if err != nil {
+			continue
 		}
+
+		plr.send(packetGuildDisbandMessage(g.id))
+		plr.guild = nil
+		g.updateAvatar(plr)
 	}
 }
 
 func (g guild) isMaster(p *player) bool {
-	for i, v := range g.players {
-		if v == p && g.ranks[i] == 1 {
+	for i, v := range g.playerID {
+		if v == p.id && g.ranks[i] == 1 {
 			return true
 		}
 	}
@@ -352,20 +417,13 @@ func packetGuildInfo(guild *guild) mpacket.Packet {
 	p.WriteString(guild.member2)
 	p.WriteString(guild.member3)
 
-	var memberCount byte
-
-	for _, v := range guild.levels {
-		if v > 0 {
-			memberCount++
-		}
-	}
-
+	memberCount := byte(len(guild.playerID))
 	p.WriteByte(memberCount)
 
-	// The first 2 id's must correspond to master and jr. master
+	// The client wants the data listed in order from master to member 3
 	for j := int32(1); j < 6; j++ {
-		for i := byte(0); i < memberCount; i++ {
-			if guild.ranks[i] != j {
+		for i, rank := range guild.ranks {
+			if rank != j {
 				continue
 			}
 
@@ -373,10 +431,9 @@ func packetGuildInfo(guild *guild) mpacket.Packet {
 		}
 	}
 
-	// The first 2 id's must correspond to master and jr. master
 	for j := int32(1); j < 6; j++ {
-		for i := byte(0); i < memberCount; i++ {
-			if guild.ranks[i] != j {
+		for i, rank := range guild.ranks {
+			if rank != j {
 				continue
 			}
 
@@ -470,6 +527,21 @@ func packetGuildCannotJoinMaxPlayers() mpacket.Packet {
 	return p
 }
 
+func packetGuildRemovePlayer(guildID, playerID int32, name string, expelled bool) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelGuildInfo)
+	if expelled {
+		p.WriteByte(0x2f)
+	} else {
+		p.WriteByte(0x2c)
+	}
+
+	p.WriteInt32(guildID)
+	p.WriteInt32(playerID)
+	p.WriteString(name)
+
+	return p
+}
+
 func packetGuildNotIn() mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelGuildInfo)
 	p.WriteByte(0x30)
@@ -518,6 +590,19 @@ func packetGuildPlayerOnlineNotice(guildID, playerID int32, online bool) mpacket
 	p.WriteInt32(guildID)
 	p.WriteInt32(playerID)
 	p.WriteBool(online)
+
+	return p
+}
+
+func packetGuilderTitlesUpdate(guildID int32, master, jrMaster, member1, member2, member3 string) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelGuildInfo)
+	p.WriteByte(0x3e)
+	p.WriteInt32(guildID)
+	p.WriteString(master)
+	p.WriteString(jrMaster)
+	p.WriteString(member1)
+	p.WriteString(member2)
+	p.WriteString(member3)
 
 	return p
 }

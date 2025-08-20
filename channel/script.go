@@ -261,12 +261,7 @@ func (ctrl *npcChatPlayerController) InGuild() bool {
 }
 
 func (ctrl *npcChatPlayerController) IsGuildLeader() bool {
-	for i, v := range ctrl.plr.guild.players {
-		if v == ctrl.plr && ctrl.plr.guild.ranks[i] == 1 {
-			return true
-		}
-	}
-	return false
+	return ctrl.plr.guild.isMaster(ctrl.plr)
 }
 
 func (ctrl *npcChatPlayerController) InParty() bool {

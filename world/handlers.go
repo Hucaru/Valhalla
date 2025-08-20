@@ -351,10 +351,34 @@ func (server *Server) handleGuildEvent(conn mnet.Server, reader mpacket.Reader) 
 		fallthrough
 	case internal.OpGuildAddPlayer:
 		fallthrough
-	case internal.OpGuildRemovePlayer:
-		fallthrough
 	case internal.OpGuildPointsUpdate:
 		server.forwardPacketToChannels(conn, reader)
+	case internal.OpGuildTitlesChange:
+		guildID := reader.ReadInt32()
+		master := reader.ReadString(reader.ReadInt16())
+		jrMaster := reader.ReadString(reader.ReadInt16())
+		member1 := reader.ReadString(reader.ReadInt16())
+		member2 := reader.ReadString(reader.ReadInt16())
+		member3 := reader.ReadString(reader.ReadInt16())
+
+		query := "UPDATE guilds set master=?, jrMaster=?, member1=?, member2=?, member3=? WHERE id=?"
+
+		if _, err := common.DB.Exec(query, master, jrMaster, member1, member2, member3, guildID); err != nil {
+			log.Println(err)
+		} else {
+			server.forwardPacketToChannels(conn, reader)
+		}
+	case internal.OpGuildRemovePlayer:
+		reader.Skip(4)
+		playerID := reader.ReadInt32()
+
+		query := "UPDATE characters set guildID=?, guildRankID=? WHERE id=?"
+
+		if _, err := common.DB.Exec(query, nil, 0, playerID); err != nil {
+			log.Println(err)
+		} else {
+			server.forwardPacketToChannels(conn, reader)
+		}
 	case internal.OpGuildNoticeChange:
 		guildID := reader.ReadInt32()
 		notice := reader.ReadString(reader.ReadInt16())

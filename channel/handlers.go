@@ -207,7 +207,7 @@ func (server *Server) playerConnect(conn mnet.Client, reader mpacket.Reader) {
 		guildID = guildIdOptional.Int32
 
 		if guild, ok := server.guilds[guildIdOptional.Int32]; !ok {
-			guild, err = loadGuildFromDb(guildIdOptional.Int32)
+			guild, err = loadGuildFromDb(guildIdOptional.Int32, &server.players)
 
 			if err == nil {
 				server.guilds[guildIdOptional.Int32] = guild
@@ -2442,7 +2442,7 @@ func (server *Server) guildManagement(conn mnet.Client, reader mpacket.Reader) {
 		if plr.guild.isMaster(plr) {
 			server.world.Send(internal.PacketGuildDisband(plr.guild.id))
 		} else {
-			server.world.Send(internal.PacketGuildRemovePlayer(plr.guild.id, playerID, name, 0))
+			server.world.Send(internal.PacketGuildRemovePlayer(plr.guild.id, playerID, name, false))
 		}
 	case 0x08: // expel
 		playerID := reader.ReadInt32()
@@ -2454,7 +2454,7 @@ func (server *Server) guildManagement(conn mnet.Client, reader mpacket.Reader) {
 			return
 		}
 
-		server.world.Send(internal.PacketGuildRemovePlayer(plr.guild.id, playerID, name, 1))
+		server.world.Send(internal.PacketGuildRemovePlayer(plr.guild.id, playerID, name, true))
 	case 0x10: // notice change
 		notice := reader.ReadString(reader.ReadInt16())
 		plr, err := server.players.getFromConn(conn)
@@ -2471,9 +2471,17 @@ func (server *Server) guildManagement(conn mnet.Client, reader mpacket.Reader) {
 		member2 := reader.ReadString(reader.ReadInt16())
 		member3 := reader.ReadString(reader.ReadInt16())
 
-		// emit to world server
+		plr, err := server.players.getFromConn(conn)
 
-		fmt.Println("rank name change:", master, jrMaster, member1, member2, member3)
+		if err != nil {
+			return
+		}
+
+		if plr.guild == nil {
+			return
+		}
+
+		server.world.Send(internal.PacketGuildTitlesChange(plr.guild.id, master, jrMaster, member1, member2, member3))
 	case 0x0E: // rank change
 		playerID := reader.ReadInt32()
 		rank := reader.ReadByte()
@@ -2950,27 +2958,28 @@ func (server Server) handleGuildEvent(conn mnet.Server, reader mpacket.Reader) {
 			guild.disband()
 			delete(server.guilds, guildID)
 		}
+	case internal.OpGuildTitlesChange:
+		guildID := reader.ReadInt32()
+		master := reader.ReadString(reader.ReadInt16())
+		jrMaster := reader.ReadString(reader.ReadInt16())
+		member1 := reader.ReadString(reader.ReadInt16())
+		member2 := reader.ReadString(reader.ReadInt16())
+		member3 := reader.ReadString(reader.ReadInt16())
+
+		if guild, ok := server.guilds[guildID]; ok {
+			guild.updateTitles(master, jrMaster, member1, member2, member3)
+		}
 	case internal.OpGuildRankUpdate:
 	case internal.OpGuildAddPlayer:
 	case internal.OpGuildRemovePlayer:
-		// guildID := reader.ReadInt32()
-		// playerID := reader.ReadInt32()
-		// reason := reader.ReadByte() // 0 left, 1 expelle
-		// playerName := reader.ReadString()
+		guildID := reader.ReadInt32()
+		playerID := reader.ReadInt32()
+		expelled := reader.ReadBool()
+		playerName := reader.ReadString(reader.ReadInt16())
 
-		// guild, ok := server.guilds[guildID]
-
-		// if !ok {
-		// 	return
-		// }
-
-		// switch reason {
-		// case 0: // left
-		// 	guild.broadcast(packetG)
-		// case 1: //expelled
-		// 	guild.broadcast(packetGuild)
-		// }
-
+		if guild, ok := server.guilds[guildID]; ok {
+			guild.removePlayer(playerID, expelled, playerName)
+		}
 	case internal.OpGuildNoticeChange:
 		guildID := reader.ReadInt32()
 		notice := reader.ReadString(reader.ReadInt16())
