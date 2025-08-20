@@ -107,7 +107,7 @@ type guild struct {
 	names    []string
 	jobs     []int32
 	levels   []int32
-	online   []bool
+	online   []bool // TODO: repurpose this field for contract signing
 	ranks    []byte
 }
 

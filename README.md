@@ -28,6 +28,7 @@ Login server:
 - [x] Channel selection
 - [x] Create character
 - [x] Delete character
+- [ ] Delete character informs world server
 - [x] Migrate to channel server
 - [x] Show worlds, channels, world status etc from information sent from world server
 - [x] Prevent players from accessing dead channel
@@ -100,7 +101,7 @@ Channel server:
 - [x] Guild join/leave
 - [x] Guild emblem
 - [x] Guild chat
-- [x] Guild points
+- [x] Guild points update
 - [x] Guild rank titles change
 - [x] Guild rank update
 - [x] Guild notice update

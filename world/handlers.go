@@ -1,6 +1,7 @@
 package world
 
 import (
+	"fmt"
 	"log"
 	"math"
 	"time"
@@ -423,6 +424,8 @@ func (server *Server) handleGuildEvent(conn mnet.Server, reader mpacket.Reader) 
 		} else {
 			server.forwardPacketToChannels(conn, reader)
 		}
+	case internal.OpGuildCharacterDeleted:
+		fmt.Println("Login server delete character guild update not implemented")
 	default:
 		log.Println("Unkown guild event type:", op)
 	}
