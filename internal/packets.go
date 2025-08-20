@@ -231,6 +231,15 @@ func PacketGuildTitlesChange(guildID int32, master, jrMaster, member1, member2, 
 	return p
 }
 
+func PacketGuildPointsUpdate(guildID, points int32) mpacket.Packet {
+	p := mpacket.CreateInternal(opcode.ChannelPlayerGuildEvent)
+	p.WriteByte(OpGuildPointsUpdate)
+	p.WriteInt32(guildID)
+	p.WriteInt32(points)
+
+	return p
+}
+
 // TODO: Check if this can be deleted
 func PacketLoginDeletedCharacter(playerID int32) mpacket.Packet {
 	p := mpacket.CreateInternal(opcode.LoginDeleteCharacter)

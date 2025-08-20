@@ -254,6 +254,11 @@ func (g *guild) updateTitles(master, jrMaster, member1, member2, member3 string)
 	g.broadcast(packetGuilderTitlesUpdate(g.id, master, jrMaster, member1, member2, member3))
 }
 
+func (g *guild) setPoints(points int32) {
+	g.points = points
+	g.broadcast(packetGuildSetPoints(g.id, points))
+}
+
 func (g *guild) addPlayer(plr *player, playerID int32, name string, jobID, level int32, rank int32) error {
 	index := -1
 	for i, v := range g.levels {
@@ -624,6 +629,15 @@ func packetGuildUpdateNotice(guildID int32, notice string) mpacket.Packet {
 	p.WriteByte(0x44)
 	p.WriteInt32(guildID)
 	p.WriteString(notice)
+
+	return p
+}
+
+func packetGuildSetPoints(guildID, points int32) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelGuildInfo)
+	p.WriteByte(0x48)
+	p.WriteInt32(guildID)
+	p.WriteInt32(points)
 
 	return p
 }

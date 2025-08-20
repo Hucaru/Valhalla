@@ -3000,6 +3000,12 @@ func (server Server) handleGuildEvent(conn mnet.Server, reader mpacket.Reader) {
 			guild.updateEmblem(logoBg, logo, logoBgColour, logoColour)
 		}
 	case internal.OpGuildPointsUpdate:
+		guildID := reader.ReadInt32()
+		points := reader.ReadInt32()
+
+		if guild, ok := server.guilds[guildID]; ok {
+			guild.setPoints(points)
+		}
 	default:
 		log.Println("Unkown guild event type:", op)
 	}

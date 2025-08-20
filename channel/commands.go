@@ -875,6 +875,27 @@ func (server *Server) gmCommand(conn mnet.Client, msg string) {
 		}
 
 		server.world.Send(internal.PacketGuildDisband(plr.guild.id))
+	case "guildPoints":
+		plr, err := server.players.getFromConn(conn)
+
+		if err != nil {
+			conn.Send(packetMessageRedText(err.Error()))
+			return
+		}
+
+		if plr.guild == nil {
+			conn.Send(packetMessageRedText("Not in guild, cannot disband"))
+		}
+
+		if len(command) == 2 {
+			points, err := strconv.Atoi(command[1])
+
+			if err != nil {
+				conn.Send(packetMessageRedText(err.Error()))
+			}
+
+			server.world.Send(internal.PacketGuildPointsUpdate(plr.guild.id, int32(points)))
+		}
 	case "testMob":
 		plr, err := server.players.getFromConn(conn)
 
