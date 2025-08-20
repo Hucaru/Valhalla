@@ -131,6 +131,7 @@ See screenshots section for an example Grafana dashboard
     - [Vana](https://github.com/retep998/Vana)
     - [WvsGlobal](https://github.com/diamondo25/WvsGlobal)
 - [NX](https://nxformat.github.io/) file format (see acknowledgements at link)
+- [NPC-Converter](https://github.com/lastbattle/gpt_stateless_npc_converter) for the NPC script converter
 
 ## NPC chat display info (use this when scripting NPCs)
 

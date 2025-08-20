@@ -1000,6 +1000,121 @@ func (d *player) moveItem(start, end, amount int16, invID byte) error {
 	return nil
 }
 
+func (d *player) openStorage(npcID int32) bool {
+	// TODO: implement storage UI and wiring
+	return false
+}
+
+// SetSkinColor updates the player's skin tone and broadcasts an avatar refresh.
+func (d *player) setSkinColor(skin byte) bool {
+	d.skin = skin
+	if d.inst != nil {
+		d.inst.send(packetInventoryChangeEquip(*d))
+	}
+	return true
+}
+
+func (d *player) takeItemAnySlot(id int32, amount int16) (item, error) {
+	if amount <= 0 {
+		return item{}, fmt.Errorf("amount must be > 0")
+	}
+
+	var invID byte
+	switch id / 1000000 {
+	case 1:
+		invID = 1 // Equip
+	case 2:
+		invID = 2 // Use
+	case 3:
+		invID = 3 // Setup
+	case 4:
+		invID = 4 // Etc
+	case 5:
+		invID = 5 // Cash
+	default:
+		return item{}, fmt.Errorf("unable to infer inventory for item id %d", id)
+	}
+
+	var (
+		removed   int16
+		lastFound item
+	)
+
+	const maxSlots int16 = 128
+
+	for slot := int16(1); slot <= maxSlots && removed < amount; slot++ {
+		it, err := d.getItem(invID, slot)
+		if err != nil {
+			continue
+		}
+		if it.id != id {
+			continue
+		}
+
+		lastFound = it
+
+		remaining := amount - removed
+		if remaining >= it.amount {
+			removed += it.amount
+			d.removeItem(it)
+		} else {
+			it.amount -= remaining
+			removed = amount
+			d.updateItemStack(it)
+		}
+	}
+
+	if removed < amount {
+		return item{}, fmt.Errorf("not enough of item %d to remove: wanted %d, removed %d", id, amount, removed)
+	}
+
+	return lastFound, nil
+}
+
+func (d *player) itemQuantity(id int32) int32 {
+	var total int32
+	// Equip (count each matching equip as 1)
+	for i := range d.equip {
+		if d.equip[i].id == id {
+			total += int32(d.equip[i].amount)
+		}
+	}
+	// Use (stackable)
+	for i := range d.use {
+		if d.use[i].id == id {
+			total += int32(d.use[i].amount)
+		}
+	}
+	// Setup
+	for i := range d.setUp {
+		if d.setUp[i].id == id {
+			total += int32(d.setUp[i].amount)
+		}
+	}
+	// Etc (stackable)
+	for i := range d.etc {
+		if d.etc[i].id == id {
+			total += int32(d.etc[i].amount)
+		}
+	}
+	// Cash
+	for i := range d.cash {
+		if d.cash[i].id == id {
+			total += int32(d.cash[i].amount)
+		}
+	}
+	return total
+}
+
+func (d *player) hasEquipped(itemID int32) bool {
+	for i := range d.equip {
+		if d.equip[i].slotID < 0 && d.equip[i].id == itemID && d.equip[i].amount != 0 {
+			return true
+		}
+	}
+	return false
+}
+
 func (d *player) updateSkill(updatedSkill playerSkill) {
 	d.skills[updatedSkill.ID] = updatedSkill
 	d.send(packetPlayerSkillBookUpdate(updatedSkill.ID, int32(updatedSkill.Level)))

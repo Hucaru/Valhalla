@@ -1,0 +1,3 @@
+npc.sendOk("I'm working on an important spell, so I suggest you leave this house immediately and don't bother me. I can't concentrate if a stranger is walking around my house. Please leave...!")
+
+// Generate by kimi-k2-instruct
