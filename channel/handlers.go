@@ -2994,7 +2994,7 @@ func (server Server) handleChatEvent(conn mnet.Server, reader mpacket.Reader) {
 	}
 }
 
-func (server *Server) getAffectedPartyMembers(p *party, src *player, affected byte) []*player {
+func getAffectedPartyMembers(p *party, src *player, affected byte) []*player {
 	if p == nil || src == nil {
 		return nil
 	}
@@ -3087,7 +3087,7 @@ func (server *Server) playerSpecialSkill(conn mnet.Client, reader mpacket.Reader
 			plr.addBuff(skillID, skillLevel, delay)
 			plr.inst.send(packetPlayerSkillAnimThirdParty(plr.id, false, true, skillID, skillLevel))
 		} else {
-			affected := server.getAffectedPartyMembers(plr.party, plr, partyMask)
+			affected := getAffectedPartyMembers(plr.party, plr, partyMask)
 			for _, member := range affected {
 				if member == nil {
 					continue
