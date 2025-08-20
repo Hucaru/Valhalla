@@ -258,6 +258,9 @@ func (server *Server) ClientDisconnected(conn mnet.Client) {
 		log.Println(saveErr)
 	}
 
+	// Save buff snapshot so it persists through logout (and server restarts)
+	plr.saveBuffSnapshot()
+
 	// Tear down any active NPC chat state
 	delete(server.npcChat, conn)
 

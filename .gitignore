@@ -35,4 +35,4 @@ _testmain.go
 
 .DS_Store
 
-values.yaml
+values_dev.yaml

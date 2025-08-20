@@ -80,6 +80,15 @@ CREATE TABLE `characters` (
   CONSTRAINT `characters_ibfk_1` FOREIGN KEY (`accountID`) REFERENCES `accounts` (`accountID`)
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 
+DROP TABLE IF EXISTS `character_buffs`;
+CREATE TABLE IF NOT EXISTS character_buffs (
+   `characterID` INT NOT NULL,
+   `sourceID` INT NOT NULL,
+   `level` TINYINT NOT NULL,
+   `expiresAtMs` BIGINT NOT NULL,
+   PRIMARY KEY(`characterID`, `sourceID`),
+   CONSTRAINT `buffs_ibfk_5` FOREIGN KEY (`characterID`) REFERENCES `characters` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 
 DROP TABLE IF EXISTS `items`;
 CREATE TABLE `items` (

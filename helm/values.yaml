@@ -1,0 +1,31 @@
+clusterDomain: cluster.local
+image: docker/valhalla:latest
+namespace: valhalla
+channel:
+  jitter: 0
+  latency: 0
+  maxPop: 250
+  packetQueueSize: 512
+  replicas: 1
+login:
+  jitter: 0
+  latency: 0
+  maxPop: 250
+  packetQueueSize: 512
+  withPin: true
+mysql:
+  database: maplestory
+  host: mysql.mysql.svc.cluster.local
+  password: maplestory
+  port: 3306
+  user: root
+world:
+  dropRate: 1.1
+  expRate: 1.1
+  jitter: 0
+  latency: 0
+  maxPop: 250
+  mesosRate: 1.1
+  message: message
+  packetQueueSize: 512
+  ribbon: 2

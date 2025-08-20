@@ -212,6 +212,34 @@ func (d party) giveExp(playerID, amount int32, sameMap bool) {
 	}
 }
 
+// - Index is 1..6 (party UI ordering), total is the total party member count (byte from packet)
+// - Returns 0xFF if index > total (matching the original behavior)
+func partyMemberMaskForIndex(index int, total byte) byte {
+	var base int
+	switch index {
+	case 1:
+		base = 0x40
+	case 2:
+		base = 0x80
+	case 3:
+		base = 0x100
+	case 4:
+		base = 0x200
+	case 5:
+		base = 0x400
+	case 6:
+		base = 0x800
+	default:
+		return 0xFF
+	}
+
+	if int(total) >= index {
+		v := base >> uint(total)
+		return byte(v & 0xFF)
+	}
+	return 0xFF
+}
+
 func packetPartyCreate(partyID int32, doorMap1, doorMap2 int32, point pos) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelPartyInfo)
 	p.WriteByte(0x07)

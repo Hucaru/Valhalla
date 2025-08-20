@@ -11,6 +11,7 @@ import (
 	"github.com/Hucaru/Valhalla/common"
 	"github.com/Hucaru/Valhalla/common/opcode"
 	"github.com/Hucaru/Valhalla/constant"
+	"github.com/Hucaru/Valhalla/constant/skill"
 	"github.com/Hucaru/Valhalla/internal"
 	"github.com/Hucaru/Valhalla/mnet"
 	"github.com/Hucaru/Valhalla/mpacket"
@@ -113,7 +114,7 @@ func (server *Server) HandleClientPacket(conn mnet.Client, reader mpacket.Reader
 	case opcode.RecvChannelAddSkillPoint:
 		server.playerAddSkillPoint(conn, reader)
 	case opcode.RecvChannelSpecialSkill:
-		// server.playerSpecialSkill(conn, reader)
+		server.playerSpecialSkill(conn, reader)
 	case opcode.RecvChannelCharacterInfo:
 		server.playerRequestAvatarInfoWindow(conn, reader)
 	case opcode.RecvChannelLieDetectorResult:
@@ -133,6 +134,10 @@ func (server *Server) HandleClientPacket(conn mnet.Client, reader mpacket.Reader
 		server.npcMovement(conn, reader)
 	case opcode.RecvChannelBoatMap:
 		// [mapID int32][? byte]
+	case opcode.RecvChannelAcknowledgeBuff:
+		// Consume
+	case opcode.RecvChannelCancelBuff:
+		server.playerCancelBuff(conn, reader)
 	default:
 		unknownPacketsTotal.Inc()
 		log.Println("UNKNOWN CLIENT PACKET:", reader)
@@ -219,6 +224,12 @@ func (server *Server) playerConnect(conn mnet.Client, reader mpacket.Reader) {
 	newPlr.UpdateGuildInfo()
 	newPlr.UpdateBuddyInfo()
 
+	// Restore buffs (if any) saved during CC or previous logout, then audit for stale
+	newPlr.loadAndApplyBuffSnapshot()
+	if newPlr.buffs != nil {
+		newPlr.buffs.AuditAndExpireStaleBuffs()
+	}
+
 	for _, party := range server.parties {
 		if party.member(newPlr.id) {
 			newPlr.party = party
@@ -247,6 +258,9 @@ func (server *Server) playerChangeChannel(conn mnet.Client, reader mpacket.Reade
 		log.Println("Unable to get player from connection", conn)
 		return
 	}
+
+	// Save player buffs for handoff to next channel
+	player.saveBuffSnapshot()
 
 	if int(id) < len(server.channels) {
 		if server.channels[id].Port == 0 {
@@ -2978,4 +2992,181 @@ func (server Server) handleChatEvent(conn mnet.Server, reader mpacket.Reader) {
 	default:
 		log.Println("Unknown chat event type:", op)
 	}
+}
+
+func getAffectedPartyMembers(p *party, src *player, affected byte) []*player {
+	if p == nil || src == nil {
+		return nil
+	}
+
+	var total byte
+	for i := 0; i < constant.MaxPartySize; i++ {
+		if p.players[i] != nil {
+			total++
+		}
+	}
+
+	ret := make([]*player, 0, constant.MaxPartySize)
+
+	for i := 0; i < constant.MaxPartySize; i++ {
+		idx := i + 1
+		mask := partyMemberMaskForIndex(idx, total)
+		if (affected & mask) == 0 {
+			continue
+		}
+
+		member := p.players[i]
+		if member == nil {
+			continue
+		}
+
+		// Must be same map and same instance
+		if member.mapID != src.mapID {
+			continue
+		}
+		if member.inst == nil || src.inst == nil || member.inst.id != src.inst.id {
+			continue
+		}
+
+		// Exclude self
+		if member.id == src.id {
+			continue
+		}
+
+		ret = append(ret, member)
+	}
+
+	return ret
+}
+
+func (server *Server) playerSpecialSkill(conn mnet.Client, reader mpacket.Reader) {
+	// Minimal, safe implementation to keep packet stream in sync and apply basic validations/costs.
+	plr, err := server.players.getFromConn(conn)
+	if err != nil {
+		return
+	}
+
+	// Dead players cannot cast
+	if plr.hp == 0 {
+		plr.send(packetPlayerNoChange())
+		return
+	}
+
+	// The packet layout for special skills generally starts with [skillID int32][skillLevel byte]
+	skillID := reader.ReadInt32()
+	skillLevel := reader.ReadByte()
+
+	// Validate the player owns the skill and level does not exceed learned level
+	ps, ok := plr.skills[skillID]
+	if !ok || skillLevel == 0 || skillLevel > ps.Level {
+		// Possible hack/desync; drop request
+		plr.send(packetPlayerNoChange())
+		return
+	}
+
+	partyMask := reader.ReadByte() // party flags
+	delay := reader.ReadInt16()    // delay
+
+	readMobListAndDelay := func() {
+		count := int(reader.ReadByte())
+		for i := 0; i < count; i++ {
+			_ = reader.ReadInt32() // mob spawn id
+		}
+		_ = reader.ReadInt16() // delay
+	}
+	readXY := func() {
+		_ = reader.ReadInt16()
+		_ = reader.ReadInt16()
+	}
+
+	switch skill.Skill(skillID) {
+	// Party buffs handled earlier remain unchanged...
+	case skill.Haste, skill.BanditHaste, skill.Bless, skill.IronWill, skill.Rage,
+		skill.Meditation, skill.ILMeditation, skill.MesoUp, skill.HolySymbol, skill.HyperBody:
+		if plr.party == nil {
+			plr.addBuff(skillID, skillLevel, delay)
+			plr.inst.send(packetPlayerSkillAnimThirdParty(plr.id, false, true, skillID, skillLevel))
+		} else {
+			affected := getAffectedPartyMembers(plr.party, plr, partyMask)
+			for _, member := range affected {
+				if member == nil {
+					continue
+				}
+				member.addBuff(skillID, skillLevel, delay)
+				plr.inst.send(packetPlayerSkillAnimThirdParty(plr.id, false, true, skillID, skillLevel))
+				member.inst.send(packetPlayerSkillAnimThirdParty(member.id, true, false, skillID, skillLevel))
+			}
+		}
+
+	// Self toggles and non-party buffs (boolean/ratio-type): apply to self
+	case skill.DarkSight,
+		skill.MagicGuard,
+		skill.Invincible,
+		skill.SoulArrow, skill.CBSoulArrow,
+		skill.ShadowPartner,
+		skill.MesoGuard,
+		// Attack speed boosters (self)
+		skill.SwordBooster, skill.AxeBooster, skill.PageSwordBooster, skill.BwBooster,
+		skill.SpearBooster, skill.PolearmBooster,
+		skill.BowBooster, skill.CrossbowBooster,
+		skill.ClawBooster, skill.DaggerBooster,
+		// GM Hide (mapped to invincible bit)
+		skill.Hide:
+		plr.addBuff(skillID, skillLevel, delay)
+		plr.inst.send(packetPlayerSkillAnimThirdParty(plr.id, false, true, skillID, skillLevel))
+
+	// Debuffs on mobs: [mobCount][mobIDs...][delay]
+	case skill.Threaten,
+		skill.Slow, skill.ILSlow,
+		skill.MagicCrash,
+		skill.PowerCrash,
+		skill.ArmorCrash,
+		skill.ILSeal, skill.Seal,
+		skill.ShadowWeb,
+		skill.Doom:
+		readMobListAndDelay()
+
+	// Summons and puppet: [x short][y short]
+	case skill.SummonDragon,
+		skill.SilverHawk, skill.GoldenEagle,
+		skill.Puppet, skill.SniperPuppet:
+		readXY()
+
+	default:
+		// Always send a self animation so client shows casting even for non-buffs.
+		plr.inst.send(packetPlayerSkillAnimThirdParty(plr.id, false, true, skillID, skillLevel))
+	}
+
+	// Apply MP cost/cooldown, if any (reuses the same flow as attack skills).
+	if err := plr.useSkill(skillID, skillLevel); err != nil {
+		plr.send(packetPlayerNoChange())
+		return
+	}
+}
+
+func (server *Server) playerCancelBuff(conn mnet.Client, reader mpacket.Reader) {
+	plr, err := server.players.getFromConn(conn)
+	if err != nil || plr.buffs == nil {
+		return
+	}
+
+	cb := plr.buffs
+
+	const grace = 1500 * time.Millisecond
+	now := time.Now().Add(grace).UnixMilli()
+
+	// Collect all timed sources that should be expired by server clock
+	toExpire := make([]int32, 0, len(cb.expireAt))
+	for src, ts := range cb.expireAt {
+		if ts > 0 && ts <= now {
+			toExpire = append(toExpire, src)
+		}
+	}
+
+	for _, src := range toExpire {
+		cb.expireBuffNow(src)
+	}
+
+	// Final sweep for any edge cases
+	cb.AuditAndExpireStaleBuffs()
 }

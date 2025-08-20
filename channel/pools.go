@@ -353,8 +353,7 @@ func (pool *lifePool) mobDamaged(poolID int32, damager *player, dmg ...int32) {
 					drops := make([]item, 0, len(dropEntry))
 
 					for _, entry := range dropEntry {
-						chance := pool.rNumber.Int63n(100000)
-						if int64(pool.dropPool.rates.drop*float32(entry.Chance)) < chance {
+						if !rollDrop(pool.rNumber, entry.Chance, pool.dropPool.rates.drop) {
 							continue
 						}
 
@@ -402,6 +401,30 @@ func (pool *lifePool) mobDamaged(poolID int32, damager *player, dmg ...int32) {
 			break
 		}
 	}
+}
+
+func rollDrop(r *rand.Rand, baseChance int64, rate float32) bool {
+	const denom int64 = 100000
+
+	// Fast-path clamps
+	if baseChance <= 0 {
+		return false
+	}
+	if baseChance >= denom && rate >= 1 {
+		return true
+	}
+
+	// Scale with rounding in float domain, then convert back to int64
+	scaled := int64(math.Round(float64(baseChance) * float64(rate)))
+	if scaled <= 0 {
+		return false
+	}
+	if scaled >= denom {
+		return true
+	}
+
+	// Roll
+	return r.Int63n(denom) < scaled
 }
 
 func (pool *lifePool) killMobs(deathType byte) {
