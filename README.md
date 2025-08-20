@@ -91,13 +91,20 @@ Channel server:
 - [x] Find / Map in buddy window
 - [x] Buddy list
 - [x] Buddy chat
-- [x] Party
+- [x] Party creation
+- [x] Party accept/reject
+- [x] Party expel
 - [x] Party chat
 - [ ] Party HP bar
-- [x] Guild
-- [x] Guild contract
+- [x] Guild creation/disband
+- [x] Guild join/leave
 - [x] Guild emblem
 - [x] Guild chat
+- [x] Guild points
+- [x] Guild rank titles change
+- [x] Guild rank update
+- [x] Guild notice update
+- [x] Guild expel
 - [ ] Guild quest
 - [ ] Trade
 - [ ] Communication Window

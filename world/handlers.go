@@ -348,7 +348,17 @@ func (server *Server) handleGuildEvent(conn mnet.Server, reader mpacket.Reader) 
 		}
 
 	case internal.OpGuildRankUpdate:
-		fallthrough
+		reader.Skip(4) // guildID
+		playerID := reader.ReadInt32()
+		rank := reader.ReadByte()
+
+		query := "UPDATE characters set guildRankID=? WHERE id=?"
+
+		if _, err := common.DB.Exec(query, rank, playerID); err != nil {
+			log.Println(err)
+		} else {
+			server.forwardPacketToChannels(conn, reader)
+		}
 	case internal.OpGuildAddPlayer:
 		server.forwardPacketToChannels(conn, reader)
 	case internal.OpGuildPointsUpdate:

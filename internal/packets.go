@@ -240,6 +240,16 @@ func PacketGuildPointsUpdate(guildID, points int32) mpacket.Packet {
 	return p
 }
 
+func PacketGuildRankUpdate(guildID, playerID int32, rank byte) mpacket.Packet {
+	p := mpacket.CreateInternal(opcode.ChannelPlayerGuildEvent)
+	p.WriteByte(OpGuildRankUpdate)
+	p.WriteInt32(guildID)
+	p.WriteInt32(playerID)
+	p.WriteByte(rank)
+
+	return p
+}
+
 // TODO: Check if this can be deleted
 func PacketLoginDeletedCharacter(playerID int32) mpacket.Packet {
 	p := mpacket.CreateInternal(opcode.LoginDeleteCharacter)

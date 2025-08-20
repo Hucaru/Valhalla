@@ -108,7 +108,7 @@ type guild struct {
 	jobs     []int32
 	levels   []int32
 	online   []bool
-	ranks    []int32
+	ranks    []byte
 }
 
 func loadGuildFromDb(guildID int32, players *players) (*guild, error) {
@@ -127,11 +127,11 @@ func loadGuildFromDb(guildID int32, players *players) (*guild, error) {
 	loadedGuild.jobs = make([]int32, 0, constant.MaxGuildSize)
 	loadedGuild.levels = make([]int32, 0, constant.MaxGuildSize)
 	loadedGuild.online = make([]bool, 0, constant.MaxGuildSize)
-	loadedGuild.ranks = make([]int32, 0, constant.MaxGuildSize)
+	loadedGuild.ranks = make([]byte, 0, constant.MaxGuildSize)
 
 	var channelID int32
 	var playerID int32
-	var rank int32
+	var rank byte
 	var name string
 	var job int32
 	var level int32
@@ -259,7 +259,17 @@ func (g *guild) setPoints(points int32) {
 	g.broadcast(packetGuildSetPoints(g.id, points))
 }
 
-func (g *guild) addPlayer(plr *player, playerID int32, name string, jobID, level int32, rank int32) error {
+func (g *guild) updateRank(playerID int32, rank byte) {
+	for i, id := range g.playerID {
+		if id == playerID {
+			g.ranks[i] = rank
+			g.broadcast(packetGuildRankUpdate(g.id, playerID, int32(rank)))
+			break
+		}
+	}
+}
+
+func (g *guild) addPlayer(plr *player, playerID int32, name string, jobID, level int32, rank byte) error {
 	index := -1
 	for i, v := range g.levels {
 		if v == 0 {
@@ -426,7 +436,7 @@ func packetGuildInfo(guild *guild) mpacket.Packet {
 	p.WriteByte(memberCount)
 
 	// The client wants the data listed in order from master to member 3
-	for j := int32(1); j < 6; j++ {
+	for j := byte(1); j < 6; j++ {
 		for i, rank := range guild.ranks {
 			if rank != j {
 				continue
@@ -436,7 +446,7 @@ func packetGuildInfo(guild *guild) mpacket.Packet {
 		}
 	}
 
-	for j := int32(1); j < 6; j++ {
+	for j := byte(1); j < 6; j++ {
 		for i, rank := range guild.ranks {
 			if rank != j {
 				continue
@@ -445,7 +455,7 @@ func packetGuildInfo(guild *guild) mpacket.Packet {
 			p.WritePaddedString(guild.names[i], 13)
 			p.WriteInt32(guild.jobs[i])
 			p.WriteInt32(guild.levels[i])
-			p.WriteInt32(guild.ranks[i])
+			p.WriteInt32(int32(guild.ranks[i]))
 
 			if guild.online[i] {
 				p.WriteInt32(1)
@@ -608,6 +618,16 @@ func packetGuilderTitlesUpdate(guildID int32, master, jrMaster, member1, member2
 	p.WriteString(member1)
 	p.WriteString(member2)
 	p.WriteString(member3)
+
+	return p
+}
+
+func packetGuildRankUpdate(guildID, playerID, rank int32) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelGuildInfo)
+	p.WriteByte(0x40)
+	p.WriteInt32(guildID)
+	p.WriteInt32(playerID)
+	p.WriteInt32(rank)
 
 	return p
 }

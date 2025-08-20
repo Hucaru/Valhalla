@@ -2490,9 +2490,15 @@ func (server *Server) guildManagement(conn mnet.Client, reader mpacket.Reader) {
 			return
 		}
 
-		// emit to world server
+		plr, err := server.players.getFromConn(conn)
 
-		fmt.Println("rank change:", playerID, rank)
+		if err != nil {
+			return
+		}
+
+		if plr.guild != nil {
+			server.world.Send(internal.PacketGuildRankUpdate(plr.guild.id, playerID, rank))
+		}
 	case 0x0F: // emblem change
 		plr, err := server.players.getFromConn(conn)
 
@@ -2970,6 +2976,13 @@ func (server Server) handleGuildEvent(conn mnet.Server, reader mpacket.Reader) {
 			guild.updateTitles(master, jrMaster, member1, member2, member3)
 		}
 	case internal.OpGuildRankUpdate:
+		guildID := reader.ReadInt32()
+		playerID := reader.ReadInt32()
+		rank := reader.ReadByte()
+
+		if guild, ok := server.guilds[guildID]; ok {
+			guild.updateRank(playerID, rank)
+		}
 	case internal.OpGuildAddPlayer:
 	case internal.OpGuildRemovePlayer:
 		guildID := reader.ReadInt32()

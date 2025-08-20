@@ -299,10 +299,6 @@ type npcChatController struct {
 	npcID int32
 	conn  mnet.Client
 
-	// lastSelection   int32
-	// lastInputString string
-	// lastInputNumber int32
-
 	goods [][]int32
 
 	stateTracker npcChatStateTracker
