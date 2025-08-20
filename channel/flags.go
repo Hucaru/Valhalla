@@ -29,15 +29,12 @@ func NewFlagBits(uBits int) *Flag {
 
 // Data returns the internal data slice (do not modify).
 func (f *Flag) Data() []uint32 {
-	if f == nil {
-		return nil
-	}
 	return []uint32(*f)
 }
 
 // IsZero reports whether all bits are zero (or the flag has no words).
 func (f *Flag) IsZero() bool {
-	if f == nil || len(*f) == 0 {
+	if len(*f) == 0 {
 		return true
 	}
 	for _, w := range *f {
@@ -51,7 +48,7 @@ func (f *Flag) IsZero() bool {
 // SetBitNumber sets a specific bit to 0 or 1.
 // Bits are addressed MSB-first per 32-bit word.
 func (f *Flag) SetBitNumber(uBit int, uValue int) {
-	if f == nil || len(*f) == 0 {
+	if len(*f) == 0 {
 		return
 	}
 	totalBits := 32 * len(*f)
@@ -69,7 +66,7 @@ func (f *Flag) SetBitNumber(uBit int, uValue int) {
 // SetValue assigns a scalar 32-bit value to the least significant word,
 // zeroing all higher words (mirrors Java).
 func (f *Flag) SetValue(uValue uint32) {
-	if f == nil || len(*f) == 0 {
+	if len(*f) == 0 {
 		return
 	}
 	uLen := len(*f) - 1
@@ -85,9 +82,6 @@ func (f *Flag) SetValue(uValue uint32) {
 // If bNewVer is true, it writes each 32-bit word in little-endian order,
 // from last word to first.
 func (f *Flag) ToByteArray(bNewVer bool) []byte {
-	if f == nil {
-		return nil
-	}
 	if bNewVer {
 		return f.ToByteArrayEx()
 	}
@@ -112,9 +106,6 @@ func (f *Flag) ToByteArray(bNewVer bool) []byte {
 // ToByteArrayEx is the "reverse" of ToByteArray: it outputs per-word
 // little-endian bytes, iterating from the end towards the beginning.
 func (f *Flag) ToByteArrayEx() []byte {
-	if f == nil {
-		return nil
-	}
 	pDest := make([]byte, len(*f)*4)
 	uLen := 0
 	for i := len(*f); i >= 1; i-- {
