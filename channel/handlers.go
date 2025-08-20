@@ -2994,33 +2994,49 @@ func (server Server) handleChatEvent(conn mnet.Server, reader mpacket.Reader) {
 	}
 }
 
-func (server *Server) getAffectedPartyMembers(p *party, src *player, includeSelf bool) []*player {
+func (server *Server) getAffectedPartyMembers(p *party, src *player, affected byte) []*player {
 	if p == nil || src == nil {
 		return nil
 	}
 
-	base := make([]*player, 0, constant.MaxPartySize)
+	var total byte
 	for i := 0; i < constant.MaxPartySize; i++ {
+		if p.players[i] != nil {
+			total++
+		}
+	}
+
+	ret := make([]*player, 0, constant.MaxPartySize)
+
+	for i := 0; i < constant.MaxPartySize; i++ {
+		idx := i + 1
+		mask := partyMemberMaskForIndex(idx, total)
+		if (affected & mask) == 0 {
+			continue
+		}
+
 		member := p.players[i]
 		if member == nil {
 			continue
 		}
 
+		// Must be same map and same instance
 		if member.mapID != src.mapID {
 			continue
 		}
-
 		if member.inst == nil || src.inst == nil || member.inst.id != src.inst.id {
 			continue
 		}
 
-		if !includeSelf && member.id == src.id {
+		// Exclude self
+		if member.id == src.id {
 			continue
 		}
-		base = append(base, member)
+
+		ret = append(ret, member)
 	}
 
-	return base
+	return ret
 }
 
 func (server *Server) playerSpecialSkill(conn mnet.Client, reader mpacket.Reader) {
@@ -3048,8 +3064,8 @@ func (server *Server) playerSpecialSkill(conn mnet.Client, reader mpacket.Reader
 		return
 	}
 
-	_ = reader.ReadByte()       // party flags
-	delay := reader.ReadInt16() // delay
+	partyMask := reader.ReadByte() // party flags
+	delay := reader.ReadInt16()    // delay
 
 	readMobListAndDelay := func() {
 		count := int(reader.ReadByte())
@@ -3071,7 +3087,7 @@ func (server *Server) playerSpecialSkill(conn mnet.Client, reader mpacket.Reader
 			plr.addBuff(skillID, skillLevel, delay)
 			plr.inst.send(packetPlayerSkillAnimThirdParty(plr.id, false, true, skillID, skillLevel))
 		} else {
-			affected := server.getAffectedPartyMembers(plr.party, plr, false)
+			affected := server.getAffectedPartyMembers(plr.party, plr, partyMask)
 			for _, member := range affected {
 				if member == nil {
 					continue
