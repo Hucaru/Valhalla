@@ -1361,6 +1361,17 @@ func (d *player) addBuff(skillID int32, level byte, delay int16) {
 	d.buffs.AddBuff(skillID, level, 0, 0, delay)
 }
 
+func (d *player) removeAllCooldowns() {
+	if d == nil || d.skills == nil {
+		return
+	}
+	for _, ps := range d.skills {
+		ps.Cooldown = 0
+		ps.TimeLastUsed = 0
+		d.updateSkill(ps)
+	}
+}
+
 func packetPlayerReceivedDmg(charID int32, attack int8, initalAmmount, reducedAmmount, spawnID, mobID, healSkillID int32,
 	stance, reflectAction byte, reflected byte, reflectX, reflectY int16) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelPlayerTakeDmg)

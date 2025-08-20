@@ -2994,29 +2994,43 @@ func (server Server) handleChatEvent(conn mnet.Server, reader mpacket.Reader) {
 	}
 }
 
-func (d *player) removeAllCooldowns() {
-	if d == nil || d.skills == nil {
-		return
-	}
-	for id, ps := range d.skills {
-		ps.Cooldown = 0
-		ps.TimeLastUsed = 0
-		d.updateSkill(ps)
-		_ = id
-	}
-}
-
-func (server *Server) getAffectedPartyMembers(p *party, affectedMask byte) []*player {
-	if p == nil {
+func (server *Server) getAffectedPartyMembers(p *party, src *player, affectedMask byte, includeSelf bool) []*player {
+	if p == nil || src == nil {
 		return nil
 	}
 
-	members := make([]*player, 0, constant.MaxPartySize)
-	for _, member := range p.players { // ensure party has a method to enumerate member IDs
-		members = append(members, member)
+	base := make([]*player, 0, constant.MaxPartySize)
+	for i := 0; i < constant.MaxPartySize; i++ {
+		member := p.players[i]
+		if member == nil {
+			continue
+		}
+
+		if member.mapID != src.mapID {
+			continue
+		}
+
+		if member.inst == nil || src.inst == nil || member.inst.id != src.inst.id {
+			continue
+		}
+
+		if !includeSelf && member.id == src.id {
+			continue
+		}
+		base = append(base, member)
 	}
-	_ = affectedMask // apply bit filtering here when member order is known
-	return members
+
+	if affectedMask == 0 || affectedMask == 0xFF {
+		return base
+	}
+
+	out := make([]*player, 0, len(base))
+	for idx, member := range base {
+		if ((affectedMask >> uint(idx)) & 0x01) != 0 {
+			out = append(out, member)
+		}
+	}
+	return out
 }
 
 func (server *Server) playerSpecialSkill(conn mnet.Client, reader mpacket.Reader) {
@@ -3044,8 +3058,8 @@ func (server *Server) playerSpecialSkill(conn mnet.Client, reader mpacket.Reader
 		return
 	}
 
-	_ = reader.ReadByte()       // party flags
-	delay := reader.ReadInt16() // delay
+	partyMask := reader.ReadByte() // party flags
+	delay := reader.ReadInt16()    // delay
 
 	readMobListAndDelay := func() {
 		count := int(reader.ReadByte())
@@ -3067,17 +3081,17 @@ func (server *Server) playerSpecialSkill(conn mnet.Client, reader mpacket.Reader
 		skill.Meditation, skill.ILMeditation, skill.MesoUp, skill.HolySymbol, skill.HyperBody:
 		if plr.party == nil {
 			plr.addBuff(skillID, skillLevel, delay)
-			plr.send(packetPlayerSkillAnimThirdParty(plr.id, false, true, skillID, skillLevel))
+			plr.inst.send(packetPlayerSkillAnimThirdParty(plr.id, false, true, skillID, skillLevel))
 			applied = true
 		} else {
-			affected := server.getAffectedPartyMembers(plr.party, 0)
+			affected := server.getAffectedPartyMembers(plr.party, plr, partyMask, false)
 			for _, member := range affected {
 				if member == nil {
 					continue
 				}
 				member.addBuff(skillID, skillLevel, delay)
-				member.send(packetPlayerSkillAnimThirdParty(member.id, true, false, skillID, skillLevel))
-				member.send(packetPlayerSkillAnimThirdParty(member.id, true, true, skillID, skillLevel))
+				plr.inst.send(packetPlayerSkillAnimThirdParty(plr.id, false, true, skillID, skillLevel))
+				member.inst.send(packetPlayerSkillAnimThirdParty(member.id, true, false, skillID, skillLevel))
 			}
 			applied = true
 		}
@@ -3097,7 +3111,7 @@ func (server *Server) playerSpecialSkill(conn mnet.Client, reader mpacket.Reader
 		// GM Hide (mapped to invincible bit)
 		skill.Hide:
 		plr.addBuff(skillID, skillLevel, delay)
-		plr.send(packetPlayerSkillAnimThirdParty(plr.id, false, true, skillID, skillLevel))
+		plr.inst.send(packetPlayerSkillAnimThirdParty(plr.id, false, true, skillID, skillLevel))
 		applied = true
 
 	// Debuffs on mobs: [mobCount][mobIDs...][delay]
@@ -3119,7 +3133,7 @@ func (server *Server) playerSpecialSkill(conn mnet.Client, reader mpacket.Reader
 
 	default:
 		// Always send a self animation so client shows casting even for non-buffs.
-		plr.send(packetPlayerSkillAnimThirdParty(plr.id, false, true, skillID, skillLevel))
+		plr.inst.send(packetPlayerSkillAnimThirdParty(plr.id, false, true, skillID, skillLevel))
 	}
 
 	// Apply MP cost/cooldown, if any (reuses the same flow as attack skills).
