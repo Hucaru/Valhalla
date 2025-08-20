@@ -64,10 +64,10 @@ Channel server:
 - [x] Player allocate skill points
 - [x] Player stats
 - [x] Player use skills
-- [ ] Player skill logic (haste etc)
+- [x] Player skill logic (haste etc)
 - [x] Player inventory (needs a re-write)
-- [ ] Player use item (scrolls, potions etc)
-- [ ] Player drop item(s)
+- [x] Player use item (scrolls, potions etc)
+- [x] Player drop item(s)
 - [ ] Player pets
 - [x] NPC visible
 - [x] NPC movement
