@@ -3140,7 +3140,7 @@ func (server *Server) playerSpecialSkill(conn mnet.Client, reader mpacket.Reader
 
 func (server *Server) playerCancelBuff(conn mnet.Client, reader mpacket.Reader) {
 	plr, err := server.players.getFromConn(conn)
-	if err != nil || plr == nil || plr.buffs == nil {
+	if err != nil || plr.buffs == nil {
 		return
 	}
 
