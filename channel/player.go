@@ -1084,9 +1084,7 @@ func (d player) displayBytes() []byte {
 
 // Logout flushes coalesced state and does a full checkpoint save.
 func (d *player) Logout(reason string) {
-	if d == nil {
-		return
-	}
+	log.Printf("player(%d) logout: %s", d.id, reason)
 
 	// Best-effort: compute nearest respawn portal to persist mapPos in save()
 	if d.inst != nil {
@@ -1103,11 +1101,6 @@ func (d *player) Logout(reason string) {
 	if err := d.save(); err != nil {
 		log.Printf("player(%d) logout save failed: %v", d.id, err)
 	}
-
-	// Optional: clean up party/buddy visibility, mark offline, etc.
-	// if d.party != nil { d.party.remove(d.id) }
-	// if d.conn != nil { d.conn.Close() } // only if the caller didn't already close
-	_ = reason
 }
 
 // Save data - this needs to be split to occur at relevant points in time
