@@ -597,7 +597,6 @@ func validateSkillWithJob(jobID int16, baseSkillID int32) bool {
 
 func (server Server) playerUsePortal(conn mnet.Client, reader mpacket.Reader) {
 	plr, err := server.players.getFromConn(conn)
-
 	if err != nil {
 		return
 	}
@@ -608,111 +607,123 @@ func (server Server) playerUsePortal(conn mnet.Client, reader mpacket.Reader) {
 	}
 
 	entryType := reader.ReadInt32()
-	field, ok := server.fields[plr.mapID]
 
-	if !ok {
+	curField, ok := server.fields[plr.mapID]
+	if !ok || curField == nil {
 		return
 	}
 
-	srcInst, err := field.getInstance(plr.inst.id)
-
+	srcInst, err := curField.getInstance(plr.inst.id)
 	if err != nil {
 		return
+	}
+
+	chooseDstPortal := func(dstInst *fieldInstance, backToMapID int32, srcName, preferName string) (portal, error) {
+		for _, p := range dstInst.portals {
+			if p.destFieldID == backToMapID && p.destName == srcName {
+				return p, nil
+			}
+		}
+		for _, p := range dstInst.portals {
+			if p.destFieldID == backToMapID {
+				return p, nil
+			}
+		}
+		if preferName != "" {
+			if p, e := dstInst.getPortalFromName(preferName); e == nil {
+				return p, nil
+			}
+		}
+		return dstInst.getRandomSpawnPortal()
 	}
 
 	switch entryType {
 	case 0:
 		if plr.hp == 0 {
-			dstField, ok := server.fields[field.Data.ReturnMap]
-
-			if !ok {
+			dstFld, ok := server.fields[curField.Data.ReturnMap]
+			if !ok || dstFld == nil {
 				return
 			}
 
-			dstInst, err := dstField.getInstance(plr.inst.id)
-
+			dstInst, err := dstFld.getInstance(plr.inst.id)
 			if err != nil {
-				dstInst, err = dstField.getInstance(0)
-
+				dstInst, err = dstFld.getInstance(0)
 				if err != nil {
 					return
 				}
 			}
 
-			portal, err := dstInst.getRandomSpawnPortal()
-
+			dstPortal, err := chooseDstPortal(dstInst, curField.id, "", "")
 			if err != nil {
 				conn.Send(packetPlayerNoChange())
 				return
 			}
 
-			server.warpPlayer(plr, dstField, portal)
+			_ = server.warpPlayer(plr, dstFld, dstPortal)
 			plr.setHP(50)
-			// TODO: reduce exp
 		}
-	case -1:
-		portalName := reader.ReadString(reader.ReadInt16())
-		srcPortal, err := srcInst.getPortalFromName(portalName)
 
-		if !plr.checkPos(srcPortal.pos, 100, 100) { // trying to account for lag whilst preventing teleporting
+	case -1:
+		nameLen := reader.ReadInt16()
+		if nameLen <= 0 {
+			conn.Send(packetPlayerNoChange())
+			return
+		}
+		portalName := reader.ReadString(nameLen)
+
+		srcPortal, err := srcInst.getPortalFromName(portalName)
+		if err != nil {
+			conn.Send(packetPlayerNoChange())
+			return
+		}
+
+		if !plr.checkPos(srcPortal.pos, 100, 100) {
 			if conn.GetAdminLevel() > 0 {
 				conn.Send(packetMessageRedText("Portal - " + srcPortal.pos.String() + " Player - " + plr.pos.String()))
 			}
-
 			conn.Send(packetPlayerNoChange())
 			return
 		}
 
+		dstFld, ok := server.fields[srcPortal.destFieldID]
+		if !ok || dstFld == nil {
+			conn.Send(packetPlayerNoChange())
+			return
+		}
+
+		dstInst, err := dstFld.getInstance(plr.inst.id)
 		if err != nil {
-			conn.Send(packetPlayerNoChange())
-			return
-		}
-
-		dstField, ok := server.fields[srcPortal.destFieldID]
-
-		if !ok {
-			conn.Send(packetPlayerNoChange())
-			return
-		}
-
-		dstInst, err := dstField.getInstance(plr.inst.id)
-
-		if err != nil {
-			if dstInst, err = dstField.getInstance(0); err != nil {
+			if dstInst, err = dstFld.getInstance(0); err != nil {
 				return
 			}
 		}
 
-		dstPortal, err := dstInst.getPortalFromName(srcPortal.destName)
-
+		dstPortal, err := chooseDstPortal(dstInst, curField.id, srcPortal.name, srcPortal.destName)
 		if err != nil {
 			conn.Send(packetPlayerNoChange())
 			return
 		}
 
-		server.warpPlayer(plr, dstField, dstPortal)
+		_ = server.warpPlayer(plr, dstFld, dstPortal)
+
 	default:
-		log.Println("Unknown portal entry type, packet:", reader)
 	}
 }
 
 func (server Server) warpPlayer(plr *player, dstField *field, dstPortal portal) error {
 	srcField, ok := server.fields[plr.mapID]
-
 	if !ok {
 		return fmt.Errorf("Error in map id %d", plr.mapID)
 	}
 
 	srcInst, err := srcField.getInstance(plr.inst.id)
-
 	if err != nil {
 		return err
 	}
 
 	dstInst, err := dstField.getInstance(plr.inst.id)
-
 	if err != nil {
-		if dstInst, err = dstField.getInstance(0); err != nil { // Check player is not in higher level instance than available
+		if dstInst, err = dstField.getInstance(0); err != nil {
 			return err
 		}
 	}
@@ -720,24 +731,26 @@ func (server Server) warpPlayer(plr *player, dstField *field, dstPortal portal) 
 	srcInst.removePlayer(plr)
 
 	plr.setMapID(dstField.id)
-	// plr.mapPos = dstPortal.id
 	plr.pos = dstPortal.pos
-	// plr.SetFoothold(0)
+
+	spawnIdx, idxErr := dstInst.calculateNearestSpawnPortalID(dstPortal.pos)
+	if idxErr != nil {
+		spawnIdx = dstPortal.id
+	}
 
 	packetMapChange := func(mapID int32, channelID int32, mapPos byte, hp int16) mpacket.Packet {
 		p := mpacket.CreateWithOpcode(opcode.SendChannelWarpToMap)
 		p.WriteInt32(channelID)
-		p.WriteByte(0) // character portal counter
-		p.WriteByte(0) // Is connecting
+		p.WriteByte(0)
+		p.WriteByte(0)
 		p.WriteInt32(mapID)
 		p.WriteByte(mapPos)
 		p.WriteInt16(hp)
-		p.WriteByte(0) // flag for more reading
-
+		p.WriteByte(0)
 		return p
 	}
 
-	plr.send(packetMapChange(dstField.id, int32(server.id), dstPortal.id, plr.hp)) // plr.ChangeMap(dstField.ID, dstPortal.ID(), dstPortal.Pos(), foothold)
+	plr.send(packetMapChange(dstField.id, int32(server.id), spawnIdx, plr.hp))
 	dstInst.addPlayer(plr)
 
 	return nil
