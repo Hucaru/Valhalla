@@ -23,6 +23,7 @@ const (
 	SendChannelInfoMessage          byte = 0x20
 	SendChannelMapTransferResult    byte = 0x22
 	SendChannelLieDetectorTest      byte = 0x23
+	SendChannelQuestClear           byte = 0x27
 	SendChannelAvatarInfoWindow     byte = 0x2c
 	SendChannelPartyInfo            byte = 0x2D
 	SendChannelBuddyInfo            byte = 0x2E

@@ -138,6 +138,8 @@ func (server *Server) HandleClientPacket(conn mnet.Client, reader mpacket.Reader
 		// Consume
 	case opcode.RecvChannelCancelBuff:
 		server.playerCancelBuff(conn, reader)
+	case opcode.RecvChannelAcceptQuest:
+		server.playerAcceptQuest(conn, reader)
 	default:
 		unknownPacketsTotal.Inc()
 		log.Println("UNKNOWN CLIENT PACKET:", reader)
@@ -3169,4 +3171,17 @@ func (server *Server) playerCancelBuff(conn mnet.Client, reader mpacket.Reader) 
 
 	// Final sweep for any edge cases
 	cb.AuditAndExpireStaleBuffs()
+}
+
+func (server *Server) playerAcceptQuest(conn mnet.Client, reader mpacket.Reader) {
+	plr, err := server.players.getFromConn(conn)
+	if err != nil {
+		return
+	}
+
+	act := reader.ReadByte() //
+	questID := reader.ReadInt16()
+
+	if act == '01'
+	
 }
