@@ -1452,6 +1452,174 @@ func (d *player) loadAndApplyBuffSnapshot() {
 	}
 }
 
+// countItem returns total count across USE/SETUP/ETC for an item id.
+func (d *player) countItem(itemID int32) int32 {
+	var total int32
+	for i := range d.use {
+		if d.use[i].id == itemID {
+			total += int32(d.use[i].amount)
+		}
+	}
+	for i := range d.setUp {
+		if d.setUp[i].id == itemID {
+			total += int32(d.setUp[i].amount)
+		}
+	}
+	for i := range d.etc {
+		if d.etc[i].id == itemID {
+			total += int32(d.etc[i].amount)
+		}
+	}
+	return total
+}
+
+// removeItemsByID removes up to reqCount across USE/SETUP/ETC. Returns true if fully removed.
+func (d *player) removeItemsByID(itemID int32, reqCount int32) bool {
+	if reqCount <= 0 {
+		return true
+	}
+	remaining := reqCount
+
+	drain := func(invID byte, items []item) {
+		for i := range items {
+			if remaining == 0 {
+				return
+			}
+			it := items[i]
+			if it.id != itemID || it.amount <= 0 {
+				continue
+			}
+			take := int16(it.amount)
+			if int32(take) > remaining {
+				take = int16(remaining)
+			}
+			if _, err := d.takeItem(itemID, it.slotID, take, invID); err == nil {
+				remaining -= int32(take)
+			}
+		}
+	}
+	drain(2, d.use)
+	drain(3, d.setUp)
+	drain(4, d.etc)
+
+	return remaining == 0
+}
+
+func (d *player) meetsPrevQuestState(req nx.QuestStateReq) bool {
+	switch req.State {
+	case 2: // completed
+		for _, c := range d.quests.completed {
+			if c.id == req.ID {
+				return true
+			}
+		}
+		return false
+	case 1: // in progress
+		for _, a := range d.quests.inProgress {
+			if a.id == req.ID {
+				return true
+			}
+		}
+		return false
+	default:
+		return true
+	}
+}
+
+// meetsQuestBlock validates prereqs/item counts.
+func (d *player) meetsQuestBlock(blk nx.CheckBlock) bool {
+	// Previous quest states
+	for _, rq := range blk.PrevQuests {
+		if rq.State > 0 && !d.meetsPrevQuestState(rq) {
+			return false
+		}
+	}
+
+	// Item possession/turn-in counts
+	for _, it := range blk.Items {
+		if it.Count > 0 && d.countItem(it.ID) < it.Count {
+			return false
+		}
+	}
+	return true
+}
+
+// applyQuestAct grants EXP/Mesos and applies item +/- from NX Act block.
+func (d *player) applyQuestAct(act nx.ActBlock) {
+	if act.Exp > 0 {
+		d.giveEXP(act.Exp, false, false)
+	}
+	if act.Money != 0 {
+		if act.Money > 0 {
+			d.giveMesos(act.Money)
+		} else {
+			d.takeMesos(-act.Money)
+		}
+	}
+
+	if act.Pop != 0 {
+		d.setFame(d.fame + int16(act.Pop))
+	}
+
+	for _, ai := range act.Items {
+		switch {
+		case ai.Count > 0:
+			if it, err := createItemFromID(ai.ID, int16(ai.Count)); err == nil {
+				_ = d.giveItem(it)
+			}
+		case ai.Count < 0:
+			_ = d.removeItemsByID(ai.ID, -ai.Count)
+		}
+	}
+}
+
+// tryStartQuest validates NX Start requirements, starts quest, applies Act(0).
+func (d *player) tryStartQuest(questID int16) bool {
+	q, err := nx.GetQuest(questID)
+	if err != nil {
+		log.Printf("[Quest] start fail nx lookup: char=%s id=%d err=%v", d.name, questID, err)
+		return false
+	}
+
+	if !d.meetsQuestBlock(q.Start) {
+		return false
+	}
+
+	d.quests.add(questID, "")
+	upsertQuestRecord(d.id, questID, "")
+	d.send(packetUpdateQuest(questID, ""))
+
+	d.applyQuestAct(q.ActOnStart)
+	return true
+}
+
+func (d *player) tryCompleteQuest(questID int16) bool {
+	q, err := nx.GetQuest(questID)
+	if err != nil {
+		log.Printf("[Quest] complete fail nx lookup: char=%s id=%d err=%v", d.name, questID, err)
+		return false
+	}
+
+	if !d.meetsQuestBlock(q.Complete) {
+		return false
+	}
+
+	d.quests.remove(questID)
+	nowMs := time.Now().UnixMilli()
+	d.quests.complete(questID, nowMs)
+	setQuestCompleted(d.id, questID, nowMs)
+
+	d.send(packetUpdateQuest(questID, ""))
+	d.send(packetCompleteQuest(questID))
+
+	d.applyQuestAct(q.ActOnComplete)
+
+	if q.ActOnComplete.NextQuest != 0 {
+		_ = d.tryStartQuest(q.ActOnComplete.NextQuest)
+	}
+	return true
+}
+
 func packetPlayerReceivedDmg(charID int32, attack int8, initalAmmount, reducedAmmount, spawnID, mobID, healSkillID int32,
 	stance, reflectAction byte, reflected byte, reflectX, reflectY int16) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelPlayerTakeDmg)

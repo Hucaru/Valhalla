@@ -3183,33 +3183,34 @@ func (server *Server) playerQuestOperation(conn mnet.Client, reader mpacket.Read
 	questID := reader.ReadInt16()
 
 	switch act {
-	case QUEST_LOST_ITEM:
-		count := reader.ReadInt16()
-		questItem := reader.ReadInt16()
-		newQuestItem, err := createItemFromID(int32(questItem), count)
-		if err != nil {
-			return
-		}
-		_ = plr.giveItem(newQuestItem)
 	case QUEST_STARTED:
-		_ = reader.ReadInt32() // npcID
-		plr.quests.add(questID, "")
-		upsertQuestRecord(plr.id, questID, "")
-		plr.send(packetUpdateQuest(questID, ""))
+		if !plr.tryStartQuest(questID) {
+			plr.send(packetPlayerNoChange())
+		}
 	case QUEST_COMPLETED:
-		plr.quests.remove(questID)
-		nowMs := time.Now().UnixMilli()
-		plr.quests.complete(questID, nowMs)
-
-		setQuestCompleted(plr.id, questID, nowMs)
-
-		plr.send(packetUpdateQuest(questID, ""))
-		plr.send(packetCompleteQuest(questID))
+		if !plr.tryCompleteQuest(questID) {
+			plr.send(packetPlayerNoChange())
+		}
 	case QUEST_FORFEIT:
 		plr.quests.remove(questID)
 		deleteQuest(plr.id, questID)
 		plr.send(packetRemoveQuest(questID))
+	case QUEST_LOST_ITEM:
+		count := reader.ReadInt16()
+		questItem := reader.ReadInt16()
+		if count > 0 {
+			if it, err := createItemFromID(int32(questItem), count); err == nil {
+				_ = plr.giveItem(it)
+			} else {
+				log.Printf("[QuestPkt] lostItem give failed: err=%v", err)
+			}
+		} else if count < 0 {
+			if !plr.removeItemsByID(int32(questItem), int32(-count)) {
+				log.Printf("[QuestPkt] lostItem remove failed: item=%d need=%d", questItem, -count)
+			}
+		}
+
 	default:
-		// unknown
+		log.Println("Unknown quest operation type:", act)
 	}
 }

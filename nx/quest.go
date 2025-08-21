@@ -9,11 +9,7 @@ import (
 	"github.com/Hucaru/gonx"
 )
 
-// Quest data combined from:
-// - /Quest/QuestInfo.img (meta + journal text)
-// - /Quest/Check.img     (requirements to start/complete)
-// - /Quest/Act.img       (actions/rewards on start/complete)
-// - /Quest/Say.img       (dialogue)
+// Quest data
 type Quest struct {
 	ID     int16
 	Name   string
@@ -21,7 +17,6 @@ type Quest struct {
 	Order  int16
 	Area   int32
 
-	// Journal text by step index (0,1,2,...) from QuestInfo
 	Journal map[int]string
 
 	// Requirements
@@ -32,7 +27,6 @@ type Quest struct {
 	ActOnStart    ActBlock // from Act[questID]["0"]
 	ActOnComplete ActBlock // from Act[questID]["1"]
 
-	// Dialogues from Say.img (subset; extend as needed)
 	// Keys like: "start.0","start.1","complete.0","start.yes.0", etc.
 	Say map[string][]string
 }
@@ -44,9 +38,9 @@ type CheckBlock struct {
 	LvMax int32
 	Pop   int32
 
-	PrevQuests []QuestStateReq // prerequisite quests with required state (1=in-progress, 2=completed)
-	Items      []ReqItem       // item requirements (possess/turn-in)
-	Mobs       []ReqMob        // mob kill requirements
+	PrevQuests []QuestStateReq
+	Items      []ReqItem
+	Mobs       []ReqMob
 }
 
 type QuestStateReq struct {
@@ -69,9 +63,9 @@ type ActBlock struct {
 	Money     int32
 	Pop       int32
 	NextQuest int16
-	Fame      int32 // alias to Pop if you want to treat it separately
+	Fame      int32
 
-	Items []ActItem // to add/remove; count < 0 means remove
+	Items []ActItem
 }
 
 type ActItem struct {
@@ -95,7 +89,7 @@ func extractQuests(nodes []gonx.Node, text []string) map[int16]Quest {
 }
 
 func parseQuestInfo(out map[int16]Quest, nodes []gonx.Node, text []string) {
-	const root = "/Quest/QuestInfo"
+	const root = "/Quest/QuestInfo.img"
 	ok := gonx.FindNode(root, nodes, text, func(n *gonx.Node) {
 		for i := uint32(0); i < uint32(n.ChildCount); i++ {
 			dir := nodes[n.ChildID+i]
@@ -118,14 +112,12 @@ func parseQuestInfo(out map[int16]Quest, nodes []gonx.Node, text []string) {
 				case "name":
 					q.Name = text[gonx.DataToUint32(ch.Data)]
 				case "parent":
-					// may be null; safely read if present
 					q.Parent = text[gonx.DataToUint32(ch.Data)]
 				case "order":
 					q.Order = int16(gonx.DataToInt32(ch.Data))
 				case "area":
 					q.Area = gonx.DataToInt32(ch.Data)
 				default:
-					// step-indexed strings "0","1","2"...
 					if idx, err := strconv.Atoi(key); err == nil {
 						q.Journal[idx] = text[gonx.DataToUint32(ch.Data)]
 					}
@@ -140,7 +132,7 @@ func parseQuestInfo(out map[int16]Quest, nodes []gonx.Node, text []string) {
 }
 
 func parseQuestCheck(out map[int16]Quest, nodes []gonx.Node, text []string) {
-	const root = "/Quest/Check"
+	const root = "/Quest/Check.img"
 	ok := gonx.FindNode(root, nodes, text, func(n *gonx.Node) {
 		for i := uint32(0); i < uint32(n.ChildCount); i++ {
 			dir := nodes[n.ChildID+i]
@@ -214,6 +206,26 @@ func parseReqItems(node *gonx.Node, nodes []gonx.Node, text []string) []ReqItem 
 	return ret
 }
 
+func parseJobList(node *gonx.Node, nodes []gonx.Node, text []string) []int32 {
+	out := make([]int32, 0, node.ChildCount)
+	for i := uint32(0); i < uint32(node.ChildCount); i++ {
+		ch := nodes[node.ChildID+i]
+		// children are typically numbered ("0","1",...) with a scalar int job id
+		if ch.ChildCount == 0 {
+			out = append(out, gonx.DataToInt32(ch.Data))
+		} else {
+			// some builds wrap the value in a nested dir with a single child "job": value
+			for j := uint32(0); j < uint32(ch.ChildCount); j++ {
+				inner := nodes[ch.ChildID+j]
+				if text[inner.NameID] == "job" && inner.ChildCount == 0 {
+					out = append(out, gonx.DataToInt32(inner.Data))
+				}
+			}
+		}
+	}
+	return out
+}
+
 func parseReqMobs(node *gonx.Node, nodes []gonx.Node, text []string) []ReqMob {
 	var ret []ReqMob
 	for i := uint32(0); i < uint32(node.ChildCount); i++ {
@@ -257,7 +269,7 @@ func parseReqQuests(node *gonx.Node, nodes []gonx.Node, text []string) []QuestSt
 }
 
 func parseQuestAct(out map[int16]Quest, nodes []gonx.Node, text []string) {
-	const root = "/Quest/Act"
+	const root = "/Quest/Act.img"
 	ok := gonx.FindNode(root, nodes, text, func(n *gonx.Node) {
 		for i := uint32(0); i < uint32(n.ChildCount); i++ {
 			dir := nodes[n.ChildID+i]
@@ -333,7 +345,7 @@ func parseActItems(node *gonx.Node, nodes []gonx.Node, text []string) []ActItem 
 }
 
 func parseQuestSay(out map[int16]Quest, nodes []gonx.Node, text []string) {
-	const root = "/Quest/Say"
+	const root = "/Quest/Say.img"
 	ok := gonx.FindNode(root, nodes, text, func(n *gonx.Node) {
 		for i := uint32(0); i < uint32(n.ChildCount); i++ {
 			dir := nodes[n.ChildID+i]
