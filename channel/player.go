@@ -182,7 +182,6 @@ func (d *player) clearDirty(bits DirtyBits) {
 	d.dirty &^= bits
 }
 
-// Call this in your logout/disconnect path.
 func (d *player) FlushNow() {
 	if SaverInstance != nil {
 		SaverInstance.FlushNow(d)
@@ -1129,7 +1128,6 @@ func (d player) save() error {
 		return err
 	}
 
-	// Fix: actually update level/cooldown on duplicate
 	query = `INSERT INTO skills(characterID,skillID,level,cooldown)
 	         VALUES(?,?,?,?)
 	         ON DUPLICATE KEY UPDATE level=VALUES(level), cooldown=VALUES(cooldown)`

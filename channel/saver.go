@@ -92,7 +92,7 @@ func StopSaver() {
 // SchedulePlayer copies the player’s current values and schedules a debounced write.
 // delay is the debounce window to coalesce multiple changes.
 func (s *Saver) SchedulePlayer(p *player, delay time.Duration) {
-	if s == nil || p == nil || p.id == 0 {
+	if p == nil || p.id == 0 {
 		return
 	}
 	now := time.Now()
@@ -157,7 +157,7 @@ func (s *Saver) SchedulePlayer(p *player, delay time.Duration) {
 
 // FlushNow persists the pending data for this character synchronously.
 func (s *Saver) FlushNow(p *player) {
-	if s == nil || p == nil || p.id == 0 {
+	if p == nil || p.id == 0 {
 		return
 	}
 	var job *pendingSave
