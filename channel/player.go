@@ -164,6 +164,8 @@ type player struct {
 
 	buffs *CharacterBuffs
 
+	quests quests
+
 	// Per-player RNG for deterministic randomness
 	rng *rand.Rand
 }
@@ -1298,6 +1300,8 @@ func loadPlayerFromID(id int32, conn mnet.Client) player {
 
 	c.buddyList = getBuddyList(c.id, c.buddyListSize)
 
+	c.quests = loadQuestsFromDB(c.id)
+
 	// Initialize the per-player buff manager so handlers can call plr.addBuff(...)
 	c.buffs = NewCharacterBuffs(&c)
 
@@ -1810,14 +1814,8 @@ func packetPlayerEnterGame(plr player, channelID int32) mpacket.Packet {
 	}
 
 	// Quests
-	p.WriteInt16(3) // Active quest count
-	p.WriteInt16(2029)
-	p.WriteString("")
-	p.WriteInt16(2000)
-	p.WriteString("")
-	p.WriteInt16(1000)
-	p.WriteString("")
-	p.WriteInt16(0) // Completed quest count?
+	writeActiveQuests(&p, plr.quests.inProgress)
+	writeCompletedQuests(&p, plr.quests.completed)
 
 	p.WriteInt32(0)
 	p.WriteInt32(0)

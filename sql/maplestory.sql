@@ -137,5 +137,17 @@ CREATE TABLE `skills` (
   CONSTRAINT `skills_ibfk_2` FOREIGN KEY (`characterID`) REFERENCES `characters` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 
+DROP TABLE IF EXISTS `character_quests`;
+CREATE TABLE `character_quests` (
+  `characterID` INT(11) NOT NULL,
+  `questID` SMALLINT(6) NOT NULL,
+  `record` VARCHAR(255) NOT NULL DEFAULT '',
+  `completed` TINYINT(1) NOT NULL DEFAULT '0',
+  `completedAt` BIGINT(20) NOT NULL DEFAULT '0',
+  PRIMARY KEY (`characterID`, `questID`),
+  KEY `idx_character_quests_character` (`characterID`),
+  KEY `idx_character_quests_completed` (`completed`),
+  CONSTRAINT `character_quests_fk_character` FOREIGN KEY (`characterID`) REFERENCES `characters` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 
 -- 2020-12-28 19:08:59

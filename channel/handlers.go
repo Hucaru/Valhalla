@@ -138,8 +138,8 @@ func (server *Server) HandleClientPacket(conn mnet.Client, reader mpacket.Reader
 		// Consume
 	case opcode.RecvChannelCancelBuff:
 		server.playerCancelBuff(conn, reader)
-	case opcode.RecvChannelAcceptQuest:
-		server.playerAcceptQuest(conn, reader)
+	case opcode.RecvChannelQuestOperation:
+		server.playerQuestOperation(conn, reader)
 	default:
 		unknownPacketsTotal.Inc()
 		log.Println("UNKNOWN CLIENT PACKET:", reader)
@@ -3173,15 +3173,43 @@ func (server *Server) playerCancelBuff(conn mnet.Client, reader mpacket.Reader) 
 	cb.AuditAndExpireStaleBuffs()
 }
 
-func (server *Server) playerAcceptQuest(conn mnet.Client, reader mpacket.Reader) {
+func (server *Server) playerQuestOperation(conn mnet.Client, reader mpacket.Reader) {
 	plr, err := server.players.getFromConn(conn)
 	if err != nil {
 		return
 	}
 
-	act := reader.ReadByte() //
+	act := reader.ReadByte()
 	questID := reader.ReadInt16()
 
-	if act == '01'
-	
+	switch act {
+	case QUEST_LOST_ITEM:
+		count := reader.ReadInt16()
+		questItem := reader.ReadInt16()
+		newQuestItem, err := createItemFromID(int32(questItem), count)
+		if err != nil {
+			return
+		}
+		_ = plr.giveItem(newQuestItem)
+	case QUEST_STARTED:
+		_ = reader.ReadInt32() // npcID
+		plr.quests.add(questID, "")
+		upsertQuestRecord(plr.id, questID, "")
+		plr.send(packetUpdateQuest(questID, ""))
+	case QUEST_COMPLETED:
+		plr.quests.remove(questID)
+		nowMs := time.Now().UnixMilli()
+		plr.quests.complete(questID, nowMs)
+
+		setQuestCompleted(plr.id, questID, nowMs)
+
+		plr.send(packetUpdateQuest(questID, ""))
+		plr.send(packetCompleteQuest(questID))
+	case QUEST_FORFEIT:
+		plr.quests.remove(questID)
+		deleteQuest(plr.id, questID)
+		plr.send(packetRemoveQuest(questID))
+	default:
+		// unknown
+	}
 }
