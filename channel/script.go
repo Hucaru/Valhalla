@@ -242,6 +242,21 @@ func (ctrl *npcChatPlayerController) Level() byte {
 	return ctrl.plr.level
 }
 
+func (ctrl *npcChatPlayerController) GetQuestStatus(id int16) int {
+	// 2 = completed, 1 = in progress, 0 = not started
+	for _, q := range ctrl.plr.quests.completed {
+		if q.id == id {
+			return 2
+		}
+	}
+	for _, q := range ctrl.plr.quests.inProgress {
+		if q.id == id {
+			return 1
+		}
+	}
+	return 0
+}
+
 type npcChatController struct {
 	npcID int32
 	conn  mnet.Client
