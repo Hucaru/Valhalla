@@ -26,6 +26,7 @@ func LoadFile(fname string) {
 	maps = extractMaps(nodes, textLookup)
 	mobs = extractMobs(nodes, textLookup)
 	playerSkills, mobSkills = extractSkills(nodes, textLookup)
+	quests = extractQuests(nodes, textLookup)
 }
 
 // GetItem from loaded nx
