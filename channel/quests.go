@@ -16,15 +16,30 @@ const (
 )
 
 type quests struct {
-	inProgress []quest
-	completed  []quest
+	inProgress map[int16]quest
+	completed  map[int16]quest
 }
 
 type quest struct {
 	id          int16
-	name        string  // reuse as "record" text for active
-	items       []int32 // unused here
-	completedAt int64   // Unix ms
+	name        string
+	items       []int32
+	completedAt int64
+}
+
+func newQuests() quests {
+	q := quests{}
+	q.init()
+	return q
+}
+
+func (q *quests) init() {
+	if q.inProgress == nil {
+		q.inProgress = make(map[int16]quest, 16)
+	}
+	if q.completed == nil {
+		q.completed = make(map[int16]quest, 16)
+	}
 }
 
 // FILETIME helpers
@@ -42,6 +57,7 @@ func unixMsToFileTime(ms int64) int64 {
 // Single-table DB I/O
 func loadQuestsFromDB(charID int32) quests {
 	var q quests
+	q.init() // ensure maps are ready
 
 	rows, err := common.DB.Query(
 		"SELECT questID, record, completed, completedAt FROM character_quests WHERE characterID=?",
@@ -61,9 +77,9 @@ func loadQuestsFromDB(charID int32) quests {
 			continue
 		}
 		if completed {
-			q.completed = append(q.completed, quest{id: id, completedAt: completedAt})
+			q.completed[id] = quest{id: id, completedAt: completedAt}
 		} else {
-			q.inProgress = append(q.inProgress, quest{id: id, name: record})
+			q.inProgress[id] = quest{id: id, name: record}
 		}
 	}
 	return q
@@ -90,20 +106,50 @@ func deleteQuest(charID int32, questID int16) {
 }
 
 // In-memory helpers
-func (q *quests) add(id int16, record string) {
-	q.inProgress = append(q.inProgress, quest{id: id, name: record})
+func (q *quests) add(id int16, name string) {
+	q.inProgress[id] = quest{id: id, name: name}
+	delete(q.completed, id)
+
 }
+
 func (q *quests) remove(id int16) {
-	for i, v := range q.inProgress {
-		if v.id == id {
-			q.inProgress[i] = q.inProgress[len(q.inProgress)-1]
-			q.inProgress = q.inProgress[:len(q.inProgress)-1]
-			return
-		}
-	}
+	delete(q.inProgress, id)
 }
-func (q *quests) complete(id int16, completedAtMs int64) {
-	q.completed = append(q.completed, quest{id: id, completedAt: completedAtMs})
+func (q *quests) complete(id int16, completedAt int64) {
+	delete(q.inProgress, id)
+	q.completed[id] = quest{id: id, completedAt: completedAt}
+}
+
+func (q *quests) hasInProgress(id int16) bool {
+	_, ok := q.inProgress[id]
+	return ok
+}
+
+func (q *quests) hasCompleted(id int16) bool {
+	_, ok := q.completed[id]
+	return ok
+}
+
+func (q quests) inProgressList() []quest {
+	if len(q.inProgress) == 0 {
+		return nil
+	}
+	out := make([]quest, 0, len(q.inProgress))
+	for _, v := range q.inProgress {
+		out = append(out, v)
+	}
+	return out
+}
+
+func (q quests) completedList() []quest {
+	if len(q.completed) == 0 {
+		return nil
+	}
+	out := make([]quest, 0, len(q.completed))
+	for _, v := range q.completed {
+		out = append(out, v)
+	}
+	return out
 }
 
 // Runtime update packets

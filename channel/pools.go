@@ -358,6 +358,12 @@ func (pool *lifePool) mobDamaged(poolID int32, damager *player, dmg ...int32) {
 							continue
 						}
 
+						// Quest-gated item: only allow if killer has quest active
+						// This should probably be hidden from instance and only viewable to player
+						if entry.QuestID != 0 && !damager.allowsQuestDrop(entry.QuestID) {
+							continue
+						}
+
 						if !rollDrop(pool.rNumber, entry.Chance, pool.dropPool.rates.drop) {
 							continue
 						}
@@ -437,6 +443,16 @@ func rollDrop(r *rand.Rand, baseChance int64, rate float32) bool {
 
 	// Roll
 	return r.Int63n(denom) < scaled
+}
+
+func (d *player) allowsQuestDrop(qid int32) bool {
+	if qid == 0 {
+		return true
+	}
+	if d == nil {
+		return false
+	}
+	return d.quests.hasInProgress(int16(qid))
 }
 
 func (pool *lifePool) killMobs(deathType byte) {

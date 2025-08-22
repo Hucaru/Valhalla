@@ -1301,6 +1301,7 @@ func loadPlayerFromID(id int32, conn mnet.Client) player {
 	c.buddyList = getBuddyList(c.id, c.buddyListSize)
 
 	c.quests = loadQuestsFromDB(c.id)
+	c.quests.init()
 
 	// Initialize the per-player buff manager so handlers can call plr.addBuff(...)
 	c.buffs = NewCharacterBuffs(&c)
@@ -1508,19 +1509,9 @@ func (d *player) removeItemsByID(itemID int32, reqCount int32) bool {
 func (d *player) meetsPrevQuestState(req nx.QuestStateReq) bool {
 	switch req.State {
 	case 2: // completed
-		for _, c := range d.quests.completed {
-			if c.id == req.ID {
-				return true
-			}
-		}
-		return false
+		return d.quests.hasCompleted(req.ID)
 	case 1: // in progress
-		for _, a := range d.quests.inProgress {
-			if a.id == req.ID {
-				return true
-			}
-		}
-		return false
+		return d.quests.hasInProgress(req.ID)
 	default:
 		return true
 	}
@@ -1982,8 +1973,8 @@ func packetPlayerEnterGame(plr player, channelID int32) mpacket.Packet {
 	}
 
 	// Quests
-	writeActiveQuests(&p, plr.quests.inProgress)
-	writeCompletedQuests(&p, plr.quests.completed)
+	writeActiveQuests(&p, plr.quests.inProgressList())
+	writeCompletedQuests(&p, plr.quests.completedList())
 
 	p.WriteInt32(0)
 	p.WriteInt32(0)
