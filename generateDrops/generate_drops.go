@@ -40,7 +40,7 @@ func main() {
 	flag.StringVar(&nxPath, "nx", "", "Optional path to NX file (containing /Item and /Quest) to attach questId to quest items and filter invalid items")
 	flag.Parse()
 
-	// Parse SQL-based drops
+	// Parse SQL-based drops into a map keyed by dropperId (monster)
 	drops, err := parseDropsDir(dropsDir)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
@@ -110,7 +110,6 @@ func parseSQLFile(path string, acc map[int][]Drop) error {
 
 		m := insertRe.FindStringSubmatch(line)
 		if m == nil {
-			// Not a matching INSERT; skip silently (the file may contain other SQL)
 			continue
 		}
 
@@ -131,7 +130,10 @@ func parseSQLFile(path string, acc map[int][]Drop) error {
 		if err != nil {
 			return fmt.Errorf("line %d: maxCount: %w", lineNo, err)
 		}
-		// money := m[6] // ignored
+		money, err := atoi(m[6]) // mesos amount in SQL
+		if err != nil {
+			return fmt.Errorf("line %d: money: %w", lineNo, err)
+		}
 		prob, err := atoi(m[7])
 		if err != nil {
 			return fmt.Errorf("line %d: prob: %w", lineNo, err)
@@ -146,6 +148,11 @@ func parseSQLFile(path string, acc map[int][]Drop) error {
 			Chance:  prob,
 		}
 
+		// If this is a mesos drop, set Max to the SQL "money" field as requested
+		if d.IsMesos {
+			d.Max = money
+		}
+
 		acc[monster] = append(acc[monster], d)
 	}
 
@@ -157,7 +164,6 @@ func parseSQLFile(path string, acc map[int][]Drop) error {
 }
 
 func writeJSON(path string, data map[int][]Drop) error {
-	// Default encoder without extra whitespace, consistent with existing style.
 	b, err := json.Marshal(data)
 	if err != nil {
 		return err
@@ -202,7 +208,6 @@ func enrichWithQuestIDs(nxPath string, drops map[int][]Drop) error {
 			}
 		}
 		if len(kept) == 0 {
-			// keep empty slice for mob to match output shape
 			drops[mob] = []Drop{}
 		} else {
 			drops[mob] = kept
@@ -258,7 +263,7 @@ func collectAllItemIDs(arc *nxArchive, out map[int]struct{}) error {
 		}
 	}
 
-	// Character equips: /Character/<Category>/<ItemID>.img/info
+	// Character equips: /Character/<Category>/<ItemID>.img
 	characterRoots := []string{
 		"/Character/Accessory", "/Character/Cap", "/Character/Cape", "/Character/Coat",
 		"/Character/Face", "/Character/Glove", "/Character/Hair", "/Character/Longcoat",
@@ -273,14 +278,12 @@ func collectAllItemIDs(arc *nxArchive, out map[int]struct{}) error {
 		})
 	}
 
-	// Item groups: /Item/<Group>/<Sub>/<ItemID>.img
+	// Item groups: /Item/<Group>/<Sub>/<ItemID>.img and /Item/Pet/<ItemID>.img
 	itemGroups := []string{"/Item/Cash", "/Item/Etc", "/Item/Install", "/Item/Consume", "/Item/Pet"}
 	for _, base := range itemGroups {
 		_ = gonx.FindNode(base, arc.nodes, arc.text, func(node *gonx.Node) {
-			// Some have subgroup level, some don't (Pet)
 			iterateChildren(node, arc, func(group gonx.Node, groupName string) {
 				if group.ChildCount == 0 {
-					// leaf items directly under base
 					addByName(groupName)
 					return
 				}
@@ -296,7 +299,6 @@ func collectAllItemIDs(arc *nxArchive, out map[int]struct{}) error {
 
 // collectQuestItems traverses NX /Item and marks items that have "quest" == 1 (or non-zero)
 func collectQuestItems(arc *nxArchive, out map[int]bool) error {
-	// Character equips have paths like /Character/<Category>/<ItemID>.img/info
 	characterRoots := []string{
 		"/Character/Accessory", "/Character/Cap", "/Character/Cape", "/Character/Coat",
 		"/Character/Face", "/Character/Glove", "/Character/Hair", "/Character/Longcoat",
@@ -318,7 +320,6 @@ func collectQuestItems(arc *nxArchive, out map[int]bool) error {
 		})
 	}
 
-	// Item groups: /Item/<Group>/<Sub>/<ItemID>.img/info (Cash/Etc/Install/Consume) and /Item/Pet/<ItemID>.img/info
 	itemGroups := []string{"/Item/Cash", "/Item/Etc", "/Item/Install"}
 	for _, base := range itemGroups {
 		_ = gonx.FindNode(base, arc.nodes, arc.text, func(node *gonx.Node) {
