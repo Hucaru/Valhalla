@@ -206,20 +206,6 @@ func (g *guild) signContract(playerID int32) error {
 	return nil
 }
 
-func (g *guild) contractTimeout() {
-	g.broadcast(packetGuildAgreementProblem())
-
-	for _, id := range g.playerID {
-		plr, err := g.players.getFromID(id)
-
-		if err != nil {
-			continue
-		}
-
-		plr.guild = nil
-	}
-}
-
 func (g *guild) broadcast(p mpacket.Packet) {
 	for _, v := range g.playerID {
 		plr, err := g.players.getFromID(v)

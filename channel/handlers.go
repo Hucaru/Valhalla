@@ -2431,16 +2431,6 @@ func (server *Server) guildManagement(conn mnet.Client, reader mpacket.Reader) {
 		}
 
 		server.guilds[guild.id] = guild
-
-		go func() {
-			time.Sleep(33 * time.Second)
-			server.dispatch <- func() {
-				if guild, ok := server.guilds[guild.id]; ok {
-					guild.contractTimeout()
-					delete(server.guilds, guild.id)
-				}
-			}
-		}()
 	case 0x05: // invite
 		invitee := reader.ReadString(reader.ReadInt16())
 
