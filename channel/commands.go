@@ -843,25 +843,7 @@ func (server *Server) gmCommand(conn mnet.Client, msg string) {
 			return
 		}
 
-		guild, err := createGuild(strings.Join(guildName, "-"), int32(conn.GetWorldID()))
-
-		if err != nil {
-			conn.Send(packetMessageRedText(err.Error()))
-			return
-		}
-
-		if _, ok := server.guilds[guild.id]; ok {
-			conn.Send(packetMessageRedText("Guild ID collision" + strconv.Itoa(int(guild.id)))) // Should not be possible to reach this
-			return
-		}
-
-		server.guilds[guild.id] = guild
-		err = guild.addPlayer(plr, plr.id, plr.name, int32(plr.job), int32(plr.level), 1)
-
-		if err != nil {
-			conn.Send(packetMessageRedText(err.Error()))
-			return
-		}
+		_ = guildName
 	case "guildDisband":
 		plr, err := server.players.getFromConn(conn)
 

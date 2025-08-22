@@ -1,7 +1,6 @@
 package channel
 
 import (
-	"fmt"
 	"log"
 	"slices"
 
@@ -11,81 +10,9 @@ import (
 	"github.com/Hucaru/Valhalla/constant"
 )
 
-type guildContract struct {
-	leader    *player
-	guildName string
-	signers   map[int32]bool
-	signed    int
-}
-
-func createGuildContract(plr *player, name string) *guildContract {
-	return &guildContract{leader: plr, guildName: name, signers: make(map[int32]bool)}
-}
-
-func (c *guildContract) send() {
-	for _, v := range c.leader.party.players {
-		if v != nil && v.mapID == c.leader.mapID {
-			if v.id != c.leader.id {
-				c.signers[v.id] = false
-			}
-			v.send(packetGuildContract(c.leader.party.ID, c.leader.name, c.guildName))
-		}
-	}
-}
-
-func (c *guildContract) sign(playerID int32, accept bool) bool {
-	if _, ok := c.signers[playerID]; ok {
-		c.signers[playerID] = accept
-		c.signed++
-		if !accept {
-			fmt.Println("Declined sending decline")
-			c.leader.send(packetGuildContractDisagree())
-			return false
-		}
-	}
-
-	return true
-}
-
-func (c guildContract) canBuild() bool {
-	return c.signed == 4
-}
-
-func (c guildContract) error() {
-	c.leader.send(packetGuildAgreementProblem())
-}
-
-// Note: since players all have to be on same channel and same map when contract signing we don't need to send an interserver message to add players
-func (c guildContract) authorize(guild *guild, players *players) {
-	err := guild.addPlayer(c.leader, c.leader.id, c.leader.name, int32(c.leader.job), int32(c.leader.level), 1)
-
-	if err != nil {
-		return
-	}
-
-	// TODO: Send the congrats guild created message to the leader
-	c.leader.giveMesos(-5e6)
-
-	for id := range c.signers {
-		plr, err := players.getFromID(id)
-
-		if err != nil {
-			log.Println(err)
-			continue
-		}
-
-		err = guild.addPlayer(plr, plr.id, plr.name, int32(plr.job), int32(plr.level), 5)
-
-		if err != nil {
-			log.Println(err)
-		}
-	}
-}
-
-// TODO: login server needs to send a deleted character event so that world server can update currently playing players
-
 type guild struct {
 	id       int32
+	worldID  int32
 	capacity byte
 	name     string
 	notice   string
@@ -114,7 +41,7 @@ type guild struct {
 func loadGuildFromDb(guildID int32, players *players) (*guild, error) {
 	loadedGuild := &guild{}
 
-	row, err := common.DB.Query("SELECT id, guildRankID, name, job, level, channelID FROM characters WHERE guildID=?", guildID)
+	row, err := common.DB.Query("SELECT id, guildRank, name, job, level, channelID FROM characters WHERE guildID=?", guildID)
 
 	if err != nil {
 		return nil, err
@@ -151,46 +78,138 @@ func loadGuildFromDb(guildID int32, players *players) (*guild, error) {
 		loadedGuild.ranks = append(loadedGuild.ranks, rank)
 	}
 
-	query := "id,capacity,name,notice,master,jrMaster,member1,member2,member3,logoBg,logoBgColour,logo,logoColour,points"
-	common.DB.QueryRow("SELECT "+query+" FROM guilds WHERE id=?", guildID).Scan(&loadedGuild.id, &loadedGuild.capacity,
+	query := "SELECT id,capacity,name,notice,master,jrMaster,member1,member2,member3,logoBg,logoBgColour,logo,logoColour,points FROM guilds WHERE id=?"
+	err = common.DB.QueryRow(query, guildID).Scan(&loadedGuild.id, &loadedGuild.capacity,
 		&loadedGuild.name, &loadedGuild.notice, &loadedGuild.master, &loadedGuild.jrMaster, &loadedGuild.member1,
 		&loadedGuild.member2, &loadedGuild.member3, &loadedGuild.logoBg, &loadedGuild.logoBgColour, &loadedGuild.logo,
 		&loadedGuild.logoColour, &loadedGuild.points)
+
+	if err != nil {
+		return nil, err
+	}
 
 	loadedGuild.players = players
 
 	return loadedGuild, nil
 }
 
-func createGuild(name string, worldID int32) (*guild, error) {
-	master := "Master"
-	jsMaster := "Jr. Master"
-	member := "Member"
-
-	query := "INSERT INTO guilds (name, worldID, notice, master, jrMaster, member1, member2, member3) VALUES (?, ?, '', ?, ?, ?, ?, ?)"
-	res, err := common.DB.Exec(query, name, worldID, master, jsMaster, member, member, member)
-
-	if err != nil {
-		return nil, err
-	}
-
-	id, err := res.LastInsertId()
-
-	if err != nil {
-		return nil, err
-	}
-
+func createGuildContract(guildName string, worldID int32, players *players, master *player) *guild {
 	newGuild := &guild{
-		id:       int32(id),
-		name:     name,
-		master:   master,
-		jrMaster: jsMaster,
-		member1:  member,
-		member2:  member,
-		member3:  member,
+		worldID: worldID,
+		name:    guildName,
+		players: players,
 	}
 
-	return newGuild, nil
+	newGuild.names = append(newGuild.names, master.name)
+	newGuild.jobs = append(newGuild.jobs, int32(master.job))
+	newGuild.levels = append(newGuild.levels, int32(master.level))
+	newGuild.online = append(newGuild.online, true)
+	newGuild.ranks = append(newGuild.ranks, 1)
+
+	for _, plr := range master.party.players {
+		if plr == master {
+			continue
+		}
+
+		if plr.mapID != master.mapID {
+			continue
+		}
+
+		newGuild.names = append(newGuild.names, plr.name)
+		newGuild.jobs = append(newGuild.jobs, int32(plr.job))
+		newGuild.levels = append(newGuild.levels, int32(plr.level))
+		newGuild.online = append(newGuild.online, false)
+		newGuild.ranks = append(newGuild.ranks, 5)
+
+		plr.guild = newGuild
+		plr.send(packetGuildContract(master.party.ID, master.name, guildName))
+	}
+
+	master.guild = newGuild
+
+	return newGuild
+}
+
+func (g *guild) signContract(playerID int32) error {
+	for i, id := range g.playerID {
+		if id == playerID {
+			g.online[i] = true // switching a guild character to online during contract signing stage means they have accepted
+			g.ranks[i] = 5     // switching a guild character to online during contract signing stage means they have accepted
+			break
+		}
+	}
+
+	signed := 0
+	for _, v := range g.online {
+		if v {
+			signed++
+		}
+	}
+
+	if signed == len(g.online) {
+		master := "Master"
+		jsMaster := "Jr. Master"
+		member := "Member"
+
+		query := "INSERT INTO guilds (name, worldID, notice, master, jrMaster, member1, member2, member3) VALUES (?, ?, '', ?, ?, ?, ?, ?)"
+		res, err := common.DB.Exec(query, g.name, g.worldID, master, jsMaster, member, member, member)
+
+		if err != nil {
+			return err
+		}
+
+		guildID, err := res.LastInsertId()
+
+		if err != nil {
+			return err
+		}
+
+		g.id = int32(guildID)
+
+		for i, id := range g.playerID {
+			// add each member to guild
+			query = "UPDATE characters set guildID=?, guildRank=? WHERE id=?"
+			_, err := common.DB.Exec(query, g.id, g.ranks[i], id)
+
+			if err != nil {
+				return err
+			}
+
+			plr, err := g.players.getFromID(id)
+
+			if err != nil {
+				return err
+			}
+
+			plr.send(packetGuildInfo(g))
+			g.broadcast(packetGuildPlayerJoined(plr))
+			g.updateAvatar(plr)
+		}
+
+		plr, err := g.players.getFromID(g.playerID[0])
+
+		if err != nil {
+			return err
+		}
+
+		plr.giveMesos(-5e6)
+	}
+
+	return nil
+}
+
+func (g *guild) contractTimeout() {
+	g.broadcast(packetGuildAgreementProblem())
+
+	for _, id := range g.playerID {
+		plr, err := g.players.getFromID(id)
+
+		if err != nil {
+			continue
+		}
+
+		plr.guild = nil
+	}
 }
 
 func (g *guild) broadcast(p mpacket.Packet) {
@@ -269,31 +288,26 @@ func (g *guild) updateRank(playerID int32, rank byte) {
 	}
 }
 
-func (g *guild) addPlayer(plr *player, playerID int32, name string, jobID, level int32, rank byte) error {
-	index := -1
-	for i, v := range g.levels {
-		if v == 0 {
-			index = i
-			break
+func (g *guild) full() bool {
+	return int(g.capacity) == len(g.online)
+}
+
+func (g *guild) addPlayer(playerID int32, name string, jobID, level int32, online bool, rank byte) {
+	plr, err := g.players.getFromID(playerID)
+
+	if int(g.capacity) == len(g.online) {
+		if err == nil {
+			plr.send(packetGuildCannotJoinMaxPlayers())
 		}
+
+		return
 	}
 
-	if index == -1 {
-		return fmt.Errorf("guild at capacity")
-	}
-
-	_, err := common.DB.Exec("UPDATE characters SET guildID=?, guildRankID=? WHERE id=?", g.id, rank, playerID)
+	_, err = common.DB.Exec("UPDATE characters SET guildID=?, guildRank=? WHERE id=?", g.id, 5, playerID)
 
 	if err != nil {
-		return err
+		log.Fatal()
 	}
-
-	g.playerID[index] = playerID
-	g.names[index] = name
-	g.jobs[index] = jobID
-	g.levels[index] = level
-	g.online[index] = true
-	g.ranks[index] = rank
 
 	if plr != nil {
 		plr.guild = g
@@ -302,7 +316,12 @@ func (g *guild) addPlayer(plr *player, playerID int32, name string, jobID, level
 		g.broadcast(packetGuildPlayerJoined(plr))
 	}
 
-	return nil
+	g.playerID = append(g.playerID, playerID)
+	g.names = append(g.names, name)
+	g.jobs = append(g.jobs, jobID)
+	g.levels = append(g.levels, level)
+	g.online = append(g.online, true)
+	g.ranks = append(g.ranks, rank)
 }
 
 func (g *guild) removePlayer(playerID int32, expelled bool, name string) {
@@ -396,11 +415,11 @@ func packetGuildContract(partyID int32, masterName, guildName string) mpacket.Pa
 	return p
 }
 
-func packetGuildInviteCard(guildID int32, name string) mpacket.Packet {
+func packetGuildInviteCard(guildID int32, inviter string) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelGuildInfo)
 	p.WriteByte(0x05)
 	p.WriteInt32(guildID)
-	p.WriteString(name)
+	p.WriteString(inviter)
 
 	return p
 }
@@ -576,7 +595,7 @@ func packetGuildInviteNotAccepting(name string) mpacket.Packet {
 	return packetGuildInviteResult(name, 0x35)
 }
 
-func packetGuildInviteHasAnother(name string) mpacket.Packet {
+func packetGuildInviteeHasAnother(name string) mpacket.Packet {
 	return packetGuildInviteResult(name, 0x36)
 }
 

@@ -1,6 +1,6 @@
 // Heracle guild npc
 
-if (plr.inGuild() && plr.isGuildLeader()) {
+if (plr.inGuild() && plr.guildRank() == 1) {
     npc.sendSelection("What would you like to do:\r\n#b#L0#Increase guild capacity#l\r\n#L1#Disband guild#l")
 
     switch(npc.selection()) {

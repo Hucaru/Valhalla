@@ -1,7 +1,6 @@
 package world
 
 import (
-	"fmt"
 	"log"
 	"math"
 	"time"
@@ -24,7 +23,7 @@ func (server *Server) HandleServerPacket(conn mnet.Server, reader mpacket.Reader
 		server.handleNewChannel(conn, reader)
 	case opcode.ChannelInfo:
 		server.handleChannelUpdate(conn, reader)
-	case opcode.ChannePlayerConnect:
+	case opcode.ChannelPlayerConnect:
 		server.handlePlayerConnect(conn, reader)
 	case opcode.ChannePlayerDisconnect:
 		server.handlePlayerDisconnect(conn, reader)
@@ -353,7 +352,7 @@ func (server *Server) handleGuildEvent(conn mnet.Server, reader mpacket.Reader) 
 		playerID := reader.ReadInt32()
 		rank := reader.ReadByte()
 
-		query := "UPDATE characters set guildRankID=? WHERE id=?"
+		query := "UPDATE characters set guildRank=? WHERE id=?"
 
 		if _, err := common.DB.Exec(query, rank, playerID); err != nil {
 			log.Println(err)
@@ -369,7 +368,7 @@ func (server *Server) handleGuildEvent(conn mnet.Server, reader mpacket.Reader) 
 		query := "UPDATE guilds set points=? WHERE id=?"
 
 		if _, err := common.DB.Exec(query, points, guildID); err != nil {
-			log.Println(err)
+			log.Fatal(err)
 		} else {
 			server.forwardPacketToChannels(conn, reader)
 		}
@@ -384,7 +383,7 @@ func (server *Server) handleGuildEvent(conn mnet.Server, reader mpacket.Reader) 
 		query := "UPDATE guilds set master=?, jrMaster=?, member1=?, member2=?, member3=? WHERE id=?"
 
 		if _, err := common.DB.Exec(query, master, jrMaster, member1, member2, member3, guildID); err != nil {
-			log.Println(err)
+			log.Fatal(err)
 		} else {
 			server.forwardPacketToChannels(conn, reader)
 		}
@@ -392,10 +391,10 @@ func (server *Server) handleGuildEvent(conn mnet.Server, reader mpacket.Reader) 
 		reader.Skip(4)
 		playerID := reader.ReadInt32()
 
-		query := "UPDATE characters set guildID=?, guildRankID=? WHERE id=?"
+		query := "UPDATE characters set guildID=?, guildRank=? WHERE id=?"
 
 		if _, err := common.DB.Exec(query, nil, 0, playerID); err != nil {
-			log.Println(err)
+			log.Fatal(err)
 		} else {
 			server.forwardPacketToChannels(conn, reader)
 		}
@@ -406,7 +405,7 @@ func (server *Server) handleGuildEvent(conn mnet.Server, reader mpacket.Reader) 
 		query := "UPDATE guilds SET notice=? WHERE id=?"
 
 		if _, err := common.DB.Exec(query, notice, guildID); err != nil {
-			log.Println(err)
+			log.Fatal(err)
 		} else {
 			server.forwardPacketToChannels(conn, reader)
 		}
@@ -420,12 +419,16 @@ func (server *Server) handleGuildEvent(conn mnet.Server, reader mpacket.Reader) 
 		query := "UPDATE guilds SET logoBg=?,logoBgColour=?,logo=?,logoColour=? WHERE id=?"
 
 		if _, err := common.DB.Exec(query, logoBg, logoBgColour, logo, logoColour, guildID); err != nil {
-			log.Println(err)
+			log.Fatal(err)
 		} else {
 			server.forwardPacketToChannels(conn, reader)
 		}
-	case internal.OpGuildCharacterDeleted:
-		fmt.Println("Login server delete character guild update not implemented")
+	case internal.OpGuildInvite:
+		fallthrough
+	case internal.OpGuildInviteReject:
+		fallthrough
+	case internal.OpGuildInviteAccept:
+		server.forwardPacketToChannels(conn, reader)
 	default:
 		log.Println("Unkown guild event type:", op)
 	}

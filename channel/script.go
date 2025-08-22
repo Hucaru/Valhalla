@@ -260,8 +260,16 @@ func (ctrl *npcChatPlayerController) InGuild() bool {
 	return ctrl.plr.guild != nil
 }
 
-func (ctrl *npcChatPlayerController) IsGuildLeader() bool {
-	return ctrl.plr.guild.isMaster(ctrl.plr)
+func (ctrl *npcChatPlayerController) GuildRank() byte {
+	if ctrl.plr.guild != nil {
+		for i, id := range ctrl.plr.guild.playerID {
+			if id == ctrl.plr.id {
+				return ctrl.plr.guild.ranks[i]
+			}
+		}
+	}
+
+	return 0
 }
 
 func (ctrl *npcChatPlayerController) InParty() bool {

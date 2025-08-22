@@ -39,7 +39,7 @@ CREATE TABLE `characters` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `accountID` int(10) unsigned NOT NULL,
   `guildID` int(11) DEFAULT NULL,
-  `guildRankID` tinyint(4) NOT NULL DEFAULT '1',
+  `guildRank` tinyint(4) NOT NULL DEFAULT '1',
   `worldID` int(11) unsigned NOT NULL,
   `channelID` tinyint(2) NOT NULL DEFAULT '-1',
   `migrationID` tinyint(4) NOT NULL DEFAULT '-1',

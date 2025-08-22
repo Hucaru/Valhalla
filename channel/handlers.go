@@ -193,28 +193,36 @@ func (server *Server) playerConnect(conn mnet.Client, reader mpacket.Reader) {
 		server.world.Send(internal.PacketChannelPartyUpdateInfo(partyID, playerID, job, level, mapID, name))
 	}
 
-	var guildIdOptional sql.NullInt32
-	err = common.DB.QueryRow("SELECT guildID FROM characters WHERE id=?", newPlr.id).Scan(&guildIdOptional)
+	var guildID sql.NullInt32
+	err = common.DB.QueryRow("SELECT guildID FROM characters WHERE id=?", newPlr.id).Scan(&guildID)
 
 	if err != nil {
-		log.Println(err)
-		return
+		log.Fatal(err)
 	}
 
-	var guildID int32 = -1
-
-	if guildIdOptional.Valid {
-		guildID = guildIdOptional.Int32
-
-		if guild, ok := server.guilds[guildIdOptional.Int32]; !ok {
-			guild, err = loadGuildFromDb(guildIdOptional.Int32, &server.players)
+	if guildID.Valid {
+		if guild, ok := server.guilds[guildID.Int32]; !ok {
+			guild, err = loadGuildFromDb(guildID.Int32, &server.players)
 
 			if err == nil {
-				server.guilds[guildIdOptional.Int32] = guild
+				server.guilds[guildID.Int32] = guild
 				newPlr.guild = guild
 			}
 		} else {
-			newPlr.guild = server.guilds[guildID]
+			newPlr.guild = server.guilds[guildID.Int32]
+		}
+	} else {
+		var guildID int32
+		var inviter string
+		row, err := common.DB.Query("SELECT guildID, inviter FROM guild_invites WHERE playerID=?", newPlr.id)
+
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		for row.Next() { // We should only ever have 1 row
+			row.Scan(&guildID, &inviter)
+			newPlr.send(packetGuildInviteCard(guildID, inviter))
 		}
 	}
 
@@ -228,7 +236,11 @@ func (server *Server) playerConnect(conn mnet.Client, reader mpacket.Reader) {
 	common.MetricsGauges["player_count"].With(prometheus.Labels{"channel": strconv.Itoa(int(server.id)), "world": server.worldName}).Inc()
 
 	server.world.Send(internal.PacketChannelPopUpdate(server.id, int16(len(server.players))))
-	server.world.Send(internal.PacketChannelPlayerConnected(plr.id, plr.name, server.id, channelID > -1, newPlr.mapID, guildID))
+	if guildID.Valid {
+		server.world.Send(internal.PacketChannelPlayerConnected(plr.id, plr.name, server.id, channelID > -1, newPlr.mapID, guildID.Int32))
+	} else {
+		server.world.Send(internal.PacketChannelPlayerConnected(plr.id, plr.name, server.id, channelID > -1, newPlr.mapID, 0))
+	}
 }
 
 func (server *Server) playerChangeChannel(conn mnet.Client, reader mpacket.Reader) {
@@ -2379,8 +2391,6 @@ func (server Server) roomWindow(conn mnet.Client, reader mpacket.Reader) {
 }
 
 func (server *Server) guildManagement(conn mnet.Client, reader mpacket.Reader) {
-	fmt.Println("Guild management:", reader)
-
 	op := reader.ReadByte()
 
 	switch op {
@@ -2396,8 +2406,7 @@ func (server *Server) guildManagement(conn mnet.Client, reader mpacket.Reader) {
 		err := common.DB.QueryRow("SELECT count(*) FROM guilds where name=? AND worldID=?", guildName, conn.GetWorldID()).Scan(&guildCount)
 
 		if err != nil {
-			log.Println(err)
-			return
+			log.Fatal(err)
 		}
 
 		if guildCount > 0 {
@@ -2411,24 +2420,108 @@ func (server *Server) guildManagement(conn mnet.Client, reader mpacket.Reader) {
 			return
 		}
 
-		partyID := plr.party.ID
-		contract := createGuildContract(plr, guildName)
-		server.guildContracts[partyID] = contract
-		contract.send()
+		if plr.party == nil {
+			return
+		}
+
+		guild := createGuildContract(guildName, int32(plr.worldID), &server.players, plr)
+
+		if guild == nil {
+			return
+		}
+
+		server.guilds[guild.id] = guild
 
 		go func() {
 			time.Sleep(33 * time.Second)
 			server.dispatch <- func() {
-				if contract, ok := server.guildContracts[partyID]; ok {
-					contract.error()
-					delete(server.guildContracts, partyID)
+				if guild, ok := server.guilds[guild.id]; ok {
+					guild.contractTimeout()
+					delete(server.guilds, guild.id)
 				}
 			}
 		}()
 	case 0x05: // invite
-		playerName := reader.ReadString(reader.ReadInt16())
-		// check if name exists in db with current world id (and get guildID to check they can be invited and get channelID), update invite table, send invite if on same channel, otherwise send world server event
-		fmt.Println("invite:", playerName)
+		invitee := reader.ReadString(reader.ReadInt16())
+
+		var playerID int32
+		var guildID sql.NullInt32
+		var worldID byte
+		var channelID int8
+
+		query := "SELECT id, guildID, worldID, channelID FROM characters WHERE name=?"
+		row, err := common.DB.Query(query, invitee)
+
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		for row.Next() {
+			row.Scan(&playerID, &guildID, &worldID, &channelID)
+		}
+
+		plr, err := server.players.getFromConn(conn)
+
+		if err != nil {
+			return
+		}
+
+		if plr.guild == nil {
+			return // cannot invite someone if not in guild
+		}
+
+		if guildID.Valid {
+			plr.send(packetGuildAlreadyJoined())
+			return
+		}
+
+		count := 0
+		query = "SELECT count(*) FROM guild_invites WHERE playerID=?"
+		err = common.DB.QueryRow(query, playerID).Scan(&count)
+
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		if count != 0 {
+			plr.send(packetGuildInviteeHasAnother(invitee))
+			return
+		}
+
+		if worldID != plr.worldID {
+			plr.send(packetMessageRedText("Could not find player"))
+			return
+		}
+
+		query = "INSERT INTO guild_invites (playerID, guildID, inviter) VALUES (?, ?, ?)"
+		_, err = common.DB.Exec(query, playerID, plr.guild.id, plr.name)
+
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		server.world.Send(internal.PacketGuildInvite(plr.guild.id, plr.name, invitee))
+	case 0x06: // accept invite
+		guildID := reader.ReadInt32()
+		playerID := reader.ReadInt32()
+
+		plr, err := server.players.getFromConn(conn)
+
+		if err != nil {
+			return
+		}
+
+		if plr.id != playerID {
+			return // cannot join the guild on someone else's behalf
+		}
+
+		query := "DELETE FROM guild_invites WHERE playerID=? AND guildID=?"
+
+		if _, err := common.DB.Exec(query, playerID, guildID); err != nil {
+			log.Fatal(err)
+		}
+
+		server.world.Send(internal.PacketGuildInviteAccept(playerID, guildID, plr.name, int32(plr.job), int32(plr.level), true, 5))
 	case 0x07: // leave
 		playerID := reader.ReadInt32()
 		name := reader.ReadString(reader.ReadInt16())
@@ -2528,39 +2621,70 @@ func (server *Server) guildManagement(conn mnet.Client, reader mpacket.Reader) {
 			return
 		}
 
-		if plr.party == nil {
+		if plr.guild == nil {
 			return
 		}
 
-		if contract, ok := server.guildContracts[plr.party.ID]; ok {
-			if contract.sign(id, accepted) {
-				if contract.canBuild() {
-					guild, err := createGuild(contract.guildName, int32(conn.GetWorldID()))
+		if accepted {
+			err = plr.guild.signContract(id)
 
-					if err != nil {
-						log.Println(err)
-						return
-					}
-
-					if _, ok := server.guilds[guild.id]; !ok {
-						server.guilds[guild.id] = guild
-						contract.authorize(guild, &server.players)
-					}
-
-					delete(server.guildContracts, plr.party.ID)
-				}
-			} else {
-				// party member declined
-				delete(server.guildContracts, plr.party.ID)
+			if err != nil {
+				log.Println(err)
 			}
+		} else {
+			plr, err := plr.guild.players.getFromID(plr.guild.playerID[0]) // master will always be the first player when creating a guild
+
+			if err != nil {
+				return
+			}
+
+			plr.send(packetGuildContractDisagree())
+			delete(server.guilds, plr.guild.id)
 		}
 	default:
-		log.Println("Unknown guild operation", op)
+		log.Println("Unknown guild operation", op, reader)
 	}
 }
 
 func (server *Server) guildInviteResult(conn mnet.Server, reader mpacket.Reader) {
-	fmt.Println("Guild invite result:", reader)
+	op := reader.ReadByte()
+
+	switch op {
+	case 0x36: // client sends this when it receives player is dealing with another invitation
+		inviter := reader.ReadString(reader.ReadInt16())
+		invitee := reader.ReadString(reader.ReadInt16())
+		_, _ = inviter, invitee
+	case 0x37: // reject
+		inviterName := reader.ReadString(reader.ReadInt16())
+		inviteeName := reader.ReadString(reader.ReadInt16())
+
+		var guildID, playerID int32
+
+		query := "SELECT guildID FROM characters WHERE name=?"
+		err := common.DB.QueryRow(query, inviterName).Scan(&guildID)
+
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		query = "SELECT id FROM characters WHERE name=?"
+		err = common.DB.QueryRow(query, inviteeName).Scan(&playerID)
+
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		query = "DELETE FROM guild_invites WHERE playerID=? AND guildID=?"
+
+		if _, err = common.DB.Exec(query, playerID, guildID); err != nil {
+			log.Fatal(err)
+		}
+
+		server.world.Send(internal.PacketGuildInviteReject(inviterName, inviteeName))
+	default:
+		log.Println("Unknown guild invite operation", op, reader)
+	}
+
 }
 
 // HandleServerPacket from world
@@ -2572,7 +2696,7 @@ func (server *Server) HandleServerPacket(conn mnet.Server, reader mpacket.Reader
 		server.handleNewChannelOK(conn, reader)
 	case opcode.ChannelConnectionInfo:
 		server.handleChannelConnectionInfo(conn, reader)
-	case opcode.ChannePlayerConnect:
+	case opcode.ChannelPlayerConnect:
 		server.handlePlayerConnectedNotifications(conn, reader)
 	case opcode.ChannePlayerDisconnect:
 		server.handlePlayerDisconnectNotifications(conn, reader)
@@ -2618,8 +2742,7 @@ func (server *Server) handleNewChannelOK(conn mnet.Server, reader mpacket.Reader
 	accountIDs, err := common.DB.Query("SELECT accountID from characters where channelID = ? and migrationID = -1", server.id)
 
 	if err != nil {
-		log.Println(err)
-		return
+		log.Fatal(err)
 	}
 
 	for accountIDs.Next() {
@@ -2633,8 +2756,7 @@ func (server *Server) handleNewChannelOK(conn mnet.Server, reader mpacket.Reader
 		_, err = common.DB.Exec("UPDATE accounts SET isLogedIn=? WHERE accountID=?", 0, accountID)
 
 		if err != nil {
-			log.Println(err)
-			return
+			log.Fatal(err)
 		}
 	}
 
@@ -2643,8 +2765,7 @@ func (server *Server) handleNewChannelOK(conn mnet.Server, reader mpacket.Reader
 	_, err = common.DB.Exec("UPDATE characters SET channelID=? WHERE channelID=?", -1, server.id)
 
 	if err != nil {
-		log.Println(err)
-		return
+		log.Fatal(err)
 	}
 
 	log.Println("Loged out any accounts still connected to this channel")
@@ -3019,6 +3140,51 @@ func (server Server) handleGuildEvent(conn mnet.Server, reader mpacket.Reader) {
 		if guild, ok := server.guilds[guildID]; ok {
 			guild.setPoints(points)
 		}
+	case internal.OpGuildInvite:
+		guildID := reader.ReadInt32()
+		inviter := reader.ReadString(reader.ReadInt16())
+		invitee := reader.ReadString(reader.ReadInt16())
+
+		plr, err := server.players.getFromName(invitee)
+
+		if err != nil {
+			return
+		}
+
+		plr.send(packetGuildInviteCard(guildID, inviter))
+	case internal.OpGuildInviteReject:
+		inviterName := reader.ReadString(reader.ReadInt16())
+		inviteeName := reader.ReadString(reader.ReadInt16())
+
+		inviter, err := server.players.getFromName(inviterName)
+
+		if err != nil {
+			return
+		}
+
+		inviter.send(packetGuildInviteRejected(inviteeName))
+	case internal.OpGuildInviteAccept:
+		playerID := reader.ReadInt32()
+		guildID := reader.ReadInt32()
+		name := reader.ReadString(reader.ReadInt16())
+		jobID := reader.ReadInt32()
+		level := reader.ReadInt32()
+		online := reader.ReadBool()
+		rank := reader.ReadByte()
+
+		var err error
+
+		guild, ok := server.guilds[guildID]
+
+		if !ok {
+			guild, err = loadGuildFromDb(guildID, &server.players)
+
+			if err != nil {
+				return
+			}
+		}
+
+		guild.addPlayer(playerID, name, jobID, level, online, rank)
 	default:
 		log.Println("Unkown guild event type:", op)
 	}

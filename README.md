@@ -46,6 +46,7 @@ World server:
 - [x] Forward whisphers
 - [x] Allow gm command to actiavate exp/drop changes accross all channels
 - [ ] Allow gm commands to update information displayed at login
+- [ ] Propagate character deletion to channels
 - [ ] Party sync when channel or world server are restarted
 - [ ] Guild sync when channel or world server are restarted
 
@@ -74,8 +75,6 @@ Channel server:
 - [x] NPC shops
 - [x] NPC stylist
 - [ ] NPC storage
-- [ ] PQ scripts
-- [ ] Event scripts
 - [x] Load scripts from folder (incl. hot loading)
 - [x] Map instancing
 - [x] Mob visible
@@ -93,11 +92,13 @@ Channel server:
 - [x] Buddy list
 - [x] Buddy chat
 - [x] Party creation
+- [x] Party invite
 - [x] Party accept/reject
 - [x] Party expel
 - [x] Party chat
 - [ ] Party HP bar
 - [x] Guild creation/disband
+- [ ] Guild invite
 - [x] Guild join/leave
 - [x] Guild emblem
 - [x] Guild chat
@@ -106,7 +107,12 @@ Channel server:
 - [x] Guild rank update
 - [x] Guild notice update
 - [x] Guild expel
-- [ ] Guild quest
+- [x] Guild member online notice
+- [ ] PQs
+- [ ] Guild PQ
+- [x] Balrog boat invasion
+- [ ] Deleted character removes from guild
+- [ ] Deleted character removes from party
 - [ ] Trade
 - [ ] Communication Window
 - [ ] Quests

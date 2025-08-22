@@ -17,7 +17,7 @@ func PacketChannelPopUpdate(id byte, pop int16) mpacket.Packet {
 }
 
 func PacketChannelPlayerConnected(playerID int32, name string, channelID byte, channelChange bool, mapID, guildID int32) mpacket.Packet {
-	p := mpacket.CreateInternal(opcode.ChannePlayerConnect)
+	p := mpacket.CreateInternal(opcode.ChannelPlayerConnect)
 	p.WriteInt32(playerID)
 	p.WriteString(name)
 	p.WriteByte(channelID)
@@ -250,7 +250,39 @@ func PacketGuildRankUpdate(guildID, playerID int32, rank byte) mpacket.Packet {
 	return p
 }
 
-// TODO: Check if this can be deleted
+func PacketGuildInvite(guildID int32, inviter, invitee string) mpacket.Packet {
+	p := mpacket.CreateInternal(opcode.ChannelPlayerGuildEvent)
+	p.WriteByte(OpGuildInvite)
+	p.WriteInt32(guildID)
+	p.WriteString(inviter)
+	p.WriteString(invitee)
+
+	return p
+}
+
+func PacketGuildInviteReject(inviter, invitee string) mpacket.Packet {
+	p := mpacket.CreateInternal(opcode.ChannelPlayerGuildEvent)
+	p.WriteByte(OpGuildInviteReject)
+	p.WriteString(inviter)
+	p.WriteString(invitee)
+
+	return p
+}
+
+func PacketGuildInviteAccept(playerID, guildID int32, name string, jobID, level int32, online bool, rank byte) mpacket.Packet {
+	p := mpacket.CreateInternal(opcode.ChannelPlayerGuildEvent)
+	p.WriteByte(OpGuildInviteAccept)
+	p.WriteInt32(playerID)
+	p.WriteInt32(guildID)
+	p.WriteString(name)
+	p.WriteInt32(jobID)
+	p.WriteInt32(level)
+	p.WriteBool(online)
+	p.WriteByte(rank)
+
+	return p
+}
+
 func PacketLoginDeletedCharacter(playerID int32) mpacket.Packet {
 	p := mpacket.CreateInternal(opcode.LoginDeleteCharacter)
 	p.WriteInt32(playerID)
