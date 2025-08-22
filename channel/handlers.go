@@ -2638,8 +2638,20 @@ func (server *Server) guildManagement(conn mnet.Client, reader mpacket.Reader) {
 				return
 			}
 
+			guildID := plr.guild.id
+
+			for _, id := range plr.guild.playerID {
+				member, err := server.players.getFromID(id)
+
+				if err != nil {
+					continue
+				}
+
+				member.guild = nil
+			}
+
 			plr.send(packetGuildContractDisagree())
-			delete(server.guilds, plr.guild.id)
+			delete(server.guilds, guildID)
 		}
 	default:
 		log.Println("Unknown guild operation", op, reader)

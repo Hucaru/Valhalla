@@ -100,14 +100,25 @@ func createGuildContract(guildName string, worldID int32, players *players, mast
 		players: players,
 	}
 
+	newGuild.playerID = append(newGuild.playerID, master.id)
 	newGuild.names = append(newGuild.names, master.name)
 	newGuild.jobs = append(newGuild.jobs, int32(master.job))
 	newGuild.levels = append(newGuild.levels, int32(master.level))
 	newGuild.online = append(newGuild.online, true)
 	newGuild.ranks = append(newGuild.ranks, 1)
 
+	newGuild.master = "Master"
+	newGuild.jrMaster = "Jr. Master"
+	newGuild.member1 = "Member"
+	newGuild.member2 = "Member"
+	newGuild.member3 = "Member"
+
 	for _, plr := range master.party.players {
 		if plr == master {
+			continue
+		}
+
+		if plr == nil {
 			continue
 		}
 
@@ -115,6 +126,7 @@ func createGuildContract(guildName string, worldID int32, players *players, mast
 			continue
 		}
 
+		newGuild.playerID = append(newGuild.playerID, plr.id)
 		newGuild.names = append(newGuild.names, plr.name)
 		newGuild.jobs = append(newGuild.jobs, int32(plr.job))
 		newGuild.levels = append(newGuild.levels, int32(plr.level))
@@ -134,7 +146,7 @@ func (g *guild) signContract(playerID int32) error {
 	for i, id := range g.playerID {
 		if id == playerID {
 			g.online[i] = true // switching a guild character to online during contract signing stage means they have accepted
-			g.ranks[i] = 5     // switching a guild character to online during contract signing stage means they have accepted
+			g.ranks[i] = 5
 			break
 		}
 	}
@@ -147,12 +159,8 @@ func (g *guild) signContract(playerID int32) error {
 	}
 
 	if signed == len(g.online) {
-		master := "Master"
-		jsMaster := "Jr. Master"
-		member := "Member"
-
 		query := "INSERT INTO guilds (name, worldID, notice, master, jrMaster, member1, member2, member3) VALUES (?, ?, '', ?, ?, ?, ?, ?)"
-		res, err := common.DB.Exec(query, g.name, g.worldID, master, jsMaster, member, member, member)
+		res, err := common.DB.Exec(query, g.name, g.worldID, g.master, g.jrMaster, g.member1, g.member2, g.member3)
 
 		if err != nil {
 			return err
@@ -286,10 +294,6 @@ func (g *guild) updateRank(playerID int32, rank byte) {
 			break
 		}
 	}
-}
-
-func (g *guild) full() bool {
-	return int(g.capacity) == len(g.online)
 }
 
 func (g *guild) addPlayer(playerID int32, name string, jobID, level int32, online bool, rank byte) {
