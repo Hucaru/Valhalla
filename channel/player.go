@@ -1363,7 +1363,11 @@ func (d *player) addBuff(skillID int32, level byte, delay int16) {
 		d.buffs = NewCharacterBuffs(d)
 	}
 	// You can pass any extra “sinc” values you need later; 0/0 is fine for standard buffs.
-	d.buffs.AddBuff(skillID, level, 0, 0, delay)
+	d.buffs.AddBuff(d.id, skillID, level, false, delay)
+}
+
+func (d *player) addForeignBuff(charId, skillID int32, level byte, delay int16) {
+	d.buffs.AddBuff(charId, skillID, level, true, delay)
 }
 
 func (d *player) removeAllCooldowns() {
@@ -1711,7 +1715,7 @@ func packetPlayerGiveBuff(mask []byte, values []byte, delay int16, extra byte) m
 }
 
 func packetPlayerGiveForeignBuff(charID int32, mask []byte, values []byte, extra byte) mpacket.Packet {
-	p := mpacket.CreateWithOpcode(opcode.SendChannelPlayerBuffed)
+	p := mpacket.CreateWithOpcode(opcode.SendChannelPlayerGiveForeignBuff)
 	p.WriteInt32(charID)
 
 	// Normalize to 8 bytes (low dword, high dword)
@@ -1767,20 +1771,82 @@ func packetPlayerCancelBuff(mask []byte) mpacket.Packet {
 	return p
 }
 
-func packetPlayerCancelForeignBuff(charID int32, mask []byte) mpacket.Packet {
-	p := mpacket.CreateWithOpcode(opcode.SendChannelPlayerDebuff)
-	p.WriteInt32(charID)
+func packetPlayerGiveDebuff(mask []byte, values []byte) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelTempStatChange)
+	p.WriteInt64(0)
 	p.WriteBytes(mask)
-	p.WriteUint64(0)
+	p.WriteBytes(values)
+	p.WriteInt16(900)
+	p.WriteByte(1)
+
 	return p
 }
 
-func packetPlayerShowBuffEffect(charID int32, skillID int32, effectID int32) mpacket.Packet {
-	p := mpacket.CreateWithOpcode(opcode.SendChannelPlayerBuffed)
+func packetPlayerGiveForeignDebuff(charID int32, mask []byte, skillID, skillLevel int16) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelPlayerGiveForeignBuff)
 	p.WriteInt32(charID)
-	p.WriteByte(1)
+	p.WriteInt64(0)
+	p.WriteBytes(mask)
+	p.WriteInt16(skillID)
+	p.WriteInt16(skillLevel)
+	p.WriteInt16(900)
+
+	return p
+}
+
+func packetPlayerCancelForeignBuff(charID int32, mask []byte) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelPlayerResetForeignBuff)
+	p.WriteInt32(charID)
+	p.WriteUint64(0)
+	p.WriteBytes(mask)
+	return p
+}
+
+func packetPlayerCancelDebuff(mask []byte) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelRemoveTempStat)
+	p.WriteInt64(0)
+	p.WriteBytes(mask)
+	p.WriteInt32(0)
+
+	return p
+}
+
+func packetPlayerCancelForeignDebuff(charID int32, mask []byte) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelPlayerResetForeignBuff)
+	p.WriteInt32(charID)
+	p.WriteUint64(0)
+	p.WriteBytes(mask)
+
+	return p
+}
+
+func packetPlayerShowForeignEffect(charID int32, effectID int32) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelPlayerShowForeignEffect)
+	p.WriteInt32(charID)
+	p.WriteInt32(effectID)
+
+	return p
+}
+
+func packetPlayerShowBuffEffect(charID, skillID, effectID int32, direction byte) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelPlayerShowItemGainChat)
+	p.WriteInt32(charID)
+	p.WriteInt32(effectID)
 	p.WriteInt32(skillID)
-	p.WriteInt(1)
+	p.WriteByte(1)
+	if direction != 0x03 {
+		p.WriteByte(direction)
+	}
+	return p
+}
+
+func packetPlayerShowOwnBuffEffect(skillId, effectId int32) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelPlayerShowForeignEffect)
+	p.WriteInt32(0)
+	p.WriteInt32(effectId)
+	p.WriteInt32(skillId)
+	p.WriteByte(0)
+
 	return p
 }
 

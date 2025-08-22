@@ -169,7 +169,7 @@ func (cb *CharacterBuffs) HasGMHide() bool {
 	return ok
 }
 
-func (cb *CharacterBuffs) AddBuff(skillID int32, level byte, sinc1, sinc2 int, delay int16) {
+func (cb *CharacterBuffs) AddBuff(charId, skillID int32, level byte, foreign bool, delay int16) {
 	if cb == nil || cb.plr == nil {
 		return
 	}
@@ -194,7 +194,7 @@ func (cb *CharacterBuffs) AddBuff(skillID int32, level byte, sinc1, sinc2 int, d
 		expiresAtMs = time.Now().Add(time.Duration(durationSec) * time.Second).UnixMilli()
 	}
 
-	cb.AddBuffFromCC(skillID, expiresAtMs, level, sinc1, sinc2, delay)
+	cb.AddBuffFromCC(charId, skillID, expiresAtMs, level, foreign, delay)
 }
 
 func buildMaskBytes64(bits []int) []byte {
@@ -528,7 +528,7 @@ func (cb *CharacterBuffs) AddItemBuffFromCC(itemID int32, expiresAtMs int64) {
 	}
 }
 
-func (cb *CharacterBuffs) AddBuffFromCC(skillID int32, expiresAtMs int64, level byte, sinc1, sinc2 int, delay int16) {
+func (cb *CharacterBuffs) AddBuffFromCC(charId, skillID int32, expiresAtMs int64, level byte, foreign bool, delay int16) {
 	if cb == nil || cb.plr == nil {
 		return
 	}
@@ -555,11 +555,13 @@ func (cb *CharacterBuffs) AddBuffFromCC(skillID int32, expiresAtMs int64, level 
 	extra := byte(0)
 
 	// Send
-	cb.plr.send(packetPlayerGiveBuff(maskBytes, values, delay, extra))
-	if cb.plr.inst != nil {
-		cb.plr.inst.send(packetPlayerGiveForeignBuff(cb.plr.id, maskBytes, values, extra))
+	if foreign {
+		cb.plr.inst.send(packetPlayerGiveForeignBuff(charId, maskBytes, values, extra))
+	} else {
+		cb.plr.send(packetPlayerGiveBuff(maskBytes, values, delay, extra))
 	}
 
+	cb.plr.send(packetPlayerShowBuffEffect(charId, skillID, 3, 1))
 	cb.activeSkillLevels[skillID] = level
 
 	// Compute authoritative expiry time
@@ -721,7 +723,7 @@ func (cb *CharacterBuffs) RestoreFromSnapshot(snaps []BuffSnapshot) {
 	for _, s := range snaps {
 		if s.SourceID > 0 {
 			// Skill
-			cb.AddBuffFromCC(s.SourceID, s.ExpiresAtMs, s.Level, 0, 0, 0)
+			cb.AddBuffFromCC(cb.plr.id, s.SourceID, s.ExpiresAtMs, s.Level, false, 0)
 		} else if s.SourceID < 0 {
 			// Item
 			itemID := -s.SourceID

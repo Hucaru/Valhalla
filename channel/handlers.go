@@ -3098,18 +3098,19 @@ func (server *Server) playerSpecialSkill(conn mnet.Client, reader mpacket.Reader
 	// Party buffs handled earlier remain unchanged...
 	case skill.Haste, skill.BanditHaste, skill.Bless, skill.IronWill, skill.Rage,
 		skill.Meditation, skill.ILMeditation, skill.MesoUp, skill.HolySymbol, skill.HyperBody:
-		if plr.party == nil {
-			plr.addBuff(skillID, skillLevel, delay)
-			plr.inst.send(packetPlayerSkillAnimThirdParty(plr.id, false, true, skillID, skillLevel))
-		} else {
+		plr.addBuff(skillID, skillLevel, delay)
+		plr.inst.send(packetPlayerSkillAnimThirdParty(plr.id, false, true, skillID, skillLevel))
+
+		// Apply to eligible party members in same map/instance per mask
+		if plr.party != nil {
 			affected := getAffectedPartyMembers(plr.party, plr, partyMask)
 			for _, member := range affected {
 				if member == nil {
 					continue
 				}
+				// Apply buff to the target member (not as a “foreign” state on the caster)
 				member.addBuff(skillID, skillLevel, delay)
-				plr.inst.send(packetPlayerSkillAnimThirdParty(plr.id, false, true, skillID, skillLevel))
-				member.inst.send(packetPlayerSkillAnimThirdParty(member.id, true, false, skillID, skillLevel))
+				plr.inst.send(packetPlayerSkillAnimThirdParty(member.id, true, false, skillID, skillLevel))
 			}
 		}
 
@@ -3149,6 +3150,7 @@ func (server *Server) playerSpecialSkill(conn mnet.Client, reader mpacket.Reader
 
 	default:
 		// Always send a self animation so client shows casting even for non-buffs.
+		plr.addBuff(skillID, skillLevel, delay)
 		plr.inst.send(packetPlayerSkillAnimThirdParty(plr.id, false, true, skillID, skillLevel))
 	}
 
