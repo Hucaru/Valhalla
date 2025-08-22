@@ -347,6 +347,7 @@ func (pool *lifePool) mobDamaged(poolID int32, damager *player, dmg ...int32) {
 				}
 
 				pool.removeMob(v.spawnID, 0x1)
+				damager.onMobKilled(v.id)
 
 				if dropEntry, ok := dropTable[v.id]; ok {
 					var mesos int32

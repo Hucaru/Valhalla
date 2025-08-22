@@ -1302,6 +1302,7 @@ func loadPlayerFromID(id int32, conn mnet.Client) player {
 
 	c.quests = loadQuestsFromDB(c.id)
 	c.quests.init()
+	c.quests.mobKills = loadQuestMobKillsFromDB(c.id)
 
 	// Initialize the per-player buff manager so handlers can call plr.addBuff(...)
 	c.buffs = NewCharacterBuffs(&c)
@@ -1599,10 +1600,15 @@ func (d *player) tryCompleteQuest(questID int16) bool {
 		return false
 	}
 
+	if !d.meetsMobKills(q.ID, q.Complete.Mobs) {
+		return false
+	}
+
 	d.quests.remove(questID)
 	nowMs := time.Now().UnixMilli()
 	d.quests.complete(questID, nowMs)
 	setQuestCompleted(d.id, questID, nowMs)
+	clearQuestMobKills(d.id, q.ID)
 
 	d.send(packetUpdateQuest(questID, ""))
 	d.send(packetCompleteQuest(questID))
@@ -1611,6 +1617,88 @@ func (d *player) tryCompleteQuest(questID int16) bool {
 
 	if q.ActOnComplete.NextQuest != 0 {
 		_ = d.tryStartQuest(q.ActOnComplete.NextQuest)
+	}
+	return true
+}
+
+func (d *player) buildQuestKillString(q nx.Quest) string {
+	if d.quests.mobKills == nil {
+		return ""
+	}
+	counts := d.quests.mobKills[q.ID]
+	if counts == nil {
+		return ""
+	}
+
+	out := make([]byte, 0, len(q.Complete.Mobs)*3)
+	for _, req := range q.Complete.Mobs {
+		val := counts[req.ID]
+		if val < 0 {
+			val = 0
+		}
+		if val > 999 {
+			val = 999
+		}
+
+		a := byte('0' + (val/100)%10)
+		b := byte('0' + (val/10)%10)
+		c := byte('0' + (val % 10))
+		out = append(out, a, b, c)
+	}
+	return string(out)
+}
+
+func (d *player) onMobKilled(mobID int32) {
+	if d == nil {
+		return
+	}
+	for qid := range d.quests.inProgress {
+		q, err := nx.GetQuest(qid)
+		if err != nil {
+			continue
+		}
+
+		var needed int32
+		for _, rm := range q.Complete.Mobs {
+			if rm.ID == mobID {
+				needed = rm.Count
+				break
+			}
+		}
+		if needed == 0 {
+			continue
+		}
+
+		// Init maps
+		if d.quests.mobKills == nil {
+			d.quests.mobKills = make(map[int16]map[int32]int32, 16)
+		}
+		if d.quests.mobKills[qid] == nil {
+			d.quests.mobKills[qid] = make(map[int32]int32, 4)
+		}
+
+		cur := d.quests.mobKills[qid][mobID]
+		if cur < needed {
+			d.quests.mobKills[qid][mobID] = cur + 1
+			upsertQuestMobKill(d.id, qid, mobID, 1)
+		}
+
+		d.send(packetUpdateQuestMobKills(qid, d.buildQuestKillString(q)))
+	}
+}
+
+func (d *player) meetsMobKills(questID int16, reqs []nx.ReqMob) bool {
+	if len(reqs) == 0 {
+		return true
+	}
+	m := d.quests.mobKills[questID]
+	if m == nil {
+		return false
+	}
+	for _, r := range reqs {
+		if m[r.ID] < r.Count {
+			return false
+		}
 	}
 	return true
 }

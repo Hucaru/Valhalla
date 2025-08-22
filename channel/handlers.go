@@ -3209,6 +3209,7 @@ func (server *Server) playerQuestOperation(conn mnet.Client, reader mpacket.Read
 	case QUEST_FORFEIT:
 		plr.quests.remove(questID)
 		deleteQuest(plr.id, questID)
+		clearQuestMobKills(plr.id, questID)
 		plr.send(packetRemoveQuest(questID))
 	case QUEST_LOST_ITEM:
 		count := reader.ReadInt16()

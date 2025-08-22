@@ -18,6 +18,8 @@ const (
 type quests struct {
 	inProgress map[int16]quest
 	completed  map[int16]quest
+
+	mobKills map[int16]map[int32]int32
 }
 
 type quest struct {
@@ -39,6 +41,9 @@ func (q *quests) init() {
 	}
 	if q.completed == nil {
 		q.completed = make(map[int16]quest, 16)
+	}
+	if q.mobKills == nil {
+		q.mobKills = make(map[int16]map[int32]int32, 16)
 	}
 }
 
@@ -85,6 +90,33 @@ func loadQuestsFromDB(charID int32) quests {
 	return q
 }
 
+func loadQuestMobKillsFromDB(charID int32) map[int16]map[int32]int32 {
+	out := make(map[int16]map[int32]int32, 16)
+
+	rows, err := common.DB.Query(
+		"SELECT questID, mobID, kills FROM character_quest_kills WHERE characterID=?",
+		charID,
+	)
+	if err != nil {
+		return out
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var qid int16
+		var mobID int32
+		var kills int32
+		if err := rows.Scan(&qid, &mobID, &kills); err != nil {
+			continue
+		}
+		if _, ok := out[qid]; !ok {
+			out[qid] = make(map[int32]int32, 4)
+		}
+		out[qid][mobID] = kills
+	}
+	return out
+}
+
 func upsertQuestRecord(charID int32, questID int16, record string) {
 	_, _ = common.DB.Exec(
 		"INSERT INTO character_quests(characterID, questID, record, completed, completedAt) "+
@@ -105,6 +137,21 @@ func deleteQuest(charID int32, questID int16) {
 	_, _ = common.DB.Exec("DELETE FROM character_quests WHERE characterID=? AND questID=?", charID, questID)
 }
 
+func upsertQuestMobKill(charID int32, questID int16, mobID int32, delta int32) {
+	_, _ = common.DB.Exec(
+		"INSERT INTO character_quest_kills(characterID, questID, mobID, kills) VALUES(?,?,?,?) "+
+			"ON DUPLICATE KEY UPDATE kills = kills + VALUES(kills)",
+		charID, questID, mobID, delta,
+	)
+}
+
+func clearQuestMobKills(charID int32, questID int16) {
+	_, _ = common.DB.Exec(
+		"DELETE FROM character_quest_kills WHERE characterID=? AND questID=?",
+		charID, questID,
+	)
+}
+
 // In-memory helpers
 func (q *quests) add(id int16, name string) {
 	q.inProgress[id] = quest{id: id, name: name}
@@ -118,6 +165,7 @@ func (q *quests) remove(id int16) {
 func (q *quests) complete(id int16, completedAt int64) {
 	delete(q.inProgress, id)
 	q.completed[id] = quest{id: id, completedAt: completedAt}
+	delete(q.mobKills, id)
 }
 
 func (q *quests) hasInProgress(id int16) bool {
@@ -175,6 +223,17 @@ func packetRemoveQuest(questID int16) mpacket.Packet {
 	p.WriteInt16(questID)
 	p.WriteInt16(0)
 	p.WriteByte(0)
+	p.WriteInt32(0)
+	p.WriteInt32(0)
+	return p
+}
+
+func packetUpdateQuestMobKills(questID int16, killStr string) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelMessage)
+	p.WriteByte(0x01)
+	p.WriteInt16(questID)
+	p.WriteByte(0x01)
+	p.WriteString(killStr)
 	p.WriteInt32(0)
 	p.WriteInt32(0)
 	return p

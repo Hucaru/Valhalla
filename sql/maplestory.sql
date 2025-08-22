@@ -150,4 +150,13 @@ CREATE TABLE `character_quests` (
   CONSTRAINT `character_quests_fk_character` FOREIGN KEY (`characterID`) REFERENCES `characters` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 
+DROP TABLE IF EXISTS `character_quest_kills`;
+CREATE TABLE `character_quest_kills` (
+  `characterID` INT NOT NULL,
+  `questID` SMALLINT NOT NULL,
+  `mobID` INT NOT NULL,
+  `kills` INT NOT NULL DEFAULT 0,
+  PRIMARY KEY (`characterID`, `questID`, `mobID`), CONSTRAINT `c_q_kills_fk_character` FOREIGN KEY (`characterID`) REFERENCES `characters` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+
 -- 2020-12-28 19:08:59
