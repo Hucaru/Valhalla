@@ -252,8 +252,8 @@ func (g *guild) updateEmblem(logoBg, logo int16, logoBgColour, logoColour byte) 
 			continue
 		}
 
-		g.updateAvatar(plr)
 		plr.send(packetGuildUpdateEmblem(g.id, logoBg, logo, logoBgColour, logoColour))
+		g.updateAvatar(plr)
 	}
 }
 
@@ -509,7 +509,8 @@ func packetGuildAlreadyJoined() mpacket.Packet {
 	return p
 }
 
-func packetGuildCannotMakeLevel() mpacket.Packet {
+// We don't use as we let the npc script handle this
+func packetGuildCannotMakeLevelLow() mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelGuildInfo)
 	p.WriteByte(0x23)
 

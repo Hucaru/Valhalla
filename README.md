@@ -98,9 +98,9 @@ Channel server:
 - [x] Party chat
 - [ ] Party HP bar
 - [x] Guild creation/disband
-- [ ] Guild invite
+- [x] Guild invite
 - [x] Guild join/leave
-- [x] Guild emblem
+- [x] Guild emblem (bug where server needs restart for it to work properly)
 - [x] Guild chat
 - [x] Guild points update
 - [x] Guild rank titles change
