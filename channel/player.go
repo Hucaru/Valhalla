@@ -438,7 +438,13 @@ func (d *player) setMaxMP(amount int16) {
 }
 
 func (d *player) setFame(amount int16) {
-
+	d.fame = amount
+	d.send(packetPlayerStatChange(true, constant.FameID, int32(amount)))
+	
+	_, err := common.DB.Exec("UPDATE characters SET fame=? WHERE id=?", d.fame, d.id)
+	if err != nil {
+		log.Printf("setFame: failed to save fame for character %d: %v", d.id, err)
+	}
 }
 
 func (d *player) addEquip(item item) {

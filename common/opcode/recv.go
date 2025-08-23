@@ -38,6 +38,7 @@ const (
 	RecvChannelSpecialSkill        byte = 0x39
 	RecvChannelRequestBuffCancel   byte = 0x3A
 	RecvChannelPlayerDropMesos     byte = 0x3C
+	RecvChannelPlayerFame          byte = 0x3D
 	RecvChannelCharacterInfo       byte = 0x3F
 	RecvChannelCancelBuff          byte = 0x41 // This is received by the client when the buff needs to be cancelled
 	RecvChannelLieDetectorResult   byte = 0x45

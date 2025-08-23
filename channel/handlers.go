@@ -98,6 +98,8 @@ func (server *Server) HandleClientPacket(conn mnet.Client, reader mpacket.Reader
 		server.playerMoveInventoryItem(conn, reader)
 	case opcode.RecvChannelPlayerDropMesos:
 		server.playerDropMesos(conn, reader)
+	case opcode.RecvChannelPlayerFame:
+		server.playerFame(conn, reader)
 	case opcode.RecvChannelInvUseItem:
 		server.playerUseInventoryItem(conn, reader)
 	case opcode.RecvChannelNearestTown:
@@ -3231,4 +3233,52 @@ func (server *Server) playerQuestOperation(conn mnet.Client, reader mpacket.Read
 	default:
 		log.Println("Unknown quest operation type:", act)
 	}
+}
+
+func (server *Server) playerFame(conn mnet.Client, reader mpacket.Reader) {
+	source, err := server.players.getFromConn(conn)
+	if err != nil {
+		return
+	}
+
+	targetID := reader.ReadInt32()
+	up := reader.ReadBool()
+
+	if targetID == source.id {
+		return
+	}
+
+	target, err := server.players.getFromID(targetID)
+	if err != nil || target == nil || target.mapID != source.mapID {
+		source.send(packetFameError(fameErrIncorrectUser))
+		return
+	}
+
+	if source.level < 15 {
+		source.send(packetFameError(fameErrUnderLevel))
+		return
+	}
+
+	if fameHasRecentActivity(source.id, 24*time.Hour) {
+		source.send(packetFameError(fameErrThisDay))
+		return
+	}
+
+	if fameHasRecentActivity(source.id, 30*24*time.Hour) {
+		source.send(packetFameError(fameErrThisMonth))
+		return
+	}
+
+	delta := int16(1)
+	if !up {
+		delta = -1
+	}
+	target.setFame(target.fame + delta)
+
+	if err := fameInsertLog(source.id, target.id); err != nil {
+		log.Println("fameInsertLog:", err)
+	}
+
+	target.send(packetFameNotifyVictim(source.name, up))
+	source.send(packetFameNotifySource(target.name, up, target.fame))
 }
