@@ -2685,7 +2685,7 @@ func (server *Server) guildManagement(conn mnet.Client, reader mpacket.Reader) {
 	op := reader.ReadByte()
 
 	switch op {
-	case 0x02: // create guild name dialogue
+	case constant.GuildCreateDialogue:
 		guildName := reader.ReadString(reader.ReadInt16())
 
 		if len(guildName) < 4 || len(guildName) > 12 {
@@ -2722,7 +2722,7 @@ func (server *Server) guildManagement(conn mnet.Client, reader mpacket.Reader) {
 		}
 
 		server.guilds[guild.id] = guild
-	case 0x05: // invite
+	case constant.GuildInvite:
 		invitee := reader.ReadString(reader.ReadInt16())
 
 		var playerID int32
@@ -2782,7 +2782,7 @@ func (server *Server) guildManagement(conn mnet.Client, reader mpacket.Reader) {
 		}
 
 		server.world.Send(internal.PacketGuildInvite(plr.guild.id, plr.name, invitee))
-	case 0x06: // accept invite
+	case constant.GuildAcceptInvite:
 		guildID := reader.ReadInt32()
 		playerID := reader.ReadInt32()
 
@@ -2803,7 +2803,7 @@ func (server *Server) guildManagement(conn mnet.Client, reader mpacket.Reader) {
 		}
 
 		server.world.Send(internal.PacketGuildInviteAccept(playerID, guildID, plr.name, int32(plr.job), int32(plr.level), true, 5))
-	case 0x07: // leave
+	case constant.GuildLeave:
 		playerID := reader.ReadInt32()
 		name := reader.ReadString(reader.ReadInt16())
 
@@ -2818,7 +2818,7 @@ func (server *Server) guildManagement(conn mnet.Client, reader mpacket.Reader) {
 		} else {
 			server.world.Send(internal.PacketGuildRemovePlayer(plr.guild.id, playerID, name, false))
 		}
-	case 0x08: // expel
+	case constant.GuildExpel:
 		playerID := reader.ReadInt32()
 		name := reader.ReadString(reader.ReadInt16())
 
@@ -2829,7 +2829,7 @@ func (server *Server) guildManagement(conn mnet.Client, reader mpacket.Reader) {
 		}
 
 		server.world.Send(internal.PacketGuildRemovePlayer(plr.guild.id, playerID, name, true))
-	case 0x10: // notice change
+	case constant.GuildNoticeChange:
 		notice := reader.ReadString(reader.ReadInt16())
 		plr, err := server.players.getFromConn(conn)
 
@@ -2838,7 +2838,7 @@ func (server *Server) guildManagement(conn mnet.Client, reader mpacket.Reader) {
 		}
 
 		server.world.Send(internal.PacketGuildUpdateNotice(plr.guild.id, notice))
-	case 0x0D: // update title names
+	case constant.GuildUpdateTitleNames:
 		master := reader.ReadString(reader.ReadInt16())
 		jrMaster := reader.ReadString(reader.ReadInt16())
 		member1 := reader.ReadString(reader.ReadInt16())
@@ -2856,7 +2856,7 @@ func (server *Server) guildManagement(conn mnet.Client, reader mpacket.Reader) {
 		}
 
 		server.world.Send(internal.PacketGuildTitlesChange(plr.guild.id, master, jrMaster, member1, member2, member3))
-	case 0x0E: // rank change
+	case constant.GuildRankChange:
 		playerID := reader.ReadInt32()
 		rank := reader.ReadByte()
 
@@ -2873,7 +2873,7 @@ func (server *Server) guildManagement(conn mnet.Client, reader mpacket.Reader) {
 		if plr.guild != nil {
 			server.world.Send(internal.PacketGuildRankUpdate(plr.guild.id, playerID, rank))
 		}
-	case 0x0F: // emblem change
+	case constant.GuildEmblemChange:
 		plr, err := server.players.getFromConn(conn)
 
 		if err != nil {
@@ -2892,7 +2892,7 @@ func (server *Server) guildManagement(conn mnet.Client, reader mpacket.Reader) {
 		plr.giveMesos(-1e6)
 
 		server.world.Send(internal.PacketGuildUpdateEmblem(plr.guild.id, logoBg, logo, logoBgColour, logoColour))
-	case 0x1E: // Guild contract
+	case constant.GuildContractSign:
 		id := reader.ReadInt32()
 		accepted := reader.ReadBool()
 
@@ -2947,7 +2947,7 @@ func (server *Server) guildInviteResult(conn mnet.Server, reader mpacket.Reader)
 		inviter := reader.ReadString(reader.ReadInt16())
 		invitee := reader.ReadString(reader.ReadInt16())
 		_, _ = inviter, invitee
-	case 0x37: // reject
+	case constant.GuildRejectInvite: // reject
 		inviterName := reader.ReadString(reader.ReadInt16())
 		inviteeName := reader.ReadString(reader.ReadInt16())
 

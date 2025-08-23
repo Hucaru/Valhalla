@@ -866,8 +866,6 @@ func (server *Server) gmCommand(conn mnet.Client, msg string) {
 
 		server.world.Send(internal.PacketChannelPartyCreateRequest(plr.id, server.id, plr.mapID, int32(plr.job), int32(plr.level), plr.name))
 	case "guildCreate":
-		guildName := command[1:]
-
 		plr, err := server.players.getFromConn(conn)
 
 		if err != nil {
@@ -875,12 +873,31 @@ func (server *Server) gmCommand(conn mnet.Client, msg string) {
 			return
 		}
 
-		if plr.guild != nil {
-			conn.Send(packetMessageRedText("Already in a guild"))
+		var controller *npcChatController
+
+		if program, ok := server.npcScriptStore.scripts["2010007"]; ok {
+			controller, err = createNpcChatController(2010007, conn, program, plr, server.fields, server.warpPlayer, server.world)
+
+			if err != nil {
+				conn.Send(packetMessageRedText(err.Error()))
+				return
+			}
+		}
+
+		if controller == nil {
+			log.Println("Unable to find guild npc script")
 			return
 		}
 
-		_ = guildName
+		if err != nil {
+			log.Println("script init:", err)
+		}
+
+		server.npcChat[conn] = controller
+
+		if controller.run() {
+			delete(server.npcChat, conn)
+		}
 	case "guildDisband":
 		plr, err := server.players.getFromConn(conn)
 
