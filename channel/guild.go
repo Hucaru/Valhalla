@@ -189,8 +189,8 @@ func (g *guild) signContract(playerID int32) error {
 				return err
 			}
 
+			g.broadcastExcept(packetGuildPlayerJoined(plr), plr)
 			plr.send(packetGuildInfo(g))
-			g.broadcast(packetGuildPlayerJoined(plr))
 			g.updateAvatar(plr)
 		}
 
@@ -324,9 +324,10 @@ func (g *guild) removePlayer(playerID int32, expelled bool, name string) {
 			g.online = slices.Delete(g.online, i, i+1)
 			g.ranks = slices.Delete(g.ranks, i, i+1)
 
-			if plr, err := g.players.getFromID(3); err == nil {
+			if plr, err := g.players.getFromID(id); err == nil {
 				plr.guild = nil
 				plr.send(packetGuildInfo(nil))
+				g.updateAvatar(plr)
 			}
 
 			break

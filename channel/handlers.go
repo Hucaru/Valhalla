@@ -3106,7 +3106,6 @@ func (server Server) handleGuildEvent(conn mnet.Server, reader mpacket.Reader) {
 		if guild, ok := server.guilds[guildID]; ok {
 			guild.updateRank(playerID, rank)
 		}
-	case internal.OpGuildAddPlayer:
 	case internal.OpGuildRemovePlayer:
 		guildID := reader.ReadInt32()
 		playerID := reader.ReadInt32()
