@@ -35,7 +35,7 @@ if (plr.inGuild() && plr.guildRank() == 1) {
                     npc.sendOk("In order to form a guild you need to be in a party with at least 5 people and all be in this room.")
                 } else if (!plr.isPartyLeader()) {
                     npc.sendOk("You must be the party leader in order to form a guild.")
-                } else if (plr.partyMembersOnMapCount() < 2) {
+                } else if (plr.partyMembersOnMapCount() < 5) {
                     npc.sendOk("You must have 4 other people in this room in order to form a guild.")
                 } else if (plr.mesos() < 5e6) {
                     npc.sendOk("You need at least 5,000,000 mesos to form a guild. Please come back once you have the required amount.")
