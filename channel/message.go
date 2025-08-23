@@ -1,8 +1,8 @@
 package channel
 
 import (
-	"github.com/Hucaru/Valhalla/common/mpacket"
 	"github.com/Hucaru/Valhalla/common/opcode"
+	"github.com/Hucaru/Valhalla/mpacket"
 )
 
 /*
@@ -126,7 +126,7 @@ func packetMessageWhiteBar(msg string) mpacket.Packet {
 	return p
 }
 
-//PacketMessageBroadcastChannel - Need to figure out how to display the username and  atm it bastardises it.
+// PacketMessageBroadcastChannel - Need to figure out how to display the username and  atm it bastardises it.
 func packetMessageBroadcastChannel(senderName string, msg string, channel byte, ear bool) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelBroadcastMessage)
 	p.WriteByte(3)
@@ -261,6 +261,21 @@ func packetMessageGmWrongNpc() mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelEmployee)
 	p.WriteByte(8)
 	p.WriteInt16(0)
+
+	return p
+}
+
+func packetUseScroll(playerID int32, succeed bool, destroy bool, legendarySpirit bool) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelUseScroll)
+	p.WriteInt32(playerID)
+	p.WriteBool(succeed)
+	p.WriteBool(destroy)
+
+	var ls int16 = 0
+	if legendarySpirit {
+		ls = 1
+	}
+	p.WriteInt16(ls)
 
 	return p
 }

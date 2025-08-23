@@ -4,23 +4,57 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"math/rand"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/Hucaru/Valhalla/common"
-	"github.com/Hucaru/Valhalla/common/mnet"
-	"github.com/Hucaru/Valhalla/common/mpacket"
-	"github.com/Hucaru/Valhalla/common/nx"
 	"github.com/Hucaru/Valhalla/common/opcode"
 	"github.com/Hucaru/Valhalla/constant"
+	"github.com/Hucaru/Valhalla/constant/skill"
 	"github.com/Hucaru/Valhalla/internal"
+	"github.com/Hucaru/Valhalla/mnet"
+	"github.com/Hucaru/Valhalla/mpacket"
+	"github.com/Hucaru/Valhalla/nx"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
+// Prometheus metrics for packet observability
+var (
+	packetsTotal = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "channel_packets_total",
+			Help: "Total number of received packets by opcode",
+		},
+		[]string{"opcode"},
+	)
+	unknownPacketsTotal = prometheus.NewCounter(
+		prometheus.CounterOpts{
+			Name: "channel_packets_unknown_total",
+			Help: "Total number of unknown/unhandled packets",
+		},
+	)
+)
+
+func init() {
+	prometheus.MustRegister(packetsTotal, unknownPacketsTotal)
+}
+
 // HandleClientPacket data
 func (server *Server) HandleClientPacket(conn mnet.Client, reader mpacket.Reader) {
-	switch reader.ReadByte() {
+	// Read opcode first for logging/metrics and to make panic logs useful
+	op := reader.ReadByte()
+	packetsTotal.WithLabelValues(fmt.Sprintf("%d", op)).Inc()
+
+	// Panic guard per packet to avoid dropping the connection loop on handler bugs
+	defer func() {
+		if r := recover(); r != nil {
+			log.Printf("panic in HandleClientPacket op=%d: %v", op, r)
+		}
+	}()
+
+	switch op {
 	case opcode.RecvPing:
 	case opcode.RecvChannelPlayerLoad:
 		server.playerConnect(conn, reader)
@@ -67,6 +101,11 @@ func (server *Server) HandleClientPacket(conn mnet.Client, reader mpacket.Reader
 		server.playerDropMesos(conn, reader)
 	case opcode.RecvChannelInvUseItem:
 		server.playerUseInventoryItem(conn, reader)
+	case opcode.RecvChannelNearestTown:
+		// Return Scroll / Nearest Town Scroll
+		server.playerUseReturnScroll(conn, reader)
+	case opcode.RecvChannelUseScroll:
+		server.playerUseScroll(conn, reader)
 	case opcode.RecvChannelPlayerPickup:
 		server.playerPickupItem(conn, reader)
 	case opcode.RecvChannelAddStatPoint:
@@ -76,7 +115,7 @@ func (server *Server) HandleClientPacket(conn mnet.Client, reader mpacket.Reader
 	case opcode.RecvChannelAddSkillPoint:
 		server.playerAddSkillPoint(conn, reader)
 	case opcode.RecvChannelSpecialSkill:
-		// server.playerSpecialSkill(conn, reader)
+		server.playerSpecialSkill(conn, reader)
 	case opcode.RecvChannelCharacterInfo:
 		server.playerRequestAvatarInfoWindow(conn, reader)
 	case opcode.RecvChannelLieDetectorResult:
@@ -98,7 +137,12 @@ func (server *Server) HandleClientPacket(conn mnet.Client, reader mpacket.Reader
 		server.npcMovement(conn, reader)
 	case opcode.RecvChannelBoatMap:
 		// [mapID int32][? byte]
+	case opcode.RecvChannelAcknowledgeBuff:
+		// Consume
+	case opcode.RecvChannelCancelBuff:
+		server.playerCancelBuff(conn, reader)
 	default:
+		unknownPacketsTotal.Inc()
 		log.Println("UNKNOWN CLIENT PACKET:", reader)
 	}
 }
@@ -106,25 +150,23 @@ func (server *Server) HandleClientPacket(conn mnet.Client, reader mpacket.Reader
 func (server *Server) playerConnect(conn mnet.Client, reader mpacket.Reader) {
 	charID := reader.ReadInt32()
 
-	var migrationID byte
-	var channelID int8
-
-	err := common.DB.QueryRow("SELECT channelID,migrationID FROM characters WHERE id=?", charID).Scan(&channelID, &migrationID)
-
+	// Fetch channelID, migrationID and accountID in a single query
+	var (
+		migrationID byte
+		channelID   int8
+		accountID   int32
+	)
+	err := common.DB.QueryRow(
+		"SELECT channelID, migrationID, accountID FROM characters WHERE id=?",
+		charID,
+	).Scan(&channelID, &migrationID, &accountID)
 	if err != nil {
-		log.Println(err)
+		log.Println("playerConnect query error:", err)
 		return
 	}
 
 	if migrationID != server.id {
-		return
-	}
-
-	var accountID int32
-	err = common.DB.QueryRow("SELECT accountID FROM characters WHERE id=?", charID).Scan(&accountID)
-
-	if err != nil {
-		log.Println(err)
+		// Not for this server; silently ignore to avoid leaking info
 		return
 	}
 
@@ -181,13 +223,19 @@ func (server *Server) playerConnect(conn mnet.Client, reader mpacket.Reader) {
 		return
 	}
 
-	newPlr.sendBuddyList()
+	// Restore buffs (if any) saved during CC or previous logout, then audit for stale
+	newPlr.loadAndApplyBuffSnapshot()
+	if newPlr.buffs != nil {
+		newPlr.buffs.AuditAndExpireStaleBuffs()
+	}
 
 	for _, party := range server.parties {
 		if party.addExistingPlayer(newPlr) {
 			break
 		}
 	}
+
+	newPlr.sendBuddyList()
 
 	newPlr.UpdatePartyInfo = func(partyID, playerID, job, level, mapID int32, name string) {
 		server.world.Send(internal.PacketChannelPartyUpdateInfo(partyID, playerID, job, level, mapID, name))
@@ -253,6 +301,9 @@ func (server *Server) playerChangeChannel(conn mnet.Client, reader mpacket.Reade
 		log.Println("Unable to get player from connection", conn)
 		return
 	}
+
+	// Save player buffs for handoff to next channel
+	player.saveBuffSnapshot()
 
 	if int(id) < len(server.channels) {
 		if server.channels[id].Port == 0 {
@@ -808,6 +859,246 @@ func (server Server) playerUseInventoryItem(conn mnet.Client, reader mpacket.Rea
 	}
 	item.use(plr)
 
+}
+
+func (server *Server) playerUseReturnScroll(conn mnet.Client, reader mpacket.Reader) {
+	slot := reader.ReadInt16()   // inventory slot in 'use' tab
+	itemID := reader.ReadInt32() // item id
+
+	plr, err := server.players.getFromConn(conn)
+	if err != nil {
+		return
+	}
+
+	// Validate: ensure the item at the given slot in 'use' inventory matches itemID
+	found := false
+	for _, it := range plr.use {
+		if it.slotID == slot && it.id == itemID && it.amount > 0 {
+			found = true
+			break
+		}
+	}
+	if !found {
+		// Desync or invalid request
+		plr.send(packetPlayerNoChange())
+		return
+	}
+
+	meta, err := nx.GetItem(itemID)
+	if err != nil {
+		// Missing NX data
+		plr.send(packetPlayerNoChange())
+		return
+	}
+
+	// Resolve destination field id with sensible fallbacks
+	var dstFieldID int32
+	// Prefer MoveTo from item data if available
+	if meta.MoveTo != 0 {
+		dstFieldID = meta.MoveTo
+	}
+
+	// If MoveTo is not present, try player's previous map
+	if dstFieldID == 0 && plr.previousMap != 0 {
+		dstFieldID = plr.previousMap
+	}
+
+	// If still unknown, try the current map's ReturnMap
+	if dstFieldID == 0 {
+		if curField, ok := server.fields[plr.mapID]; ok && curField.Data.ReturnMap != 0 {
+			dstFieldID = curField.Data.ReturnMap
+		}
+	}
+
+	// Final fallback: if nothing resolved, don't change state
+	if dstFieldID == 0 {
+		plr.send(packetPlayerNoChange())
+		return
+	}
+
+	// Resolve destination field
+	dstField, ok := server.fields[dstFieldID]
+	if !ok {
+		if dstField == nil {
+			if curField, ok2 := server.fields[plr.mapID]; ok2 && curField.Data.ReturnMap != 0 {
+				if f2, ok3 := server.fields[curField.Data.ReturnMap]; ok3 {
+					dstField = f2
+				}
+			}
+		}
+		// If still unresolved, abort
+		if dstField == nil {
+			plr.send(packetPlayerNoChange())
+			return
+		}
+	}
+
+	// Resolve destination instance (use same index if possible, else 0)
+	dstInst, err := dstField.getInstance(plr.inst.id)
+	if err != nil {
+		dstInst, err = dstField.getInstance(0)
+		if err != nil {
+			plr.send(packetPlayerNoChange())
+			return
+		}
+	}
+
+	// Pick a spawn portal
+	portal, err := dstInst.getRandomSpawnPortal()
+	if err != nil {
+		plr.send(packetPlayerNoChange())
+		return
+	}
+
+	// Consume one scroll from the specified slot in 'use' inventory (invID 2)
+	if _, err := plr.takeItem(itemID, slot, 1, 2); err != nil {
+		// If we fail to consume, do not warp
+		plr.send(packetPlayerNoChange())
+		return
+	}
+
+	_ = server.warpPlayer(plr, dstField, portal)
+}
+
+func (server *Server) playerUseScroll(conn mnet.Client, reader mpacket.Reader) {
+	plr, err := server.players.getFromConn(conn)
+	if err != nil {
+		return
+	}
+
+	scrollSlot := reader.ReadInt16() // USE inv slot (scroll)
+	targetSlot := reader.ReadInt16() // equip slot (negative if equipped)
+
+	if targetSlot < -100 {
+		plr.send(packetPlayerNoChange())
+		return
+	}
+
+	// Load items
+	scroll := plr.findUseItemBySlot(scrollSlot)
+	equip := plr.findEquipBySlot(targetSlot)
+	if scroll == nil || equip == nil || scroll.amount < 1 || equip.amount != 1 {
+		plr.send(packetPlayerNoChange())
+		return
+	}
+
+	// Data and basic checks
+	scrollMeta, err := nx.GetItem(scroll.id)
+	if err != nil {
+		plr.send(packetPlayerNoChange())
+		return
+	}
+	// Type compatibility and basic checks
+	if !validateScrollTarget(scroll.id, equip.id) {
+		plr.send(packetPlayerNoChange())
+		return
+	}
+	if int(scrollMeta.Success) == 0 || equip.getSlots() == 0 {
+		plr.send(packetPlayerNoChange())
+		return
+	}
+
+	// Consume scroll
+	if _, err := plr.takeItem(scroll.id, scrollSlot, 1, 2); err != nil {
+		plr.send(packetPlayerNoChange())
+		return
+	}
+
+	// consume slot
+	equip.setSlots(equip.getSlots() - 1)
+
+	// Roll success/failure
+	rand.Seed(time.Now().UnixNano())
+	successRoll := rand.Intn(100)
+
+	if successRoll < int(scrollMeta.Success) {
+		// Success: apply stats, decrement slot, increment scroll count
+		equip.applyScrollEffects(scrollMeta)
+		equip.incrementScrollCount()
+
+		// Persist and update in-memory slice
+		equip.save(plr.id)
+		plr.updateItem(*equip)
+
+		// Send full item update so client refreshes stats/slots
+		plr.send(packetInventoryAddItem(*equip, true))
+		// Optional: refresh avatar appearance (won't change looks, but safe)
+		plr.send(packetInventoryChangeEquip(*plr))
+		plr.send(packetUseScroll(plr.id, true, false, false))
+	} else {
+		curseRoll := rand.Intn(100)
+		if curseRoll < int(scrollMeta.Cursed) {
+			// Destroy the equip
+			plr.removeItem(*equip)
+			plr.send(packetUseScroll(plr.id, false, true, false))
+		} else {
+			// Normal fail (slot consumed): persist and send full update too
+			equip.save(plr.id)
+			plr.updateItem(*equip)
+			plr.send(packetInventoryAddItem(*equip, true))
+			plr.send(packetUseScroll(plr.id, false, false, false))
+		}
+	}
+}
+
+// Packet format (after ticker skip handled elsewhere):
+// - slot: int16 (USE inv slot of the buff item)
+// - itemID: int32
+// - targetName: string (length-prefixed int16)
+func (server *Server) playerUseBuffItem(conn mnet.Client, reader mpacket.Reader) {
+	plr, err := server.players.getFromConn(conn)
+	if err != nil {
+		return
+	}
+
+	slot := reader.ReadInt16()
+	itemID := reader.ReadInt32()
+
+	// Validate item in USE inventory and item id match
+	found := false
+	for i := range plr.use {
+		if plr.use[i].slotID == slot && plr.use[i].id == itemID && plr.use[i].amount > 0 {
+			found = true
+			break
+		}
+	}
+	if !found {
+		// Hacking / invalid
+		return
+	}
+
+	targetName := reader.ReadString(reader.ReadInt16())
+
+	// Try to resolve target by name
+	if target, err := server.players.getFromName(targetName); err == nil && target != nil {
+		// If target is the same player, original code notes needing a failure packet if it's invalid
+		// We'll still proceed if allowed by your game rules.
+		if plr.mapID != target.mapID {
+			// TODO: send an appropriate failure packet (different map)
+			plr.send(packetPlayerNoChange())
+			return
+		}
+
+		// Apply effect to target
+		// TODO: integrate actual buff application (stats/effects based on itemID)
+		target.applyBuffItem(itemID)
+
+		// Consume the buff item from the user's USE inventory
+		if _, err := plr.takeItem(itemID, slot, 1, 2); err != nil {
+			// If consumption fails, roll back by notifying client
+			plr.send(packetPlayerNoChange())
+			return
+		}
+	} else {
+		// Target not found: send failure (TODO: precise packet)
+		plr.send(packetPlayerNoChange())
+	}
+}
+
+// applyBuffItemToPlayer is a placeholder for your buff item usage on a target player.
+func (p *player) applyBuffItem(itemID int32) {
+	// TODO: Implement item-based buff application.
+	// Example: inventory.useItem(target, itemID) equivalent
 }
 
 func (server Server) playerPickupItem(conn mnet.Client, reader mpacket.Reader) {
@@ -2616,10 +2907,10 @@ func (server *Server) guildManagement(conn mnet.Client, reader mpacket.Reader) {
 		}
 
 		if accepted {
-			err = plr.guild.signContract(id)
+			success := plr.guild.signContract(id)
 
-			if err != nil {
-				log.Println(err)
+			if success {
+				server.guilds[plr.guild.id] = plr.guild
 			}
 		} else {
 			plr, err := plr.guild.players.getFromID(plr.guild.playerID[0]) // master will always be the first player when creating a guild
@@ -3076,6 +3367,183 @@ func (server Server) handleChatEvent(conn mnet.Server, reader mpacket.Reader) {
 	}
 }
 
+func getAffectedPartyMembers(p *party, src *player, affected byte) []*player {
+	if p == nil || src == nil {
+		return nil
+	}
+
+	var total byte
+	for i := 0; i < constant.MaxPartySize; i++ {
+		if p.players[i] != nil {
+			total++
+		}
+	}
+
+	ret := make([]*player, 0, constant.MaxPartySize)
+
+	for i := 0; i < constant.MaxPartySize; i++ {
+		idx := i + 1
+		mask := partyMemberMaskForIndex(idx, total)
+		if (affected & mask) == 0 {
+			continue
+		}
+
+		member := p.players[i]
+		if member == nil {
+			continue
+		}
+
+		// Must be same map and same instance
+		if member.mapID != src.mapID {
+			continue
+		}
+		if member.inst == nil || src.inst == nil || member.inst.id != src.inst.id {
+			continue
+		}
+
+		// Exclude self
+		if member.id == src.id {
+			continue
+		}
+
+		ret = append(ret, member)
+	}
+
+	return ret
+}
+
+func (server *Server) playerSpecialSkill(conn mnet.Client, reader mpacket.Reader) {
+	// Minimal, safe implementation to keep packet stream in sync and apply basic validations/costs.
+	plr, err := server.players.getFromConn(conn)
+	if err != nil {
+		return
+	}
+
+	// Dead players cannot cast
+	if plr.hp == 0 {
+		plr.send(packetPlayerNoChange())
+		return
+	}
+
+	// The packet layout for special skills generally starts with [skillID int32][skillLevel byte]
+	skillID := reader.ReadInt32()
+	skillLevel := reader.ReadByte()
+
+	// Validate the player owns the skill and level does not exceed learned level
+	ps, ok := plr.skills[skillID]
+	if !ok || skillLevel == 0 || skillLevel > ps.Level {
+		// Possible hack/desync; drop request
+		plr.send(packetPlayerNoChange())
+		return
+	}
+
+	partyMask := reader.ReadByte() // party flags
+	delay := reader.ReadInt16()    // delay
+
+	readMobListAndDelay := func() {
+		count := int(reader.ReadByte())
+		for i := 0; i < count; i++ {
+			_ = reader.ReadInt32() // mob spawn id
+		}
+		_ = reader.ReadInt16() // delay
+	}
+	readXY := func() {
+		_ = reader.ReadInt16()
+		_ = reader.ReadInt16()
+	}
+
+	switch skill.Skill(skillID) {
+	// Party buffs handled earlier remain unchanged...
+	case skill.Haste, skill.BanditHaste, skill.Bless, skill.IronWill, skill.Rage,
+		skill.Meditation, skill.ILMeditation, skill.MesoUp, skill.HolySymbol, skill.HyperBody:
+		if plr.party == nil {
+			plr.addBuff(skillID, skillLevel, delay)
+			plr.inst.send(packetPlayerSkillAnimThirdParty(plr.id, false, true, skillID, skillLevel))
+		} else {
+			affected := getAffectedPartyMembers(plr.party, plr, partyMask)
+			for _, member := range affected {
+				if member == nil {
+					continue
+				}
+				member.addBuff(skillID, skillLevel, delay)
+				plr.inst.send(packetPlayerSkillAnimThirdParty(plr.id, false, true, skillID, skillLevel))
+				member.inst.send(packetPlayerSkillAnimThirdParty(member.id, true, false, skillID, skillLevel))
+			}
+		}
+
+	// Self toggles and non-party buffs (boolean/ratio-type): apply to self
+	case skill.DarkSight,
+		skill.MagicGuard,
+		skill.Invincible,
+		skill.SoulArrow, skill.CBSoulArrow,
+		skill.ShadowPartner,
+		skill.MesoGuard,
+		// Attack speed boosters (self)
+		skill.SwordBooster, skill.AxeBooster, skill.PageSwordBooster, skill.BwBooster,
+		skill.SpearBooster, skill.PolearmBooster,
+		skill.BowBooster, skill.CrossbowBooster,
+		skill.ClawBooster, skill.DaggerBooster,
+		// GM Hide (mapped to invincible bit)
+		skill.Hide:
+		plr.addBuff(skillID, skillLevel, delay)
+		plr.inst.send(packetPlayerSkillAnimThirdParty(plr.id, false, true, skillID, skillLevel))
+
+	// Debuffs on mobs: [mobCount][mobIDs...][delay]
+	case skill.Threaten,
+		skill.Slow, skill.ILSlow,
+		skill.MagicCrash,
+		skill.PowerCrash,
+		skill.ArmorCrash,
+		skill.ILSeal, skill.Seal,
+		skill.ShadowWeb,
+		skill.Doom:
+		readMobListAndDelay()
+
+	// Summons and puppet: [x short][y short]
+	case skill.SummonDragon,
+		skill.SilverHawk, skill.GoldenEagle,
+		skill.Puppet, skill.SniperPuppet:
+		readXY()
+
+	default:
+		// Always send a self animation so client shows casting even for non-buffs.
+		plr.inst.send(packetPlayerSkillAnimThirdParty(plr.id, false, true, skillID, skillLevel))
+	}
+
+	// Apply MP cost/cooldown, if any (reuses the same flow as attack skills).
+	if err := plr.useSkill(skillID, skillLevel); err != nil {
+		plr.send(packetPlayerNoChange())
+		return
+	}
+}
+
+func (server *Server) playerCancelBuff(conn mnet.Client, reader mpacket.Reader) {
+	plr, err := server.players.getFromConn(conn)
+	if err != nil || plr.buffs == nil {
+		return
+	}
+
+	cb := plr.buffs
+
+	const grace = 1500 * time.Millisecond
+	now := time.Now().Add(grace).UnixMilli()
+
+	// Collect all timed sources that should be expired by server clock
+	toExpire := make([]int32, 0, len(cb.expireAt))
+	for src, ts := range cb.expireAt {
+		if ts > 0 && ts <= now {
+			toExpire = append(toExpire, src)
+		}
+	}
+
+	for _, src := range toExpire {
+		cb.expireBuffNow(src)
+	}
+
+	// Final sweep for any edge cases
+	cb.AuditAndExpireStaleBuffs()
+}
+
 func (server Server) handleGuildEvent(conn mnet.Server, reader mpacket.Reader) {
 	op := reader.ReadByte()
 
@@ -3131,7 +3599,6 @@ func (server Server) handleGuildEvent(conn mnet.Server, reader mpacket.Reader) {
 			logo := reader.ReadInt16()
 			logoBgColour := reader.ReadByte()
 			logoColour := reader.ReadByte()
-
 			guild.updateEmblem(logoBg, logo, logoBgColour, logoColour)
 		}
 	case internal.OpGuildPointsUpdate:

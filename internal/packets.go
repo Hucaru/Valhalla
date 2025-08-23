@@ -3,8 +3,8 @@ package internal
 import (
 	"log"
 
-	"github.com/Hucaru/Valhalla/common/mpacket"
 	"github.com/Hucaru/Valhalla/common/opcode"
+	"github.com/Hucaru/Valhalla/mpacket"
 )
 
 func PacketChannelPopUpdate(id byte, pop int16) mpacket.Packet {

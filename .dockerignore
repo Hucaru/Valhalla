@@ -2,7 +2,6 @@
 *.o
 *.a
 *.so
-*.nx
 *.wz
 debug
 certs/**
@@ -32,9 +31,6 @@ _testmain.go
 *.exe
 *.test
 *.prof
-
-# Large files
-Data.nx
 
 # Log files
 *.log

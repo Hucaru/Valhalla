@@ -5,9 +5,9 @@ import (
 	"slices"
 
 	"github.com/Hucaru/Valhalla/common"
-	"github.com/Hucaru/Valhalla/common/mpacket"
 	"github.com/Hucaru/Valhalla/common/opcode"
 	"github.com/Hucaru/Valhalla/constant"
+	"github.com/Hucaru/Valhalla/mpacket"
 )
 
 type guild struct {
@@ -95,9 +95,10 @@ func loadGuildFromDb(guildID int32, players *players) (*guild, error) {
 
 func createGuildContract(guildName string, worldID int32, players *players, master *player) *guild {
 	newGuild := &guild{
-		worldID: worldID,
-		name:    guildName,
-		players: players,
+		worldID:  worldID,
+		name:     guildName,
+		players:  players,
+		capacity: 50,
 	}
 
 	newGuild.playerID = append(newGuild.playerID, master.id)
@@ -142,18 +143,16 @@ func createGuildContract(guildName string, worldID int32, players *players, mast
 	return newGuild
 }
 
-func (g *guild) signContract(playerID int32) error {
+func (g *guild) signContract(playerID int32) bool {
+	signed := 0
+
 	for i, id := range g.playerID {
 		if id == playerID {
 			g.online[i] = true // switching a guild character to online during contract signing stage means they have accepted
 			g.ranks[i] = 5
-			break
 		}
-	}
 
-	signed := 0
-	for _, v := range g.online {
-		if v {
+		if g.online[i] {
 			signed++
 		}
 	}
@@ -163,13 +162,13 @@ func (g *guild) signContract(playerID int32) error {
 		res, err := common.DB.Exec(query, g.name, g.worldID, g.master, g.jrMaster, g.member1, g.member2, g.member3)
 
 		if err != nil {
-			return err
+			return false
 		}
 
 		guildID, err := res.LastInsertId()
 
 		if err != nil {
-			return err
+			return false
 		}
 
 		g.id = int32(guildID)
@@ -180,16 +179,15 @@ func (g *guild) signContract(playerID int32) error {
 			_, err := common.DB.Exec(query, g.id, g.ranks[i], id)
 
 			if err != nil {
-				return err
+				continue
 			}
 
 			plr, err := g.players.getFromID(id)
 
 			if err != nil {
-				return err
+				continue
 			}
 
-			g.broadcastExcept(packetGuildPlayerJoined(plr), plr)
 			plr.send(packetGuildInfo(g))
 			g.updateAvatar(plr)
 		}
@@ -197,13 +195,15 @@ func (g *guild) signContract(playerID int32) error {
 		plr, err := g.players.getFromID(g.playerID[0])
 
 		if err != nil {
-			return err
+			return false
 		}
 
 		plr.giveMesos(-5e6)
+
+		return true
 	}
 
-	return nil
+	return false
 }
 
 func (g *guild) broadcast(p mpacket.Packet) {
@@ -243,7 +243,9 @@ func (g *guild) updateEmblem(logoBg, logo int16, logoBgColour, logoColour byte) 
 	g.logoBg = logoBg
 	g.logo = logo
 	g.logoBgColour = logoBgColour
-	g.logoBgColour = logoColour
+	g.logoColour = logoColour
+
+	g.broadcast(packetGuildUpdateEmblem(g.id, logoBg, logo, logoBgColour, logoColour))
 
 	for _, v := range g.playerID {
 		plr, err := g.players.getFromID(v)
@@ -252,7 +254,7 @@ func (g *guild) updateEmblem(logoBg, logo int16, logoBgColour, logoColour byte) 
 			continue
 		}
 
-		plr.send(packetGuildUpdateEmblem(g.id, logoBg, logo, logoBgColour, logoColour))
+		// plr.send(packetGuildUpdateEmblem(g.id, logoBg, logo, logoBgColour, logoColour))
 		g.updateAvatar(plr)
 	}
 }
@@ -293,17 +295,10 @@ func (g *guild) addPlayer(playerID int32, name string, jobID, level int32, onlin
 		return
 	}
 
-	_, err = common.DB.Exec("UPDATE characters SET guildID=?, guildRank=? WHERE id=?", g.id, 5, playerID)
+	_, err = common.DB.Exec("UPDATE characters SET guildID=?, guildRank=? WHERE id=?", g.id, rank, playerID)
 
 	if err != nil {
 		log.Fatal()
-	}
-
-	if plr != nil {
-		plr.guild = g
-		g.updateAvatar(plr)
-		plr.send(packetGuildInfo(g))
-		g.broadcast(packetGuildPlayerJoined(plr))
 	}
 
 	g.playerID = append(g.playerID, playerID)
@@ -312,6 +307,15 @@ func (g *guild) addPlayer(playerID int32, name string, jobID, level int32, onlin
 	g.levels = append(g.levels, level)
 	g.online = append(g.online, true)
 	g.ranks = append(g.ranks, rank)
+
+	if plr != nil {
+		plr.guild = g
+		g.updateAvatar(plr)
+		plr.send(packetGuildInfo(g))
+		g.broadcastExcept(packetGuildPlayerJoined(g.id, playerID, jobID, level, int32(rank), name), plr)
+	} else {
+		g.broadcast(packetGuildPlayerJoined(g.id, playerID, jobID, level, int32(rank), name))
+	}
 }
 
 func (g *guild) removePlayer(playerID int32, expelled bool, name string) {
@@ -531,17 +535,17 @@ func packetGuildProblemOccurred() mpacket.Packet {
 	return p
 }
 
-func packetGuildPlayerJoined(plr *player) mpacket.Packet {
+func packetGuildPlayerJoined(guildID, playerID, job, level, rank int32, name string) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelGuildInfo)
 	p.WriteByte(0x27)
-	p.WriteInt32(plr.guild.id)
-	p.WriteInt32(plr.id)
-	p.WritePaddedString(plr.name, 13)
-	p.WriteInt32(int32(plr.job))
-	p.WriteInt32(int32(plr.level))
-	p.WriteInt32(5)
-	p.WriteInt32(1) // online
-	p.WriteInt32(0) // ?
+	p.WriteInt32(guildID)
+	p.WriteInt32(playerID)
+	p.WritePaddedString(name, 13)
+	p.WriteInt32(job)
+	p.WriteInt32(level)
+	p.WriteInt32(rank) // guild level, all new joiners start at 5
+	p.WriteInt32(1)    // online
+	p.WriteInt32(0)    // ?
 
 	return p
 }

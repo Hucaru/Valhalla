@@ -3,7 +3,7 @@ package channel
 import (
 	"fmt"
 
-	"github.com/Hucaru/Valhalla/common/mpacket"
+	"github.com/Hucaru/Valhalla/mpacket"
 )
 
 type movementFrag struct {

@@ -9,65 +9,13 @@ import (
 	"time"
 
 	"github.com/Hucaru/Valhalla/common"
-	"github.com/Hucaru/Valhalla/common/nx"
+	"github.com/Hucaru/Valhalla/nx"
 
-	"github.com/Hucaru/Valhalla/common/mnet"
-	"github.com/Hucaru/Valhalla/common/mpacket"
 	"github.com/Hucaru/Valhalla/common/opcode"
 	"github.com/Hucaru/Valhalla/constant"
+	"github.com/Hucaru/Valhalla/mnet"
+	"github.com/Hucaru/Valhalla/mpacket"
 )
-
-type players []*player
-
-func (p players) getFromConn(conn mnet.Client) (*player, error) {
-	for _, v := range p {
-		if v.conn == conn {
-			return v, nil
-		}
-	}
-
-	return nil, fmt.Errorf("Could not retrieve Data")
-}
-
-func (p players) getFromName(name string) (*player, error) {
-	for _, v := range p {
-		if v.name == name {
-			return v, nil
-		}
-	}
-
-	return nil, fmt.Errorf("Could not retrieve Data")
-}
-
-func (p players) getFromID(id int32) (*player, error) {
-	for _, v := range p {
-		if v.id == id {
-			return v, nil
-		}
-	}
-
-	return nil, fmt.Errorf("Could not retrieve Data")
-}
-
-func (p *players) removeFromConn(conn mnet.Client) error {
-	i := -1
-
-	for j, v := range *p {
-		if v.conn == conn {
-			i = j
-			break
-		}
-	}
-
-	if i == -1 {
-		return fmt.Errorf("Could not find Data")
-	}
-
-	(*p)[i] = (*p)[len((*p))-1]
-	(*p) = (*p)[:len((*p))-1]
-
-	return nil
-}
 
 type buddy struct {
 	id        int32
@@ -87,55 +35,57 @@ type playerSkill struct {
 
 func createPlayerSkillFromData(ID int32, level byte) (playerSkill, error) {
 	skill, err := nx.GetPlayerSkill(ID)
-
 	if err != nil {
-		return playerSkill{}, fmt.Errorf("Not a valid skill ID %v level %v", ID, level)
+		return playerSkill{}, fmt.Errorf("invalid skill ID %d (level %d): %w", ID, level, err)
+	}
+	if level == 0 || int(level) > len(skill) {
+		return playerSkill{}, fmt.Errorf("invalid skill level %d for skill ID %d (max %d)", level, ID, len(skill))
 	}
 
-	if int(level) > len(skill) {
-		return playerSkill{}, fmt.Errorf("Invalid skill level")
-	}
-
-	return playerSkill{ID: ID,
+	return playerSkill{
+		ID:           ID,
 		Level:        level,
 		Mastery:      byte(skill[level-1].Mastery),
 		Cooldown:     0,
 		CooldownTime: int16(skill[level-1].Time),
-		TimeLastUsed: 0}, nil
+		TimeLastUsed: 0,
+	}, nil
 }
 
 func getSkillsFromCharID(id int32) []playerSkill {
 	skills := []playerSkill{}
 
-	filter := "skillID, level, cooldown"
-
-	row, err := common.DB.Query("SELECT "+filter+" FROM skills where characterID=?", id)
-
+	const filter = "skillID, level, cooldown"
+	row, err := common.DB.Query("SELECT "+filter+" FROM skills WHERE characterID=?", id)
 	if err != nil {
-		panic(err)
+		log.Printf("getSkillsFromCharID: query failed for character %d: %v", id, err)
+		return skills
 	}
-
 	defer row.Close()
 
 	for row.Next() {
-		skill := playerSkill{}
-
-		err = row.Scan(&skill.ID, &skill.Level, &skill.Cooldown)
-
-		if err != nil {
-			log.Println(err)
+		var ps playerSkill
+		if err := row.Scan(&ps.ID, &ps.Level, &ps.Cooldown); err != nil {
+			log.Printf("getSkillsFromCharID: scan failed for character %d: %v", id, err)
 			continue
 		}
 
-		skillData, err := nx.GetPlayerSkill(skill.ID)
-
+		skillData, err := nx.GetPlayerSkill(ps.ID)
 		if err != nil {
-			return skills
+			log.Printf("getSkillsFromCharID: missing nx data for skill %d: %v", ps.ID, err)
+			continue
+		}
+		if ps.Level == 0 || int(ps.Level) > len(skillData) {
+			log.Printf("getSkillsFromCharID: invalid level %d for skill %d (max %d), skipping", ps.Level, ps.ID, len(skillData))
+			continue
 		}
 
-		skill.CooldownTime = int16(skillData[skill.Level-1].Time)
+		ps.CooldownTime = int16(skillData[ps.Level-1].Time)
+		skills = append(skills, ps)
+	}
 
-		skills = append(skills, skill)
+	if err := row.Err(); err != nil {
+		log.Printf("getSkillsFromCharID: rows error for character %d: %v", id, err)
 	}
 
 	return skills
@@ -210,15 +160,72 @@ type player struct {
 	UpdatePartyInfo updatePartyInfoFunc
 
 	rates *rates
+
+	buffs *CharacterBuffs
+
+	// Per-player RNG for deterministic randomness
+	rng *rand.Rand
+}
+
+// SeedRNGDeterministic seeds the per-player RNG using stable identifiers so
+// gain sequences are reproducible across restarts and processes.
+func (d *player) SeedRNGDeterministic() {
+	// Compose as uint64 to avoid int64 constant overflow, then cast at runtime.
+	const gamma uint64 = 0x9e3779b97f4a7c15
+	seed64 := gamma ^
+		(uint64(uint32(d.id)) << 1) ^
+		(uint64(uint32(d.accountID)) << 33) ^
+		(uint64(d.worldID) << 52)
+
+	seed := int64(seed64) // two's complement wrapping is fine for rand.Source
+	d.rng = rand.New(rand.NewSource(seed))
+}
+
+// ensureRNG guarantees d.rng is initialized. If a deterministic seed has not
+// been set yet, it will use a time-based seed (non-deterministic).
+func (d *player) ensureRNG() {
+	if d.rng == nil {
+		// Default to deterministic seeding for stability unless you want variability:
+		d.SeedRNGDeterministic()
+	}
+}
+
+func (d *player) randIntn(n int) int {
+	d.ensureRNG()
+	return d.rng.Intn(n)
+}
+
+// levelUpGains returns (hpGain, mpGain) using per-player RNG and job family.
+// The random component uses a small range similar to legacy behavior.
+// Tweak the constants to match your balance targets if needed.
+func (d *player) levelUpGains() (int16, int16) {
+	r := int16(d.randIntn(3) + 1) // legacy-style variance 1..3
+
+	mainClass := d.job / 100
+	switch {
+	case d.job == 0 || mainClass == 0: // Beginner and pre-advancement
+		// Balanced but modest growth
+		return r + 12, r + 10
+	case mainClass == 1: // Warrior
+		// High HP, low MP growth
+		return r + 24, r + 4
+	case mainClass == 2: // Magician
+		// Low HP, high MP growth
+		return r + 10, r + 22
+	case mainClass == 3 || mainClass == 4: // Bowman / Thief
+		// Moderate HP/MP growth
+		return r + 20, r + 14
+	default:
+		// Fallback for any other jobs/classes
+		return r + 16, r + 12
+	}
 }
 
 // Send the Data a packet
-func (d player) send(packet mpacket.Packet) {
-	if d.conn == nil {
-		log.Println("Tried to send:", packet, "to an invalid conn")
+func (d *player) send(packet mpacket.Packet) {
+	if d == nil || d.conn == nil {
 		return
 	}
-
 	d.conn.Send(packet)
 }
 
@@ -235,39 +242,25 @@ func (d *player) levelUp() {
 	d.giveAP(5)
 	d.giveSP(3)
 
-	levelUpHp := func(classIncrease int16, bonus int16) int16 {
-		return int16(rand.Intn(3)+1) + classIncrease + bonus // deterministic rand, maybe seed with time?
-	}
+	// Use per-player RNG and job-based helper for deterministic gains.
+	hpGain, mpGain := d.levelUpGains()
 
-	levelUpMp := func(classIncrease int16, bonus int16) int16 {
-		return int16(rand.Intn(1)+1) + classIncrease + bonus // deterministic rand, maybe seed with time?
-	}
+	// Apply gains; clamp to avoid overflow/underflow
+	newMaxHP := d.maxHP + hpGain
+	newMaxMP := d.maxMP + mpGain
 
-	switch d.job / 100 { // add effects from skills e.g. improve max mp
-	case 0:
-		d.maxHP += levelUpHp(constant.BeginnerHpAdd, 0)
-		d.maxMP += levelUpMp(constant.BeginnerMpAdd, d.intt)
-	case 1:
-		d.maxHP += levelUpHp(constant.WarriorHpAdd, 0)
-		d.maxMP += levelUpMp(constant.WarriorMpAdd, d.intt)
-	case 2:
-		d.maxHP += levelUpHp(constant.MagicianHpAdd, 0)
-		d.maxMP += levelUpMp(constant.MagicianMpAdd, 2*d.intt)
-	case 3:
-		d.maxHP += levelUpHp(constant.BowmanHpAdd, 0)
-		d.maxMP += levelUpMp(constant.BowmanMpAdd, d.intt)
-	case 4:
-		d.maxHP += levelUpHp(constant.ThiefHpAdd, 0)
-		d.maxMP += levelUpMp(constant.ThiefMpAdd, d.intt)
-	case 5:
-		d.maxHP += constant.AdminHpAdd
-		d.maxMP += constant.AdminMpAdd
-	default:
-		log.Println("Unkown job during level up", d.job)
+	// Basic sanity caps; adjust to your server balance
+	if newMaxHP < 1 {
+		newMaxHP = 1
 	}
-
-	d.hp = d.maxHP
-	d.mp = d.maxMP
+	if newMaxMP < 0 {
+		newMaxMP = 0
+	}
+	// Update current HP/MP minimally: keep at least previous current + gains
+	d.maxHP = newMaxHP
+	d.maxMP = newMaxMP
+	d.hp = int16(math.Min(float64(d.maxHP), float64(d.hp+hpGain)))
+	d.mp = int16(math.Min(float64(d.maxMP), float64(d.mp+mpGain)))
 
 	d.setHP(d.hp)
 	d.setMaxHP(d.hp)
@@ -888,7 +881,11 @@ func (d *player) removeItem(item item) {
 		}
 	}
 
-	item.delete()
+	err := item.delete()
+	if err != nil {
+		log.Println(err)
+		return
+	}
 	d.send(packetInventoryRemoveItem(item))
 }
 
@@ -898,6 +895,7 @@ func (d *player) dropMesos(amount int32) error {
 	}
 
 	d.takeMesos(amount)
+	d.inst.dropPool.createDrop(dropSpawnNormal, dropFreeForAll, amount, d.pos, true, d.id, d.id)
 
 	return nil
 }
@@ -914,7 +912,10 @@ func (d *player) moveItem(start, end, amount int16, invID byte) error {
 		dropItem.amount = amount
 		dropItem.dbID = 0
 
-		d.takeItem(item.id, item.slotID, amount, item.invID)
+		_, err = d.takeItem(item.id, item.slotID, amount, item.invID)
+		if err != nil {
+			return fmt.Errorf("unable to take item")
+		}
 
 		d.inst.dropPool.createDrop(dropSpawnNormal, dropFreeForAll, 0, d.pos, true, d.id, 0, dropItem)
 	} else if end < 0 { // Move to equip slot
@@ -1190,52 +1191,51 @@ func (d *player) removeBuddy(id int32) {
 	}
 }
 
-func getBuddyList(playerID int32, buddySize byte) []buddy {
-	buddies := make([]buddy, 0, buddySize)
-	filter := "friendID,accepted"
-	rows, err := common.DB.Query("SELECT "+filter+" FROM buddy where characterID=?", playerID)
-
-	if err != nil {
-		log.Fatal(err)
-		return buddies
+// removeEquipAtSlot removes the equip from the given slot (equipped negative or inventory positive).
+func (d *player) removeEquipAtSlot(slot int16) bool {
+	if slot < 0 {
+		// Equipped item; find and clear
+		for i := range d.equip {
+			if d.equip[i].slotID == slot {
+				// Remove equipped item
+				d.equip[i].amount = 0
+				return true
+			}
+		}
+		return false
 	}
 
-	defer rows.Close()
-
-	i := 0
-	for rows.Next() {
-		newBuddy := buddy{}
-
-		var accepted bool
-		err = rows.Scan(&newBuddy.id, &accepted)
-
-		if err != nil {
-			log.Println(err)
-			continue
+	// Inventory equip; remove from inventory
+	for i := range d.equip {
+		if d.equip[i].slotID == slot {
+			if d.equip[i].amount != 1 {
+				return false
+			}
+			d.equip[i].amount = 0
+			return true
 		}
-
-		filter := "channelID,name,inCashShop"
-		err := common.DB.QueryRow("SELECT "+filter+" FROM characters where id=?", newBuddy.id).Scan(&newBuddy.channelID, &newBuddy.name, &newBuddy.cashShop)
-
-		if err != nil {
-			log.Fatal(err)
-			return buddies
-		}
-
-		if !accepted {
-			newBuddy.status = 1 // pending buddy request
-		} else if newBuddy.channelID == -1 {
-			newBuddy.status = 2 // offline
-		} else {
-			newBuddy.status = 0 // online
-		}
-
-		buddies = append(buddies, newBuddy)
-
-		i++
 	}
+	return false
+}
 
-	return buddies
+// findUseItemBySlot returns the use item (scroll) at the given slot from USE inventory.
+func (d *player) findUseItemBySlot(slot int16) *item {
+	for i := range d.use {
+		if d.use[i].slotID == slot {
+			return &d.use[i]
+		}
+	}
+	return nil
+}
+
+// findEquipBySlot returns the equip by slot (negative = equipped, positive = inventory slot).
+func (d *player) findEquipBySlot(slot int16) *item {
+	for i := range d.equip {
+		if d.equip[i].slotID == slot {
+			return &d.equip[i]
+		}
+	}
+	return nil
 }
 
 func loadPlayerFromID(id int32, conn mnet.Client) player {
@@ -1277,8 +1277,155 @@ func loadPlayerFromID(id int32, conn mnet.Client) player {
 	c.equip, c.use, c.setUp, c.etc, c.cash = loadInventoryFromDb(c.id)
 
 	c.buddyList = getBuddyList(c.id, c.buddyListSize)
+
+	// Initialize the per-player buff manager so handlers can call plr.addBuff(...)
+	c.buffs = NewCharacterBuffs(&c)
+
 	c.conn = conn
 	return c
+}
+
+func getBuddyList(playerID int32, buddySize byte) []buddy {
+	buddies := make([]buddy, 0, buddySize)
+	filter := "friendID,accepted"
+	rows, err := common.DB.Query("SELECT "+filter+" FROM buddy where characterID=?", playerID)
+
+	if err != nil {
+		log.Fatal(err)
+		return buddies
+	}
+
+	defer rows.Close()
+
+	i := 0
+	for rows.Next() {
+		newBuddy := buddy{}
+
+		var accepted bool
+		rows.Scan(&newBuddy.id, &accepted)
+
+		filter := "channelID,name,inCashShop"
+		err := common.DB.QueryRow("SELECT "+filter+" FROM characters where id=?", newBuddy.id).Scan(&newBuddy.channelID, &newBuddy.name, &newBuddy.cashShop)
+
+		if err != nil {
+			log.Fatal(err)
+			return buddies
+		}
+
+		if !accepted {
+			newBuddy.status = 1 // pending buddy request
+		} else if newBuddy.channelID == -1 {
+			newBuddy.status = 2 // offline
+		} else {
+			newBuddy.status = 0 // online
+		}
+
+		buddies = append(buddies, newBuddy)
+
+		i++
+	}
+
+	return buddies
+}
+
+// Convenience helper used by handlers to apply a skill buff.
+// Keeps your call sites (“plr.addBuff(...)”) simple.
+func (d *player) addBuff(skillID int32, level byte, delay int16) {
+	if d == nil {
+		return
+	}
+	if d.buffs == nil {
+		d.buffs = NewCharacterBuffs(d)
+	}
+	// You can pass any extra “sinc” values you need later; 0/0 is fine for standard buffs.
+	d.buffs.AddBuff(skillID, level, 0, 0, delay)
+}
+
+func (d *player) removeAllCooldowns() {
+	if d == nil || d.skills == nil {
+		return
+	}
+	for _, ps := range d.skills {
+		ps.Cooldown = 0
+		ps.TimeLastUsed = 0
+		d.updateSkill(ps)
+	}
+}
+
+func (d *player) saveBuffSnapshot() {
+	if d.buffs == nil {
+		return
+	}
+	snaps := d.buffs.Snapshot()
+	if len(snaps) == 0 {
+		_, _ = common.DB.Exec("DELETE FROM character_buffs WHERE characterID=?", d.id)
+		return
+	}
+
+	tx, err := common.DB.Begin()
+	if err != nil {
+		log.Println("saveBuffSnapshot: begin tx:", err)
+		return
+	}
+	defer func() { _ = tx.Commit() }()
+
+	if _, err := tx.Exec("DELETE FROM character_buffs WHERE characterID=?", d.id); err != nil {
+		log.Println("saveBuffSnapshot: clear rows:", err)
+		return
+	}
+
+	stmt, err := tx.Prepare("INSERT INTO character_buffs(characterID, sourceID, level, expiresAtMs) VALUES(?,?,?,?)")
+	if err != nil {
+		log.Println("saveBuffSnapshot: prepare:", err)
+		return
+	}
+	defer stmt.Close()
+
+	for _, s := range snaps {
+		if _, err := stmt.Exec(d.id, s.SourceID, s.Level, s.ExpiresAtMs); err != nil {
+			log.Println("saveBuffSnapshot: insert:", err)
+			return
+		}
+	}
+}
+
+func (d *player) loadAndApplyBuffSnapshot() {
+	rows, err := common.DB.Query("SELECT sourceID, level, expiresAtMs FROM character_buffs WHERE characterID=?", d.id)
+	if err != nil {
+		log.Println("loadBuffSnapshot:", err)
+		return
+	}
+	defer rows.Close()
+
+	snaps := make([]BuffSnapshot, 0, 8)
+	now := time.Now().UnixMilli()
+	for rows.Next() {
+		var s BuffSnapshot
+		if err := rows.Scan(&s.SourceID, &s.Level, &s.ExpiresAtMs); err != nil {
+			log.Println("loadBuffSnapshot scan:", err)
+			return
+		}
+		if s.ExpiresAtMs > 0 && s.ExpiresAtMs <= now {
+			continue // skip already-expired
+		}
+		snaps = append(snaps, s)
+	}
+	if err := rows.Err(); err != nil {
+		log.Println("loadBuffSnapshot rows:", err)
+		return
+	}
+
+	if len(snaps) > 0 {
+		if d.buffs == nil {
+			d.buffs = NewCharacterBuffs(d)
+		}
+		d.buffs.RestoreFromSnapshot(snaps)
+		_, err = common.DB.Exec("DELETE FROM character_buffs WHERE characterID=?", d.id)
+		if err != nil {
+			log.Println("loadBuffSnapshot delete:", err)
+			return
+		}
+	}
 }
 
 func packetPlayerReceivedDmg(charID int32, attack int8, initalAmmount, reducedAmmount, spawnID, mobID, healSkillID int32,
@@ -1317,6 +1464,143 @@ func packetPlayerLevelUpAnimation(charID int32) mpacket.Packet {
 	return p
 }
 
+func packetPlayerSkillAnimSelf(charID int32, skillID int32, level byte) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelPlayerAnimation)
+	p.WriteInt32(charID)
+	p.WriteByte(0x01)
+	p.WriteInt32(skillID)
+	p.WriteByte(level)
+	return p
+}
+
+func packetPlayerSkillAnimThirdParty(charID int32, party bool, self bool, skillID int32, level byte) mpacket.Packet {
+	var p mpacket.Packet
+	if party && self {
+		p = mpacket.CreateWithOpcode(opcode.SendChannelSkillAnimation)
+	} else {
+		p = mpacket.CreateWithOpcode(opcode.SendChannelPlayerAnimation)
+		p.WriteInt32(charID)
+	}
+
+	if party {
+		p.WriteByte(0x02)
+	} else {
+		p.WriteByte(0x01)
+	}
+	p.WriteInt32(skillID)
+	// Basis uses WriteInt for level; encode as int32 to match
+	p.WriteInt32(int32(level))
+	p.WriteUint64(0)
+	p.WriteUint64(0)
+	return p
+}
+
+func packetPlayerGiveBuff(mask []byte, values []byte, delay int16, extra byte) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelTempStatChange)
+
+	// Normalize to 8 bytes (low dword, high dword)
+	if len(mask) < 8 {
+		tmp := make([]byte, 8)
+		copy(tmp[8-len(mask):], mask)
+		mask = tmp
+	} else if len(mask) > 8 {
+		mask = mask[len(mask)-8:]
+	}
+	p.WriteBytes(mask)
+
+	// Per-stat value triples (short value, int32 skill, short time)
+	p.WriteBytes(values)
+
+	// Self path: 2-byte delay
+	p.WriteInt16(delay)
+
+	// Optional extra (only if specific bits are present)
+
+	writeExtra := buffMaskNeedsExtraByte(mask)
+	if writeExtra {
+		p.WriteByte(extra)
+	}
+
+	p.WriteInt64(0)
+	p.WriteInt64(0)
+
+	return p
+}
+
+func packetPlayerGiveForeignBuff(charID int32, mask []byte, values []byte, extra byte) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelPlayerBuffed)
+	p.WriteInt32(charID)
+
+	// Normalize to 8 bytes (low dword, high dword)
+	if len(mask) < 8 {
+		tmp := make([]byte, 8)
+		copy(tmp[8-len(mask):], mask)
+		mask = tmp
+	} else if len(mask) > 8 {
+		mask = mask[len(mask)-8:]
+	}
+
+	p.WriteBytes(mask)
+
+	// Per-stat value triples
+	p.WriteBytes(values)
+
+	// Foreign path: no delay, but still optional extra byte
+	if buffMaskNeedsExtraByte(mask) {
+		p.WriteByte(extra)
+	}
+	p.WriteInt64(0)
+	p.WriteInt64(0)
+
+	return p
+}
+
+func buffMaskNeedsExtraByte(mask []byte) bool {
+	isSetLSB := func(bit int) bool {
+		idx := bit / 8
+		if idx < 0 || idx >= len(mask) {
+			return false
+		}
+		shift := uint(bit % 8)
+		return (mask[idx] & (1 << shift)) != 0
+	}
+	return isSetLSB(BuffComboAttack) || isSetLSB(BuffCharges)
+}
+
+// Self-cancel using 8-byte mask
+func packetPlayerCancelBuff(mask []byte) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelRemoveTempStat)
+
+	// Normalize to 8 bytes
+	if len(mask) < 8 {
+		tmp := make([]byte, 8)
+		copy(tmp[8-len(mask):], mask)
+		mask = tmp
+	} else if len(mask) > 8 {
+		mask = mask[len(mask)-8:]
+	}
+	p.WriteBytes(mask)
+	p.WriteUint64(0)
+	return p
+}
+
+func packetPlayerCancelForeignBuff(charID int32, mask []byte) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelPlayerDebuff)
+	p.WriteInt32(charID)
+	p.WriteBytes(mask)
+	p.WriteUint64(0)
+	return p
+}
+
+func packetPlayerShowBuffEffect(charID int32, skillID int32, effectID int32) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelPlayerBuffed)
+	p.WriteInt32(charID)
+	p.WriteByte(1)
+	p.WriteInt32(skillID)
+	p.WriteInt(1)
+	return p
+}
+
 func packetPlayerMove(charID int32, bytes []byte) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelPlayerMovement)
 	p.WriteInt32(charID)
@@ -1344,9 +1628,9 @@ func packetPlayerSkillBookUpdate(skillID int32, level int32) mpacket.Packet {
 	return p
 }
 
-func packetPlayerStatChange(unknown bool, stat int32, value int32) mpacket.Packet {
+func packetPlayerStatChange(flag bool, stat int32, value int32) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelStatChange)
-	p.WriteBool(unknown)
+	p.WriteBool(flag)
 	p.WriteInt32(stat)
 	p.WriteInt32(value)
 
@@ -1614,13 +1898,19 @@ func packetInventoryRemoveItem(item item) mpacket.Packet {
 	return p
 }
 
-func packetInventoryChangeEquip(char player) mpacket.Packet {
+func packetInventoryChangeEquip(chr player) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelPlayerChangeAvatar)
-	p.WriteInt32(char.id)
+	p.WriteInt32(chr.id)
 	p.WriteByte(1)
-	p.WriteBytes(char.displayBytes())
-	p.WriteByte(0xFF)
-	p.WriteUint64(0) //?
+	p.WriteBytes(chr.displayBytes())
+
+	// Pet ID (spawned pet item id).
+	p.WriteInt32(0)
+
+	// 15 x long(0) placeholders
+	for i := 0; i < 15; i++ {
+		p.WriteUint64(0)
+	}
 
 	return p
 }

@@ -105,6 +105,28 @@ CREATE TABLE `guilds` (
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 
+DROP TABLE IF EXISTS `guild_invites`;
+CREATE TABLE `guild_invites` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `playerID` int(11) NOT NULL,
+  `guildID` int(11) NOT NULL,
+  `inviter` tinytext NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `playerID` (`playerID`),
+  KEY `guildID` (`guildID`),
+  CONSTRAINT `guild_invites_ibfk_3` FOREIGN KEY (`playerID`) REFERENCES `characters` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `guild_invites_ibfk_4` FOREIGN KEY (`guildID`) REFERENCES `guilds` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+
+DROP TABLE IF EXISTS `character_buffs`;
+CREATE TABLE IF NOT EXISTS character_buffs (
+   `characterID` INT NOT NULL,
+   `sourceID` INT NOT NULL,
+   `level` TINYINT NOT NULL,
+   `expiresAtMs` BIGINT NOT NULL,
+   PRIMARY KEY(`characterID`, `sourceID`),
+   CONSTRAINT `buffs_ibfk_5` FOREIGN KEY (`characterID`) REFERENCES `characters` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 
 DROP TABLE IF EXISTS `items`;
 CREATE TABLE `items` (

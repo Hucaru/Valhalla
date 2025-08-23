@@ -4,8 +4,8 @@ import (
 	"log"
 
 	"github.com/Hucaru/Valhalla/common"
-	"github.com/Hucaru/Valhalla/common/mnet"
 	"github.com/Hucaru/Valhalla/internal"
+	"github.com/Hucaru/Valhalla/mnet"
 )
 
 // Server state

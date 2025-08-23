@@ -8,9 +8,9 @@ import (
 	"math/rand"
 	"time"
 
-	"github.com/Hucaru/Valhalla/common/mpacket"
-	"github.com/Hucaru/Valhalla/common/nx"
 	"github.com/Hucaru/Valhalla/common/opcode"
+	"github.com/Hucaru/Valhalla/mpacket"
+	"github.com/Hucaru/Valhalla/nx"
 )
 
 type lifePoolRectangle struct {
@@ -19,32 +19,18 @@ type lifePoolRectangle struct {
 }
 
 func (r lifePoolRectangle) pointInRect(x, y int16) bool {
-	// Since rectangle will always be orientated as follows the check is simple
-	/*
-		 ----------A
-		 |   P    |
-		 |        |
-		B----------
-	*/
-
-	if r.ax < x {
-		return false
-	} else if r.ay < y {
-		return false
-	} else if r.bx > x {
-		return false
-	} else if r.by > y {
-		return false
+	// Rectangle is defined with ax <= bx and by <= ay in typical usage:
+	// r := { ax: center.x-100, ay: center.y+100, bx: center.x+100, by: center.y-100 }
+	minX, maxX := r.ax, r.bx
+	if minX > maxX {
+		minX, maxX = maxX, minX
 	}
-
-	return true
+	minY, maxY := r.by, r.ay
+	if minY > maxY {
+		minY, maxY = maxY, minY
+	}
+	return x >= minX && x <= maxX && y >= minY && y <= maxY
 }
-
-/*
-	TODO: The monster should only care about the summoner as a int32 not as a plr ptr
-	start out by having one controller per pool, then expand into spliting the map
-	between players in the field
-*/
 
 type lifePool struct {
 	instance *fieldInstance
@@ -122,7 +108,7 @@ func (pool lifePool) mobCount() int {
 }
 
 func (pool *lifePool) nextMobID() (int32, error) {
-	for i := 0; i < 100; i++ { // Try 99 times to generate an id if first time fails
+	for i := 0; i < 100; i++ { // Try 100 times to generate an id if first time fails
 		pool.mobID++
 
 		if pool.mobID == math.MaxInt32-1 {
@@ -136,11 +122,11 @@ func (pool *lifePool) nextMobID() (int32, error) {
 		}
 	}
 
-	return 0, fmt.Errorf("No space to generate id in drop pool")
+	return 0, fmt.Errorf("no space to generate id in life pool")
 }
 
 func (pool *lifePool) nextNpcID() (int32, error) {
-	for i := 0; i < 100; i++ { // Try 99 times to generate an id if first time fails
+	for i := 0; i < 100; i++ { // Try 100 times to generate an id if first time fails
 		pool.npcID++
 
 		if pool.npcID == math.MaxInt32-1 {
@@ -154,7 +140,7 @@ func (pool *lifePool) nextNpcID() (int32, error) {
 		}
 	}
 
-	return 0, fmt.Errorf("No space to generate id in drop pool")
+	return 0, fmt.Errorf("no space to generate id in life pool")
 }
 
 func (pool lifePool) canPause() bool {
@@ -194,7 +180,7 @@ func (pool *lifePool) addPlayer(plr *player) {
 
 func (pool *lifePool) removePlayer(plr *player) {
 	for i, v := range pool.npcs {
-		if v.controller.conn == plr.conn {
+		if v.controller != nil && v.controller.conn == plr.conn {
 			pool.npcs[i].removeController()
 
 			// find new controller
@@ -368,8 +354,7 @@ func (pool *lifePool) mobDamaged(poolID int32, damager *player, dmg ...int32) {
 					drops := make([]item, 0, len(dropEntry))
 
 					for _, entry := range dropEntry {
-						chance := pool.rNumber.Int63n(100000)
-						if int64(pool.dropPool.rates.drop*float32(entry.Chance)) < chance {
+						if !rollDrop(pool.rNumber, entry.Chance, pool.dropPool.rates.drop) {
 							continue
 						}
 
@@ -419,6 +404,30 @@ func (pool *lifePool) mobDamaged(poolID int32, damager *player, dmg ...int32) {
 	}
 }
 
+func rollDrop(r *rand.Rand, baseChance int64, rate float32) bool {
+	const denom int64 = 100000
+
+	// Fast-path clamps
+	if baseChance <= 0 {
+		return false
+	}
+	if baseChance >= denom && rate >= 1 {
+		return true
+	}
+
+	// Scale with rounding in float domain, then convert back to int64
+	scaled := int64(math.Round(float64(baseChance) * float64(rate)))
+	if scaled <= 0 {
+		return false
+	}
+	if scaled >= denom {
+		return true
+	}
+
+	// Roll
+	return r.Int63n(denom) < scaled
+}
+
 func (pool *lifePool) killMobs(deathType byte) {
 	// Need to collect keys first as when iterating over the map and killing we will kill any subsequent spawns depending on map iteration order
 	keys := make([]int32, 0, len(pool.mobs))
@@ -428,6 +437,8 @@ func (pool *lifePool) killMobs(deathType byte) {
 	}
 
 	for _, key := range keys {
+		// Apply the provided deathType for consistency
+		pool.instance.send(packetMobRemove(pool.mobs[key].spawnID, deathType))
 		pool.mobDamaged(pool.mobs[key].spawnID, nil, pool.mobs[key].hp)
 	}
 }
@@ -440,7 +451,7 @@ func (pool *lifePool) eraseMobs() {
 	}
 	for _, key := range keys {
 		pool.removeMob(key, 0)
-		delete(pool.mobs, key)
+		// removeMob already deletes from pool.mobs
 	}
 }
 
@@ -543,36 +554,15 @@ func (pool *lifePool) attemptMobSpawn(poolReset bool) {
 			return
 		}
 
-		activePos := make([]pos, len(pool.mobs))
-		mobsToSpawn := []monster{}
-		boundaryCheck := false
-		count := 0
-
-		index := 0
+		activePos := make([]pos, 0, len(pool.mobs))
 		for _, v := range pool.mobs {
-			activePos[index] = v.pos
-			index++
+			activePos = append(activePos, v.pos)
 		}
 
+		mobsToSpawn := []monster{}
+
 		for _, spwnMob := range pool.spawnableMobs {
-			if spwnMob.spawnInterval == 0 { // normal mobs
-				boundaryCheck = true
-			} else if spwnMob.spawnInterval > 0 || poolReset { // boss mobs or reset
-				active := false
-
-				for _, k := range pool.mobs {
-					if k.id == spwnMob.id {
-						active = true
-						break
-					}
-				}
-
-				if !active && currentTime.After(spwnMob.timeToSpawn) {
-					mobsToSpawn = append(mobsToSpawn, spwnMob)
-				}
-			}
-
-			if boundaryCheck {
+			if spwnMob.spawnInterval == 0 { // normal mobs: boundary check
 				rct := lifePoolRectangle{
 					ax: spwnMob.pos.x - 100,
 					ay: spwnMob.pos.y + 100,
@@ -589,25 +579,28 @@ func (pool *lifePool) attemptMobSpawn(poolReset bool) {
 				}
 
 				if add {
-					id, err := pool.nextMobID()
-
-					if err == nil {
+					if id, err := pool.nextMobID(); err == nil {
 						spwnMob.spawnID = id
 						mobsToSpawn = append(mobsToSpawn, spwnMob)
 					}
 				}
+			} else if spwnMob.spawnInterval > 0 || poolReset { // boss mobs or reset
+				active := false
+				for _, k := range pool.mobs {
+					if k.id == spwnMob.id {
+						active = true
+						break
+					}
+				}
 
-				boundaryCheck = false
-			}
-
-			count++
-			if count >= len(pool.spawnableMobs) {
-				break
+				if !active && currentTime.After(spwnMob.timeToSpawn) {
+					mobsToSpawn = append(mobsToSpawn, spwnMob)
+				}
 			}
 		}
 
 		for mobCount > 0 && len(mobsToSpawn) > 0 {
-			ind := rand.Intn(len(mobsToSpawn))
+			ind := pool.rNumber.Intn(len(mobsToSpawn))
 			newMob := mobsToSpawn[ind]
 			pool.spawnMob(&newMob, false)
 
@@ -861,12 +854,12 @@ func (pool *dropPool) createDrop(spawnType byte, dropType byte, mesos int32, dro
 		offset = int16(itemDistance * (iCount / 2))
 	}
 
-	currentTime := time.Now()
-	expireTime := currentTime.Add(itemDisppearTimeout).Unix()
+	now := time.Now()
+	expireTime := now.Add(itemDisppearTimeout).UnixMilli()
 	var timeoutTime int64 = 0
 
 	if dropType == dropTimeoutNonOwner || dropType == dropTimeoutNonOwnerParty {
-		timeoutTime = currentTime.Add(itemLootableByAllTimeout).Unix()
+		timeoutTime = now.Add(itemLootableByAllTimeout).UnixMilli()
 	}
 
 	if len(items) > 0 {
@@ -933,16 +926,10 @@ func (pool *dropPool) createDrop(spawnType byte, dropType byte, mesos int32, dro
 	}
 }
 
-func (pool dropPool) hideDrops(plr *player) {
-	for id := range pool.drops {
-		plr.send(packetRemoveDrop(1, id, 0))
-	}
-}
-
 func (pool *dropPool) update(t time.Time) {
 	id := make([]int32, 0, len(pool.drops))
 
-	currentTime := time.Now().Unix()
+	currentTime := time.Now().UnixMilli()
 
 	for _, v := range pool.drops {
 		if v.expireTime <= currentTime {
@@ -952,6 +939,12 @@ func (pool *dropPool) update(t time.Time) {
 
 	if len(id) > 0 {
 		pool.removeDrop(0, id...)
+	}
+}
+
+func (pool dropPool) HideDrops(plr *player) {
+	for id := range pool.drops {
+		plr.send(packetRemoveDrop(1, id, 0))
 	}
 }
 
@@ -1071,7 +1064,8 @@ func packetShowDrop(spawnType byte, drop fieldDrop) mpacket.Packet {
 			p.WriteInt32(400967355)
 			p.WriteByte(2)
 		} else {
-			p.WriteInt32(int32((drop.expireTime - 946681229830) / 1000 / 60)) // TODO: figure out what time this is for
+			// drop.expireTime is in milliseconds; protocol expects minutes since a base epoch
+			p.WriteInt32(int32((drop.expireTime - 946681229830) / 1000 / 60))
 			p.WriteByte(1)
 		}
 	}
@@ -1092,13 +1086,13 @@ func packetRemoveDrop(dropType int8, dropID int32, lootedBy int32) mpacket.Packe
 
 func packetPickupNotice(itemID int32, amount int16, isMesos bool, isEquip bool) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelInfoMessage)
-	p.WriteInt8(0) //??
+	p.WriteInt8(0) // This is the value in switch statement in client for "onMessage" function
 
 	p.WriteBool(isMesos)
 
 	if isMesos {
 		p.WriteInt32(int32(amount))
-		p.WriteInt16(0)
+		p.WriteInt16(0) // Internet Cafe Bonus
 	} else {
 		p.WriteInt32(itemID)
 

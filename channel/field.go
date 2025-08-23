@@ -9,10 +9,10 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/Hucaru/Valhalla/common/mnet"
-	"github.com/Hucaru/Valhalla/common/mpacket"
-	"github.com/Hucaru/Valhalla/common/nx"
 	"github.com/Hucaru/Valhalla/common/opcode"
+	"github.com/Hucaru/Valhalla/mnet"
+	"github.com/Hucaru/Valhalla/mpacket"
+	"github.com/Hucaru/Valhalla/nx"
 )
 
 type foothold struct {
@@ -490,7 +490,7 @@ func (f *field) changePlayerInstance(player *player, id int) error {
 			return err
 		}
 
-		f.instances[player.inst.id].dropPool.hideDrops(player)
+		f.instances[player.inst.id].dropPool.HideDrops(player)
 
 		player.inst = f.instances[id]
 		err = f.instances[id].addPlayer(player)

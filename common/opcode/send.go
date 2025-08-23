@@ -15,7 +15,11 @@ const (
 	SendLoginRestarter              byte = 0x15
 	SendChannelInventoryOperation   byte = 0x18
 	SendChannelStatChange           byte = 0x1A
+	SendChannelTempStatChange       byte = 0x1B
+	SendChannelRemoveTempStat       byte = 0x1C
 	SendChannelSkillRecordUpdate    byte = 0x1D
+	SendChannelSkillUseResult       byte = 0x1E
+	SendChannelMessage              byte = 0x20
 	SendChannelInfoMessage          byte = 0x20
 	SendChannelMapTransferResult    byte = 0x22
 	SendChannelLieDetectorTest      byte = 0x23
@@ -40,6 +44,7 @@ const (
 	SendChannelCharacterLeaveField  byte = 0x4F
 	SendChannelAllChatMsg           byte = 0x51
 	SendChannelRoomBox              byte = 0x52
+	SendChannelUseScroll            byte = 0x54
 	SendChannelPlayerMovement       byte = 0x65
 	SendChannelPlayerUseMeleeSkill  byte = 0x66
 	SendChannelPlayerUseRangedSkill byte = 0x67
@@ -48,7 +53,9 @@ const (
 	SendChannelPlayerEmoticon       byte = 0x6C
 	SendChannelPlayerChangeAvatar   byte = 0x6F
 	SendChannelPlayerAnimation      byte = 0x70
-	SendChannelLevelUpAnimation     byte = 0x79
+	SendChannelPlayerBuffed         byte = 0x71
+	SendChannelPlayerDebuff         byte = 0x72
+	SendChannelSkillAnimation       byte = 0x79
 	SendChannelShowMob              byte = 0x86
 	SendChannelRemoveMob            byte = 0x87
 	SendChannelControlMob           byte = 0x88

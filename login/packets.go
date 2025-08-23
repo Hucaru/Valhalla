@@ -3,9 +3,9 @@ package login
 import (
 	"strconv"
 
-	"github.com/Hucaru/Valhalla/common/mpacket"
 	"github.com/Hucaru/Valhalla/common/opcode"
 	"github.com/Hucaru/Valhalla/internal"
+	"github.com/Hucaru/Valhalla/mpacket"
 )
 
 func packetLoginResponse(result byte, userID int32, gender byte, isAdmin bool, username string, isBanned int) mpacket.Packet {

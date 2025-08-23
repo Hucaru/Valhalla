@@ -1,0 +1,75 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: login-config
+  namespace: {{ .Release.Namespace }}
+data:
+  config_login.toml: |
+    [database]
+    address = "{{ .Values.mysql.host }}"
+    port = "{{ .Values.mysql.port }}"
+    user = "{{ .Values.mysql.user }}"
+    password = "{{ .Values.mysql.password }}"
+    database = "{{ .Values.mysql.database }}"
+
+    [login]
+    clientListenAddress = "0.0.0.0"
+    clientListenPort = "8484"
+    serverListenAddress = "0.0.0.0"
+    serverListenPort = "8485"
+    withPin = {{ .Values.login.withPin }}
+    packetQueueSize = {{ .Values.login.packetQueueSize }}
+    latency = {{ .Values.login.latency }}
+    jitter = {{ .Values.login.jitter }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: world-config
+  namespace: {{ .Release.Namespace }}
+data:
+  config_world.toml: |
+    [database]
+    address = "{{ .Values.mysql.host }}"
+    port = "{{ .Values.mysql.port }}"
+    user = "{{ .Values.mysql.user }}"
+    password = "{{ .Values.mysql.password }}"
+    database = "{{ .Values.mysql.database }}"
+
+    [world]
+    message = "{{ .Values.world.message }}"
+    ribbon = {{ .Values.world.ribbon }}
+    expRate = {{ .Values.world.expRate }}
+    dropRate = {{ .Values.world.dropRate }}
+    mesosRate = {{ .Values.world.mesosRate }}
+    loginAddress = "login-server.{{ .Release.Namespace }}.svc.{{ .Values.clusterDomain }}"
+    loginPort = "8485"
+    listenAddress = "0.0.0.0"
+    listenPort = "8584"
+    packetQueueSize = {{ .Values.world.packetQueueSize }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: channel-config
+  namespace: {{ .Release.Namespace }}
+data:
+  config_channel.toml: |
+    [database]
+    address = "{{ .Values.mysql.host }}"
+    port = "{{ .Values.mysql.port }}"
+    user = "{{ .Values.mysql.user }}"
+    password = "{{ .Values.mysql.password }}"
+    database = "{{ .Values.mysql.database }}"
+
+    [channel]
+    worldAddress = "world-server.{{ .Release.Namespace }}.svc.{{ .Values.clusterDomain }}"
+    worldPort = "8584"
+    listenAddress = "0.0.0.0"
+    listenPort = "8685"
+    clientConnectionAddress = "127.0.0.1"
+    packetQueueSize = {{ .Values.channel.packetQueueSize }}
+    maxPop = {{ .Values.channel.maxPop }}
+    latency = {{ .Values.channel.latency }}
+    jitter = {{ .Values.channel.jitter }}

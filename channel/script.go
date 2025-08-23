@@ -8,8 +8,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Hucaru/Valhalla/common/mnet"
 	"github.com/Hucaru/Valhalla/internal"
+	"github.com/Hucaru/Valhalla/mnet"
 	"github.com/dop251/goja"
 	"github.com/fsnotify/fsnotify"
 )

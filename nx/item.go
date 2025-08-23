@@ -20,8 +20,11 @@ type Item struct {
 	ReqJob                                                         int64
 	ReqSTR, ReqDEX, ReqINT, ReqLUK, IncSTR, IncDEX, IncINT, IncLUK int16
 	IncACC, IncEVA, IncMDD, IncPDD, IncMAD, IncPAD, IncMHP, IncMMP float64
+	Speed, Jump, PAD, PDD, MAD, MDD, ACC, EVA                      int16
+	Poison, Darkness, Weakness, Curse, Seal                        int16
 	Attack, IncJump, IncSpeed, RecoveryHP                          float64
 	HP, MP                                                         int16
+	Time                                                           int16
 	AttackSpeed                                                    int16
 	Price                                                          int32
 	NotSale                                                        int64
@@ -53,179 +56,137 @@ type Item struct {
 	Knockback                                                      int64
 	Fs                                                             int64
 	ChatBalloon                                                    int64
+	MoveTo                                                         int32
 }
 
 func extractItems(nodes []gonx.Node, textLookup []string) map[int32]Item {
 	items := make(map[int32]Item)
 
-	searches := []string{"/Character/Accessory", "/Character/Cap", "/Character/Cape", "/Character/Coat",
+	// Character-equipment structure: /Character/<Category>/<ItemID>.img/info
+	characterSearches := []string{
+		"/Character/Accessory", "/Character/Cap", "/Character/Cape", "/Character/Coat",
 		"/Character/Face", "/Character/Glove", "/Character/Hair", "/Character/Longcoat", "/Character/Pants",
 		"/Character/PetEquip", "/Character/Ring", "/Character/Shield", "/Character/Shoes", "/Character/Weapon",
-		"Item/Pet"}
+	}
 
-	for _, search := range searches {
-		valid := gonx.FindNode(search, nodes, textLookup, func(node *gonx.Node) {
-			for i := uint32(0); i < uint32(node.ChildCount); i++ {
-				itemNode := nodes[node.ChildID+i]
-				name := textLookup[itemNode.NameID]
-				subSearch := search + "/" + name + "/info"
-
-				var item Item
-
-				valid := gonx.FindNode(subSearch, nodes, textLookup, func(node *gonx.Node) {
-					item.getItem(node, nodes, textLookup)
-				})
-
-				if !valid {
+	for _, base := range characterSearches {
+		ok := gonx.FindNode(base, nodes, textLookup, func(node *gonx.Node) {
+			iterateChildren(node, nodes, textLookup, func(itemNode gonx.Node, name string) {
+				subSearch := base + "/" + name + "/info"
+				var itm Item
+				if !findAndExtract(subSearch, nodes, textLookup, &itm) {
 					log.Println("Invalid node search:", subSearch)
+					return
 				}
-
-				name = strings.TrimSuffix(name, filepath.Ext(name))
-				itemID, err := strconv.Atoi(name)
-
-				if err != nil {
-					log.Println(err)
-					continue
+				if !addItemByName(name, &itm, items) {
+					return
 				}
-
-				item.InvTabID = byte(itemID / 1e6)
-				items[int32(itemID)] = item
-			}
-		})
-
-		if !valid {
-			log.Println("Invalid node search:", search)
-		}
-	}
-
-	searches = []string{"/Item/Cash", "/Item/Etc", "/Item/Install"}
-
-	for _, search := range searches {
-		valid := gonx.FindNode(search, nodes, textLookup, func(node *gonx.Node) {
-			for i := uint32(0); i < uint32(node.ChildCount); i++ {
-				itemGroupNode := nodes[node.ChildID+i]
-				groupName := textLookup[itemGroupNode.NameID]
-
-				for j := uint32(0); j < uint32(itemGroupNode.ChildCount); j++ {
-					itemNode := nodes[itemGroupNode.ChildID+j]
-					name := textLookup[itemNode.NameID]
-
-					subSearch := search + "/" + groupName + "/" + name + "/info"
-
-					var item Item
-
-					valid := gonx.FindNode(subSearch, nodes, textLookup, func(node *gonx.Node) {
-						item.getItem(node, nodes, textLookup)
-					})
-
-					if !valid {
-						log.Println("Invalid node search:", subSearch)
-					}
-
-					name = strings.TrimSuffix(name, filepath.Ext(name))
-					itemID, err := strconv.Atoi(name)
-
-					if err != nil {
-						log.Println(err)
-						continue
-					}
-
-					item.InvTabID = byte(itemID / 1e6)
-					items[int32(itemID)] = item
-				}
-			}
-		})
-
-		if !valid {
-			log.Println("Invalid node search:", search)
-		}
-	}
-
-	searches = []string{"/Item/Consume"}
-
-	for _, search := range searches {
-		valid := gonx.FindNode(search, nodes, textLookup, func(node *gonx.Node) {
-			for i := uint32(0); i < uint32(node.ChildCount); i++ {
-				itemGroupNode := nodes[node.ChildID+i]
-				groupName := textLookup[itemGroupNode.NameID]
-
-				for j := uint32(0); j < uint32(itemGroupNode.ChildCount); j++ {
-					itemNode := nodes[itemGroupNode.ChildID+j]
-					name := textLookup[itemNode.NameID]
-
-					subSearch := search + "/" + groupName + "/" + name + "/info"
-
-					var item Item
-
-					valid := gonx.FindNode(subSearch, nodes, textLookup, func(node *gonx.Node) {
-						item.getItem(node, nodes, textLookup)
-					})
-
-					if !valid {
-						log.Println("Invalid node search:", subSearch)
-					}
-
-					subSearch = search + "/" + groupName + "/" + name + "/spec"
-
-					gonx.FindNode(subSearch, nodes, textLookup, func(node *gonx.Node) {
-						item.getItem(node, nodes, textLookup)
-					})
-
-					name = strings.TrimSuffix(name, filepath.Ext(name))
-					itemID, err := strconv.Atoi(name)
-
-					if err != nil {
-						log.Println(err)
-						continue
-					}
-
-					item.InvTabID = byte(itemID / 1e6)
-					items[int32(itemID)] = item
-				}
-			}
-		})
-
-		if !valid {
-			log.Println("Invalid node search:", search)
-		}
-	}
-
-	valid := gonx.FindNode("/Item/Pet", nodes, textLookup, func(node *gonx.Node) {
-		for i := uint32(0); i < uint32(node.ChildCount); i++ {
-			itemNode := nodes[node.ChildID+i]
-			name := textLookup[itemNode.NameID]
-
-			subSearch := "/Item/Pet/" + name + "/info"
-
-			var item Item
-
-			valid := gonx.FindNode(subSearch, nodes, textLookup, func(node *gonx.Node) {
-				item.getItem(node, nodes, textLookup)
 			})
-
-			if !valid {
-				log.Println("Invalid node search:", subSearch)
-			}
-
-			name = strings.TrimSuffix(name, filepath.Ext(name))
-			itemID, err := strconv.Atoi(name)
-
-			if err != nil {
-				log.Println(err)
-				continue
-			}
-
-			item.InvTabID = byte(itemID / 1e6)
-			item.Pet = true
-			items[int32(itemID)] = item
+		})
+		if !ok {
+			log.Println("Invalid node search:", base)
 		}
-	})
+	}
 
-	if !valid {
-		log.Println("Invalid node search:", "/Item/Pet")
+	// Item groups like Cash/Etc/Install: /Item/<Group>/<SubGroup>/<ItemID>.img/(info|spec)
+	groupedSearches := []string{"/Item/Cash", "/Item/Etc", "/Item/Install"}
+	for _, base := range groupedSearches {
+		ok := gonx.FindNode(base, nodes, textLookup, func(node *gonx.Node) {
+			iterateChildren(node, nodes, textLookup, func(groupNode gonx.Node, groupName string) {
+				iterateChildren(&groupNode, nodes, textLookup, func(itemNode gonx.Node, name string) {
+					subSearch := base + "/" + groupName + "/" + name + "/info"
+					var itm Item
+					if !findAndExtract(subSearch, nodes, textLookup, &itm) {
+						log.Println("Invalid node search:", subSearch)
+						return
+					}
+					if !addItemByName(name, &itm, items) {
+						return
+					}
+				})
+			})
+		})
+		if !ok {
+			log.Println("Invalid node search:", base)
+		}
+	}
+
+	// Consume has both info and spec: /Item/Consume/<SubGroup>/<ItemID>.img/{info,spec}
+	consumeBase := "/Item/Consume"
+	ok := gonx.FindNode(consumeBase, nodes, textLookup, func(node *gonx.Node) {
+		iterateChildren(node, nodes, textLookup, func(groupNode gonx.Node, groupName string) {
+			iterateChildren(&groupNode, nodes, textLookup, func(itemNode gonx.Node, name string) {
+				var itm Item
+				infoPath := consumeBase + "/" + groupName + "/" + name + "/info"
+				if !findAndExtract(infoPath, nodes, textLookup, &itm) {
+					log.Println("Invalid node search:", infoPath)
+					// continue, spec might still exist but info generally holds core data
+				}
+				specPath := consumeBase + "/" + groupName + "/" + name + "/spec"
+				_ = findAndExtract(specPath, nodes, textLookup, &itm)
+
+				if !addItemByName(name, &itm, items) {
+					return
+				}
+			})
+		})
+	})
+	if !ok {
+		log.Println("Invalid node search:", consumeBase)
+	}
+
+	// Pet items: /Item/Pet/<ItemID>.img/info
+	petBase := "/Item/Pet"
+	ok = gonx.FindNode(petBase, nodes, textLookup, func(node *gonx.Node) {
+		iterateChildren(node, nodes, textLookup, func(itemNode gonx.Node, name string) {
+			subSearch := petBase + "/" + name + "/info"
+			var itm Item
+			if !findAndExtract(subSearch, nodes, textLookup, &itm) {
+				log.Println("Invalid node search:", subSearch)
+				return
+			}
+			// Mark as pet and register
+			itm.Pet = true
+			if !addItemByName(name, &itm, items) {
+				return
+			}
+		})
+	})
+	if !ok {
+		log.Println("Invalid node search:", petBase)
 	}
 
 	return items
+}
+
+// iterateChildren abstracts iterating direct children of a node and resolves their names
+func iterateChildren(node *gonx.Node, nodes []gonx.Node, textLookup []string, fn func(child gonx.Node, name string)) {
+	for i := uint32(0); i < uint32(node.ChildCount); i++ {
+		child := nodes[node.ChildID+i]
+		name := textLookup[child.NameID]
+		fn(child, name)
+	}
+}
+
+// findAndExtract finds a node by path and fills item data using getItem
+func findAndExtract(path string, nodes []gonx.Node, textLookup []string, item *Item) bool {
+	return gonx.FindNode(path, nodes, textLookup, func(node *gonx.Node) {
+		item.getItem(node, nodes, textLookup)
+	})
+}
+
+// addItemByName parses an item ID from a filename-like name, sets InvTabID and inserts to map
+func addItemByName(name string, item *Item, out map[int32]Item) bool {
+	trimmed := strings.TrimSuffix(name, filepath.Ext(name))
+	id64, err := strconv.ParseInt(trimmed, 10, 32)
+	if err != nil {
+		log.Println("Invalid item id name:", name, "err:", err)
+		return false
+	}
+	itemID := int32(id64)
+	item.InvTabID = byte(itemID / 1e6)
+	out[itemID] = *item
+	return true
 }
 
 func (item *Item) getItem(node *gonx.Node, nodes []gonx.Node, textLookup []string) {
@@ -285,6 +246,32 @@ func (item *Item) getItem(node *gonx.Node, nodes []gonx.Node, textLookup []strin
 			item.HP = gonx.DataToInt16(option.Data)
 		case "mp":
 			item.MP = gonx.DataToInt16(option.Data)
+		case "mdd":
+			item.MDD = gonx.DataToInt16(option.Data)
+		case "mad":
+			item.MAD = gonx.DataToInt16(option.Data)
+		case "pad":
+			item.PAD = gonx.DataToInt16(option.Data)
+		case "pdd":
+			item.PDD = gonx.DataToInt16(option.Data)
+		case "speed":
+			item.Speed = gonx.DataToInt16(option.Data)
+		case "jump":
+			item.Jump = gonx.DataToInt16(option.Data)
+		case "acc":
+			item.ACC = gonx.DataToInt16(option.Data)
+		case "eva":
+			item.EVA = gonx.DataToInt16(option.Data)
+		case "darkness":
+			item.Darkness = gonx.DataToInt16(option.Data)
+		case "weakness":
+			item.Weakness = gonx.DataToInt16(option.Data)
+		case "curse":
+			item.Curse = gonx.DataToInt16(option.Data)
+		case "poison":
+			item.Poison = gonx.DataToInt16(option.Data)
+		case "seal":
+			item.Seal = gonx.DataToInt16(option.Data)
 		case "only":
 			item.Only = gonx.DataToInt64(option.Data)
 		case "attackSpeed":
@@ -350,6 +337,7 @@ func (item *Item) getItem(node *gonx.Node, nodes []gonx.Node, textLookup []strin
 		case "dropSweep":
 			item.DropSweep = gonx.DataToInt64(option.Data)
 		case "time":
+			item.Time = gonx.DataToInt16((option.Data))
 		case "rate":
 			item.Rate = gonx.DataToInt64(option.Data)
 		case "meso":
@@ -380,11 +368,14 @@ func (item *Item) getItem(node *gonx.Node, nodes []gonx.Node, textLookup []strin
 			item.Fs = gonx.DataToInt64(option.Data)
 		case "chatBalloon":
 			item.ChatBalloon = gonx.DataToInt64(option.Data)
+		case "moveTo":
+			item.MoveTo = gonx.DataToInt32(option.Data)
 		case "sample":
 		case "iconD":
 		case "iconRawD":
 		case "iconReward":
 		default:
+			// Consider gating this log behind a verbosity flag to reduce noise in production.
 			log.Println("Unsupported NX item option:", optionName, "->", option.Data)
 		}
 

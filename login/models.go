@@ -5,8 +5,8 @@ import (
 	"math"
 
 	"github.com/Hucaru/Valhalla/common"
-	"github.com/Hucaru/Valhalla/common/mpacket"
-	"github.com/Hucaru/Valhalla/common/nx"
+	"github.com/Hucaru/Valhalla/mpacket"
+	"github.com/Hucaru/Valhalla/nx"
 )
 
 type player struct {

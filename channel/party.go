@@ -1,10 +1,10 @@
 package channel
 
 import (
-	"github.com/Hucaru/Valhalla/common/mpacket"
 	"github.com/Hucaru/Valhalla/common/opcode"
 	"github.com/Hucaru/Valhalla/constant"
 	"github.com/Hucaru/Valhalla/internal"
+	"github.com/Hucaru/Valhalla/mpacket"
 )
 
 // TODO: login server needs to send a deleted character event so that they can leave the party for playing players
@@ -138,6 +138,34 @@ func (d party) giveExp(playerID, amount int32, sameMap bool) {
 			plr.giveEXP(amount, false, true)
 		}
 	}
+}
+
+// - Index is 1..6 (party UI ordering), total is the total party member count (byte from packet)
+// - Returns 0xFF if index > total (matching the original behavior)
+func partyMemberMaskForIndex(index int, total byte) byte {
+	var base int
+	switch index {
+	case 1:
+		base = 0x40
+	case 2:
+		base = 0x80
+	case 3:
+		base = 0x100
+	case 4:
+		base = 0x200
+	case 5:
+		base = 0x400
+	case 6:
+		base = 0x800
+	default:
+		return 0xFF
+	}
+
+	if int(total) >= index {
+		v := base >> uint(total)
+		return byte(v & 0xFF)
+	}
+	return 0xFF
 }
 
 func packetPartyCreate(partyID int32, doorMap1, doorMap2 int32, point pos) mpacket.Packet {

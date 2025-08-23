@@ -5,9 +5,9 @@ import (
 	"net"
 	"time"
 
-	"github.com/Hucaru/Valhalla/common/mnet/crypt"
+	"github.com/Hucaru/Valhalla/mnet/crypt"
 
-	"github.com/Hucaru/Valhalla/common/mpacket"
+	"github.com/Hucaru/Valhalla/mpacket"
 )
 
 type MConn interface {

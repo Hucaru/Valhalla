@@ -11,9 +11,9 @@ import (
 	"time"
 
 	"github.com/Hucaru/Valhalla/common"
-	"github.com/Hucaru/Valhalla/common/mpacket"
-	"github.com/Hucaru/Valhalla/common/nx"
 	"github.com/Hucaru/Valhalla/constant"
+	"github.com/Hucaru/Valhalla/mpacket"
+	"github.com/Hucaru/Valhalla/nx"
 	"github.com/google/uuid"
 )
 
@@ -34,7 +34,7 @@ func PopulateDropTable(dropJSON string) error {
 	jsonFile, err := os.Open(dropJSON)
 
 	if err != nil {
-		return fmt.Errorf(err.Error())
+		return err
 	}
 
 	defer jsonFile.Close()
@@ -78,6 +78,7 @@ type item struct {
 	speed        int16
 	jump         int16
 	attackSpeed  int16
+	buffTime     int16
 	stand        byte // TODO: Investigate this, it doesn't appear to be saved or used anywhere
 
 	weaponType byte
@@ -210,6 +211,7 @@ func createBiasItemFromID(id int32, amount int16, bias int8, average bool) (item
 	newItem.cash = nxInfo.Cash
 	newItem.invID = byte(id / 1e6)
 	newItem.id = id
+	newItem.buffTime = nxInfo.Time
 	newItem.accuracy = randomStat(nxInfo.IncACC, average)
 	newItem.avoid = randomStat(nxInfo.IncEVA, average)
 	newItem.speed = randomStat(nxInfo.IncSpeed, average)
@@ -302,6 +304,14 @@ func (v item) isStackable() bool {
 	}
 
 	return false
+}
+
+func (v item) getSlots() int {
+	return int(v.upgradeSlots)
+}
+
+func (v *item) setSlots(slots int) {
+	v.upgradeSlots = byte(slots)
 }
 
 func (v item) isRechargeable() bool {
@@ -457,7 +467,51 @@ func (v item) use(plr *player) {
 		plr.giveMP(v.mp)
 	}
 
-	// Need to add stat buffs (W.ATT, M.ATT, etc)
-	// This will require timers to ensure buffs are removed once finished
+	if plr.buffs == nil {
+		plr.buffs = NewCharacterBuffs(plr)
+	}
 
+	plr.buffs.AddItemBuff(v)
+}
+
+// applyScrollEffects mutates the equip with the scroll increments from NX.
+func (v *item) applyScrollEffects(scroll nx.Item) {
+	v.str += scroll.IncSTR
+	v.dex += scroll.IncDEX
+	v.intt += scroll.IncINT
+	v.luk += scroll.IncLUK
+
+	v.hp += int16(scroll.IncMHP)
+	v.mp += int16(scroll.IncMMP)
+
+	v.watk += int16(scroll.IncPAD)
+	v.wdef += int16(scroll.IncPDD)
+	v.matk += int16(scroll.IncMAD)
+	v.mdef += int16(scroll.IncMDD)
+	v.accuracy += int16(scroll.IncACC)
+	v.avoid += int16(scroll.IncEVA)
+
+	v.speed += int16(scroll.IncSpeed)
+	v.jump += int16(scroll.IncJump)
+}
+
+func (v *item) incrementScrollCount() {
+	v.scrollLevel++
+}
+
+func getItemType(itemID int32) int32 {
+	return itemID / 10000
+}
+
+func itemTypeToScrollType(itemID int32) int32 {
+	return (getItemType(itemID) % 100) * 100
+}
+
+func getScrollType(itemID int32) int32 {
+	return (itemID % 10000) - (itemID % 100)
+}
+
+// validateScrollTarget performs basic compatibility checks between the scroll and target equip.
+func validateScrollTarget(scrollID int32, equipID int32) bool {
+	return itemTypeToScrollType(equipID) == getScrollType(scrollID)
 }

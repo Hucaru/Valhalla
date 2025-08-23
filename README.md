@@ -64,10 +64,10 @@ Channel server:
 - [x] Player allocate skill points
 - [x] Player stats
 - [x] Player use skills
-- [ ] Player skill logic (haste etc)
-- [x] Player inventory
-- [ ] Player use item (scrolls, potions etc)
-- [ ] Player drop item(s)
+- [x] Player skill logic (haste etc)
+- [x] Player inventory (needs a re-write)
+- [x] Player use item (scrolls, potions etc)
+- [x] Player drop item(s)
 - [ ] Player pets
 - [x] NPC visible
 - [x] NPC movement
@@ -100,7 +100,7 @@ Channel server:
 - [x] Guild creation/disband
 - [x] Guild invite
 - [x] Guild join/leave
-- [x] Guild emblem (bug where server needs restart for it to work properly)
+- [x] Guild emblem
 - [x] Guild chat
 - [x] Guild points update
 - [x] Guild rank titles change
@@ -190,3 +190,28 @@ Taken from [here](http://forum.ragezone.com/f428/add-learning-npcs-start-finish-
 ![Bosses](img/bosses.PNG?raw=true "Bosses")
 
 ![Metrics](img/metrics.PNG?raw=true "Metrics")
+
+## Kubernetes deployment (optional)
+
+This repository now includes Kubernetes manifests that mirror docker-compose services.
+
+Prerequisites:
+- A Kubernetes cluster (minikube, kind, K3s, or cloud)
+- kubectl configured to point to the cluster
+- A container registry or a way to load local images into your cluster
+
+Build and load the image:
+- Build the image from the Dockerfile: `docker build -t valhalla:latest -f Dockerfile .`
+- If using kind: `kind load docker-image valhalla:latest`
+- If using minikube: `minikube image load valhalla:latest`
+- Otherwise, push `valhalla:latest` to a registry your cluster can pull from and update the image in your helm values.
+
+Deploy:
+- `helm install valhalla ./helm`
+- 
+Service discovery changes (compared to docker-compose):
+- K8s services use hyphens. Configs inside the pods are adjusted accordingly:
+  - login-server, world-server, db
+
+All ports are via ClusterIP at the moment. This can be adjusted to LoadBalancer if desired.
+
