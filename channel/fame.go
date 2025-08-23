@@ -19,7 +19,6 @@ const (
 
 func fameHasRecentActivity(fromID int32, window time.Duration) bool {
 	var ts time.Time
-	// Matches original logic: any record from "fromID" within the window
 	row := common.DB.QueryRow(
 		"SELECT `time` FROM `fame_log` WHERE `from`=? AND `time` > (NOW() - INTERVAL ? SECOND) ORDER BY `time` DESC LIMIT 1",
 		fromID, int64(window.Seconds()),
@@ -31,7 +30,7 @@ func fameHasRecentActivity(fromID int32, window time.Duration) bool {
 		return false
 	default:
 		log.Println("fameHasRecentActivity:", err)
-		return true // fail-safe: block if DB is unreliable
+		return true
 	}
 }
 
