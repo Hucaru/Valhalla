@@ -212,31 +212,12 @@ func buildMaskBytes64(bits []int) []byte {
 
 // Emit triples by scanning maskBytes in the same wire order we send:
 // bytes 0..7, bits 0..7 (LSB-first).
-func (cb *CharacterBuffs) buildBuffTriplesWireOrder(skillID int32, level byte, maskBytes []byte, expiresAtMs int64) ([]byte, int16) {
+func (cb *CharacterBuffs) buildBuffTriplesWireOrder(skillID int32, level byte, maskBytes []byte, expiresAtMs int64) []byte {
 	levels, err := nx.GetPlayerSkill(skillID)
 	if err != nil || level == 0 || int(level) > len(levels) {
-		return nil, 0
+		return nil
 	}
 	sl := levels[level-1]
-
-	// Remaining time: seconds (short)
-	var remainSec int16
-	if expiresAtMs > 0 {
-		now := time.Now().UnixMilli()
-		if d := expiresAtMs - now; d > 0 {
-			sec := (d + 500) / 1000
-			if sec > 32767 {
-				sec = 32767
-			}
-			remainSec = int16(sec)
-		}
-	} else if sl.Time > 0 {
-		if sl.Time > 32767 {
-			remainSec = 32767
-		} else {
-			remainSec = int16(sl.Time)
-		}
-	}
 
 	val := func(bit int) int16 {
 		switch bit {
@@ -304,7 +285,7 @@ func (cb *CharacterBuffs) buildBuffTriplesWireOrder(skillID int32, level byte, m
 		out = append(out, byte(v), byte(v>>8))
 		id := skillID
 		out = append(out, byte(id), byte(id>>8), byte(id>>16), byte(id>>24))
-		t := remainSec
+		t := expiresAtMs
 		out = append(out, byte(t), byte(t>>8))
 	}
 
@@ -324,10 +305,10 @@ func (cb *CharacterBuffs) buildBuffTriplesWireOrder(skillID int32, level byte, m
 		}
 	}
 	if !has {
-		return nil, 0
+		return nil
 	}
 
-	return out, remainSec
+	return out
 }
 
 func buildItemBuffTriplesWireOrder(meta nx.Item, maskBytes []byte, durationSec int16, sourceID int32) []byte {
@@ -545,7 +526,7 @@ func (cb *CharacterBuffs) AddBuffFromCC(charId, skillID int32, expiresAtMs int64
 	maskBytes := buildMaskBytes64(bits)
 
 	// Emit value triples in exactly the same mask byte/bit order.
-	values, remainSec := cb.buildBuffTriplesWireOrder(skillID, level, maskBytes, expiresAtMs)
+	values := cb.buildBuffTriplesWireOrder(skillID, level, maskBytes, expiresAtMs)
 	if len(values) == 0 {
 		log.Printf("BUFF ABORT: no values produced for skillID=%d", skillID)
 		return
@@ -564,15 +545,10 @@ func (cb *CharacterBuffs) AddBuffFromCC(charId, skillID int32, expiresAtMs int64
 	cb.plr.send(packetPlayerShowBuffEffect(charId, skillID, 3, 1))
 	cb.activeSkillLevels[skillID] = level
 
-	// Compute authoritative expiry time
-	if remainSec > 0 {
-		cb.expireAt[skillID] = time.Now().Add(time.Duration(remainSec) * time.Second).UnixMilli()
-		cb.scheduleExpiryLocked(skillID, time.Duration(remainSec)*time.Second)
-	} else if expiresAtMs > 0 {
-		cb.expireAt[skillID] = expiresAtMs
-		d := time.Until(time.UnixMilli(expiresAtMs))
-		cb.scheduleExpiryLocked(skillID, d)
-	}
+	cb.expireAt[skillID] = expiresAtMs
+	d := time.Until(time.UnixMilli(expiresAtMs))
+	cb.scheduleExpiryLocked(skillID, d)
+
 }
 
 func (cb *CharacterBuffs) post(fn func()) {

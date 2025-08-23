@@ -6,6 +6,7 @@ import (
 	"log"
 	"math"
 	"math/rand"
+	"strings"
 	"time"
 
 	"github.com/Hucaru/Valhalla/common"
@@ -1386,6 +1387,10 @@ func (d *player) saveBuffSnapshot() {
 	if d.buffs == nil {
 		return
 	}
+
+	// Ensure we don't snapshot already-stale buffs
+	d.buffs.AuditAndExpireStaleBuffs()
+
 	snaps := d.buffs.Snapshot()
 	if len(snaps) == 0 {
 		_, _ = common.DB.Exec("DELETE FROM character_buffs WHERE characterID=?", d.id)
@@ -1428,6 +1433,8 @@ func (d *player) loadAndApplyBuffSnapshot() {
 	defer rows.Close()
 
 	snaps := make([]BuffSnapshot, 0, 8)
+	toDelete := make([]int32, 0, 8)
+
 	now := time.Now().UnixMilli()
 	for rows.Next() {
 		var s BuffSnapshot
@@ -1435,9 +1442,23 @@ func (d *player) loadAndApplyBuffSnapshot() {
 			log.Println("loadBuffSnapshot scan:", err)
 			return
 		}
-		if s.ExpiresAtMs > 0 && s.ExpiresAtMs <= now {
-			continue // skip already-expired
+
+		if s.ExpiresAtMs == 0 {
+			toDelete = append(toDelete, s.SourceID)
+			continue
 		}
+
+		normalized := s.ExpiresAtMs
+		if normalized > 0 && normalized < 1000000000000 {
+			normalized *= 1000
+		}
+
+		if normalized <= 0 || normalized <= now {
+			toDelete = append(toDelete, s.SourceID)
+			continue
+		}
+
+		s.ExpiresAtMs = normalized
 		snaps = append(snaps, s)
 	}
 	if err := rows.Err(); err != nil {
@@ -1445,16 +1466,32 @@ func (d *player) loadAndApplyBuffSnapshot() {
 		return
 	}
 
+	if len(toDelete) > 0 {
+		var b strings.Builder
+		b.WriteString("DELETE FROM character_buffs WHERE characterID=? AND sourceID IN (")
+		for i := range toDelete {
+			if i > 0 {
+				b.WriteByte(',')
+			}
+			b.WriteByte('?')
+		}
+		b.WriteByte(')')
+
+		args := make([]interface{}, 0, 1+len(toDelete))
+		args = append(args, d.id)
+		for _, sid := range toDelete {
+			args = append(args, sid)
+		}
+		if _, err := common.DB.Exec(b.String(), args...); err != nil {
+			log.Println("loadBuffSnapshot delete expired:", err)
+		}
+	}
+
 	if len(snaps) > 0 {
 		if d.buffs == nil {
 			d.buffs = NewCharacterBuffs(d)
 		}
 		d.buffs.RestoreFromSnapshot(snaps)
-		_, err = common.DB.Exec("DELETE FROM character_buffs WHERE characterID=?", d.id)
-		if err != nil {
-			log.Println("loadBuffSnapshot delete:", err)
-			return
-		}
 	}
 }
 
