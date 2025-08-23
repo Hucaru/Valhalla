@@ -245,8 +245,6 @@ func (g *guild) updateEmblem(logoBg, logo int16, logoBgColour, logoColour byte) 
 	g.logoBgColour = logoBgColour
 	g.logoColour = logoColour
 
-	g.broadcast(packetGuildUpdateEmblem(g.id, logoBg, logo, logoBgColour, logoColour))
-
 	for _, v := range g.playerID {
 		plr, err := g.players.getFromID(v)
 
@@ -254,7 +252,7 @@ func (g *guild) updateEmblem(logoBg, logo int16, logoBgColour, logoColour byte) 
 			continue
 		}
 
-		// plr.send(packetGuildUpdateEmblem(g.id, logoBg, logo, logoBgColour, logoColour))
+		plr.send(packetGuildUpdateEmblem(g.id, logoBg, logo, logoBgColour, logoColour))
 		g.updateAvatar(plr)
 	}
 }
