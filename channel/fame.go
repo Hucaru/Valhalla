@@ -7,14 +7,8 @@ import (
 
 	"github.com/Hucaru/Valhalla/common"
 	"github.com/Hucaru/Valhalla/common/opcode"
+	"github.com/Hucaru/Valhalla/internal"
 	"github.com/Hucaru/Valhalla/mpacket"
-)
-
-const (
-	fameErrIncorrectUser byte = 0x01
-	fameErrUnderLevel    byte = 0x02
-	fameErrThisDay       byte = 0x03
-	fameErrThisMonth     byte = 0x04
 )
 
 func fameHasRecentActivity(fromID int32, window time.Duration) bool {
@@ -50,7 +44,7 @@ func packetFameError(code byte) mpacket.Packet {
 
 func packetFameNotifyVictim(fromName string, up bool) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelFameOperation)
-	p.WriteByte(0x05)
+	p.WriteByte(internal.OpFameNotifyTarget)
 	p.WriteString(fromName)
 	p.WriteBool(up)
 	return p
@@ -58,7 +52,7 @@ func packetFameNotifyVictim(fromName string, up bool) mpacket.Packet {
 
 func packetFameNotifySource(victimName string, up bool, newFame int16) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelFameOperation)
-	p.WriteByte(0x00)
+	p.WriteByte(internal.OpFameNotifySource)
 	p.WriteString(victimName)
 	p.WriteBool(up)
 	p.WriteInt32(int32(newFame))

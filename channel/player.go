@@ -439,7 +439,7 @@ func (d *player) setMaxMP(amount int16) {
 func (d *player) setFame(amount int16) {
 	d.fame = amount
 	d.send(packetPlayerStatChange(true, constant.FameID, int32(amount)))
-	
+
 	_, err := common.DB.Exec("UPDATE characters SET fame=? WHERE id=?", d.fame, d.id)
 	if err != nil {
 		log.Printf("setFame: failed to save fame for character %d: %v", d.id, err)
@@ -1606,7 +1606,7 @@ func (d *player) tryStartQuest(questID int16) bool {
 
 	d.quests.add(questID, "")
 	upsertQuestRecord(d.id, questID, "")
-	d.send(packetUpdateQuest(questID, ""))
+	d.send(packetQuestUpdate(questID, ""))
 
 	d.applyQuestAct(q.ActOnStart)
 	return true
@@ -1633,8 +1633,8 @@ func (d *player) tryCompleteQuest(questID int16) bool {
 	setQuestCompleted(d.id, questID, nowMs)
 	clearQuestMobKills(d.id, q.ID)
 
-	d.send(packetUpdateQuest(questID, ""))
-	d.send(packetCompleteQuest(questID))
+	d.send(packetQuestUpdate(questID, ""))
+	d.send(packetQuestComplete(questID))
 
 	d.applyQuestAct(q.ActOnComplete)
 
@@ -1706,7 +1706,7 @@ func (d *player) onMobKilled(mobID int32) {
 			upsertQuestMobKill(d.id, qid, mobID, 1)
 		}
 
-		d.send(packetUpdateQuestMobKills(qid, d.buildQuestKillString(q)))
+		d.send(packetQuestUpdateMobKills(qid, d.buildQuestKillString(q)))
 	}
 }
 
@@ -1724,6 +1724,16 @@ func (d *player) meetsMobKills(questID int16, reqs []nx.ReqMob) bool {
 		}
 	}
 	return true
+}
+
+func (d *player) allowsQuestDrop(qid int32) bool {
+	if qid == 0 {
+		return true
+	}
+	if d == nil {
+		return false
+	}
+	return d.quests.hasInProgress(int16(qid))
 }
 
 func packetPlayerReceivedDmg(charID int32, attack int8, initalAmmount, reducedAmmount, spawnID, mobID, healSkillID int32,

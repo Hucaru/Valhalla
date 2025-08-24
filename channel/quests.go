@@ -8,13 +8,6 @@ import (
 	"github.com/Hucaru/Valhalla/mpacket"
 )
 
-const (
-	QUEST_LOST_ITEM = 0x00
-	QUEST_STARTED   = 0x01
-	QUEST_COMPLETED = 0x02
-	QUEST_FORFEIT   = 0x03
-)
-
 type quests struct {
 	inProgress map[int16]quest
 	completed  map[int16]quest
@@ -201,7 +194,7 @@ func (q quests) completedList() []quest {
 }
 
 // Runtime update packets
-func packetCompleteQuest(questID int16) mpacket.Packet {
+func packetQuestComplete(questID int16) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelMessage)
 	p.WriteByte(0x01)
 	p.WriteInt16(questID)
@@ -209,7 +202,7 @@ func packetCompleteQuest(questID int16) mpacket.Packet {
 	p.WriteInt64(toFileTime(time.Now()))
 	return p
 }
-func packetUpdateQuest(questID int16, data string) mpacket.Packet {
+func packetQuestUpdate(questID int16, data string) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelMessage)
 	p.WriteByte(0x01)
 	p.WriteInt16(questID)
@@ -217,7 +210,7 @@ func packetUpdateQuest(questID int16, data string) mpacket.Packet {
 	p.WriteString(data)
 	return p
 }
-func packetRemoveQuest(questID int16) mpacket.Packet {
+func packetQuestRemove(questID int16) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelMessage)
 	p.WriteByte(0x01)
 	p.WriteInt16(questID)
@@ -228,7 +221,7 @@ func packetRemoveQuest(questID int16) mpacket.Packet {
 	return p
 }
 
-func packetUpdateQuestMobKills(questID int16, killStr string) mpacket.Packet {
+func packetQuestUpdateMobKills(questID int16, killStr string) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelMessage)
 	p.WriteByte(0x01)
 	p.WriteInt16(questID)

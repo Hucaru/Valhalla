@@ -22,4 +22,16 @@ const (
 	OpGuildInvite       = 0x09
 	OpGuildInviteReject = 0x0a
 	OpGuildInviteAccept = 0x0b
+
+	OpQuestLostItem  = 0x00
+	OpQuestStarted   = 0x01
+	OpQuestCompleted = 0x02
+	OpQuestForfeit   = 0x03
+
+	OpFameNotifySource  = 0x00
+	OpFameIncorrectUser = 0x01
+	OpFameUnderLevel    = 0x02
+	OpFameThisDay       = 0x03
+	OpFameThisMonth     = 0x04
+	OpFameNotifyTarget  = 0x05
 )

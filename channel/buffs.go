@@ -162,15 +162,12 @@ func NewCharacterBuffs(p *player) *CharacterBuffs {
 }
 
 func (cb *CharacterBuffs) HasGMHide() bool {
-	if cb == nil {
-		return false
-	}
 	_, ok := cb.activeSkillLevels[int32(skill.Hide)]
 	return ok
 }
 
 func (cb *CharacterBuffs) AddBuff(charId, skillID int32, level byte, foreign bool, delay int16) {
-	if cb == nil || cb.plr == nil {
+	if cb.plr == nil {
 		return
 	}
 
@@ -370,10 +367,6 @@ func buildItemBuffTriplesWireOrder(meta nx.Item, maskBytes []byte, durationSec i
 // durationSec is the client-visible remaining time in seconds. Source id is encoded as -item.id.
 func (cb *CharacterBuffs) AddItemBuff(it item) {
 	var durationSec int16 = 0
-	if cb == nil || cb.plr == nil {
-		return
-	}
-
 	meta, err := nx.GetItem(it.id)
 	if err != nil {
 		return
@@ -440,11 +433,6 @@ func (cb *CharacterBuffs) AddItemBuff(it item) {
 }
 
 func (cb *CharacterBuffs) AddItemBuffFromCC(itemID int32, expiresAtMs int64) {
-	// Rebuild item buff using stored expiry
-	if cb == nil || cb.plr == nil {
-		return
-	}
-
 	meta, err := nx.GetItem(itemID)
 	if err != nil {
 		return
@@ -510,9 +498,6 @@ func (cb *CharacterBuffs) AddItemBuffFromCC(itemID int32, expiresAtMs int64) {
 }
 
 func (cb *CharacterBuffs) AddBuffFromCC(charId, skillID int32, expiresAtMs int64, level byte, foreign bool, delay int16) {
-	if cb == nil || cb.plr == nil {
-		return
-	}
 	if skillID == 0 || level == 0 {
 		return
 	}
@@ -552,9 +537,6 @@ func (cb *CharacterBuffs) AddBuffFromCC(charId, skillID int32, expiresAtMs int64
 }
 
 func (cb *CharacterBuffs) post(fn func()) {
-	if cb == nil || cb.plr == nil {
-		return
-	}
 	if cb.plr.inst != nil && cb.plr.inst.dispatch != nil {
 		cb.plr.inst.dispatch <- fn
 		return
@@ -626,9 +608,6 @@ func (cb *CharacterBuffs) check(skillID int32) {
 
 // ClearBuff removes a specific buff from player and DB.
 func (cb *CharacterBuffs) ClearBuff(skillID int32, _ uint32) {
-	if cb == nil || cb.plr == nil {
-		return
-	}
 	mask := buildBuffMask(skillID)
 	if mask != nil && !mask.IsZero() && cb.plr.inst != nil {
 		cb.plr.inst.send(packetPlayerCancelForeignBuff(cb.plr.id, mask.ToByteArray(false)))
@@ -642,9 +621,6 @@ func (cb *CharacterBuffs) ClearBuff(skillID int32, _ uint32) {
 }
 
 func (cb *CharacterBuffs) AuditAndExpireStaleBuffs() {
-	if cb == nil || cb.plr == nil {
-		return
-	}
 	now := time.Now().UnixMilli()
 	toExpire := make([]int32, 0, 4)
 
@@ -668,9 +644,6 @@ type BuffSnapshot struct {
 }
 
 func (cb *CharacterBuffs) Snapshot() []BuffSnapshot {
-	if cb == nil {
-		return nil
-	}
 	out := make([]BuffSnapshot, 0, len(cb.activeSkillLevels)+len(cb.itemMasks))
 
 	// Skills
@@ -693,7 +666,7 @@ func (cb *CharacterBuffs) Snapshot() []BuffSnapshot {
 }
 
 func (cb *CharacterBuffs) RestoreFromSnapshot(snaps []BuffSnapshot) {
-	if cb == nil || cb.plr == nil || len(snaps) == 0 {
+	if len(snaps) == 0 {
 		return
 	}
 	for _, s := range snaps {

@@ -447,16 +447,6 @@ func rollDrop(r *rand.Rand, baseChance int64, rate float32) bool {
 	return r.Int63n(denom) < scaled
 }
 
-func (d *player) allowsQuestDrop(qid int32) bool {
-	if qid == 0 {
-		return true
-	}
-	if d == nil {
-		return false
-	}
-	return d.quests.hasInProgress(int16(qid))
-}
-
 func (pool *lifePool) killMobs(deathType byte) {
 	// Need to collect keys first as when iterating over the map and killing we will kill any subsequent spawns depending on map iteration order
 	keys := make([]int32, 0, len(pool.mobs))

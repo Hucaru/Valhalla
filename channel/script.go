@@ -350,7 +350,7 @@ func (ctrl *npcChatPlayerController) SetQuestData(id int16, data string) {
 	}
 	// Persist + notify client
 	upsertQuestRecord(ctrl.plr.id, id, data)
-	ctrl.plr.send(packetUpdateQuest(id, data))
+	ctrl.plr.send(packetQuestUpdate(id, data))
 }
 
 func (ctrl *npcChatPlayerController) StartQuest(id int16) bool {
@@ -368,7 +368,7 @@ func (ctrl *npcChatPlayerController) ForfeitQuest(id int16) {
 	ctrl.plr.quests.remove(id)
 	delete(ctrl.plr.quests.mobKills, id)
 	deleteQuest(ctrl.plr.id, id)
-	ctrl.plr.send(packetRemoveQuest(id))
+	ctrl.plr.send(packetQuestRemove(id))
 	clearQuestMobKills(ctrl.plr.id, id)
 }
 

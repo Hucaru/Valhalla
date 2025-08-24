@@ -807,18 +807,6 @@ func (server Server) warpPlayer(plr *player, dstField *field, dstPortal portal) 
 		spawnIdx = dstPortal.id
 	}
 
-	packetMapChange := func(mapID int32, channelID int32, mapPos byte, hp int16) mpacket.Packet {
-		p := mpacket.CreateWithOpcode(opcode.SendChannelWarpToMap)
-		p.WriteInt32(channelID)
-		p.WriteByte(0)
-		p.WriteByte(0)
-		p.WriteInt32(mapID)
-		p.WriteByte(mapPos)
-		p.WriteInt16(hp)
-		p.WriteByte(0)
-		return p
-	}
-
 	plr.send(packetMapChange(dstField.id, int32(server.id), spawnIdx, plr.hp)) // plr.ChangeMap(dstField.ID, dstPortal.ID(), dstPortal.Pos(), foothold)
 	err = dstInst.addPlayer(plr)
 
@@ -3714,20 +3702,20 @@ func (server *Server) playerQuestOperation(conn mnet.Client, reader mpacket.Read
 	questID := reader.ReadInt16()
 
 	switch act {
-	case QUEST_STARTED:
+	case internal.OpQuestStarted:
 		if !plr.tryStartQuest(questID) {
 			plr.send(packetPlayerNoChange())
 		}
-	case QUEST_COMPLETED:
+	case internal.OpQuestCompleted:
 		if !plr.tryCompleteQuest(questID) {
 			plr.send(packetPlayerNoChange())
 		}
-	case QUEST_FORFEIT:
+	case internal.OpQuestForfeit:
 		plr.quests.remove(questID)
 		deleteQuest(plr.id, questID)
 		clearQuestMobKills(plr.id, questID)
-		plr.send(packetRemoveQuest(questID))
-	case QUEST_LOST_ITEM:
+		plr.send(packetQuestRemove(questID))
+	case internal.OpQuestLostItem:
 		count := reader.ReadInt16()
 		questItem := reader.ReadInt16()
 		if count > 0 {
@@ -3762,22 +3750,22 @@ func (server *Server) playerFame(conn mnet.Client, reader mpacket.Reader) {
 
 	target, err := server.players.getFromID(targetID)
 	if err != nil || target == nil || target.mapID != source.mapID {
-		source.send(packetFameError(fameErrIncorrectUser))
+		source.send(packetFameError(internal.OpFameIncorrectUser))
 		return
 	}
 
 	if source.level < 15 {
-		source.send(packetFameError(fameErrUnderLevel))
+		source.send(packetFameError(internal.OpFameUnderLevel))
 		return
 	}
 
 	if fameHasRecentActivity(source.id, 24*time.Hour) {
-		source.send(packetFameError(fameErrThisDay))
+		source.send(packetFameError(internal.OpFameThisDay))
 		return
 	}
 
 	if fameHasRecentActivity(source.id, 30*24*time.Hour) {
-		source.send(packetFameError(fameErrThisMonth))
+		source.send(packetFameError(internal.OpFameThisMonth))
 		return
 	}
 
