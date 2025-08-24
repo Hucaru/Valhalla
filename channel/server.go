@@ -1,6 +1,7 @@
 package channel
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"strconv"
@@ -142,6 +143,9 @@ func (server *Server) Initialise(work chan func(), dbuser, dbpassword, dbaddress
 
 	server.parties = make(map[int32]*party)
 	server.guilds = make(map[int32]*guild)
+
+	// Start periodic autosave
+	server.startAutosave(context.Background())
 }
 
 func (server *Server) loadScripts() {
@@ -255,13 +259,17 @@ func (server *Server) ClientDisconnected(conn mnet.Client) {
 		}
 	}
 
-	// Persist character state
-	if saveErr := plr.save(); saveErr != nil {
-		log.Println(saveErr)
+	if server.dispatch != nil {
+		done := make(chan struct{})
+		server.dispatch <- func() {
+			plr.Logout()
+			close(done)
+		}
+		<-done
+	} else {
+		// Fallback
+		plr.Logout()
 	}
-
-	// Save buff snapshot so it persists through logout (and server restarts)
-	plr.saveBuffSnapshot()
 
 	// Tear down any active NPC chat state
 	delete(server.npcChat, conn)
@@ -300,5 +308,56 @@ func (server *Server) ClientDisconnected(conn mnet.Client) {
 
 	if _, dbErr := common.DB.Exec("UPDATE accounts SET isLogedIn=0 WHERE accountID=?", conn.GetAccountID()); dbErr != nil {
 		log.Println("Unable to complete logout for ", conn.GetAccountID())
+	}
+}
+
+func (server *Server) flushPlayers() {
+	for _, p := range server.players {
+		if p == nil {
+			continue
+		}
+		flushNow(p)
+	}
+}
+
+// CheckpointAll now uses the saver to flush debounced/coalesced deltas for every player.
+func (server *Server) CheckpointAll() {
+	if server.dispatch == nil {
+		return
+	}
+	done := make(chan struct{})
+	server.dispatch <- func() {
+		server.flushPlayers()
+		close(done)
+	}
+	<-done
+}
+
+// startAutosave periodically flushes deltas via the saver.
+func (server *Server) startAutosave(ctx context.Context) {
+	const interval = 30 * time.Second
+
+	if server.dispatch == nil {
+		return
+	}
+
+	var scheduleNext func()
+	scheduleNext = func() {
+		select {
+		case <-ctx.Done():
+			return
+		default:
+		}
+		time.AfterFunc(interval, func() {
+			server.dispatch <- func() {
+				server.flushPlayers()
+				scheduleNext()
+			}
+		})
+	}
+
+	server.dispatch <- func() {
+		server.flushPlayers()
+		scheduleNext()
 	}
 }

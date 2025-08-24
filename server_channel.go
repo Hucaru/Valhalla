@@ -95,6 +95,12 @@ func (cs *channelServer) run() {
 }
 
 func (cs *channelServer) shutdown() {
+	// Persist all player state before shutting down services.
+	cs.gameState.CheckpointAll()
+
+	// Stop the saver loop after final flush
+	channel.StopSaver()
+
 	// Cancel context so loops can exit
 	cs.cancel()
 	// Close listener to unblock Accept()
@@ -235,7 +241,6 @@ func (cs *channelServer) processEvent() {
 				switch e.Type {
 				case mnet.MEServerDisconnect:
 					log.Println("Server at", conn, "disconnected")
-					// Attempt to re-establish world connection asynchronously so we don't block event loop
 					go cs.establishWorldConnection()
 				case mnet.MEServerPacket:
 					cs.gameState.HandleServerPacket(conn, mpacket.NewReader(&e.Packet, time.Now().Unix()))
@@ -244,10 +249,8 @@ func (cs *channelServer) processEvent() {
 
 		case work, ok := <-cs.wRecv:
 			if !ok {
-				// Work channel closed elsewhere; keep serving events
 				continue
 			}
-			// Protect against panics in scheduled work
 			func() {
 				defer func() {
 					if r := recover(); r != nil {
