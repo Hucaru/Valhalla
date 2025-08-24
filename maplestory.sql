@@ -61,7 +61,7 @@ CREATE TABLE `characters` (
   `ap` int(11) unsigned NOT NULL DEFAULT '0',
   `sp` int(11) unsigned NOT NULL DEFAULT '0',
   `exp` int(11) unsigned NOT NULL DEFAULT '0',
-  `fame` int(11) unsigned NOT NULL DEFAULT '0',
+  `fame` int(11) NOT NULL DEFAULT '0',
   `mapID` int(11) unsigned NOT NULL DEFAULT '0',
   `mapPos` int(11) unsigned NOT NULL DEFAULT '0',
   `previousMapID` int(11) unsigned NOT NULL DEFAULT '0',
@@ -175,5 +175,39 @@ CREATE TABLE `skills` (
   CONSTRAINT `skills_ibfk_2` FOREIGN KEY (`characterID`) REFERENCES `characters` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 
+DROP TABLE IF EXISTS `character_quests`;
+CREATE TABLE `character_quests` (
+  `characterID` INT(11) NOT NULL,
+  `questID` SMALLINT(6) NOT NULL,
+  `record` VARCHAR(255) NOT NULL DEFAULT '',
+  `completed` TINYINT(1) NOT NULL DEFAULT '0',
+  `completedAt` BIGINT(20) NOT NULL DEFAULT '0',
+  PRIMARY KEY (`characterID`, `questID`),
+  KEY `idx_character_quests_character` (`characterID`),
+  KEY `idx_character_quests_completed` (`completed`),
+  CONSTRAINT `character_quests_fk_character` FOREIGN KEY (`characterID`) REFERENCES `characters` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+
+DROP TABLE IF EXISTS `character_quest_kills`;
+CREATE TABLE `character_quest_kills` (
+  `characterID` INT NOT NULL,
+  `questID` SMALLINT NOT NULL,
+  `mobID` INT NOT NULL,
+  `kills` INT NOT NULL DEFAULT 0,
+  PRIMARY KEY (`characterID`, `questID`, `mobID`), CONSTRAINT `c_q_kills_fk_character` FOREIGN KEY (`characterID`) REFERENCES `characters` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+
+DROP TABLE IF EXISTS `fame_log`;
+CREATE TABLE `fame_log` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `from` int(11) NOT NULL,
+  `to`   int(11) NOT NULL,
+  `time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_from_time` (`from`, `time`),
+  KEY `idx_to_time` (`to`, `time`),
+  CONSTRAINT `fame_log_ibfk_from` FOREIGN KEY (`from`) REFERENCES `characters` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fame_log_ibfk_to`   FOREIGN KEY (`to`)   REFERENCES `characters` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 
 -- 2025-08-19 16:51:40 UTC

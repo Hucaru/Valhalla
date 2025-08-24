@@ -303,6 +303,88 @@ func (ctrl *npcChatPlayerController) DisbandGuild() {
 	ctrl.worldConn.Send(internal.PacketGuildDisband(ctrl.plr.guild.id))
 }
 
+func (ctrl *npcChatPlayerController) GetLevel() int {
+	return int(ctrl.plr.level)
+}
+
+func (ctrl *npcChatPlayerController) GetQuestStatus(id int16) int {
+	// 2 = completed, 1 = in progress, 0 = not started
+	for _, q := range ctrl.plr.quests.completed {
+		if q.id == id {
+			return 2
+		}
+	}
+	for _, q := range ctrl.plr.quests.inProgress {
+		if q.id == id {
+			return 1
+		}
+	}
+	return 0
+}
+
+func (ctrl *npcChatPlayerController) CheckQuestStatus(id int16, status int) bool {
+	return ctrl.GetQuestStatus(id) == status
+}
+
+func (ctrl *npcChatPlayerController) QuestData(id int16) string {
+	if q, ok := ctrl.plr.quests.inProgress[id]; ok {
+		return q.name
+	}
+	return ""
+}
+
+func (ctrl *npcChatPlayerController) CheckQuestData(id int16, data string) bool {
+	return ctrl.QuestData(id) == data
+}
+
+func (ctrl *npcChatPlayerController) SetQuestData(id int16, data string) {
+	// Only allow setting data if quest is in-progress; if not, start it or ignore.
+	if _, ok := ctrl.plr.quests.inProgress[id]; !ok {
+		// You may choose to implicitly start; here we upsert and add in-memory if needed.
+		ctrl.plr.quests.add(id, data)
+	} else {
+		// update in-memory
+		q := ctrl.plr.quests.inProgress[id]
+		q.name = data
+		ctrl.plr.quests.inProgress[id] = q
+	}
+	// Persist + notify client
+	upsertQuestRecord(ctrl.plr.id, id, data)
+	ctrl.plr.send(packetQuestUpdate(id, data))
+}
+
+func (ctrl *npcChatPlayerController) StartQuest(id int16) bool {
+	return ctrl.plr.tryStartQuest(id)
+}
+
+func (ctrl *npcChatPlayerController) CompleteQuest(id int16) bool {
+	return ctrl.plr.tryCompleteQuest(id)
+}
+
+func (ctrl *npcChatPlayerController) ForfeitQuest(id int16) {
+	if !ctrl.plr.quests.hasInProgress(id) {
+		return
+	}
+	ctrl.plr.quests.remove(id)
+	delete(ctrl.plr.quests.mobKills, id)
+	deleteQuest(ctrl.plr.id, id)
+	ctrl.plr.send(packetQuestRemove(id))
+	clearQuestMobKills(ctrl.plr.id, id)
+}
+
+type scriptQuestView struct {
+	Data   string `json:"data"`
+	Status int    `json:"status"` // 0,1,2 same as GetQuestStatus
+}
+
+func (ctrl *npcChatPlayerController) Quest(id int16) scriptQuestView {
+	status := ctrl.GetQuestStatus(id) // already 0/1/2
+	return scriptQuestView{
+		Data:   ctrl.QuestData(id),
+		Status: status,
+	}
+}
+
 type npcChatController struct {
 	npcID int32
 	conn  mnet.Client

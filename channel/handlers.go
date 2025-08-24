@@ -99,6 +99,8 @@ func (server *Server) HandleClientPacket(conn mnet.Client, reader mpacket.Reader
 		server.playerMoveInventoryItem(conn, reader)
 	case opcode.RecvChannelPlayerDropMesos:
 		server.playerDropMesos(conn, reader)
+	case opcode.RecvChannelPlayerFame:
+		server.playerFame(conn, reader)
 	case opcode.RecvChannelInvUseItem:
 		server.playerUseInventoryItem(conn, reader)
 	case opcode.RecvChannelNearestTown:
@@ -141,6 +143,8 @@ func (server *Server) HandleClientPacket(conn mnet.Client, reader mpacket.Reader
 		// Consume
 	case opcode.RecvChannelCancelBuff:
 		server.playerCancelBuff(conn, reader)
+	case opcode.RecvChannelQuestOperation:
+		server.playerQuestOperation(conn, reader)
 	default:
 		unknownPacketsTotal.Inc()
 		log.Println("UNKNOWN CLIENT PACKET:", reader)
@@ -651,45 +655,59 @@ func (server Server) playerUsePortal(conn mnet.Client, reader mpacket.Reader) {
 	}
 
 	entryType := reader.ReadInt32()
-	field, ok := server.fields[plr.mapID]
 
-	if !ok {
+	curField, ok := server.fields[plr.mapID]
+	if !ok || curField == nil {
 		return
 	}
 
-	srcInst, err := field.getInstance(plr.inst.id)
-
+	srcInst, err := curField.getInstance(plr.inst.id)
 	if err != nil {
 		return
+	}
+
+	chooseDstPortal := func(dstInst *fieldInstance, backToMapID int32, srcName, preferName string) (portal, error) {
+		for _, p := range dstInst.portals {
+			if p.destFieldID == backToMapID && p.destName == srcName {
+				return p, nil
+			}
+		}
+		for _, p := range dstInst.portals {
+			if p.destFieldID == backToMapID {
+				return p, nil
+			}
+		}
+		if preferName != "" {
+			if p, e := dstInst.getPortalFromName(preferName); e == nil {
+				return p, nil
+			}
+		}
+		return dstInst.getRandomSpawnPortal()
 	}
 
 	switch entryType {
 	case 0:
 		if plr.hp == 0 {
-			dstField, ok := server.fields[field.Data.ReturnMap]
-
-			if !ok {
+			dstFld, ok := server.fields[curField.Data.ReturnMap]
+			if !ok || dstFld == nil {
 				return
 			}
 
-			dstInst, err := dstField.getInstance(plr.inst.id)
-
+			dstInst, err := dstFld.getInstance(plr.inst.id)
 			if err != nil {
-				dstInst, err = dstField.getInstance(0)
-
+				dstInst, err = dstFld.getInstance(0)
 				if err != nil {
 					return
 				}
 			}
 
-			portal, err := dstInst.getRandomSpawnPortal()
-
+			dstPortal, err := chooseDstPortal(dstInst, curField.id, "", "")
 			if err != nil {
 				conn.Send(packetPlayerNoChange())
 				return
 			}
 
-			err = server.warpPlayer(plr, dstField, portal)
+			err = server.warpPlayer(plr, dstFld, dstPortal)
 
 			if err != nil {
 				log.Println(err)
@@ -699,11 +717,22 @@ func (server Server) playerUsePortal(conn mnet.Client, reader mpacket.Reader) {
 			plr.setHP(50)
 			// TODO: reduce exp
 		}
-	case -1:
-		portalName := reader.ReadString(reader.ReadInt16())
-		srcPortal, err := srcInst.getPortalFromName(portalName)
 
-		if !plr.checkPos(srcPortal.pos, 100, 100) { // trying to account for lag whilst preventing teleporting
+	case -1:
+		nameLen := reader.ReadInt16()
+		if nameLen <= 0 {
+			conn.Send(packetPlayerNoChange())
+			return
+		}
+		portalName := reader.ReadString(nameLen)
+
+		srcPortal, err := srcInst.getPortalFromName(portalName)
+		if err != nil {
+			conn.Send(packetPlayerNoChange())
+			return
+		}
+
+		if !plr.checkPos(srcPortal.pos, 100, 100) {
 			if conn.GetAdminLevel() > 0 {
 				conn.Send(packetMessageRedText("Portal - " + srcPortal.pos.String() + " Player - " + plr.pos.String()))
 			}
@@ -712,34 +741,26 @@ func (server Server) playerUsePortal(conn mnet.Client, reader mpacket.Reader) {
 			return
 		}
 
-		if err != nil {
+		dstFld, ok := server.fields[srcPortal.destFieldID]
+		if !ok || dstFld == nil {
 			conn.Send(packetPlayerNoChange())
 			return
 		}
 
-		dstField, ok := server.fields[srcPortal.destFieldID]
-
-		if !ok {
-			conn.Send(packetPlayerNoChange())
-			return
-		}
-
-		dstInst, err := dstField.getInstance(plr.inst.id)
-
+		dstInst, err := dstFld.getInstance(plr.inst.id)
 		if err != nil {
-			if dstInst, err = dstField.getInstance(0); err != nil {
+			if dstInst, err = dstFld.getInstance(0); err != nil {
 				return
 			}
 		}
 
-		dstPortal, err := dstInst.getPortalFromName(srcPortal.destName)
-
+		dstPortal, err := chooseDstPortal(dstInst, curField.id, srcPortal.name, srcPortal.destName)
 		if err != nil {
 			conn.Send(packetPlayerNoChange())
 			return
 		}
 
-		err = server.warpPlayer(plr, dstField, dstPortal)
+		err = server.warpPlayer(plr, dstFld, dstPortal)
 
 		if err != nil {
 			log.Println(err)
@@ -766,7 +787,7 @@ func (server Server) warpPlayer(plr *player, dstField *field, dstPortal portal) 
 	dstInst, err := dstField.getInstance(plr.inst.id)
 
 	if err != nil {
-		if dstInst, err = dstField.getInstance(0); err != nil { // Check player is not in higher level instance than available
+		if dstInst, err = dstField.getInstance(0); err != nil {
 			return err
 		}
 	}
@@ -781,7 +802,12 @@ func (server Server) warpPlayer(plr *player, dstField *field, dstPortal portal) 
 	// plr.mapPos = dstPortal.id
 	plr.pos = dstPortal.pos
 
-	plr.send(packetMapChange(dstField.id, int32(server.id), dstPortal.id, plr.hp)) // plr.ChangeMap(dstField.ID, dstPortal.ID(), dstPortal.Pos(), foothold)
+	spawnIdx, idxErr := dstInst.calculateNearestSpawnPortalID(dstPortal.pos)
+	if idxErr != nil {
+		spawnIdx = dstPortal.id
+	}
+
+	plr.send(packetMapChange(dstField.id, int32(server.id), spawnIdx, plr.hp)) // plr.ChangeMap(dstField.ID, dstPortal.ID(), dstPortal.Pos(), foothold)
 	err = dstInst.addPlayer(plr)
 
 	if err != nil {
@@ -3460,18 +3486,19 @@ func (server *Server) playerSpecialSkill(conn mnet.Client, reader mpacket.Reader
 	// Party buffs handled earlier remain unchanged...
 	case skill.Haste, skill.BanditHaste, skill.Bless, skill.IronWill, skill.Rage,
 		skill.Meditation, skill.ILMeditation, skill.MesoUp, skill.HolySymbol, skill.HyperBody:
-		if plr.party == nil {
-			plr.addBuff(skillID, skillLevel, delay)
-			plr.inst.send(packetPlayerSkillAnimThirdParty(plr.id, false, true, skillID, skillLevel))
-		} else {
+		plr.addBuff(skillID, skillLevel, delay)
+		plr.inst.send(packetPlayerSkillAnimThirdParty(plr.id, false, true, skillID, skillLevel))
+
+		// Apply to eligible party members in same map/instance per mask
+		if plr.party != nil {
 			affected := getAffectedPartyMembers(plr.party, plr, partyMask)
 			for _, member := range affected {
 				if member == nil {
 					continue
 				}
+				// Apply buff to the target member (not as a “foreign” state on the caster)
 				member.addBuff(skillID, skillLevel, delay)
-				plr.inst.send(packetPlayerSkillAnimThirdParty(plr.id, false, true, skillID, skillLevel))
-				member.inst.send(packetPlayerSkillAnimThirdParty(member.id, true, false, skillID, skillLevel))
+				plr.inst.send(packetPlayerSkillAnimThirdParty(member.id, true, false, skillID, skillLevel))
 			}
 		}
 
@@ -3511,6 +3538,7 @@ func (server *Server) playerSpecialSkill(conn mnet.Client, reader mpacket.Reader
 
 	default:
 		// Always send a self animation so client shows casting even for non-buffs.
+		plr.addBuff(skillID, skillLevel, delay)
 		plr.inst.send(packetPlayerSkillAnimThirdParty(plr.id, false, true, skillID, skillLevel))
 	}
 
@@ -3519,6 +3547,8 @@ func (server *Server) playerSpecialSkill(conn mnet.Client, reader mpacket.Reader
 		plr.send(packetPlayerNoChange())
 		return
 	}
+
+	plr.send(packetPlayerNoChange())
 }
 
 func (server *Server) playerCancelBuff(conn mnet.Client, reader mpacket.Reader) {
@@ -3660,4 +3690,95 @@ func (server Server) handleGuildEvent(conn mnet.Server, reader mpacket.Reader) {
 	default:
 		log.Println("Unkown guild event type:", op)
 	}
+}
+
+func (server *Server) playerQuestOperation(conn mnet.Client, reader mpacket.Reader) {
+	plr, err := server.players.getFromConn(conn)
+	if err != nil {
+		return
+	}
+
+	act := reader.ReadByte()
+	questID := reader.ReadInt16()
+
+	switch act {
+	case constant.QuestStarted:
+		if !plr.tryStartQuest(questID) {
+			plr.send(packetPlayerNoChange())
+		}
+	case constant.QuestCompleted:
+		if !plr.tryCompleteQuest(questID) {
+			plr.send(packetPlayerNoChange())
+		}
+	case constant.QuestForfeit:
+		plr.quests.remove(questID)
+		deleteQuest(plr.id, questID)
+		clearQuestMobKills(plr.id, questID)
+		plr.send(packetQuestRemove(questID))
+	case constant.QuestLostItem:
+		count := reader.ReadInt16()
+		questItem := reader.ReadInt16()
+		if count > 0 {
+			if it, err := createItemFromID(int32(questItem), count); err == nil {
+				_ = plr.giveItem(it)
+			} else {
+				log.Printf("[QuestPkt] lostItem give failed: err=%v", err)
+			}
+		} else if count < 0 {
+			if !plr.removeItemsByID(int32(questItem), int32(-count)) {
+				log.Printf("[QuestPkt] lostItem remove failed: item=%d need=%d", questItem, -count)
+			}
+		}
+
+	default:
+		log.Println("Unknown quest operation type:", act)
+	}
+}
+
+func (server *Server) playerFame(conn mnet.Client, reader mpacket.Reader) {
+	source, err := server.players.getFromConn(conn)
+	if err != nil {
+		return
+	}
+
+	targetID := reader.ReadInt32()
+	up := reader.ReadBool()
+
+	if targetID == source.id {
+		return
+	}
+
+	target, err := server.players.getFromID(targetID)
+	if err != nil || target == nil || target.mapID != source.mapID {
+		source.send(packetFameError(constant.FameIncorrectUser))
+		return
+	}
+
+	if source.level < 15 {
+		source.send(packetFameError(constant.FameUnderLevel))
+		return
+	}
+
+	if fameHasRecentActivity(source.id, 24*time.Hour) {
+		source.send(packetFameError(constant.FameThisDay))
+		return
+	}
+
+	if fameHasRecentActivity(source.id, 30*24*time.Hour) {
+		source.send(packetFameError(constant.FameThisMonth))
+		return
+	}
+
+	delta := int16(1)
+	if !up {
+		delta = -1
+	}
+	target.setFame(target.fame + delta)
+
+	if err := fameInsertLog(source.id, target.id); err != nil {
+		log.Println("fameInsertLog:", err)
+	}
+
+	target.send(packetFameNotifyVictim(source.name, up))
+	source.send(packetFameNotifySource(target.name, up, target.fame))
 }

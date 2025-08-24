@@ -101,6 +101,18 @@ const (
 	GuildEmblemChange     byte = 0x0F
 	GuildContractSign     byte = 0x1E
 	GuildRejectInvite     byte = 0x37
+
+	QuestLostItem  = 0x00
+	QuestStarted   = 0x01
+	QuestCompleted = 0x02
+	QuestForfeit   = 0x03
+
+	FameNotifySource  = 0x00
+	FameIncorrectUser = 0x01
+	FameUnderLevel    = 0x02
+	FameThisDay       = 0x03
+	FameThisMonth     = 0x04
+	FameNotifyTarget  = 0x05
 )
 
 var ExpTable = [...]int32{15, 34, 57, 92, 135, 372, 560, 840, 1242, 1144, // Beginner
