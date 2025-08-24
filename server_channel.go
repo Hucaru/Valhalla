@@ -82,9 +82,6 @@ func (cs *channelServer) run() {
 	elapsed = time.Since(start)
 	log.Println("Loaded and parsed drop data in", elapsed)
 
-	channel.StartSaver()
-	defer channel.StopSaver()
-
 	cs.gameState.Initialise(cs.wRecv, cs.dbConfig.User, cs.dbConfig.Password, cs.dbConfig.Address, cs.dbConfig.Port, cs.dbConfig.Database)
 
 	cs.wg.Add(1)
@@ -98,6 +95,12 @@ func (cs *channelServer) run() {
 }
 
 func (cs *channelServer) shutdown() {
+	// Persist all player state before shutting down services.
+	cs.gameState.CheckpointAll()
+
+	// Stop the saver loop after final flush
+	channel.StopSaver()
+
 	// Cancel context so loops can exit
 	cs.cancel()
 	// Close listener to unblock Accept()
@@ -230,11 +233,7 @@ func (cs *channelServer) processEvent() {
 					log.Println("New client from", conn)
 				case mnet.MEClientDisconnect:
 					log.Println("Client at", conn, "disconnected")
-
-					// Ensure we persist the player on socket close.
-					channel.OnDisconnect(conn)
 					cs.gameState.ClientDisconnected(conn)
-
 				case mnet.MEClientPacket:
 					cs.gameState.HandleClientPacket(conn, mpacket.NewReader(&e.Packet, time.Now().Unix()))
 				}

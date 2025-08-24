@@ -1,6 +1,7 @@
 package channel
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"strconv"
@@ -142,6 +143,9 @@ func (server *Server) Initialise(work chan func(), dbuser, dbpassword, dbaddress
 
 	server.parties = make(map[int32]*party)
 	server.guilds = make(map[int32]*guild)
+
+	// Start periodic autosave
+	server.startAutosave(context.Background())
 }
 
 func (server *Server) loadScripts() {
@@ -255,13 +259,7 @@ func (server *Server) ClientDisconnected(conn mnet.Client) {
 		}
 	}
 
-	// Persist character state
-	if saveErr := plr.save(); saveErr != nil {
-		log.Println(saveErr)
-	}
-
-	// Save buff snapshot so it persists through logout (and server restarts)
-	plr.saveBuffSnapshot()
+	go plr.Logout()
 
 	// Tear down any active NPC chat state
 	delete(server.npcChat, conn)
@@ -301,4 +299,36 @@ func (server *Server) ClientDisconnected(conn mnet.Client) {
 	if _, dbErr := common.DB.Exec("UPDATE accounts SET isLogedIn=0 WHERE accountID=?", conn.GetAccountID()); dbErr != nil {
 		log.Println("Unable to complete logout for ", conn.GetAccountID())
 	}
+}
+
+// CheckpointAll now uses the saver to flush debounced/coalesced deltas for every player.
+func (server *Server) CheckpointAll() {
+	for _, p := range server.players {
+		if p == nil {
+			continue
+		}
+		flushNow(p)
+	}
+}
+
+// startAutosave periodically flushes deltas via the saver.
+func (server *Server) startAutosave(ctx context.Context) {
+	flushTick := time.NewTicker(30 * time.Second)
+
+	go func() {
+		defer flushTick.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-flushTick.C:
+				for _, p := range server.players {
+					if p == nil {
+						continue
+					}
+					flushNow(p)
+				}
+			}
+		}
+	}()
 }

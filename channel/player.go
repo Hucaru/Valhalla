@@ -173,20 +173,16 @@ type player struct {
 // Helper: mark dirty and schedule debounced save.
 func (d *player) markDirty(bits DirtyBits, debounce time.Duration) {
 	d.dirty |= bits
-	if SaverInstance != nil {
-		SaverInstance.SchedulePlayer(d, debounce)
-	}
+	scheduleSave(d, debounce)
 }
 
-// Helper: clear dirty bits after successful flush.
+// Helper: clear dirty bits after successful flush (kept for future; saver currently doesn't feed back)
 func (d *player) clearDirty(bits DirtyBits) {
 	d.dirty &^= bits
 }
 
 func (d *player) FlushNow() {
-	if SaverInstance != nil {
-		SaverInstance.FlushNow(d)
-	}
+	flushNow(d)
 }
 
 // SeedRNGDeterministic seeds the per-player RNG using stable identifiers so
@@ -1018,8 +1014,12 @@ func (d *player) moveItem(start, end, amount int16, invID byte) error {
 }
 
 func (d *player) updateSkill(updatedSkill playerSkill) {
+	if d.skills == nil {
+		d.skills = make(map[int32]playerSkill)
+	}
 	d.skills[updatedSkill.ID] = updatedSkill
 	d.send(packetPlayerSkillBookUpdate(updatedSkill.ID, int32(updatedSkill.Level)))
+	d.markDirty(DirtySkills, 800*time.Millisecond)
 }
 
 func (d *player) useSkill(id int32, level byte) error {
@@ -1079,24 +1079,19 @@ func (d player) displayBytes() []byte {
 }
 
 // Logout flushes coalesced state and does a full checkpoint save.
-func (d *player) Logout(reason string) {
-	log.Printf("player(%d) logout: %s", d.id, reason)
-
-	// Best-effort: compute nearest respawn portal to persist mapPos in save()
+func (d player) Logout() {
 	if d.inst != nil {
 		if pos, err := d.inst.calculateNearestSpawnPortalID(d.pos); err == nil {
 			d.mapPos = pos
-			d.markDirty(DirtyMap, 0)
 		}
 	}
 
-	// Flush write-behind deltas first (non-blocking DB jitter already coalesced).
-	d.FlushNow()
+	flushNow(&d)
 
-	// Full checkpoint to keep everything consistent (includes skills upsert).
 	if err := d.save(); err != nil {
 		log.Printf("player(%d) logout save failed: %v", d.id, err)
 	}
+
 }
 
 // Save data - this needs to be split to occur at relevant points in time
@@ -1150,6 +1145,48 @@ func (d *player) damagePlayer(damage int16) {
 	}
 
 	d.send(packetPlayerStatChange(true, constant.HpID, int32(d.hp)))
+}
+
+func (d *player) setInventorySlotSizes(equip, use, setup, etc, cash byte) {
+	changed := (d.equipSlotSize != equip) || (d.useSlotSize != use) ||
+		(d.setupSlotSize != setup) || (d.etcSlotSize != etc) || (d.cashSlotSize != cash)
+	if !changed {
+		return
+	}
+	d.equipSlotSize = equip
+	d.useSlotSize = use
+	d.setupSlotSize = setup
+	d.etcSlotSize = etc
+	d.cashSlotSize = cash
+	d.markDirty(DirtyInvSlotSizes, 2*time.Second)
+}
+
+func (d *player) setBuddyListSize(size byte) {
+	if d.buddyListSize == size {
+		return
+	}
+	d.buddyListSize = size
+	d.markDirty(DirtyBuddySize, 1*time.Second)
+}
+
+func (d *player) addMiniGameWin() {
+	d.miniGameWins++
+	d.markDirty(DirtyMiniGame, 1*time.Second)
+}
+
+func (d *player) addMiniGameDraw() {
+	d.miniGameDraw++
+	d.markDirty(DirtyMiniGame, 1*time.Second)
+}
+
+func (d *player) addMiniGameLoss() {
+	d.miniGameLoss++
+	d.markDirty(DirtyMiniGame, 1*time.Second)
+}
+
+func (d *player) addMiniGamePoints(delta int32) {
+	d.miniGamePoints += delta
+	d.markDirty(DirtyMiniGame, 1*time.Second)
 }
 
 func (d *player) sendBuddyList() {
@@ -1320,9 +1357,6 @@ func loadPlayerFromID(id int32, conn mnet.Client) player {
 	c.buffs = NewCharacterBuffs(&c)
 
 	c.conn = conn
-
-	// Register this player against the connection so we can persist on disconnect.
-	attachSession(conn, &c)
 
 	return c
 }

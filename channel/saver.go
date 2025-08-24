@@ -3,14 +3,13 @@ package channel
 import (
 	"log"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/Hucaru/Valhalla/common"
 )
 
 // DirtyBits mark which character columns need persisting.
-type DirtyBits uint32
+type DirtyBits uint64
 
 const (
 	DirtyAP DirtyBits = 1 << iota
@@ -29,6 +28,10 @@ const (
 	DirtyInt
 	DirtyLuk
 	DirtyFame
+	DirtyInvSlotSizes
+	DirtyMiniGame
+	DirtyBuddySize
+	DirtySkills
 )
 
 // snapshot contains only columns we may persist.
@@ -46,208 +49,266 @@ type snapshot struct {
 	Level          byte
 	Str, Dex, Intt int16
 	Luk, Fame      int16
+
+	EquipSlotSize byte
+	UseSlotSize   byte
+	SetupSlotSize byte
+	EtcSlotSize   byte
+	CashSlotSize  byte
+
+	MiniGameWins   int32
+	MiniGameDraw   int32
+	MiniGameLoss   int32
+	MiniGamePoints int32
+
+	BuddyListSize byte
+
+	Skills map[int32]playerSkill
 }
 
-// pendingSave is a coalesced, debounced update for one character.
 type pendingSave struct {
 	due  time.Time
 	bits DirtyBits
 	snap snapshot
 }
 
-// Saver batches and persists character updates.
-type Saver struct {
-	mu      sync.Mutex
-	pending map[int32]*pendingSave // charID -> pendingSave
-	ticker  *time.Ticker
+type saver struct {
+	schedCh chan scheduleReq
+	flushCh chan flushReq
 	stopCh  chan struct{}
+
+	pending map[int32]*pendingSave
+	ticker  *time.Ticker
 }
 
-// SaverInstance is the global saver used by the channel server.
-var SaverInstance *Saver
+var saverInst *saver
 
-// StartSaver boots the saver loop; should be called once at startup.
-func StartSaver() {
-	if SaverInstance != nil {
-		return
-	}
-	SaverInstance = &Saver{
-		pending: make(map[int32]*pendingSave),
-		ticker:  time.NewTicker(50 * time.Millisecond),
-		stopCh:  make(chan struct{}),
-	}
-	go SaverInstance.loop()
+// Requests
+type scheduleReq struct {
+	id    int32
+	bits  DirtyBits
+	snap  snapshot
+	delay time.Duration
 }
 
-// StopSaver stops the saver (e.g., on shutdown).
+type flushReq struct {
+	id int32
+	// If set, use this bits/snap instead of pending/live reconcile.
+	overrideBits DirtyBits
+	overrideSnap *snapshot
+	done         chan struct{} // closed when flush completes
+}
+
+// Helpers
+
+func copySkills(src map[int32]playerSkill) map[int32]playerSkill {
+	if len(src) == 0 {
+		return nil
+	}
+	dst := make(map[int32]playerSkill, len(src))
+	for k, v := range src {
+		dst[k] = v
+	}
+	return dst
+}
+
+// Build a snapshot from a player (caller is on game thread).
+func snapshotFromPlayer(p *player) snapshot {
+	s := snapshot{
+		ID:             p.id,
+		AP:             p.ap,
+		SP:             p.sp,
+		Mesos:          p.mesos,
+		HP:             p.hp,
+		MaxHP:          p.maxHP,
+		MP:             p.mp,
+		MaxMP:          p.maxMP,
+		EXP:            p.exp,
+		MapID:          p.mapID,
+		MapPos:         p.mapPos,
+		Job:            p.job,
+		Level:          p.level,
+		Str:            p.str,
+		Dex:            p.dex,
+		Intt:           p.intt,
+		Luk:            p.luk,
+		Fame:           p.fame,
+		EquipSlotSize:  p.equipSlotSize,
+		UseSlotSize:    p.useSlotSize,
+		SetupSlotSize:  p.setupSlotSize,
+		EtcSlotSize:    p.etcSlotSize,
+		CashSlotSize:   p.cashSlotSize,
+		MiniGameWins:   p.miniGameWins,
+		MiniGameDraw:   p.miniGameDraw,
+		MiniGameLoss:   p.miniGameLoss,
+		MiniGamePoints: p.miniGamePoints,
+		BuddyListSize:  p.buddyListSize,
+	}
+
+	if p.dirty&DirtySkills != 0 {
+		s.Skills = copySkills(p.skills)
+	}
+	return s
+}
+
+func init() {
+	if saverInst == nil {
+		saverInst = &saver{
+			schedCh: make(chan scheduleReq, 1024),
+			flushCh: make(chan flushReq, 256),
+			stopCh:  make(chan struct{}),
+			pending: make(map[int32]*pendingSave),
+			ticker:  time.NewTicker(50 * time.Millisecond),
+		}
+		go saverInst.loop()
+	}
+}
+
 func StopSaver() {
-	if SaverInstance == nil {
+	if saverInst == nil {
 		return
 	}
-	close(SaverInstance.stopCh)
-	SaverInstance.ticker.Stop()
-	SaverInstance = nil
+	close(saverInst.stopCh)
+	saverInst.ticker.Stop()
+	saverInst = nil
 }
 
-// SchedulePlayer copies the player’s current values and schedules a debounced write.
-// delay is the debounce window to coalesce multiple changes.
-func (s *Saver) SchedulePlayer(p *player, delay time.Duration) {
-	if p == nil || p.id == 0 {
+func scheduleSave(p *player, delay time.Duration) {
+	if saverInst == nil || p == nil || p.id == 0 {
 		return
 	}
-	now := time.Now()
-	s.mu.Lock()
-	ps := s.pending[p.id]
-	if ps == nil {
-		ps = &pendingSave{
-			due: now.Add(delay),
-			snap: snapshot{
-				ID:     p.id,
-				AP:     p.ap,
-				SP:     p.sp,
-				Mesos:  p.mesos,
-				HP:     p.hp,
-				MaxHP:  p.maxHP,
-				MP:     p.mp,
-				MaxMP:  p.maxMP,
-				EXP:    p.exp,
-				MapID:  p.mapID,
-				MapPos: p.mapPos,
-				Job:    p.job,
-				Level:  p.level,
-				Str:    p.str,
-				Dex:    p.dex,
-				Intt:   p.intt,
-				Luk:    p.luk,
-				Fame:   p.fame,
-			},
-			bits: p.dirty,
-		}
-		s.pending[p.id] = ps
-	} else {
-		// Coalesce: update snapshot to latest and merge dirty bits.
-		ps.snap.AP = p.ap
-		ps.snap.SP = p.sp
-		ps.snap.Mesos = p.mesos
-		ps.snap.HP = p.hp
-		ps.snap.MaxHP = p.maxHP
-		ps.snap.MP = p.mp
-		ps.snap.MaxMP = p.maxMP
-		ps.snap.EXP = p.exp
-		ps.snap.MapID = p.mapID
-		ps.snap.MapPos = p.mapPos
-		ps.snap.Job = p.job
-		ps.snap.Level = p.level
-		ps.snap.Str = p.str
-		ps.snap.Dex = p.dex
-		ps.snap.Intt = p.intt
-		ps.snap.Luk = p.luk
-		ps.snap.Fame = p.fame
-
-		ps.bits |= p.dirty
-		// Move due earlier if needed (sooner flush).
-		d := now.Add(delay)
-		if d.Before(ps.due) {
-			ps.due = d
-		}
+	req := scheduleReq{
+		id:    p.id,
+		bits:  p.dirty,
+		snap:  snapshotFromPlayer(p),
+		delay: delay,
 	}
-	// The player's dirty flags remain set until the flush succeeds.
-	s.mu.Unlock()
-}
-
-// FlushNow persists the pending data for this character synchronously.
-func (s *Saver) FlushNow(p *player) {
-	if p == nil || p.id == 0 {
-		return
-	}
-	var job *pendingSave
-	s.mu.Lock()
-	if ps, ok := s.pending[p.id]; ok {
-		job = &pendingSave{
-			due:  time.Now(),
-			bits: ps.bits,
-			snap: ps.snap,
-		}
-		delete(s.pending, p.id)
-	} else if p.dirty != 0 {
-		// No pending entry, but player has dirty bits; create a job from live values.
-		job = &pendingSave{
-			due:  time.Now(),
-			bits: p.dirty,
-			snap: snapshot{
-				ID:     p.id,
-				AP:     p.ap,
-				SP:     p.sp,
-				Mesos:  p.mesos,
-				HP:     p.hp,
-				MaxHP:  p.maxHP,
-				MP:     p.mp,
-				MaxMP:  p.maxMP,
-				EXP:    p.exp,
-				MapID:  p.mapID,
-				MapPos: p.mapPos,
-				Job:    p.job,
-				Level:  p.level,
-				Str:    p.str,
-				Dex:    p.dex,
-				Intt:   p.intt,
-				Luk:    p.luk,
-				Fame:   p.fame,
-			},
-		}
-	}
-	s.mu.Unlock()
-
-	if job != nil {
-		if s.persist(*job) {
-			// Clear player's dirty bits after successful flush.
-			p.clearDirty(job.bits)
-		}
+	select {
+	case saverInst.schedCh <- req:
+	default:
+		// drop under extreme pressure
 	}
 }
 
-// Internal loop ticking due jobs.
-func (s *Saver) loop() {
+func flushNow(p *player) {
+	if saverInst == nil || p == nil || p.id == 0 {
+		return
+	}
+	done := make(chan struct{})
+	var snap *snapshot
+	var bits DirtyBits
+	if p.dirty != 0 {
+		sn := snapshotFromPlayer(p)
+		snap = &sn
+		bits = p.dirty
+	}
+	req := flushReq{
+		id:           p.id,
+		overrideBits: bits,
+		overrideSnap: snap,
+		done:         done,
+	}
+	select {
+	case saverInst.flushCh <- req:
+		<-done
+	default:
+		// channel saturated: fallback to direct sync persist
+		job := pendingSave{bits: bits, snap: snapshotFromPlayer(p)}
+		saverInst.persist(job)
+	}
+}
+
+func (s *saver) loop() {
 	for {
 		select {
 		case <-s.stopCh:
 			return
+
+		case req := <-s.schedCh:
+			ps := s.pending[req.id]
+			now := time.Now()
+			due := now.Add(req.delay)
+			if ps == nil {
+				ps = &pendingSave{due: due, bits: req.bits, snap: req.snap}
+				s.pending[req.id] = ps
+			} else {
+				ps.bits |= req.bits
+				mergeSnapshot(&ps.snap, req.snap)
+				if due.Before(ps.due) {
+					ps.due = due
+				}
+			}
+
+		case req := <-s.flushCh:
+			ps, ok := s.pending[req.id]
+			var job pendingSave
+			if ok {
+				job = *ps
+				delete(s.pending, req.id)
+			} else {
+				job = pendingSave{bits: 0, snap: snapshot{ID: req.id}}
+			}
+			if req.overrideSnap != nil {
+				job.snap = *req.overrideSnap
+				job.bits |= req.overrideBits
+			}
+			s.persist(job)
+			if req.done != nil {
+				close(req.done)
+			}
+
 		case <-s.ticker.C:
-			s.flushDue()
+			now := time.Now()
+			var dueList []pendingSave
+			for id, ps := range s.pending {
+				if now.After(ps.due) {
+					dueList = append(dueList, *ps)
+					delete(s.pending, id)
+				}
+			}
+			for _, job := range dueList {
+				go s.persist(job)
+			}
 		}
 	}
 }
 
-// Move due jobs out and persist them without holding the lock.
-func (s *Saver) flushDue() {
-	now := time.Now()
-	var batch []pendingSave
+// Merge two snapshots (in-place) using rhs as the latest authoritative values.
+func mergeSnapshot(lhs *snapshot, rhs snapshot) {
+	lhs.AP, lhs.SP = rhs.AP, rhs.SP
+	lhs.Mesos = rhs.Mesos
+	lhs.HP, lhs.MaxHP = rhs.HP, rhs.MaxHP
+	lhs.MP, lhs.MaxMP = rhs.MP, rhs.MaxMP
+	lhs.EXP = rhs.EXP
+	lhs.MapID, lhs.MapPos = rhs.MapID, rhs.MapPos
+	lhs.Job, lhs.Level = rhs.Job, rhs.Level
+	lhs.Str, lhs.Dex, lhs.Intt, lhs.Luk, lhs.Fame = rhs.Str, rhs.Dex, rhs.Intt, rhs.Luk, rhs.Fame
 
-	s.mu.Lock()
-	for id, ps := range s.pending {
-		if now.After(ps.due) {
-			batch = append(batch, *ps)
-			delete(s.pending, id)
-		}
-	}
-	s.mu.Unlock()
+	lhs.EquipSlotSize = rhs.EquipSlotSize
+	lhs.UseSlotSize = rhs.UseSlotSize
+	lhs.SetupSlotSize = rhs.SetupSlotSize
+	lhs.EtcSlotSize = rhs.EtcSlotSize
+	lhs.CashSlotSize = rhs.CashSlotSize
 
-	for _, job := range batch {
-		if s.persist(job) {
-			// Best-effort: clear the player's dirty bits if player is still in memory.
-			// We cannot access the player map here without references; callers also clear.
-		}
+	lhs.MiniGameWins = rhs.MiniGameWins
+	lhs.MiniGameDraw = rhs.MiniGameDraw
+	lhs.MiniGameLoss = rhs.MiniGameLoss
+	lhs.MiniGamePoints = rhs.MiniGamePoints
+
+	lhs.BuddyListSize = rhs.BuddyListSize
+
+	if rhs.Skills != nil {
+		lhs.Skills = rhs.Skills
 	}
 }
 
-// Build a single UPDATE for only the changed columns.
-func (s *Saver) persist(job pendingSave) bool {
+func (s *saver) persist(job pendingSave) bool {
 	if job.bits == 0 {
 		return true
 	}
 
-	cols := make([]string, 0, 16)
-	args := make([]any, 0, 16)
+	cols := make([]string, 0, 24)
+	args := make([]any, 0, 24)
 
 	if job.bits&DirtyAP != 0 {
 		cols = append(cols, "ap=?")
@@ -313,17 +374,37 @@ func (s *Saver) persist(job pendingSave) bool {
 		cols = append(cols, "fame=?")
 		args = append(args, job.snap.Fame)
 	}
-
-	if len(cols) == 0 {
-		return true
+	if job.bits&DirtyInvSlotSizes != 0 {
+		cols = append(cols, "equipSlotSize=?,useSlotSize=?,setupSlotSize=?,etcSlotSize=?,cashSlotSize=?")
+		args = append(args, job.snap.EquipSlotSize, job.snap.UseSlotSize, job.snap.SetupSlotSize, job.snap.EtcSlotSize, job.snap.CashSlotSize)
+	}
+	if job.bits&DirtyMiniGame != 0 {
+		cols = append(cols, "miniGameWins=?,miniGameDraw=?,miniGameLoss=?,miniGamePoints=?")
+		args = append(args, job.snap.MiniGameWins, job.snap.MiniGameDraw, job.snap.MiniGameLoss, job.snap.MiniGamePoints)
+	}
+	if job.bits&DirtyBuddySize != 0 {
+		cols = append(cols, "buddyListSize=?")
+		args = append(args, job.snap.BuddyListSize)
 	}
 
-	query := "UPDATE characters SET " + strings.Join(cols, ",") + " WHERE id=?"
-	args = append(args, job.snap.ID)
-
-	if _, err := common.DB.Exec(query, args...); err != nil {
-		log.Printf("Saver.persist: UPDATE characters (id=%d) failed: %v", job.snap.ID, err)
-		return false
+	if len(cols) > 0 {
+		query := "UPDATE characters SET " + strings.Join(cols, ",") + " WHERE id=?"
+		args = append(args, job.snap.ID)
+		if _, err := common.DB.Exec(query, args...); err != nil {
+			log.Printf("saver.persist: UPDATE characters (id=%d) failed: %v", job.snap.ID, err)
+		}
 	}
+
+	if job.bits&DirtySkills != 0 && len(job.snap.Skills) > 0 {
+		upsert := `INSERT INTO skills(characterID,skillID,level,cooldown)
+		           VALUES(?,?,?,?)
+		           ON DUPLICATE KEY UPDATE level=VALUES(level), cooldown=VALUES(cooldown)`
+		for sid, srec := range job.snap.Skills {
+			if _, err := common.DB.Exec(upsert, job.snap.ID, sid, srec.Level, srec.Cooldown); err != nil {
+				log.Printf("saver.persist: upsert skill %d for char %d failed: %v", sid, job.snap.ID, err)
+			}
+		}
+	}
+
 	return true
 }
