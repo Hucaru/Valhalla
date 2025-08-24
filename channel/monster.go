@@ -94,7 +94,7 @@ func createMonsterFromData(spawnID int32, life nx.Life, m nx.Mob, dropsItems, dr
 	}
 }
 
-func createMonsterFromID(spawnID, id int32, p pos, controller *player, dropsItems, dropsMesos bool) (monster, error) {
+func createMonsterFromID(spawnID, id int32, p pos, controller *player, dropsItems, dropsMesos bool, summoner int32) (monster, error) {
 	m, err := nx.GetMob(id)
 	if err != nil {
 		return monster{}, fmt.Errorf("Unknown mob id: %v", id)

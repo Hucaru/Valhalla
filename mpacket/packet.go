@@ -28,6 +28,7 @@ func CreateWithOpcode(op byte) Packet {
 func CreateInternal(op byte) Packet {
 	p := Packet{}
 	p.WriteByte(0)
+	p.WriteByte(0)
 	p.WriteByte(op)
 
 	return p
@@ -56,6 +57,11 @@ func (p *Packet) WriteByte(data byte) {
 // WriteInt8 -
 func (p *Packet) WriteInt8(data int8) {
 	*p = append(*p, byte(data))
+}
+
+// WriteInt -
+func (p *Packet) WriteInt(data int) {
+	*p = append(*p, byte(data), byte(data>>8), byte(data>>16), byte(data>>24))
 }
 
 // WriteBool -
@@ -204,4 +210,36 @@ func (p *Packet) readFloat32(pos *int) float32 {
 
 func (p *Packet) readString(pos *int, length int) string {
 	return string(p.readBytes(pos, length))
+}
+
+func (p *Packet) Position() int {
+	return len(*p)
+}
+
+func (p *Packet) SetPosition(pos int) {
+	if pos < 0 {
+		return
+	}
+	cur := len(*p)
+	if pos <= cur {
+		*p = (*p)[:pos]
+		return
+	}
+	// grow with zeros
+	*p = append(*p, make([]byte, pos-cur)...)
+}
+
+func (p *Packet) SetInt(pPosition, val int) {
+	if pPosition < 0 {
+		return
+	}
+	end := pPosition + 4
+	if end > len(*p) {
+		*p = append(*p, make([]byte, end-len(*p))...)
+	}
+	u := uint32(val)
+	(*p)[pPosition] = byte(u)
+	(*p)[pPosition+1] = byte(u >> 8)
+	(*p)[pPosition+2] = byte(u >> 16)
+	(*p)[pPosition+3] = byte(u >> 24)
 }

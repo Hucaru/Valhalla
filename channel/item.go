@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"math"
 	"math/rand"
 	"os"
@@ -40,9 +41,7 @@ func PopulateDropTable(dropJSON string) error {
 
 	jsonBytes, _ := ioutil.ReadAll(jsonFile)
 
-	json.Unmarshal(jsonBytes, &dropTable)
-
-	return nil
+	return json.Unmarshal(jsonBytes, &dropTable)
 }
 
 type item struct {
@@ -79,6 +78,7 @@ type item struct {
 	speed        int16
 	jump         int16
 	attackSpeed  int16
+	buffTime     int16
 	stand        byte // TODO: Investigate this, it doesn't appear to be saved or used anywhere
 
 	weaponType byte
@@ -108,7 +108,7 @@ func loadInventoryFromDb(charID int32) ([]item, []item, []item, []item, []item) 
 
 		item := item{uuid: uuid.New()}
 
-		row.Scan(&item.dbID,
+		err := row.Scan(&item.dbID,
 			&item.invID,
 			&item.id,
 			&item.slotID,
@@ -133,6 +133,11 @@ func loadInventoryFromDb(charID int32) ([]item, []item, []item, []item, []item) 
 			&item.jump,
 			&item.expireTime,
 			&item.creatorName)
+
+		if err != nil {
+			log.Println(err)
+			continue
+		}
 
 		item.calculateWeaponType()
 
@@ -206,6 +211,7 @@ func createBiasItemFromID(id int32, amount int16, bias int8, average bool) (item
 	newItem.cash = nxInfo.Cash
 	newItem.invID = byte(id / 1e6)
 	newItem.id = id
+	newItem.buffTime = nxInfo.Time
 	newItem.accuracy = randomStat(nxInfo.IncACC, average)
 	newItem.avoid = randomStat(nxInfo.IncEVA, average)
 	newItem.speed = randomStat(nxInfo.IncSpeed, average)
@@ -309,7 +315,7 @@ func (v *item) setSlots(slots int) {
 }
 
 func (v item) isRechargeable() bool {
-	return (math.Floor(float64(v.id/10000)) == 207) // Taken from cliet
+	return float64(v.id/10000) == 207 // Taken from client
 }
 
 func (v item) shield() bool {
@@ -461,9 +467,11 @@ func (v item) use(plr *player) {
 		plr.giveMP(v.mp)
 	}
 
-	// Need to add stat buffs (W.ATT, M.ATT, etc)
-	// This will require timers to ensure buffs are removed once finished
+	if plr.buffs == nil {
+		plr.buffs = NewCharacterBuffs(plr)
+	}
 
+	plr.buffs.AddItemBuff(v)
 }
 
 // applyScrollEffects mutates the equip with the scroll increments from NX.

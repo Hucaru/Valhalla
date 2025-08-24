@@ -10,8 +10,9 @@ import (
 
 	"github.com/Hucaru/Valhalla/internal"
 
-	"github.com/Hucaru/Valhalla/mnet"
 	"github.com/Hucaru/Valhalla/mpacket"
+
+	"github.com/Hucaru/Valhalla/mnet"
 	"github.com/Hucaru/Valhalla/nx"
 )
 
@@ -182,6 +183,10 @@ func (server *Server) gmCommand(conn mnet.Client, msg string) {
 
 		if len(command) == 2 {
 			instanceID, err = strconv.Atoi(command[1])
+
+			if err != nil {
+				conn.Send(packetMessageRedText(err.Error()))
+			}
 		} else if len(command) == 3 {
 			player, err = server.players.getFromName(command[1])
 
@@ -191,6 +196,10 @@ func (server *Server) gmCommand(conn mnet.Client, msg string) {
 			}
 
 			instanceID, err = strconv.Atoi(command[2])
+
+			if err != nil {
+				conn.Send(packetMessageRedText(err.Error()))
+			}
 		}
 
 		field, ok := server.fields[player.mapID]
@@ -256,6 +265,12 @@ func (server *Server) gmCommand(conn mnet.Client, msg string) {
 
 		if len(command) == 3 {
 			player, err = server.players.getFromName(command[1])
+
+			if err != nil {
+				conn.Send(packetMessageRedText(err.Error()))
+				return
+			}
+
 			amount, err = strconv.Atoi(command[2])
 		} else if len(command) == 2 {
 			amount, err = strconv.Atoi(command[1])
@@ -278,6 +293,12 @@ func (server *Server) gmCommand(conn mnet.Client, msg string) {
 
 		if len(command) == 3 {
 			player, err = server.players.getFromName(command[1])
+
+			if err != nil {
+				conn.Send(packetMessageRedText(err.Error()))
+				return
+			}
+
 			amount, err = strconv.Atoi(command[2])
 		} else if len(command) == 2 {
 			amount, err = strconv.Atoi(command[1])
@@ -300,6 +321,12 @@ func (server *Server) gmCommand(conn mnet.Client, msg string) {
 
 		if len(command) == 3 {
 			player, err = server.players.getFromName(command[1])
+
+			if err != nil {
+				conn.Send(packetMessageRedText(err.Error()))
+				return
+			}
+
 			amount, err = strconv.Atoi(command[2])
 		} else if len(command) == 2 {
 			amount, err = strconv.Atoi(command[1])
@@ -318,6 +345,12 @@ func (server *Server) gmCommand(conn mnet.Client, msg string) {
 
 		if len(command) == 3 {
 			player, err = server.players.getFromName(command[1])
+
+			if err != nil {
+				conn.Send(packetMessageRedText(err.Error()))
+				return
+			}
+
 			amount, err = strconv.Atoi(command[2])
 		} else if len(command) == 2 {
 			amount, err = strconv.Atoi(command[1])
@@ -372,6 +405,12 @@ func (server *Server) gmCommand(conn mnet.Client, msg string) {
 
 		if len(command) == 3 {
 			plr, err = server.players.getFromName(command[1])
+
+			if err != nil {
+				conn.Send(packetMessageRedText(err.Error()))
+				return
+			}
+
 			amount, err = strconv.Atoi(command[2])
 		} else if len(command) == 2 {
 			amount, err = strconv.Atoi(command[1])
@@ -390,6 +429,12 @@ func (server *Server) gmCommand(conn mnet.Client, msg string) {
 
 		if len(command) == 3 {
 			player, err = server.players.getFromName(command[1])
+
+			if err != nil {
+				conn.Send(packetMessageRedText(err.Error()))
+				return
+			}
+
 			amount, err = strconv.Atoi(command[2])
 		} else if len(command) == 2 {
 			amount, err = strconv.Atoi(command[1])
@@ -565,7 +610,47 @@ func (server *Server) gmCommand(conn mnet.Client, msg string) {
 			return
 		}
 
-		server.warpPlayer(plr, dstField, portal)
+		err = server.warpPlayer(plr, dstField, portal)
+
+		if err != nil {
+			conn.Send(packetMessageRedText(err.Error()))
+		}
+	case "warpTo":
+		playerName := command[1]
+
+		person, err := server.players.getFromName(playerName)
+
+		if err != nil {
+			conn.Send(packetMessageRedText(err.Error()))
+			return
+		}
+
+		dstField, ok := server.fields[person.inst.fieldID]
+
+		if !ok {
+			conn.Send(packetMessageRedText("Invalid map id"))
+			return
+		}
+
+		portalID, err := person.inst.calculateNearestSpawnPortalID(person.pos)
+
+		if err != nil {
+			conn.Send(packetMessageRedText(err.Error()))
+			return
+		}
+
+		plr, err := server.players.getFromConn(conn)
+
+		if err != nil {
+			conn.Send(packetMessageRedText(err.Error()))
+			return
+		}
+
+		err = server.warpPlayer(plr, dstField, person.inst.portals[portalID])
+
+		if err != nil {
+			conn.Send(packetMessageRedText(err.Error()))
+		}
 	case "loadout":
 		player, err := server.players.getFromConn(conn)
 
@@ -710,7 +795,7 @@ func (server *Server) gmCommand(conn mnet.Client, msg string) {
 		}
 
 		for i := 0; i < count; i++ {
-			err := inst.lifePool.spawnMobFromID(mobID, plr.pos, false, true, true)
+			err := inst.lifePool.spawnMobFromID(mobID, plr.pos, false, true, true, plr.id)
 
 			if err != nil {
 				conn.Send(packetMessageRedText(err.Error()))
@@ -763,13 +848,89 @@ func (server *Server) gmCommand(conn mnet.Client, msg string) {
 
 		for i := 0; i < count; i++ {
 			for _, id := range mobID {
-				err = inst.lifePool.spawnMobFromID(id, plr.pos, false, true, true)
+				err = inst.lifePool.spawnMobFromID(id, plr.pos, false, true, true, plr.id)
 			}
 
 			if err != nil {
 				conn.Send(packetMessageRedText(err.Error()))
 				break
 			}
+		}
+	case "partyCreate":
+		plr, err := server.players.getFromConn(conn)
+
+		if err != nil {
+			conn.Send(packetMessageRedText(err.Error()))
+			return
+		}
+
+		server.world.Send(internal.PacketChannelPartyCreateRequest(plr.id, server.id, plr.mapID, int32(plr.job), int32(plr.level), plr.name))
+	case "guildCreate":
+		plr, err := server.players.getFromConn(conn)
+
+		if err != nil {
+			conn.Send(packetMessageRedText(err.Error()))
+			return
+		}
+
+		var controller *npcChatController
+
+		if program, ok := server.npcScriptStore.scripts["2010007"]; ok {
+			controller, err = createNpcChatController(2010007, conn, program, plr, server.fields, server.warpPlayer, server.world)
+
+			if err != nil {
+				conn.Send(packetMessageRedText(err.Error()))
+				return
+			}
+		}
+
+		if controller == nil {
+			log.Println("Unable to find guild npc script")
+			return
+		}
+
+		if err != nil {
+			log.Println("script init:", err)
+		}
+
+		server.npcChat[conn] = controller
+
+		if controller.run() {
+			delete(server.npcChat, conn)
+		}
+	case "guildDisband":
+		plr, err := server.players.getFromConn(conn)
+
+		if err != nil {
+			conn.Send(packetMessageRedText(err.Error()))
+			return
+		}
+
+		if plr.guild == nil {
+			conn.Send(packetMessageRedText("Not in guild, cannot disband"))
+		}
+
+		server.world.Send(internal.PacketGuildDisband(plr.guild.id))
+	case "guildPoints":
+		plr, err := server.players.getFromConn(conn)
+
+		if err != nil {
+			conn.Send(packetMessageRedText(err.Error()))
+			return
+		}
+
+		if plr.guild == nil {
+			conn.Send(packetMessageRedText("Not in guild, cannot disband"))
+		}
+
+		if len(command) == 2 {
+			points, err := strconv.Atoi(command[1])
+
+			if err != nil {
+				conn.Send(packetMessageRedText(err.Error()))
+			}
+
+			server.world.Send(internal.PacketGuildPointsUpdate(plr.guild.id, int32(points)))
 		}
 	case "testMob":
 		plr, err := server.players.getFromConn(conn)
@@ -793,7 +954,7 @@ func (server *Server) gmCommand(conn mnet.Client, msg string) {
 			return
 		}
 
-		err = inst.lifePool.spawnMobFromID(5100001, plr.pos, true, true, true)
+		err = inst.lifePool.spawnMobFromID(5100001, plr.pos, true, true, true, plr.id)
 
 		if err != nil {
 			conn.Send(packetMessageRedText(err.Error()))
@@ -845,6 +1006,11 @@ func (server *Server) gmCommand(conn mnet.Client, msg string) {
 
 		inst, err := field.getInstance(plr.inst.id)
 
+		if err != nil {
+			conn.Send(packetMessageRedText(err.Error()))
+			return
+		}
+
 		pool := inst.dropPool
 
 		var mesos int32 = 1000
@@ -866,7 +1032,7 @@ func (server *Server) gmCommand(conn mnet.Client, msg string) {
 
 		pool.createDrop(dropSpawnNormal, dropFreeForAll, mesos, plr.pos, true, plr.id, 0, drops...)
 	case "dropr":
-		var id int32 = -1
+		var id int32
 		var err error
 
 		if len(command) > 1 {
@@ -897,6 +1063,12 @@ func (server *Server) gmCommand(conn mnet.Client, msg string) {
 			return
 		}
 		inst, err := field.getInstance(plr.inst.id)
+
+		if err != nil {
+			conn.Send(packetMessageRedText(err.Error()))
+			return
+		}
+
 		pool := inst.dropPool
 		pool.removeDrop(0, id)
 	case "npco":
@@ -962,6 +1134,8 @@ func convertMapNameToID(name string) int32 {
 	// Misc
 	case "balrog":
 		return 105090900
+	case "guild":
+		return 200000301
 	default:
 		return 180000000
 	}

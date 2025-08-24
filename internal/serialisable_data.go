@@ -2,6 +2,7 @@ package internal
 
 import (
 	"github.com/Hucaru/Valhalla/common/opcode"
+	"github.com/Hucaru/Valhalla/constant"
 	"github.com/Hucaru/Valhalla/mnet"
 	"github.com/Hucaru/Valhalla/mpacket"
 )
@@ -72,4 +73,46 @@ func (c *Channel) SerialisePacket(reader *mpacket.Reader) {
 	c.Port = reader.ReadInt16()
 	c.MaxPop = reader.ReadInt16()
 	c.Pop = reader.ReadInt16()
+}
+
+type Party struct {
+	ID        int32
+	ChannelID [constant.MaxPartySize]int32
+	PlayerID  [constant.MaxPartySize]int32
+	Name      [constant.MaxPartySize]string
+	MapID     [constant.MaxPartySize]int32 // TODO: this can be removed as plr ptr is used
+	Job       [constant.MaxPartySize]int32
+	Level     [constant.MaxPartySize]int32
+}
+
+func (party Party) GeneratePacket() mpacket.Packet {
+	p := mpacket.NewPacket()
+	p.WriteInt32(party.ID)
+	p.WriteByte(byte(len(party.PlayerID)))
+
+	for i := 0; i < len(party.PlayerID); i++ {
+		p.WriteInt32(party.ChannelID[i])
+		p.WriteInt32(party.PlayerID[i])
+		p.WriteString(party.Name[i])
+		p.WriteInt32(party.MapID[i])
+		p.WriteInt32(party.Job[i])
+		p.WriteInt32(party.Level[i])
+	}
+
+	return p
+}
+
+func (party *Party) SerialisePacket(reader *mpacket.Reader) {
+	party.ID = reader.ReadInt32()
+
+	amount := reader.ReadByte()
+
+	for i := byte(0); i < amount; i++ {
+		party.ChannelID[i] = reader.ReadInt32()
+		party.PlayerID[i] = reader.ReadInt32()
+		party.Name[i] = reader.ReadString(reader.ReadInt16())
+		party.MapID[i] = reader.ReadInt32()
+		party.Job[i] = reader.ReadInt32()
+		party.Level[i] = reader.ReadInt32()
+	}
 }

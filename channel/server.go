@@ -91,6 +91,7 @@ type Server struct {
 	eventCtrl        map[string]*eventScriptController
 	eventScriptStore *scriptStore
 	parties          map[int32]*party
+	guilds           map[int32]*guild
 	rates            rates
 }
 
@@ -140,6 +141,7 @@ func (server *Server) Initialise(work chan func(), dbuser, dbpassword, dbaddress
 	server.loadScripts()
 
 	server.parties = make(map[int32]*party)
+	server.guilds = make(map[int32]*guild)
 }
 
 func (server *Server) loadScripts() {
@@ -258,6 +260,9 @@ func (server *Server) ClientDisconnected(conn mnet.Client) {
 		log.Println(saveErr)
 	}
 
+	// Save buff snapshot so it persists through logout (and server restarts)
+	plr.saveBuffSnapshot()
+
 	// Tear down any active NPC chat state
 	delete(server.npcChat, conn)
 
@@ -280,8 +285,14 @@ func (server *Server) ClientDisconnected(conn mnet.Client) {
 		return
 	}
 
+	var guildID int32 = 0
+
+	if plr.guild != nil {
+		guildID = plr.guild.id
+	}
+
 	// Not migrating: notify world and clear DB session state
-	server.world.Send(internal.PacketChannelPlayerDisconnect(plr.id, plr.name))
+	server.world.Send(internal.PacketChannelPlayerDisconnect(plr.id, plr.name, guildID))
 
 	if _, dbErr := common.DB.Exec("UPDATE characters SET channelID=? WHERE id=?", -1, plr.id); dbErr != nil {
 		log.Println(dbErr)
@@ -291,11 +302,3 @@ func (server *Server) ClientDisconnected(conn mnet.Client) {
 		log.Println("Unable to complete logout for ", conn.GetAccountID())
 	}
 }
-
-// SetScrollingHeaderMessage that appears at the top of game window
-// func (server *Server) SetScrollingHeaderMessage(msg string) {
-// 	server.header = msg
-// 	for _, v := range server.players {
-// 		v.send(message.PacketMessageScrollingHeader(msg))
-// 	}
-// }

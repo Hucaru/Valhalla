@@ -3,6 +3,7 @@ package world
 import (
 	"log"
 
+	"github.com/Hucaru/Valhalla/common"
 	"github.com/Hucaru/Valhalla/common/opcode"
 	"github.com/Hucaru/Valhalla/internal"
 	"github.com/Hucaru/Valhalla/mnet"
@@ -15,6 +16,18 @@ type Server struct {
 	login            mnet.Server
 	nextPartyID      int32
 	reusablePartyIDs []int32
+	parties          map[int32]*internal.Party
+}
+
+// Initialise internal state
+func (server *Server) Initialise(dbuser, dbpassword, dbaddress, dbport, dbdatabase string) {
+	err := common.ConnectToDB(dbuser, dbpassword, dbaddress, dbport, dbdatabase)
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	server.parties = make(map[int32]*internal.Party)
 }
 
 // RegisterWithLogin server
@@ -56,6 +69,7 @@ func (server Server) channelBroadcast(p mpacket.Packet) {
 
 func (server Server) forwardPacketToChannels(conn mnet.Server, reader mpacket.Reader) {
 	p := mpacket.NewPacket()
+	p.WriteByte(0)
 	p.WriteByte(0)
 	p.WriteBytes(reader.GetBuffer())
 	server.channelBroadcast(p)

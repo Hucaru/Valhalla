@@ -8,11 +8,7 @@ This project exists to preserve and archive an early version of the game (v28 of
 
 ## Client modifications
 
-- 00663007 - change to jmp for multiclient
-- 0041BD17 - fill with nop to remove internet explorer iframe advert after client close
-- 0066520B - push to stack resolution in y
-- 00665211 - push to stack resolution in x
-- 0066519c - mov 0x0 instead of 0x10 for windowed mode
+A DLL which will auto hook the functions to make a localhost and window mode can be found [here](https://github.com/Hucaru/maplestory-client-hook)
 
 ## Features
 
@@ -32,6 +28,7 @@ Login server:
 - [x] Channel selection
 - [x] Create character
 - [x] Delete character
+- [ ] Delete character informs world server
 - [x] Migrate to channel server
 - [x] Show worlds, channels, world status etc from information sent from world server
 - [x] Prevent players from accessing dead channel
@@ -45,10 +42,13 @@ World server:
 - [x] Forward player leaves game to channels
 - [x] Broadcast buddy events
 - [x] Broadcast party events
-- [ ] Broadcast guild events
-- [x] Forward whispers
-- [x] Allow gm command to activate exp/drop changes across all channels
+- [x] Broadcast guild events
+- [x] Forward whisphers
+- [x] Allow gm command to actiavate exp/drop changes accross all channels
 - [ ] Allow gm commands to update information displayed at login
+- [ ] Propagate character deletion to channels
+- [ ] Party sync when channel or world server are restarted
+- [ ] Guild sync when channel or world server are restarted
 
 Cashshop server:
 - [ ] List items
@@ -64,10 +64,10 @@ Channel server:
 - [x] Player allocate skill points
 - [x] Player stats
 - [x] Player use skills
-- [ ] Player skill logic (haste etc)
+- [x] Player skill logic (haste etc)
 - [x] Player inventory (needs a re-write)
-- [ ] Player use item (scrolls, potions etc)
-- [ ] Player drop item(s)
+- [x] Player use item (scrolls, potions etc)
+- [x] Player drop item(s)
 - [ ] Player pets
 - [x] NPC visible
 - [x] NPC movement
@@ -75,14 +75,12 @@ Channel server:
 - [x] NPC shops
 - [x] NPC stylist
 - [ ] NPC storage
-- [ ] PQ scripts
-- [ ] Event scripts
 - [x] Load scripts from folder (incl. hot loading)
 - [x] Map instancing
 - [x] Mob visible
 - [x] Mob movement
 - [x] Mob attack
-- [ ] Mob skills that cause stat changes
+- [ ] Mob skills that cause stat changes or summon other mobs (not on death)
 - [x] Mob death
 - [x] Mob respawn
 - [x] Mob spawns mob(s) on death
@@ -93,15 +91,32 @@ Channel server:
 - [x] Find / Map in buddy window
 - [x] Buddy list
 - [x] Buddy chat
-- [x] Party
+- [x] Party creation
+- [x] Party invite
+- [x] Party accept/reject
+- [x] Party expel
 - [x] Party chat
-- [ ] Guild
-- [ ] Guild chat
+- [ ] Party HP bar
+- [x] Guild creation/disband
+- [x] Guild invite
+- [x] Guild join/leave
+- [x] Guild emblem
+- [x] Guild chat
+- [x] Guild points update
+- [x] Guild rank titles change
+- [x] Guild rank update
+- [x] Guild notice update
+- [x] Guild expel
+- [x] Guild member online notice
+- [ ] PQs
+- [ ] Guild PQ
+- [x] Balrog boat invasion
+- [ ] Deleted character removes from guild
+- [ ] Deleted character removes from party
 - [ ] Trade
 - [ ] Communication Window
 - [ ] Quests
 - [ ] Reactors
-- [ ] Autonomous GM commands which can be started and stopped at will
 - [x] Server resets login status upon restart for dangling characters
 
 Metrics:
@@ -112,6 +127,7 @@ Metrics:
 - [ ] Ongoing trades
 - [ ] Ongoing minigames
 - [ ] Ongoing npc script interactions
+- [ ] Number of parties
 
 See screenshots section for an example Grafana dashboard
 
@@ -121,8 +137,9 @@ See screenshots section for an example Grafana dashboard
     - Reduce branches in frequent paths
     - Determine which pieces of data if any provide any benefit in being converted SOAs
 - Implement AES crypt (ontop of the shanda) and determine how to enable it in the client
-- Clean up passing nil to interface type function, should be new(type) as this causes nasty to find bugs as the nil value is not the interface itself but the value it holds
 - Move player save database operations into relevant systems
+- Player inventory needs a re-write
+- Investigate party reject invite packet from client (it looks like garbage)
 
 ## Acknowledgements
 
