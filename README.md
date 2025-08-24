@@ -1,7 +1,7 @@
 ![Alt text](img/logo.png?raw=true "Valhalla")
 
 [![Actions Status](https://github.com/Hucaru/Valhalla/workflows/Go/badge.svg)](https://github.com/Hucaru/Valhalla/actions)
-
+[Visit our Discord channel](https://discord.gg/KHky9Qy9jF)
 ## What is this?
 
 This project exists to preserve and archive an early version of the game (v28 of global)
