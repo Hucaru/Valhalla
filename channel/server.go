@@ -259,7 +259,17 @@ func (server *Server) ClientDisconnected(conn mnet.Client) {
 		}
 	}
 
-	go plr.Logout()
+	if server.dispatch != nil {
+		done := make(chan struct{})
+		server.dispatch <- func() {
+			plr.Logout()
+			close(done)
+		}
+		<-done
+	} else {
+		// Fallback
+		plr.Logout()
+	}
 
 	// Tear down any active NPC chat state
 	delete(server.npcChat, conn)
@@ -301,8 +311,7 @@ func (server *Server) ClientDisconnected(conn mnet.Client) {
 	}
 }
 
-// CheckpointAll now uses the saver to flush debounced/coalesced deltas for every player.
-func (server *Server) CheckpointAll() {
+func (server *Server) flushPlayers() {
 	for _, p := range server.players {
 		if p == nil {
 			continue
@@ -311,24 +320,44 @@ func (server *Server) CheckpointAll() {
 	}
 }
 
+// CheckpointAll now uses the saver to flush debounced/coalesced deltas for every player.
+func (server *Server) CheckpointAll() {
+	if server.dispatch == nil {
+		return
+	}
+	done := make(chan struct{})
+	server.dispatch <- func() {
+		server.flushPlayers()
+		close(done)
+	}
+	<-done
+}
+
 // startAutosave periodically flushes deltas via the saver.
 func (server *Server) startAutosave(ctx context.Context) {
-	flushTick := time.NewTicker(30 * time.Second)
+	const interval = 30 * time.Second
 
-	go func() {
-		defer flushTick.Stop()
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			case <-flushTick.C:
-				for _, p := range server.players {
-					if p == nil {
-						continue
-					}
-					flushNow(p)
-				}
-			}
+	if server.dispatch == nil {
+		return
+	}
+
+	var scheduleNext func()
+	scheduleNext = func() {
+		select {
+		case <-ctx.Done():
+			return
+		default:
 		}
-	}()
+		time.AfterFunc(interval, func() {
+			server.dispatch <- func() {
+				server.flushPlayers()
+				scheduleNext()
+			}
+		})
+	}
+
+	server.dispatch <- func() {
+		server.flushPlayers()
+		scheduleNext()
+	}
 }
