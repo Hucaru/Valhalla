@@ -3702,20 +3702,20 @@ func (server *Server) playerQuestOperation(conn mnet.Client, reader mpacket.Read
 	questID := reader.ReadInt16()
 
 	switch act {
-	case internal.OpQuestStarted:
+	case constant.QuestStarted:
 		if !plr.tryStartQuest(questID) {
 			plr.send(packetPlayerNoChange())
 		}
-	case internal.OpQuestCompleted:
+	case constant.QuestCompleted:
 		if !plr.tryCompleteQuest(questID) {
 			plr.send(packetPlayerNoChange())
 		}
-	case internal.OpQuestForfeit:
+	case constant.QuestForfeit:
 		plr.quests.remove(questID)
 		deleteQuest(plr.id, questID)
 		clearQuestMobKills(plr.id, questID)
 		plr.send(packetQuestRemove(questID))
-	case internal.OpQuestLostItem:
+	case constant.QuestLostItem:
 		count := reader.ReadInt16()
 		questItem := reader.ReadInt16()
 		if count > 0 {
@@ -3750,22 +3750,22 @@ func (server *Server) playerFame(conn mnet.Client, reader mpacket.Reader) {
 
 	target, err := server.players.getFromID(targetID)
 	if err != nil || target == nil || target.mapID != source.mapID {
-		source.send(packetFameError(internal.OpFameIncorrectUser))
+		source.send(packetFameError(constant.FameIncorrectUser))
 		return
 	}
 
 	if source.level < 15 {
-		source.send(packetFameError(internal.OpFameUnderLevel))
+		source.send(packetFameError(constant.FameUnderLevel))
 		return
 	}
 
 	if fameHasRecentActivity(source.id, 24*time.Hour) {
-		source.send(packetFameError(internal.OpFameThisDay))
+		source.send(packetFameError(constant.FameThisDay))
 		return
 	}
 
 	if fameHasRecentActivity(source.id, 30*24*time.Hour) {
-		source.send(packetFameError(internal.OpFameThisMonth))
+		source.send(packetFameError(constant.FameThisMonth))
 		return
 	}
 
