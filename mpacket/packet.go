@@ -28,6 +28,7 @@ func CreateWithOpcode(op byte) Packet {
 func CreateInternal(op byte) Packet {
 	p := Packet{}
 	p.WriteByte(0)
+	p.WriteByte(0)
 	p.WriteByte(op)
 
 	return p

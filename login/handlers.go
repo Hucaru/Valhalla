@@ -392,6 +392,10 @@ func (server *Server) handleDeleteCharacter(conn mnet.Client, reader mpacket.Rea
 		deleted = true
 	}
 
+	for _, v := range server.worlds { // TODO: Get the world index for the deleted character instead of sending it to all worlds
+		v.Conn.Send(internal.PacketLoginDeletedCharacter(charID))
+	}
+
 	conn.Send(packetLoginDeleteCharacter(charID, deleted, hacking))
 }
 

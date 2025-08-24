@@ -11,9 +11,9 @@ import (
 	"time"
 
 	"github.com/Hucaru/Valhalla/internal"
+	"github.com/Hucaru/Valhalla/mpacket"
 
 	"github.com/Hucaru/Valhalla/mnet"
-	"github.com/Hucaru/Valhalla/mpacket"
 	"github.com/Hucaru/Valhalla/world"
 )
 
@@ -55,6 +55,8 @@ func newWorldServer(configFile string) *worldServer {
 
 func (ws *worldServer) run() {
 	log.Println("World Server")
+
+	ws.state.Initialise(ws.dbConfig.User, ws.dbConfig.Password, ws.dbConfig.Address, ws.dbConfig.Port, ws.dbConfig.Database)
 
 	// Signal handler for graceful shutdown
 	ws.wg.Add(1)

@@ -75,7 +75,10 @@ func (cs *channelServer) run() {
 	log.Println("Loaded and parsed Wizet data (NX) in", elapsed)
 
 	start = time.Now()
-	channel.PopulateDropTable("drops.json")
+	if err := channel.PopulateDropTable("drops.json"); err != nil {
+		log.Fatal(err)
+	}
+
 	elapsed = time.Since(start)
 	log.Println("Loaded and parsed drop data in", elapsed)
 

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"math"
 	"math/rand"
 	"os"
@@ -40,9 +41,7 @@ func PopulateDropTable(dropJSON string) error {
 
 	jsonBytes, _ := ioutil.ReadAll(jsonFile)
 
-	json.Unmarshal(jsonBytes, &dropTable)
-
-	return nil
+	return json.Unmarshal(jsonBytes, &dropTable)
 }
 
 type item struct {
@@ -109,7 +108,7 @@ func loadInventoryFromDb(charID int32) ([]item, []item, []item, []item, []item) 
 
 		item := item{uuid: uuid.New()}
 
-		row.Scan(&item.dbID,
+		err := row.Scan(&item.dbID,
 			&item.invID,
 			&item.id,
 			&item.slotID,
@@ -134,6 +133,11 @@ func loadInventoryFromDb(charID int32) ([]item, []item, []item, []item, []item) 
 			&item.jump,
 			&item.expireTime,
 			&item.creatorName)
+
+		if err != nil {
+			log.Println(err)
+			continue
+		}
 
 		item.calculateWeaponType()
 
@@ -311,7 +315,7 @@ func (v *item) setSlots(slots int) {
 }
 
 func (v item) isRechargeable() bool {
-	return (math.Floor(float64(v.id/10000)) == 207) // Taken from cliet
+	return float64(v.id/10000) == 207 // Taken from client
 }
 
 func (v item) shield() bool {
