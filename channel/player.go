@@ -92,12 +92,11 @@ func getSkillsFromCharID(id int32) []playerSkill {
 	return skills
 }
 
-type updatePartyInfoFunc func(partyID, playerID, job, level int32, name string)
+type updatePartyInfoFunc func(partyID, playerID, job, level, mapID int32, name string)
 
 type player struct {
-	conn       mnet.Client
-	instanceID int
-	inst       *fieldInstance
+	conn mnet.Client
+	inst *fieldInstance
 
 	id        int32 // Unique identifier of the character
 	accountID int32
@@ -132,7 +131,6 @@ type player struct {
 	chairID int32
 	stance  byte
 	pos     pos
-	guild   string
 
 	equipSlotSize byte
 	useSlotSize   byte
@@ -158,6 +156,7 @@ type player struct {
 	buddyList     []buddy
 
 	party *party
+	guild *guild
 
 	UpdatePartyInfo updatePartyInfoFunc
 
@@ -238,7 +237,7 @@ func (d *player) setJob(id int16) {
 	d.conn.Send(packetPlayerStatChange(true, constant.JobID, int32(id)))
 
 	if d.party != nil {
-		d.party.updateJobLevel(d.id, int32(d.job), int32(d.level))
+		d.UpdatePartyInfo(d.party.ID, d.id, int32(d.job), int32(d.level), d.mapID, d.name)
 	}
 }
 
@@ -312,7 +311,7 @@ func (d *player) setLevel(amount byte) {
 	d.inst.send(packetPlayerLevelUpAnimation(d.id))
 
 	if d.party != nil {
-		d.party.updateJobLevel(d.id, int32(d.job), int32(d.level))
+		d.UpdatePartyInfo(d.party.ID, d.id, int32(d.job), int32(d.level), d.mapID, d.name)
 	}
 }
 
@@ -447,10 +446,6 @@ func (d *player) setFame(amount int16) {
 	}
 }
 
-func (d *player) addEquip(item item) {
-	d.equip = append(d.equip, item)
-}
-
 func (d *player) setMesos(amount int32) {
 	d.mesos = amount
 	d.send(packetPlayerStatChange(true, constant.MesosID, amount))
@@ -517,7 +512,7 @@ func (d *player) setMapID(id int32) {
 	d.mapID = id
 
 	if d.party != nil {
-		d.party.updatePlayerMap(d.id, d.mapID)
+		d.UpdatePartyInfo(d.party.ID, d.id, int32(d.job), int32(d.level), d.mapID, d.name)
 	}
 
 	if err := d.saveMapID(id, oldMapID); err != nil {
@@ -559,7 +554,7 @@ func (d *player) giveItem(newItem item) error { // TODO: Refactor
 		slot := 0
 
 		for i, v := range slotsUsed {
-			if v == false {
+			if !v {
 				slot = i + 1
 				break
 			}
@@ -1128,18 +1123,11 @@ func (d *player) damagePlayer(damage int16) {
 	d.send(packetPlayerStatChange(true, constant.HpID, int32(d.hp)))
 }
 
-// UpdateGuildInfo for the player
-func (d *player) UpdateGuildInfo() {
-	d.send(packetGuildInfo(0, "[Admins]", 0))
-}
-
-// UpdateBuddyInfo for the player
-func (d *player) UpdateBuddyInfo() {
+func (d *player) sendBuddyList() {
 	d.send(packetBuddyListSizeUpdate(d.buddyListSize))
 	d.send(packetBuddyInfo(d.buddyList))
 }
 
-// BuddyListFull checks if buddy list is full
 func (d player) buddyListFull() bool {
 	count := 0
 	for _, v := range d.buddyList {
@@ -1148,11 +1136,7 @@ func (d player) buddyListFull() bool {
 		}
 	}
 
-	if count < int(d.buddyListSize) {
-		return false
-	}
-
-	return true
+	return count >= int(d.buddyListSize)
 }
 
 func (d *player) addOnlineBuddy(id int32, name string, channel int32) {
@@ -1173,8 +1157,6 @@ func (d *player) addOnlineBuddy(id int32, name string, channel int32) {
 
 	d.buddyList = append(d.buddyList, newBuddy)
 	d.send(packetBuddyInfo(d.buddyList))
-
-	return
 }
 
 func (d *player) addOfflineBuddy(id int32, name string) {
@@ -1195,8 +1177,6 @@ func (d *player) addOfflineBuddy(id int32, name string) {
 
 	d.buddyList = append(d.buddyList, newBuddy)
 	d.send(packetBuddyInfo(d.buddyList))
-
-	return
 }
 
 func (d player) hasBuddy(id int32) bool {
@@ -2305,66 +2285,6 @@ func packetInventoryDontTake() mpacket.Packet {
 	return p
 }
 
-func packetGuildInfo(id int32, name string, memberCount byte) mpacket.Packet {
-	p := mpacket.CreateWithOpcode(opcode.SendChannelGuildInfo)
-	p.WriteByte(0x1a)
-
-	if len(name) == 0 {
-		p.WriteByte(0x00) // removes player from guild
-		return p
-	}
-
-	p.WriteBool(true) // In guild
-	p.WriteInt32(1)   // guild id (value cannot be zero)
-	p.WriteString(name)
-
-	// 5 ranks each have a title
-	p.WriteString("rank1")
-	p.WriteString("rank2")
-	p.WriteString("rank3")
-	p.WriteString("rank4")
-	p.WriteString("rank5")
-
-	capacity := 250             // maximum
-	p.WriteByte(byte(capacity)) // member count
-
-	// iterate over all members and output ids
-	for i := 0; i < capacity; i++ {
-		p.WriteInt32(int32(i + 1))
-	}
-
-	// iterate over all members and input their info
-	for i := 0; i < capacity; i++ {
-		p.WritePaddedString("[GM]Hucaru", 13) // name
-		p.WriteInt32(510)                     // job
-		p.WriteInt32(255)                     // level
-
-		if i > 4 {
-			p.WriteInt32(5) // rank starts at 1
-		} else {
-			p.WriteInt32(int32(i + 1)) // rank starts at 1
-		}
-
-		if i%2 == 0 {
-			p.WriteInt32(1) // online or not
-		} else {
-			p.WriteInt32(0)
-		}
-
-		p.WriteInt32(int32(i)) // ?
-	}
-
-	p.WriteInt32(int32(capacity)) // capacity
-	p.WriteInt16(1030)            // logo background
-	p.WriteByte(3)                // logo bg colour
-	p.WriteInt16(4017)            // logo
-	p.WriteByte(2)                // logo colour
-	p.WriteString("notice")       // notice
-	p.WriteInt32(9999)            // ?
-
-	return p
-}
-
 func packetBuddyInfo(buddyList []buddy) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelBuddyInfo)
 	p.WriteByte(0x12)
@@ -2414,7 +2334,11 @@ func packetPlayerAvatarSummaryWindow(charID int32, plr player) mpacket.Packet {
 	p.WriteInt16(plr.job)
 	p.WriteInt16(plr.fame)
 
-	p.WriteString(plr.guild)
+	if plr.guild != nil {
+		p.WriteString(plr.guild.name)
+	} else {
+		p.WriteString("")
+	}
 
 	p.WriteBool(false) // if has pet
 	p.WriteByte(0)     // wishlist count
@@ -2499,6 +2423,19 @@ func packetBuddyChangeChannel(id int32, channelID int32) mpacket.Packet {
 	p.WriteInt32(id)
 	p.WriteInt8(1)
 	p.WriteInt32(channelID)
+
+	return p
+}
+
+func packetMapChange(mapID int32, channelID int32, mapPos byte, hp int16) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelWarpToMap)
+	p.WriteInt32(channelID)
+	p.WriteByte(0) // character portal counter
+	p.WriteByte(0) // Is connecting
+	p.WriteInt32(mapID)
+	p.WriteByte(mapPos)
+	p.WriteInt16(hp)
+	p.WriteByte(0) // flag for more reading
 
 	return p
 }

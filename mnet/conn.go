@@ -61,7 +61,7 @@ func serverReader(conn net.Conn, eRecv chan *Event, headerSize int) {
 		}
 
 		if header {
-			readSize = int(buffer[0])
+			readSize = int(buffer[0]) | int(buffer[1])<<8
 		} else {
 			readSize = headerSize
 			eRecv <- &Event{Type: MEServerPacket, Conn: conn, Packet: buffer}
@@ -107,7 +107,9 @@ func (bc *baseConn) Writer() {
 		}
 
 		if bc.interServer {
-			tmp[0] = byte(len(tmp) - 1)
+			size := len(tmp) - 2
+			tmp[0] = byte(size & 0xff)
+			tmp[1] = byte((size >> 8) & 0xff)
 		}
 
 		if bc.latency > 0 {
@@ -121,10 +123,10 @@ func (bc *baseConn) Writer() {
 					time.Sleep(time.Duration(delta))
 				}
 
-				bc.Conn.Write(tmp)
+				_, _ = bc.Conn.Write(tmp)
 			}
 		} else {
-			bc.Conn.Write(tmp)
+			_, _ = bc.Conn.Write(tmp)
 		}
 	}
 }
