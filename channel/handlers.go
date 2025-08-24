@@ -272,6 +272,8 @@ func (server *Server) playerConnect(conn mnet.Client, reader mpacket.Reader) {
 			log.Fatal(err)
 		}
 
+		defer row.Close()
+
 		for row.Next() { // We should only ever have 1 row
 			row.Scan(&guildID, &inviter)
 			newPlr.send(packetGuildInviteCard(guildID, inviter))
@@ -2775,6 +2777,8 @@ func (server *Server) guildManagement(conn mnet.Client, reader mpacket.Reader) {
 			log.Fatal(err)
 		}
 
+		defer row.Close()
+
 		for row.Next() {
 			row.Scan(&playerID, &guildID, &worldID, &channelID)
 		}
@@ -3076,6 +3080,8 @@ func (server *Server) handleNewChannelOK(conn mnet.Server, reader mpacket.Reader
 		log.Fatal(err)
 	}
 
+	defer accountIDs.Close()
+
 	for accountIDs.Next() {
 		var accountID int
 		err := accountIDs.Scan(&accountID)
@@ -3090,8 +3096,6 @@ func (server *Server) handleNewChannelOK(conn mnet.Server, reader mpacket.Reader
 			log.Fatal(err)
 		}
 	}
-
-	accountIDs.Close()
 
 	_, err = common.DB.Exec("UPDATE characters SET channelID=? WHERE channelID=?", -1, server.id)
 
