@@ -48,28 +48,33 @@ data:
     listenAddress = "0.0.0.0"
     listenPort = "8584"
     packetQueueSize = {{ .Values.world.packetQueueSize }}
+
+{{- $root := . -}}
+{{ $replicas := int .Values.channel.replicas -}}
+{{- range $i, $_ := until $replicas }}
 ---
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: channel-config
-  namespace: {{ .Release.Namespace }}
+  name: channel-config-{{ add $i 1 }}
+  namespace: {{ $root.Release.Namespace }}
 data:
   config_channel.toml: |
     [database]
-    address = "{{ .Values.mysql.host }}"
-    port = "{{ .Values.mysql.port }}"
-    user = "{{ .Values.mysql.user }}"
-    password = "{{ .Values.mysql.password }}"
-    database = "{{ .Values.mysql.database }}"
+    address = "{{ $root.Values.mysql.host }}"
+    port = "{{ $root.Values.mysql.port }}"
+    user = "{{ $root.Values.mysql.user }}"
+    password = "{{ $root.Values.mysql.password }}"
+    database = "{{ $root.Values.mysql.database }}"
 
     [channel]
-    worldAddress = "world-server.{{ .Release.Namespace }}.svc.{{ .Values.clusterDomain }}"
+    worldAddress = "world-server.{{ $root.Release.Namespace }}.svc.{{ $root.Values.clusterDomain }}"
     worldPort = "8584"
     listenAddress = "0.0.0.0"
-    listenPort = "8685"
+    listenPort = "{{ sub 8685 $i }}"
     clientConnectionAddress = "127.0.0.1"
-    packetQueueSize = {{ .Values.channel.packetQueueSize }}
-    maxPop = {{ .Values.channel.maxPop }}
-    latency = {{ .Values.channel.latency }}
-    jitter = {{ .Values.channel.jitter }}
+    packetQueueSize = {{ $root.Values.channel.packetQueueSize }}
+    maxPop = {{ $root.Values.channel.maxPop }}
+    latency = {{ $root.Values.channel.latency }}
+    jitter = {{ $root.Values.channel.jitter }}
+{{- end }}

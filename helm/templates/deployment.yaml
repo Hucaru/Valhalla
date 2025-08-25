@@ -3,7 +3,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: login-server
-  namespace: valhalla
+  namespace: {{ .Release.Namespace }}
 spec:
   replicas: 1
   selector:
@@ -44,7 +44,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: world-server
-  namespace: valhalla
+  namespace: {{ .Release.Namespace }}
 spec:
   replicas: 1
   selector:
@@ -88,7 +88,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: channel-server-{{ add $i 1 }}
-  namespace: valhalla
+  namespace: {{ $root.Release.Namespace }}
 spec:
   replicas: 1
   selector:
@@ -110,11 +110,11 @@ spec:
               mountPath: /app/docker/docker_config_channel.toml
               subPath: docker_config_channel.toml
           ports:
-            - containerPort: 8685
+            - containerPort: {{ sub 8685 $i }}
       volumes:
         - name: cfg
           configMap:
-            name: channel-config
+            name: channel-config-{{ add $i 1 }}
             items:
               - key: config_channel.toml
                 path: docker_config_channel.toml
