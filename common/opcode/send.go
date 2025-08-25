@@ -47,6 +47,11 @@ const (
 	SendChannelAllChatMsg              byte = 0x51
 	SendChannelRoomBox                 byte = 0x52
 	SendChannelUseScroll               byte = 0x54
+	SendChannelSpawnSpecialMapObject   byte = 0x5D
+	SendChannelRemoveSpecialMapObject  byte = 0x5E
+	SendChannelSummonMove              byte = 0x5F
+	SendChannelSummonAttack            byte = 0x60
+	SendChannelSummonDamage            byte = 0x61
 	SendChannelPlayerMovement          byte = 0x65
 	SendChannelPlayerUseMeleeSkill     byte = 0x66
 	SendChannelPlayerUseRangedSkill    byte = 0x67
@@ -80,5 +85,4 @@ const (
 	SendChannelNpcShopResult           byte = 0xC9
 	SendChannelNpcStorage              byte = 0xCD
 	SendChannelRoom                    byte = 0xDC
-	SendChannelSummonOperation         byte = 0xE0 //placeholder idk what packet is yet
 )

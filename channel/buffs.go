@@ -136,6 +136,9 @@ func LoadBuffs() {
 	AddSkillBuff(int32(skill.GMHaste), BuffSpeed, BuffJump)
 	AddSkillBuff(int32(skill.GMHolySymbol), BuffHolySymbol)
 	AddSkillBuff(int32(skill.Hide), BuffInvincible)
+
+	AddSkillBuff(int32(skill.SilverHawk), BuffComboAttack)
+	AddSkillBuff(int32(skill.Puppet), BuffPickPocketMesoUP)
 }
 
 func init() {
@@ -272,6 +275,8 @@ func (cb *CharacterBuffs) buildBuffTriplesWireOrder(skillID int32, level byte, m
 				return int16(sl.Pad)
 			}
 			return 1
+		case BuffStun:
+			return int16(sl.X)
 		default:
 			return 1
 		}

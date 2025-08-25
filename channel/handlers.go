@@ -3485,11 +3485,6 @@ func (server *Server) playerSpecialSkill(conn mnet.Client, reader mpacket.Reader
 		}
 		_ = reader.ReadInt16() // delay
 	}
-	readXY := func() (int16, int16) {
-		x := reader.ReadInt16()
-		y := reader.ReadInt16()
-		return x, y
-	}
 
 	switch skill.Skill(skillID) {
 	// Party buffs handled earlier remain unchanged...
@@ -3543,16 +3538,33 @@ func (server *Server) playerSpecialSkill(conn mnet.Client, reader mpacket.Reader
 	case skill.SummonDragon,
 		skill.SilverHawk, skill.GoldenEagle,
 		skill.Puppet, skill.SniperPuppet:
-		x, y := readXY()
-
 		isPuppet := (skill.Skill(skillID) == skill.Puppet || skill.Skill(skillID) == skill.SniperPuppet)
+
+		spawn := plr.pos
+
+		if isPuppet {
+			desiredX := plr.pos.x
+			if (plr.stance & 0x01) == 0 {
+				desiredX += 200 // facing right
+			} else {
+				desiredX -= 200 // facing left
+			}
+			if fld, ok := server.fields[plr.mapID]; ok {
+				if inst, err := fld.getInstance(plr.inst.id); err == nil {
+					// Snap to floor at desiredX using the existing histogram
+					snapped := inst.fhHist.getFinalPosition(newPos(desiredX, plr.pos.y, 0))
+					spawn = snapped
+				}
+			}
+		}
+
 		summ := &Summon{
 			OwnerID:    plr.id,
 			SkillID:    skillID,
 			Level:      skillLevel,
-			Pos:        pos{x: x, y: y},
+			Pos:        spawn,
 			Stance:     0,
-			Foothold:   0,
+			Foothold:   spawn.foothold,
 			IsPuppet:   isPuppet,
 			SummonType: 0,
 		}
@@ -3572,6 +3584,8 @@ func (server *Server) playerSpecialSkill(conn mnet.Client, reader mpacket.Reader
 		}
 
 		server.addSummon(plr, summ, durationSec)
+		plr.addBuff(skillID, skillLevel, delay)
+		plr.inst.send(packetPlayerSkillAnimThirdParty(plr.id, false, true, skillID, skillLevel))
 
 	default:
 		// Always send a self animation so client shows casting even for non-buffs.
