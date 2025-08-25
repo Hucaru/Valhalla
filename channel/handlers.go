@@ -3540,7 +3540,7 @@ func (server *Server) playerSpecialSkill(conn mnet.Client, reader mpacket.Reader
 		skill.Doom:
 		readMobListAndDelay()
 
-	// Summons and puppet: [x short][y short]
+	// Summons and puppet:
 	case skill.SummonDragon,
 		skill.SilverHawk, skill.GoldenEagle,
 		skill.Puppet, skill.SniperPuppet:
@@ -3557,7 +3557,6 @@ func (server *Server) playerSpecialSkill(conn mnet.Client, reader mpacket.Reader
 			}
 			if fld, ok := server.fields[plr.mapID]; ok {
 				if inst, err := fld.getInstance(plr.inst.id); err == nil {
-					// Snap to floor at desiredX using the existing histogram
 					snapped := inst.fhHist.getFinalPosition(newPos(desiredX, plr.pos.y, 0))
 					spawn = snapped
 				}

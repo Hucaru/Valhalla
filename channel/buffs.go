@@ -138,7 +138,10 @@ func LoadBuffs() {
 	AddSkillBuff(int32(skill.Hide), BuffInvincible)
 
 	AddSkillBuff(int32(skill.SilverHawk), BuffComboAttack)
+	AddSkillBuff(int32(skill.GoldenEagle), BuffComboAttack)
 	AddSkillBuff(int32(skill.Puppet), BuffPickPocketMesoUP)
+	AddSkillBuff(int32(skill.SniperPuppet), BuffPickPocketMesoUP)
+	AddSkillBuff(int32(skill.SummonDragon), BuffComboAttack)
 }
 
 func init() {
