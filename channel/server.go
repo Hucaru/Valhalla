@@ -144,8 +144,6 @@ func (server *Server) Initialise(work chan func(), dbuser, dbpassword, dbaddress
 	server.parties = make(map[int32]*party)
 	server.guilds = make(map[int32]*guild)
 
-	// Start periodic autosave
-	server.startAutosave(context.Background())
 }
 
 func (server *Server) loadScripts() {
@@ -241,7 +239,6 @@ func (server *Server) ClientDisconnected(conn mnet.Client) {
 		return
 	}
 
-	// Always perform connection cleanup and metrics decrement
 	defer func() {
 		conn.Cleanup()
 		common.MetricsGauges["player_count"].With(prometheus.Labels{
@@ -250,7 +247,6 @@ func (server *Server) ClientDisconnected(conn mnet.Client) {
 		}).Dec()
 	}()
 
-	// Try to remove the player from their current instance
 	if field, ok := server.fields[plr.mapID]; ok {
 		if inst, ierr := field.getInstance(plr.inst.id); ierr == nil {
 			if remErr := inst.removePlayer(plr); remErr != nil {
@@ -259,53 +255,34 @@ func (server *Server) ClientDisconnected(conn mnet.Client) {
 		}
 	}
 
-	if server.dispatch != nil {
-		done := make(chan struct{})
-		server.dispatch <- func() {
-			plr.Logout()
-			close(done)
-		}
-		<-done
-	} else {
-		// Fallback
-		plr.Logout()
-	}
+	plr.Logout()
 
-	// Tear down any active NPC chat state
 	delete(server.npcChat, conn)
 
-	// Remove from in-memory player list
 	if remPlrErr := server.players.removeFromConn(conn); remPlrErr != nil {
 		log.Println(remPlrErr)
 	}
 
-	// Remove from migrating slice if present
-	migratingIdx := -1
-	for i, v := range server.migrating {
-		if v == conn {
-			migratingIdx = i
-			break
+	if idx := func() int {
+		for i, v := range server.migrating {
+			if v == conn {
+				return i
+			}
 		}
-	}
-
-	if migratingIdx > -1 {
-		server.migrating = append(server.migrating[:migratingIdx], server.migrating[migratingIdx+1:]...)
-		return
+		return -1
+	}(); idx > -1 {
+		server.migrating = append(server.migrating[:idx], server.migrating[idx+1:]...)
 	}
 
 	var guildID int32 = 0
-
 	if plr.guild != nil {
 		guildID = plr.guild.id
 	}
-
-	// Not migrating: notify world and clear DB session state
 	server.world.Send(internal.PacketChannelPlayerDisconnect(plr.id, plr.name, guildID))
 
 	if _, dbErr := common.DB.Exec("UPDATE characters SET channelID=? WHERE id=?", -1, plr.id); dbErr != nil {
 		log.Println(dbErr)
 	}
-
 	if _, dbErr := common.DB.Exec("UPDATE accounts SET isLogedIn=0 WHERE accountID=?", conn.GetAccountID()); dbErr != nil {
 		log.Println("Unable to complete logout for ", conn.GetAccountID())
 	}
@@ -334,12 +311,11 @@ func (server *Server) CheckpointAll() {
 }
 
 // startAutosave periodically flushes deltas via the saver.
-func (server *Server) startAutosave(ctx context.Context) {
-	const interval = 30 * time.Second
-
+func (server *Server) StartAutosave(ctx context.Context) {
 	if server.dispatch == nil {
 		return
 	}
+	const interval = 30 * time.Second
 
 	var scheduleNext func()
 	scheduleNext = func() {
