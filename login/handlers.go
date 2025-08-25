@@ -3,6 +3,7 @@ package login
 import (
 	"crypto/sha512"
 	"encoding/hex"
+	"fmt"
 	"log"
 	"strings"
 
@@ -19,6 +20,8 @@ func (server *Server) HandleClientPacket(conn mnet.Client, reader mpacket.Reader
 	switch reader.ReadByte() {
 	case opcode.RecvLoginRequest:
 		server.handleLoginRequest(conn, reader)
+	case opcode.RecvLoginEULA:
+		server.handleEULA(conn, reader)
 	case opcode.RecvLoginCheckLogin:
 		server.handleGoodLogin(conn, reader)
 	case opcode.RecvLoginRegisterPin:
@@ -45,7 +48,7 @@ func (server *Server) HandleClientPacket(conn mnet.Client, reader mpacket.Reader
 func (server *Server) handleLoginRequest(conn mnet.Client, reader mpacket.Reader) {
 	username := reader.ReadString(reader.ReadInt16())
 	password := reader.ReadString(reader.ReadInt16())
-	// hash the password, cba to salt atm
+	// hash the password
 	hasher := sha512.New()
 	hasher.Write([]byte(password))
 	hashedPassword := hex.EncodeToString(hasher.Sum(nil))
@@ -57,13 +60,15 @@ func (server *Server) handleLoginRequest(conn mnet.Client, reader mpacket.Reader
 	var isLogedIn bool
 	var isBanned int
 	var adminLevel int
+	var eula byte
 
-	err := common.DB.QueryRow("SELECT accountID, username, password, gender, isLogedIn, isBanned, adminLevel FROM accounts WHERE username=?", username).
-		Scan(&accountID, &user, &databasePassword, &gender, &isLogedIn, &isBanned, &adminLevel)
+	err := common.DB.QueryRow("SELECT accountID, username, password, gender, isLogedIn, isBanned, adminLevel, eula FROM accounts WHERE username=?", username).
+		Scan(&accountID, &user, &databasePassword, &gender, &isLogedIn, &isBanned, &adminLevel, &eula)
 
 	result := byte(0x00)
 
 	if err != nil {
+		fmt.Println(err)
 		result = 0x05
 	} else if hashedPassword != databasePassword {
 		result = 0x04
@@ -71,18 +76,38 @@ func (server *Server) handleLoginRequest(conn mnet.Client, reader mpacket.Reader
 		result = 0x07
 	} else if isBanned > 0 {
 		result = 0x02
+	} else if eula == 0 {
+		result = 0x17
 	}
 
 	// Banned = 2, Deleted or Blocked = 3, Invalid Password = 4, Not Registered = 5, Sys Error = 6,
-	// Already online = 7, System error = 9, Too many requests = 10, Older than 20 = 11, Master cannot login on this IP = 13
+	// Already online = 7, System error = 9, Too many requests = 10, Older than 20 = 11, valid login = 12, Master cannot login on this IP = 13,
+	// wrong gateway korean text = 14, still processing request korean text = 15, verify email = 16, gateway english text = 17,
+	// verify email = 21, eula = 23
 
 	if result <= 0x01 {
 		conn.SetGender(gender)
 		conn.SetAdminLevel(adminLevel)
 		conn.SetAccountID(accountID)
+	} else if result == 0x17 {
+		conn.SetAccountID(accountID)
 	}
 
 	conn.Send(packetLoginResponse(result, accountID, gender, adminLevel > 0, username, isBanned))
+}
+
+func (server *Server) handleEULA(conn mnet.Client, reader mpacket.Reader) {
+	accept := reader.ReadBool()
+
+	if accept {
+		_, err := common.DB.Exec("UPDATE accounts SET eula=? WHERE accountID=?", 1, conn.GetAccountID())
+
+		if err != nil {
+			log.Println("Could not set EULA signed", err)
+		}
+
+		conn.Send(packetLoginReturnFromChannel())
+	}
 }
 
 func (server *Server) handlePinRegistration(conn mnet.Client, reader mpacket.Reader) {
@@ -192,8 +217,6 @@ func (server *Server) handleWorldSelect(conn mnet.Client, reader mpacket.Reader)
 		} else if float64(currentPlayers)/float64(maxPlayers) > 0.90 { // I'm not sure if this warning is even worth it
 			warning = 1
 		}
-
-		// implement server total registered characters lookup for population field
 	}
 
 	conn.Send(packetLoginWorldInfo(warning, population)) // hard coded for now
@@ -392,7 +415,7 @@ func (server *Server) handleDeleteCharacter(conn mnet.Client, reader mpacket.Rea
 		deleted = true
 	}
 
-	for _, v := range server.worlds { // TODO: Get the world index for the deleted character instead of sending it to all worlds
+	for _, v := range server.worlds {
 		v.Conn.Send(internal.PacketLoginDeletedCharacter(charID))
 	}
 

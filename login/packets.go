@@ -17,9 +17,8 @@ func packetLoginResponse(result byte, userID int32, gender byte, isAdmin bool, u
 	if result <= 0x01 {
 		pac.WriteInt32(userID)
 		pac.WriteByte(gender)
-		// pac.WriteByte(isAdmin)
 		pac.WriteBool(isAdmin)
-		pac.WriteByte(0x01)
+		pac.WriteByte(0x01) // country id
 		pac.WriteString(username)
 	} else if result == 0x02 {
 		pac.WriteByte(byte(isBanned))

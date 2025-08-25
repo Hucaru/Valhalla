@@ -17,18 +17,16 @@ General:
 
 Login server:
 - [x] Login user
-- [ ] Show EULA on first login
-- [ ] Perform gender select on first login
+- [x] Show EULA on first login
 - [X] Pin
 - [x] Display world ribbons
 - [x] Display world messages
 - [x] Display world status (e.g. overpopulated)
 - [x] World selection
-- [ ] Lock character creation on world if full
 - [x] Channel selection
 - [x] Create character
 - [x] Delete character
-- [ ] Delete character informs world server
+- [x] Delete character informs world servers
 - [x] Migrate to channel server
 - [x] Show worlds, channels, world status etc from information sent from world server
 - [x] Prevent players from accessing dead channel

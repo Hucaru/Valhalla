@@ -2,6 +2,7 @@ package opcode
 
 const (
 	RecvLoginRequest               byte = 0x01
+	RecvLoginEULA                  byte = 0x06
 	RecvLoginChannelSelect         byte = 0x04
 	RecvLoginWorldSelect           byte = 0x05
 	RecvLoginCheckLogin            byte = 0x08
