@@ -191,6 +191,36 @@ func (tracker *npcChatStateTracker) popState() {
 	tracker.lastPos--
 }
 
+func (tracker *npcChatStateTracker) currentSelection() int32 {
+	if tracker.selection >= 0 && tracker.selection < len(tracker.selections) {
+		return tracker.selections[tracker.selection]
+	}
+	if len(tracker.selections) > 0 {
+		return tracker.selections[len(tracker.selections)-1]
+	}
+	return 0
+}
+
+func (tracker *npcChatStateTracker) currentInputString() string {
+	if tracker.input >= 0 && tracker.input < len(tracker.inputs) {
+		return tracker.inputs[tracker.input]
+	}
+	if len(tracker.inputs) > 0 {
+		return tracker.inputs[len(tracker.inputs)-1]
+	}
+	return ""
+}
+
+func (tracker *npcChatStateTracker) currentNumber() int32 {
+	if tracker.number >= 0 && tracker.number < len(tracker.numbers) {
+		return tracker.numbers[tracker.number]
+	}
+	if len(tracker.numbers) > 0 {
+		return tracker.numbers[len(tracker.numbers)-1]
+	}
+	return 0
+}
+
 type warpFn func(plr *player, dstField *field, dstPortal portal) error
 
 type npcChatPlayerController struct {
@@ -228,6 +258,10 @@ func (ctrl *npcChatPlayerController) Mesos() int32 {
 
 func (ctrl *npcChatPlayerController) GiveMesos(amount int32) {
 	ctrl.plr.giveMesos(amount)
+}
+
+func (ctrl *npcChatPlayerController) TakeMesos(amount int32) {
+	ctrl.plr.takeMesos(amount)
 }
 
 func (ctrl *npcChatPlayerController) GiveItem(id int32, amount int16) bool {
@@ -385,6 +419,36 @@ func (ctrl *npcChatPlayerController) Quest(id int16) scriptQuestView {
 	}
 }
 
+func (ctrl *npcChatPlayerController) SetLevel(level byte) {
+	ctrl.plr.setLevel(level)
+}
+
+func (ctrl *npcChatPlayerController) TakeItem(id int32, amount int16) bool {
+	item, err := ctrl.plr.takeItemAnySlot(id, amount)
+	if err != nil {
+		return false
+	}
+
+	_, err = ctrl.plr.takeItem(item.id, item.slotID, item.amount, item.invID)
+	if err != nil {
+		return false
+	}
+
+	return true
+}
+
+func (ctrl *npcChatPlayerController) HasEquipped(id int32) bool {
+	return ctrl.plr.hasEquipped(id)
+}
+
+func (ctrl *npcChatPlayerController) SetSkinColor(skin byte) {
+	ctrl.plr.setSkinColor(skin)
+}
+
+func (ctrl *npcChatPlayerController) MapId() int32 {
+	return ctrl.plr.mapID
+}
+
 type npcChatController struct {
 	npcID int32
 	conn  mnet.Client
@@ -456,6 +520,134 @@ func (ctrl *npcChatController) SendYesNo(msg string) bool {
 	}
 
 	return false
+}
+
+// AskMenu opens a selection window.
+func (ctrl *npcChatController) AskMenu(baseText string, selections ...string) int32 {
+	if len(selections) == 0 {
+		// Treat baseText as already formatted selection list
+		if ctrl.stateTracker.performInterrupt() {
+			ctrl.conn.Send(packetNpcChatSelection(ctrl.npcID, baseText))
+			ctrl.vm.Interrupt("AskMenu")
+			return 0
+		}
+		return ctrl.stateTracker.currentSelection()
+	}
+
+	// Build selection text as 1-based options
+	var b strings.Builder
+	if baseText != "" {
+		b.WriteString(baseText)
+		if !strings.HasSuffix(baseText, "\r\n") {
+			b.WriteString("\r\n")
+		}
+	}
+	for i, opt := range selections {
+		// Options numbered 1..N to match typical cm.askMenu usage
+		fmt.Fprintf(&b, "#L%d#%s#l\r\n", i+1, opt)
+	}
+
+	if ctrl.stateTracker.performInterrupt() {
+		ctrl.conn.Send(packetNpcChatSelection(ctrl.npcID, b.String()))
+		ctrl.vm.Interrupt("AskMenu")
+		return 0
+	}
+	return ctrl.stateTracker.currentSelection()
+}
+
+// AskSlideMenu emulates a slide menu using a standard selection window.
+func (ctrl *npcChatController) AskSlideMenu(text string) int32 {
+	if ctrl.stateTracker.performInterrupt() {
+		ctrl.conn.Send(packetNpcChatSelection(ctrl.npcID, text))
+		ctrl.vm.Interrupt("AskSlideMenu")
+		return 0
+	}
+	return ctrl.stateTracker.currentSelection()
+}
+
+// AskAvatar opens the style chooser and returns the chosen style id/index (engine will provide via selection).
+func (ctrl *npcChatController) AskAvatar(text string, avatars ...int32) int32 {
+	if ctrl.stateTracker.performInterrupt() {
+		ctrl.conn.Send(packetNpcChatStyleWindow(ctrl.npcID, text, avatars))
+		ctrl.vm.Interrupt("AskAvatar")
+		return 0
+	}
+	return ctrl.stateTracker.currentSelection()
+}
+
+// AskImage shows an image prompt using a Back/Next page and returns a simple OK(1)/Cancel(0) style selection.
+func (ctrl *npcChatController) AskImage(imagePath string, extraData int32) int32 {
+	// Compose a selection that includes the image and two choices
+	msg := fmt.Sprintf("#F%s#\r\n#L1#OK#l\r\n#L0#Cancel#l\r\n", imagePath)
+	if ctrl.stateTracker.performInterrupt() {
+		ctrl.conn.Send(packetNpcChatSelection(ctrl.npcID, msg))
+		ctrl.vm.Interrupt("AskImage")
+		return 0
+	}
+	return ctrl.stateTracker.currentSelection()
+}
+
+// AskText prompts for free text (shortcut wrapper around SendInputText).
+func (ctrl *npcChatController) AskText(text string) string {
+	if ctrl.stateTracker.performInterrupt() {
+		ctrl.conn.Send(packetNpcChatUserString(ctrl.npcID, text, "", 0, 300))
+		ctrl.vm.Interrupt("AskText")
+		return ""
+	}
+	return ctrl.stateTracker.currentInputString()
+}
+
+// AskBoxText prompts for larger text with a suggested size (column*line). Falls back to a safe max if <= 0.
+func (ctrl *npcChatController) AskBoxText(askMsg string, defaultAnswer string, column, line int) string {
+	maxLen := int16(column * line)
+	if maxLen <= 0 {
+		maxLen = 600
+	}
+	if ctrl.stateTracker.performInterrupt() {
+		ctrl.conn.Send(packetNpcChatUserString(ctrl.npcID, askMsg, defaultAnswer, 0, maxLen))
+		ctrl.vm.Interrupt("AskBoxText")
+		return ""
+	}
+	return ctrl.stateTracker.currentInputString()
+}
+
+// AskQuiz emulates a quiz input by using a text input field. Time limits are not enforced at engine-level here.
+func (ctrl *npcChatController) AskQuiz(text, problem, hint string, inputMin, inputMax, limitTime int) string {
+	// Combine prompt + problem + optional hint
+	var b strings.Builder
+	if text != "" {
+		b.WriteString(text)
+		b.WriteString("\r\n")
+	}
+	if problem != "" {
+		b.WriteString(problem)
+		b.WriteString("\r\n")
+	}
+	if hint != "" {
+		b.WriteString("#g")
+		b.WriteString(hint)
+		b.WriteString("#k\r\n")
+	}
+	maxLen := int16(inputMax)
+	if maxLen <= 0 {
+		maxLen = 300
+	}
+	if ctrl.stateTracker.performInterrupt() {
+		ctrl.conn.Send(packetNpcChatUserString(ctrl.npcID, b.String(), "", int16(inputMin), maxLen))
+		ctrl.vm.Interrupt("AskQuiz")
+		return ""
+	}
+	return ctrl.stateTracker.currentInputString()
+}
+
+// AskNumber prompts for a number with bounds (shortcut wrapper around SendInputNumber).
+func (ctrl *npcChatController) AskNumber(text string, def, min, max int32) int32 {
+	if ctrl.stateTracker.performInterrupt() {
+		ctrl.conn.Send(packetNpcChatUserNumber(ctrl.npcID, text, def, min, max))
+		ctrl.vm.Interrupt("AskNumber")
+		return 0
+	}
+	return ctrl.stateTracker.currentNumber()
 }
 
 // SendInputText packet to player
@@ -844,4 +1036,8 @@ func (p *playerWrapper) GiveJob(id int16) {
 func (p *playerWrapper) GainItem(id int32, amount int16) {
 	item, _ := createAverageItemFromID(id, amount)
 	p.giveItem(item)
+}
+
+func (p *playerWrapper) TakeItem(id int32, amount int16) {
+	p.takeItemAnySlot(id, amount)
 }
