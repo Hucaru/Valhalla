@@ -191,6 +191,36 @@ func (tracker *npcChatStateTracker) popState() {
 	tracker.lastPos--
 }
 
+func (tracker *npcChatStateTracker) currentSelection() int32 {
+	if tracker.selection >= 0 && tracker.selection < len(tracker.selections) {
+		return tracker.selections[tracker.selection]
+	}
+	if len(tracker.selections) > 0 {
+		return tracker.selections[len(tracker.selections)-1]
+	}
+	return 0
+}
+
+func (tracker *npcChatStateTracker) currentInputString() string {
+	if tracker.input >= 0 && tracker.input < len(tracker.inputs) {
+		return tracker.inputs[tracker.input]
+	}
+	if len(tracker.inputs) > 0 {
+		return tracker.inputs[len(tracker.inputs)-1]
+	}
+	return ""
+}
+
+func (tracker *npcChatStateTracker) currentNumber() int32 {
+	if tracker.number >= 0 && tracker.number < len(tracker.numbers) {
+		return tracker.numbers[tracker.number]
+	}
+	if len(tracker.numbers) > 0 {
+		return tracker.numbers[len(tracker.numbers)-1]
+	}
+	return 0
+}
+
 type warpFn func(plr *player, dstField *field, dstPortal portal) error
 
 type npcChatPlayerController struct {
@@ -501,7 +531,7 @@ func (ctrl *npcChatController) AskMenu(baseText string, selections ...string) in
 			ctrl.vm.Interrupt("AskMenu")
 			return 0
 		}
-		return ctrl.lastSelection
+		return ctrl.stateTracker.currentSelection()
 	}
 
 	// Build selection text as 1-based options
@@ -522,7 +552,7 @@ func (ctrl *npcChatController) AskMenu(baseText string, selections ...string) in
 		ctrl.vm.Interrupt("AskMenu")
 		return 0
 	}
-	return ctrl.lastSelection
+	return ctrl.stateTracker.currentSelection()
 }
 
 // AskSlideMenu emulates a slide menu using a standard selection window.
@@ -532,7 +562,7 @@ func (ctrl *npcChatController) AskSlideMenu(text string) int32 {
 		ctrl.vm.Interrupt("AskSlideMenu")
 		return 0
 	}
-	return ctrl.lastSelection
+	return ctrl.stateTracker.currentSelection()
 }
 
 // AskAvatar opens the style chooser and returns the chosen style id/index (engine will provide via selection).
@@ -542,7 +572,7 @@ func (ctrl *npcChatController) AskAvatar(text string, avatars ...int32) int32 {
 		ctrl.vm.Interrupt("AskAvatar")
 		return 0
 	}
-	return ctrl.lastSelection
+	return ctrl.stateTracker.currentSelection()
 }
 
 // AskImage shows an image prompt using a Back/Next page and returns a simple OK(1)/Cancel(0) style selection.
@@ -554,7 +584,7 @@ func (ctrl *npcChatController) AskImage(imagePath string, extraData int32) int32
 		ctrl.vm.Interrupt("AskImage")
 		return 0
 	}
-	return ctrl.lastSelection
+	return ctrl.stateTracker.currentSelection()
 }
 
 // AskText prompts for free text (shortcut wrapper around SendInputText).
@@ -564,7 +594,7 @@ func (ctrl *npcChatController) AskText(text string) string {
 		ctrl.vm.Interrupt("AskText")
 		return ""
 	}
-	return ctrl.lastInputString
+	return ctrl.stateTracker.currentInputString()
 }
 
 // AskBoxText prompts for larger text with a suggested size (column*line). Falls back to a safe max if <= 0.
@@ -578,7 +608,7 @@ func (ctrl *npcChatController) AskBoxText(askMsg string, defaultAnswer string, c
 		ctrl.vm.Interrupt("AskBoxText")
 		return ""
 	}
-	return ctrl.lastInputString
+	return ctrl.stateTracker.currentInputString()
 }
 
 // AskQuiz emulates a quiz input by using a text input field. Time limits are not enforced at engine-level here.
@@ -607,7 +637,7 @@ func (ctrl *npcChatController) AskQuiz(text, problem, hint string, inputMin, inp
 		ctrl.vm.Interrupt("AskQuiz")
 		return ""
 	}
-	return ctrl.lastInputString
+	return ctrl.stateTracker.currentInputString()
 }
 
 // AskNumber prompts for a number with bounds (shortcut wrapper around SendInputNumber).
@@ -617,7 +647,7 @@ func (ctrl *npcChatController) AskNumber(text string, def, min, max int32) int32
 		ctrl.vm.Interrupt("AskNumber")
 		return 0
 	}
-	return ctrl.lastInputNumber
+	return ctrl.stateTracker.currentNumber()
 }
 
 // SendInputText packet to player
