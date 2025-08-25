@@ -145,6 +145,14 @@ func (server *Server) HandleClientPacket(conn mnet.Client, reader mpacket.Reader
 		server.playerCancelBuff(conn, reader)
 	case opcode.RecvChannelQuestOperation:
 		server.playerQuestOperation(conn, reader)
+		/*
+			case opcode.RecvChannelSummonMove:
+				server.playerSummonMove(conn, reader)
+			case opcode.RecvChannelSummonDamage:
+				server.playerSummonDamage(conn, reader)
+			case opcode.RecvChannelSummonAttack:
+				server.playerSummonAttack(conn, reader)
+		*/
 	default:
 		unknownPacketsTotal.Inc()
 		log.Println("UNKNOWN CLIENT PACKET:", reader)
@@ -3477,9 +3485,10 @@ func (server *Server) playerSpecialSkill(conn mnet.Client, reader mpacket.Reader
 		}
 		_ = reader.ReadInt16() // delay
 	}
-	readXY := func() {
-		_ = reader.ReadInt16()
-		_ = reader.ReadInt16()
+	readXY := func() (int16, int16) {
+		x := reader.ReadInt16()
+		y := reader.ReadInt16()
+		return x, y
 	}
 
 	switch skill.Skill(skillID) {
@@ -3534,7 +3543,35 @@ func (server *Server) playerSpecialSkill(conn mnet.Client, reader mpacket.Reader
 	case skill.SummonDragon,
 		skill.SilverHawk, skill.GoldenEagle,
 		skill.Puppet, skill.SniperPuppet:
-		readXY()
+		x, y := readXY()
+
+		isPuppet := (skill.Skill(skillID) == skill.Puppet || skill.Skill(skillID) == skill.SniperPuppet)
+		summ := &Summon{
+			OwnerID:    plr.id,
+			SkillID:    skillID,
+			Level:      skillLevel,
+			Pos:        pos{x: x, y: y},
+			Stance:     0,
+			Foothold:   0,
+			IsPuppet:   isPuppet,
+			SummonType: 0,
+		}
+
+		if isPuppet {
+			if data, err := nx.GetPlayerSkill(skillID); err == nil {
+				idx := int(skillLevel) - 1
+				if idx >= 0 && idx < len(data) {
+					summ.HP = int(data[idx].X)
+				}
+			}
+		}
+
+		durationSec := int(delay)
+		if durationSec <= 0 {
+			durationSec = 180
+		}
+
+		server.addSummon(plr, summ, durationSec)
 
 	default:
 		// Always send a self animation so client shows casting even for non-buffs.
@@ -3576,6 +3613,106 @@ func (server *Server) playerCancelBuff(conn mnet.Client, reader mpacket.Reader) 
 
 	// Final sweep for any edge cases
 	cb.AuditAndExpireStaleBuffs()
+}
+
+func (server Server) playerSummonMove(conn mnet.Client, reader mpacket.Reader) {
+	plr, err := server.players.getFromConn(conn)
+	if err != nil {
+		return
+	}
+
+	summonID := reader.ReadInt32()
+	summ := plr.getSummon(summonID)
+	if summ == nil || summ.IsPuppet {
+		return
+	}
+
+	moveData, finalData := parseMovement(reader)
+	moveBytes := generateMovementBytes(moveData)
+
+	summ.Pos = pos{x: finalData.x, y: finalData.y}
+	summ.Stance = finalData.stance
+	summ.Foothold = finalData.foothold
+
+	field, ok := server.fields[plr.mapID]
+	if !ok {
+		return
+	}
+	inst, err := field.getInstance(plr.inst.id)
+	if err != nil {
+		return
+	}
+
+	inst.sendExcept(packetSummonMove(plr.id, summonID, moveBytes), conn)
+}
+
+func (server *Server) playerSummonDamage(conn mnet.Client, reader mpacket.Reader) {
+	plr, err := server.players.getFromConn(conn)
+	if err != nil {
+		return
+	}
+
+	summonID := reader.ReadInt32()
+	summ := plr.getSummon(summonID)
+	if summ == nil || !summ.IsPuppet {
+		return
+	}
+
+	unk := int8(reader.ReadByte())
+	damage := reader.ReadInt32()
+	mobID := reader.ReadInt32()
+	unk2 := reader.ReadByte()
+
+	field, ok := server.fields[plr.mapID]
+	if ok {
+		if inst, e := field.getInstance(plr.inst.id); e == nil {
+			inst.send(packetSummonDamage(plr.id, summonID, unk, damage, mobID, unk2))
+		}
+	}
+
+	if summ.HP-int(damage) < 0 {
+		server.removeSummon(plr, true, 0x02)
+	} else {
+		summ.HP -= int(damage)
+	}
+}
+
+func (server *Server) playerSummonAttack(conn mnet.Client, reader mpacket.Reader) {
+	plr, err := server.players.getFromConn(conn)
+	if err != nil {
+		return
+	}
+
+	data, valid := getAttackInfo(reader, *plr, attackSummon)
+	if !valid {
+		return
+	}
+
+	mobDamages := make(map[int32][]int32, len(data.attackInfo))
+	for _, at := range data.attackInfo {
+		mobDamages[at.spawnID] = append([]int32(nil), at.damages...)
+	}
+
+	field, ok := server.fields[plr.mapID]
+	if !ok {
+		return
+	}
+	inst, err := field.getInstance(plr.inst.id)
+	if err != nil {
+		return
+	}
+
+	anim := data.action
+	if anim == 0 && len(data.attackInfo) > 0 {
+		anim = data.attackInfo[0].frameIndex
+	}
+
+	// data.summonType holds the summonID parsed for summon-attacks in getAttackInfo
+	inst.sendExcept(packetSummonAttack(plr.id, data.summonType, anim, data.targets, mobDamages), conn)
+
+	for _, at := range data.attackInfo {
+		inst.lifePool.mobDamaged(at.spawnID, plr, at.damages...)
+	}
 }
 
 func (server Server) handleGuildEvent(conn mnet.Server, reader mpacket.Reader) {

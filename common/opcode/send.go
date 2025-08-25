@@ -80,4 +80,5 @@ const (
 	SendChannelNpcShopResult           byte = 0xC9
 	SendChannelNpcStorage              byte = 0xCD
 	SendChannelRoom                    byte = 0xDC
+	SendChannelSummonOperation         byte = 0xE0 //placeholder idk what packet is yet
 )
