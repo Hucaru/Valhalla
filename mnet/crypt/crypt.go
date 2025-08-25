@@ -120,7 +120,7 @@ func (c *Maple) generateHeader(p []byte) {
 	p[3] = byte((b - int(p[2])) / 0x100)
 }
 
-// Taken from Kagami
+// Credits: Kagami (fran[c]esco)
 func ror(val byte, num int) byte {
 	for i := 0; i < num; i++ {
 		var lowbit int
@@ -138,7 +138,7 @@ func ror(val byte, num int) byte {
 	return val
 }
 
-// Taken from Kagami
+// Credits: Kagami (fran[c]esco)
 func rol(val byte, num int) byte {
 	var highbit int
 
@@ -156,7 +156,7 @@ func rol(val byte, num int) byte {
 	return val
 }
 
-// Taken from Kagami
+// Credits: Kagami (fran[c]esco)
 func mapleDecrypt(buf []byte) {
 	var j int32
 	var a, b, c byte
@@ -195,7 +195,7 @@ func mapleDecrypt(buf []byte) {
 	}
 }
 
-// Taken from Kagami
+// Credits: Kagami (fran[c]esco)
 func mapleCrypt(buf []byte) {
 	var j int32
 	var a, c byte
@@ -240,16 +240,12 @@ var aeskey = [32]byte{
 	0x33, 0x00, 0x00, 0x00,
 	0x52, 0x00, 0x00, 0x00}
 
-// Taken from kagami
+// Credits: Kagami (fran[c]esco)
 func (c *Maple) aesCrypt(buf []byte) {
 	var pos, tpos, cbwrite, cb int32 = 0, 0, 0, int32(len(buf))
 	var first byte = 1
 
 	cb = int32(len(buf))
-
-	// I'm not 100% sure what this exactly does but apparently maple
-	// decrypts packets in blocks of 1460 bytes to work around
-	// packet limitations or something
 
 	for cb > pos {
 		tpos = blocksize - int32(first*4)
@@ -261,6 +257,7 @@ func (c *Maple) aesCrypt(buf []byte) {
 		}
 
 		block, err := aes.NewCipher(aeskey[:])
+
 		if err != nil {
 			panic(err) // cbf to handle this unlikely error
 		}

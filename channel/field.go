@@ -296,8 +296,6 @@ type field struct {
 	instances []*fieldInstance
 	Data      nx.Map
 
-	deltaX, deltaY float64
-
 	Dispatch chan func()
 
 	vrLimit                        fieldRectangle
@@ -660,15 +658,13 @@ func (inst *fieldInstance) nextID() int32 {
 	return inst.idCounter
 }
 
-func (inst fieldInstance) send(p mpacket.Packet) error {
+func (inst fieldInstance) send(p mpacket.Packet) {
 	for _, v := range inst.players {
 		v.send(p)
 	}
-
-	return nil
 }
 
-func (inst fieldInstance) sendExcept(p mpacket.Packet, exception mnet.Client) error {
+func (inst fieldInstance) sendExcept(p mpacket.Packet, exception mnet.Client) {
 	for _, v := range inst.players {
 		if v.conn == exception {
 			continue
@@ -676,8 +672,6 @@ func (inst fieldInstance) sendExcept(p mpacket.Packet, exception mnet.Client) er
 
 		v.send(p)
 	}
-
-	return nil
 }
 
 func (inst fieldInstance) getRandomSpawnPortal() (portal, error) {
@@ -760,13 +754,13 @@ func (inst *fieldInstance) fieldUpdate(t time.Time) {
 	inst.lifePool.update(t)
 	inst.dropPool.update(t)
 
-	if inst.lifePool.canClose() && inst.dropPool.canClose() {
+	if inst.lifePool.canPause() && inst.dropPool.canPause() {
 		inst.stopFieldTimer()
 	}
 }
 
 func (inst *fieldInstance) calculateFinalDropPos(from pos) pos {
-	from.y = from.y - 90 // This distance might need to be configurable depending on drop type? e.g. ludi PQ reward/bonus stage
+	from.y = from.y - 80 // This distance might need to be configurable depending on drop type? e.g. ludi PQ reward/bonus stage
 	return inst.fhHist.getFinalPosition(from)
 }
 
@@ -795,12 +789,12 @@ func packetMapPlayerEnter(plr *player) mpacket.Packet {
 	p.WriteInt32(plr.id)
 	p.WriteString(plr.name)
 
-	if true {
-		p.WriteString("[Admins]")
-		p.WriteInt16(1030) // logo background
-		p.WriteByte(3)     // logo bg colour
-		p.WriteInt16(4017) // logo
-		p.WriteByte(2)     // logo colour
+	if plr.guild != nil {
+		p.WriteString(plr.guild.name)
+		p.WriteInt16(plr.guild.logoBg)
+		p.WriteByte(plr.guild.logoBgColour)
+		p.WriteInt16(plr.guild.logo)
+		p.WriteByte(plr.guild.logoColour)
 		p.WriteInt32(0)
 		p.WriteInt32(0)
 	} else {
@@ -905,14 +899,14 @@ func packetEnvironmentChange(setting int32, value string) mpacket.Packet {
 	return p
 }
 
-// func packetMapPortal(srcMap, dstmap int32, pos pos) mpacket.Packet {
-// 	p := mpacket.CreateWithOpcode(0x2d)
-// 	p.WriteByte(26)
-// 	p.WriteByte(0) // ?
-// 	p.WriteInt32(srcMap)
-// 	p.WriteInt32(dstmap)
-// 	p.WriteInt16(pos.X())
-// 	p.WriteInt16(pos.Y())
+func packetMapPortal(srcMap, dstmap int32, pos pos) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(0x2d)
+	p.WriteByte(26)
+	p.WriteByte(0) // ?
+	p.WriteInt32(srcMap)
+	p.WriteInt32(dstmap)
+	p.WriteInt16(pos.x)
+	p.WriteInt16(pos.y)
 
-// 	return p
-// }
+	return p
+}

@@ -1,3 +1,3 @@
-npc.sendStorage(1052017)
+// Mr. Hong - Kerning
 
-// Generate by kimi-k2-instruct
+npc.sendOK("Storage not implemented")

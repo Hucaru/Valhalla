@@ -10,6 +10,7 @@ import (
 var items map[int32]Item
 var maps map[int32]Map
 var mobs map[int32]Mob
+var quests map[int16]Quest
 var playerSkills map[int32][]PlayerSkill
 var mobSkills map[byte][]MobSkill
 
@@ -25,6 +26,7 @@ func LoadFile(fname string) {
 	maps = extractMaps(nodes, textLookup)
 	mobs = extractMobs(nodes, textLookup)
 	playerSkills, mobSkills = extractSkills(nodes, textLookup)
+	quests = extractQuests(nodes, textLookup)
 }
 
 // GetItem from loaded nx
@@ -57,6 +59,17 @@ func GetMob(id int32) (Mob, error) {
 	}
 
 	return mobs[id], nil
+}
+
+func GetQuests() map[int16]Quest {
+	return quests
+}
+
+func GetQuest(id int16) (Quest, error) {
+	if _, ok := quests[id]; !ok {
+		return Quest{}, fmt.Errorf("invalid quest id: %v", id)
+	}
+	return quests[id], nil
 }
 
 // GetPlayerSkill from loaded nx

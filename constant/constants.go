@@ -88,6 +88,31 @@ const (
 	MaxMpValue = 32767
 
 	MaxPartySize = 6
+	MaxGuildSize = 255
+
+	GuildCreateDialogue   byte = 0x02
+	GuildInvite           byte = 0x05
+	GuildAcceptInvite     byte = 0x06
+	GuildLeave            byte = 0x07
+	GuildExpel            byte = 0x08
+	GuildNoticeChange     byte = 0x10
+	GuildUpdateTitleNames byte = 0x0D
+	GuildRankChange       byte = 0x0E
+	GuildEmblemChange     byte = 0x0F
+	GuildContractSign     byte = 0x1E
+	GuildRejectInvite     byte = 0x37
+
+	QuestLostItem  = 0x00
+	QuestStarted   = 0x01
+	QuestCompleted = 0x02
+	QuestForfeit   = 0x03
+
+	FameNotifySource  = 0x00
+	FameIncorrectUser = 0x01
+	FameUnderLevel    = 0x02
+	FameThisDay       = 0x03
+	FameThisMonth     = 0x04
+	FameNotifyTarget  = 0x05
 )
 
 var ExpTable = [...]int32{15, 34, 57, 92, 135, 372, 560, 840, 1242, 1144, // Beginner

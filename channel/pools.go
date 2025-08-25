@@ -143,7 +143,8 @@ func (pool *lifePool) nextNpcID() (int32, error) {
 	return 0, fmt.Errorf("no space to generate id in life pool")
 }
 
-func (pool lifePool) canClose() bool {
+func (pool lifePool) canPause() bool {
+	// TODO: Need to check if any status effects are on monsters, if none are present then this pool can pause
 	return false
 }
 
@@ -219,7 +220,7 @@ func (pool *lifePool) npcAcknowledge(poolID int32, plr *player, data []byte) {
 
 }
 
-func (pool *lifePool) mobAcknowledge(poolID int32, plr *player, moveID int16, skillPossible bool, action byte, skillData uint32, moveData movement, finalData movementFrag, moveBytes []byte) {
+func (pool *lifePool) mobAcknowledge(poolID int32, plr *player, moveID int16, skillPossible bool, action int8, skillData uint32, moveData movement, finalData movementFrag, moveBytes []byte) {
 	for i, v := range pool.mobs {
 		mob := pool.mobs[i]
 
@@ -298,7 +299,7 @@ func (pool *lifePool) mobDamaged(poolID int32, damager *player, dmg ...int32) {
 						continue
 					}
 
-					var partyExp int32 = 0
+					var partyExp int32
 
 					if dmg == v.maxHP {
 						plr.giveEXP(v.exp, true, false)
@@ -333,7 +334,7 @@ func (pool *lifePool) mobDamaged(poolID int32, damager *player, dmg ...int32) {
 						continue
 					}
 
-					newMob, err := createMonsterFromID(spawnID, int32(id), v.pos, nil, true, true)
+					newMob, err := createMonsterFromID(spawnID, int32(id), v.pos, nil, true, true, 0)
 
 					if err != nil {
 						log.Println(err)
@@ -347,40 +348,48 @@ func (pool *lifePool) mobDamaged(poolID int32, damager *player, dmg ...int32) {
 				}
 
 				pool.removeMob(v.spawnID, 0x1)
+				damager.onMobKilled(v.id)
 
 				if dropEntry, ok := dropTable[v.id]; ok {
 					var mesos int32
 					drops := make([]item, 0, len(dropEntry))
 
 					for _, entry := range dropEntry {
+						if entry.IsMesos {
+							mesos = randRangeInclusive(pool.rNumber, entry.Min, entry.Max)
+							continue
+						}
+
+						// Quest-gated item: only allow if killer has quest active
+						// This should probably be hidden from instance and only viewable to player
+						if entry.QuestID != 0 && !damager.allowsQuestDrop(entry.QuestID) {
+							continue
+						}
+
 						if !rollDrop(pool.rNumber, entry.Chance, pool.dropPool.rates.drop) {
 							continue
 						}
 
-						if entry.IsMesos {
-							mesos = pool.rNumber.Int31n(entry.Max-entry.Min) + entry.Min
-						} else {
-							var amount int16 = 1
-
-							if entry.Max != 1 {
-								val := pool.rNumber.Int31n(entry.Max-entry.Min) + entry.Min
-
-								if val > math.MaxInt16 {
-									amount = math.MaxInt16
-								} else {
-									amount = int16(val)
-								}
+						var amount int16 = 1
+						minAmt := entry.Min
+						maxAmt := entry.Max
+						if maxAmt != 1 {
+							val := randRangeInclusive(pool.rNumber, minAmt, maxAmt)
+							if val > math.MaxInt16 {
+								amount = math.MaxInt16
+							} else if val < 1 {
+								amount = 1
+							} else {
+								amount = int16(val)
 							}
-
-							newItem, err := createItemFromID(entry.ItemID, amount)
-
-							if err != nil {
-								log.Println("Failed to create drop for mobID:", v.id, "with error:", err)
-								continue
-							}
-
-							drops = append(drops, newItem)
 						}
+
+						newItem, err := createItemFromID(entry.ItemID, amount)
+						if err != nil {
+							log.Println("Failed to create drop for mobID:", v.id, "with error:", err)
+							continue
+						}
+						drops = append(drops, newItem)
 					}
 
 					// TODO: droppool type determination between DropTimeoutNonOwner and DropTimeoutNonOwnerParty
@@ -403,8 +412,19 @@ func (pool *lifePool) mobDamaged(poolID int32, damager *player, dmg ...int32) {
 	}
 }
 
+func randRangeInclusive(r *rand.Rand, lo, hi int32) int32 {
+	if hi <= lo {
+		return lo
+	}
+	delta := hi - lo + 1
+	if delta <= 0 {
+		return lo
+	}
+	return r.Int31n(delta) + lo
+}
+
 func rollDrop(r *rand.Rand, baseChance int64, rate float32) bool {
-	const denom int64 = 100000
+	const denom int64 = 1000000
 
 	// Fast-path clamps
 	if baseChance <= 0 {
@@ -437,10 +457,7 @@ func (pool *lifePool) killMobs(deathType byte) {
 
 	for _, key := range keys {
 		// Apply the provided deathType for consistency
-		err := pool.instance.send(packetMobRemove(pool.mobs[key].spawnID, deathType))
-		if err != nil {
-			return
-		}
+		pool.instance.send(packetMobRemove(pool.mobs[key].spawnID, deathType))
 		pool.mobDamaged(pool.mobs[key].spawnID, nil, pool.mobs[key].hp)
 	}
 }
@@ -475,14 +492,14 @@ func (pool *lifePool) spawnMob(m *monster, hasAgro bool) bool {
 	return false
 }
 
-func (pool *lifePool) spawnMobFromID(mobID int32, location pos, hasAgro, items, mesos bool) error {
+func (pool *lifePool) spawnMobFromID(mobID int32, location pos, hasAgro, items, mesos bool, summoner int32) error {
 	id, err := pool.nextMobID()
 
 	if err != nil {
 		return err
 	}
 
-	m, err := createMonsterFromID(id, mobID, location, nil, items, mesos)
+	m, err := createMonsterFromID(id, mobID, location, nil, items, mesos, summoner)
 
 	if err != nil {
 		return err
@@ -730,8 +747,6 @@ func (pool *roomPool) removePlayer(plr *player) {
 	}
 }
 
-type dropSet byte
-
 const (
 	dropTimeoutNonOwner      = 0
 	dropTimeoutNonOwnerParty = 1
@@ -758,7 +773,7 @@ type fieldDrop struct {
 }
 
 const (
-	dropSpawnDisappears      = 0
+	dropSpawnDisappears      = 0 // disappears as it is thrown in the air
 	dropSpawnNormal          = 1
 	dropSpawnShow            = 2
 	dropSpawnFadeAtTopOfDrop = 3
@@ -793,8 +808,8 @@ func (pool *dropPool) nextID() (int32, error) {
 	return 0, fmt.Errorf("No space to generate id in drop pool")
 }
 
-func (pool dropPool) canClose() bool {
-	return false
+func (pool dropPool) canPause() bool {
+	return len(pool.drops) == 0
 }
 
 func (pool dropPool) playerShowDrops(plr *player) {
@@ -892,10 +907,7 @@ func (pool *dropPool) createDrop(spawnType byte, dropType byte, mesos int32, dro
 
 				pool.drops[drop.ID] = drop
 
-				err := pool.instance.send(packetShowDrop(spawnType, drop))
-				if err != nil {
-					return
-				}
+				pool.instance.send(packetShowDrop(spawnType, drop))
 			}
 		}
 	}
@@ -928,10 +940,7 @@ func (pool *dropPool) createDrop(spawnType byte, dropType byte, mesos int32, dro
 
 			pool.drops[drop.ID] = drop
 
-			err := pool.instance.send(packetShowDrop(spawnType, drop))
-			if err != nil {
-				return
-			}
+			pool.instance.send(packetShowDrop(spawnType, drop))
 		}
 	}
 }
@@ -988,11 +997,11 @@ func packetMobShow(mob *monster) mpacket.Packet {
 	return p
 }
 
-func packetMobMove(mobID int32, allowedToUseSkill bool, action byte, skillData uint32, moveBytes []byte) mpacket.Packet {
+func packetMobMove(mobID int32, allowedToUseSkill bool, action int8, skillData uint32, moveBytes []byte) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelMoveMob)
 	p.WriteInt32(mobID)
 	p.WriteBool(allowedToUseSkill)
-	p.WriteByte(action)
+	p.WriteInt8(action)
 	p.WriteUint32(skillData)
 	p.WriteBytes(moveBytes)
 

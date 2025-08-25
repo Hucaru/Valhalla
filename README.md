@@ -1,18 +1,14 @@
 ![Alt text](img/logo.png?raw=true "Valhalla")
 
 [![Actions Status](https://github.com/Hucaru/Valhalla/workflows/Go/badge.svg)](https://github.com/Hucaru/Valhalla/actions)
-
+[Visit our Discord channel](https://discord.gg/KHky9Qy9jF)
 ## What is this?
 
 This project exists to preserve and archive an early version of the game (v28 of global)
 
 ## Client modifications
 
-- 00663007 - change to jmp for multiclient
-- 0041BD17 - fill with nop to remove internet explorer iframe advert after client close
-- 0066520B - push to stack resolution in y
-- 00665211 - push to stack resolution in x
-- 0066519c - mov 0x0 instead of 0x10 for windowed mode
+A DLL which will auto hook the functions to make a localhost and window mode can be found [here](https://github.com/Hucaru/maplestory-client-hook)
 
 ## Features
 
@@ -21,17 +17,16 @@ General:
 
 Login server:
 - [x] Login user
-- [ ] Show EULA on first login
-- [ ] Perform gender select on first login
+- [x] Show EULA on first login
 - [X] Pin
 - [x] Display world ribbons
 - [x] Display world messages
 - [x] Display world status (e.g. overpopulated)
 - [x] World selection
-- [ ] Lock character creation on world if full
 - [x] Channel selection
 - [x] Create character
 - [x] Delete character
+- [x] Delete character informs world servers
 - [x] Migrate to channel server
 - [x] Show worlds, channels, world status etc from information sent from world server
 - [x] Prevent players from accessing dead channel
@@ -45,10 +40,13 @@ World server:
 - [x] Forward player leaves game to channels
 - [x] Broadcast buddy events
 - [x] Broadcast party events
-- [ ] Broadcast guild events
-- [x] Forward whispers
-- [x] Allow gm command to activate exp/drop changes across all channels
+- [x] Broadcast guild events
+- [x] Forward whisphers
+- [x] Allow gm command to actiavate exp/drop changes accross all channels
 - [ ] Allow gm commands to update information displayed at login
+- [ ] Propagate character deletion to channels
+- [ ] Party sync when channel or world server are restarted
+- [ ] Guild sync when channel or world server are restarted
 
 Cashshop server:
 - [ ] List items
@@ -75,14 +73,12 @@ Channel server:
 - [x] NPC shops
 - [x] NPC stylist
 - [ ] NPC storage
-- [ ] PQ scripts
-- [ ] Event scripts
 - [x] Load scripts from folder (incl. hot loading)
 - [x] Map instancing
 - [x] Mob visible
 - [x] Mob movement
 - [x] Mob attack
-- [ ] Mob skills that cause stat changes
+- [ ] Mob skills that cause stat changes or summon other mobs (not on death)
 - [x] Mob death
 - [x] Mob respawn
 - [x] Mob spawns mob(s) on death
@@ -93,15 +89,32 @@ Channel server:
 - [x] Find / Map in buddy window
 - [x] Buddy list
 - [x] Buddy chat
-- [x] Party
+- [x] Party creation
+- [x] Party invite
+- [x] Party accept/reject
+- [x] Party expel
 - [x] Party chat
-- [ ] Guild
-- [ ] Guild chat
+- [ ] Party HP bar
+- [x] Guild creation/disband
+- [x] Guild invite
+- [x] Guild join/leave
+- [x] Guild emblem
+- [x] Guild chat
+- [x] Guild points update
+- [x] Guild rank titles change
+- [x] Guild rank update
+- [x] Guild notice update
+- [x] Guild expel
+- [x] Guild member online notice
+- [ ] PQs
+- [ ] Guild PQ
+- [x] Balrog boat invasion
+- [ ] Deleted character removes from guild
+- [ ] Deleted character removes from party
 - [ ] Trade
 - [ ] Communication Window
 - [ ] Quests
 - [ ] Reactors
-- [ ] Autonomous GM commands which can be started and stopped at will
 - [x] Server resets login status upon restart for dangling characters
 
 Metrics:
@@ -112,6 +125,7 @@ Metrics:
 - [ ] Ongoing trades
 - [ ] Ongoing minigames
 - [ ] Ongoing npc script interactions
+- [ ] Number of parties
 
 See screenshots section for an example Grafana dashboard
 
@@ -121,8 +135,9 @@ See screenshots section for an example Grafana dashboard
     - Reduce branches in frequent paths
     - Determine which pieces of data if any provide any benefit in being converted SOAs
 - Implement AES crypt (ontop of the shanda) and determine how to enable it in the client
-- Clean up passing nil to interface type function, should be new(type) as this causes nasty to find bugs as the nil value is not the interface itself but the value it holds
 - Move player save database operations into relevant systems
+- Player inventory needs a re-write
+- Investigate party reject invite packet from client (it looks like garbage)
 
 ## Acknowledgements
 
@@ -197,5 +212,28 @@ Service discovery changes (compared to docker-compose):
 - K8s services use hyphens. Configs inside the pods are adjusted accordingly:
   - login-server, world-server, db
 
-All ports are via ClusterIP at the moment. This can be adjusted to LoadBalancer if desired.
+All ports are via ClusterIP, and can be exposed via Ingress-Nginx.
 
+### Exposing Kubernetes Services
+You will need to use the `ingress-nginx` deployment to expose your service.
+
+The following values should be used to deploy the helm chart:
+```
+tcp:
+  8484: valhalla/login-server:8484
+  8685: valhalla/channel-server-1:8685
+  8684: valhalla/channel-server-2:8684
+  8683: valhalla/channel-server-3:8683
+... etc 
+```
+**You will need to add all the channels you intend on having, and the port decreases by 1 for each additional channel**
+
+1. Deploy Ingress-Nginx via Helm
+    - `helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx`
+    - `helm install -n ingress-nginx ingress-nginx ingress-nginx/ingress-nginx --create-namespace -f values.yaml`
+1. Update Maplestory client to use ingress-nginx external IP
+    - `kubectl get svc -n ingress-nginx`
+1. Update Valhalla config to use ingress-nginx external IP
+    - `channel.clientConnectionAddress: "<loadbalancer-ip"`
+1. Upgrade/Restart Helm chart
+    - `helm upgrade -n valhalla valhalla ./helm -f values.yaml`

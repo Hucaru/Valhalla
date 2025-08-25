@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Hucaru/Valhalla/internal"
 	"github.com/Hucaru/Valhalla/mnet"
 	"github.com/dop251/goja"
 	"github.com/fsnotify/fsnotify"
@@ -27,13 +28,12 @@ func (s scriptStore) String() string {
 	return fmt.Sprintf("%v", s.scripts)
 }
 
-func (s *scriptStore) get(name string) (*goja.Program, bool) {
-	program, ok := s.scripts[name]
-	return program, ok
-}
-
 func (s *scriptStore) loadScripts() error {
 	err := filepath.Walk(s.folder, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+
 		if info.IsDir() {
 			return nil
 		}
@@ -147,6 +147,15 @@ type npcChatStateTracker struct {
 	currentPos int
 
 	list []npcChatNodeType
+
+	selections []int32
+	selection  int
+
+	inputs []string
+	input  int
+
+	numbers []int32
+	number  int
 }
 
 func (tracker *npcChatStateTracker) addState(stateType npcChatNodeType) {
@@ -185,9 +194,10 @@ func (tracker *npcChatStateTracker) popState() {
 type warpFn func(plr *player, dstField *field, dstPortal portal) error
 
 type npcChatPlayerController struct {
-	plr      *player
-	fields   map[int32]*field
-	warpFunc warpFn
+	plr       *player
+	fields    map[int32]*field
+	warpFunc  warpFn
+	worldConn mnet.Server
 }
 
 func (ctrl *npcChatPlayerController) Warp(id int32) {
@@ -199,6 +209,10 @@ func (ctrl *npcChatPlayerController) Warp(id int32) {
 		}
 
 		portal, err := inst.getRandomSpawnPortal()
+
+		if err != nil {
+			return
+		}
 
 		_ = ctrl.warpFunc(ctrl.plr, field, portal)
 	}
@@ -246,6 +260,135 @@ func (ctrl *npcChatPlayerController) Level() byte {
 	return ctrl.plr.level
 }
 
+func (ctrl *npcChatPlayerController) InGuild() bool {
+	return ctrl.plr.guild != nil
+}
+
+func (ctrl *npcChatPlayerController) GuildRank() byte {
+	if ctrl.plr.guild != nil {
+		for i, id := range ctrl.plr.guild.playerID {
+			if id == ctrl.plr.id {
+				return ctrl.plr.guild.ranks[i]
+			}
+		}
+	}
+
+	return 0
+}
+
+func (ctrl *npcChatPlayerController) InParty() bool {
+	return ctrl.plr.party != nil
+}
+
+func (ctrl *npcChatPlayerController) IsPartyLeader() bool {
+	return ctrl.plr.party.players[0] == ctrl.plr
+}
+
+func (ctrl *npcChatPlayerController) PartyMembersOnMapCount() int {
+	if ctrl.plr.party == nil {
+		return 0
+	}
+
+	count := 0
+	for _, v := range ctrl.plr.party.players {
+		if v != nil && v.mapID == ctrl.plr.mapID {
+			count++
+		}
+	}
+
+	return count
+}
+
+func (ctrl *npcChatPlayerController) DisbandGuild() {
+	if ctrl.plr.guild == nil {
+		return
+	}
+
+	ctrl.worldConn.Send(internal.PacketGuildDisband(ctrl.plr.guild.id))
+}
+
+func (ctrl *npcChatPlayerController) GetLevel() int {
+	return int(ctrl.plr.level)
+}
+
+func (ctrl *npcChatPlayerController) GetQuestStatus(id int16) int {
+	// 2 = completed, 1 = in progress, 0 = not started
+	for _, q := range ctrl.plr.quests.completed {
+		if q.id == id {
+			return 2
+		}
+	}
+	for _, q := range ctrl.plr.quests.inProgress {
+		if q.id == id {
+			return 1
+		}
+	}
+	return 0
+}
+
+func (ctrl *npcChatPlayerController) CheckQuestStatus(id int16, status int) bool {
+	return ctrl.GetQuestStatus(id) == status
+}
+
+func (ctrl *npcChatPlayerController) QuestData(id int16) string {
+	if q, ok := ctrl.plr.quests.inProgress[id]; ok {
+		return q.name
+	}
+	return ""
+}
+
+func (ctrl *npcChatPlayerController) CheckQuestData(id int16, data string) bool {
+	return ctrl.QuestData(id) == data
+}
+
+func (ctrl *npcChatPlayerController) SetQuestData(id int16, data string) {
+	// Only allow setting data if quest is in-progress; if not, start it or ignore.
+	if _, ok := ctrl.plr.quests.inProgress[id]; !ok {
+		// You may choose to implicitly start; here we upsert and add in-memory if needed.
+		ctrl.plr.quests.add(id, data)
+	} else {
+		// update in-memory
+		q := ctrl.plr.quests.inProgress[id]
+		q.name = data
+		ctrl.plr.quests.inProgress[id] = q
+	}
+	// Persist + notify client
+	upsertQuestRecord(ctrl.plr.id, id, data)
+	ctrl.plr.send(packetQuestUpdate(id, data))
+}
+
+func (ctrl *npcChatPlayerController) StartQuest(id int16) bool {
+	return ctrl.plr.tryStartQuest(id)
+}
+
+func (ctrl *npcChatPlayerController) CompleteQuest(id int16) bool {
+	return ctrl.plr.tryCompleteQuest(id)
+}
+
+func (ctrl *npcChatPlayerController) ForfeitQuest(id int16) {
+	if !ctrl.plr.quests.hasInProgress(id) {
+		return
+	}
+	ctrl.plr.quests.remove(id)
+	delete(ctrl.plr.quests.mobKills, id)
+	deleteQuest(ctrl.plr.id, id)
+	ctrl.plr.send(packetQuestRemove(id))
+	clearQuestMobKills(ctrl.plr.id, id)
+}
+
+type scriptQuestView struct {
+	Data   string `json:"data"`
+	Status int    `json:"status"` // 0,1,2 same as GetQuestStatus
+}
+
+func (ctrl *npcChatPlayerController) Quest(id int16) scriptQuestView {
+	status := ctrl.GetQuestStatus(id) // already 0/1/2
+	return scriptQuestView{
+		Data:   ctrl.QuestData(id),
+		Status: status,
+	}
+}
+
 func (ctrl *npcChatPlayerController) SetLevel(level byte) {
 	ctrl.plr.setLevel(level)
 }
@@ -280,10 +423,6 @@ type npcChatController struct {
 	npcID int32
 	conn  mnet.Client
 
-	lastSelection   int32
-	lastInputString string
-	lastInputNumber int32
-
 	goods [][]int32
 
 	stateTracker npcChatStateTracker
@@ -292,7 +431,7 @@ type npcChatController struct {
 	program *goja.Program
 }
 
-func createNpcChatController(npcID int32, conn mnet.Client, program *goja.Program, plr *player, fields map[int32]*field, warpFunc warpFn) (*npcChatController, error) {
+func createNpcChatController(npcID int32, conn mnet.Client, program *goja.Program, plr *player, fields map[int32]*field, warpFunc warpFn, worldConn mnet.Server) (*npcChatController, error) {
 	ctrl := &npcChatController{
 		npcID:   npcID,
 		conn:    conn,
@@ -301,19 +440,19 @@ func createNpcChatController(npcID int32, conn mnet.Client, program *goja.Progra
 	}
 
 	plrCtrl := &npcChatPlayerController{
-		plr:      plr,
-		fields:   fields,
-		warpFunc: warpFunc,
+		plr:       plr,
+		fields:    fields,
+		warpFunc:  warpFunc,
+		worldConn: worldConn,
 	}
 
 	ctrl.vm.SetFieldNameMapper(goja.UncapFieldNameMapper())
-	ctrl.vm.Set("npc", ctrl)
-	ctrl.vm.Set("plr", plrCtrl)
+	_ = ctrl.vm.Set("npc", ctrl)
+	_ = ctrl.vm.Set("plr", plrCtrl)
 
 	return ctrl, nil
 }
 
-// Id of npc
 func (ctrl *npcChatController) Id() int32 {
 	return ctrl.npcID
 }
@@ -513,6 +652,22 @@ func (ctrl *npcChatController) SendStyles(msg string, styles []int32) {
 	}
 }
 
+// SendGuildCreation
+func (ctrl *npcChatController) SendGuildCreation() {
+	if ctrl.stateTracker.performInterrupt() {
+		ctrl.conn.Send(packetGuildEnterName())
+		ctrl.vm.Interrupt("SendGuildCreation")
+	}
+}
+
+// SendGuildEmblemEditor
+func (ctrl *npcChatController) SendGuildEmblemEditor() {
+	if ctrl.stateTracker.performInterrupt() {
+		ctrl.conn.Send(packetGuildEmblemEditor())
+		ctrl.vm.Interrupt("SendGuildEmblemEditor")
+	}
+}
+
 // SendShop packet to player
 func (ctrl *npcChatController) SendShop(goods [][]int32) {
 	ctrl.goods = goods
@@ -520,24 +675,31 @@ func (ctrl *npcChatController) SendShop(goods [][]int32) {
 }
 
 func (ctrl *npcChatController) clearUserInput() {
-	ctrl.lastSelection = 0
-	ctrl.lastInputString = ""
-	ctrl.lastInputNumber = 0
+	ctrl.stateTracker.input = 0
+	ctrl.stateTracker.selection = 0
+	ctrl.stateTracker.input = 0
+	ctrl.stateTracker.number = 0
 }
 
 // Selection value
 func (ctrl *npcChatController) Selection() int32 {
-	return ctrl.lastSelection
+	val := ctrl.stateTracker.selections[ctrl.stateTracker.selection]
+	ctrl.stateTracker.selection++
+	return val
 }
 
 // InputString value
 func (ctrl *npcChatController) InputString() string {
-	return ctrl.lastInputString
+	val := ctrl.stateTracker.inputs[ctrl.stateTracker.input]
+	ctrl.stateTracker.input++
+	return val
 }
 
 // InputNumber value
 func (ctrl *npcChatController) InputNumber() int32 {
-	return ctrl.lastInputNumber
+	val := ctrl.stateTracker.numbers[ctrl.stateTracker.number]
+	ctrl.stateTracker.number++
+	return val
 }
 
 func (ctrl *npcChatController) run() bool {
@@ -668,9 +830,13 @@ func (controller eventScriptController) WarpPlayer(p *player, mapID int32) bool 
 
 		portal, err := inst.getRandomSpawnPortal()
 
-		controller.warpFunc(p, field, portal)
+		if err != nil {
+			return false
+		}
 
-		return true
+		err = controller.warpFunc(p, field, portal)
+
+		return err == nil
 	}
 
 	return false
@@ -751,7 +917,7 @@ func (f *fieldWrapper) SpawnMonster(inst int, mobID int32, x, y int16, hasAgro, 
 		return
 	}
 
-	i.lifePool.spawnMobFromID(mobID, newPos(x, y, 0), hasAgro, items, mesos)
+	_ = i.lifePool.spawnMobFromID(mobID, newPos(x, y, 0), hasAgro, items, mesos, 0)
 }
 
 func (f *fieldWrapper) Clear(id int, mobs, items bool) {
@@ -788,7 +954,11 @@ func (f *fieldWrapper) WarpPlayersToPortal(mapID int32, portalID byte) {
 
 		for _, i := range f.instances {
 			for _, p := range i.players {
-				f.controller.warpFunc(p, field, portal)
+				err = f.controller.warpFunc(p, field, portal)
+
+				if err != nil {
+					return
+				}
 			}
 		}
 	}
@@ -810,6 +980,7 @@ func (f *fieldWrapper) MobCount(id int) int {
 
 type playerWrapper struct {
 	*player
+	server *Server
 }
 
 func (p *playerWrapper) Mesos() int32 {

@@ -1,14 +1,15 @@
-npc.sendSelection("Hi! My name is #bLea#k. I am in charge of the #bGuild Emblem#k. \r\n#L0##bI'd like to register a guild emblem.#l")
-var sel = npc.selection()
+// Lea guild npc
 
-if (sel == 0) {
-    if (plr.guildRank() != 1) {
-        npc.sendOk("You must be the Guild Leader to change the Emblem. Please tell your leader to speak with me.")
-    } else {
-        if (npc.sendYesNo("There is a fee of 500,000 mesos for creating a Guild Emblem. To further explain, a Guild Emblem is like a coat of arms that is unique to a guild, it will be displayed to the left of the guild name. How does that sound? Would you like to create a Guild Emblem?")) {
-            plr.genericGuildMessage(18)
+if (plr.inGuild() && plr.guildRank() == 1) {
+    if (npc.sendYesNo("Would you like to update your guild emblem? This will cost 1,000,000 mesos.")) {
+        if (plr.mesos() < 1e6) {
+            npc.sendOk("You do not have enough mesos to change your emblem. Please come back when you have the required amount.")
+        } else {
+            npc.sendGuildEmblemEditor()
         }
+    } else {
+        npc.sendOk("Please come back when you wish to change your emblem.")
     }
+} else {
+    npc.sendOk("Please come back to me when you are a guild leader")
 }
-
-// Generate by kimi-k2-instruct
