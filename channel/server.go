@@ -263,23 +263,21 @@ func (server *Server) ClientDisconnected(conn mnet.Client) {
 		log.Println(remPlrErr)
 	}
 
-	migratingIdx := -1
-	for i, v := range server.migrating {
-		if v == conn {
-			migratingIdx = i
-			break
+	if idx := func() int {
+		for i, v := range server.migrating {
+			if v == conn {
+				return i
+			}
 		}
-	}
-	if migratingIdx > -1 {
-		server.migrating = append(server.migrating[:migratingIdx], server.migrating[migratingIdx+1:]...)
-		return
+		return -1
+	}(); idx > -1 {
+		server.migrating = append(server.migrating[:idx], server.migrating[idx+1:]...)
 	}
 
 	var guildID int32 = 0
 	if plr.guild != nil {
 		guildID = plr.guild.id
 	}
-
 	server.world.Send(internal.PacketChannelPlayerDisconnect(plr.id, plr.name, guildID))
 
 	if _, dbErr := common.DB.Exec("UPDATE characters SET channelID=? WHERE id=?", -1, plr.id); dbErr != nil {

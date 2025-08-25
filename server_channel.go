@@ -67,7 +67,10 @@ func (cs *channelServer) run() {
 		}
 	}()
 
-	cs.establishWorldConnection()
+	cs.wg.Add(1)
+	go cs.processEvent()
+
+	<-cs.dispatchReady
 
 	start := time.Now()
 	nx.LoadFile("Data.nx")
@@ -86,11 +89,7 @@ func (cs *channelServer) run() {
 	cs.wg.Add(1)
 	go cs.acceptNewConnections()
 
-	cs.wg.Add(1)
-	go cs.processEvent()
-
-	<-cs.dispatchReady
-
+	cs.establishWorldConnection()
 	cs.gameState.StartAutosave(cs.ctx)
 
 	cs.wg.Wait()
@@ -123,12 +122,18 @@ func (cs *channelServer) establishWorldConnection() {
 				log.Println("invalid listen port:", err)
 				return
 			}
-			cs.gameState.RegisterWithWorld(cs.worldConn, ip.To4(), int16(port), cs.config.MaxPop)
-			cs.gameState.SendCountdownToPlayers(0)
+
+			cs.wRecv <- func() {
+				cs.gameState.RegisterWithWorld(cs.worldConn, ip.To4(), int16(port), cs.config.MaxPop)
+				cs.gameState.SendCountdownToPlayers(0)
+			}
 			return
 		}
-		cs.gameState.SendLostWorldConnectionMessage()
-		cs.gameState.SendCountdownToPlayers(int32(backoff / time.Second))
+
+		cs.wRecv <- func() {
+			cs.gameState.SendLostWorldConnectionMessage()
+			cs.gameState.SendCountdownToPlayers(int32(backoff / time.Second))
+		}
 		time.Sleep(backoff)
 		if backoff < 10*time.Second {
 			backoff *= 2
@@ -234,12 +239,7 @@ func (cs *channelServer) processEvent() {
 					log.Println("New client from", conn)
 				case mnet.MEClientDisconnect:
 					log.Println("Client at", conn, "disconnected")
-					select {
-					case cs.wRecv <- func() { cs.gameState.ClientDisconnected(conn) }:
-					default:
-						cs.wRecv <- func() { cs.gameState.ClientDisconnected(conn) }
-					}
-
+					cs.gameState.ClientDisconnected(conn)
 				case mnet.MEClientPacket:
 					cs.gameState.HandleClientPacket(conn, mpacket.NewReader(&e.Packet, time.Now().Unix()))
 				}
