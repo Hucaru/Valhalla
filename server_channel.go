@@ -29,10 +29,10 @@ type channelServer struct {
 	worldConn mnet.Server
 	gameState channel.Server
 
-	// graceful shutdown & listener
-	ctx      context.Context
-	cancel   context.CancelFunc
-	listener net.Listener
+	ctx           context.Context
+	cancel        context.CancelFunc
+	listener      net.Listener
+	dispatchReady chan struct{}
 }
 
 func newChannelServer(configFile string) *channelServer {
@@ -40,20 +40,20 @@ func newChannelServer(configFile string) *channelServer {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	return &channelServer{
-		eRecv:    make(chan *mnet.Event),
-		wRecv:    make(chan func()),
-		config:   config,
-		dbConfig: dbConfig,
-		wg:       &sync.WaitGroup{},
-		ctx:      ctx,
-		cancel:   cancel,
+		eRecv:         make(chan *mnet.Event),
+		wRecv:         make(chan func()),
+		config:        config,
+		dbConfig:      dbConfig,
+		wg:            &sync.WaitGroup{},
+		ctx:           ctx,
+		cancel:        cancel,
+		dispatchReady: make(chan struct{}),
 	}
 }
 
 func (cs *channelServer) run() {
 	log.Println("Channel Server")
 
-	// Signal handler for graceful shutdown
 	cs.wg.Add(1)
 	go func() {
 		defer cs.wg.Done()
@@ -78,7 +78,6 @@ func (cs *channelServer) run() {
 	if err := channel.PopulateDropTable("drops.json"); err != nil {
 		log.Fatal(err)
 	}
-
 	elapsed = time.Since(start)
 	log.Println("Loaded and parsed drop data in", elapsed)
 
@@ -90,29 +89,26 @@ func (cs *channelServer) run() {
 	cs.wg.Add(1)
 	go cs.processEvent()
 
+	<-cs.dispatchReady
+
+	cs.gameState.StartAutosave(cs.ctx)
+
 	cs.wg.Wait()
 	log.Println("Channel Server stopped")
 }
 
 func (cs *channelServer) shutdown() {
-	// Persist all player state before shutting down services.
 	cs.gameState.CheckpointAll()
 
-	// Stop the saver loop after final flush
 	channel.StopSaver()
 
-	// Cancel context so loops can exit
 	cs.cancel()
-	// Close listener to unblock Accept()
 	if cs.listener != nil {
 		_ = cs.listener.Close()
 	}
-	// Note: we intentionally do NOT close cs.eRecv or cs.wRecv here since
-	// other goroutines may still attempt to publish work/events.
 }
 
 func (cs *channelServer) establishWorldConnection() {
-	// Context-aware exponential backoff retry
 	backoff := time.Second
 	for {
 		select {
@@ -131,7 +127,6 @@ func (cs *channelServer) establishWorldConnection() {
 			cs.gameState.SendCountdownToPlayers(0)
 			return
 		}
-		// If connection failed, notify players and back off
 		cs.gameState.SendLostWorldConnectionMessage()
 		cs.gameState.SendCountdownToPlayers(int32(backoff / time.Second))
 		time.Sleep(backoff)
@@ -180,7 +175,6 @@ func (cs *channelServer) acceptNewConnections() {
 		conn, err := l.Accept()
 		if err != nil {
 			if cs.ctx.Err() != nil {
-				// shutting down
 				return
 			}
 			if isTempNetErr(err) {
@@ -189,7 +183,6 @@ func (cs *channelServer) acceptNewConnections() {
 				continue
 			}
 			log.Println("fatal client Accept error:", err)
-			// Do not close cs.eRecv; just stop this accept loop
 			return
 		}
 
@@ -203,9 +196,7 @@ func (cs *channelServer) acceptNewConnections() {
 		go client.Reader()
 		go client.Writer()
 
-		// Best-effort initial handshake
 		if _, err := conn.Write(packetClientHandshake(constant.MapleVersion, keyRecv[:], keySend[:])); err != nil {
-			// If this fails immediately, let the client's goroutines handle cleanup via disconnect
 			log.Println("handshake write failed:", err)
 		}
 	}
@@ -213,6 +204,16 @@ func (cs *channelServer) acceptNewConnections() {
 
 func (cs *channelServer) processEvent() {
 	defer cs.wg.Done()
+
+	select {
+	case <-cs.ctx.Done():
+		return
+	default:
+	}
+	if cs.dispatchReady != nil {
+		close(cs.dispatchReady)
+		cs.dispatchReady = nil
+	}
 
 	for {
 		select {

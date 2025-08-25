@@ -144,8 +144,6 @@ func (server *Server) Initialise(work chan func(), dbuser, dbpassword, dbaddress
 	server.parties = make(map[int32]*party)
 	server.guilds = make(map[int32]*guild)
 
-	// Start periodic autosave
-	server.startAutosave(context.Background())
 }
 
 func (server *Server) loadScripts() {
@@ -334,12 +332,11 @@ func (server *Server) CheckpointAll() {
 }
 
 // startAutosave periodically flushes deltas via the saver.
-func (server *Server) startAutosave(ctx context.Context) {
-	const interval = 30 * time.Second
-
+func (server *Server) StartAutosave(ctx context.Context) {
 	if server.dispatch == nil {
 		return
 	}
+	const interval = 30 * time.Second
 
 	var scheduleNext func()
 	scheduleNext = func() {
