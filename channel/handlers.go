@@ -317,6 +317,39 @@ func (server *Server) playerChangeChannel(conn mnet.Client, reader mpacket.Reade
 	// Save player buffs for handoff to next channel
 	player.saveBuffSnapshot()
 
+	if player.summons != nil {
+		if field, ok := server.fields[player.mapID]; ok && field != nil {
+			if inst, e := field.getInstance(player.inst.id); e == nil && inst != nil {
+				if player.summons.puppet != nil {
+					inst.send(packetRemoveSummon(player.id, player.summons.puppet.SkillID, 0x01))
+				}
+				if player.summons.summon != nil {
+					inst.send(packetRemoveSummon(player.id, player.summons.summon.SkillID, 0x01))
+				}
+			}
+		}
+
+		if player.buffs != nil {
+			if player.summons.puppet != nil {
+				player.buffs.expireBuffNow(player.summons.puppet.SkillID)
+			}
+			if player.summons.summon != nil {
+				player.buffs.expireBuffNow(player.summons.summon.SkillID)
+			}
+		}
+
+		if player.summons.puTimer != nil {
+			player.summons.puTimer.Stop()
+			player.summons.puTimer = nil
+		}
+		if player.summons.smTimer != nil {
+			player.summons.smTimer.Stop()
+			player.summons.smTimer = nil
+		}
+		player.summons.puppet = nil
+		player.summons.summon = nil
+	}
+
 	if int(id) < len(server.channels) {
 		if server.channels[id].Port == 0 {
 			conn.Send(packetCannotChangeChannel())
@@ -779,33 +812,44 @@ func (server Server) playerUsePortal(conn mnet.Client, reader mpacket.Reader) {
 
 func (server Server) warpPlayer(plr *player, dstField *field, dstPortal portal) error {
 	srcField, ok := server.fields[plr.mapID]
-
 	if !ok {
 		return fmt.Errorf("Error in map id %d", plr.mapID)
 	}
 
 	srcInst, err := srcField.getInstance(plr.inst.id)
-
 	if err != nil {
 		return err
 	}
 
 	dstInst, err := dstField.getInstance(plr.inst.id)
-
 	if err != nil {
 		if dstInst, err = dstField.getInstance(0); err != nil {
 			return err
 		}
 	}
 
-	err = srcInst.removePlayer(plr)
+	if plr.summons != nil {
+		if plr.summons.puppet != nil {
+			srcInst.send(packetRemoveSummon(plr.id, plr.summons.puppet.SkillID, 0x01))
+			if plr.buffs != nil {
+				plr.buffs.expireBuffNow(plr.summons.puppet.SkillID)
+			}
+			if plr.summons.puTimer != nil {
+				plr.summons.puTimer.Stop()
+				plr.summons.puTimer = nil
+			}
+			plr.summons.puppet = nil
+		}
+		if plr.summons.summon != nil {
+			srcInst.send(packetRemoveSummon(plr.id, plr.summons.summon.SkillID, 0x01))
+		}
+	}
 
-	if err != nil {
+	if err = srcInst.removePlayer(plr); err != nil {
 		return err
 	}
 
 	plr.setMapID(dstField.id)
-	// plr.mapPos = dstPortal.id
 	plr.pos = dstPortal.pos
 
 	spawnIdx, idxErr := dstInst.calculateNearestSpawnPortalID(dstPortal.pos)
@@ -813,11 +857,18 @@ func (server Server) warpPlayer(plr *player, dstField *field, dstPortal portal) 
 		spawnIdx = dstPortal.id
 	}
 
-	plr.send(packetMapChange(dstField.id, int32(server.id), spawnIdx, plr.hp)) // plr.ChangeMap(dstField.ID, dstPortal.ID(), dstPortal.Pos(), foothold)
-	err = dstInst.addPlayer(plr)
-
-	if err != nil {
+	plr.send(packetMapChange(dstField.id, int32(server.id), spawnIdx, plr.hp))
+	if err = dstInst.addPlayer(plr); err != nil {
 		return err
+	}
+
+	if plr.summons != nil && plr.summons.summon != nil {
+		snapped := dstInst.fhHist.getFinalPosition(newPos(plr.pos.x, plr.pos.y, 0))
+		plr.summons.summon.Pos = snapped
+		plr.summons.summon.Foothold = snapped.foothold
+		plr.summons.summon.Stance = 0
+
+		dstInst.send(packetShowSummon(plr.id, plr.summons.summon))
 	}
 
 	return nil
