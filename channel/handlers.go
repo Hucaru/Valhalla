@@ -145,14 +145,12 @@ func (server *Server) HandleClientPacket(conn mnet.Client, reader mpacket.Reader
 		server.playerCancelBuff(conn, reader)
 	case opcode.RecvChannelQuestOperation:
 		server.playerQuestOperation(conn, reader)
-		/*
-			case opcode.RecvChannelSummonMove:
-				server.playerSummonMove(conn, reader)
-			case opcode.RecvChannelSummonDamage:
-				server.playerSummonDamage(conn, reader)
-			case opcode.RecvChannelSummonAttack:
-				server.playerSummonAttack(conn, reader)
-		*/
+	case opcode.RecvChannelSummonMove:
+		server.playerSummonMove(conn, reader)
+	case opcode.RecvChannelSummonDamage:
+		server.playerSummonDamage(conn, reader)
+	case opcode.RecvChannelSummonAttack:
+		server.playerSummonAttack(conn, reader)
 	default:
 		unknownPacketsTotal.Inc()
 		log.Println("UNKNOWN CLIENT PACKET:", reader)
@@ -1986,111 +1984,119 @@ func getAttackInfo(reader mpacket.Reader, player player, attackType int) (attack
 	if player.hp == 0 {
 		return data, false
 	}
-
-	// speed hack check
 	if false && (reader.Time-player.lastAttackPacketTime < 350) {
 		return data, false
 	}
-
 	player.lastAttackPacketTime = reader.Time
 
 	if attackType != attackSummon {
 		tByte := reader.ReadByte()
 		skillID := reader.ReadInt32()
-
 		if _, ok := player.skills[skillID]; !ok && skillID != 0 {
 			return data, false
 		}
-
 		data.skillID = skillID
-
 		if data.skillID != 0 {
 			data.skillLevel = player.skills[skillID].Level
 		}
-
-		// if meso explosion data.IsMesoExplosion = true
-
 		data.targets = tByte / 0x10
 		data.hits = tByte % 0x10
 		data.option = reader.ReadByte()
 
 		tmp := reader.ReadByte()
-
 		data.action = tmp & 0x7F
 		data.facesLeft = (tmp >> 7) == 1
 		data.attackType = reader.ReadByte()
-	} else {
-		data.summonType = reader.ReadInt32()
-		data.attackType = reader.ReadByte()
-		data.targets = 1
-		data.hits = 1
-	}
 
-	reader.Skip(4) //checksum info?
+		reader.Skip(4) // checksum
 
-	if attackType == attackRanged {
-		projectileSlot := reader.ReadInt16() // star/arrow slot
-		if projectileSlot == 0 {
-			// if soul arrow is not set check for hacks
-		} else {
-			data.projectileID = -1
-
-			for _, item := range player.use {
-				if item.slotID == projectileSlot {
-					data.projectileID = item.id
+		if attackType == attackRanged {
+			projectileSlot := reader.ReadInt16()
+			if projectileSlot != 0 {
+				data.projectileID = -1
+				for _, item := range player.use {
+					if item.slotID == projectileSlot {
+						data.projectileID = item.id
+					}
 				}
 			}
+			reader.ReadByte()
+			reader.ReadByte()
+			reader.ReadByte()
 		}
-		reader.ReadByte() // ?
-		reader.ReadByte() // ?
-		reader.ReadByte() // ?
+
+		data.attackInfo = make([]attackInfo, data.targets)
+		for i := byte(0); i < data.targets; i++ {
+			attack := attackInfo{}
+			attack.spawnID = reader.ReadInt32()
+			attack.hitAction = reader.ReadByte()
+
+			tmp := reader.ReadByte()
+			attack.foreAction = tmp & 0x7F
+			attack.facesLeft = (tmp >> 7) == 1
+			attack.frameIndex = reader.ReadByte()
+
+			if !data.isMesoExplosion {
+				attack.calcDamageStatIndex = reader.ReadByte()
+			}
+
+			attack.hitPosition.x = reader.ReadInt16()
+			attack.hitPosition.y = reader.ReadInt16()
+
+			attack.previousMobPosition.x = reader.ReadInt16()
+			attack.previousMobPosition.y = reader.ReadInt16()
+
+			if data.isMesoExplosion {
+				data.hits = reader.ReadByte()
+			} else {
+				attack.hitDelay = reader.ReadInt16()
+			}
+
+			attack.damages = make([]int32, data.hits)
+			for j := byte(0); j < data.hits; j++ {
+				dmg := reader.ReadInt32()
+				data.totalDamage += dmg
+				attack.damages[j] = dmg
+			}
+			data.attackInfo[i] = attack
+		}
+
+		data.playerPos.x = reader.ReadInt16()
+		data.playerPos.y = reader.ReadInt16()
+		return data, true
 	}
 
-	data.attackInfo = make([]attackInfo, data.targets)
+	data.summonType = reader.ReadInt32()
+	stance := reader.ReadByte()
+	extra := reader.ReadByte()
+	data.action = stance
+	data.hits = 1
 
-	for i := byte(0); i < data.targets; i++ {
-		attack := attackInfo{}
-		attack.spawnID = reader.ReadInt32()
-		attack.hitAction = reader.ReadByte()
+	spawnID := int32(extra)
 
-		tmp := reader.ReadByte()
-		attack.foreAction = tmp & 0x7F
-		attack.facesLeft = (tmp >> 7) == 1
-		attack.frameIndex = reader.ReadByte()
-
-		if !data.isMesoExplosion {
-			attack.calcDamageStatIndex = reader.ReadByte()
+	rest := reader.GetRestAsBytes()
+	delayIdx := -1
+	for idx := 0; idx+5 < len(rest); idx++ {
+		if rest[idx] == 0x64 && rest[idx+1] == 0x00 {
+			delayIdx = idx
+			break
 		}
-
-		attack.hitPosition.x = reader.ReadInt16()
-		attack.hitPosition.y = reader.ReadInt16()
-
-		attack.previousMobPosition.x = reader.ReadInt16()
-		attack.previousMobPosition.y = reader.ReadInt16()
-
-		if attackType == attackSummon {
-			reader.Skip(1)
-		}
-
-		if data.isMesoExplosion {
-			data.hits = reader.ReadByte()
-		} else if attackType != attackSummon {
-			attack.hitDelay = reader.ReadInt16()
-		}
-
-		attack.damages = make([]int32, data.hits)
-
-		for j := byte(0); j < data.hits; j++ {
-			dmg := reader.ReadInt32()
-			data.totalDamage += dmg
-			attack.damages[j] = dmg
-		}
-		data.attackInfo[i] = attack
+	}
+	if delayIdx == -1 || delayIdx+6 > len(rest) {
+		return data, false
 	}
 
-	data.playerPos.x = reader.ReadInt16()
-	data.playerPos.y = reader.ReadInt16()
+	dmg := int32(rest[delayIdx+2]) |
+		int32(rest[delayIdx+3])<<8 |
+		int32(rest[delayIdx+4])<<16 |
+		int32(rest[delayIdx+5])<<24
 
+	data.attackInfo = []attackInfo{{
+		spawnID: spawnID,
+		damages: []int32{dmg},
+	}}
+	data.targets = 1
+	data.totalDamage = dmg
 	return data, true
 }
 
@@ -3698,13 +3704,8 @@ func (server *Server) playerSummonAttack(conn mnet.Client, reader mpacket.Reader
 	}
 
 	data, valid := getAttackInfo(reader, *plr, attackSummon)
-	if !valid {
+	if !valid || len(data.attackInfo) == 0 {
 		return
-	}
-
-	mobDamages := make(map[int32][]int32, len(data.attackInfo))
-	for _, at := range data.attackInfo {
-		mobDamages[at.spawnID] = append([]int32(nil), at.damages...)
 	}
 
 	field, ok := server.fields[plr.mapID]
@@ -3716,16 +3717,29 @@ func (server *Server) playerSummonAttack(conn mnet.Client, reader mpacket.Reader
 		return
 	}
 
+	mobDamages := make(map[int32][]int32, len(data.attackInfo))
+	for _, at := range data.attackInfo {
+		if at.spawnID <= 0 || len(at.damages) == 0 {
+			continue
+		}
+		mobDamages[at.spawnID] = append(mobDamages[at.spawnID], at.damages...)
+	}
+	if len(mobDamages) == 0 {
+		return
+	}
+
 	anim := data.action
 	if anim == 0 && len(data.attackInfo) > 0 {
 		anim = data.attackInfo[0].frameIndex
 	}
 
-	// data.summonType holds the summonID parsed for summon-attacks in getAttackInfo
-	inst.sendExcept(packetSummonAttack(plr.id, data.summonType, anim, data.targets, mobDamages), conn)
-
-	for _, at := range data.attackInfo {
-		inst.lifePool.mobDamaged(at.spawnID, plr, at.damages...)
+	inst.sendExcept(packetSummonAttack(plr.id, data.summonType, anim, byte(len(mobDamages)), mobDamages), conn)
+	for spawnID, damages := range mobDamages {
+		for _, d := range damages {
+			if d > 0 {
+				inst.lifePool.mobDamaged(spawnID, plr, d)
+			}
+		}
 	}
 }
 
