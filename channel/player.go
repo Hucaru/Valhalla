@@ -1814,6 +1814,79 @@ func (d *player) allowsQuestDrop(qid int32) bool {
 	return d.quests.hasInProgress(int16(qid))
 }
 
+func (p *player) ensureSummonState() {
+	if p.summons == nil {
+		p.summons = &summonState{}
+	}
+}
+
+func (p *player) addSummon(su *summon) {
+	p.ensureSummonState()
+
+	if su.IsPuppet {
+		if p.summons.puppet != nil {
+			p.removeSummon(true, 0x04)
+		}
+		p.summons.puppet = su
+	} else {
+		if p.summons.summon != nil {
+			p.removeSummon(false, 0x04)
+		}
+		p.summons.summon = su
+	}
+
+	p.broadcastShowSummon(su)
+}
+
+func (p *player) removeSummon(puppet bool, reason byte) {
+	p.ensureSummonState()
+
+	shouldCancelBuff := func(r byte) bool {
+		return r != 0x02 && r != 0x04
+	}
+
+	if puppet {
+		if p.summons.puppet == nil {
+			return
+		}
+		su := p.summons.puppet
+		p.broadcastRemoveSummon(su.SkillID, reason)
+		if shouldCancelBuff(reason) && p.buffs != nil {
+			p.buffs.expireBuffNow(su.SkillID)
+		}
+		p.summons.puppet = nil
+	} else {
+		if p.summons.summon == nil {
+			return
+		}
+		su := p.summons.summon
+		p.broadcastRemoveSummon(su.SkillID, reason)
+		if shouldCancelBuff(reason) && p.buffs != nil {
+			p.buffs.expireBuffNow(su.SkillID)
+		}
+		p.summons.summon = nil
+	}
+}
+
+func (p *player) getSummon(skillID int32) *summon {
+	p.ensureSummonState()
+	if p.summons.summon != nil && p.summons.summon.SkillID == skillID {
+		return p.summons.summon
+	}
+	if p.summons.puppet != nil && p.summons.puppet.SkillID == skillID {
+		return p.summons.puppet
+	}
+	return nil
+}
+
+func (p *player) broadcastShowSummon(su *summon) {
+	p.inst.send(packetShowSummon(p.id, su))
+}
+
+func (p *player) broadcastRemoveSummon(summonSkillID int32, reason byte) {
+	p.inst.send(packetRemoveSummon(p.id, summonSkillID, reason))
+}
+
 func packetPlayerReceivedDmg(charID int32, attack int8, initalAmmount, reducedAmmount, spawnID, mobID, healSkillID int32,
 	stance, reflectAction byte, reflected byte, reflectX, reflectY int16) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelPlayerTakeDmg)

@@ -235,8 +235,35 @@ func (server *Server) playerConnect(conn mnet.Client, reader mpacket.Reader) {
 
 	// Restore buffs (if any) saved during CC or previous logout, then audit for stale
 	newPlr.loadAndApplyBuffSnapshot()
+
 	if newPlr.buffs != nil {
-		newPlr.buffs.AuditAndExpireStaleBuffs()
+		summonSkills := []int32{
+			int32(skill.SilverHawk),
+			int32(skill.GoldenEagle),
+			int32(skill.SummonDragon),
+		}
+		for _, sid := range summonSkills {
+			if lvl, ok := newPlr.buffs.activeSkillLevels[sid]; ok && lvl > 0 {
+				spawn := newPlr.pos
+				if snapped := inst.fhHist.getFinalPosition(newPos(spawn.x, spawn.y, 0)); snapped.foothold != 0 {
+					spawn = snapped
+				}
+				su := &summon{
+					OwnerID:    newPlr.id,
+					SkillID:    sid,
+					Level:      lvl,
+					HP:         0,
+					Pos:        spawn,
+					Stance:     0,
+					Foothold:   spawn.foothold,
+					IsPuppet:   false,
+					SummonType: 0,
+					ExpiresAt:  time.Time{},
+				}
+				newPlr.addSummon(su)
+				break
+			}
+		}
 	}
 
 	for _, party := range server.parties {
@@ -308,7 +335,6 @@ func (server *Server) playerChangeChannel(conn mnet.Client, reader mpacket.Reade
 
 	server.migrating = append(server.migrating, conn)
 	player, err := server.players.getFromConn(conn)
-
 	if err != nil {
 		log.Println("Unable to get player from connection", conn)
 		return
@@ -328,24 +354,6 @@ func (server *Server) playerChangeChannel(conn mnet.Client, reader mpacket.Reade
 				}
 			}
 		}
-
-		if player.buffs != nil {
-			if player.summons.puppet != nil {
-				player.buffs.expireBuffNow(player.summons.puppet.SkillID)
-			}
-			if player.summons.summon != nil {
-				player.buffs.expireBuffNow(player.summons.summon.SkillID)
-			}
-		}
-
-		if player.summons.puTimer != nil {
-			player.summons.puTimer.Stop()
-			player.summons.puTimer = nil
-		}
-		if player.summons.smTimer != nil {
-			player.summons.smTimer.Stop()
-			player.summons.smTimer = nil
-		}
 		player.summons.puppet = nil
 		player.summons.summon = nil
 	}
@@ -354,22 +362,17 @@ func (server *Server) playerChangeChannel(conn mnet.Client, reader mpacket.Reade
 		if server.channels[id].Port == 0 {
 			conn.Send(packetCannotChangeChannel())
 		} else {
-			_, err := common.DB.Exec("UPDATE characters SET migrationID=? WHERE id=?", id, player.id)
-
-			if err != nil {
+			if _, err := common.DB.Exec("UPDATE characters SET migrationID=? WHERE id=?", id, player.id); err != nil {
 				log.Println(err)
 				return
 			}
-
 			packetChangeChannel := func(ip []byte, port int16) mpacket.Packet {
 				p := mpacket.CreateWithOpcode(opcode.SendChannelChange)
 				p.WriteBool(true)
 				p.WriteBytes(ip)
 				p.WriteInt16(port)
-
 				return p
 			}
-
 			conn.Send(packetChangeChannel(server.channels[id].IP, server.channels[id].Port))
 		}
 	}
@@ -830,14 +833,8 @@ func (server Server) warpPlayer(plr *player, dstField *field, dstPortal portal) 
 
 	if plr.summons != nil {
 		if plr.summons.puppet != nil {
+			// Despawn puppet from source map only; do NOT expire its buff here.
 			srcInst.send(packetRemoveSummon(plr.id, plr.summons.puppet.SkillID, 0x01))
-			if plr.buffs != nil {
-				plr.buffs.expireBuffNow(plr.summons.puppet.SkillID)
-			}
-			if plr.summons.puTimer != nil {
-				plr.summons.puTimer.Stop()
-				plr.summons.puTimer = nil
-			}
 			plr.summons.puppet = nil
 		}
 		if plr.summons.summon != nil {
@@ -862,6 +859,7 @@ func (server Server) warpPlayer(plr *player, dstField *field, dstPortal portal) 
 		return err
 	}
 
+	// Re-show non-puppet summon on destination if still present in state
 	if plr.summons != nil && plr.summons.summon != nil {
 		snapped := dstInst.fhHist.getFinalPosition(newPos(plr.pos.x, plr.pos.y, 0))
 		plr.summons.summon.Pos = snapped
@@ -1124,66 +1122,6 @@ func (server *Server) playerUseScroll(conn mnet.Client, reader mpacket.Reader) {
 			plr.send(packetUseScroll(plr.id, false, false, false))
 		}
 	}
-}
-
-// Packet format (after ticker skip handled elsewhere):
-// - slot: int16 (USE inv slot of the buff item)
-// - itemID: int32
-// - targetName: string (length-prefixed int16)
-func (server *Server) playerUseBuffItem(conn mnet.Client, reader mpacket.Reader) {
-	plr, err := server.players.getFromConn(conn)
-	if err != nil {
-		return
-	}
-
-	slot := reader.ReadInt16()
-	itemID := reader.ReadInt32()
-
-	// Validate item in USE inventory and item id match
-	found := false
-	for i := range plr.use {
-		if plr.use[i].slotID == slot && plr.use[i].id == itemID && plr.use[i].amount > 0 {
-			found = true
-			break
-		}
-	}
-	if !found {
-		// Hacking / invalid
-		return
-	}
-
-	targetName := reader.ReadString(reader.ReadInt16())
-
-	// Try to resolve target by name
-	if target, err := server.players.getFromName(targetName); err == nil && target != nil {
-		// If target is the same player, original code notes needing a failure packet if it's invalid
-		// We'll still proceed if allowed by your game rules.
-		if plr.mapID != target.mapID {
-			// TODO: send an appropriate failure packet (different map)
-			plr.send(packetPlayerNoChange())
-			return
-		}
-
-		// Apply effect to target
-		// TODO: integrate actual buff application (stats/effects based on itemID)
-		target.applyBuffItem(itemID)
-
-		// Consume the buff item from the user's USE inventory
-		if _, err := plr.takeItem(itemID, slot, 1, 2); err != nil {
-			// If consumption fails, roll back by notifying client
-			plr.send(packetPlayerNoChange())
-			return
-		}
-	} else {
-		// Target not found: send failure (TODO: precise packet)
-		plr.send(packetPlayerNoChange())
-	}
-}
-
-// applyBuffItemToPlayer is a placeholder for your buff item usage on a target player.
-func (p *player) applyBuffItem(itemID int32) {
-	// TODO: Implement item-based buff application.
-	// Example: inventory.useItem(target, itemID) equivalent
 }
 
 func (server Server) playerPickupItem(conn mnet.Client, reader mpacket.Reader) {
@@ -3614,7 +3552,7 @@ func (server *Server) playerSpecialSkill(conn mnet.Client, reader mpacket.Reader
 			}
 		}
 
-		summ := &Summon{
+		summ := &summon{
 			OwnerID:    plr.id,
 			SkillID:    skillID,
 			Level:      skillLevel,
@@ -3634,13 +3572,8 @@ func (server *Server) playerSpecialSkill(conn mnet.Client, reader mpacket.Reader
 			}
 		}
 
-		durationSec := int(delay)
-		if durationSec <= 0 {
-			durationSec = 180
-		}
-
-		server.addSummon(plr, summ, durationSec)
 		plr.addBuff(skillID, skillLevel, delay)
+		plr.addSummon(summ)
 		plr.inst.send(packetPlayerSkillAnimThirdParty(plr.id, false, true, skillID, skillLevel))
 
 	default:
@@ -3741,7 +3674,7 @@ func (server *Server) playerSummonDamage(conn mnet.Client, reader mpacket.Reader
 	}
 
 	if summ.HP-int(damage) < 0 {
-		server.removeSummon(plr, true, 0x02)
+		plr.removeSummon(true, 0x02)
 	} else {
 		summ.HP -= int(damage)
 	}

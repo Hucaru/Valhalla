@@ -571,23 +571,18 @@ func (cb *CharacterBuffs) scheduleExpiryLocked(skillID int32, after time.Duratio
 }
 
 func (cb *CharacterBuffs) expireBuffNow(skillID int32) {
-	if cb == nil || cb.plr == nil {
+	if cb.plr == nil {
 		return
 	}
-
-	// Clear timer handle and expiry stamp
 	if t, ok := cb.expireTimers[skillID]; ok && t != nil {
 		t.Stop()
 		delete(cb.expireTimers, skillID)
 	}
 	delete(cb.expireAt, skillID)
 
-	// Build cancel mask (64-bit)
 	bits, ok := skillBuffBits[skillID]
 	if !ok || len(bits) == 0 {
-		// If this was an item buff, item sourceID is negative; handle those too
 		if skillID < 0 {
-			// item cancel path
 			if mask, ok2 := cb.itemMasks[skillID]; ok2 {
 				cb.plr.send(packetPlayerCancelBuff(mask))
 				if cb.plr.inst != nil {
@@ -596,18 +591,31 @@ func (cb *CharacterBuffs) expireBuffNow(skillID int32) {
 				delete(cb.itemMasks, skillID)
 			}
 		}
+		cb.despawnSummonIfMatches(skillID)
 		return
 	}
 	maskBytes := buildMaskBytes64(bits)
 
-	// Self cancel
 	cb.plr.send(packetPlayerCancelBuff(maskBytes))
-	// Others cancel
 	if cb.plr.inst != nil {
 		cb.plr.inst.send(packetPlayerCancelForeignBuff(cb.plr.id, maskBytes))
 	}
 
 	delete(cb.activeSkillLevels, skillID)
+
+	cb.despawnSummonIfMatches(skillID)
+}
+
+func (cb *CharacterBuffs) despawnSummonIfMatches(skillID int32) {
+	p := cb.plr
+	if p.summons.puppet != nil && p.summons.puppet.SkillID == skillID {
+		p.removeSummon(true, 0x02)
+		return
+	}
+	if p.summons.summon != nil && p.summons.summon.SkillID == skillID {
+		p.removeSummon(false, 0x02)
+		return
+	}
 }
 
 func (cb *CharacterBuffs) check(skillID int32) {
