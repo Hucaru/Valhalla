@@ -16,6 +16,7 @@ CREATE TABLE `accounts` (
   `isBanned` int(11) NOT NULL DEFAULT '0',
   `gender` tinyint(4) NOT NULL DEFAULT '0',
   `dob` int(11) NOT NULL,
+  `eula` tinyint(4) NOT NULL,
   PRIMARY KEY (`accountID`)
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 
