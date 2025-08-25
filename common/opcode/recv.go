@@ -54,6 +54,9 @@ const (
 	RecvChannelGuildReject         byte = 0x52
 	RecvChannelBuddyOperation      byte = 0x55
 	RecvChannelUseMysticDoor       byte = 0x58
+	RecvChannelSummonMove          byte = 0x62
+	RecvChannelSummonAttack        byte = 0x63
+	RecvChannelSummonDamage        byte = 0x64
 	RecvChannelMobControl          byte = 0x6A
 	RecvChannelDistance            byte = 0x6B
 	RecvChannelNpcMovement         byte = 0x6F

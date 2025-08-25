@@ -166,6 +166,8 @@ type player struct {
 
 	quests quests
 
+	summons *summonState
+
 	// Per-player RNG for deterministic randomness
 	rng *rand.Rand
 
