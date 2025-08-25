@@ -211,5 +211,28 @@ Service discovery changes (compared to docker-compose):
 - K8s services use hyphens. Configs inside the pods are adjusted accordingly:
   - login-server, world-server, db
 
-All ports are via ClusterIP at the moment. This can be adjusted to LoadBalancer if desired.
+All ports are via ClusterIP, and can be exposed via Ingress-Nginx.
 
+### Exposing Kubernetes Services
+You will need to use the `ingress-nginx` deployment to expose your service.
+
+The following values should be used to deploy the helm chart:
+```
+tcp:
+  8484: valhalla/login-server:8484
+  8685: valhalla/channel-server-1:8685
+  8684: valhalla/channel-server-2:8684
+  8683: valhalla/channel-server-3:8683
+... etc 
+```
+**You will need to add all the channels you intend on having, and the port decreases by 1 for each additional channel**
+
+1. Deploy Ingress-Nginx via Helm
+    - `helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx`
+    - `helm install -n ingress-nginx ingress-nginx ingress-nginx/ingress-nginx --create-namespace -f values.yaml`
+1. Update Maplestory client to use ingress-nginx external IP
+    - `kubectl get svc -n ingress-nginx`
+1. Update Valhalla config to use ingress-nginx external IP
+    - `channel.clientConnectionAddress: "<loadbalancer-ip"`
+1. Upgrade/Restart Helm chart
+    - `helm upgrade -n valhalla valhalla ./helm -f values.yaml`
