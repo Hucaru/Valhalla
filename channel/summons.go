@@ -135,7 +135,6 @@ func (s *Server) broadcastRemoveSummon(p *player, summonSkillID int32, reason by
 
 func packetShowSummon(ownerID int32, su *Summon) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(0x5F)
-	p.WriteByte(0x4A)
 	p.WriteInt32(ownerID)
 	p.WriteInt32(su.SkillID)
 	p.WriteByte(su.Level)
@@ -150,7 +149,6 @@ func packetShowSummon(ownerID int32, su *Summon) mpacket.Packet {
 
 func packetRemoveSummon(ownerID int32, summonID int32, reason byte) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelSummonOperation)
-	p.WriteByte(0x4B)
 	p.WriteInt32(ownerID)
 	p.WriteInt32(summonID)
 	p.WriteByte(reason)
@@ -162,7 +160,6 @@ func packetRemoveSummon(ownerID int32, summonID int32, reason byte) mpacket.Pack
 
 func packetSummonMove(ownerID int32, summonID int32, moveBytes []byte) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelSummonOperation)
-	p.WriteByte(0x4C)
 	p.WriteInt32(ownerID)
 	p.WriteInt32(summonID)
 	p.WriteBytes(moveBytes)
@@ -174,7 +171,6 @@ func packetSummonMove(ownerID int32, summonID int32, moveBytes []byte) mpacket.P
 
 func packetSummonAttack(ownerID int32, summonID int32, anim byte, targets byte, mobDamages map[int32][]int32) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelSummonOperation)
-	p.WriteByte(0x4D)
 	p.WriteInt32(ownerID)
 	p.WriteInt32(summonID)
 	p.WriteByte(anim)
@@ -194,7 +190,6 @@ func packetSummonAttack(ownerID int32, summonID int32, anim byte, targets byte, 
 
 func packetSummonDamage(ownerID int32, summonID int32, unk int8, damage int32, mobID int32, unk2 byte) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelSummonOperation)
-	p.WriteByte(0x4E)
 	p.WriteInt32(ownerID)
 	p.WriteInt32(summonID)
 	p.WriteByte(byte(unk))
