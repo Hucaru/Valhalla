@@ -234,15 +234,22 @@ func (cs *channelServer) processEvent() {
 					log.Println("New client from", conn)
 				case mnet.MEClientDisconnect:
 					log.Println("Client at", conn, "disconnected")
-					cs.gameState.ClientDisconnected(conn)
+					select {
+					case cs.wRecv <- func() { cs.gameState.ClientDisconnected(conn) }:
+					default:
+						cs.wRecv <- func() { cs.gameState.ClientDisconnected(conn) }
+					}
+
 				case mnet.MEClientPacket:
 					cs.gameState.HandleClientPacket(conn, mpacket.NewReader(&e.Packet, time.Now().Unix()))
 				}
+
 			case mnet.Server:
 				switch e.Type {
 				case mnet.MEServerDisconnect:
 					log.Println("Server at", conn, "disconnected")
 					go cs.establishWorldConnection()
+
 				case mnet.MEServerPacket:
 					cs.gameState.HandleServerPacket(conn, mpacket.NewReader(&e.Packet, time.Now().Unix()))
 				}
