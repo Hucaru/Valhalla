@@ -3,7 +3,6 @@ package login
 import (
 	"crypto/sha512"
 	"encoding/hex"
-	"fmt"
 	"log"
 	"strings"
 
@@ -68,7 +67,6 @@ func (server *Server) handleLoginRequest(conn mnet.Client, reader mpacket.Reader
 	result := byte(0x00)
 
 	if err != nil {
-		fmt.Println(err)
 		result = 0x05
 	} else if hashedPassword != databasePassword {
 		result = 0x04
