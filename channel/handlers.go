@@ -233,39 +233,6 @@ func (server *Server) playerConnect(conn mnet.Client, reader mpacket.Reader) {
 		return
 	}
 
-	// Restore buffs (if any) saved during CC or previous logout, then audit for stale
-	newPlr.loadAndApplyBuffSnapshot()
-
-	if newPlr.buffs != nil {
-		summonSkills := []int32{
-			int32(skill.SilverHawk),
-			int32(skill.GoldenEagle),
-			int32(skill.SummonDragon),
-		}
-		for _, sid := range summonSkills {
-			if lvl, ok := newPlr.buffs.activeSkillLevels[sid]; ok && lvl > 0 {
-				spawn := newPlr.pos
-				if snapped := inst.fhHist.getFinalPosition(newPos(spawn.x, spawn.y, 0)); snapped.foothold != 0 {
-					spawn = snapped
-				}
-				su := &summon{
-					OwnerID:    newPlr.id,
-					SkillID:    sid,
-					Level:      lvl,
-					HP:         0,
-					Pos:        spawn,
-					Stance:     0,
-					Foothold:   spawn.foothold,
-					IsPuppet:   false,
-					SummonType: 0,
-					ExpiresAt:  time.Time{},
-				}
-				newPlr.addSummon(su)
-				break
-			}
-		}
-	}
-
 	for _, party := range server.parties {
 		if party.addExistingPlayer(newPlr) {
 			break
@@ -320,6 +287,13 @@ func (server *Server) playerConnect(conn mnet.Client, reader mpacket.Reader) {
 		return
 	}
 
+	// Restore buffs (if any) saved during CC or previous logout, then audit for stale
+	newPlr.loadAndApplyBuffSnapshot()
+
+	if newPlr.buffs != nil {
+		newPlr.buffs.AuditAndExpireStaleBuffs()
+	}
+
 	common.MetricsGauges["player_count"].With(prometheus.Labels{"channel": strconv.Itoa(int(server.id)), "world": server.worldName}).Inc()
 
 	server.world.Send(internal.PacketChannelPopUpdate(server.id, int16(len(server.players))))
@@ -340,8 +314,15 @@ func (server *Server) playerChangeChannel(conn mnet.Client, reader mpacket.Reade
 		return
 	}
 
-	// Save player buffs for handoff to next channel
-	player.saveBuffSnapshot()
+	// Expire Summon Buffs
+	if player != nil && player.buffs != nil {
+		for sid := range player.buffs.activeSkillLevels {
+			switch skill.Skill(sid) {
+			case skill.SilverHawk, skill.GoldenEagle, skill.SummonDragon, skill.Puppet, skill.SniperPuppet:
+				player.buffs.expireBuffNow(sid)
+			}
+		}
+	}
 
 	if player.summons != nil {
 		if field, ok := server.fields[player.mapID]; ok && field != nil {
@@ -357,6 +338,9 @@ func (server *Server) playerChangeChannel(conn mnet.Client, reader mpacket.Reade
 		player.summons.puppet = nil
 		player.summons.summon = nil
 	}
+
+	// Save player buffs for handoff to next channel
+	player.saveBuffSnapshot()
 
 	if int(id) < len(server.channels) {
 		if server.channels[id].Port == 0 {
@@ -833,9 +817,8 @@ func (server Server) warpPlayer(plr *player, dstField *field, dstPortal portal) 
 
 	if plr.summons != nil {
 		if plr.summons.puppet != nil {
-			// Despawn puppet from source map only; do NOT expire its buff here.
-			srcInst.send(packetRemoveSummon(plr.id, plr.summons.puppet.SkillID, 0x01))
-			plr.summons.puppet = nil
+			// Debuff puppet
+			plr.removeSummon(true, 0x01)
 		}
 		if plr.summons.summon != nil {
 			srcInst.send(packetRemoveSummon(plr.id, plr.summons.summon.SkillID, 0x01))

@@ -1880,10 +1880,18 @@ func (p *player) getSummon(skillID int32) *summon {
 }
 
 func (p *player) broadcastShowSummon(su *summon) {
+	if p == nil || p.inst == nil {
+		return
+	}
+
 	p.inst.send(packetShowSummon(p.id, su))
 }
 
 func (p *player) broadcastRemoveSummon(summonSkillID int32, reason byte) {
+	if p == nil || p.inst == nil {
+		return
+	}
+
 	p.inst.send(packetRemoveSummon(p.id, summonSkillID, reason))
 }
 
