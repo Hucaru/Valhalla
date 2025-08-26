@@ -30,7 +30,7 @@ type summonState struct {
 }
 
 func packetShowSummon(ownerID int32, su *summon) mpacket.Packet {
-	p := mpacket.CreateWithOpcode(opcode.SendChannelSpawnSpecialMapObject)
+	p := mpacket.CreateWithOpcode(opcode.SendChannelSpecialMapObjectSpawn)
 	p.WriteInt32(ownerID)
 	p.WriteInt32(su.SkillID)
 	p.WriteByte(su.Level)
@@ -44,7 +44,7 @@ func packetShowSummon(ownerID int32, su *summon) mpacket.Packet {
 }
 
 func packetRemoveSummon(ownerID int32, summonID int32, reason byte) mpacket.Packet {
-	p := mpacket.CreateWithOpcode(opcode.SendChannelRemoveSpecialMapObject)
+	p := mpacket.CreateWithOpcode(opcode.SendChannelSpecialMapObjectRemove)
 	p.WriteInt32(ownerID)
 	p.WriteInt32(summonID)
 	p.WriteByte(reason)
