@@ -1825,12 +1825,12 @@ func (p *player) addSummon(su *summon) {
 
 	if su.IsPuppet {
 		if p.summons.puppet != nil {
-			p.removeSummon(true, 0x04)
+			p.removeSummon(true, constant.SummonRemoveReasonReplaced)
 		}
 		p.summons.puppet = su
 	} else {
 		if p.summons.summon != nil {
-			p.removeSummon(false, 0x04)
+			p.removeSummon(false, constant.SummonRemoveReasonReplaced)
 		}
 		p.summons.summon = su
 	}
@@ -1842,7 +1842,7 @@ func (p *player) removeSummon(puppet bool, reason byte) {
 	p.ensureSummonState()
 
 	shouldCancelBuff := func(r byte) bool {
-		return r != 0x02 && r != 0x04
+		return r != constant.SummonRemoveReasonKeepBuff && r != constant.SummonRemoveReasonReplaced
 	}
 
 	if puppet {

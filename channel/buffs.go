@@ -4,6 +4,7 @@ import (
 	"log"
 	"time"
 
+	"github.com/Hucaru/Valhalla/constant"
 	"github.com/Hucaru/Valhalla/constant/skill"
 	"github.com/Hucaru/Valhalla/nx"
 )
@@ -662,11 +663,11 @@ func (cb *CharacterBuffs) despawnSummonIfMatches(skillID int32) {
 		return
 	}
 	if p.summons.puppet != nil && p.summons.puppet.SkillID == skillID {
-		p.removeSummon(true, 0x02)
+		p.removeSummon(true, constant.SummonRemoveReasonKeepBuff)
 		return
 	}
 	if p.summons.summon != nil && p.summons.summon.SkillID == skillID {
-		p.removeSummon(false, 0x02)
+		p.removeSummon(false, constant.SummonRemoveReasonKeepBuff)
 		return
 	}
 }

@@ -818,10 +818,10 @@ func (server Server) warpPlayer(plr *player, dstField *field, dstPortal portal) 
 	if plr.summons != nil {
 		if plr.summons.puppet != nil {
 			// Debuff puppet
-			plr.removeSummon(true, 0x01)
+			plr.removeSummon(true, constant.SummonRemoveReasonCancel)
 		}
 		if plr.summons.summon != nil {
-			srcInst.send(packetRemoveSummon(plr.id, plr.summons.summon.SkillID, 0x01))
+			srcInst.send(packetRemoveSummon(plr.id, plr.summons.summon.SkillID, constant.SummonRemoveReasonCancel))
 		}
 	}
 
@@ -3644,15 +3644,15 @@ func (server *Server) playerSummonDamage(conn mnet.Client, reader mpacket.Reader
 		return
 	}
 
-	unk := int8(reader.ReadByte())
+	_ = int8(reader.ReadByte())
 	damage := reader.ReadInt32()
 	mobID := reader.ReadInt32()
-	unk2 := reader.ReadByte()
+	_ = reader.ReadByte()
 
 	field, ok := server.fields[plr.mapID]
 	if ok {
 		if inst, e := field.getInstance(plr.inst.id); e == nil {
-			inst.send(packetSummonDamage(plr.id, summonID, unk, damage, mobID, unk2))
+			inst.send(packetSummonDamage(plr.id, summonID, damage, mobID))
 		}
 	}
 

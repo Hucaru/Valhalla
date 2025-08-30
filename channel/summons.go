@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/Hucaru/Valhalla/common/opcode"
+	"github.com/Hucaru/Valhalla/constant"
 	"github.com/Hucaru/Valhalla/mpacket"
 )
 
@@ -73,7 +74,7 @@ func packetSummonAttack(ownerID int32, summonID int32, anim byte, targets byte, 
 	p.WriteByte(targets)
 	for mobID, dList := range mobDamages {
 		p.WriteInt32(mobID)
-		p.WriteByte(0x06)
+		p.WriteByte(constant.SummonAttackMob)
 		for _, d := range dList {
 			p.WriteInt32(d)
 		}
@@ -84,11 +85,11 @@ func packetSummonAttack(ownerID int32, summonID int32, anim byte, targets byte, 
 	return p
 }
 
-func packetSummonDamage(ownerID int32, summonID int32, unk int8, damage int32, mobID int32, unk2 byte) mpacket.Packet {
+func packetSummonDamage(ownerID int32, summonID int32, damage int32, mobID int32) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelSummonDamage)
 	p.WriteInt32(ownerID)
 	p.WriteInt32(summonID)
-	p.WriteByte(0xFF)
+	p.WriteByte(constant.SummonTakeDamage)
 	p.WriteInt32(damage)
 	p.WriteInt32(mobID)
 	p.WriteByte(0)
