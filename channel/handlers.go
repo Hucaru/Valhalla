@@ -145,6 +145,12 @@ func (server *Server) HandleClientPacket(conn mnet.Client, reader mpacket.Reader
 		server.playerCancelBuff(conn, reader)
 	case opcode.RecvChannelQuestOperation:
 		server.playerQuestOperation(conn, reader)
+	case opcode.RecvChannelSummonMove:
+		server.playerSummonMove(conn, reader)
+	case opcode.RecvChannelSummonDamage:
+		server.playerSummonDamage(conn, reader)
+	case opcode.RecvChannelSummonAttack:
+		server.playerSummonAttack(conn, reader)
 	default:
 		unknownPacketsTotal.Inc()
 		log.Println("UNKNOWN CLIENT PACKET:", reader)
@@ -227,12 +233,6 @@ func (server *Server) playerConnect(conn mnet.Client, reader mpacket.Reader) {
 		return
 	}
 
-	// Restore buffs (if any) saved during CC or previous logout, then audit for stale
-	newPlr.loadAndApplyBuffSnapshot()
-	if newPlr.buffs != nil {
-		newPlr.buffs.AuditAndExpireStaleBuffs()
-	}
-
 	for _, party := range server.parties {
 		if party.addExistingPlayer(newPlr) {
 			break
@@ -287,6 +287,13 @@ func (server *Server) playerConnect(conn mnet.Client, reader mpacket.Reader) {
 		return
 	}
 
+	// Restore buffs (if any) saved during CC or previous logout, then audit for stale
+	newPlr.loadAndApplyBuffSnapshot()
+
+	if newPlr.buffs != nil {
+		newPlr.buffs.AuditAndExpireStaleBuffs()
+	}
+
 	common.MetricsGauges["player_count"].With(prometheus.Labels{"channel": strconv.Itoa(int(server.id)), "world": server.worldName}).Inc()
 
 	server.world.Send(internal.PacketChannelPopUpdate(server.id, int16(len(server.players))))
@@ -302,10 +309,34 @@ func (server *Server) playerChangeChannel(conn mnet.Client, reader mpacket.Reade
 
 	server.migrating = append(server.migrating, conn)
 	player, err := server.players.getFromConn(conn)
-
 	if err != nil {
 		log.Println("Unable to get player from connection", conn)
 		return
+	}
+
+	// Expire Summon Buffs
+	if player != nil && player.buffs != nil {
+		for sid := range player.buffs.activeSkillLevels {
+			switch skill.Skill(sid) {
+			case skill.SilverHawk, skill.GoldenEagle, skill.SummonDragon, skill.Puppet, skill.SniperPuppet:
+				player.buffs.expireBuffNow(sid)
+			}
+		}
+	}
+
+	if player.summons != nil {
+		if field, ok := server.fields[player.mapID]; ok && field != nil {
+			if inst, e := field.getInstance(player.inst.id); e == nil && inst != nil {
+				if player.summons.puppet != nil {
+					inst.send(packetRemoveSummon(player.id, player.summons.puppet.SkillID, 0x01))
+				}
+				if player.summons.summon != nil {
+					inst.send(packetRemoveSummon(player.id, player.summons.summon.SkillID, 0x01))
+				}
+			}
+		}
+		player.summons.puppet = nil
+		player.summons.summon = nil
 	}
 
 	// Save player buffs for handoff to next channel
@@ -315,22 +346,17 @@ func (server *Server) playerChangeChannel(conn mnet.Client, reader mpacket.Reade
 		if server.channels[id].Port == 0 {
 			conn.Send(packetCannotChangeChannel())
 		} else {
-			_, err := common.DB.Exec("UPDATE characters SET migrationID=? WHERE id=?", id, player.id)
-
-			if err != nil {
+			if _, err := common.DB.Exec("UPDATE characters SET migrationID=? WHERE id=?", id, player.id); err != nil {
 				log.Println(err)
 				return
 			}
-
 			packetChangeChannel := func(ip []byte, port int16) mpacket.Packet {
 				p := mpacket.CreateWithOpcode(opcode.SendChannelChange)
 				p.WriteBool(true)
 				p.WriteBytes(ip)
 				p.WriteInt16(port)
-
 				return p
 			}
-
 			conn.Send(packetChangeChannel(server.channels[id].IP, server.channels[id].Port))
 		}
 	}
@@ -773,33 +799,37 @@ func (server Server) playerUsePortal(conn mnet.Client, reader mpacket.Reader) {
 
 func (server Server) warpPlayer(plr *player, dstField *field, dstPortal portal) error {
 	srcField, ok := server.fields[plr.mapID]
-
 	if !ok {
 		return fmt.Errorf("Error in map id %d", plr.mapID)
 	}
 
 	srcInst, err := srcField.getInstance(plr.inst.id)
-
 	if err != nil {
 		return err
 	}
 
 	dstInst, err := dstField.getInstance(plr.inst.id)
-
 	if err != nil {
 		if dstInst, err = dstField.getInstance(0); err != nil {
 			return err
 		}
 	}
 
-	err = srcInst.removePlayer(plr)
+	if plr.summons != nil {
+		if plr.summons.puppet != nil {
+			// Debuff puppet
+			plr.removeSummon(true, constant.SummonRemoveReasonCancel)
+		}
+		if plr.summons.summon != nil {
+			srcInst.send(packetRemoveSummon(plr.id, plr.summons.summon.SkillID, constant.SummonRemoveReasonCancel))
+		}
+	}
 
-	if err != nil {
+	if err = srcInst.removePlayer(plr); err != nil {
 		return err
 	}
 
 	plr.setMapID(dstField.id)
-	// plr.mapPos = dstPortal.id
 	plr.pos = dstPortal.pos
 
 	spawnIdx, idxErr := dstInst.calculateNearestSpawnPortalID(dstPortal.pos)
@@ -807,11 +837,19 @@ func (server Server) warpPlayer(plr *player, dstField *field, dstPortal portal) 
 		spawnIdx = dstPortal.id
 	}
 
-	plr.send(packetMapChange(dstField.id, int32(server.id), spawnIdx, plr.hp)) // plr.ChangeMap(dstField.ID, dstPortal.ID(), dstPortal.Pos(), foothold)
-	err = dstInst.addPlayer(plr)
-
-	if err != nil {
+	plr.send(packetMapChange(dstField.id, int32(server.id), spawnIdx, plr.hp))
+	if err = dstInst.addPlayer(plr); err != nil {
 		return err
+	}
+
+	// Re-show non-puppet summon on destination if still present in state
+	if plr.summons != nil && plr.summons.summon != nil {
+		snapped := dstInst.fhHist.getFinalPosition(newPos(plr.pos.x, plr.pos.y, 0))
+		plr.summons.summon.Pos = snapped
+		plr.summons.summon.Foothold = snapped.foothold
+		plr.summons.summon.Stance = 0
+
+		dstInst.send(packetShowSummon(plr.id, plr.summons.summon))
 	}
 
 	return nil
@@ -1067,66 +1105,6 @@ func (server *Server) playerUseScroll(conn mnet.Client, reader mpacket.Reader) {
 			plr.send(packetUseScroll(plr.id, false, false, false))
 		}
 	}
-}
-
-// Packet format (after ticker skip handled elsewhere):
-// - slot: int16 (USE inv slot of the buff item)
-// - itemID: int32
-// - targetName: string (length-prefixed int16)
-func (server *Server) playerUseBuffItem(conn mnet.Client, reader mpacket.Reader) {
-	plr, err := server.players.getFromConn(conn)
-	if err != nil {
-		return
-	}
-
-	slot := reader.ReadInt16()
-	itemID := reader.ReadInt32()
-
-	// Validate item in USE inventory and item id match
-	found := false
-	for i := range plr.use {
-		if plr.use[i].slotID == slot && plr.use[i].id == itemID && plr.use[i].amount > 0 {
-			found = true
-			break
-		}
-	}
-	if !found {
-		// Hacking / invalid
-		return
-	}
-
-	targetName := reader.ReadString(reader.ReadInt16())
-
-	// Try to resolve target by name
-	if target, err := server.players.getFromName(targetName); err == nil && target != nil {
-		// If target is the same player, original code notes needing a failure packet if it's invalid
-		// We'll still proceed if allowed by your game rules.
-		if plr.mapID != target.mapID {
-			// TODO: send an appropriate failure packet (different map)
-			plr.send(packetPlayerNoChange())
-			return
-		}
-
-		// Apply effect to target
-		// TODO: integrate actual buff application (stats/effects based on itemID)
-		target.applyBuffItem(itemID)
-
-		// Consume the buff item from the user's USE inventory
-		if _, err := plr.takeItem(itemID, slot, 1, 2); err != nil {
-			// If consumption fails, roll back by notifying client
-			plr.send(packetPlayerNoChange())
-			return
-		}
-	} else {
-		// Target not found: send failure (TODO: precise packet)
-		plr.send(packetPlayerNoChange())
-	}
-}
-
-// applyBuffItemToPlayer is a placeholder for your buff item usage on a target player.
-func (p *player) applyBuffItem(itemID int32) {
-	// TODO: Implement item-based buff application.
-	// Example: inventory.useItem(target, itemID) equivalent
 }
 
 func (server Server) playerPickupItem(conn mnet.Client, reader mpacket.Reader) {
@@ -1978,111 +1956,119 @@ func getAttackInfo(reader mpacket.Reader, player player, attackType int) (attack
 	if player.hp == 0 {
 		return data, false
 	}
-
-	// speed hack check
 	if false && (reader.Time-player.lastAttackPacketTime < 350) {
 		return data, false
 	}
-
 	player.lastAttackPacketTime = reader.Time
 
 	if attackType != attackSummon {
 		tByte := reader.ReadByte()
 		skillID := reader.ReadInt32()
-
 		if _, ok := player.skills[skillID]; !ok && skillID != 0 {
 			return data, false
 		}
-
 		data.skillID = skillID
-
 		if data.skillID != 0 {
 			data.skillLevel = player.skills[skillID].Level
 		}
-
-		// if meso explosion data.IsMesoExplosion = true
-
 		data.targets = tByte / 0x10
 		data.hits = tByte % 0x10
 		data.option = reader.ReadByte()
 
 		tmp := reader.ReadByte()
-
 		data.action = tmp & 0x7F
 		data.facesLeft = (tmp >> 7) == 1
 		data.attackType = reader.ReadByte()
-	} else {
-		data.summonType = reader.ReadInt32()
-		data.attackType = reader.ReadByte()
-		data.targets = 1
-		data.hits = 1
-	}
 
-	reader.Skip(4) //checksum info?
+		reader.Skip(4) // checksum
 
-	if attackType == attackRanged {
-		projectileSlot := reader.ReadInt16() // star/arrow slot
-		if projectileSlot == 0 {
-			// if soul arrow is not set check for hacks
-		} else {
-			data.projectileID = -1
-
-			for _, item := range player.use {
-				if item.slotID == projectileSlot {
-					data.projectileID = item.id
+		if attackType == attackRanged {
+			projectileSlot := reader.ReadInt16()
+			if projectileSlot != 0 {
+				data.projectileID = -1
+				for _, item := range player.use {
+					if item.slotID == projectileSlot {
+						data.projectileID = item.id
+					}
 				}
 			}
+			reader.ReadByte()
+			reader.ReadByte()
+			reader.ReadByte()
 		}
-		reader.ReadByte() // ?
-		reader.ReadByte() // ?
-		reader.ReadByte() // ?
+
+		data.attackInfo = make([]attackInfo, data.targets)
+		for i := byte(0); i < data.targets; i++ {
+			attack := attackInfo{}
+			attack.spawnID = reader.ReadInt32()
+			attack.hitAction = reader.ReadByte()
+
+			tmp := reader.ReadByte()
+			attack.foreAction = tmp & 0x7F
+			attack.facesLeft = (tmp >> 7) == 1
+			attack.frameIndex = reader.ReadByte()
+
+			if !data.isMesoExplosion {
+				attack.calcDamageStatIndex = reader.ReadByte()
+			}
+
+			attack.hitPosition.x = reader.ReadInt16()
+			attack.hitPosition.y = reader.ReadInt16()
+
+			attack.previousMobPosition.x = reader.ReadInt16()
+			attack.previousMobPosition.y = reader.ReadInt16()
+
+			if data.isMesoExplosion {
+				data.hits = reader.ReadByte()
+			} else {
+				attack.hitDelay = reader.ReadInt16()
+			}
+
+			attack.damages = make([]int32, data.hits)
+			for j := byte(0); j < data.hits; j++ {
+				dmg := reader.ReadInt32()
+				data.totalDamage += dmg
+				attack.damages[j] = dmg
+			}
+			data.attackInfo[i] = attack
+		}
+
+		data.playerPos.x = reader.ReadInt16()
+		data.playerPos.y = reader.ReadInt16()
+		return data, true
 	}
 
-	data.attackInfo = make([]attackInfo, data.targets)
+	data.summonType = reader.ReadInt32()
+	stance := reader.ReadByte()
+	extra := reader.ReadByte()
+	data.action = stance
+	data.hits = 1
 
-	for i := byte(0); i < data.targets; i++ {
-		attack := attackInfo{}
-		attack.spawnID = reader.ReadInt32()
-		attack.hitAction = reader.ReadByte()
+	spawnID := int32(extra)
 
-		tmp := reader.ReadByte()
-		attack.foreAction = tmp & 0x7F
-		attack.facesLeft = (tmp >> 7) == 1
-		attack.frameIndex = reader.ReadByte()
-
-		if !data.isMesoExplosion {
-			attack.calcDamageStatIndex = reader.ReadByte()
+	rest := reader.GetRestAsBytes()
+	delayIdx := -1
+	for idx := 0; idx+5 < len(rest); idx++ {
+		if rest[idx] == 0x64 && rest[idx+1] == 0x00 {
+			delayIdx = idx
+			break
 		}
-
-		attack.hitPosition.x = reader.ReadInt16()
-		attack.hitPosition.y = reader.ReadInt16()
-
-		attack.previousMobPosition.x = reader.ReadInt16()
-		attack.previousMobPosition.y = reader.ReadInt16()
-
-		if attackType == attackSummon {
-			reader.Skip(1)
-		}
-
-		if data.isMesoExplosion {
-			data.hits = reader.ReadByte()
-		} else if attackType != attackSummon {
-			attack.hitDelay = reader.ReadInt16()
-		}
-
-		attack.damages = make([]int32, data.hits)
-
-		for j := byte(0); j < data.hits; j++ {
-			dmg := reader.ReadInt32()
-			data.totalDamage += dmg
-			attack.damages[j] = dmg
-		}
-		data.attackInfo[i] = attack
+	}
+	if delayIdx == -1 || delayIdx+6 > len(rest) {
+		return data, false
 	}
 
-	data.playerPos.x = reader.ReadInt16()
-	data.playerPos.y = reader.ReadInt16()
+	dmg := int32(rest[delayIdx+2]) |
+		int32(rest[delayIdx+3])<<8 |
+		int32(rest[delayIdx+4])<<16 |
+		int32(rest[delayIdx+5])<<24
 
+	data.attackInfo = []attackInfo{{
+		spawnID: spawnID,
+		damages: []int32{dmg},
+	}}
+	data.targets = 1
+	data.totalDamage = dmg
 	return data, true
 }
 
@@ -3477,10 +3463,6 @@ func (server *Server) playerSpecialSkill(conn mnet.Client, reader mpacket.Reader
 		}
 		_ = reader.ReadInt16() // delay
 	}
-	readXY := func() {
-		_ = reader.ReadInt16()
-		_ = reader.ReadInt16()
-	}
 
 	switch skill.Skill(skillID) {
 	// Party buffs handled earlier remain unchanged...
@@ -3530,11 +3512,52 @@ func (server *Server) playerSpecialSkill(conn mnet.Client, reader mpacket.Reader
 		skill.Doom:
 		readMobListAndDelay()
 
-	// Summons and puppet: [x short][y short]
+	// Summons and puppet:
 	case skill.SummonDragon,
 		skill.SilverHawk, skill.GoldenEagle,
 		skill.Puppet, skill.SniperPuppet:
-		readXY()
+		isPuppet := (skill.Skill(skillID) == skill.Puppet || skill.Skill(skillID) == skill.SniperPuppet)
+
+		spawn := plr.pos
+
+		if isPuppet {
+			desiredX := plr.pos.x
+			if (plr.stance & 0x01) == 0 {
+				desiredX += 200 // facing right
+			} else {
+				desiredX -= 200 // facing left
+			}
+			if fld, ok := server.fields[plr.mapID]; ok {
+				if inst, err := fld.getInstance(plr.inst.id); err == nil {
+					snapped := inst.fhHist.getFinalPosition(newPos(desiredX, plr.pos.y, 0))
+					spawn = snapped
+				}
+			}
+		}
+
+		summ := &summon{
+			OwnerID:    plr.id,
+			SkillID:    skillID,
+			Level:      skillLevel,
+			Pos:        spawn,
+			Stance:     0,
+			Foothold:   spawn.foothold,
+			IsPuppet:   isPuppet,
+			SummonType: 0,
+		}
+
+		if isPuppet {
+			if data, err := nx.GetPlayerSkill(skillID); err == nil {
+				idx := int(skillLevel) - 1
+				if idx >= 0 && idx < len(data) {
+					summ.HP = int(data[idx].X)
+				}
+			}
+		}
+
+		plr.addBuff(skillID, skillLevel, delay)
+		plr.addSummon(summ)
+		plr.inst.send(packetPlayerSkillAnimThirdParty(plr.id, false, true, skillID, skillLevel))
 
 	default:
 		// Always send a self animation so client shows casting even for non-buffs.
@@ -3576,6 +3599,114 @@ func (server *Server) playerCancelBuff(conn mnet.Client, reader mpacket.Reader) 
 
 	// Final sweep for any edge cases
 	cb.AuditAndExpireStaleBuffs()
+}
+
+func (server Server) playerSummonMove(conn mnet.Client, reader mpacket.Reader) {
+	plr, err := server.players.getFromConn(conn)
+	if err != nil {
+		return
+	}
+
+	summonID := reader.ReadInt32()
+	summ := plr.getSummon(summonID)
+	if summ == nil || summ.IsPuppet {
+		return
+	}
+
+	moveData, finalData := parseMovement(reader)
+	moveBytes := generateMovementBytes(moveData)
+
+	summ.Pos = pos{x: finalData.x, y: finalData.y}
+	summ.Stance = finalData.stance
+	summ.Foothold = finalData.foothold
+
+	field, ok := server.fields[plr.mapID]
+	if !ok {
+		return
+	}
+	inst, err := field.getInstance(plr.inst.id)
+	if err != nil {
+		return
+	}
+
+	inst.sendExcept(packetSummonMove(plr.id, summonID, moveBytes), conn)
+}
+
+func (server *Server) playerSummonDamage(conn mnet.Client, reader mpacket.Reader) {
+	plr, err := server.players.getFromConn(conn)
+	if err != nil {
+		return
+	}
+
+	summonID := reader.ReadInt32()
+	summ := plr.getSummon(summonID)
+	if summ == nil || !summ.IsPuppet {
+		return
+	}
+
+	_ = int8(reader.ReadByte())
+	damage := reader.ReadInt32()
+	mobID := reader.ReadInt32()
+	_ = reader.ReadByte()
+
+	field, ok := server.fields[plr.mapID]
+	if ok {
+		if inst, e := field.getInstance(plr.inst.id); e == nil {
+			inst.send(packetSummonDamage(plr.id, summonID, damage, mobID))
+		}
+	}
+
+	if summ.HP-int(damage) < 0 {
+		plr.removeSummon(true, 0x02)
+	} else {
+		summ.HP -= int(damage)
+	}
+}
+
+func (server *Server) playerSummonAttack(conn mnet.Client, reader mpacket.Reader) {
+	plr, err := server.players.getFromConn(conn)
+	if err != nil {
+		return
+	}
+
+	data, valid := getAttackInfo(reader, *plr, attackSummon)
+	if !valid || len(data.attackInfo) == 0 {
+		return
+	}
+
+	field, ok := server.fields[plr.mapID]
+	if !ok {
+		return
+	}
+	inst, err := field.getInstance(plr.inst.id)
+	if err != nil {
+		return
+	}
+
+	mobDamages := make(map[int32][]int32, len(data.attackInfo))
+	for _, at := range data.attackInfo {
+		if at.spawnID <= 0 || len(at.damages) == 0 {
+			continue
+		}
+		mobDamages[at.spawnID] = append(mobDamages[at.spawnID], at.damages...)
+	}
+	if len(mobDamages) == 0 {
+		return
+	}
+
+	anim := data.action
+	if anim == 0 && len(data.attackInfo) > 0 {
+		anim = data.attackInfo[0].frameIndex
+	}
+
+	inst.sendExcept(packetSummonAttack(plr.id, data.summonType, anim, byte(len(mobDamages)), mobDamages), conn)
+	for spawnID, damages := range mobDamages {
+		for _, d := range damages {
+			if d > 0 {
+				inst.lifePool.mobDamaged(spawnID, plr, d)
+			}
+		}
+	}
 }
 
 func (server Server) handleGuildEvent(conn mnet.Server, reader mpacket.Reader) {

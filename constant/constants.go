@@ -113,6 +113,12 @@ const (
 	FameThisDay       = 0x03
 	FameThisMonth     = 0x04
 	FameNotifyTarget  = 0x05
+
+	SummonRemoveReasonCancel   = 0x01
+	SummonRemoveReasonKeepBuff = 0x02
+	SummonRemoveReasonReplaced = 0x04
+	SummonAttackMob            = 0x06
+	SummonTakeDamage           = 0xFF
 )
 
 var ExpTable = [...]int32{15, 34, 57, 92, 135, 372, 560, 840, 1242, 1144, // Beginner

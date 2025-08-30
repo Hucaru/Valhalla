@@ -113,7 +113,7 @@ Channel server:
 - [ ] Deleted character removes from party
 - [ ] Trade
 - [ ] Communication Window
-- [ ] Quests
+- [x] Quests
 - [ ] Reactors
 - [x] Server resets login status upon restart for dangling characters
 
@@ -206,7 +206,7 @@ Build and load the image:
 
 Deploy:
 - `helm install valhalla ./helm`
-- 
+
 Service discovery changes (compared to docker-compose):
 - K8s services use hyphens. Configs inside the pods are adjusted accordingly:
   - login-server, world-server, db

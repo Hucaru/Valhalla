@@ -4,6 +4,7 @@ import (
 	"log"
 	"time"
 
+	"github.com/Hucaru/Valhalla/constant"
 	"github.com/Hucaru/Valhalla/constant/skill"
 	"github.com/Hucaru/Valhalla/nx"
 )
@@ -136,6 +137,12 @@ func LoadBuffs() {
 	AddSkillBuff(int32(skill.GMHaste), BuffSpeed, BuffJump)
 	AddSkillBuff(int32(skill.GMHolySymbol), BuffHolySymbol)
 	AddSkillBuff(int32(skill.Hide), BuffInvincible)
+
+	AddSkillBuff(int32(skill.SilverHawk), BuffComboAttack)
+	AddSkillBuff(int32(skill.GoldenEagle), BuffComboAttack)
+	AddSkillBuff(int32(skill.Puppet), BuffPickPocketMesoUP)
+	AddSkillBuff(int32(skill.SniperPuppet), BuffPickPocketMesoUP)
+	AddSkillBuff(int32(skill.SummonDragon), BuffComboAttack)
 }
 
 func init() {
@@ -192,6 +199,31 @@ func (cb *CharacterBuffs) AddBuff(charId, skillID int32, level byte, foreign boo
 	}
 
 	cb.AddBuffFromCC(charId, skillID, expiresAtMs, level, foreign, delay)
+
+	if !foreign {
+		switch skill.Skill(skillID) {
+		case skill.SilverHawk, skill.GoldenEagle, skill.SummonDragon:
+			if cb.plr != nil && cb.plr.getSummon(skillID) == nil {
+				spawn := cb.plr.pos
+				if cb.plr.inst != nil {
+					if snapped := cb.plr.inst.fhHist.getFinalPosition(newPos(spawn.x, spawn.y, 0)); snapped.foothold != 0 {
+						spawn = snapped
+					}
+				}
+				su := &summon{
+					OwnerID:    cb.plr.id,
+					SkillID:    skillID,
+					Level:      level,
+					Pos:        spawn,
+					Stance:     0,
+					Foothold:   spawn.foothold,
+					IsPuppet:   false,
+					SummonType: 0,
+				}
+				cb.plr.addSummon(su)
+			}
+		}
+	}
 }
 
 func buildMaskBytes64(bits []int) []byte {
@@ -272,6 +304,8 @@ func (cb *CharacterBuffs) buildBuffTriplesWireOrder(skillID int32, level byte, m
 				return int16(sl.Pad)
 			}
 			return 1
+		case BuffStun:
+			return int16(sl.X)
 		default:
 			return 1
 		}
@@ -534,6 +568,31 @@ func (cb *CharacterBuffs) AddBuffFromCC(charId, skillID int32, expiresAtMs int64
 	d := time.Until(time.UnixMilli(expiresAtMs))
 	cb.scheduleExpiryLocked(skillID, d)
 
+	// If this is a non-puppet summon skill applied to self (e.g., on CC/login restore), spawn the summon entity now.
+	if !foreign {
+		switch skill.Skill(skillID) {
+		case skill.SilverHawk, skill.GoldenEagle, skill.SummonDragon:
+			if cb.plr != nil {
+				spawn := cb.plr.pos
+				if cb.plr.inst != nil {
+					if snapped := cb.plr.inst.fhHist.getFinalPosition(newPos(spawn.x, spawn.y, 0)); snapped.foothold != 0 {
+						spawn = snapped
+					}
+				}
+				su := &summon{
+					OwnerID:    cb.plr.id,
+					SkillID:    skillID,
+					Level:      level,
+					Pos:        spawn,
+					Stance:     0,
+					Foothold:   spawn.foothold,
+					IsPuppet:   false,
+					SummonType: 0,
+				}
+				cb.plr.addSummon(su)
+			}
+		}
+	}
 }
 
 func (cb *CharacterBuffs) post(fn func()) {
@@ -563,23 +622,18 @@ func (cb *CharacterBuffs) scheduleExpiryLocked(skillID int32, after time.Duratio
 }
 
 func (cb *CharacterBuffs) expireBuffNow(skillID int32) {
-	if cb == nil || cb.plr == nil {
+	if cb.plr == nil {
 		return
 	}
-
-	// Clear timer handle and expiry stamp
 	if t, ok := cb.expireTimers[skillID]; ok && t != nil {
 		t.Stop()
 		delete(cb.expireTimers, skillID)
 	}
 	delete(cb.expireAt, skillID)
 
-	// Build cancel mask (64-bit)
 	bits, ok := skillBuffBits[skillID]
 	if !ok || len(bits) == 0 {
-		// If this was an item buff, item sourceID is negative; handle those too
 		if skillID < 0 {
-			// item cancel path
 			if mask, ok2 := cb.itemMasks[skillID]; ok2 {
 				cb.plr.send(packetPlayerCancelBuff(mask))
 				if cb.plr.inst != nil {
@@ -588,18 +642,34 @@ func (cb *CharacterBuffs) expireBuffNow(skillID int32) {
 				delete(cb.itemMasks, skillID)
 			}
 		}
+		cb.despawnSummonIfMatches(skillID)
 		return
 	}
 	maskBytes := buildMaskBytes64(bits)
 
-	// Self cancel
 	cb.plr.send(packetPlayerCancelBuff(maskBytes))
-	// Others cancel
 	if cb.plr.inst != nil {
 		cb.plr.inst.send(packetPlayerCancelForeignBuff(cb.plr.id, maskBytes))
 	}
 
 	delete(cb.activeSkillLevels, skillID)
+
+	cb.despawnSummonIfMatches(skillID)
+}
+
+func (cb *CharacterBuffs) despawnSummonIfMatches(skillID int32) {
+	p := cb.plr
+	if p == nil || p.summons == nil {
+		return
+	}
+	if p.summons.puppet != nil && p.summons.puppet.SkillID == skillID {
+		p.removeSummon(true, constant.SummonRemoveReasonKeepBuff)
+		return
+	}
+	if p.summons.summon != nil && p.summons.summon.SkillID == skillID {
+		p.removeSummon(false, constant.SummonRemoveReasonKeepBuff)
+		return
+	}
 }
 
 func (cb *CharacterBuffs) check(skillID int32) {

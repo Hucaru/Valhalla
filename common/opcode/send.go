@@ -47,6 +47,11 @@ const (
 	SendChannelAllChatMsg              byte = 0x51
 	SendChannelRoomBox                 byte = 0x52
 	SendChannelUseScroll               byte = 0x54
+	SendChannelSpecialMapObjectSpawn   byte = 0x5D
+	SendChannelSpecialMapObjectRemove  byte = 0x5E
+	SendChannelSummonMove              byte = 0x5F
+	SendChannelSummonAttack            byte = 0x60
+	SendChannelSummonDamage            byte = 0x61
 	SendChannelPlayerMovement          byte = 0x65
 	SendChannelPlayerUseMeleeSkill     byte = 0x66
 	SendChannelPlayerUseRangedSkill    byte = 0x67

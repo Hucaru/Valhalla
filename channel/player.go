@@ -166,6 +166,8 @@ type player struct {
 
 	quests quests
 
+	summons *summonState
+
 	// Per-player RNG for deterministic randomness
 	rng *rand.Rand
 
@@ -1810,6 +1812,87 @@ func (d *player) allowsQuestDrop(qid int32) bool {
 		return false
 	}
 	return d.quests.hasInProgress(int16(qid))
+}
+
+func (p *player) ensureSummonState() {
+	if p.summons == nil {
+		p.summons = &summonState{}
+	}
+}
+
+func (p *player) addSummon(su *summon) {
+	p.ensureSummonState()
+
+	if su.IsPuppet {
+		if p.summons.puppet != nil {
+			p.removeSummon(true, constant.SummonRemoveReasonReplaced)
+		}
+		p.summons.puppet = su
+	} else {
+		if p.summons.summon != nil {
+			p.removeSummon(false, constant.SummonRemoveReasonReplaced)
+		}
+		p.summons.summon = su
+	}
+
+	p.broadcastShowSummon(su)
+}
+
+func (p *player) removeSummon(puppet bool, reason byte) {
+	p.ensureSummonState()
+
+	shouldCancelBuff := func(r byte) bool {
+		return r != constant.SummonRemoveReasonKeepBuff && r != constant.SummonRemoveReasonReplaced
+	}
+
+	if puppet {
+		if p.summons.puppet == nil {
+			return
+		}
+		su := p.summons.puppet
+		p.broadcastRemoveSummon(su.SkillID, reason)
+		if shouldCancelBuff(reason) && p.buffs != nil {
+			p.buffs.expireBuffNow(su.SkillID)
+		}
+		p.summons.puppet = nil
+	} else {
+		if p.summons.summon == nil {
+			return
+		}
+		su := p.summons.summon
+		p.broadcastRemoveSummon(su.SkillID, reason)
+		if shouldCancelBuff(reason) && p.buffs != nil {
+			p.buffs.expireBuffNow(su.SkillID)
+		}
+		p.summons.summon = nil
+	}
+}
+
+func (p *player) getSummon(skillID int32) *summon {
+	p.ensureSummonState()
+	if p.summons.summon != nil && p.summons.summon.SkillID == skillID {
+		return p.summons.summon
+	}
+	if p.summons.puppet != nil && p.summons.puppet.SkillID == skillID {
+		return p.summons.puppet
+	}
+	return nil
+}
+
+func (p *player) broadcastShowSummon(su *summon) {
+	if p == nil || p.inst == nil {
+		return
+	}
+
+	p.inst.send(packetShowSummon(p.id, su))
+}
+
+func (p *player) broadcastRemoveSummon(summonSkillID int32, reason byte) {
+	if p == nil || p.inst == nil {
+		return
+	}
+
+	p.inst.send(packetRemoveSummon(p.id, summonSkillID, reason))
 }
 
 func packetPlayerReceivedDmg(charID int32, attack int8, initalAmmount, reducedAmmount, spawnID, mobID, healSkillID int32,
