@@ -32,23 +32,26 @@ const (
 	DirtyMiniGame
 	DirtyBuddySize
 	DirtySkills
+	DirtyNX
+	DirtyMaplePoints
 )
 
 // snapshot contains only columns we may persist.
 type snapshot struct {
-	ID int32
+	ID        int32
+	AccountID int32
 
-	AP, SP         int16
-	Mesos          int32
-	HP, MaxHP      int16
-	MP, MaxMP      int16
-	EXP            int32
-	MapID          int32
-	MapPos         byte
-	Job            int16
-	Level          byte
-	Str, Dex, Intt int16
-	Luk, Fame      int16
+	AP, SP                 int16
+	Mesos, NX, MaplePoints int32
+	HP, MaxHP              int16
+	MP, MaxMP              int16
+	EXP                    int32
+	MapID                  int32
+	MapPos                 byte
+	Job                    int16
+	Level                  byte
+	Str, Dex, Intt         int16
+	Luk, Fame              int16
 
 	EquipSlotSize byte
 	UseSlotSize   byte
@@ -116,9 +119,12 @@ func copySkills(src map[int32]playerSkill) map[int32]playerSkill {
 func snapshotFromPlayer(p *player) snapshot {
 	s := snapshot{
 		ID:             p.id,
+		AccountID:      p.accountID,
 		AP:             p.ap,
 		SP:             p.sp,
 		Mesos:          p.mesos,
+		NX:             p.nx,
+		MaplePoints:    p.maplepoints,
 		HP:             p.hp,
 		MaxHP:          p.maxHP,
 		MP:             p.mp,
@@ -277,6 +283,8 @@ func (s *saver) loop() {
 func mergeSnapshot(lhs *snapshot, rhs snapshot) {
 	lhs.AP, lhs.SP = rhs.AP, rhs.SP
 	lhs.Mesos = rhs.Mesos
+	lhs.NX = rhs.NX
+	lhs.MaplePoints = rhs.MaplePoints
 	lhs.HP, lhs.MaxHP = rhs.HP, rhs.MaxHP
 	lhs.MP, lhs.MaxMP = rhs.MP, rhs.MaxMP
 	lhs.EXP = rhs.EXP
@@ -403,6 +411,14 @@ func (s *saver) persist(job pendingSave) bool {
 			if _, err := common.DB.Exec(upsert, job.snap.ID, sid, srec.Level, srec.Cooldown); err != nil {
 				log.Printf("saver.persist: upsert skill %d for char %d failed: %v", sid, job.snap.ID, err)
 			}
+		}
+	}
+
+	if job.bits&DirtyNX != 0 || job.bits&DirtyMaplePoints != 0 {
+		query := "UPDATE accounts SET nx=?, maplepoints=? WHERE id=?"
+		args = append(args, job.snap.NX, job.snap.MaplePoints, job.snap.AccountID)
+		if _, err := common.DB.Exec(query, args...); err != nil {
+			log.Printf("saver.persist: UPDATE accounts (id=%d) failed: %v", job.snap.AccountID, err)
 		}
 	}
 

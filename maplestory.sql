@@ -17,6 +17,8 @@ CREATE TABLE `accounts` (
   `gender` tinyint(4) NOT NULL DEFAULT '0',
   `dob` int(11) NOT NULL,
   `eula` tinyint(4) NOT NULL,
+  `nx` int(11) unsigned NOT NULL DEFAULT '0',
+  `maplepoints` int(11) unsigned NOT NULL DEFAULT '0',
   PRIMARY KEY (`accountID`)
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 

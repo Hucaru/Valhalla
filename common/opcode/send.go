@@ -32,6 +32,7 @@ const (
 	SendChannelTownPortal              byte = 0x31
 	SendChannelBroadcastMessage        byte = 0x32
 	SendChannelWarpToMap               byte = 0x36
+	SendChannelSetCashShop             byte = 0x37
 	SendChannelPortalClosed            byte = 0x3A
 	SendChannelChangeServer            byte = 0x3B
 	SendChannelBubblessChat            byte = 0x3D
@@ -85,4 +86,7 @@ const (
 	SendChannelNpcShopResult           byte = 0xC9
 	SendChannelNpcStorage              byte = 0xCD
 	SendChannelRoom                    byte = 0xDC
+	SendChannelCSRecharge              byte = 0xE7
+	SendChannelCSUpdateAmounts         byte = 0xE8
+	SendChannelCSAction                byte = 0xE9
 )

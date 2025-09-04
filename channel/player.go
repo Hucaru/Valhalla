@@ -98,9 +98,10 @@ type player struct {
 	conn mnet.Client
 	inst *fieldInstance
 
-	id        int32 // Unique identifier of the character
-	accountID int32
-	worldID   byte
+	id          int32 // Unique identifier of the character
+	accountID   int32
+	accountName string
+	worldID     byte
 
 	mapID       int32
 	mapPos      byte
@@ -131,6 +132,7 @@ type player struct {
 	chairID int32
 	stance  byte
 	pos     pos
+	inCS    bool
 
 	equipSlotSize byte
 	useSlotSize   byte
@@ -144,7 +146,9 @@ type player struct {
 	etc   []item
 	cash  []item
 
-	mesos int32
+	mesos       int32
+	nx          int32
+	maplepoints int32
 
 	skills map[int32]playerSkill
 
@@ -173,6 +177,8 @@ type player struct {
 
 	// write-behind persistence
 	dirty DirtyBits
+
+	csReturnInstID int
 }
 
 // Helper: mark dirty and schedule debounced save.
@@ -1344,6 +1350,10 @@ func loadPlayerFromID(id int32, conn mnet.Client) player {
 		return c
 	}
 
+	if err := common.DB.QueryRow("SELECT username, nx, maplepoints FROM accounts WHERE accountID=?", c.accountID).Scan(&c.accountName, &c.nx, &c.maplepoints); err != nil {
+		log.Printf("loadPlayerFromID: failed to fetch accountName for accountID=%d: %v", c.accountID, err)
+	}
+
 	c.skills = make(map[int32]playerSkill)
 
 	for _, s := range getSkillsFromCharID(c.id) {
@@ -1370,6 +1380,9 @@ func loadPlayerFromID(id int32, conn mnet.Client) player {
 
 	// Initialize the per-player buff manager so handlers can call plr.addBuff(...)
 	c.buffs = NewCharacterBuffs(&c)
+
+	c.inCS = false
+	c.csReturnInstID = -1
 
 	c.conn = conn
 

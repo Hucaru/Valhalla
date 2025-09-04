@@ -64,7 +64,7 @@ func (server *Server) HandleClientPacket(conn mnet.Client, reader mpacket.Reader
 		// This opcode is used for revival UI as well.
 		server.playerUsePortal(conn, reader)
 	case opcode.RecvChannelEnterCashShop:
-		conn.Send(packetMessageDialogueBox("Shop not implemented"))
+		server.playerEnterCashShop(conn, reader)
 	case opcode.RecvChannelPlayerMovement:
 		server.playerMovement(conn, reader)
 	case opcode.RecvChannelPlayerStand:
@@ -151,6 +151,8 @@ func (server *Server) HandleClientPacket(conn mnet.Client, reader mpacket.Reader
 		server.playerSummonDamage(conn, reader)
 	case opcode.RecvChannelSummonAttack:
 		server.playerSummonAttack(conn, reader)
+	case opcode.RecvCashShopPurchase:
+		server.playerCashShopPurchase(conn, reader)
 	default:
 		unknownPacketsTotal.Inc()
 		log.Println("UNKNOWN CLIENT PACKET:", reader)
@@ -668,9 +670,47 @@ func validateSkillWithJob(jobID int16, baseSkillID int32) bool {
 	return true
 }
 
+func (server Server) playerEnterCashShop(conn mnet.Client, reader mpacket.Reader) {
+	plr, err := server.players.getFromConn(conn)
+	if err != nil {
+		return
+	}
+
+	if plr.summons != nil {
+		if field, ok := server.fields[plr.mapID]; ok && field != nil {
+			if inst, e := field.getInstance(plr.inst.id); e == nil && inst != nil {
+				if plr.summons.puppet != nil {
+					inst.send(packetRemoveSummon(plr.id, plr.summons.puppet.SkillID, constant.SummonRemoveReasonCancel))
+				}
+				if plr.summons.summon != nil {
+					inst.send(packetRemoveSummon(plr.id, plr.summons.summon.SkillID, constant.SummonRemoveReasonCancel))
+				}
+			}
+		}
+		plr.summons.puppet = nil
+		plr.summons.summon = nil
+	}
+	plr.saveBuffSnapshot()
+
+	plr.csReturnInstID = plr.inst.id
+
+	if field, ok := server.fields[plr.mapID]; ok && field != nil {
+		if inst, e := field.getInstance(plr.inst.id); e == nil && inst != nil {
+			_ = inst.removePlayer(plr)
+		}
+	}
+
+	plr.send(packetCashShopSet(plr, plr.accountName))
+	plr.send(packetCashShopUpdateAmounts(plr.nx, plr.maplepoints))
+	plr.send(packetCashShopWishList(nil, true))
+
+	plr.inCS = true
+	// Persist character after state handoff
+	_ = plr.save()
+}
+
 func (server Server) playerUsePortal(conn mnet.Client, reader mpacket.Reader) {
 	plr, err := server.players.getFromConn(conn)
-
 	if err != nil {
 		return
 	}
@@ -687,9 +727,22 @@ func (server Server) playerUsePortal(conn mnet.Client, reader mpacket.Reader) {
 		return
 	}
 
-	srcInst, err := curField.getInstance(plr.inst.id)
+	instID := -1
+	if plr.inst != nil {
+		instID = plr.inst.id
+	}
+
+	srcInst, err := curField.getInstance(instID)
 	if err != nil {
-		return
+		if inst0, e2 := curField.getInstance(0); e2 == nil {
+			if _, has := inst0.getPlayerFromID(plr.id); has != nil {
+				_ = inst0.addPlayer(plr)
+			}
+			plr.inst = inst0
+			srcInst = inst0
+		} else {
+			return
+		}
 	}
 
 	chooseDstPortal := func(dstInst *fieldInstance, backToMapID int32, srcName, preferName string) (portal, error) {
@@ -719,7 +772,7 @@ func (server Server) playerUsePortal(conn mnet.Client, reader mpacket.Reader) {
 				return
 			}
 
-			dstInst, err := dstFld.getInstance(plr.inst.id)
+			dstInst, err := dstFld.getInstance(instID)
 			if err != nil {
 				dstInst, err = dstFld.getInstance(0)
 				if err != nil {
@@ -733,15 +786,33 @@ func (server Server) playerUsePortal(conn mnet.Client, reader mpacket.Reader) {
 				return
 			}
 
-			err = server.warpPlayer(plr, dstFld, dstPortal)
-
-			if err != nil {
-				log.Println(err)
+			if err := server.warpPlayer(plr, dstFld, dstPortal); err != nil {
 				return
 			}
 
 			plr.setHP(50)
-			// TODO: reduce exp
+			return
+		}
+
+		// Returning from Cash Shop: treat like channel change to this channel
+		if plr.inCS {
+			plr.inCS = false
+
+			server.migrating = append(server.migrating, conn)
+			_, _ = common.DB.Exec("UPDATE characters SET migrationID=? WHERE id=?", server.id, plr.id)
+
+			idx := int(server.id)
+			if idx >= 0 && idx < len(server.channels) && server.channels[idx].Port != 0 {
+				p := mpacket.CreateWithOpcode(opcode.SendChannelChange)
+				p.WriteBool(true)
+				p.WriteBytes(server.channels[idx].IP)
+				p.WriteInt16(server.channels[idx].Port)
+				conn.Send(p)
+				return
+			}
+
+			conn.Send(packetCannotChangeChannel())
+			return
 		}
 
 	case -1:
@@ -762,7 +833,6 @@ func (server Server) playerUsePortal(conn mnet.Client, reader mpacket.Reader) {
 			if conn.GetAdminLevel() > 0 {
 				conn.Send(packetMessageRedText("Portal - " + srcPortal.pos.String() + " Player - " + plr.pos.String()))
 			}
-
 			conn.Send(packetPlayerNoChange())
 			return
 		}
@@ -773,9 +843,11 @@ func (server Server) playerUsePortal(conn mnet.Client, reader mpacket.Reader) {
 			return
 		}
 
-		dstInst, err := dstFld.getInstance(plr.inst.id)
+		dstInst, err := dstFld.getInstance(instID)
 		if err != nil {
-			if dstInst, err = dstFld.getInstance(0); err != nil {
+			dstInst, err = dstFld.getInstance(0)
+			if err != nil {
+				conn.Send(packetPlayerNoChange())
 				return
 			}
 		}
@@ -786,14 +858,9 @@ func (server Server) playerUsePortal(conn mnet.Client, reader mpacket.Reader) {
 			return
 		}
 
-		err = server.warpPlayer(plr, dstFld, dstPortal)
-
-		if err != nil {
-			log.Println(err)
+		if err := server.warpPlayer(plr, dstFld, dstPortal); err != nil {
 			return
 		}
-	default:
-		log.Println("Unknown portal entry type, packet:", reader)
 	}
 }
 
@@ -3912,4 +3979,94 @@ func (server *Server) playerFame(conn mnet.Client, reader mpacket.Reader) {
 
 	target.send(packetFameNotifyVictim(source.name, up))
 	source.send(packetFameNotifySource(target.name, up, target.fame))
+}
+
+func (server *Server) playerCashShopPurchase(conn mnet.Client, reader mpacket.Reader) {
+	plr, err := server.players.getFromConn(conn)
+	if err != nil {
+		return
+	}
+
+	sub := reader.ReadByte()
+	switch sub {
+	case 0x02: // buy item
+		currencySel := reader.ReadByte() // 0x00 = NX, 0x01 = Maple Points
+		sn := reader.ReadInt32()
+
+		commodity, ok := nx.GetCommodity(sn)
+		if !ok || commodity.ItemID == 0 {
+			// Unknown SN
+			plr.send(packetCashShopUpdateAmounts(plr.nx, plr.maplepoints))
+			return
+		}
+		// Basic availability rules similar to loader
+		if commodity.OnSale == 0 || commodity.Price <= 0 {
+			plr.send(packetCashShopUpdateAmounts(plr.nx, plr.maplepoints))
+			return
+		}
+
+		// Business rule: block super megaphones range
+		if commodity.ItemID >= 5390000 && commodity.ItemID <= 5390002 {
+			plr.send(packetMessageRedText("You may not purchase this item."))
+			plr.send(packetCashShopUpdateAmounts(plr.nx, plr.maplepoints))
+			return
+		}
+
+		// Determine quantity
+		count := int16(1)
+		if commodity.Count > 0 {
+			count = int16(commodity.Count)
+		}
+
+		// Check funds
+		price := commodity.Price
+		switch currencySel {
+		case 0x00:
+			if plr.nx < price {
+				plr.send(packetMessageRedText("Insufficient NX."))
+				plr.send(packetCashShopUpdateAmounts(plr.nx, plr.maplepoints))
+				return
+			}
+		case 0x01:
+			if plr.maplepoints < price {
+				plr.send(packetMessageRedText("Insufficient Maple Points."))
+				plr.send(packetCashShopUpdateAmounts(plr.nx, plr.maplepoints))
+				return
+			}
+		default:
+			plr.send(packetCashShopUpdateAmounts(plr.nx, plr.maplepoints))
+			return
+		}
+
+		newItem, e := createItemFromID(commodity.ItemID, count)
+		if e != nil {
+			plr.send(packetCashShopUpdateAmounts(plr.nx, plr.maplepoints))
+			return
+		}
+
+		if newItem.id >= 5000000 && newItem.id <= 5000100 {
+			plr.send(packetMessageRedText("Pet purchases are not available."))
+			plr.send(packetCashShopUpdateAmounts(plr.nx, plr.maplepoints))
+			return
+		}
+
+		if err := plr.giveItem(newItem); err != nil {
+			plr.send(packetInventoryFull())
+			plr.send(packetCashShopUpdateAmounts(plr.nx, plr.maplepoints))
+			return
+		}
+
+		switch currencySel {
+		case 0x00:
+			plr.nx -= price
+		case 0x01:
+			plr.maplepoints -= price
+		}
+
+		plr.send(packetCashShopUpdateAmounts(plr.nx, plr.maplepoints))
+
+	default:
+		log.Println("Unknown Cash Shop Packet: ", reader)
+	}
+
 }
