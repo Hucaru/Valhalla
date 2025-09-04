@@ -3999,15 +3999,14 @@ func (server *Server) playerCashShopPurchase(conn mnet.Client, reader mpacket.Re
 			plr.send(packetCashShopUpdateAmounts(plr.nx, plr.maplepoints))
 			return
 		}
-		// Basic availability rules similar to loader
+
 		if commodity.OnSale == 0 || commodity.Price <= 0 {
 			plr.send(packetCashShopUpdateAmounts(plr.nx, plr.maplepoints))
 			return
 		}
 
-		// Business rule: block super megaphones range
+		// block super megaphones
 		if commodity.ItemID >= 5390000 && commodity.ItemID <= 5390002 {
-			plr.send(packetMessageRedText("You may not purchase this item."))
 			plr.send(packetCashShopUpdateAmounts(plr.nx, plr.maplepoints))
 			return
 		}
@@ -4023,13 +4022,11 @@ func (server *Server) playerCashShopPurchase(conn mnet.Client, reader mpacket.Re
 		switch currencySel {
 		case 0x00:
 			if plr.nx < price {
-				plr.send(packetMessageRedText("Insufficient NX."))
 				plr.send(packetCashShopUpdateAmounts(plr.nx, plr.maplepoints))
 				return
 			}
 		case 0x01:
 			if plr.maplepoints < price {
-				plr.send(packetMessageRedText("Insufficient Maple Points."))
 				plr.send(packetCashShopUpdateAmounts(plr.nx, plr.maplepoints))
 				return
 			}
@@ -4044,8 +4041,8 @@ func (server *Server) playerCashShopPurchase(conn mnet.Client, reader mpacket.Re
 			return
 		}
 
+		// Block pets for now
 		if newItem.id >= 5000000 && newItem.id <= 5000100 {
-			plr.send(packetMessageRedText("Pet purchases are not available."))
 			plr.send(packetCashShopUpdateAmounts(plr.nx, plr.maplepoints))
 			return
 		}
@@ -4059,8 +4056,10 @@ func (server *Server) playerCashShopPurchase(conn mnet.Client, reader mpacket.Re
 		switch currencySel {
 		case 0x00:
 			plr.nx -= price
+			plr.markDirty(DirtyNX, 300*time.Millisecond)
 		case 0x01:
 			plr.maplepoints -= price
+			plr.markDirty(DirtyMaplePoints, 300*time.Millisecond)
 		}
 
 		plr.send(packetCashShopUpdateAmounts(plr.nx, plr.maplepoints))
