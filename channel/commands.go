@@ -539,6 +539,42 @@ func (server *Server) gmCommand(conn mnet.Client, msg string) {
 
 			player.setMesos(int32(val))
 		}
+	case "nx":
+		if len(command) == 2 {
+			val, err := strconv.Atoi(command[1])
+
+			if err != nil {
+				conn.Send(packetMessageRedText(err.Error()))
+				return
+			}
+
+			player, err := server.players.getFromConn(conn)
+
+			if err != nil {
+				conn.Send(packetMessageRedText(err.Error()))
+				return
+			}
+
+			player.nx += (int32(val))
+		}
+	case "maplepoints":
+		if len(command) == 2 {
+			val, err := strconv.Atoi(command[1])
+
+			if err != nil {
+				conn.Send(packetMessageRedText(err.Error()))
+				return
+			}
+
+			player, err := server.players.getFromConn(conn)
+
+			if err != nil {
+				conn.Send(packetMessageRedText(err.Error()))
+				return
+			}
+
+			player.maplepoints += (int32(val))
+		}
 	case "warp":
 		var val int
 		var err error
