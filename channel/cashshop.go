@@ -2,7 +2,6 @@ package channel
 
 import (
 	"sort"
-	"time"
 
 	"github.com/Hucaru/Valhalla/common/opcode"
 	"github.com/Hucaru/Valhalla/mpacket"
@@ -126,28 +125,30 @@ func packetCashShopSet(plr *player, accountName string) mpacket.Packet {
 	writeActiveQuests(&p, plr.quests.inProgressList())
 	writeCompletedQuests(&p, plr.quests.completedList())
 
-	/* I think this is the real logic for below but can't get it to work properly, get an EOF so something is missing
-	p.WriteInt16(0) // Minigames
-	p.WriteInt16(0) // Rings
-	for i := 0; i < 5; i++ {
-		p.WriteInt32(999999999) // Tele rocks
-	}
+	p.WriteInt16(0) // MiniGames
+	/*
+	   - uint16 count
+	   - repeat count times:
+	       - int32 a
+	       - int32 b
+	       - int32 c
+	       - int32 d
+	       - int32 e
 	*/
-	p.WriteInt32(0)
-	p.WriteInt32(0)
-	p.WriteInt32(0)
-	p.WriteInt32(0)
-	p.WriteInt32(0)
-	p.WriteInt32(0)
-	p.WriteInt32(0)
-	p.WriteInt32(0)
-	p.WriteInt32(0)
-	p.WriteInt32(0)
-	p.WriteInt32(0)
-	p.WriteInt32(0)
-	p.WriteInt32(0)
-	p.WriteInt32(0)
-	p.WriteInt64(time.Now().Unix())
+	p.WriteInt16(0) // Rings
+	/*
+	   - uint16 count
+	   - repeat count times:
+	       - decode ring object
+	*/
+
+	// Teleport rocks (5 normal, 10 VIP) INT32 = Saved MapID
+	for i := 0; i < 5; i++ {
+		p.WriteInt32(999999999) // Reg Tele rocks
+	}
+	for i := 0; i < 10; i++ {
+		p.WriteInt32(999999999) // VIP Tele rocks
+	}
 
 	// End of stats
 
