@@ -161,18 +161,21 @@ func packetCashShopSet(plr *player, accountName string) mpacket.Packet {
 		for j := byte(0); j <= 1; j++ {
 			for k := byte(0); k < 5; k++ {
 				best := nx.GetBestSN(i, j, k)
-				p.WriteInt32(int32(i))
-				p.WriteInt32(int32(j))
 				if best == 0 {
 					p.WriteInt32(0)
 				} else {
 					p.WriteInt32(best)
 				}
+				p.WriteInt32(int32(i))
+				p.WriteInt32(int32(j))
 			}
 		}
 	}
 
+	// I think this is just stock related
 	p.WriteInt32(0)
+
+	// No idea lol
 	p.WriteByte(0)
 	return p
 }
