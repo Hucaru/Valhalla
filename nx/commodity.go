@@ -3,9 +3,11 @@ package nx
 import (
 	"log"
 	"math"
+	"math/rand"
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/Hucaru/gonx"
 )
@@ -36,6 +38,12 @@ type Commodity struct {
 	StockState int32 // computed at load time
 }
 
+type FeaturedKey struct {
+	Category byte
+	Gender   byte
+	Idx      byte
+}
+
 // GetCommodities returns the global commodity map keyed by SN.
 func GetCommodities() map[int32]Commodity {
 	return commodities
@@ -52,6 +60,77 @@ func GetCommoditySNByItemID(itemID int32) (int32, bool) {
 	return sn, ok
 }
 
+func GetBestSN(category, gender, idx byte) int32 {
+	if sn, ok := bestItems[FeaturedKey{Category: category, Gender: gender, Idx: idx}]; ok {
+		return sn
+	}
+	return 0
+}
+
+func loadBestItems() {
+	// Build candidate lists per (category, gender).
+	type key struct{ cat, gen byte }
+	candidates := make(map[key][]int32, 18)
+
+	for _, c := range GetCommodities() {
+		if c.SN == 0 {
+			continue
+		}
+
+		cat := byte(c.Category)
+		if cat < 1 || cat > 9 {
+			continue
+		}
+
+		if c.StockState != StockStateDefault {
+			continue
+		}
+
+		if c.Gender == 0 {
+			k0 := key{cat: cat, gen: 0}
+			k1 := key{cat: cat, gen: 1}
+			candidates[k0] = append(candidates[k0], c.SN)
+			candidates[k1] = append(candidates[k1], c.SN)
+			continue
+		}
+
+		if c.Gender == 1 || c.Gender == 2 {
+			gen := byte(0)
+			if c.Gender != 1 {
+				gen = 1
+			} else {
+				gen = 0
+			}
+			k := key{cat: cat, gen: gen}
+			candidates[k] = append(candidates[k], c.SN)
+		} else if c.Gender == 0 || c.Gender == 1 {
+			g := byte(c.Gender)
+			k := key{cat: cat, gen: g}
+			candidates[k] = append(candidates[k], c.SN)
+		}
+	}
+
+	// Randomize selection
+	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
+
+	for i := byte(1); i <= 9; i++ {
+		for j := byte(0); j <= 1; j++ {
+			list := candidates[key{cat: i, gen: j}]
+			if len(list) > 1 {
+				rng.Shuffle(len(list), func(a, b int) { list[a], list[b] = list[b], list[a] })
+			}
+			limit := 5
+			if len(list) < limit {
+				limit = len(list)
+			}
+
+			for k := 0; k < limit; k++ {
+				bestItems[FeaturedKey{Category: i, Gender: j, Idx: byte(k)}] = list[k]
+			}
+		}
+	}
+}
+
 func computeCategory(sn int32) int32 {
 	return int32(math.Floor(float64(sn)/10_000_000.0)) + 1
 }
@@ -62,16 +141,6 @@ func computeStockState(c Commodity) int {
 
 	// If item is unknown in NX, mark not available
 	if _, err := GetItem(c.ItemID); err != nil {
-		return StockStateNotAvailable
-	}
-
-	// Example business rules (match common server behaviors)
-	if c.Price == 18000 && c.OnSale != 0 {
-		return StockStateNotAvailable
-	}
-
-	// If not on sale in data, mark as not available
-	if c.OnSale == 0 {
 		return StockStateNotAvailable
 	}
 

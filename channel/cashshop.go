@@ -154,15 +154,26 @@ func packetCashShopSet(plr *player, accountName string) mpacket.Packet {
 
 	p.WriteByte(1)
 	p.WriteString(accountName)
-	p.WriteInt16(0)
 
-	comms := nx.GetCommodities()
-	p.WriteInt16(int16(len(comms)))
-	for sn, c := range comms {
-		p.WriteInt32(sn)
-		p.WriteInt32(c.StockState)
+	p.WriteInt16(0) // Wishlist
+
+	for i := byte(1); i <= 9; i++ {
+		for j := byte(0); j <= 1; j++ {
+			for k := byte(0); k < 5; k++ {
+				best := nx.GetBestSN(i, j, k)
+				p.WriteInt32(int32(i))
+				p.WriteInt32(int32(j))
+				if best == 0 {
+					p.WriteInt32(0)
+				} else {
+					p.WriteInt32(best)
+				}
+			}
+		}
 	}
 
+	p.WriteInt32(0)
+	p.WriteByte(0)
 	return p
 }
 
