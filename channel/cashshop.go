@@ -126,6 +126,13 @@ func packetCashShopSet(plr *player, accountName string) mpacket.Packet {
 	writeActiveQuests(&p, plr.quests.inProgressList())
 	writeCompletedQuests(&p, plr.quests.completedList())
 
+	/* I think this is the real logic for below but can't get it to work properly, get an EOF so something is missing
+	p.WriteInt16(0) // Minigames
+	p.WriteInt16(0) // Rings
+	for i := 0; i < 5; i++ {
+		p.WriteInt32(999999999) // Tele rocks
+	}
+	*/
 	p.WriteInt32(0)
 	p.WriteInt32(0)
 	p.WriteInt32(0)
@@ -141,6 +148,8 @@ func packetCashShopSet(plr *player, accountName string) mpacket.Packet {
 	p.WriteInt32(0)
 	p.WriteInt32(0)
 	p.WriteInt64(time.Now().Unix())
+
+	// End of stats
 
 	p.WriteByte(1)
 	p.WriteString(accountName)

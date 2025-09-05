@@ -416,8 +416,7 @@ func (s *saver) persist(job pendingSave) bool {
 
 	if job.bits&DirtyNX != 0 || job.bits&DirtyMaplePoints != 0 {
 		query := "UPDATE accounts SET nx=?, maplepoints=? WHERE accountID=?"
-		args = append(args, job.snap.NX, job.snap.MaplePoints, job.snap.AccountID)
-		if _, err := common.DB.Exec(query, args...); err != nil {
+		if _, err := common.DB.Exec(query, job.snap.NX, job.snap.MaplePoints, job.snap.AccountID); err != nil {
 			log.Printf("saver.persist: UPDATE accounts (id=%d) failed: %v", job.snap.AccountID, err)
 		}
 	}
