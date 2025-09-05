@@ -139,6 +139,12 @@ func loadInventoryFromDb(charID int32) ([]item, []item, []item, []item, []item) 
 			continue
 		}
 
+		if nxInfo, err := nx.GetItem(item.id); err == nil {
+			item.cash = nxInfo.Cash
+			item.pet = nxInfo.Pet
+			item.buffTime = nxInfo.Time
+		}
+
 		item.calculateWeaponType()
 
 		switch item.invID {
@@ -388,10 +394,14 @@ func (v item) bytes(shortSlot bool) []byte {
 	p := mpacket.NewPacket()
 
 	if !shortSlot {
-		if v.cash && v.slotID < 0 {
-			p.WriteByte(byte(math.Abs(float64(v.slotID + 100))))
+		if v.slotID < 0 {
+			if v.slotID < -100 {
+				p.WriteByte(byte(math.Abs(float64(v.slotID + 100))))
+			} else {
+				p.WriteByte(byte(math.Abs(float64(v.slotID))))
+			}
 		} else {
-			p.WriteByte(byte(math.Abs(float64(v.slotID))))
+			p.WriteByte(byte(v.slotID))
 		}
 	} else {
 		p.WriteInt16(v.slotID)
@@ -409,7 +419,11 @@ func (v item) bytes(shortSlot bool) []byte {
 
 	p.WriteBool(v.cash)
 	if v.cash {
-		p.WriteUint64(uint64(v.id)) // I think this is somekind of cashshop transaction ID for the item
+		if sn, ok := nx.GetCommoditySNByItemID(v.id); ok {
+			p.WriteUint64(uint64(sn))
+		} else {
+			p.WriteUint64(uint64(v.id))
+		}
 	}
 
 	p.WriteInt64(v.expireTime)

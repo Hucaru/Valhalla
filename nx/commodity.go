@@ -47,6 +47,11 @@ func GetCommodity(sn int32) (Commodity, bool) {
 	return v, ok
 }
 
+func GetCommoditySNByItemID(itemID int32) (int32, bool) {
+	sn, ok := itemIDToSN[itemID]
+	return sn, ok
+}
+
 func computeCategory(sn int32) int32 {
 	return int32(math.Floor(float64(sn)/10_000_000.0)) + 1
 }
@@ -73,11 +78,30 @@ func computeStockState(c Commodity) int {
 	return state
 }
 
+func preferSN(existing Commodity, hasExisting bool, newC Commodity) bool {
+	if !hasExisting {
+		return true
+	}
+
+	if existing.StockState != StockStateDefault && newC.StockState == StockStateDefault {
+		return true
+	}
+
+	if existing.StockState == newC.StockState {
+		if existing.Priority != newC.Priority {
+			return newC.Priority < existing.Priority
+		}
+		return newC.SN < existing.SN
+	}
+	return false
+}
+
 // extractCommodities builds the commodities map by traversing /Etc/Commodity.img
 func extractCommodities(nodes []gonx.Node, text []string) map[int32]Commodity {
 	const root = "/Etc/Commodity.img"
 
 	out := make(map[int32]Commodity)
+	rev := make(map[int32]int32) // ItemID -> SN (preferred)
 
 	ok := gonx.FindNode(root, nodes, text, func(n *gonx.Node) {
 		for i := uint32(0); i < uint32(n.ChildCount); i++ {
@@ -114,7 +138,6 @@ func extractCommodities(nodes []gonx.Node, text []string) map[int32]Commodity {
 				}
 			}
 
-			// Only include valid entries (must have SN and ItemID)
 			if c.SN == 0 || c.ItemID == 0 {
 				continue
 			}
@@ -123,10 +146,24 @@ func extractCommodities(nodes []gonx.Node, text []string) map[int32]Commodity {
 			c.StockState = int32(computeStockState(c))
 
 			out[c.SN] = c
+
+			if existingSN, ok := rev[c.ItemID]; ok {
+				existing := out[existingSN]
+				if preferSN(existing, true, c) {
+					rev[c.ItemID] = c.SN
+				}
+			} else {
+				rev[c.ItemID] = c.SN
+			}
 		}
 	})
 	if !ok {
 		log.Println("Invalid node search:", root)
 	}
+
+	// Publish globals
+	commodities = out
+	itemIDToSN = rev
+
 	return out
 }

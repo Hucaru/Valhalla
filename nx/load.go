@@ -15,6 +15,7 @@ var playerSkills map[int32][]PlayerSkill
 var mobSkills map[byte][]MobSkill
 var commodities map[int32]Commodity
 var packages map[int32][]int32
+var itemIDToSN map[int32]int32
 
 // LoadFile into useable types
 func LoadFile(fname string) {
