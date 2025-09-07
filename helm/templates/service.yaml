@@ -33,13 +33,13 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: cashShop-server
+  name: cashshop-server
   namespace: {{ .Release.Namespace }}
 spec:
   selector:
-    app: cashShop-server
+    app: cashshop-server
   ports:
-    - name: tcp-cashShop
+    - name: tcp-cashshop
       port: 8600
       targetPort: 8600
   type: ClusterIP

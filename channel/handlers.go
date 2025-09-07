@@ -674,36 +674,36 @@ func (server Server) playerEnterCashShop(conn mnet.Client, reader mpacket.Reader
 		return
 	}
 
-	if plr.summons != nil {
-		if field, ok := server.fields[plr.mapID]; ok && field != nil {
-			if inst, e := field.getInstance(plr.inst.id); e == nil && inst != nil {
-				if plr.summons.puppet != nil {
-					inst.send(packetRemoveSummon(plr.ID, plr.summons.puppet.SkillID, constant.SummonRemoveReasonCancel))
-				}
-				if plr.summons.summon != nil {
-					inst.send(packetRemoveSummon(plr.ID, plr.summons.summon.SkillID, constant.SummonRemoveReasonCancel))
+	if len(server.cashShop.IP) == 4 && server.cashShop.Port != 0 {
+		if plr.summons != nil {
+			if field, ok := server.fields[plr.mapID]; ok && field != nil {
+				if inst, e := field.getInstance(plr.inst.id); e == nil && inst != nil {
+					if plr.summons.puppet != nil {
+						inst.send(packetRemoveSummon(plr.ID, plr.summons.puppet.SkillID, constant.SummonRemoveReasonCancel))
+					}
+					if plr.summons.summon != nil {
+						inst.send(packetRemoveSummon(plr.ID, plr.summons.summon.SkillID, constant.SummonRemoveReasonCancel))
+					}
 				}
 			}
+			plr.summons.puppet = nil
+			plr.summons.summon = nil
 		}
-		plr.summons.puppet = nil
-		plr.summons.summon = nil
-	}
-	plr.saveBuffSnapshot()
+		plr.saveBuffSnapshot()
 
-	if field, ok := server.fields[plr.mapID]; ok && field != nil {
-		if inst, e := field.getInstance(plr.inst.id); e == nil && inst != nil {
-			_ = inst.removePlayer(plr)
+		if field, ok := server.fields[plr.mapID]; ok && field != nil {
+			if inst, e := field.getInstance(plr.inst.id); e == nil && inst != nil {
+				_ = inst.removePlayer(plr)
+			}
 		}
-	}
 
-	// Persist character after state handoff
-	_ = plr.save()
+		// Persist character after state handoff
+		_ = plr.save()
 
-	server.migrating = append(server.migrating, conn)
+		server.migrating = append(server.migrating, conn)
 
-	_, _ = common.DB.Exec("UPDATE characters SET inCashShop=1, channelID=-1 WHERE ID=?", plr.ID)
+		_, _ = common.DB.Exec("UPDATE characters SET inCashShop=1, channelID=-1 WHERE ID=?", plr.ID)
 
-	if len(server.cashShop.IP) == 4 && server.cashShop.Port != 0 {
 		p := mpacket.CreateWithOpcode(opcode.SendChannelChange)
 		p.WriteBool(true)
 		p.WriteBytes(server.cashShop.IP)
@@ -3148,6 +3148,8 @@ func (server *Server) handleChannelConnectionInfo(conn mnet.Server, reader mpack
 func (server *Server) handleCashShopInfo(conn mnet.Server, reader mpacket.Reader) {
 	server.cashShop.IP = reader.ReadBytes(4)
 	server.cashShop.Port = reader.ReadInt16()
+
+	log.Println("Cash Shop Information Recieved IP:", server.cashShop.IP, "Port:", server.cashShop.Port)
 }
 
 func (server *Server) handlePlayerConnectedNotifications(conn mnet.Server, reader mpacket.Reader) {

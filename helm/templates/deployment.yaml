@@ -83,29 +83,29 @@ spec:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: cashShop-server
+  name: cashshop-server
   namespace: {{ .Release.Namespace }}
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: cashShop-server
+      app: cashshop-server
   template:
     metadata:
       labels:
-        app: cashShop-server
+        app: cashshop-server
     spec:
       containers:
         - name: valhalla
           image: {{ .Values.image }}
           command: ["/bin/sh", "-c"]
-          args: ["/app/Valhalla -type cashshop -config /app/docker/docker_config_cashShop.toml"]
+          args: ["/app/Valhalla -type cashshop -config /app/docker/docker_config_cashshop.toml"]
           ports:
             - containerPort: 8600
           volumeMounts:
             - name: cfg
-              mountPath: /app/docker/docker_config_cashShop.toml
-              subPath: docker_config_cashShop.toml
+              mountPath: /app/docker/docker_config_cashshop.toml
+              subPath: docker_config_cashshop.toml
           readinessProbe:
             tcpSocket:
               port: 8600
@@ -115,10 +115,10 @@ spec:
       volumes:
         - name: cfg
           configMap:
-            name: cashShop-config
+            name: cashshop-config
             items:
-              - key: config_cashShop.toml
-                path: docker_config_cashShop.toml
+              - key: config_cashshop.toml
+                path: docker_config_cashshop.toml
 {{- $root := . -}}
 {{ $replicas := int .Values.channel.replicas -}}
 {{- range $i, $_ := until $replicas }}

@@ -52,10 +52,10 @@ data:
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: cashShop-config
+  name: cashshop-config
   namespace: {{ .Release.Namespace }}
 data:
-  config_cashShop.toml: |
+  config_cashshop.toml: |
     [database]
     address = "{{ .Values.mysql.host }}"
     port = "{{ .Values.mysql.port }}"
@@ -63,15 +63,15 @@ data:
     password = "{{ .Values.mysql.password }}"
     database = "{{ .Values.mysql.database }}"
 
-    [cashShop]
+    [cashshop]
     worldAddress = "world-server.{{ .Release.Namespace }}.svc.{{ .Values.clusterDomain }}"
     worldPort = "8584"
     listenAddress = "0.0.0.0"
     listenPort = "8600"
-    clientConnectionAddress = "{{ .Values.cashShop.clientConnectionAddress }}"
-    packetQueueSize = {{ .Values.cashShop.packetQueueSize }}
-    latency = {{ .Values.cashShop.latency }}
-    jitter = {{ .Values.cashShop.jitter }}
+    clientConnectionAddress = "{{ .Values.cashshop.clientConnectionAddress }}"
+    packetQueueSize = {{ .Values.cashshop.packetQueueSize }}
+    latency = {{ .Values.cashshop.latency }}
+    jitter = {{ .Values.cashshop.jitter }}
 {{- $root := . -}}
 {{ $replicas := int .Values.channel.replicas -}}
 {{- range $i, $_ := until $replicas }}

@@ -8,7 +8,7 @@ channel:
   packetQueueSize: 512
   replicas: 1
   clientConnectionAddress: "127.0.0.1"
-cashShop:
+cashshop:
   jitter: 0
   latency: 0
   packetQueueSize: 512

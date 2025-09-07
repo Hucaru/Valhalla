@@ -5,7 +5,7 @@ user = "root"
 password = "password"
 database = "maplestory"
 
-[cashShop]
+[cashshop]
 worldAddress = "127.0.0.1"
 worldPort = "8584"
 listenAddress = "0.0.0.0"

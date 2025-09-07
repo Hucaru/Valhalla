@@ -139,12 +139,6 @@ func (server *Server) handleNewCashShop(conn mnet.Server, reader mpacket.Reader)
 	ip := reader.ReadBytes(4)
 	port := reader.ReadInt16()
 
-	if server.Info.CashShop.Conn != nil {
-		p := mpacket.CreateInternal(opcode.CashShopBad)
-		conn.Send(p)
-		return
-	}
-
 	newCashShop := internal.CashShop{Conn: conn, IP: ip, Port: port}
 	server.Info.CashShop = newCashShop
 
@@ -157,6 +151,11 @@ func (server *Server) handleNewCashShop(conn mnet.Server, reader mpacket.Reader)
 }
 
 func (server Server) sendCashShopInfo() {
+	for len(server.Info.Channels) <= 0 {
+		log.Println("No channels to send cash shop info to")
+		time.Sleep(10 * time.Second)
+	}
+
 	p := mpacket.CreateInternal(opcode.CashShopInfo)
 	p.WriteBytes(server.Info.CashShop.IP)
 	p.WriteInt16(server.Info.CashShop.Port)
