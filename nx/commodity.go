@@ -84,44 +84,72 @@ func loadBestItems() {
 		priority int32
 	}
 
-	// Collect candidates per category
+	// Collect candidates per category and a global pool (exclude Quest=9)
 	candidates := make(map[byte][]sel, 9)
+	global := make([]sel, 0, 1024)
+
 	for _, c := range GetCommodities() {
 		if c.SN == 0 || c.StockState != StockStateDefault {
 			continue
 		}
 		cat := byte(c.Category)
-		if cat < 1 || cat > 9 || cat == 9 { // exclude Quest
+		if cat < 1 || cat > 9 || cat == 9 {
 			continue
 		}
-		candidates[cat] = append(candidates[cat], sel{
+		s := sel{
 			sn:       c.SN,
 			onSale:   c.OnSale != 0,
 			priority: c.Priority,
-		})
+		}
+		candidates[cat] = append(candidates[cat], s)
+		global = append(global, s)
 	}
 
-	// Helper: comparison function for ranking
+	// Ranking: on-sale first, then lower priority, then lower SN
 	less := func(a, b sel) bool {
 		if a.onSale != b.onSale {
-			return a.onSale // on-sale first
+			return a.onSale
 		}
 		if a.priority != b.priority {
-			return a.priority < b.priority // lower priority first
+			return a.priority < b.priority
 		}
-		return a.sn < b.sn // tie-breaker
+		return a.sn < b.sn
 	}
 
-	// For each category, select top 5 using an insertion-sort into a small buffer
-	for cat := byte(1); cat <= 8; cat++ { // 1..8 (exclude 9)
-		src := candidates[cat]
-		if len(src) == 0 {
-			continue
+	rankedGlobal := make([]sel, 0, len(global))
+	for _, s := range global {
+		pos := len(rankedGlobal)
+		for i := 0; i < len(rankedGlobal); i++ {
+			if less(s, rankedGlobal[i]) {
+				pos = i
+				break
+			}
 		}
+		if pos == len(rankedGlobal) {
+			rankedGlobal = append(rankedGlobal, s)
+		} else {
+			rankedGlobal = append(rankedGlobal, sel{})
+			copy(rankedGlobal[pos+1:], rankedGlobal[pos:])
+			rankedGlobal[pos] = s
+		}
+	}
 
-		top := make([]sel, 0, 5)
+	hasSN := func(list []sel, sn int32) bool {
+		for _, x := range list {
+			if x.sn == sn {
+				return true
+			}
+		}
+		return false
+	}
+
+	// For each category, pick top 5; if fewer than 5, backfill from global ranking
+	const maxPerCat = 5
+	for cat := byte(1); cat <= 8; cat++ {
+		src := candidates[cat]
+
+		top := make([]sel, 0, maxPerCat)
 		for _, s := range src {
-			// Find insertion point
 			pos := len(top)
 			for i := 0; i < len(top); i++ {
 				if less(s, top[i]) {
@@ -129,25 +157,34 @@ func loadBestItems() {
 					break
 				}
 			}
-			// Insert at pos
 			if pos == len(top) {
-				if len(top) < 5 {
+				if len(top) < maxPerCat {
 					top = append(top, s)
 				}
 			} else {
-				if len(top) < 5 {
-					top = append(top, sel{}) // grow
+				if len(top) < maxPerCat {
+					top = append(top, sel{})
 				}
 				copy(top[pos+1:], top[pos:])
 				top[pos] = s
 			}
-			// If we exceeded 5, drop the worst (last)
-			if len(top) > 5 {
-				top = top[:5]
+			if len(top) > maxPerCat {
+				top = top[:maxPerCat]
 			}
 		}
 
-		// Publish mirrored for both genders (internal 0/1)
+		if len(top) < maxPerCat {
+			for _, s := range rankedGlobal {
+				if hasSN(top, s.sn) {
+					continue
+				}
+				top = append(top, s)
+				if len(top) == maxPerCat {
+					break
+				}
+			}
+		}
+
 		for idx := 0; idx < len(top); idx++ {
 			bestItems[FeaturedKey{Category: cat, Gender: 0, Idx: byte(idx)}] = top[idx].sn
 			bestItems[FeaturedKey{Category: cat, Gender: 1, Idx: byte(idx)}] = top[idx].sn
