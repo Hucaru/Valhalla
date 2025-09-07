@@ -150,7 +150,7 @@ func init() {
 }
 
 type CharacterBuffs struct {
-	plr               *player
+	plr               *Player
 	comboCount        byte
 	activeSkillLevels map[int32]byte // skillID -> level
 	expireTimers      map[int32]*time.Timer
@@ -158,7 +158,7 @@ type CharacterBuffs struct {
 	expireAt          map[int32]int64  // sourceID -> unix ms expiry
 }
 
-func NewCharacterBuffs(p *player) *CharacterBuffs {
+func NewCharacterBuffs(p *Player) *CharacterBuffs {
 	return &CharacterBuffs{
 		plr:               p,
 		activeSkillLevels: make(map[int32]byte),
@@ -239,7 +239,7 @@ func buildMaskBytes64(bits []int) []byte {
 	return m
 }
 
-// Emit triples by scanning maskBytes in the same wire order we send:
+// Emit triples by scanning maskBytes in the same wire order we Send:
 // bytes 0..7, bits 0..7 (LSB-first).
 func (cb *CharacterBuffs) buildBuffTriplesWireOrder(skillID int32, level byte, maskBytes []byte, expiresAtMs int64) []byte {
 	levels, err := nx.GetPlayerSkill(skillID)
@@ -375,7 +375,7 @@ func buildItemBuffTriplesWireOrder(meta nx.Item, maskBytes []byte, durationSec i
 	appendTriple := func(v int16) {
 		// short value
 		out = append(out, byte(v), byte(v>>8))
-		// int32 sourceID (negative item id)
+		// int32 sourceID (negative Item ID)
 		id := sourceID
 		out = append(out, byte(id), byte(id>>8), byte(id>>16), byte(id>>24))
 		// short time (seconds)
@@ -398,10 +398,10 @@ func buildItemBuffTriplesWireOrder(meta nx.Item, maskBytes []byte, durationSec i
 	return out
 }
 
-// durationSec is the client-visible remaining time in seconds. Source id is encoded as -item.id.
-func (cb *CharacterBuffs) AddItemBuff(it item) {
+// durationSec is the client-visible remaining time in seconds. Source ID is encoded as -Item.ID.
+func (cb *CharacterBuffs) AddItemBuff(it Item) {
 	var durationSec int16 = 0
-	meta, err := nx.GetItem(it.id)
+	meta, err := nx.GetItem(it.ID)
 	if err != nil {
 		return
 	}
@@ -446,13 +446,13 @@ func (cb *CharacterBuffs) AddItemBuff(it item) {
 
 	// Build mask and per-stat triples in the same (LSB-first) wire order as skills.
 	maskBytes := buildMaskBytes64(bits)
-	sourceID := -it.id
+	sourceID := -it.ID
 	values := buildItemBuffTriplesWireOrder(meta, maskBytes, durationSec, sourceID)
 
 	// Send to self and others (items don't need extra combo/charges byte).
 	const extra byte = 0
 	const delay int16 = 0
-	cb.plr.send(packetPlayerGiveBuff(maskBytes, values, delay, extra))
+	cb.plr.Send(packetPlayerGiveBuff(maskBytes, values, delay, extra))
 
 	m := make([]byte, len(maskBytes))
 	copy(m, maskBytes)
@@ -518,7 +518,7 @@ func (cb *CharacterBuffs) AddItemBuffFromCC(itemID int32, expiresAtMs int64) {
 	values := buildItemBuffTriplesWireOrder(meta, maskBytes, remainSec, sourceID)
 
 	// Send packets
-	cb.plr.send(packetPlayerGiveBuff(maskBytes, values, 0, 0))
+	cb.plr.Send(packetPlayerGiveBuff(maskBytes, values, 0, 0))
 
 	// Track in memory and set timer
 	m := make([]byte, len(maskBytes))
@@ -558,10 +558,10 @@ func (cb *CharacterBuffs) AddBuffFromCC(charId, skillID int32, expiresAtMs int64
 	if foreign {
 		cb.plr.inst.send(packetPlayerGiveForeignBuff(charId, maskBytes, values, extra))
 	} else {
-		cb.plr.send(packetPlayerGiveBuff(maskBytes, values, delay, extra))
+		cb.plr.Send(packetPlayerGiveBuff(maskBytes, values, delay, extra))
 	}
 
-	cb.plr.send(packetPlayerShowBuffEffect(charId, skillID, 3, 1))
+	cb.plr.Send(packetPlayerShowBuffEffect(charId, skillID, 3, 1))
 	cb.activeSkillLevels[skillID] = level
 
 	cb.expireAt[skillID] = expiresAtMs
@@ -635,7 +635,7 @@ func (cb *CharacterBuffs) expireBuffNow(skillID int32) {
 	if !ok || len(bits) == 0 {
 		if skillID < 0 {
 			if mask, ok2 := cb.itemMasks[skillID]; ok2 {
-				cb.plr.send(packetPlayerCancelBuff(mask))
+				cb.plr.Send(packetPlayerCancelBuff(mask))
 				if cb.plr.inst != nil {
 					cb.plr.inst.send(packetPlayerCancelForeignBuff(cb.plr.id, mask))
 				}
@@ -647,7 +647,7 @@ func (cb *CharacterBuffs) expireBuffNow(skillID int32) {
 	}
 	maskBytes := buildMaskBytes64(bits)
 
-	cb.plr.send(packetPlayerCancelBuff(maskBytes))
+	cb.plr.Send(packetPlayerCancelBuff(maskBytes))
 	if cb.plr.inst != nil {
 		cb.plr.inst.send(packetPlayerCancelForeignBuff(cb.plr.id, maskBytes))
 	}
@@ -676,7 +676,7 @@ func (cb *CharacterBuffs) check(skillID int32) {
 	// Implement conflicting buff cleanup if needed.
 }
 
-// ClearBuff removes a specific buff from player and DB.
+// ClearBuff removes a specific buff from Player and DB.
 func (cb *CharacterBuffs) ClearBuff(skillID int32, _ uint32) {
 	mask := buildBuffMask(skillID)
 	if mask != nil && !mask.IsZero() && cb.plr.inst != nil {
@@ -709,7 +709,7 @@ func (cb *CharacterBuffs) AuditAndExpireStaleBuffs() {
 
 type BuffSnapshot struct {
 	SourceID    int32 // skillID or -itemID
-	Level       byte  // 0 for item buffs
+	Level       byte  // 0 for Item buffs
 	ExpiresAtMs int64 // 0 for toggles/indefinite
 }
 
@@ -727,7 +727,7 @@ func (cb *CharacterBuffs) Snapshot() []BuffSnapshot {
 	// Items (sourceID is negative)
 	for src := range cb.itemMasks {
 		out = append(out, BuffSnapshot{
-			SourceID:    src,              // negative item id
+			SourceID:    src,              // negative Item ID
 			Level:       0,                // not used
 			ExpiresAtMs: cb.expireAt[src], // may be 0 if toggle
 		})

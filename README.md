@@ -221,6 +221,7 @@ The following values should be used to deploy the helm chart:
 ```
 tcp:
   8484: valhalla/login-server:8484
+  8600: valhalla/cashShop-server:8600
   8685: valhalla/channel-server-1:8685
   8684: valhalla/channel-server-2:8684
   8683: valhalla/channel-server-3:8683

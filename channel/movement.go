@@ -188,7 +188,7 @@ func generateMovementBytes(moveData movement) mpacket.Packet {
 	return p
 }
 
-func (data movement) validateChar(player *player) bool {
+func (data movement) validateChar(player *Player) bool {
 	// run through the movement data and make sure characters are not moving too fast (going to have to take into account gear and buffs "-_- )
 
 	return true

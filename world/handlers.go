@@ -37,6 +37,8 @@ func (server *Server) HandleServerPacket(conn mnet.Server, reader mpacket.Reader
 		server.handleGuildEvent(conn, reader)
 	case opcode.ChangeRate:
 		server.handleChangeRate(conn, reader)
+	case opcode.CashShopNew:
+		server.handleNewCashShop(conn, reader)
 	default:
 		log.Println("UNKNOWN SERVER PACKET:", reader)
 	}
@@ -130,6 +132,37 @@ func (server *Server) handleChannelUpdate(conn mnet.Server, reader mpacket.Reade
 		log.Println("Unkown channel update type", op)
 	}
 	server.login.Send(server.Info.GenerateInfoPacket())
+}
+
+func (server *Server) handleNewCashShop(conn mnet.Server, reader mpacket.Reader) {
+	log.Println("New cashshop request")
+	ip := reader.ReadBytes(4)
+	port := reader.ReadInt16()
+	maxPop := reader.ReadInt16()
+
+	if server.Info.CashShop.Conn != nil {
+		p := mpacket.CreateInternal(opcode.CashShopBad)
+		conn.Send(p)
+		return
+	}
+
+	newCashShop := internal.CashShop{Conn: conn, IP: ip, Port: port, MaxPop: maxPop, Pop: 0}
+	server.Info.CashShop = newCashShop
+
+	p := mpacket.CreateInternal(opcode.CashShopOk)
+	p.WriteString(server.Info.Name)
+	conn.Send(p)
+
+	log.Println("Registered CashShop")
+	server.sendCashShopInfo()
+}
+
+func (server Server) sendCashShopInfo() {
+	p := mpacket.CreateInternal(opcode.CashShopInfo)
+	p.WriteBytes(server.Info.CashShop.IP)
+	p.WriteInt16(server.Info.CashShop.Port)
+
+	server.channelBroadcast(p)
 }
 
 func (server *Server) handlePlayerConnect(conn mnet.Server, reader mpacket.Reader) {

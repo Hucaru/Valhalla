@@ -49,10 +49,10 @@ const roomMaxPlayers = 2
 type roomer interface {
 	id() int32
 	setID(int32)
-	addPlayer(*player) bool
+	addPlayer(*Player) bool
 	closed() bool
 	present(int32) bool
-	chatMsg(*player, string)
+	chatMsg(*Player, string)
 	ownerID() int32
 }
 
@@ -60,7 +60,7 @@ type room struct {
 	roomID        int32
 	ownerPlayerID int32
 	roomType      byte
-	players       []*player
+	players       []*Player
 }
 
 func (r room) id() int32 {
@@ -75,11 +75,11 @@ func (r room) ownerID() int32 {
 	return r.ownerPlayerID
 }
 
-func (r *room) addPlayer(plr *player) bool {
+func (r *room) addPlayer(plr *Player) bool {
 	if len(r.players) == 0 {
 		r.ownerPlayerID = plr.id
 	} else if len(r.players) == 2 {
-		plr.send(packetRoomFull())
+		plr.Send(packetRoomFull())
 		return false
 	}
 
@@ -94,9 +94,9 @@ func (r *room) addPlayer(plr *player) bool {
 	return true
 }
 
-func (r *room) removePlayer(plr *player) bool {
+func (r *room) removePlayer(plr *Player) bool {
 	for i, v := range r.players {
-		if v.conn == plr.conn {
+		if v.Conn == plr.Conn {
 			r.players = append(r.players[:i], r.players[i+1:]...) // preserve order for slot numbers
 			return true
 		}
@@ -107,16 +107,16 @@ func (r *room) removePlayer(plr *player) bool {
 
 func (r room) send(p mpacket.Packet) {
 	for _, v := range r.players {
-		v.send(p)
+		v.Send(p)
 	}
 }
 
-func (r room) sendExcept(p mpacket.Packet, plr *player) {
+func (r room) sendExcept(p mpacket.Packet, plr *Player) {
 	for _, v := range r.players {
-		if v.conn == plr.conn {
+		if v.Conn == plr.Conn {
 			continue
 		}
-		v.send(p)
+		v.Send(p)
 	}
 }
 
@@ -124,9 +124,9 @@ func (r room) closed() bool {
 	return len(r.players) == 0
 }
 
-func (r room) chatMsg(plr *player, msg string) {
+func (r room) chatMsg(plr *Player, msg string) {
 	for i, v := range r.players {
-		if v.conn == plr.conn {
+		if v.Conn == plr.Conn {
 			r.send(packetRoomChat(plr.name, msg, byte(i)))
 		}
 	}
@@ -143,18 +143,18 @@ func (r room) present(id int32) bool {
 }
 
 type gameRoomer interface {
-	checkPassword(string, *player) bool
-	ready(*player)
-	unready(*player)
+	checkPassword(string, *Player) bool
+	ready(*Player)
+	unready(*Player)
 	start()
 	displayBytes() []byte
-	kickPlayer(*player, byte) bool
+	kickPlayer(*Player, byte) bool
 	expel() bool
 	changeTurn()
-	requestTie(*player)
-	requestTieResult(bool, *player)
-	forfeit(*player)
-	requestExit(bool, *player)
+	requestTie(*Player)
+	requestTieResult(bool, *Player)
+	forfeit(*Player)
+	requestExit(bool, *Player)
 }
 
 type gameRoom struct {
@@ -169,12 +169,12 @@ type gameRoom struct {
 	exit       [2]bool
 }
 
-func (r *gameRoom) addPlayer(plr *player) bool {
+func (r *gameRoom) addPlayer(plr *Player) bool {
 	if !r.room.addPlayer(plr) {
 		return false
 	}
 
-	plr.send(packetRoomShowWindow(r.roomType, r.boardType, byte(roomMaxPlayers), byte(len(r.players)-1), r.name, r.players))
+	plr.Send(packetRoomShowWindow(r.roomType, r.boardType, byte(roomMaxPlayers), byte(len(r.players)-1), r.name, r.players))
 
 	if len(r.players) > 1 {
 		r.sendExcept(packetRoomJoin(r.roomType, byte(len(r.players)-1), r.players[len(r.players)-1]), plr)
@@ -183,17 +183,17 @@ func (r *gameRoom) addPlayer(plr *player) bool {
 	return true
 }
 
-func (r gameRoom) checkPassword(password string, plr *player) bool {
+func (r gameRoom) checkPassword(password string, plr *Player) bool {
 	if password != r.password {
-		plr.send(packetRoomIncorrectPassword())
+		plr.Send(packetRoomIncorrectPassword())
 		return false
 	}
 	return true
 }
 
-func (r *gameRoom) kickPlayer(plr *player, reason byte) bool {
+func (r *gameRoom) kickPlayer(plr *Player, reason byte) bool {
 	for i, v := range r.players {
-		if v.conn == plr.conn {
+		if v.Conn == plr.Conn {
 			if r.inProgress {
 				r.gameEnd(false, true, plr, 0)
 			}
@@ -202,14 +202,14 @@ func (r *gameRoom) kickPlayer(plr *player, reason byte) bool {
 				return false
 			}
 
-			plr.send(packetRoomLeave(byte(i), reason))
+			plr.Send(packetRoomLeave(byte(i), reason))
 
 			if i == 0 { // owner is always at index 0
 				for j := range r.players {
 					fmt.Println(packetRoomLeave(byte(j+1), 0x0))
 					r.send(packetRoomLeave(byte(j+1), 0x0))
 				}
-				r.players = []*player{} // sets the room into a closed state
+				r.players = []*Player{} // sets the room into a closed state
 			} else {
 				fmt.Println(packetRoomLeave(byte(i), reason))
 				r.send(packetRoomLeave(byte(i), reason))
@@ -233,17 +233,17 @@ func (r *gameRoom) expel() bool {
 	return false
 }
 
-func (r *gameRoom) ready(plr *player) {
+func (r *gameRoom) ready(plr *Player) {
 	for i, v := range r.players {
-		if v.conn == plr.conn && i == 1 {
+		if v.Conn == plr.Conn && i == 1 {
 			r.send(packetRoomReady())
 		}
 	}
 }
 
-func (r *gameRoom) unready(plr *player) {
+func (r *gameRoom) unready(plr *Player) {
 	for i, v := range r.players {
-		if v.conn == plr.conn && i == 1 {
+		if v.Conn == plr.Conn && i == 1 {
 			r.send(packetRoomUnready())
 		}
 	}
@@ -254,11 +254,11 @@ func (r *gameRoom) changeTurn() {
 	r.send(packetRoomGameSkip(r.p1Turn))
 }
 
-func (r *gameRoom) gameEnd(draw, forfeit bool, plr *player, winningSlot byte) {
+func (r *gameRoom) gameEnd(draw, forfeit bool, plr *Player, winningSlot byte) {
 	r.inProgress = false
 
 	if forfeit {
-		if plr.conn == r.players[0].conn {
+		if plr.Conn == r.players[0].Conn {
 			winningSlot = 0x01
 		} else {
 			winningSlot = 0x00
@@ -322,40 +322,40 @@ func (r *gameRoom) assignPoints(draw bool, winningSlot byte) {
 	r.players[1].miniGamePoints = r.players[1].miniGamePoints + int32(k*(s1-e1))
 }
 
-func (r *gameRoom) requestTie(plr *player) {
+func (r *gameRoom) requestTie(plr *Player) {
 	for _, v := range r.players {
-		if v.conn != plr.conn {
-			v.send(packetRoomRequestTie())
+		if v.Conn != plr.Conn {
+			v.Send(packetRoomRequestTie())
 			return
 		}
 	}
 }
 
-func (r *gameRoom) requestTieResult(tie bool, plr *player) {
+func (r *gameRoom) requestTieResult(tie bool, plr *Player) {
 	if tie {
 		r.gameEnd(true, false, nil, 0)
 	} else {
 		for _, v := range r.players {
-			if v.conn != plr.conn {
-				v.send(packetRoomRejectTie())
+			if v.Conn != plr.Conn {
+				v.Send(packetRoomRejectTie())
 				return
 			}
 		}
 	}
 }
 
-func (r *gameRoom) forfeit(plr *player) {
+func (r *gameRoom) forfeit(plr *Player) {
 	for _, v := range r.players {
-		if v.conn == plr.conn {
+		if v.Conn == plr.Conn {
 			r.gameEnd(false, true, plr, 0)
 			return
 		}
 	}
 }
 
-func (r *gameRoom) requestExit(exit bool, plr *player) {
+func (r *gameRoom) requestExit(exit bool, plr *Player) {
 	for i, v := range r.players {
-		if v.conn == plr.conn {
+		if v.Conn == plr.Conn {
 			r.exit[i] = exit
 			return
 		}
@@ -396,23 +396,23 @@ func newOmokRoom(id int32, name, password string, boardType byte) roomer {
 	return &omokRoom{gameRoom: g}
 }
 
-func (r *omokRoom) placePiece(x, y int32, piece byte, plr *player) bool {
+func (r *omokRoom) placePiece(x, y int32, piece byte, plr *Player) bool {
 	if x > 14 || y > 14 || x < 0 || y < 0 {
 		return false
 	}
 
 	// Turns are out of sync with client probably due to hacking
-	if r.p1Turn && plr.conn != r.players[0].conn {
-		r.players[1].send(packetRoomOmokInvalidPlaceMsg())
-	} else if !r.p1Turn && plr.conn != r.players[1].conn {
-		r.players[0].send(packetRoomOmokInvalidPlaceMsg())
+	if r.p1Turn && plr.Conn != r.players[0].Conn {
+		r.players[1].Send(packetRoomOmokInvalidPlaceMsg())
+	} else if !r.p1Turn && plr.Conn != r.players[1].Conn {
+		r.players[0].Send(packetRoomOmokInvalidPlaceMsg())
 	}
 
 	if r.board[x][y] != 0 {
 		if r.p1Turn {
-			r.players[0].send(packetRoomOmokInvalidPlaceMsg())
+			r.players[0].Send(packetRoomOmokInvalidPlaceMsg())
 		} else {
-			r.players[1].send(packetRoomOmokInvalidPlaceMsg())
+			r.players[1].Send(packetRoomOmokInvalidPlaceMsg())
 		}
 
 		return false
@@ -454,24 +454,24 @@ func (r *omokRoom) placePiece(x, y int32, piece byte, plr *player) bool {
 	return false
 }
 
-func (r *omokRoom) requestUndo(plr *player) {
+func (r *omokRoom) requestUndo(plr *Player) {
 	for i, v := range r.players {
-		if v.conn != plr.conn {
+		if v.Conn != plr.Conn {
 			if (i == 0 && r.p1Plays == 0) || (i == 1 && r.p2Plays == 0) {
 				return
 			}
 
-			v.send(packetRoomRequestUndo())
+			v.Send(packetRoomRequestUndo())
 			return
 		}
 	}
 }
 
-// RequestUndoResult is the choice the other player made to the request
-func (r *omokRoom) requestUndoResult(undo bool, plr *player) {
+// RequestUndoResult is the choice the other Player made to the request
+func (r *omokRoom) requestUndoResult(undo bool, plr *Player) {
 	if undo {
 		for i, v := range r.players {
-			if v.conn != plr.conn {
+			if v.Conn != plr.Conn {
 				turns := byte(1)
 				slot := byte(i)
 
@@ -519,8 +519,8 @@ func (r *omokRoom) requestUndoResult(undo bool, plr *player) {
 		}
 	} else {
 		for _, v := range r.players {
-			if v.conn != plr.conn {
-				v.send(packetRoomRejectUndo())
+			if v.Conn != plr.Conn {
+				v.Send(packetRoomRejectUndo())
 				return
 			}
 		}
@@ -621,7 +621,7 @@ func newMemoryRoom(id int32, name, password string, boardType byte) roomer {
 	return &memoryRoom{gameRoom: g}
 }
 
-func (r *memoryRoom) selectCard(turn, cardID byte, plr *player) bool {
+func (r *memoryRoom) selectCard(turn, cardID byte, plr *Player) bool {
 	if int(cardID) >= len(r.cards) {
 		return false
 	}
@@ -750,12 +750,12 @@ func newTradeRoom(id int32) roomer {
 	return &tradeRoom{room: r}
 }
 
-func (r *tradeRoom) addPlayer(plr *player) bool {
+func (r *tradeRoom) addPlayer(plr *Player) bool {
 	if !r.room.addPlayer(plr) {
 		return false
 	}
 
-	plr.send(packetRoomShowWindow(r.roomType, 0x00, byte(roomMaxPlayers), byte(len(r.players)-1), "", r.players))
+	plr.Send(packetRoomShowWindow(r.roomType, 0x00, byte(roomMaxPlayers), byte(len(r.players)-1), "", r.players))
 
 	if len(r.players) > 1 {
 		r.sendExcept(packetRoomJoin(r.roomType, byte(len(r.players)-1), r.players[len(r.players)-1]), plr)
@@ -764,17 +764,17 @@ func (r *tradeRoom) addPlayer(plr *player) bool {
 	return true
 }
 
-func (r *tradeRoom) removePlayer(plr *player) {
+func (r *tradeRoom) removePlayer(plr *Player) {
 	// Note: since anyone leaving the room causes it to close we don't need to remove players
 	for i, v := range r.players {
-		if v.conn != plr.conn {
-			v.send(packetRoomLeave(byte(i), 0x02))
+		if v.Conn != plr.Conn {
+			v.Send(packetRoomLeave(byte(i), 0x02))
 		}
 	}
 }
 
-func (r tradeRoom) sendInvite(plr *player) {
-	plr.send(packetRoomInvite(roomTypeTrade, r.players[0].name, r.roomID))
+func (r tradeRoom) sendInvite(plr *Player) {
+	plr.Send(packetRoomInvite(roomTypeTrade, r.players[0].name, r.roomID))
 }
 
 func (r tradeRoom) reject(code byte, name string) {
@@ -785,7 +785,7 @@ func (r *tradeRoom) insertItem() {
 
 }
 
-func (r *tradeRoom) addMesos(amount int32, plr *player) {
+func (r *tradeRoom) addMesos(amount int32, plr *Player) {
 
 }
 
@@ -793,7 +793,7 @@ func (r *tradeRoom) swapItems() bool {
 	return true
 }
 
-func packetRoomShowWindow(roomType, boardType, maxPlayers, roomSlot byte, roomTitle string, players []*player) mpacket.Packet {
+func packetRoomShowWindow(roomType, boardType, maxPlayers, roomSlot byte, roomTitle string, players []*Player) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelRoom)
 	p.WriteByte(0x05)
 	p.WriteByte(roomType)
@@ -830,7 +830,7 @@ func packetRoomShowWindow(roomType, boardType, maxPlayers, roomSlot byte, roomTi
 	return p
 }
 
-func packetRoomJoin(roomType, roomSlot byte, plr *player) mpacket.Packet {
+func packetRoomJoin(roomType, roomSlot byte, plr *Player) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelRoom)
 	p.WriteByte(0x04)
 	p.WriteByte(roomSlot)
@@ -1004,7 +1004,7 @@ func packetRoomUndo(piece, slot byte) mpacket.Packet {
 	return p
 }
 
-func packetRoomGameResult(draw bool, winningSlot byte, forfeit bool, plr []*player) mpacket.Packet {
+func packetRoomGameResult(draw bool, winningSlot byte, forfeit bool, plr []*Player) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelRoom)
 	p.WriteByte(0x36)
 

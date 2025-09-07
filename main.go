@@ -29,6 +29,9 @@ func main() {
 	case "channel":
 		s := newChannelServer(*configPtr)
 		s.run()
+	case "cashshop":
+		s := newCashShopServer(*configPtr)
+		s.run()
 	default:
 		log.Println("Unkown server type:", *typePtr)
 	}

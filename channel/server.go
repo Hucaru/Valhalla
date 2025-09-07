@@ -19,47 +19,47 @@ import (
 	"github.com/Hucaru/Valhalla/nx"
 )
 
-type players []*player
+type players []*Player
 
-func (p players) getFromConn(conn mnet.Client) (*player, error) {
+func (p players) getFromConn(conn mnet.Client) (*Player, error) {
 	for _, v := range p {
-		if v.conn == conn {
+		if v.Conn == conn {
 			return v, nil
 		}
 	}
-	return nil, fmt.Errorf("player not found for connection")
+	return nil, fmt.Errorf("Player not found for connection")
 }
 
-func (p players) getFromName(name string) (*player, error) {
+func (p players) getFromName(name string) (*Player, error) {
 	for _, v := range p {
 		if v.name == name {
 			return v, nil
 		}
 	}
-	return nil, fmt.Errorf("player not found for name: %s", name)
+	return nil, fmt.Errorf("Player not found for name: %s", name)
 }
 
-func (p players) getFromID(id int32) (*player, error) {
+func (p players) getFromID(id int32) (*Player, error) {
 	for _, v := range p {
 		if v.id == id {
 			return v, nil
 		}
 	}
-	return nil, fmt.Errorf("player not found for id: %d", id)
+	return nil, fmt.Errorf("Player not found for ID: %d", id)
 }
 
-// RemoveFromConn removes the player based on the connection
+// RemoveFromConn removes the Player based on the connection
 func (p *players) removeFromConn(conn mnet.Client) error {
 	i := -1
 	for j, v := range *p {
-		if v.conn == conn {
+		if v.Conn == conn {
 			i = j
 			break
 		}
 	}
 
 	if i == -1 {
-		return fmt.Errorf("player not found for removal")
+		return fmt.Errorf("Player not found for removal")
 	}
 
 	(*p)[i] = (*p)[len(*p)-1]
@@ -85,6 +85,7 @@ type Server struct {
 	migrating        []mnet.Client
 	players          players
 	channels         [20]internal.Channel
+	cashShop         internal.CashShop
 	fields           map[int32]*field
 	header           string
 	npcChat          map[mnet.Client]*npcChatController
@@ -200,9 +201,9 @@ func (server *Server) loadScripts() {
 func (server *Server) SendCountdownToPlayers(t int32) {
 	for _, p := range server.players {
 		if t == 0 {
-			p.send(packetHideCountdown())
+			p.Send(packetHideCountdown())
 		} else {
-			p.send(packetShowCountdown(t))
+			p.Send(packetShowCountdown(t))
 		}
 	}
 }
@@ -210,7 +211,7 @@ func (server *Server) SendCountdownToPlayers(t int32) {
 // SendLostWorldConnectionMessage - Send message to players alerting them of whatever they do it won't be saved
 func (server *Server) SendLostWorldConnectionMessage() {
 	for _, p := range server.players {
-		p.send(packetMessageNotice("Cannot connect to world server, any action from the point until the countdown disappears won't be processed"))
+		p.Send(packetMessageNotice("Cannot connect to world server, any action from the point until the countdown disappears won't be processed"))
 	}
 }
 
@@ -280,7 +281,7 @@ func (server *Server) ClientDisconnected(conn mnet.Client) {
 	}
 	server.world.Send(internal.PacketChannelPlayerDisconnect(plr.id, plr.name, guildID))
 
-	if _, dbErr := common.DB.Exec("UPDATE characters SET channelID=? WHERE id=?", -1, plr.id); dbErr != nil {
+	if _, dbErr := common.DB.Exec("UPDATE characters SET channelID=? WHERE ID=?", -1, plr.id); dbErr != nil {
 		log.Println(dbErr)
 	}
 	if _, dbErr := common.DB.Exec("UPDATE accounts SET isLogedIn=0 WHERE accountID=?", conn.GetAccountID()); dbErr != nil {
@@ -293,11 +294,11 @@ func (server *Server) flushPlayers() {
 		if p == nil {
 			continue
 		}
-		flushNow(p)
+		FlushNow(p)
 	}
 }
 
-// CheckpointAll now uses the saver to flush debounced/coalesced deltas for every player.
+// CheckpointAll now uses the saver to flush debounced/coalesced deltas for every Player.
 func (server *Server) CheckpointAll() {
 	if server.dispatch == nil {
 		return

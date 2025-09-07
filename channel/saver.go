@@ -115,8 +115,8 @@ func copySkills(src map[int32]playerSkill) map[int32]playerSkill {
 	return dst
 }
 
-// Build a snapshot from a player (caller is on game thread).
-func snapshotFromPlayer(p *player) snapshot {
+// Build a snapshot from a Player (caller is on game thread).
+func snapshotFromPlayer(p *Player) snapshot {
 	s := snapshot{
 		ID:             p.id,
 		AccountID:      p.accountID,
@@ -179,7 +179,7 @@ func StopSaver() {
 	saverInst = nil
 }
 
-func scheduleSave(p *player, delay time.Duration) {
+func scheduleSave(p *Player, delay time.Duration) {
 	if saverInst == nil || p == nil || p.id == 0 {
 		return
 	}
@@ -196,7 +196,7 @@ func scheduleSave(p *player, delay time.Duration) {
 	}
 }
 
-func flushNow(p *player) {
+func FlushNow(p *Player) {
 	if saverInst == nil || p == nil || p.id == 0 {
 		return
 	}
@@ -396,10 +396,10 @@ func (s *saver) persist(job pendingSave) bool {
 	}
 
 	if len(cols) > 0 {
-		query := "UPDATE characters SET " + strings.Join(cols, ",") + " WHERE id=?"
+		query := "UPDATE characters SET " + strings.Join(cols, ",") + " WHERE ID=?"
 		args = append(args, job.snap.ID)
 		if _, err := common.DB.Exec(query, args...); err != nil {
-			log.Printf("saver.persist: UPDATE characters (id=%d) failed: %v", job.snap.ID, err)
+			log.Printf("saver.persist: UPDATE characters (ID=%d) failed: %v", job.snap.ID, err)
 		}
 	}
 
@@ -417,7 +417,7 @@ func (s *saver) persist(job pendingSave) bool {
 	if job.bits&DirtyNX != 0 || job.bits&DirtyMaplePoints != 0 {
 		query := "UPDATE accounts SET nx=?, maplepoints=? WHERE accountID=?"
 		if _, err := common.DB.Exec(query, job.snap.NX, job.snap.MaplePoints, job.snap.AccountID); err != nil {
-			log.Printf("saver.persist: UPDATE accounts (id=%d) failed: %v", job.snap.AccountID, err)
+			log.Printf("saver.persist: UPDATE accounts (ID=%d) failed: %v", job.snap.AccountID, err)
 		}
 	}
 

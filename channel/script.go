@@ -191,10 +191,10 @@ func (tracker *npcChatStateTracker) popState() {
 	tracker.lastPos--
 }
 
-type warpFn func(plr *player, dstField *field, dstPortal portal) error
+type warpFn func(plr *Player, dstField *field, dstPortal portal) error
 
 type npcChatPlayerController struct {
-	plr       *player
+	plr       *Player
 	fields    map[int32]*field
 	warpFunc  warpFn
 	worldConn mnet.Server
@@ -231,13 +231,13 @@ func (ctrl *npcChatPlayerController) GiveMesos(amount int32) {
 }
 
 func (ctrl *npcChatPlayerController) GiveItem(id int32, amount int16) bool {
-	item, err := createItemFromID(id, amount)
+	item, err := CreateItemFromID(id, amount)
 
 	if err != nil {
 		return false
 	}
 
-	if err = ctrl.plr.giveItem(item); err != nil {
+	if err = ctrl.plr.GiveItem(item); err != nil {
 		return false
 	}
 
@@ -350,7 +350,7 @@ func (ctrl *npcChatPlayerController) SetQuestData(id int16, data string) {
 	}
 	// Persist + notify client
 	upsertQuestRecord(ctrl.plr.id, id, data)
-	ctrl.plr.send(packetQuestUpdate(id, data))
+	ctrl.plr.Send(packetQuestUpdate(id, data))
 }
 
 func (ctrl *npcChatPlayerController) StartQuest(id int16) bool {
@@ -368,7 +368,7 @@ func (ctrl *npcChatPlayerController) ForfeitQuest(id int16) {
 	ctrl.plr.quests.remove(id)
 	delete(ctrl.plr.quests.mobKills, id)
 	deleteQuest(ctrl.plr.id, id)
-	ctrl.plr.send(packetQuestRemove(id))
+	ctrl.plr.Send(packetQuestRemove(id))
 	clearQuestMobKills(ctrl.plr.id, id)
 }
 
@@ -397,7 +397,7 @@ type npcChatController struct {
 	program *goja.Program
 }
 
-func createNpcChatController(npcID int32, conn mnet.Client, program *goja.Program, plr *player, fields map[int32]*field, warpFunc warpFn, worldConn mnet.Server) (*npcChatController, error) {
+func createNpcChatController(npcID int32, conn mnet.Client, program *goja.Program, plr *Player, fields map[int32]*field, warpFunc warpFn, worldConn mnet.Server) (*npcChatController, error) {
 	ctrl := &npcChatController{
 		npcID:   npcID,
 		conn:    conn,
@@ -423,7 +423,7 @@ func (ctrl *npcChatController) Id() int32 {
 	return ctrl.npcID
 }
 
-// SendBackNext packet to player
+// SendBackNext packet to Player
 func (ctrl *npcChatController) SendBackNext(msg string, back, next bool) {
 	if ctrl.stateTracker.performInterrupt() {
 		ctrl.conn.Send(packetNpcChatBackNext(ctrl.npcID, msg, next, back))
@@ -431,7 +431,7 @@ func (ctrl *npcChatController) SendBackNext(msg string, back, next bool) {
 	}
 }
 
-// SendOK packet to player
+// SendOK packet to Player
 func (ctrl *npcChatController) SendOk(msg string) {
 	if ctrl.stateTracker.performInterrupt() {
 		ctrl.conn.Send(packetNpcChatOk(ctrl.npcID, msg))
@@ -439,7 +439,7 @@ func (ctrl *npcChatController) SendOk(msg string) {
 	}
 }
 
-// SendYesNo packet to player
+// SendYesNo packet to Player
 func (ctrl *npcChatController) SendYesNo(msg string) bool {
 	state := ctrl.stateTracker.getCurrentState()
 
@@ -458,7 +458,7 @@ func (ctrl *npcChatController) SendYesNo(msg string) bool {
 	return false
 }
 
-// SendInputText packet to player
+// SendInputText packet to Player
 func (ctrl *npcChatController) SendInputText(msg, defaultInput string, minLength, maxLength int16) {
 	if ctrl.stateTracker.performInterrupt() {
 		ctrl.conn.Send(packetNpcChatUserString(ctrl.npcID, msg, defaultInput, minLength, maxLength))
@@ -466,7 +466,7 @@ func (ctrl *npcChatController) SendInputText(msg, defaultInput string, minLength
 	}
 }
 
-// SendInputNumber packet to player
+// SendInputNumber packet to Player
 func (ctrl *npcChatController) SendInputNumber(msg string, defaultInput, minLength, maxLength int32) {
 	if ctrl.stateTracker.performInterrupt() {
 		ctrl.conn.Send(packetNpcChatUserNumber(ctrl.npcID, msg, defaultInput, minLength, maxLength))
@@ -474,7 +474,7 @@ func (ctrl *npcChatController) SendInputNumber(msg string, defaultInput, minLeng
 	}
 }
 
-// SendSelection packet to player
+// SendSelection packet to Player
 func (ctrl *npcChatController) SendSelection(msg string) {
 	if ctrl.stateTracker.performInterrupt() {
 		ctrl.conn.Send(packetNpcChatSelection(ctrl.npcID, msg))
@@ -482,7 +482,7 @@ func (ctrl *npcChatController) SendSelection(msg string) {
 	}
 }
 
-// SendStyles packet to player
+// SendStyles packet to Player
 func (ctrl *npcChatController) SendStyles(msg string, styles []int32) {
 	if ctrl.stateTracker.performInterrupt() {
 		ctrl.conn.Send(packetNpcChatStyleWindow(ctrl.npcID, msg, styles))
@@ -506,7 +506,7 @@ func (ctrl *npcChatController) SendGuildEmblemEditor() {
 	}
 }
 
-// SendShop packet to player
+// SendShop packet to Player
 func (ctrl *npcChatController) SendShop(goods [][]int32) {
 	ctrl.goods = goods
 	ctrl.conn.Send(packetNpcShop(ctrl.npcID, goods))
@@ -658,7 +658,7 @@ func (controller *eventScriptController) ExtractFunction(name string, ptr *inter
 }
 
 // WarpPlayer to map and random spawn portal
-func (controller eventScriptController) WarpPlayer(p *player, mapID int32) bool {
+func (controller eventScriptController) WarpPlayer(p *Player, mapID int32) bool {
 	if field, ok := controller.fields[mapID]; ok {
 		inst, err := field.getInstance(0)
 
@@ -817,7 +817,7 @@ func (f *fieldWrapper) MobCount(id int) int {
 }
 
 type playerWrapper struct {
-	*player
+	*Player
 	server *Server
 }
 
@@ -843,5 +843,5 @@ func (p *playerWrapper) GiveJob(id int16) {
 
 func (p *playerWrapper) GainItem(id int32, amount int16) {
 	item, _ := createAverageItemFromID(id, amount)
-	p.giveItem(item)
+	p.GiveItem(item)
 }

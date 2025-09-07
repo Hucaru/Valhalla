@@ -7,11 +7,11 @@ import (
 	"github.com/Hucaru/Valhalla/mpacket"
 )
 
-// TODO: login server needs to send a deleted character event so that they can leave the party for playing players
+// TODO: login server needs to Send a deleted character event so that they can leave the party for playing players
 
 type party struct {
 	serverChannelID int32
-	players         [constant.MaxPartySize]*player
+	players         [constant.MaxPartySize]*Player
 	internal.Party
 }
 
@@ -21,11 +21,11 @@ func (d party) broadcast(p mpacket.Packet) {
 			continue
 		}
 
-		v.send(p)
+		v.Send(p)
 	}
 }
 
-func (d *party) addExistingPlayer(plr *player) bool {
+func (d *party) addExistingPlayer(plr *Player) bool {
 	for i, id := range d.PlayerID {
 		if id == plr.id {
 			d.players[i] = plr
@@ -37,7 +37,7 @@ func (d *party) addExistingPlayer(plr *player) bool {
 	return false
 }
 
-func (d *party) addPlayer(plr *player, index int32, reader *mpacket.Reader) {
+func (d *party) addPlayer(plr *Player, index int32, reader *mpacket.Reader) {
 	if plr != nil {
 		d.players[index] = plr
 		plr.party = d
@@ -83,7 +83,7 @@ func (d party) full() bool {
 	return true
 }
 
-func (d *party) updateOnlineStatus(index int32, plr *player, reader *mpacket.Reader) {
+func (d *party) updateOnlineStatus(index int32, plr *Player, reader *mpacket.Reader) {
 	d.SerialisePacket(reader)
 	d.players[index] = plr
 
