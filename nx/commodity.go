@@ -3,11 +3,9 @@ package nx
 import (
 	"log"
 	"math"
-	"math/rand"
 	"path/filepath"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/Hucaru/gonx"
 )
@@ -60,73 +58,99 @@ func GetCommoditySNByItemID(itemID int32) (int32, bool) {
 	return sn, ok
 }
 
-func GetBestSN(category, gender, idx byte) int32 {
-	if sn, ok := bestItems[FeaturedKey{Category: category, Gender: gender, Idx: idx}]; ok {
+func GetBestSN(category, gender, idx int) int32 {
+	var g byte
+	switch gender {
+	case 0, 1:
+		g = byte(gender)
+	case 2:
+		g = 1
+	default:
+		g = 0
+	}
+
+	if sn, ok := bestItems[FeaturedKey{Category: byte(category), Gender: g, Idx: byte(idx)}]; ok {
 		return sn
 	}
 	return 0
 }
 
 func loadBestItems() {
-	// Build candidate lists per (category, gender).
-	type key struct{ cat, gen byte }
-	candidates := make(map[key][]int32, 18)
+	bestItems = make(map[FeaturedKey]int32)
 
-	for _, c := range GetCommodities() {
-		if c.SN == 0 {
-			continue
-		}
-
-		cat := byte(c.Category)
-		if cat < 1 || cat > 9 {
-			continue
-		}
-
-		if c.StockState != StockStateDefault {
-			continue
-		}
-
-		if c.Gender == 0 {
-			k0 := key{cat: cat, gen: 0}
-			k1 := key{cat: cat, gen: 1}
-			candidates[k0] = append(candidates[k0], c.SN)
-			candidates[k1] = append(candidates[k1], c.SN)
-			continue
-		}
-
-		if c.Gender == 1 || c.Gender == 2 {
-			gen := byte(0)
-			if c.Gender != 1 {
-				gen = 1
-			} else {
-				gen = 0
-			}
-			k := key{cat: cat, gen: gen}
-			candidates[k] = append(candidates[k], c.SN)
-		} else if c.Gender == 0 || c.Gender == 1 {
-			g := byte(c.Gender)
-			k := key{cat: cat, gen: g}
-			candidates[k] = append(candidates[k], c.SN)
-		}
+	type sel struct {
+		sn       int32
+		onSale   bool
+		priority int32
 	}
 
-	// Randomize selection
-	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
+	// Collect candidates per category
+	candidates := make(map[byte][]sel, 9)
+	for _, c := range GetCommodities() {
+		if c.SN == 0 || c.StockState != StockStateDefault {
+			continue
+		}
+		cat := byte(c.Category)
+		if cat < 1 || cat > 9 || cat == 9 { // exclude Quest
+			continue
+		}
+		candidates[cat] = append(candidates[cat], sel{
+			sn:       c.SN,
+			onSale:   c.OnSale != 0,
+			priority: c.Priority,
+		})
+	}
 
-	for i := byte(1); i <= 9; i++ {
-		for j := byte(0); j <= 1; j++ {
-			list := candidates[key{cat: i, gen: j}]
-			if len(list) > 1 {
-				rng.Shuffle(len(list), func(a, b int) { list[a], list[b] = list[b], list[a] })
-			}
-			limit := 5
-			if len(list) < limit {
-				limit = len(list)
-			}
+	// Helper: comparison function for ranking
+	less := func(a, b sel) bool {
+		if a.onSale != b.onSale {
+			return a.onSale // on-sale first
+		}
+		if a.priority != b.priority {
+			return a.priority < b.priority // lower priority first
+		}
+		return a.sn < b.sn // tie-breaker
+	}
 
-			for k := 0; k < limit; k++ {
-				bestItems[FeaturedKey{Category: i, Gender: j, Idx: byte(k)}] = list[k]
+	// For each category, select top 5 using an insertion-sort into a small buffer
+	for cat := byte(1); cat <= 8; cat++ { // 1..8 (exclude 9)
+		src := candidates[cat]
+		if len(src) == 0 {
+			continue
+		}
+
+		top := make([]sel, 0, 5)
+		for _, s := range src {
+			// Find insertion point
+			pos := len(top)
+			for i := 0; i < len(top); i++ {
+				if less(s, top[i]) {
+					pos = i
+					break
+				}
 			}
+			// Insert at pos
+			if pos == len(top) {
+				if len(top) < 5 {
+					top = append(top, s)
+				}
+			} else {
+				if len(top) < 5 {
+					top = append(top, sel{}) // grow
+				}
+				copy(top[pos+1:], top[pos:])
+				top[pos] = s
+			}
+			// If we exceeded 5, drop the worst (last)
+			if len(top) > 5 {
+				top = top[:5]
+			}
+		}
+
+		// Publish mirrored for both genders (internal 0/1)
+		for idx := 0; idx < len(top); idx++ {
+			bestItems[FeaturedKey{Category: cat, Gender: 0, Idx: byte(idx)}] = top[idx].sn
+			bestItems[FeaturedKey{Category: cat, Gender: 1, Idx: byte(idx)}] = top[idx].sn
 		}
 	}
 }

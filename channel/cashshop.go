@@ -157,26 +157,23 @@ func packetCashShopSet(plr *player, accountName string) mpacket.Packet {
 
 	p.WriteInt16(0) // Wishlist
 
-	for i := byte(1); i <= 9; i++ {
-		for j := byte(0); j <= 1; j++ {
-			for k := byte(0); k < 5; k++ {
-				best := nx.GetBestSN(i, j, k)
-				if best == 0 {
-					p.WriteInt32(0)
-				} else {
-					p.WriteInt32(best)
-				}
-				p.WriteInt32(int32(i))
-				p.WriteInt32(int32(j))
+	p.WriteBytes(make([]byte, 121))
+
+	// Featured/Best items: Category (1..8, excluding Quest=9), Gender (0..1), then SN
+	for i := 1; i <= 8; i++ { // categories excluding Quest
+		for j := 0; j <= 1; j++ { // gender
+			for k := 0; k < 5; k++ { // top 5
+				p.WriteInt32(int32(i)) // Category
+				p.WriteInt32(int32(j)) // Gender
+				sn := nx.GetBestSN(i, j, k)
+				p.WriteInt32(sn) // 0 if none
 			}
 		}
 	}
 
-	// I think this is just stock related
 	p.WriteInt32(0)
-
-	// No idea lol
 	p.WriteByte(0)
+
 	return p
 }
 

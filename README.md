@@ -145,6 +145,7 @@ See screenshots section for an example Grafana dashboard
 - The following projects were used to help reverse packet structures that were not clearly shown in the idb
     - [Vana](https://github.com/retep998/Vana)
     - [WvsGlobal](https://github.com/diamondo25/WvsGlobal)
+    - [OpenMG](https://github.com/sewil/OpenMG)
 - [NX](https://nxformat.github.io/) file format (see acknowledgements at link)
 
 ## NPC chat display info (use this when scripting NPCs)
