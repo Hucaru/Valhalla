@@ -27,7 +27,7 @@ func (d party) broadcast(p mpacket.Packet) {
 
 func (d *party) addExistingPlayer(plr *Player) bool {
 	for i, id := range d.PlayerID {
-		if id == plr.id {
+		if id == plr.ID {
 			d.players[i] = plr
 			plr.party = d
 			return true

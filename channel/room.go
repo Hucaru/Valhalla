@@ -77,7 +77,7 @@ func (r room) ownerID() int32 {
 
 func (r *room) addPlayer(plr *Player) bool {
 	if len(r.players) == 0 {
-		r.ownerPlayerID = plr.id
+		r.ownerPlayerID = plr.ID
 	} else if len(r.players) == 2 {
 		plr.Send(packetRoomFull())
 		return false
@@ -134,7 +134,7 @@ func (r room) chatMsg(plr *Player, msg string) {
 
 func (r room) present(id int32) bool {
 	for _, v := range r.players {
-		if v.id == id {
+		if v.ID == id {
 			return true
 		}
 	}
@@ -365,7 +365,7 @@ func (r *gameRoom) requestExit(exit bool, plr *Player) {
 func (r gameRoom) displayBytes() []byte {
 	p := mpacket.NewPacket()
 
-	p.WriteInt32(r.players[0].id)
+	p.WriteInt32(r.players[0].ID)
 	p.WriteByte(r.roomType)
 	p.WriteInt32(r.roomID)
 	p.WriteString(r.name)

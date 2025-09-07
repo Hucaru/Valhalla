@@ -99,10 +99,11 @@ type Player struct {
 	Conn mnet.Client
 	inst *fieldInstance
 
-	id          int32 // Unique identifier of the character
+	ID          int32 // Unique identifier of the character
 	accountID   int32
 	accountName string
 	worldID     byte
+	ChannelID   byte
 
 	mapID       int32
 	mapPos      byte
@@ -133,7 +134,6 @@ type Player struct {
 	chairID int32
 	stance  byte
 	pos     pos
-	inCS    bool
 
 	equipSlotSize byte
 	useSlotSize   byte
@@ -178,8 +178,6 @@ type Player struct {
 
 	// write-behind persistence
 	dirty DirtyBits
-
-	csReturnInstID int
 }
 
 // Helper: mark dirty and schedule debounced save.
@@ -203,7 +201,7 @@ func (d *Player) SeedRNGDeterministic() {
 	// Compose as uint64 to avoid int64 constant overflow, then cast at runtime.
 	const gamma uint64 = 0x9e3779b97f4a7c15
 	seed64 := gamma ^
-		(uint64(uint32(d.id)) << 1) ^
+		(uint64(uint32(d.ID)) << 1) ^
 		(uint64(uint32(d.accountID)) << 33) ^
 		(uint64(d.worldID) << 52)
 
@@ -265,7 +263,7 @@ func (d *Player) setJob(id int16) {
 	d.MarkDirty(DirtyJob, 300*time.Millisecond)
 
 	if d.party != nil {
-		d.UpdatePartyInfo(d.party.ID, d.id, int32(d.job), int32(d.level), d.mapID, d.name)
+		d.UpdatePartyInfo(d.party.ID, d.ID, int32(d.job), int32(d.level), d.mapID, d.name)
 	}
 }
 
@@ -340,11 +338,11 @@ func (d *Player) GetAccountName() string {
 func (d *Player) setLevel(amount byte) {
 	d.level = amount
 	d.Send(packetPlayerStatChange(false, constant.LevelID, int32(amount)))
-	d.inst.send(packetPlayerLevelUpAnimation(d.id))
+	d.inst.send(packetPlayerLevelUpAnimation(d.ID))
 	d.MarkDirty(DirtyLevel, 300*time.Millisecond)
 
 	if d.party != nil {
-		d.UpdatePartyInfo(d.party.ID, d.id, int32(d.job), int32(d.level), d.mapID, d.name)
+		d.UpdatePartyInfo(d.party.ID, d.ID, int32(d.job), int32(d.level), d.mapID, d.name)
 	}
 }
 
@@ -478,9 +476,9 @@ func (d *Player) setFame(amount int16) {
 	d.fame = amount
 	d.Send(packetPlayerStatChange(true, constant.FameID, int32(amount)))
 
-	_, err := common.DB.Exec("UPDATE characters SET fame=? WHERE ID=?", d.fame, d.id)
+	_, err := common.DB.Exec("UPDATE characters SET fame=? WHERE ID=?", d.fame, d.ID)
 	if err != nil {
-		log.Printf("setFame: failed to save fame for character %d: %v", d.id, err)
+		log.Printf("setFame: failed to save fame for character %d: %v", d.ID, err)
 	}
 }
 
@@ -542,7 +540,7 @@ func (d *Player) setMapID(id int32) {
 	d.mapID = id
 
 	if d.party != nil {
-		d.UpdatePartyInfo(d.party.ID, d.id, int32(d.job), int32(d.level), d.mapID, d.name)
+		d.UpdatePartyInfo(d.party.ID, d.ID, int32(d.job), int32(d.level), d.mapID, d.name)
 	}
 
 	// write-behind for mapID/pos (mapPos updated on save())
@@ -630,7 +628,7 @@ func (d *Player) GiveItem(newItem Item) error { // TODO: Refactor
 
 		newItem.slotID = slotID
 		newItem.amount = 1 // just in case
-		newItem.save(d.id)
+		newItem.save(d.ID)
 		d.equip = append(d.equip, newItem)
 		d.Send(packetInventoryAddItem(newItem, true))
 	case 2: // Use
@@ -666,7 +664,7 @@ func (d *Player) GiveItem(newItem Item) error { // TODO: Refactor
 				}
 
 				newItem.slotID = slotID
-				newItem.save(d.id)
+				newItem.save(d.ID)
 				d.use = append(d.use, newItem)
 				d.Send(packetInventoryAddItem(newItem, true))
 			} else {
@@ -681,14 +679,14 @@ func (d *Player) GiveItem(newItem Item) error { // TODO: Refactor
 
 					newItem.amount = value
 					newItem.slotID = slotID
-					newItem.save(d.id)
+					newItem.save(d.ID)
 
 					d.use = append(d.use, newItem)
 					d.Send(packetInventoryAddItems([]Item{d.use[index], newItem}, []bool{false, true}))
 				} else { // full merge
 					d.use[index].amount = d.use[index].amount + newItem.amount
 					d.Send(packetInventoryAddItem(d.use[index], false))
-					d.use[index].save(d.id)
+					d.use[index].save(d.ID)
 				}
 			}
 
@@ -701,7 +699,7 @@ func (d *Player) GiveItem(newItem Item) error { // TODO: Refactor
 		}
 
 		newItem.slotID = slotID
-		newItem.save(d.id)
+		newItem.save(d.ID)
 		d.setUp = append(d.setUp, newItem)
 		d.Send(packetInventoryAddItem(newItem, true))
 	case 4: // Etc
@@ -737,7 +735,7 @@ func (d *Player) GiveItem(newItem Item) error { // TODO: Refactor
 				}
 
 				newItem.slotID = slotID
-				newItem.save(d.id)
+				newItem.save(d.ID)
 				d.etc = append(d.etc, newItem)
 				d.Send(packetInventoryAddItem(newItem, true))
 			} else {
@@ -752,14 +750,14 @@ func (d *Player) GiveItem(newItem Item) error { // TODO: Refactor
 
 					newItem.amount = value
 					newItem.slotID = slotID
-					newItem.save(d.id)
+					newItem.save(d.ID)
 
 					d.etc = append(d.etc, newItem)
 					d.Send(packetInventoryAddItems([]Item{d.etc[index], newItem}, []bool{false, true}))
 				} else { // full merge
 					d.etc[index].amount = d.etc[index].amount + newItem.amount
 					d.Send(packetInventoryAddItem(d.etc[index], false))
-					d.etc[index].save(d.id)
+					d.etc[index].save(d.ID)
 				}
 			}
 
@@ -773,7 +771,7 @@ func (d *Player) GiveItem(newItem Item) error { // TODO: Refactor
 		}
 
 		newItem.slotID = slotID
-		newItem.save(d.id)
+		newItem.save(d.ID)
 		d.cash = append(d.cash, newItem)
 		d.Send(packetInventoryAddItem(newItem, true))
 	default:
@@ -809,7 +807,7 @@ func (d *Player) takeItem(id int32, slot int16, amount int16, invID byte) (Item,
 }
 
 func (d Player) updateItemStack(item Item) {
-	item.save(d.id)
+	item.save(d.ID)
 	d.updateItem(item)
 	d.Send(packetInventoryModifyItemAmount(item))
 }
@@ -885,11 +883,11 @@ func (d Player) getItem(invID byte, slotID int16) (Item, error) {
 
 func (d *Player) swapItems(item1, item2 Item, start, end int16) {
 	item1.slotID = end
-	item1.save(d.id)
+	item1.save(d.ID)
 	d.updateItem(item1)
 
 	item2.slotID = start
-	item2.save(d.id)
+	item2.save(d.ID)
 	d.updateItem(item2)
 
 	d.Send(packetInventoryChangeItemSlot(item1.invID, start, end))
@@ -953,7 +951,7 @@ func (d *Player) dropMesos(amount int32) error {
 	}
 
 	d.takeMesos(amount)
-	d.inst.dropPool.createDrop(dropSpawnNormal, dropFreeForAll, amount, d.pos, true, d.id, d.id)
+	d.inst.dropPool.createDrop(dropSpawnNormal, dropFreeForAll, amount, d.pos, true, d.ID, d.ID)
 
 	return nil
 }
@@ -975,7 +973,7 @@ func (d *Player) moveItem(start, end, amount int16, invID byte) error {
 			return fmt.Errorf("unable to take Item")
 		}
 
-		d.inst.dropPool.createDrop(dropSpawnNormal, dropFreeForAll, 0, d.pos, true, d.id, 0, dropItem)
+		d.inst.dropPool.createDrop(dropSpawnNormal, dropFreeForAll, 0, d.pos, true, d.ID, 0, dropItem)
 	} else if end < 0 { // Move to equip slot
 		item1, err := d.getItem(invID, start)
 
@@ -999,12 +997,12 @@ func (d *Player) moveItem(start, end, amount int16, invID byte) error {
 
 		if err == nil {
 			item2.slotID = start
-			item2.save(d.id)
+			item2.save(d.ID)
 			d.updateItem(item2)
 		}
 
 		item1.slotID = end
-		item1.save(d.id)
+		item1.save(d.ID)
 		d.updateItem(item1)
 
 		d.Send(packetInventoryChangeItemSlot(invID, start, end))
@@ -1020,7 +1018,7 @@ func (d *Player) moveItem(start, end, amount int16, invID byte) error {
 
 		if err != nil { // empty slot
 			item1.slotID = end
-			item1.save(d.id)
+			item1.save(d.ID)
 			d.updateItem(item1)
 
 			d.Send(packetInventoryChangeItemSlot(invID, start, end))
@@ -1031,7 +1029,7 @@ func (d *Player) moveItem(start, end, amount int16, invID byte) error {
 				} else if item2.amount < constant.MaxItemStack { // full merge
 					if item2.amount+item1.amount <= constant.MaxItemStack {
 						item2.amount = item2.amount + item1.amount
-						item2.save(d.id)
+						item2.save(d.ID)
 						d.updateItem(item2)
 						d.Send(packetInventoryAddItem(item2, false))
 
@@ -1129,7 +1127,7 @@ func (d Player) Logout() {
 	FlushNow(&d)
 
 	if err := d.save(); err != nil {
-		log.Printf("Player(%d) logout save failed: %v", d.id, err)
+		log.Printf("Player(%d) logout save failed: %v", d.ID, err)
 	}
 
 }
@@ -1155,7 +1153,7 @@ func (d Player) save() error {
 	_, err = common.DB.Exec(query,
 		d.skin, d.hair, d.face, d.level, d.job, d.str, d.dex, d.intt, d.luk, d.hp, d.maxHP, d.mp,
 		d.maxMP, d.ap, d.sp, d.exp, d.fame, d.mapID, d.mapPos, d.mesos, d.miniGameWins,
-		d.miniGameDraw, d.miniGameLoss, d.miniGamePoints, d.buddyListSize, d.id)
+		d.miniGameDraw, d.miniGameLoss, d.miniGamePoints, d.buddyListSize, d.ID)
 	if err != nil {
 		return err
 	}
@@ -1164,7 +1162,7 @@ func (d Player) save() error {
 	         VALUES(?,?,?,?)
 	         ON DUPLICATE KEY UPDATE level=VALUES(level), cooldown=VALUES(cooldown)`
 	for skillID, skill := range d.skills {
-		if _, err := common.DB.Exec(query, d.id, skillID, skill.Level, skill.Cooldown); err != nil {
+		if _, err := common.DB.Exec(query, d.ID, skillID, skill.Level, skill.Cooldown); err != nil {
 			return err
 		}
 	}
@@ -1360,7 +1358,7 @@ func loadPlayerFromID(id int32, conn mnet.Client) Player {
 		"equipSlotSize,useSlotSize,setupSlotSize,etcSlotSize,cashSlotSize,miniGameWins," +
 		"miniGameDraw,miniGameLoss,miniGamePoints,buddyListSize"
 
-	err := common.DB.QueryRow("SELECT "+filter+" FROM characters where ID=?", id).Scan(&c.id,
+	err := common.DB.QueryRow("SELECT "+filter+" FROM characters where ID=?", id).Scan(&c.ID,
 		&c.accountID, &c.worldID, &c.name, &c.gender, &c.skin, &c.hair, &c.face,
 		&c.level, &c.job, &c.str, &c.dex, &c.intt, &c.luk, &c.hp, &c.maxHP, &c.mp,
 		&c.maxMP, &c.ap, &c.sp, &c.exp, &c.fame, &c.mapID, &c.mapPos,
@@ -1379,7 +1377,7 @@ func loadPlayerFromID(id int32, conn mnet.Client) Player {
 
 	c.skills = make(map[int32]playerSkill)
 
-	for _, s := range getSkillsFromCharID(c.id) {
+	for _, s := range getSkillsFromCharID(c.ID) {
 		c.skills[s.ID] = s
 	}
 
@@ -1393,19 +1391,16 @@ func loadPlayerFromID(id int32, conn mnet.Client) Player {
 	c.pos.x = nxMap.Portals[c.mapPos].X
 	c.pos.y = nxMap.Portals[c.mapPos].Y
 
-	c.equip, c.use, c.setUp, c.etc, c.cash = loadInventoryFromDb(c.id)
+	c.equip, c.use, c.setUp, c.etc, c.cash = loadInventoryFromDb(c.ID)
 
-	c.buddyList = getBuddyList(c.id, c.buddyListSize)
+	c.buddyList = getBuddyList(c.ID, c.buddyListSize)
 
-	c.quests = loadQuestsFromDB(c.id)
+	c.quests = loadQuestsFromDB(c.ID)
 	c.quests.init()
-	c.quests.mobKills = loadQuestMobKillsFromDB(c.id)
+	c.quests.mobKills = loadQuestMobKillsFromDB(c.ID)
 
 	// Initialize the per-Player buff manager so handlers can call plr.addBuff(...)
 	c.buffs = NewCharacterBuffs(&c)
-
-	c.inCS = false
-	c.csReturnInstID = -1
 
 	c.Conn = conn
 
@@ -1465,7 +1460,7 @@ func (d *Player) addBuff(skillID int32, level byte, delay int16) {
 		d.buffs = NewCharacterBuffs(d)
 	}
 	// You can pass any extra “sinc” values you need later; 0/0 is fine for standard buffs.
-	d.buffs.AddBuff(d.id, skillID, level, false, delay)
+	d.buffs.AddBuff(d.ID, skillID, level, false, delay)
 }
 
 func (d *Player) addForeignBuff(charId, skillID int32, level byte, delay int16) {
@@ -1493,7 +1488,7 @@ func (d *Player) saveBuffSnapshot() {
 
 	snaps := d.buffs.Snapshot()
 	if len(snaps) == 0 {
-		_, _ = common.DB.Exec("DELETE FROM character_buffs WHERE characterID=?", d.id)
+		_, _ = common.DB.Exec("DELETE FROM character_buffs WHERE characterID=?", d.ID)
 		return
 	}
 
@@ -1504,7 +1499,7 @@ func (d *Player) saveBuffSnapshot() {
 	}
 	defer func() { _ = tx.Commit() }()
 
-	if _, err := tx.Exec("DELETE FROM character_buffs WHERE characterID=?", d.id); err != nil {
+	if _, err := tx.Exec("DELETE FROM character_buffs WHERE characterID=?", d.ID); err != nil {
 		log.Println("saveBuffSnapshot: clear rows:", err)
 		return
 	}
@@ -1517,7 +1512,7 @@ func (d *Player) saveBuffSnapshot() {
 	defer stmt.Close()
 
 	for _, s := range snaps {
-		if _, err := stmt.Exec(d.id, s.SourceID, s.Level, s.ExpiresAtMs); err != nil {
+		if _, err := stmt.Exec(d.ID, s.SourceID, s.Level, s.ExpiresAtMs); err != nil {
 			log.Println("saveBuffSnapshot: insert:", err)
 			return
 		}
@@ -1525,7 +1520,7 @@ func (d *Player) saveBuffSnapshot() {
 }
 
 func (d *Player) loadAndApplyBuffSnapshot() {
-	rows, err := common.DB.Query("SELECT sourceID, level, expiresAtMs FROM character_buffs WHERE characterID=?", d.id)
+	rows, err := common.DB.Query("SELECT sourceID, level, expiresAtMs FROM character_buffs WHERE characterID=?", d.ID)
 	if err != nil {
 		log.Println("loadBuffSnapshot:", err)
 		return
@@ -1578,7 +1573,7 @@ func (d *Player) loadAndApplyBuffSnapshot() {
 		b.WriteByte(')')
 
 		args := make([]interface{}, 0, 1+len(toDelete))
-		args = append(args, d.id)
+		args = append(args, d.ID)
 		for _, sid := range toDelete {
 			args = append(args, sid)
 		}
@@ -1595,7 +1590,7 @@ func (d *Player) loadAndApplyBuffSnapshot() {
 	}
 }
 
-// countItem returns total count across USE/SETUP/ETC for an Item id.
+// countItem returns total count across USE/SETUP/ETC for an Item ID.
 func (d *Player) countItem(itemID int32) int32 {
 	var total int32
 	for i := range d.use {
@@ -1719,7 +1714,7 @@ func (d *Player) tryStartQuest(questID int16) bool {
 	}
 
 	d.quests.add(questID, "")
-	upsertQuestRecord(d.id, questID, "")
+	upsertQuestRecord(d.ID, questID, "")
 	d.Send(packetQuestUpdate(questID, ""))
 
 	d.applyQuestAct(q.ActOnStart)
@@ -1744,8 +1739,8 @@ func (d *Player) tryCompleteQuest(questID int16) bool {
 	d.quests.remove(questID)
 	nowMs := time.Now().UnixMilli()
 	d.quests.complete(questID, nowMs)
-	setQuestCompleted(d.id, questID, nowMs)
-	clearQuestMobKills(d.id, q.ID)
+	setQuestCompleted(d.ID, questID, nowMs)
+	clearQuestMobKills(d.ID, q.ID)
 
 	d.Send(packetQuestUpdate(questID, ""))
 	d.Send(packetQuestComplete(questID))
@@ -1817,7 +1812,7 @@ func (d *Player) onMobKilled(mobID int32) {
 		cur := d.quests.mobKills[qid][mobID]
 		if cur < needed {
 			d.quests.mobKills[qid][mobID] = cur + 1
-			upsertQuestMobKill(d.id, qid, mobID, 1)
+			upsertQuestMobKill(d.ID, qid, mobID, 1)
 		}
 
 		d.Send(packetQuestUpdateMobKills(qid, d.buildQuestKillString(q)))
@@ -1920,7 +1915,7 @@ func (p *Player) broadcastShowSummon(su *summon) {
 		return
 	}
 
-	p.inst.send(packetShowSummon(p.id, su))
+	p.inst.send(packetShowSummon(p.ID, su))
 }
 
 func (p *Player) broadcastRemoveSummon(summonSkillID int32, reason byte) {
@@ -1928,7 +1923,7 @@ func (p *Player) broadcastRemoveSummon(summonSkillID int32, reason byte) {
 		return
 	}
 
-	p.inst.send(packetRemoveSummon(p.id, summonSkillID, reason))
+	p.inst.send(packetRemoveSummon(p.ID, summonSkillID, reason))
 }
 
 func packetPlayerReceivedDmg(charID int32, attack int8, initalAmmount, reducedAmmount, spawnID, mobID, healSkillID int32,
@@ -2247,7 +2242,7 @@ func packetPlayerEnterGame(plr Player, channelID int32) mpacket.Packet {
 	p.WriteByte(0xFF)
 	p.WriteByte(0xFF)
 
-	p.WriteInt32(plr.id)
+	p.WriteInt32(plr.ID)
 	p.WritePaddedString(plr.name, 13)
 	p.WriteByte(plr.gender)
 	p.WriteByte(plr.skin)
@@ -2459,7 +2454,7 @@ func packetInventoryRemoveItem(item Item) mpacket.Packet {
 
 func packetInventoryChangeEquip(chr Player) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelPlayerChangeAvatar)
-	p.WriteInt32(chr.id)
+	p.WriteInt32(chr.ID)
 	p.WriteByte(1)
 	p.WriteBytes(chr.displayBytes())
 
@@ -2534,7 +2529,7 @@ func packetBuddyListSizeUpdate(size byte) mpacket.Packet {
 
 func packetPlayerAvatarSummaryWindow(charID int32, plr Player) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelAvatarInfoWindow)
-	p.WriteInt32(plr.id)
+	p.WriteInt32(plr.ID)
 	p.WriteByte(plr.level)
 	p.WriteInt16(plr.job)
 	p.WriteInt16(plr.fame)
@@ -2649,7 +2644,7 @@ func (plr *Player) WriteCharacterInfoPacket(p *mpacket.Packet) {
 	p.WriteInt16(-1)
 
 	// Stats
-	p.WriteInt32(plr.id)
+	p.WriteInt32(plr.ID)
 	p.WritePaddedString(plr.name, 13)
 	p.WriteByte(plr.gender)
 	p.WriteByte(plr.skin)

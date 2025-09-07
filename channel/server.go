@@ -41,7 +41,7 @@ func (p players) getFromName(name string) (*Player, error) {
 
 func (p players) getFromID(id int32) (*Player, error) {
 	for _, v := range p {
-		if v.id == id {
+		if v.ID == id {
 			return v, nil
 		}
 	}
@@ -279,9 +279,9 @@ func (server *Server) ClientDisconnected(conn mnet.Client) {
 	if plr.guild != nil {
 		guildID = plr.guild.id
 	}
-	server.world.Send(internal.PacketChannelPlayerDisconnect(plr.id, plr.name, guildID))
+	server.world.Send(internal.PacketChannelPlayerDisconnect(plr.ID, plr.name, guildID))
 
-	if _, dbErr := common.DB.Exec("UPDATE characters SET channelID=? WHERE ID=?", -1, plr.id); dbErr != nil {
+	if _, dbErr := common.DB.Exec("UPDATE characters SET channelID=? WHERE ID=?", -1, plr.ID); dbErr != nil {
 		log.Println(dbErr)
 	}
 	if _, dbErr := common.DB.Exec("UPDATE accounts SET isLogedIn=0 WHERE accountID=?", conn.GetAccountID()); dbErr != nil {

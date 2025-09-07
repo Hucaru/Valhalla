@@ -629,8 +629,8 @@ func (inst *fieldInstance) removePlayer(plr *Player) error {
 	inst.players = append(inst.players[:index], inst.players[index+1:]...)
 
 	for _, v := range inst.players {
-		v.Send(packetMapPlayerLeft(plr.id))
-		plr.Send(packetMapPlayerLeft(v.id))
+		v.Send(packetMapPlayerLeft(plr.ID))
+		plr.Send(packetMapPlayerLeft(v.ID))
 	}
 
 	inst.lifePool.removePlayer(plr)
@@ -641,7 +641,7 @@ func (inst *fieldInstance) removePlayer(plr *Player) error {
 
 func (inst fieldInstance) getPlayerFromID(id int32) (*Player, error) {
 	for i, v := range inst.players {
-		if v.id == id {
+		if v.ID == id {
 			return inst.players[i], nil
 		}
 	}
@@ -786,7 +786,7 @@ func displayBoat(plr *Player, show bool, boatType byte) {
 
 func packetMapPlayerEnter(plr *Player) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelCharacterEnterField)
-	p.WriteInt32(plr.id)
+	p.WriteInt32(plr.ID)
 	p.WriteString(plr.name)
 
 	if plr.guild != nil {

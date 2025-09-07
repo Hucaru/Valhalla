@@ -263,7 +263,7 @@ func (ctrl *npcChatPlayerController) InGuild() bool {
 func (ctrl *npcChatPlayerController) GuildRank() byte {
 	if ctrl.plr.guild != nil {
 		for i, id := range ctrl.plr.guild.playerID {
-			if id == ctrl.plr.id {
+			if id == ctrl.plr.ID {
 				return ctrl.plr.guild.ranks[i]
 			}
 		}
@@ -349,7 +349,7 @@ func (ctrl *npcChatPlayerController) SetQuestData(id int16, data string) {
 		ctrl.plr.quests.inProgress[id] = q
 	}
 	// Persist + notify client
-	upsertQuestRecord(ctrl.plr.id, id, data)
+	upsertQuestRecord(ctrl.plr.ID, id, data)
 	ctrl.plr.Send(packetQuestUpdate(id, data))
 }
 
@@ -367,9 +367,9 @@ func (ctrl *npcChatPlayerController) ForfeitQuest(id int16) {
 	}
 	ctrl.plr.quests.remove(id)
 	delete(ctrl.plr.quests.mobKills, id)
-	deleteQuest(ctrl.plr.id, id)
+	deleteQuest(ctrl.plr.ID, id)
 	ctrl.plr.Send(packetQuestRemove(id))
-	clearQuestMobKills(ctrl.plr.id, id)
+	clearQuestMobKills(ctrl.plr.ID, id)
 }
 
 type scriptQuestView struct {

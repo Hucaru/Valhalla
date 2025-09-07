@@ -25,6 +25,15 @@ func (p players) getFromConn(conn mnet.Client) (*channel.Player, error) {
 	return nil, fmt.Errorf("player not found for connection")
 }
 
+func (p players) getFromID(id int32) (*channel.Player, error) {
+	for _, v := range p {
+		if v.ID == id {
+			return v, nil
+		}
+	}
+	return nil, fmt.Errorf("Player not found for ID: %d", id)
+}
+
 // RemoveFromConn removes the player based on the connection
 func (p *players) removeFromConn(conn mnet.Client) error {
 	i := -1
@@ -52,11 +61,9 @@ type Server struct {
 	world     mnet.Server
 	ip        []byte
 	port      int16
-	maxPop    int16
 	migrating []mnet.Client
 	players   players
 	channels  [20]internal.Channel
-	header    string
 }
 
 // Initialise the server
@@ -76,20 +83,18 @@ func (server *Server) Initialise(work chan func(), dbuser, dbpassword, dbaddress
 }
 
 // RegisterWithWorld server
-func (server *Server) RegisterWithWorld(conn mnet.Server, ip []byte, port int16, maxPop int16) {
+func (server *Server) RegisterWithWorld(conn mnet.Server, ip []byte, port int16) {
 	server.world = conn
 	server.ip = ip
 	server.port = port
-	server.maxPop = maxPop
 
 	server.registerWithWorld()
 }
 
 func (server *Server) registerWithWorld() {
-	p := mpacket.CreateInternal(opcode.ChannelNew)
+	p := mpacket.CreateInternal(opcode.CashShopNew)
 	p.WriteBytes(server.ip)
 	p.WriteInt16(server.port)
-	p.WriteInt16(server.maxPop)
 	server.world.Send(p)
 }
 

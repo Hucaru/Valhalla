@@ -138,7 +138,6 @@ func (server *Server) handleNewCashShop(conn mnet.Server, reader mpacket.Reader)
 	log.Println("New cashshop request")
 	ip := reader.ReadBytes(4)
 	port := reader.ReadInt16()
-	maxPop := reader.ReadInt16()
 
 	if server.Info.CashShop.Conn != nil {
 		p := mpacket.CreateInternal(opcode.CashShopBad)
@@ -146,7 +145,7 @@ func (server *Server) handleNewCashShop(conn mnet.Server, reader mpacket.Reader)
 		return
 	}
 
-	newCashShop := internal.CashShop{Conn: conn, IP: ip, Port: port, MaxPop: maxPop, Pop: 0}
+	newCashShop := internal.CashShop{Conn: conn, IP: ip, Port: port}
 	server.Info.CashShop = newCashShop
 
 	p := mpacket.CreateInternal(opcode.CashShopOk)

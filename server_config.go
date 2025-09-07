@@ -57,7 +57,6 @@ type cashShopConfig struct {
 	ClientConnectionAddress string
 	ListenPort              string
 	PacketQueueSize         int
-	MaxPop                  int16
 	Latency                 int
 	Jitter                  int
 }

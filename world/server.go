@@ -65,6 +65,8 @@ func (server Server) channelBroadcast(p mpacket.Packet) {
 			v.Conn.Send(p)
 		}
 	}
+
+	server.Info.CashShop.Conn.Send(p)
 }
 
 func (server Server) forwardPacketToChannels(conn mnet.Server, reader mpacket.Reader) {

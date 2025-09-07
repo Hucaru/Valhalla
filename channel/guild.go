@@ -101,7 +101,7 @@ func createGuildContract(guildName string, worldID int32, players *players, mast
 		capacity: 50,
 	}
 
-	newGuild.playerID = append(newGuild.playerID, master.id)
+	newGuild.playerID = append(newGuild.playerID, master.ID)
 	newGuild.names = append(newGuild.names, master.name)
 	newGuild.jobs = append(newGuild.jobs, int32(master.job))
 	newGuild.levels = append(newGuild.levels, int32(master.level))
@@ -127,7 +127,7 @@ func createGuildContract(guildName string, worldID int32, players *players, mast
 			continue
 		}
 
-		newGuild.playerID = append(newGuild.playerID, plr.id)
+		newGuild.playerID = append(newGuild.playerID, plr.ID)
 		newGuild.names = append(newGuild.names, plr.name)
 		newGuild.jobs = append(newGuild.jobs, int32(plr.job))
 		newGuild.levels = append(newGuild.levels, int32(plr.level))
@@ -235,7 +235,7 @@ func (g guild) updateAvatar(plr *Player) {
 		return
 	}
 
-	plr.inst.sendExcept(packetMapPlayerLeft(plr.id), plr.Conn)
+	plr.inst.sendExcept(packetMapPlayerLeft(plr.ID), plr.Conn)
 	plr.inst.sendExcept(packetMapPlayerEnter(plr), plr.Conn)
 }
 
@@ -383,7 +383,7 @@ func (g guild) disband() {
 
 func (g guild) isMaster(p *Player) bool {
 	for i, v := range g.playerID {
-		if v == p.id && g.ranks[i] == 1 {
+		if v == p.ID && g.ranks[i] == 1 {
 			return true
 		}
 	}

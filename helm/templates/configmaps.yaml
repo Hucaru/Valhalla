@@ -70,7 +70,6 @@ data:
     listenPort = "8600"
     clientConnectionAddress = "{{ .Values.cashShop.clientConnectionAddress }}"
     packetQueueSize = {{ .Values.cashShop.packetQueueSize }}
-    maxPop = {{ .Values.cashShop.maxPop }}
     latency = {{ .Values.cashShop.latency }}
     jitter = {{ .Values.cashShop.jitter }}
 {{- $root := . -}}

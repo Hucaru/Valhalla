@@ -320,7 +320,7 @@ func (pool *lifePool) mobDamaged(poolID int32, damager *Player, dmg ...int32) {
 
 					if plr.party != nil {
 						// TODO: check level difference is appropriate
-						plr.party.giveExp(plr.id, partyExp, true)
+						plr.party.giveExp(plr.ID, partyExp, true)
 					}
 				}
 
@@ -732,7 +732,7 @@ func (pool roomPool) updateGameBox(r roomer) {
 }
 
 func (pool *roomPool) removePlayer(plr *Player) {
-	r, err := pool.getPlayerRoom(plr.id)
+	r, err := pool.getPlayerRoom(plr.ID)
 
 	if err != nil {
 		return
@@ -835,7 +835,7 @@ func (pool *dropPool) eraseDrops() {
 func (pool *dropPool) playerAttemptPickup(drop fieldDrop, player *Player) {
 	var amount int16
 
-	pool.instance.send(packetRemoveDrop(2, drop.ID, player.id))
+	pool.instance.send(packetRemoveDrop(2, drop.ID, player.ID))
 
 	if drop.mesos > 0 {
 		amount = int16(pool.rates.mesos * float32(drop.mesos))

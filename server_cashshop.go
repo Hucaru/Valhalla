@@ -115,7 +115,7 @@ func (cs *cashShopServer) establishWorldConnection() {
 			}
 
 			cs.wRecv <- func() {
-				cs.gameState.RegisterWithWorld(cs.worldConn, ip.To4(), int16(port), cs.config.MaxPop)
+				cs.gameState.RegisterWithWorld(cs.worldConn, ip.To4(), int16(port))
 			}
 			return
 		}

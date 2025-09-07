@@ -831,7 +831,7 @@ func (server *Server) gmCommand(conn mnet.Client, msg string) {
 		}
 
 		for i := 0; i < count; i++ {
-			err := inst.lifePool.spawnMobFromID(mobID, plr.pos, false, true, true, plr.id)
+			err := inst.lifePool.spawnMobFromID(mobID, plr.pos, false, true, true, plr.ID)
 
 			if err != nil {
 				conn.Send(packetMessageRedText(err.Error()))
@@ -884,7 +884,7 @@ func (server *Server) gmCommand(conn mnet.Client, msg string) {
 
 		for i := 0; i < count; i++ {
 			for _, id := range mobID {
-				err = inst.lifePool.spawnMobFromID(id, plr.pos, false, true, true, plr.id)
+				err = inst.lifePool.spawnMobFromID(id, plr.pos, false, true, true, plr.ID)
 			}
 
 			if err != nil {
@@ -900,7 +900,7 @@ func (server *Server) gmCommand(conn mnet.Client, msg string) {
 			return
 		}
 
-		server.world.Send(internal.PacketChannelPartyCreateRequest(plr.id, server.id, plr.mapID, int32(plr.job), int32(plr.level), plr.name))
+		server.world.Send(internal.PacketChannelPartyCreateRequest(plr.ID, server.id, plr.mapID, int32(plr.job), int32(plr.level), plr.name))
 	case "guildCreate":
 		plr, err := server.players.getFromConn(conn)
 
@@ -990,7 +990,7 @@ func (server *Server) gmCommand(conn mnet.Client, msg string) {
 			return
 		}
 
-		err = inst.lifePool.spawnMobFromID(5100001, plr.pos, true, true, true, plr.id)
+		err = inst.lifePool.spawnMobFromID(5100001, plr.pos, true, true, true, plr.ID)
 
 		if err != nil {
 			conn.Send(packetMessageRedText(err.Error()))
@@ -1066,7 +1066,7 @@ func (server *Server) gmCommand(conn mnet.Client, msg string) {
 			drops[i] = item
 		}
 
-		pool.createDrop(dropSpawnNormal, dropFreeForAll, mesos, plr.pos, true, plr.id, 0, drops...)
+		pool.createDrop(dropSpawnNormal, dropFreeForAll, mesos, plr.pos, true, plr.ID, 0, drops...)
 	case "dropr":
 		var id int32
 		var err error

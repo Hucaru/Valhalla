@@ -118,7 +118,7 @@ func copySkills(src map[int32]playerSkill) map[int32]playerSkill {
 // Build a snapshot from a Player (caller is on game thread).
 func snapshotFromPlayer(p *Player) snapshot {
 	s := snapshot{
-		ID:             p.id,
+		ID:             p.ID,
 		AccountID:      p.accountID,
 		AP:             p.ap,
 		SP:             p.sp,
@@ -180,11 +180,11 @@ func StopSaver() {
 }
 
 func scheduleSave(p *Player, delay time.Duration) {
-	if saverInst == nil || p == nil || p.id == 0 {
+	if saverInst == nil || p == nil || p.ID == 0 {
 		return
 	}
 	req := scheduleReq{
-		id:    p.id,
+		id:    p.ID,
 		bits:  p.dirty,
 		snap:  snapshotFromPlayer(p),
 		delay: delay,
@@ -197,7 +197,7 @@ func scheduleSave(p *Player, delay time.Duration) {
 }
 
 func FlushNow(p *Player) {
-	if saverInst == nil || p == nil || p.id == 0 {
+	if saverInst == nil || p == nil || p.ID == 0 {
 		return
 	}
 	done := make(chan struct{})
@@ -209,7 +209,7 @@ func FlushNow(p *Player) {
 		bits = p.dirty
 	}
 	req := flushReq{
-		id:           p.id,
+		id:           p.ID,
 		overrideBits: bits,
 		overrideSnap: snap,
 		done:         done,
