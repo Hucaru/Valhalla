@@ -1058,37 +1058,55 @@ func (d *Player) updateSkill(updatedSkill playerSkill) {
 func (d *Player) useSkill(id int32, level byte, projectileID int32) error {
 	skillInfo, _ := nx.GetPlayerSkill(id)
 
-	if skillUsed, ok := d.skills[id]; ok {
-		if skillUsed.Level != level {
-			d.Conn.Send(packetMessageRedText("skill level mismatch"))
-			return errors.New("skill level mismatch")
-		}
-		if skillInfo[skillUsed.Level].MpCon > 0 {
-			d.giveMP(-int16(skillInfo[skillUsed.Level].MpCon))
-		}
-		if skillInfo[skillUsed.Level].HpCon > 0 {
-			d.giveHP(-int16(skillInfo[skillUsed.Level].HpCon))
-		}
-		if skillInfo[skillUsed.Level].MoneyConsume > 0 {
-			d.takeMesos(int32(skillInfo[skillUsed.Level].MoneyConsume))
-		}
-		if skillInfo[skillUsed.Level].ItemCon > 0 {
-			itemID := int32(skillInfo[skillUsed.Level].ItemCon)
-			need := int32(skillInfo[skillUsed.Level].ItemConNo)
-			if need <= 0 {
-				need = 1
-			}
-			if !d.consumeItemsByID(itemID, need) {
-				d.Conn.Send(packetMessageRedText("not enough items to use this skill"))
-				return errors.New("not enough projectiles")
-			}
-		}
+	skillUsed, ok := d.skills[id]
+	if !ok {
+		return nil
+	}
 
-		if projectileID > 0 {
-			need := int32(skillInfo[skillUsed.Level].BulletCount)
+	if skillUsed.Level != level {
+		d.Conn.Send(packetMessageRedText("skill level mismatch"))
+		return errors.New("skill level mismatch")
+	}
+
+	idx := int(skillUsed.Level) - 1
+	if idx < 0 || idx >= len(skillInfo) {
+		d.Conn.Send(packetMessageRedText("invalid skill data"))
+		return errors.New("invalid skill data index")
+	}
+	si := skillInfo[idx]
+
+	// Resource costs
+	if si.MpCon > 0 {
+		d.giveMP(-int16(si.MpCon))
+	}
+	if si.HpCon > 0 {
+		d.giveHP(-int16(si.HpCon))
+	}
+	if si.MoneyConsume > 0 {
+		d.takeMesos(int32(si.MoneyConsume))
+	}
+
+	if si.ItemCon > 0 {
+		itemID := int32(si.ItemCon)
+		need := int32(si.ItemConNo)
+		if need <= 0 {
+			need = 1
+		}
+		if !d.consumeItemsByID(itemID, need) {
+			d.Conn.Send(packetMessageRedText("not enough items to use this skill"))
+			return errors.New("not enough required items")
+		}
+	}
+
+	if projectileID > 0 {
+		need := int32(si.BulletConsume)
+		if need <= 0 {
+			need = int32(si.BulletCount)
+		}
+		if need > 0 {
 			if !d.consumeItemsByID(projectileID, need) {
 				d.Conn.Send(packetMessageRedText("not enough projectiles to use this skill"))
-				return errors.New("not enough projectiles to use this skill")
+				return errors.New("not enough projectiles")
 			}
 		}
 	}
