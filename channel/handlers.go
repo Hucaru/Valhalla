@@ -645,7 +645,7 @@ func validateSkillWithJob(jobID int16, baseSkillID int32) bool {
 	return true
 }
 
-func (server Server) playerEnterCashShop(conn mnet.Client, reader mpacket.Reader) {
+func (server *Server) playerEnterCashShop(conn mnet.Client, reader mpacket.Reader) {
 	server.migrating = append(server.migrating, conn)
 	player, err := server.players.getFromConn(conn)
 	if err != nil {

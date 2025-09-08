@@ -13,7 +13,7 @@ import (
 
 func (server *Server) HandleClientPacket(conn mnet.Client, reader mpacket.Reader) {
 	op := reader.ReadByte()
-	
+
 	switch op {
 	case opcode.RecvPing:
 	case opcode.RecvClientMigrate:
@@ -31,7 +31,7 @@ func (server *Server) HandleClientPacket(conn mnet.Client, reader mpacket.Reader
 func (server *Server) HandleServerPacket(conn mnet.Server, reader mpacket.Reader) {
 	switch reader.ReadByte() {
 	case opcode.ChannelPlayerConnect:
-		log.Println("Player connected to CashShop")
+
 	case opcode.ChannePlayerDisconnect:
 		server.handlePlayerDisconnect(conn, reader)
 	case opcode.ChannelConnectionInfo:
@@ -94,13 +94,6 @@ func (server *Server) handlePlayerConnect(conn mnet.Client, reader mpacket.Reade
 	conn.SetAdminLevel(adminLevel)
 
 	_, err = common.DB.Exec("UPDATE characters SET migrationID=? WHERE ID=?", -1, charID)
-
-	if err != nil {
-		log.Println(err)
-		return
-	}
-
-	_, err = common.DB.Exec("UPDATE characters SET channelID=? WHERE ID=?", server.id, charID)
 
 	if err != nil {
 		log.Println(err)
