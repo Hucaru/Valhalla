@@ -45,6 +45,7 @@ CREATE TABLE `characters` (
   `guildRank` tinyint(4) NOT NULL DEFAULT '1',
   `worldID` int(11) unsigned NOT NULL,
   `channelID` tinyint(2) NOT NULL DEFAULT '-1',
+  `previousChannelID` tinyint(2) NOT NULL DEFAULT '-1',
   `migrationID` tinyint(4) NOT NULL DEFAULT '-1',
   `name` tinytext NOT NULL,
   `gender` int(11) unsigned NOT NULL,

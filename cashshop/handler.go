@@ -126,6 +126,10 @@ func (server *Server) handlePlayerDisconnect(conn mnet.Server, reader mpacket.Re
 		return
 	}
 
+	if _, err := common.DB.Exec("UPDATE characters SET inCashShop=0 WHERE ID=?", playerID); err != nil {
+		return
+	}
+
 	log.Printf("Player %s (ID: %d) disconnected from CashShop\n", name, playerID)
 }
 
@@ -135,18 +139,36 @@ func (server *Server) leaveCashShopToChannel(conn mnet.Client, reader mpacket.Re
 		return
 	}
 
-	// Persist migration target for the channel server handoff
-	if _, err := common.DB.Exec("UPDATE characters SET migrationID=? WHERE ID=?", plr.ChannelID, plr.ID); err != nil {
+	var prevChanID int8
+	if err := common.DB.QueryRow("SELECT previousChannelID FROM characters WHERE ID=?", plr.ID).Scan(&prevChanID); err != nil {
+		log.Println("cashshop: failed to fetch previousChannelID:", err)
+	}
+
+	targetChan := plr.ChannelID
+	if prevChanID >= 0 && int(prevChanID) < len(server.channels) && server.channels[byte(prevChanID)].Port != 0 {
+		targetChan = byte(prevChanID)
+	}
+
+	if _, err := common.DB.Exec("UPDATE characters SET migrationID=?, inCashShop=0 WHERE ID=?", targetChan, plr.ID); err != nil {
 		log.Println("cashshop: failed to set migrationID:", err)
 		return
 	}
 
-	ip := server.channels[plr.ChannelID].IP
-	port := server.channels[plr.ChannelID].Port
+	if int(targetChan) >= len(server.channels) {
+		log.Println("cashshop: invalid target channel index:", targetChan)
+		return
+	}
+	ip := server.channels[targetChan].IP
+	port := server.channels[targetChan].Port
+	if len(ip) != 4 || port == 0 {
+		log.Println("cashshop: target channel missing IP/port:", targetChan)
+		return
+	}
 
 	p := mpacket.CreateWithOpcode(opcode.SendChannelChange)
 	p.WriteBool(true)
 	p.WriteBytes(ip)
 	p.WriteInt16(port)
 	conn.Send(p)
+
 }

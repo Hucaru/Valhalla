@@ -659,10 +659,11 @@ func (server *Server) playerEnterCashShop(conn mnet.Client, reader mpacket.Reade
 	player.saveBuffSnapshot()
 
 	if len(server.cashShop.IP) > 0 || server.cashShop.Port == 0 {
-		if _, err := common.DB.Exec("UPDATE characters SET migrationID=? WHERE ID=?", 50, player.ID); err != nil {
+		if _, err := common.DB.Exec("UPDATE characters SET migrationID=?, previousChannelID=?, inCashShop=1 WHERE ID=?", 50, server.id, player.ID); err != nil {
 			log.Println(err)
 			return
 		}
+
 		packetChangeChannel := func(ip []byte, port int16) mpacket.Packet {
 			p := mpacket.CreateWithOpcode(opcode.SendChannelChange)
 			p.WriteBool(true)
