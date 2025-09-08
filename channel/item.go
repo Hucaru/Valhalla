@@ -460,9 +460,9 @@ func (v Item) bytes(shortSlot bool) []byte {
 		p.WriteString(v.creatorName)
 		p.WriteInt16(v.flag) // even (normal), odd (sealed) ?
 
-		if v.isRechargeable() {
-			p.WriteInt64(0) // ?
-		}
+		//if v.isRechargeable() {
+		//	p.WriteInt64(0) // ?
+		//}
 	}
 
 	return p
