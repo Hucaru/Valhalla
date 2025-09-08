@@ -25,12 +25,6 @@ spec:
             - name: cfg
               mountPath: /app/docker/docker_config_login.toml
               subPath: docker_config_login.toml
-          readinessProbe:
-            tcpSocket:
-              port: 8484
-            initialDelaySeconds: 5
-            periodSeconds: 5
-            failureThreshold: 12
       volumes:
         - name: cfg
           configMap:
@@ -66,12 +60,6 @@ spec:
             - name: cfg
               mountPath: /app/docker/docker_config_world.toml
               subPath: docker_config_world.toml
-          readinessProbe:
-            tcpSocket:
-              port: 8584
-            initialDelaySeconds: 5
-            periodSeconds: 5
-            failureThreshold: 12
       volumes:
         - name: cfg
           configMap:
@@ -106,12 +94,6 @@ spec:
             - name: cfg
               mountPath: /app/docker/docker_config_cashshop.toml
               subPath: docker_config_cashshop.toml
-          readinessProbe:
-            tcpSocket:
-              port: 8600
-            initialDelaySeconds: 5
-            periodSeconds: 5
-            failureThreshold: 12
       volumes:
         - name: cfg
           configMap:
