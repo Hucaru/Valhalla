@@ -315,31 +315,8 @@ func (server *Server) playerChangeChannel(conn mnet.Client, reader mpacket.Reade
 	}
 
 	// Expire Summon Buffs
-	if player != nil && player.buffs != nil {
-		for sid := range player.buffs.activeSkillLevels {
-			switch skill.Skill(sid) {
-			case skill.SilverHawk, skill.GoldenEagle, skill.SummonDragon, skill.Puppet, skill.SniperPuppet:
-				player.buffs.expireBuffNow(sid)
-			}
-		}
-	}
-
-	if player.summons != nil {
-		if field, ok := server.fields[player.mapID]; ok && field != nil {
-			if inst, e := field.getInstance(player.inst.id); e == nil && inst != nil {
-				if player.summons.puppet != nil {
-					inst.send(packetRemoveSummon(player.ID, player.summons.puppet.SkillID, 0x01))
-				}
-				if player.summons.summon != nil {
-					inst.send(packetRemoveSummon(player.ID, player.summons.summon.SkillID, 0x01))
-				}
-			}
-		}
-		player.summons.puppet = nil
-		player.summons.summon = nil
-	}
-
-	// Save Player buffs for handoff to next channel
+	player.expireSummons()
+	server.removeSummonsFromField(player)
 	player.saveBuffSnapshot()
 
 	if int(id) < len(server.channels) {
@@ -677,15 +654,29 @@ func (server Server) playerEnterCashShop(conn mnet.Client, reader mpacket.Reader
 	}
 
 	// Expire Summon Buffs
-	if player != nil && player.buffs != nil {
-		for sid := range player.buffs.activeSkillLevels {
-			switch skill.Skill(sid) {
-			case skill.SilverHawk, skill.GoldenEagle, skill.SummonDragon, skill.Puppet, skill.SniperPuppet:
-				player.buffs.expireBuffNow(sid)
-			}
-		}
-	}
+	player.expireSummons()
+	server.removeSummonsFromField(player)
+	player.saveBuffSnapshot()
 
+	if len(server.cashShop.IP) > 0 || server.cashShop.Port == 0 {
+		if _, err := common.DB.Exec("UPDATE characters SET migrationID=? WHERE ID=?", 50, player.ID); err != nil {
+			log.Println(err)
+			return
+		}
+		packetChangeChannel := func(ip []byte, port int16) mpacket.Packet {
+			p := mpacket.CreateWithOpcode(opcode.SendChannelChange)
+			p.WriteBool(true)
+			p.WriteBytes(ip)
+			p.WriteInt16(port)
+			return p
+		}
+		conn.Send(packetChangeChannel(server.cashShop.IP, server.cashShop.Port))
+	} else {
+		conn.Send(packetCannotEnterCashShop())
+	}
+}
+
+func (server *Server) removeSummonsFromField(player *Player) {
 	if player.summons != nil {
 		if field, ok := server.fields[player.mapID]; ok && field != nil {
 			if inst, e := field.getInstance(player.inst.id); e == nil && inst != nil {
@@ -699,29 +690,6 @@ func (server Server) playerEnterCashShop(conn mnet.Client, reader mpacket.Reader
 		}
 		player.summons.puppet = nil
 		player.summons.summon = nil
-	}
-
-	player.saveBuffSnapshot()
-
-	if len(server.cashShop.IP) > 0 {
-		if server.cashShop.Port == 0 {
-			conn.Send(packetCannotEnterCashShop())
-		} else {
-			if _, err := common.DB.Exec("UPDATE characters SET migrationID=? WHERE ID=?", 50, player.ID); err != nil {
-				log.Println(err)
-				return
-			}
-			packetChangeChannel := func(ip []byte, port int16) mpacket.Packet {
-				p := mpacket.CreateWithOpcode(opcode.SendChannelChange)
-				p.WriteBool(true)
-				p.WriteBytes(ip)
-				p.WriteInt16(port)
-				return p
-			}
-			conn.Send(packetChangeChannel(server.cashShop.IP, server.cashShop.Port))
-		}
-	} else {
-		conn.Send(packetCannotEnterCashShop())
 	}
 }
 
@@ -878,15 +846,7 @@ func (server Server) warpPlayer(plr *Player, dstField *field, dstPortal portal) 
 		}
 	}
 
-	if plr.summons != nil {
-		if plr.summons.puppet != nil {
-			// Debuff puppet
-			plr.removeSummon(true, constant.SummonRemoveReasonCancel)
-		}
-		if plr.summons.summon != nil {
-			srcInst.send(packetRemoveSummon(plr.ID, plr.summons.summon.SkillID, constant.SummonRemoveReasonCancel))
-		}
-	}
+	server.removeSummonsFromField(plr)
 
 	if err = srcInst.removePlayer(plr); err != nil {
 		return err

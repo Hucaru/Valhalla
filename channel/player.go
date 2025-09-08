@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/Hucaru/Valhalla/common"
+	"github.com/Hucaru/Valhalla/constant/skill"
 	"github.com/Hucaru/Valhalla/nx"
 
 	"github.com/Hucaru/Valhalla/common/opcode"
@@ -1908,6 +1909,17 @@ func (p *Player) getSummon(skillID int32) *summon {
 		return p.summons.puppet
 	}
 	return nil
+}
+
+func (p *Player) expireSummons() {
+	if p != nil && p.buffs != nil {
+		for sid := range p.buffs.activeSkillLevels {
+			switch skill.Skill(sid) {
+			case skill.SilverHawk, skill.GoldenEagle, skill.SummonDragon, skill.Puppet, skill.SniperPuppet:
+				p.buffs.expireBuffNow(sid)
+			}
+		}
+	}
 }
 
 func (p *Player) broadcastShowSummon(su *summon) {
