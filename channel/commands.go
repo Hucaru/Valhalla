@@ -475,7 +475,7 @@ func (server *Server) gmCommand(conn mnet.Client, msg string) {
 		}
 
 		player.setJob(jobID)
-	case "Item":
+	case "item":
 		var itemID int32
 		var amount int16 = 1
 
