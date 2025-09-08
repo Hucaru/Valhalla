@@ -1816,7 +1816,7 @@ func (server Server) playerRangedSkill(conn mnet.Client, reader mpacket.Reader) 
 		return
 	}
 
-	err = plr.useSkill(data.skillID, data.skillLevel)
+	err = plr.useSkill(data.skillID, data.skillLevel, data.projectileID)
 	if err != nil {
 		// Send packet to stop?
 		return
@@ -1895,7 +1895,7 @@ func (server Server) playerMagicSkill(conn mnet.Client, reader mpacket.Reader) {
 		return
 	}
 
-	err = plr.useSkill(data.skillID, data.skillLevel)
+	err = plr.useSkill(data.skillID, data.skillLevel, data.projectileID)
 	if err != nil {
 		// Send packet to stop?
 		return
@@ -3600,7 +3600,7 @@ func (server *Server) playerSpecialSkill(conn mnet.Client, reader mpacket.Reader
 	}
 
 	// Apply MP cost/cooldown, if any (reuses the same flow as attack skills).
-	if err := plr.useSkill(skillID, skillLevel); err != nil {
+	if err := plr.useSkill(skillID, skillLevel, 0); err != nil {
 		plr.Send(packetPlayerNoChange())
 		return
 	}

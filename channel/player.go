@@ -274,7 +274,7 @@ func (d *Player) levelUp() {
 
 	// Use per-Player RNG and job-based helper for deterministic gains.
 	hpGain, mpGain := d.levelUpGains()
-	
+
 	newMaxHP := d.maxHP + hpGain
 	newMaxMP := d.maxMP + mpGain
 	if newMaxHP < 1 {
@@ -1055,23 +1055,78 @@ func (d *Player) updateSkill(updatedSkill playerSkill) {
 	d.MarkDirty(DirtySkills, 800*time.Millisecond)
 }
 
-func (d *Player) useSkill(id int32, level byte) error {
+func (d *Player) useSkill(id int32, level byte, projectileID int32) error {
 	skillInfo, _ := nx.GetPlayerSkill(id)
 
-	for lvl, skill := range skillInfo {
-		if lvl == int(level) {
-
-			d.giveMP(-int16(skill.MpCon))
-
-			// Use Item
-			// d.consumeItem(skill.itemCon, skill.itemConNo)
-
+	if skillUsed, ok := d.skills[id]; ok {
+		if skillUsed.Level != level {
+			d.Conn.Send(packetMessageRedText("skill level mismatch"))
+			return errors.New("skill level mismatch")
+		}
+		if skillInfo[skillUsed.Level].MpCon > 0 {
+			d.giveMP(-int16(skillInfo[skillUsed.Level].MpCon))
+		}
+		if skillInfo[skillUsed.Level].HpCon > 0 {
+			d.giveHP(-int16(skillInfo[skillUsed.Level].HpCon))
+		}
+		if skillInfo[skillUsed.Level].MoneyConsume > 0 {
+			d.takeMesos(int32(skillInfo[skillUsed.Level].MoneyConsume))
+		}
+		if skillInfo[skillUsed.Level].ItemCon > 0 {
+			itemID := int32(skillInfo[skillUsed.Level].ItemCon)
+			need := int32(skillInfo[skillUsed.Level].ItemConNo)
+			if need <= 0 {
+				need = 1
+			}
+			if !d.consumeItemsByID(itemID, need) {
+				d.Conn.Send(packetMessageRedText("not enough items to use this skill"))
+				return errors.New("not enough projectiles")
+			}
 		}
 
-		// If haste, etc
+		if projectileID > 0 {
+			need := int32(skillInfo[skillUsed.Level].BulletCount)
+			if !d.consumeItemsByID(projectileID, need) {
+				d.Conn.Send(packetMessageRedText("not enough projectiles to use this skill"))
+				return errors.New("not enough projectiles to use this skill")
+			}
+		}
 	}
 
 	return nil
+}
+
+func (d *Player) consumeItemsByID(itemID int32, reqCount int32) bool {
+	if reqCount <= 0 {
+		return true
+	}
+	remaining := reqCount
+
+	drain := func(invID byte, items []Item) {
+		for i := range items {
+			if remaining == 0 {
+				return
+			}
+			it := items[i]
+			if it.ID != itemID || it.amount <= 0 {
+				continue
+			}
+			take := int16(it.amount)
+			if int32(take) > remaining {
+				take = int16(remaining)
+			}
+			if _, err := d.takeItem(itemID, it.slotID, take, invID); err == nil {
+				remaining -= int32(take)
+			}
+		}
+	}
+	// Order: USE, SETUP, ETC, CASH
+	drain(2, d.use)
+	drain(3, d.setUp)
+	drain(4, d.etc)
+	drain(5, d.cash)
+
+	return remaining == 0
 }
 
 func (d Player) admin() bool { return d.Conn.GetAdminLevel() > 0 }
