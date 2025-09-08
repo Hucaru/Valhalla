@@ -98,6 +98,13 @@ func (server *Server) handleNewChannel(conn mnet.Server, reader mpacket.Reader) 
 			return
 		}
 	}
+	if server.Info.CashShop.Conn != nil {
+		// Send new channel CS info
+		p := mpacket.CreateInternal(opcode.CashShopInfo)
+		p.WriteBytes(server.Info.CashShop.IP)
+		p.WriteInt16(server.Info.CashShop.Port)
+		conn.Send(p)
+	}
 
 	// TODO highest value party id and set the to current party id if it is larger
 
@@ -120,6 +127,9 @@ func (server Server) sendChannelInfo() {
 	}
 
 	server.channelBroadcast(p)
+	if server.Info.CashShop.Conn != nil {
+		server.Info.CashShop.Conn.Send(p)
+	}
 }
 
 func (server *Server) handleChannelUpdate(conn mnet.Server, reader mpacket.Reader) {
@@ -147,10 +157,11 @@ func (server *Server) handleNewCashShop(conn mnet.Server, reader mpacket.Reader)
 	conn.Send(p)
 
 	log.Println("Registered CashShop")
-	server.sendCashShopInfo()
+
+	go server.sendCashShopInfo()
 }
 
-func (server Server) sendCashShopInfo() {
+func (server *Server) sendCashShopInfo() {
 	for len(server.Info.Channels) <= 0 {
 		log.Println("No channels to send cash shop info to")
 		time.Sleep(10 * time.Second)

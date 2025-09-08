@@ -32,11 +32,11 @@ func (p players) getFromConn(conn mnet.Client) (*Player, error) {
 
 func (p players) getFromName(name string) (*Player, error) {
 	for _, v := range p {
-		if v.name == name {
+		if v.Name == name {
 			return v, nil
 		}
 	}
-	return nil, fmt.Errorf("Player not found for name: %s", name)
+	return nil, fmt.Errorf("Player not found for Name: %s", name)
 }
 
 func (p players) getFromID(id int32) (*Player, error) {
@@ -279,7 +279,7 @@ func (server *Server) ClientDisconnected(conn mnet.Client) {
 	if plr.guild != nil {
 		guildID = plr.guild.id
 	}
-	server.world.Send(internal.PacketChannelPlayerDisconnect(plr.ID, plr.name, guildID))
+	server.world.Send(internal.PacketChannelPlayerDisconnect(plr.ID, plr.Name, guildID))
 
 	if _, dbErr := common.DB.Exec("UPDATE characters SET channelID=? WHERE ID=?", -1, plr.ID); dbErr != nil {
 		log.Println(dbErr)

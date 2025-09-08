@@ -65,8 +65,6 @@ func (server Server) channelBroadcast(p mpacket.Packet) {
 			v.Conn.Send(p)
 		}
 	}
-
-	server.Info.CashShop.Conn.Send(p)
 }
 
 func (server Server) forwardPacketToChannels(conn mnet.Server, reader mpacket.Reader) {
@@ -75,4 +73,13 @@ func (server Server) forwardPacketToChannels(conn mnet.Server, reader mpacket.Re
 	p.WriteByte(0)
 	p.WriteBytes(reader.GetBuffer())
 	server.channelBroadcast(p)
+}
+
+func (server Server) forwardPacketToCashShop(conn mnet.Server, reader mpacket.Reader) {
+	p := mpacket.NewPacket()
+	p.WriteByte(0)
+	p.WriteByte(0)
+	p.WriteBytes(reader.GetBuffer())
+
+	server.Info.CashShop.Conn.Send(p)
 }

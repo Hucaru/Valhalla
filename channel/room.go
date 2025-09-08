@@ -127,7 +127,7 @@ func (r room) closed() bool {
 func (r room) chatMsg(plr *Player, msg string) {
 	for i, v := range r.players {
 		if v.Conn == plr.Conn {
-			r.send(packetRoomChat(plr.name, msg, byte(i)))
+			r.send(packetRoomChat(plr.Name, msg, byte(i)))
 		}
 	}
 }
@@ -224,7 +224,7 @@ func (r *gameRoom) kickPlayer(plr *Player, reason byte) bool {
 
 func (r *gameRoom) expel() bool {
 	if len(r.players) > 1 {
-		r.send(packetRoomYellowChat(0, r.players[1].name))
+		r.send(packetRoomYellowChat(0, r.players[1].Name))
 		r.kickPlayer(r.players[1], 0x5)
 
 		return true
@@ -640,7 +640,7 @@ func (r *memoryRoom) selectCard(turn, cardID byte, plr *Player) bool {
 		}
 
 		r.send(packetRoomSelectCard(turn, cardID, r.firstCardPick, points))
-		r.send(packetRoomYellowChat(0x09, plr.name))
+		r.send(packetRoomYellowChat(0x09, plr.Name))
 
 		win, draw := r.checkCardWin()
 
@@ -774,7 +774,7 @@ func (r *tradeRoom) removePlayer(plr *Player) {
 }
 
 func (r tradeRoom) sendInvite(plr *Player) {
-	plr.Send(packetRoomInvite(roomTypeTrade, r.players[0].name, r.roomID))
+	plr.Send(packetRoomInvite(roomTypeTrade, r.players[0].Name, r.roomID))
 }
 
 func (r tradeRoom) reject(code byte, name string) {
@@ -804,7 +804,7 @@ func packetRoomShowWindow(roomType, boardType, maxPlayers, roomSlot byte, roomTi
 		p.WriteByte(byte(i))
 		p.Append(v.displayBytes())
 		p.WriteInt32(0) // not sure what this is - memory card game seed? board settings?
-		p.WriteString(v.name)
+		p.WriteString(v.Name)
 	}
 
 	p.WriteByte(0xFF)
@@ -836,7 +836,7 @@ func packetRoomJoin(roomType, roomSlot byte, plr *Player) mpacket.Packet {
 	p.WriteByte(roomSlot)
 	p.Append(plr.displayBytes())
 	p.WriteInt32(0) //?
-	p.WriteString(plr.name)
+	p.WriteString(plr.Name)
 
 	if roomType == 0x03 || roomType == 0x04 {
 		return p

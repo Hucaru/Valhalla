@@ -126,7 +126,7 @@ type Player struct {
 	exp   int32
 	fame  int16
 
-	name    string
+	Name    string
 	gender  byte
 	skin    byte
 	face    int32
@@ -263,7 +263,7 @@ func (d *Player) setJob(id int16) {
 	d.MarkDirty(DirtyJob, 300*time.Millisecond)
 
 	if d.party != nil {
-		d.UpdatePartyInfo(d.party.ID, d.ID, int32(d.job), int32(d.level), d.mapID, d.name)
+		d.UpdatePartyInfo(d.party.ID, d.ID, int32(d.job), int32(d.level), d.mapID, d.Name)
 	}
 }
 
@@ -342,7 +342,7 @@ func (d *Player) setLevel(amount byte) {
 	d.MarkDirty(DirtyLevel, 300*time.Millisecond)
 
 	if d.party != nil {
-		d.UpdatePartyInfo(d.party.ID, d.ID, int32(d.job), int32(d.level), d.mapID, d.name)
+		d.UpdatePartyInfo(d.party.ID, d.ID, int32(d.job), int32(d.level), d.mapID, d.Name)
 	}
 }
 
@@ -498,8 +498,8 @@ func (d *Player) takeMesos(amount int32) {
 }
 
 func (d *Player) saveMesos() error {
-	query := "UPDATE characters SET mesos=? WHERE accountID=? and name=?"
-	_, err := common.DB.Exec(query, d.mesos, d.accountID, d.name)
+	query := "UPDATE characters SET mesos=? WHERE accountID=? and Name=?"
+	_, err := common.DB.Exec(query, d.mesos, d.accountID, d.Name)
 	return err
 }
 
@@ -540,7 +540,7 @@ func (d *Player) setMapID(id int32) {
 	d.mapID = id
 
 	if d.party != nil {
-		d.UpdatePartyInfo(d.party.ID, d.ID, int32(d.job), int32(d.level), d.mapID, d.name)
+		d.UpdatePartyInfo(d.party.ID, d.ID, int32(d.job), int32(d.level), d.mapID, d.Name)
 	}
 
 	// write-behind for mapID/pos (mapPos updated on save())
@@ -551,13 +551,13 @@ func (d *Player) setMapID(id int32) {
 }
 
 func (d *Player) saveMapID(newMapId, oldMapId int32) error {
-	query := "UPDATE characters SET mapID=?,previousMapID=? WHERE accountID=? and name=?"
+	query := "UPDATE characters SET mapID=?,previousMapID=? WHERE accountID=? and Name=?"
 
 	_, err := common.DB.Exec(query,
 		newMapId,
 		oldMapId,
 		d.accountID,
-		d.name)
+		d.Name)
 
 	if err != nil {
 		return err
@@ -1351,15 +1351,15 @@ func (d *Player) findEquipBySlot(slot int16) *Item {
 	return nil
 }
 
-func loadPlayerFromID(id int32, conn mnet.Client) Player {
+func LoadPlayerFromID(id int32, conn mnet.Client) Player {
 	c := Player{}
-	filter := "ID,accountID,worldID,name,gender,skin,hair,face,level,job,str,dex,intt," +
+	filter := "ID,accountID,worldID,Name,gender,skin,hair,face,level,job,str,dex,intt," +
 		"luk,hp,maxHP,mp,maxMP,ap,sp, exp,fame,mapID,mapPos,previousMapID,mesos," +
 		"equipSlotSize,useSlotSize,setupSlotSize,etcSlotSize,cashSlotSize,miniGameWins," +
 		"miniGameDraw,miniGameLoss,miniGamePoints,buddyListSize"
 
 	err := common.DB.QueryRow("SELECT "+filter+" FROM characters where ID=?", id).Scan(&c.ID,
-		&c.accountID, &c.worldID, &c.name, &c.gender, &c.skin, &c.hair, &c.face,
+		&c.accountID, &c.worldID, &c.Name, &c.gender, &c.skin, &c.hair, &c.face,
 		&c.level, &c.job, &c.str, &c.dex, &c.intt, &c.luk, &c.hp, &c.maxHP, &c.mp,
 		&c.maxMP, &c.ap, &c.sp, &c.exp, &c.fame, &c.mapID, &c.mapPos,
 		&c.previousMap, &c.mesos, &c.equipSlotSize, &c.useSlotSize, &c.setupSlotSize,
@@ -1426,7 +1426,7 @@ func getBuddyList(playerID int32, buddySize byte) []buddy {
 		var accepted bool
 		rows.Scan(&newBuddy.id, &accepted)
 
-		filter := "channelID,name,inCashShop"
+		filter := "channelID,Name,inCashShop"
 		err := common.DB.QueryRow("SELECT "+filter+" FROM characters where ID=?", newBuddy.id).Scan(&newBuddy.channelID, &newBuddy.name, &newBuddy.cashShop)
 
 		if err != nil {
@@ -1705,7 +1705,7 @@ func (d *Player) applyQuestAct(act nx.ActBlock) {
 func (d *Player) tryStartQuest(questID int16) bool {
 	q, err := nx.GetQuest(questID)
 	if err != nil {
-		log.Printf("[Quest] start fail nx lookup: char=%s ID=%d err=%v", d.name, questID, err)
+		log.Printf("[Quest] start fail nx lookup: char=%s ID=%d err=%v", d.Name, questID, err)
 		return false
 	}
 
@@ -1724,7 +1724,7 @@ func (d *Player) tryStartQuest(questID int16) bool {
 func (d *Player) tryCompleteQuest(questID int16) bool {
 	q, err := nx.GetQuest(questID)
 	if err != nil {
-		log.Printf("[Quest] complete fail nx lookup: char=%s ID=%d err=%v", d.name, questID, err)
+		log.Printf("[Quest] complete fail nx lookup: char=%s ID=%d err=%v", d.Name, questID, err)
 		return false
 	}
 
@@ -2238,12 +2238,12 @@ func packetPlayerEnterGame(plr Player, channelID int32) mpacket.Packet {
 	p.WriteBytes(randomBytes)
 	p.WriteBytes(randomBytes)
 
-	// Are active buffs name encoded in here?
+	// Are active buffs Name encoded in here?
 	p.WriteByte(0xFF)
 	p.WriteByte(0xFF)
 
 	p.WriteInt32(plr.ID)
-	p.WritePaddedString(plr.name, 13)
+	p.WritePaddedString(plr.Name, 13)
 	p.WriteByte(plr.gender)
 	p.WriteByte(plr.skin)
 	p.WriteInt32(plr.face)
@@ -2645,7 +2645,7 @@ func (plr *Player) WriteCharacterInfoPacket(p *mpacket.Packet) {
 
 	// Stats
 	p.WriteInt32(plr.ID)
-	p.WritePaddedString(plr.name, 13)
+	p.WritePaddedString(plr.Name, 13)
 	p.WriteByte(plr.gender)
 	p.WriteByte(plr.skin)
 	p.WriteInt32(plr.face)

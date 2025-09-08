@@ -515,7 +515,7 @@ func (server *Server) gmCommand(conn mnet.Client, msg string) {
 			return
 		}
 
-		item.creatorName = player.name
+		item.creatorName = player.Name
 		err = player.GiveItem(item)
 
 		if err != nil {
@@ -705,7 +705,7 @@ func (server *Server) gmCommand(conn mnet.Client, msg string) {
 				return
 			}
 
-			item.creatorName = player.name
+			item.creatorName = player.Name
 			err = player.GiveItem(item)
 
 			if err != nil {
@@ -900,7 +900,7 @@ func (server *Server) gmCommand(conn mnet.Client, msg string) {
 			return
 		}
 
-		server.world.Send(internal.PacketChannelPartyCreateRequest(plr.ID, server.id, plr.mapID, int32(plr.job), int32(plr.level), plr.name))
+		server.world.Send(internal.PacketChannelPartyCreateRequest(plr.ID, server.id, plr.mapID, int32(plr.job), int32(plr.level), plr.Name))
 	case "guildCreate":
 		plr, err := server.players.getFromConn(conn)
 
@@ -1062,7 +1062,7 @@ func (server *Server) gmCommand(conn mnet.Client, msg string) {
 				return
 			}
 
-			item.creatorName = plr.name
+			item.creatorName = plr.Name
 			drops[i] = item
 		}
 
@@ -1266,5 +1266,5 @@ func covnertMobNameToID(name string) ([]int32, error) {
 		return []int32{6300005}, nil
 	}
 
-	return nil, fmt.Errorf("Unkown mob name")
+	return nil, fmt.Errorf("Unkown mob Name")
 }

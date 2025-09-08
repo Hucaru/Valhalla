@@ -41,7 +41,7 @@ type guild struct {
 func loadGuildFromDb(guildID int32, players *players) (*guild, error) {
 	loadedGuild := &guild{}
 
-	row, err := common.DB.Query("SELECT ID, guildRank, name, job, level, channelID FROM characters WHERE guildID=?", guildID)
+	row, err := common.DB.Query("SELECT ID, guildRank, Name, job, level, channelID FROM characters WHERE guildID=?", guildID)
 
 	if err != nil {
 		return nil, err
@@ -78,7 +78,7 @@ func loadGuildFromDb(guildID int32, players *players) (*guild, error) {
 		loadedGuild.ranks = append(loadedGuild.ranks, rank)
 	}
 
-	query := "SELECT ID,capacity,name,notice,master,jrMaster,member1,member2,member3,logoBg,logoBgColour,logo,logoColour,points FROM guilds WHERE ID=?"
+	query := "SELECT ID,capacity,Name,notice,master,jrMaster,member1,member2,member3,logoBg,logoBgColour,logo,logoColour,points FROM guilds WHERE ID=?"
 	err = common.DB.QueryRow(query, guildID).Scan(&loadedGuild.id, &loadedGuild.capacity,
 		&loadedGuild.name, &loadedGuild.notice, &loadedGuild.master, &loadedGuild.jrMaster, &loadedGuild.member1,
 		&loadedGuild.member2, &loadedGuild.member3, &loadedGuild.logoBg, &loadedGuild.logoBgColour, &loadedGuild.logo,
@@ -102,7 +102,7 @@ func createGuildContract(guildName string, worldID int32, players *players, mast
 	}
 
 	newGuild.playerID = append(newGuild.playerID, master.ID)
-	newGuild.names = append(newGuild.names, master.name)
+	newGuild.names = append(newGuild.names, master.Name)
 	newGuild.jobs = append(newGuild.jobs, int32(master.job))
 	newGuild.levels = append(newGuild.levels, int32(master.level))
 	newGuild.online = append(newGuild.online, true)
@@ -128,14 +128,14 @@ func createGuildContract(guildName string, worldID int32, players *players, mast
 		}
 
 		newGuild.playerID = append(newGuild.playerID, plr.ID)
-		newGuild.names = append(newGuild.names, plr.name)
+		newGuild.names = append(newGuild.names, plr.Name)
 		newGuild.jobs = append(newGuild.jobs, int32(plr.job))
 		newGuild.levels = append(newGuild.levels, int32(plr.level))
 		newGuild.online = append(newGuild.online, false)
 		newGuild.ranks = append(newGuild.ranks, 5)
 
 		plr.guild = newGuild
-		plr.Send(packetGuildContract(master.party.ID, master.name, guildName))
+		plr.Send(packetGuildContract(master.party.ID, master.Name, guildName))
 	}
 
 	master.guild = newGuild
@@ -158,7 +158,7 @@ func (g *guild) signContract(playerID int32) bool {
 	}
 
 	if signed == len(g.online) {
-		query := "INSERT INTO guilds (name, worldID, notice, master, jrMaster, member1, member2, member3) VALUES (?, ?, '', ?, ?, ?, ?, ?)"
+		query := "INSERT INTO guilds (Name, worldID, notice, master, jrMaster, member1, member2, member3) VALUES (?, ?, '', ?, ?, ?, ?, ?)"
 		res, err := common.DB.Exec(query, g.name, g.worldID, g.master, g.jrMaster, g.member1, g.member2, g.member3)
 
 		if err != nil {
@@ -676,7 +676,7 @@ func packetGuildSetPoints(guildID, points int32) mpacket.Packet {
 }
 
 /*
-0x01 - type name of guild dialogue box
+0x01 - type Name of guild dialogue box
 
 0x02 - not accepted due to unkown reason
 
@@ -687,7 +687,7 @@ func packetGuildSetPoints(guildID, points int32) mpacket.Packet {
 
 0x05 - guild invite card
 i32 - guild ID
-string - inviter name
+string - inviter Name
 
 0x06 - 0x10 - not accepted due to unkown reason
 
@@ -699,7 +699,7 @@ string - inviter name
 
 0x1b - not accepted due to unkown reason
 
-0x1c - name already in use npc message ui
+0x1c - Name already in use npc message ui
 
 0x1f - problem in gathering agreements npc message ui
 
@@ -730,7 +730,7 @@ string - inviter name
 0x2c - deleted characters removed from guild, left
 i32 - guild ID
 i32 - Player ID
-string - name
+string - Name
 
 0x2d - you are not in the guild
 
@@ -739,7 +739,7 @@ string - name
 0x2f - deleted character removed from guild, expelled
 i32 - guild ID
 i32 - Player ID
-string - name
+string - Name
 
 0x30 - you are not in the guild
 
@@ -753,11 +753,11 @@ i8 - ?
 
 0x34 - npc dialogue box saying problem has occured during disbandon
 
-0x35 - name is currently not accepted guild request invites
+0x35 - Name is currently not accepted guild request invites
 
-0x36 - name is taking care of another invitation
+0x36 - Name is taking care of another invitation
 
-0x37 - name has denied your invitation
+0x37 - Name has denied your invitation
 
 0x38 - admin cannot make guild message
 
@@ -777,11 +777,11 @@ i32 - jobID
 
 0x3e - update rank titles (dialogue box comes up saying it has been saved) ui is updated
 i32 - guildID
-name  - master
-name
-name
-name
-name - member
+Name  - master
+Name
+Name
+Name
+Name - member
 
 0x3d - guild Player online
 
@@ -817,7 +817,7 @@ i32 - gp points
 i32 - guildID?
 i32 - amount
 for amount:
-	name
+	Name
 	i32 - points?
 
 0x4a - less than 5 members remaning, guild quest will end in 5 seconds

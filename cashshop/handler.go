@@ -3,17 +3,21 @@ package cashshop
 import (
 	"log"
 
+	"github.com/Hucaru/Valhalla/channel"
 	"github.com/Hucaru/Valhalla/common"
 	"github.com/Hucaru/Valhalla/common/opcode"
+	"github.com/Hucaru/Valhalla/internal"
 	"github.com/Hucaru/Valhalla/mnet"
 	"github.com/Hucaru/Valhalla/mpacket"
 )
 
 func (server *Server) HandleClientPacket(conn mnet.Client, reader mpacket.Reader) {
 	op := reader.ReadByte()
-
+	
 	switch op {
 	case opcode.RecvPing:
+	case opcode.RecvClientMigrate:
+		server.handlePlayerConnect(conn, reader)
 	case opcode.RecvCashShopPurchase:
 		server.playerCashShopPurchase(conn, reader)
 	case opcode.RecvChannelUserPortal:
@@ -27,14 +31,15 @@ func (server *Server) HandleClientPacket(conn mnet.Client, reader mpacket.Reader
 func (server *Server) HandleServerPacket(conn mnet.Server, reader mpacket.Reader) {
 	switch reader.ReadByte() {
 	case opcode.ChannelPlayerConnect:
-		server.handlePlayerConnectedNotifications(conn, reader)
+		log.Println("Player connected to CashShop")
 	case opcode.ChannePlayerDisconnect:
-		server.handlePlayerDisconnectNotifications(conn, reader)
+		server.handlePlayerDisconnect(conn, reader)
 	case opcode.ChannelConnectionInfo:
+		server.handleChannelConnectionInfo(conn, reader)
 	case opcode.CashShopOk:
 		server.handleWorldConnection(conn, reader)
 	case opcode.CashShopBad:
-		log.Panicln("CashShop Unabled to connect to world")
+		log.Panicln("CashShop unable to connect to world")
 	default:
 		log.Println("UNKNOWN SERVER PACKET:", reader)
 	}
@@ -53,33 +58,80 @@ func (server *Server) handleChannelConnectionInfo(conn mnet.Server, reader mpack
 		server.channels[i].Port = reader.ReadInt16()
 	}
 }
+func (server *Server) handlePlayerConnect(conn mnet.Client, reader mpacket.Reader) {
+	charID := reader.ReadInt32()
 
-func (server *Server) handlePlayerConnectedNotifications(conn mnet.Server, reader mpacket.Reader) {
-	playerID := reader.ReadInt32()
-	name := reader.ReadString(reader.ReadInt16())
-	channelID := reader.ReadByte()
-	_ = reader.ReadBool()
-	_ = reader.ReadInt32() // mapID
-	_ = reader.ReadInt32()
+	// Fetch channelID, migrationID and accountID in a single query
+	var (
+		migrationID byte
+		channelID   int8
+		accountID   int32
+	)
+	err := common.DB.QueryRow(
+		"SELECT channelID, migrationID, accountID FROM characters WHERE ID=?",
+		charID,
+	).Scan(&channelID, &migrationID, &accountID)
+	if err != nil {
+		log.Println("playerConnect query error:", err)
+		return
+	}
 
-	log.Printf("Player %s (ID: %d) connected to CashShop from Channel %d\n", name, playerID, channelID)
-	plr, err := server.players.getFromID(playerID)
+	if migrationID != 50 {
+		log.Println("cashshop:playerConnect: invalid migrationID:", migrationID)
+		return
+	}
+
+	conn.SetAccountID(accountID)
+
+	var adminLevel int
+	err = common.DB.QueryRow("SELECT adminLevel FROM accounts WHERE accountID=?", conn.GetAccountID()).Scan(&adminLevel)
+
 	if err != nil {
 		log.Println(err)
 		return
 	}
 
-	plr.ChannelID = channelID
+	conn.SetAdminLevel(adminLevel)
 
-	plr.Send(packetCashShopSet(plr))
+	_, err = common.DB.Exec("UPDATE characters SET migrationID=? WHERE ID=?", -1, charID)
+
+	if err != nil {
+		log.Println(err)
+		return
+	}
+
+	_, err = common.DB.Exec("UPDATE characters SET channelID=? WHERE ID=?", server.id, charID)
+
+	if err != nil {
+		log.Println(err)
+		return
+	}
+
+	plr := channel.LoadPlayerFromID(charID, conn)
+
+	server.players = append(server.players, &plr)
+
+	server.world.Send(internal.PacketChannelPlayerConnected(plr.ID, plr.Name, server.id, false, 0, 0))
+
+	plr.Send(packetCashShopSet(&plr))
 	plr.Send(packetCashShopUpdateAmounts(plr.GetNX(), plr.GetMaplePoints()))
 	plr.Send(packetCashShopWishList(nil, true))
 }
 
-func (server *Server) handlePlayerDisconnectNotifications(conn mnet.Server, reader mpacket.Reader) {
+func (server *Server) handlePlayerDisconnect(conn mnet.Server, reader mpacket.Reader) {
 	playerID := reader.ReadInt32()
 	name := reader.ReadString(reader.ReadInt16())
 	_ = reader.ReadInt32()
+
+	plr, err := server.players.getFromID(playerID)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	err = server.players.removeFromConn(plr.Conn)
+	if err != nil {
+		return
+	}
 
 	log.Printf("Player %s (ID: %d) disconnected from CashShop\n", name, playerID)
 }

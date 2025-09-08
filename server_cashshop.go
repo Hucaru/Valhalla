@@ -194,6 +194,7 @@ func (cs *cashShopServer) acceptNewConnections() {
 		if _, err := conn.Write(packetClientHandshake(constant.MapleVersion, keyRecv[:], keySend[:])); err != nil {
 			log.Println("handshake write failed:", err)
 		}
+
 	}
 }
 

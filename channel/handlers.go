@@ -56,7 +56,7 @@ func (server *Server) HandleClientPacket(conn mnet.Client, reader mpacket.Reader
 
 	switch op {
 	case opcode.RecvPing:
-	case opcode.RecvChannelPlayerLoad:
+	case opcode.RecvClientMigrate:
 		server.playerConnect(conn, reader)
 	case opcode.RecvCHannelChangeChannel:
 		server.playerChangeChannel(conn, reader)
@@ -206,7 +206,7 @@ func (server *Server) playerConnect(conn mnet.Client, reader mpacket.Reader) {
 		return
 	}
 
-	plr := loadPlayerFromID(charID, conn)
+	plr := LoadPlayerFromID(charID, conn)
 	plr.rates = &server.rates
 
 	server.players = append(server.players, &plr)
@@ -298,9 +298,9 @@ func (server *Server) playerConnect(conn mnet.Client, reader mpacket.Reader) {
 
 	server.world.Send(internal.PacketChannelPopUpdate(server.id, int16(len(server.players))))
 	if guildID.Valid {
-		server.world.Send(internal.PacketChannelPlayerConnected(plr.ID, plr.name, server.id, channelID > -1, newPlr.mapID, guildID.Int32))
+		server.world.Send(internal.PacketChannelPlayerConnected(plr.ID, plr.Name, server.id, channelID > -1, newPlr.mapID, guildID.Int32))
 	} else {
-		server.world.Send(internal.PacketChannelPlayerConnected(plr.ID, plr.name, server.id, channelID > -1, newPlr.mapID, 0))
+		server.world.Send(internal.PacketChannelPlayerConnected(plr.ID, plr.Name, server.id, channelID > -1, newPlr.mapID, 0))
 	}
 }
 
@@ -669,50 +669,60 @@ func validateSkillWithJob(jobID int16, baseSkillID int32) bool {
 }
 
 func (server Server) playerEnterCashShop(conn mnet.Client, reader mpacket.Reader) {
-	plr, err := server.players.getFromConn(conn)
+	server.migrating = append(server.migrating, conn)
+	player, err := server.players.getFromConn(conn)
 	if err != nil {
+		log.Println("Unable to get Player from connection", conn)
 		return
 	}
 
-	if len(server.cashShop.IP) == 4 && server.cashShop.Port != 0 {
-		if plr.summons != nil {
-			if field, ok := server.fields[plr.mapID]; ok && field != nil {
-				if inst, e := field.getInstance(plr.inst.id); e == nil && inst != nil {
-					if plr.summons.puppet != nil {
-						inst.send(packetRemoveSummon(plr.ID, plr.summons.puppet.SkillID, constant.SummonRemoveReasonCancel))
-					}
-					if plr.summons.summon != nil {
-						inst.send(packetRemoveSummon(plr.ID, plr.summons.summon.SkillID, constant.SummonRemoveReasonCancel))
-					}
+	// Expire Summon Buffs
+	if player != nil && player.buffs != nil {
+		for sid := range player.buffs.activeSkillLevels {
+			switch skill.Skill(sid) {
+			case skill.SilverHawk, skill.GoldenEagle, skill.SummonDragon, skill.Puppet, skill.SniperPuppet:
+				player.buffs.expireBuffNow(sid)
+			}
+		}
+	}
+
+	if player.summons != nil {
+		if field, ok := server.fields[player.mapID]; ok && field != nil {
+			if inst, e := field.getInstance(player.inst.id); e == nil && inst != nil {
+				if player.summons.puppet != nil {
+					inst.send(packetRemoveSummon(player.ID, player.summons.puppet.SkillID, 0x01))
+				}
+				if player.summons.summon != nil {
+					inst.send(packetRemoveSummon(player.ID, player.summons.summon.SkillID, 0x01))
 				}
 			}
-			plr.summons.puppet = nil
-			plr.summons.summon = nil
 		}
-		plr.saveBuffSnapshot()
-
-		if field, ok := server.fields[plr.mapID]; ok && field != nil {
-			if inst, e := field.getInstance(plr.inst.id); e == nil && inst != nil {
-				_ = inst.removePlayer(plr)
-			}
-		}
-
-		// Persist character after state handoff
-		_ = plr.save()
-
-		server.migrating = append(server.migrating, conn)
-
-		_, _ = common.DB.Exec("UPDATE characters SET inCashShop=1, channelID=-1 WHERE ID=?", plr.ID)
-
-		p := mpacket.CreateWithOpcode(opcode.SendChannelChange)
-		p.WriteBool(true)
-		p.WriteBytes(server.cashShop.IP)
-		p.WriteInt16(server.cashShop.Port)
-		conn.Send(p)
-		return
+		player.summons.puppet = nil
+		player.summons.summon = nil
 	}
 
-	conn.Send(packetCannotEnterCashShop())
+	player.saveBuffSnapshot()
+
+	if len(server.cashShop.IP) > 0 {
+		if server.cashShop.Port == 0 {
+			conn.Send(packetCannotEnterCashShop())
+		} else {
+			if _, err := common.DB.Exec("UPDATE characters SET migrationID=? WHERE ID=?", 50, player.ID); err != nil {
+				log.Println(err)
+				return
+			}
+			packetChangeChannel := func(ip []byte, port int16) mpacket.Packet {
+				p := mpacket.CreateWithOpcode(opcode.SendChannelChange)
+				p.WriteBool(true)
+				p.WriteBytes(ip)
+				p.WriteInt16(port)
+				return p
+			}
+			conn.Send(packetChangeChannel(server.cashShop.IP, server.cashShop.Port))
+		}
+	} else {
+		conn.Send(packetCannotEnterCashShop())
+	}
 }
 
 func (server Server) playerUsePortal(conn mnet.Client, reader mpacket.Reader) {
@@ -1185,7 +1195,7 @@ func (server Server) playerPickupItem(conn mnet.Client, reader mpacket.Reader) {
 
 	if plr.pos.x-pos.x > 800 || plr.pos.y-pos.y > 600 {
 		// Hax
-		log.Printf("Player: %s tried to pickup an Item from far away", plr.name)
+		log.Printf("Player: %s tried to pickup an Item from far away", plr.Name)
 		plr.Send(packetDropNotAvailable())
 		plr.Send(packetInventoryDontTake())
 		return
@@ -1279,7 +1289,7 @@ func (server *Server) playerBuddyOperation(conn mnet.Client, reader mpacket.Read
 		var accountID int32
 		var buddyListSize int32
 
-		err = common.DB.QueryRow("SELECT ID,accountID,buddyListSize FROM characters WHERE BINARY name=? and worldID=?", name, conn.GetWorldID()).Scan(&charID, &accountID, &buddyListSize)
+		err = common.DB.QueryRow("SELECT ID,accountID,buddyListSize FROM characters WHERE BINARY Name=? and worldID=?", name, conn.GetWorldID()).Scan(&charID, &accountID, &buddyListSize)
 
 		if err != nil || accountID == conn.GetAccountID() {
 			conn.Send(packetBuddyNameNotRegistered())
@@ -1327,9 +1337,9 @@ func (server *Server) playerBuddyOperation(conn mnet.Client, reader mpacket.Read
 		}
 
 		if recepient, err := server.players.getFromID(charID); err != nil {
-			server.world.Send(internal.PacketChannelBuddyEvent(1, charID, plr.ID, plr.name, server.id))
+			server.world.Send(internal.PacketChannelBuddyEvent(1, charID, plr.ID, plr.Name, server.id))
 		} else {
-			recepient.Send(packetBuddyReceiveRequest(plr.ID, plr.name, int32(server.id)))
+			recepient.Send(packetBuddyReceiveRequest(plr.ID, plr.Name, int32(server.id)))
 		}
 	case 2: // Accept request
 		plr, err := server.players.getFromConn(conn)
@@ -1344,7 +1354,7 @@ func (server *Server) playerBuddyOperation(conn mnet.Client, reader mpacket.Read
 		var friendChannel int32
 		var cashShop bool
 
-		err = common.DB.QueryRow("SELECT name,channelID,inCashShop FROM characters WHERE ID=?", friendID).Scan(&friendName, &friendChannel, &cashShop)
+		err = common.DB.QueryRow("SELECT Name,channelID,inCashShop FROM characters WHERE ID=?", friendID).Scan(&friendName, &friendChannel, &cashShop)
 
 		if err != nil {
 			log.Fatal(err)
@@ -1372,12 +1382,12 @@ func (server *Server) playerBuddyOperation(conn mnet.Client, reader mpacket.Read
 		}
 
 		if recepient, err := server.players.getFromID(friendID); err != nil {
-			server.world.Send(internal.PacketChannelBuddyEvent(2, friendID, plr.ID, plr.name, server.id))
+			server.world.Send(internal.PacketChannelBuddyEvent(2, friendID, plr.ID, plr.Name, server.id))
 		} else {
 			// Need to set the buddy to be offline for the logged in message to appear before setting online
-			recepient.addOfflineBuddy(plr.ID, plr.name)
+			recepient.addOfflineBuddy(plr.ID, plr.Name)
 			recepient.Send(packetBuddyOnlineStatus(plr.ID, int32(server.id)))
-			recepient.addOnlineBuddy(plr.ID, plr.name, int32(server.id))
+			recepient.addOnlineBuddy(plr.ID, plr.Name, int32(server.id))
 		}
 	case 3: // Delete/reject friend
 		plr, err := server.players.getFromConn(conn)
@@ -1423,7 +1433,7 @@ func (server *Server) playerPartyInfo(conn mnet.Client, reader mpacket.Reader) {
 			return
 		}
 
-		server.world.Send(internal.PacketChannelPartyCreateRequest(plr.ID, server.id, plr.mapID, int32(plr.job), int32(plr.level), plr.name))
+		server.world.Send(internal.PacketChannelPartyCreateRequest(plr.ID, server.id, plr.mapID, int32(plr.job), int32(plr.level), plr.Name))
 	case 2: // leave party
 		if b := reader.ReadByte(); b != 0 { // Not sure what this byte/bool does
 			log.Println("Leave party byte is not zero:", b)
@@ -1451,7 +1461,7 @@ func (server *Server) playerPartyInfo(conn mnet.Client, reader mpacket.Reader) {
 			return
 		}
 
-		server.world.Send(internal.PacketChannelPartyAccept(partyID, plr.ID, int32(server.id), plr.mapID, int32(plr.job), int32(plr.level), plr.name))
+		server.world.Send(internal.PacketChannelPartyAccept(partyID, plr.ID, int32(server.id), plr.mapID, int32(plr.job), int32(plr.level), plr.Name))
 	case 4: // invite
 		id := reader.ReadInt32()
 
@@ -1483,7 +1493,7 @@ func (server *Server) playerPartyInfo(conn mnet.Client, reader mpacket.Reader) {
 			return
 		}
 
-		recipient.Send(packetPartyInviteNotice(plr.party.ID, plr.name))
+		recipient.Send(packetPartyInviteNotice(plr.party.ID, plr.Name))
 	case 5: // expel
 		playerID := reader.ReadInt32()
 
@@ -1516,13 +1526,13 @@ func (server Server) chatGroup(conn mnet.Client, reader mpacket.Reader) {
 	switch op {
 	case 0: // buddy
 		buffer := reader.GetRestAsBytes()
-		server.world.Send(internal.PacketChannelPlayerChat(internal.OpChatBuddy, plr.name, buffer))
+		server.world.Send(internal.PacketChannelPlayerChat(internal.OpChatBuddy, plr.Name, buffer))
 	case 1: // party
 		buffer := reader.GetRestAsBytes()
-		server.world.Send(internal.PacketChannelPlayerChat(internal.OpChatParty, plr.name, buffer))
+		server.world.Send(internal.PacketChannelPlayerChat(internal.OpChatParty, plr.Name, buffer))
 	case 2: // guild
 		buffer := reader.GetRestAsBytes()
-		server.world.Send(internal.PacketChannelPlayerChat(internal.OpChatGuild, plr.name, buffer))
+		server.world.Send(internal.PacketChannelPlayerChat(internal.OpChatGuild, plr.Name, buffer))
 	default:
 		log.Println("Unknown group chat type:", op, reader)
 	}
@@ -1545,7 +1555,7 @@ func (server Server) chatSlashCommand(conn mnet.Client, reader mpacket.Reader) {
 		var mapID int32 = -1
 		var inCashShop bool
 
-		err = common.DB.QueryRow("SELECT accountID,channelID,mapID,inCashShop FROM characters WHERE BINARY name=? AND worldID=?", name, conn.GetWorldID()).Scan(&accountID, &channelID, &mapID, &inCashShop)
+		err = common.DB.QueryRow("SELECT accountID,channelID,mapID,inCashShop FROM characters WHERE BINARY Name=? AND worldID=?", name, conn.GetWorldID()).Scan(&accountID, &channelID, &mapID, &inCashShop)
 
 		if err != nil || channelID == -1 {
 			plr.Send(packetMessageFindResult(name, false, false, false, -1))
@@ -1572,10 +1582,10 @@ func (server Server) chatSlashCommand(conn mnet.Client, reader mpacket.Reader) {
 
 		if receiver, err := server.players.getFromName(recepientName); err != nil {
 			var online bool
-			err := common.DB.QueryRow("SELECT COUNT(*) FROM characters WHERE BINARY name=? AND worldID=? AND channelID != -1", recepientName, conn.GetWorldID()).Scan(&online)
+			err := common.DB.QueryRow("SELECT COUNT(*) FROM characters WHERE BINARY Name=? AND worldID=? AND channelID != -1", recepientName, conn.GetWorldID()).Scan(&online)
 
 			if err != nil || !online {
-				conn.Send(packetMessageRedText("Incorrect character name"))
+				conn.Send(packetMessageRedText("Incorrect character Name"))
 				return
 			}
 
@@ -1585,8 +1595,8 @@ func (server Server) chatSlashCommand(conn mnet.Client, reader mpacket.Reader) {
 				return
 			}
 
-			plr.Send(packetMessageWhisper(plr.name, msg, server.id))
-			server.world.Send(internal.PacketChannelWhispherChat(recepientName, plr.name, msg, server.id))
+			plr.Send(packetMessageWhisper(plr.Name, msg, server.id))
+			server.world.Send(internal.PacketChannelWhispherChat(recepientName, plr.Name, msg, server.id))
 		} else {
 			plr, err := server.players.getFromConn(conn)
 
@@ -1594,8 +1604,8 @@ func (server Server) chatSlashCommand(conn mnet.Client, reader mpacket.Reader) {
 				return
 			}
 
-			plr.Send(packetMessageWhisper(plr.name, msg, server.id))
-			receiver.Send(packetMessageWhisper(plr.name, msg, server.id))
+			plr.Send(packetMessageWhisper(plr.Name, msg, server.id))
+			receiver.Send(packetMessageWhisper(plr.Name, msg, server.id))
 		}
 	default:
 		log.Println("Unkown slash command type:", op, reader)
@@ -2478,7 +2488,7 @@ func (server Server) roomWindow(conn mnet.Client, reader mpacket.Reader) {
 		}
 
 		if trade, valid := r.(*tradeRoom); valid {
-			trade.reject(code, plr.name)
+			trade.reject(code, plr.Name)
 		}
 	case roomAccept:
 		id := reader.ReadInt32()
@@ -2761,7 +2771,7 @@ func (server *Server) guildManagement(conn mnet.Client, reader mpacket.Reader) {
 		}
 
 		guildCount := 0
-		err := common.DB.QueryRow("SELECT count(*) FROM guilds where name=? AND worldID=?", guildName, conn.GetWorldID()).Scan(&guildCount)
+		err := common.DB.QueryRow("SELECT count(*) FROM guilds where Name=? AND worldID=?", guildName, conn.GetWorldID()).Scan(&guildCount)
 
 		if err != nil {
 			log.Fatal(err)
@@ -2797,7 +2807,7 @@ func (server *Server) guildManagement(conn mnet.Client, reader mpacket.Reader) {
 		var worldID byte
 		var channelID int8
 
-		query := "SELECT ID, guildID, worldID, channelID FROM characters WHERE name=?"
+		query := "SELECT ID, guildID, worldID, channelID FROM characters WHERE Name=?"
 		row, err := common.DB.Query(query, invitee)
 
 		if err != nil {
@@ -2844,13 +2854,13 @@ func (server *Server) guildManagement(conn mnet.Client, reader mpacket.Reader) {
 		}
 
 		query = "INSERT INTO guild_invites (playerID, guildID, inviter) VALUES (?, ?, ?)"
-		_, err = common.DB.Exec(query, playerID, plr.guild.id, plr.name)
+		_, err = common.DB.Exec(query, playerID, plr.guild.id, plr.Name)
 
 		if err != nil {
 			log.Fatal(err)
 		}
 
-		server.world.Send(internal.PacketGuildInvite(plr.guild.id, plr.name, invitee))
+		server.world.Send(internal.PacketGuildInvite(plr.guild.id, plr.Name, invitee))
 	case constant.GuildAcceptInvite:
 		guildID := reader.ReadInt32()
 		playerID := reader.ReadInt32()
@@ -2871,7 +2881,7 @@ func (server *Server) guildManagement(conn mnet.Client, reader mpacket.Reader) {
 			log.Fatal(err)
 		}
 
-		server.world.Send(internal.PacketGuildInviteAccept(playerID, guildID, plr.name, int32(plr.job), int32(plr.level), true, 5))
+		server.world.Send(internal.PacketGuildInviteAccept(playerID, guildID, plr.Name, int32(plr.job), int32(plr.level), true, 5))
 	case constant.GuildLeave:
 		playerID := reader.ReadInt32()
 		name := reader.ReadString(reader.ReadInt16())
@@ -3022,14 +3032,14 @@ func (server *Server) guildInviteResult(conn mnet.Server, reader mpacket.Reader)
 
 		var guildID, playerID int32
 
-		query := "SELECT guildID FROM characters WHERE name=?"
+		query := "SELECT guildID FROM characters WHERE Name=?"
 		err := common.DB.QueryRow(query, inviterName).Scan(&guildID)
 
 		if err != nil {
 			log.Fatal(err)
 		}
 
-		query = "SELECT ID FROM characters WHERE name=?"
+		query = "SELECT ID FROM characters WHERE Name=?"
 		err = common.DB.QueryRow(query, inviteeName).Scan(&playerID)
 
 		if err != nil {
@@ -3973,6 +3983,6 @@ func (server *Server) playerFame(conn mnet.Client, reader mpacket.Reader) {
 		log.Println("fameInsertLog:", err)
 	}
 
-	target.Send(packetFameNotifyVictim(source.name, up))
-	source.Send(packetFameNotifySource(target.name, up, target.fame))
+	target.Send(packetFameNotifyVictim(source.Name, up))
+	source.Send(packetFameNotifySource(target.Name, up, target.fame))
 }

@@ -559,7 +559,7 @@ func (inst fieldInstance) String() string {
 	info += "players(" + strconv.Itoa(len(inst.players)) + "): "
 
 	for _, v := range inst.players {
-		info += " " + v.name + "(" + v.pos.String() + ")"
+		info += " " + v.Name + "(" + v.pos.String() + ")"
 	}
 
 	return info
@@ -720,7 +720,7 @@ func (inst fieldInstance) getPortalFromName(name string) (portal, error) {
 		}
 	}
 
-	return portal{}, fmt.Errorf("No portal with that name")
+	return portal{}, fmt.Errorf("No portal with that Name")
 }
 
 func (inst fieldInstance) getPortalFromID(id byte) (portal, error) {
@@ -730,7 +730,7 @@ func (inst fieldInstance) getPortalFromID(id byte) (portal, error) {
 		}
 	}
 
-	return portal{}, fmt.Errorf("No portal with that name")
+	return portal{}, fmt.Errorf("No portal with that Name")
 }
 
 func (inst *fieldInstance) startFieldTimer() {
@@ -787,7 +787,7 @@ func displayBoat(plr *Player, show bool, boatType byte) {
 func packetMapPlayerEnter(plr *Player) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelCharacterEnterField)
 	p.WriteInt32(plr.ID)
-	p.WriteString(plr.name)
+	p.WriteString(plr.Name)
 
 	if plr.guild != nil {
 		p.WriteString(plr.guild.name)

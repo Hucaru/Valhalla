@@ -69,7 +69,7 @@ type Server struct {
 // Initialise the server
 func (server *Server) Initialise(work chan func(), dbuser, dbpassword, dbaddress, dbport, dbdatabase string) {
 	server.dispatch = work
-
+	server.id = 50
 	if err := common.ConnectToDB(dbuser, dbpassword, dbaddress, dbport, dbdatabase); err != nil {
 		log.Fatal(err)
 	}
@@ -125,6 +125,8 @@ func (server *Server) ClientDisconnected(conn mnet.Client) {
 	if _, dbErr := common.DB.Exec("UPDATE accounts SET isLogedIn=0 WHERE accountID=?", conn.GetAccountID()); dbErr != nil {
 		log.Println("Unable to complete logout for ", conn.GetAccountID())
 	}
+
+	server.world.Send(internal.PacketChannelPlayerDisconnect(plr.ID, plr.Name, 0))
 }
 
 // CheckpointAll now uses the saver to flush debounced/coalesced deltas for every player.
