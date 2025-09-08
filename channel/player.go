@@ -274,29 +274,23 @@ func (d *Player) levelUp() {
 
 	// Use per-Player RNG and job-based helper for deterministic gains.
 	hpGain, mpGain := d.levelUpGains()
-
-	// Apply gains; clamp to avoid overflow/underflow
+	
 	newMaxHP := d.maxHP + hpGain
 	newMaxMP := d.maxMP + mpGain
-
-	// Basic sanity caps; adjust to your server balance
 	if newMaxHP < 1 {
 		newMaxHP = 1
 	}
 	if newMaxMP < 0 {
 		newMaxMP = 0
 	}
-	// Update current HP/MP minimally: keep at least previous current + gains
-	d.maxHP = newMaxHP
-	d.maxMP = newMaxMP
-	d.hp = int16(math.Min(float64(d.maxHP), float64(d.hp+hpGain)))
-	d.mp = int16(math.Min(float64(d.maxMP), float64(d.mp+mpGain)))
 
-	d.setHP(d.hp)
-	d.setMaxHP(d.hp)
+	d.setMaxHP(newMaxHP)
+	d.setMaxMP(newMaxMP)
 
-	d.setMP(d.mp)
-	d.setMaxMP(d.mp)
+	newHP := int16(math.Min(float64(newMaxHP), float64(d.hp+hpGain)))
+	newMP := int16(math.Min(float64(newMaxMP), float64(d.mp+mpGain)))
+	d.setHP(newHP)
+	d.setMP(newMP)
 
 	d.giveLevel(1)
 }
