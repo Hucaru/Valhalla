@@ -18,4 +18,8 @@ const (
 	ChannelPlayerPartyEvent byte = 0x0d
 	ChannelPlayerGuildEvent byte = 0x0e
 	ChangeRate              byte = 0x0f
+	CashShopNew             byte = 0x10
+	CashShopOk              byte = 0x11
+	CashShopBad             byte = 0x12
+	CashShopInfo            byte = 0x13
 )

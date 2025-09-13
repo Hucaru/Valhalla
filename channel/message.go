@@ -172,7 +172,7 @@ func packetMessageWhisper(sender string, message string, channel byte) mpacket.P
 	return p
 }
 
-// PacketMessageFindResult - send the result of using the /find comand
+// PacketMessageFindResult - Send the result of using the /find comand
 func packetMessageFindResult(character string, is, inCashShop, sameChannel bool, mapID int32) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelWhisper)
 

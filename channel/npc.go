@@ -9,7 +9,7 @@ import (
 )
 
 type npc struct {
-	controller *player
+	controller *Player
 	id         int32
 	spawnID    int32
 	pos        pos
@@ -26,25 +26,25 @@ func createNpcFromData(spawnID int32, life nx.Life) npc {
 		rx1:      life.Rx1}
 }
 
-func (d *npc) setController(controller *player) {
+func (d *npc) setController(controller *Player) {
 	d.controller = controller
-	controller.send(packetNpcSetController(d.spawnID, true))
+	controller.Send(packetNpcSetController(d.spawnID, true))
 }
 
 func (d *npc) removeController() {
 	if d.controller != nil {
-		d.controller.send(packetNpcSetController(d.spawnID, false))
+		d.controller.Send(packetNpcSetController(d.spawnID, false))
 		d.controller = nil
 	}
 }
 
-func (d npc) acknowledgeController(plr *player, inst *fieldInstance, data []byte) {
-	if d.controller.conn != plr.conn {
-		plr.send(packetNpcSetController(d.spawnID, false))
+func (d npc) acknowledgeController(plr *Player, inst *fieldInstance, data []byte) {
+	if d.controller.Conn != plr.Conn {
+		plr.Send(packetNpcSetController(d.spawnID, false))
 		return
 	}
 
-	plr.send(packetNpcSetController(d.spawnID, true))
+	plr.Send(packetNpcSetController(d.spawnID, true))
 	inst.send(packetNpcMovement(data))
 }
 
@@ -229,11 +229,11 @@ func packetTradeError() mpacket.Packet {
 	return packetNpcShopResult(0xFF)
 }
 
-func packetNpcStorageShow(npcID, storageMesos int32, storageSlots byte, items []item) mpacket.Packet {
+func packetNpcStorageShow(npcID, storageMesos int32, storageSlots byte, items []Item) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelNpcStorage)
 	p.WriteInt32(npcID)
 	p.WriteByte(storageSlots)
-	// flag for if to show mesos, and item tabs 1 - 5
+	// flag for if to show mesos, and Item tabs 1 - 5
 	// mesos = 0x02
 	// equip = 0x04
 	// use = 0x08

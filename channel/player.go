@@ -6,10 +6,12 @@ import (
 	"log"
 	"math"
 	"math/rand"
+	"sort"
 	"strings"
 	"time"
 
 	"github.com/Hucaru/Valhalla/common"
+	"github.com/Hucaru/Valhalla/constant/skill"
 	"github.com/Hucaru/Valhalla/nx"
 
 	"github.com/Hucaru/Valhalla/common/opcode"
@@ -94,13 +96,15 @@ func getSkillsFromCharID(id int32) []playerSkill {
 
 type updatePartyInfoFunc func(partyID, playerID, job, level, mapID int32, name string)
 
-type player struct {
-	conn mnet.Client
+type Player struct {
+	Conn mnet.Client
 	inst *fieldInstance
 
-	id        int32 // Unique identifier of the character
-	accountID int32
-	worldID   byte
+	ID          int32 // Unique identifier of the character
+	accountID   int32
+	accountName string
+	worldID     byte
+	ChannelID   byte
 
 	mapID       int32
 	mapPos      byte
@@ -123,7 +127,7 @@ type player struct {
 	exp   int32
 	fame  int16
 
-	name    string
+	Name    string
 	gender  byte
 	skin    byte
 	face    int32
@@ -138,13 +142,15 @@ type player struct {
 	etcSlotSize   byte
 	cashSlotSize  byte
 
-	equip []item
-	use   []item
-	setUp []item
-	etc   []item
-	cash  []item
+	equip []Item
+	use   []Item
+	setUp []Item
+	etc   []Item
+	cash  []Item
 
-	mesos int32
+	mesos       int32
+	nx          int32
+	maplepoints int32
 
 	skills map[int32]playerSkill
 
@@ -168,7 +174,7 @@ type player struct {
 
 	summons *summonState
 
-	// Per-player RNG for deterministic randomness
+	// Per-Player RNG for deterministic randomness
 	rng *rand.Rand
 
 	// write-behind persistence
@@ -176,27 +182,27 @@ type player struct {
 }
 
 // Helper: mark dirty and schedule debounced save.
-func (d *player) markDirty(bits DirtyBits, debounce time.Duration) {
+func (d *Player) MarkDirty(bits DirtyBits, debounce time.Duration) {
 	d.dirty |= bits
 	scheduleSave(d, debounce)
 }
 
 // Helper: clear dirty bits after successful flush (kept for future; saver currently doesn't feed back)
-func (d *player) clearDirty(bits DirtyBits) {
+func (d *Player) clearDirty(bits DirtyBits) {
 	d.dirty &^= bits
 }
 
-func (d *player) FlushNow() {
-	flushNow(d)
+func (d *Player) FlushNow() {
+	FlushNow(d)
 }
 
-// SeedRNGDeterministic seeds the per-player RNG using stable identifiers so
+// SeedRNGDeterministic seeds the per-Player RNG using stable identifiers so
 // gain sequences are reproducible across restarts and processes.
-func (d *player) SeedRNGDeterministic() {
+func (d *Player) SeedRNGDeterministic() {
 	// Compose as uint64 to avoid int64 constant overflow, then cast at runtime.
 	const gamma uint64 = 0x9e3779b97f4a7c15
 	seed64 := gamma ^
-		(uint64(uint32(d.id)) << 1) ^
+		(uint64(uint32(d.ID)) << 1) ^
 		(uint64(uint32(d.accountID)) << 33) ^
 		(uint64(d.worldID) << 52)
 
@@ -206,22 +212,22 @@ func (d *player) SeedRNGDeterministic() {
 
 // ensureRNG guarantees d.rng is initialized. If a deterministic seed has not
 // been set yet, it will use a time-based seed (non-deterministic).
-func (d *player) ensureRNG() {
+func (d *Player) ensureRNG() {
 	if d.rng == nil {
 		// Default to deterministic seeding for stability unless you want variability:
 		d.SeedRNGDeterministic()
 	}
 }
 
-func (d *player) randIntn(n int) int {
+func (d *Player) randIntn(n int) int {
 	d.ensureRNG()
 	return d.rng.Intn(n)
 }
 
-// levelUpGains returns (hpGain, mpGain) using per-player RNG and job family.
+// levelUpGains returns (hpGain, mpGain) using per-Player RNG and job family.
 // The random component uses a small range similar to legacy behavior.
 // Tweak the constants to match your balance targets if needed.
-func (d *player) levelUpGains() (int16, int16) {
+func (d *Player) levelUpGains() (int16, int16) {
 	r := int16(d.randIntn(3) + 1) // legacy-style variance 1..3
 
 	mainClass := d.job / 100
@@ -245,61 +251,55 @@ func (d *player) levelUpGains() (int16, int16) {
 }
 
 // Send the Data a packet
-func (d *player) send(packet mpacket.Packet) {
-	if d == nil || d.conn == nil {
+func (d *Player) Send(packet mpacket.Packet) {
+	if d == nil || d.Conn == nil {
 		return
 	}
-	d.conn.Send(packet)
+	d.Conn.Send(packet)
 }
 
-func (d *player) setJob(id int16) {
+func (d *Player) setJob(id int16) {
 	d.job = id
-	d.conn.Send(packetPlayerStatChange(true, constant.JobID, int32(id)))
-	d.markDirty(DirtyJob, 300*time.Millisecond)
+	d.Conn.Send(packetPlayerStatChange(true, constant.JobID, int32(id)))
+	d.MarkDirty(DirtyJob, 300*time.Millisecond)
 
 	if d.party != nil {
-		d.UpdatePartyInfo(d.party.ID, d.id, int32(d.job), int32(d.level), d.mapID, d.name)
+		d.UpdatePartyInfo(d.party.ID, d.ID, int32(d.job), int32(d.level), d.mapID, d.Name)
 	}
 }
 
-func (d *player) levelUp() {
+func (d *Player) levelUp() {
 	d.giveAP(5)
 	d.giveSP(3)
 
-	// Use per-player RNG and job-based helper for deterministic gains.
+	// Use per-Player RNG and job-based helper for deterministic gains.
 	hpGain, mpGain := d.levelUpGains()
 
-	// Apply gains; clamp to avoid overflow/underflow
 	newMaxHP := d.maxHP + hpGain
 	newMaxMP := d.maxMP + mpGain
-
-	// Basic sanity caps; adjust to your server balance
 	if newMaxHP < 1 {
 		newMaxHP = 1
 	}
 	if newMaxMP < 0 {
 		newMaxMP = 0
 	}
-	// Update current HP/MP minimally: keep at least previous current + gains
-	d.maxHP = newMaxHP
-	d.maxMP = newMaxMP
-	d.hp = int16(math.Min(float64(d.maxHP), float64(d.hp+hpGain)))
-	d.mp = int16(math.Min(float64(d.maxMP), float64(d.mp+mpGain)))
 
-	d.setHP(d.hp)
-	d.setMaxHP(d.hp)
+	d.setMaxHP(newMaxHP)
+	d.setMaxMP(newMaxMP)
 
-	d.setMP(d.mp)
-	d.setMaxMP(d.mp)
+	newHP := int16(math.Min(float64(newMaxHP), float64(d.hp+hpGain)))
+	newMP := int16(math.Min(float64(newMaxMP), float64(d.mp+mpGain)))
+	d.setHP(newHP)
+	d.setMP(newMP)
 
 	d.giveLevel(1)
 }
 
-func (d *player) setEXP(amount int32) {
+func (d *Player) setEXP(amount int32) {
 	if d.level > 199 {
 		d.exp = amount
-		d.send(packetPlayerStatChange(false, constant.ExpID, int32(amount)))
-		d.markDirty(DirtyEXP, 800*time.Millisecond)
+		d.Send(packetPlayerStatChange(false, constant.ExpID, int32(amount)))
+		d.MarkDirty(DirtyEXP, 800*time.Millisecond)
 		return
 	}
 	remainder := amount - constant.ExpTable[d.level-1]
@@ -308,109 +308,113 @@ func (d *player) setEXP(amount int32) {
 		d.setEXP(remainder)
 	} else {
 		d.exp = amount
-		d.send(packetPlayerStatChange(false, constant.ExpID, int32(amount)))
-		d.markDirty(DirtyEXP, 800*time.Millisecond)
+		d.Send(packetPlayerStatChange(false, constant.ExpID, int32(amount)))
+		d.MarkDirty(DirtyEXP, 800*time.Millisecond)
 	}
 }
 
-func (d *player) giveEXP(amount int32, fromMob, fromParty bool) {
+func (d *Player) giveEXP(amount int32, fromMob, fromParty bool) {
 	amount = int32(d.rates.exp * float32(amount))
 	if fromMob {
-		d.send(packetMessageExpGained(true, false, amount))
+		d.Send(packetMessageExpGained(true, false, amount))
 	} else if fromParty {
-		d.send(packetMessageExpGained(false, false, amount))
+		d.Send(packetMessageExpGained(false, false, amount))
 	} else {
-		d.send(packetMessageExpGained(false, true, amount))
+		d.Send(packetMessageExpGained(false, true, amount))
 	}
 
 	d.setEXP(d.exp + amount)
 }
 
-func (d *player) setLevel(amount byte) {
+func (d *Player) GetAccountName() string {
+	return d.accountName
+}
+
+func (d *Player) setLevel(amount byte) {
 	d.level = amount
-	d.send(packetPlayerStatChange(false, constant.LevelID, int32(amount)))
-	d.inst.send(packetPlayerLevelUpAnimation(d.id))
-	d.markDirty(DirtyLevel, 300*time.Millisecond)
+	d.Send(packetPlayerStatChange(false, constant.LevelID, int32(amount)))
+	d.inst.send(packetPlayerLevelUpAnimation(d.ID))
+	d.MarkDirty(DirtyLevel, 300*time.Millisecond)
 
 	if d.party != nil {
-		d.UpdatePartyInfo(d.party.ID, d.id, int32(d.job), int32(d.level), d.mapID, d.name)
+		d.UpdatePartyInfo(d.party.ID, d.ID, int32(d.job), int32(d.level), d.mapID, d.Name)
 	}
 }
 
-func (d *player) giveLevel(amount byte) {
+func (d *Player) giveLevel(amount byte) {
 	d.setLevel(d.level + amount)
 }
 
-func (d *player) setAP(amount int16) {
+func (d *Player) setAP(amount int16) {
 	d.ap = amount
-	d.send(packetPlayerStatChange(false, constant.ApID, int32(amount)))
-	d.markDirty(DirtyAP, 300*time.Millisecond)
+	d.Send(packetPlayerStatChange(false, constant.ApID, int32(amount)))
+	d.MarkDirty(DirtyAP, 300*time.Millisecond)
 }
 
-func (d *player) giveAP(amount int16) {
+func (d *Player) giveAP(amount int16) {
 	d.setAP(d.ap + amount)
 }
 
-func (d *player) setSP(amount int16) {
+func (d *Player) setSP(amount int16) {
 	d.sp = amount
-	d.send(packetPlayerStatChange(false, constant.SpID, int32(amount)))
-	d.markDirty(DirtySP, 300*time.Millisecond)
+	d.Send(packetPlayerStatChange(false, constant.SpID, int32(amount)))
+	d.MarkDirty(DirtySP, 300*time.Millisecond)
 }
 
-func (d *player) giveSP(amount int16) {
+func (d *Player) giveSP(amount int16) {
 	d.setSP(d.sp + amount)
 }
 
-func (d *player) setStr(amount int16) {
+func (d *Player) setStr(amount int16) {
 	d.str = amount
-	d.send(packetPlayerStatChange(true, constant.StrID, int32(amount)))
-	d.markDirty(DirtyStr, 500*time.Millisecond)
+	d.Send(packetPlayerStatChange(true, constant.StrID, int32(amount)))
+	d.MarkDirty(DirtyStr, 500*time.Millisecond)
 }
 
-func (d *player) giveStr(amount int16) {
+func (d *Player) giveStr(amount int16) {
 	d.setStr(d.str + amount)
 }
 
-func (d *player) setDex(amount int16) {
+func (d *Player) setDex(amount int16) {
 	d.dex = amount
-	d.send(packetPlayerStatChange(true, constant.DexID, int32(amount)))
-	d.markDirty(DirtyDex, 500*time.Millisecond)
+	d.Send(packetPlayerStatChange(true, constant.DexID, int32(amount)))
+	d.MarkDirty(DirtyDex, 500*time.Millisecond)
 }
 
-func (d *player) giveDex(amount int16) {
+func (d *Player) giveDex(amount int16) {
 	d.setDex(d.dex + amount)
 }
 
-func (d *player) setInt(amount int16) {
+func (d *Player) setInt(amount int16) {
 	d.intt = amount
-	d.send(packetPlayerStatChange(true, constant.IntID, int32(amount)))
-	d.markDirty(DirtyInt, 500*time.Millisecond)
+	d.Send(packetPlayerStatChange(true, constant.IntID, int32(amount)))
+	d.MarkDirty(DirtyInt, 500*time.Millisecond)
 }
 
-func (d *player) giveInt(amount int16) {
+func (d *Player) giveInt(amount int16) {
 	d.setInt(d.intt + amount)
 }
 
-func (d *player) setLuk(amount int16) {
+func (d *Player) setLuk(amount int16) {
 	d.luk = amount
-	d.send(packetPlayerStatChange(true, constant.LukID, int32(amount)))
-	d.markDirty(DirtyLuk, 500*time.Millisecond)
+	d.Send(packetPlayerStatChange(true, constant.LukID, int32(amount)))
+	d.MarkDirty(DirtyLuk, 500*time.Millisecond)
 }
 
-func (d *player) giveLuk(amount int16) {
+func (d *Player) giveLuk(amount int16) {
 	d.setLuk(d.luk + amount)
 }
 
-func (d *player) setHP(amount int16) {
+func (d *Player) setHP(amount int16) {
 	if amount > constant.MaxHpValue {
 		amount = constant.MaxHpValue
 	}
 	d.hp = amount
-	d.send(packetPlayerStatChange(true, constant.HpID, int32(amount)))
-	d.markDirty(DirtyHP, 500*time.Millisecond)
+	d.Send(packetPlayerStatChange(true, constant.HpID, int32(amount)))
+	d.MarkDirty(DirtyHP, 500*time.Millisecond)
 }
 
-func (d *player) giveHP(amount int16) {
+func (d *Player) giveHP(amount int16) {
 	newHP := d.hp + amount
 	if newHP < 0 {
 		d.setHP(0)
@@ -423,7 +427,7 @@ func (d *player) giveHP(amount int16) {
 	d.setHP(newHP)
 }
 
-func (d *player) giveMP(amount int16) {
+func (d *Player) giveMP(amount int16) {
 	newMP := d.mp + amount
 	if newMP < 0 {
 		d.setMP(0)
@@ -436,66 +440,66 @@ func (d *player) giveMP(amount int16) {
 	d.setMP(newMP)
 }
 
-func (d *player) setMaxHP(amount int16) {
+func (d *Player) setMaxHP(amount int16) {
 	if amount > constant.MaxHpValue {
 		amount = constant.MaxHpValue
 	}
 	d.maxHP = amount
-	d.send(packetPlayerStatChange(true, constant.MaxHpID, int32(amount)))
-	d.markDirty(DirtyMaxHP, 500*time.Millisecond)
+	d.Send(packetPlayerStatChange(true, constant.MaxHpID, int32(amount)))
+	d.MarkDirty(DirtyMaxHP, 500*time.Millisecond)
 }
 
-func (d *player) setMP(amount int16) {
+func (d *Player) setMP(amount int16) {
 	if amount > constant.MaxMpValue {
 		amount = constant.MaxMpValue
 	}
 	d.mp = amount
-	d.send(packetPlayerStatChange(true, constant.MpID, int32(amount)))
-	d.markDirty(DirtyMP, 500*time.Millisecond)
+	d.Send(packetPlayerStatChange(true, constant.MpID, int32(amount)))
+	d.MarkDirty(DirtyMP, 500*time.Millisecond)
 }
 
-func (d *player) setMaxMP(amount int16) {
+func (d *Player) setMaxMP(amount int16) {
 	if amount > constant.MaxMpValue {
 		amount = constant.MaxMpValue
 	}
 	d.maxMP = amount
-	d.send(packetPlayerStatChange(true, constant.MaxMpID, int32(amount)))
-	d.markDirty(DirtyMaxMP, 500*time.Millisecond)
+	d.Send(packetPlayerStatChange(true, constant.MaxMpID, int32(amount)))
+	d.MarkDirty(DirtyMaxMP, 500*time.Millisecond)
 }
 
-func (d *player) setFame(amount int16) {
+func (d *Player) setFame(amount int16) {
 	d.fame = amount
-	d.send(packetPlayerStatChange(true, constant.FameID, int32(amount)))
+	d.Send(packetPlayerStatChange(true, constant.FameID, int32(amount)))
 
-	_, err := common.DB.Exec("UPDATE characters SET fame=? WHERE id=?", d.fame, d.id)
+	_, err := common.DB.Exec("UPDATE characters SET fame=? WHERE ID=?", d.fame, d.ID)
 	if err != nil {
-		log.Printf("setFame: failed to save fame for character %d: %v", d.id, err)
+		log.Printf("setFame: failed to save fame for character %d: %v", d.ID, err)
 	}
 }
 
-func (d *player) setMesos(amount int32) {
+func (d *Player) setMesos(amount int32) {
 	d.mesos = amount
-	d.send(packetPlayerStatChange(true, constant.MesosID, amount))
+	d.Send(packetPlayerStatChange(true, constant.MesosID, amount))
 	// write-behind instead of immediate DB write
-	d.markDirty(DirtyMesos, 200*time.Millisecond)
+	d.MarkDirty(DirtyMesos, 200*time.Millisecond)
 }
 
-func (d *player) giveMesos(amount int32) {
+func (d *Player) giveMesos(amount int32) {
 	d.setMesos(d.mesos + int32(d.rates.mesos*float32(amount)))
 }
 
-func (d *player) takeMesos(amount int32) {
+func (d *Player) takeMesos(amount int32) {
 	d.setMesos(d.mesos - amount)
 }
 
-func (d *player) saveMesos() error {
-	query := "UPDATE characters SET mesos=? WHERE accountID=? and name=?"
-	_, err := common.DB.Exec(query, d.mesos, d.accountID, d.name)
+func (d *Player) saveMesos() error {
+	query := "UPDATE characters SET mesos=? WHERE accountID=? and Name=?"
+	_, err := common.DB.Exec(query, d.mesos, d.accountID, d.Name)
 	return err
 }
 
 // UpdateMovement - update Data from position data
-func (d *player) UpdateMovement(frag movementFrag) {
+func (d *Player) UpdateMovement(frag movementFrag) {
 	d.pos.x = frag.x
 	d.pos.y = frag.y
 	d.pos.foothold = frag.foothold
@@ -503,12 +507,12 @@ func (d *player) UpdateMovement(frag movementFrag) {
 }
 
 // SetPos of Data
-func (d *player) SetPos(pos pos) {
+func (d *Player) SetPos(pos pos) {
 	d.pos = pos
 }
 
 // checks Data is within a certain range of a position
-func (d player) checkPos(pos pos, xRange, yRange int16) bool {
+func (d Player) checkPos(pos pos, xRange, yRange int16) bool {
 	var xValid, yValid bool
 
 	if xRange == 0 {
@@ -526,29 +530,29 @@ func (d player) checkPos(pos pos, xRange, yRange int16) bool {
 	return xValid && yValid
 }
 
-func (d *player) setMapID(id int32) {
+func (d *Player) setMapID(id int32) {
 	oldMapID := d.mapID
 	d.mapID = id
 
 	if d.party != nil {
-		d.UpdatePartyInfo(d.party.ID, d.id, int32(d.job), int32(d.level), d.mapID, d.name)
+		d.UpdatePartyInfo(d.party.ID, d.ID, int32(d.job), int32(d.level), d.mapID, d.Name)
 	}
 
 	// write-behind for mapID/pos (mapPos updated on save())
-	d.markDirty(DirtyMap, 500*time.Millisecond)
+	d.MarkDirty(DirtyMap, 500*time.Millisecond)
 	if err := d.saveMapID(id, oldMapID); err != nil {
 		log.Println(err)
 	}
 }
 
-func (d *player) saveMapID(newMapId, oldMapId int32) error {
-	query := "UPDATE characters SET mapID=?,previousMapID=? WHERE accountID=? and name=?"
+func (d *Player) saveMapID(newMapId, oldMapId int32) error {
+	query := "UPDATE characters SET mapID=?,previousMapID=? WHERE accountID=? and Name=?"
 
 	_, err := common.DB.Exec(query,
 		newMapId,
 		oldMapId,
 		d.accountID,
-		d.name)
+		d.Name)
 
 	if err != nil {
 		return err
@@ -557,12 +561,30 @@ func (d *player) saveMapID(newMapId, oldMapId int32) error {
 	return nil
 }
 
-func (d player) noChange() {
-	d.send(packetInventoryNoChange())
+func (d Player) noChange() {
+	d.Send(packetInventoryNoChange())
 }
 
-func (d *player) giveItem(newItem item) error { // TODO: Refactor
-	findFirstEmptySlot := func(items []item, size byte) (int16, error) {
+func (d *Player) GetNX() int32 {
+	return d.nx
+}
+
+func (d *Player) SetNX(nx int32) {
+	d.nx = nx
+	d.MarkDirty(DirtyNX, 300*time.Millisecond)
+}
+
+func (d *Player) GetMaplePoints() int32 {
+	return d.maplepoints
+}
+
+func (d *Player) SetMaplePoints(points int32) {
+	d.maplepoints = points
+	d.MarkDirty(DirtyMaplePoints, 300*time.Millisecond)
+}
+
+func (d *Player) GiveItem(newItem Item) error { // TODO: Refactor
+	findFirstEmptySlot := func(items []Item, size byte) (int16, error) {
 		slotsUsed := make([]bool, size)
 
 		for _, v := range items {
@@ -585,7 +607,7 @@ func (d *player) giveItem(newItem item) error { // TODO: Refactor
 		}
 
 		if byte(slot) > size {
-			return 0, fmt.Errorf("No empty item slot left")
+			return 0, fmt.Errorf("No empty Item slot left")
 		}
 
 		return int16(slot), nil
@@ -601,9 +623,9 @@ func (d *player) giveItem(newItem item) error { // TODO: Refactor
 
 		newItem.slotID = slotID
 		newItem.amount = 1 // just in case
-		newItem.save(d.id)
+		newItem.save(d.ID)
 		d.equip = append(d.equip, newItem)
-		d.send(packetInventoryAddItem(newItem, true))
+		d.Send(packetInventoryAddItem(newItem, true))
 	case 2: // Use
 		size := newItem.amount
 		for size > 0 {
@@ -622,7 +644,7 @@ func (d *player) giveItem(newItem item) error { // TODO: Refactor
 			var slotID int16
 			var index int
 			for i, v := range d.use {
-				if v.id == newItem.id && v.amount < constant.MaxItemStack {
+				if v.ID == newItem.ID && v.amount < constant.MaxItemStack {
 					slotID = v.slotID
 					index = i
 					break
@@ -637,9 +659,9 @@ func (d *player) giveItem(newItem item) error { // TODO: Refactor
 				}
 
 				newItem.slotID = slotID
-				newItem.save(d.id)
+				newItem.save(d.ID)
 				d.use = append(d.use, newItem)
-				d.send(packetInventoryAddItem(newItem, true))
+				d.Send(packetInventoryAddItem(newItem, true))
 			} else {
 				remainder := newItem.amount - (constant.MaxItemStack - d.use[index].amount)
 
@@ -652,14 +674,14 @@ func (d *player) giveItem(newItem item) error { // TODO: Refactor
 
 					newItem.amount = value
 					newItem.slotID = slotID
-					newItem.save(d.id)
+					newItem.save(d.ID)
 
 					d.use = append(d.use, newItem)
-					d.send(packetInventoryAddItems([]item{d.use[index], newItem}, []bool{false, true}))
+					d.Send(packetInventoryAddItems([]Item{d.use[index], newItem}, []bool{false, true}))
 				} else { // full merge
 					d.use[index].amount = d.use[index].amount + newItem.amount
-					d.send(packetInventoryAddItem(d.use[index], false))
-					d.use[index].save(d.id)
+					d.Send(packetInventoryAddItem(d.use[index], false))
+					d.use[index].save(d.ID)
 				}
 			}
 
@@ -672,9 +694,9 @@ func (d *player) giveItem(newItem item) error { // TODO: Refactor
 		}
 
 		newItem.slotID = slotID
-		newItem.save(d.id)
+		newItem.save(d.ID)
 		d.setUp = append(d.setUp, newItem)
-		d.send(packetInventoryAddItem(newItem, true))
+		d.Send(packetInventoryAddItem(newItem, true))
 	case 4: // Etc
 		size := newItem.amount
 		for size > 0 {
@@ -693,7 +715,7 @@ func (d *player) giveItem(newItem item) error { // TODO: Refactor
 			var slotID int16
 			var index int
 			for i, v := range d.etc {
-				if v.id == newItem.id && v.amount < constant.MaxItemStack {
+				if v.ID == newItem.ID && v.amount < constant.MaxItemStack {
 					slotID = v.slotID
 					index = i
 					break
@@ -708,9 +730,9 @@ func (d *player) giveItem(newItem item) error { // TODO: Refactor
 				}
 
 				newItem.slotID = slotID
-				newItem.save(d.id)
+				newItem.save(d.ID)
 				d.etc = append(d.etc, newItem)
-				d.send(packetInventoryAddItem(newItem, true))
+				d.Send(packetInventoryAddItem(newItem, true))
 			} else {
 				remainder := newItem.amount - (constant.MaxItemStack - d.etc[index].amount)
 
@@ -723,14 +745,14 @@ func (d *player) giveItem(newItem item) error { // TODO: Refactor
 
 					newItem.amount = value
 					newItem.slotID = slotID
-					newItem.save(d.id)
+					newItem.save(d.ID)
 
 					d.etc = append(d.etc, newItem)
-					d.send(packetInventoryAddItems([]item{d.etc[index], newItem}, []bool{false, true}))
+					d.Send(packetInventoryAddItems([]Item{d.etc[index], newItem}, []bool{false, true}))
 				} else { // full merge
 					d.etc[index].amount = d.etc[index].amount + newItem.amount
-					d.send(packetInventoryAddItem(d.etc[index], false))
-					d.etc[index].save(d.id)
+					d.Send(packetInventoryAddItem(d.etc[index], false))
+					d.etc[index].save(d.ID)
 				}
 			}
 
@@ -744,33 +766,33 @@ func (d *player) giveItem(newItem item) error { // TODO: Refactor
 		}
 
 		newItem.slotID = slotID
-		newItem.save(d.id)
+		newItem.save(d.ID)
 		d.cash = append(d.cash, newItem)
-		d.send(packetInventoryAddItem(newItem, true))
+		d.Send(packetInventoryAddItem(newItem, true))
 	default:
-		return fmt.Errorf("Unkown inventory id: %d", newItem.invID)
+		return fmt.Errorf("Unkown inventory ID: %d", newItem.invID)
 	}
 
 	return nil
 }
 
-func (d *player) takeItem(id int32, slot int16, amount int16, invID byte) (item, error) {
+func (d *Player) takeItem(id int32, slot int16, amount int16, invID byte) (Item, error) {
 	item, err := d.getItem(invID, slot)
 	if err != nil {
 		return item, err
 	}
 
-	if item.id != id {
-		return item, fmt.Errorf("item.ID(%d) does not match ID(%d) provided", item.id, id)
+	if item.ID != id {
+		return item, fmt.Errorf("Item.ID(%d) does not match ID(%d) provided", item.ID, id)
 	}
 
 	maxRemove := math.Min(float64(item.amount), float64(amount))
 	item.amount = item.amount - int16(maxRemove)
 	if item.amount == 0 {
-		// Delete item
+		// Delete Item
 		d.removeItem(item)
 	} else {
-		// Update item with new stack size
+		// Update Item with new stack size
 		d.updateItemStack(item)
 
 	}
@@ -779,13 +801,13 @@ func (d *player) takeItem(id int32, slot int16, amount int16, invID byte) (item,
 
 }
 
-func (d player) updateItemStack(item item) {
-	item.save(d.id)
+func (d Player) updateItemStack(item Item) {
+	item.save(d.ID)
 	d.updateItem(item)
-	d.send(packetInventoryModifyItemAmount(item))
+	d.Send(packetInventoryModifyItemAmount(item))
 }
 
-func (d *player) updateItem(new item) {
+func (d *Player) updateItem(new Item) {
 	var items = d.findItemInventory(new)
 
 	for i, v := range items {
@@ -797,7 +819,7 @@ func (d *player) updateItem(new item) {
 	d.updateItemInventory(new.invID, items)
 }
 
-func (d *player) updateItemInventory(invID byte, inventory []item) {
+func (d *Player) updateItemInventory(invID byte, inventory []Item) {
 	switch invID {
 	case 1:
 		d.equip = inventory
@@ -812,7 +834,7 @@ func (d *player) updateItemInventory(invID byte, inventory []item) {
 	}
 }
 
-func (d *player) findItemInventory(item item) []item {
+func (d *Player) findItemInventory(item Item) []Item {
 	switch item.invID {
 	case 1:
 		return d.equip
@@ -829,8 +851,8 @@ func (d *player) findItemInventory(item item) []item {
 	return nil
 }
 
-func (d player) getItem(invID byte, slotID int16) (item, error) {
-	var items []item
+func (d Player) getItem(invID byte, slotID int16) (Item, error) {
+	var items []Item
 
 	switch invID {
 	case 1:
@@ -851,22 +873,22 @@ func (d player) getItem(invID byte, slotID int16) (item, error) {
 		}
 	}
 
-	return item{}, fmt.Errorf("Could not find item")
+	return Item{}, fmt.Errorf("Could not find Item")
 }
 
-func (d *player) swapItems(item1, item2 item, start, end int16) {
+func (d *Player) swapItems(item1, item2 Item, start, end int16) {
 	item1.slotID = end
-	item1.save(d.id)
+	item1.save(d.ID)
 	d.updateItem(item1)
 
 	item2.slotID = start
-	item2.save(d.id)
+	item2.save(d.ID)
 	d.updateItem(item2)
 
-	d.send(packetInventoryChangeItemSlot(item1.invID, start, end))
+	d.Send(packetInventoryChangeItemSlot(item1.invID, start, end))
 }
 
-func (d *player) removeItem(item item) {
+func (d *Player) removeItem(item Item) {
 	switch item.invID {
 	case 1:
 		for i, v := range d.equip {
@@ -915,22 +937,22 @@ func (d *player) removeItem(item item) {
 		log.Println(err)
 		return
 	}
-	d.send(packetInventoryRemoveItem(item))
+	d.Send(packetInventoryRemoveItem(item))
 }
 
-func (d *player) dropMesos(amount int32) error {
+func (d *Player) dropMesos(amount int32) error {
 	if d.mesos < amount {
 		return errors.New("not enough mesos")
 	}
 
 	d.takeMesos(amount)
-	d.inst.dropPool.createDrop(dropSpawnNormal, dropFreeForAll, amount, d.pos, true, d.id, d.id)
+	d.inst.dropPool.createDrop(dropSpawnNormal, dropFreeForAll, amount, d.pos, true, d.ID, d.ID)
 
 	return nil
 }
 
-func (d *player) moveItem(start, end, amount int16, invID byte) error {
-	if end == 0 { //drop item
+func (d *Player) moveItem(start, end, amount int16, invID byte) error {
+	if end == 0 { //drop Item
 		item, err := d.getItem(invID, start)
 
 		if err != nil {
@@ -941,12 +963,12 @@ func (d *player) moveItem(start, end, amount int16, invID byte) error {
 		dropItem.amount = amount
 		dropItem.dbID = 0
 
-		_, err = d.takeItem(item.id, item.slotID, amount, item.invID)
+		_, err = d.takeItem(item.ID, item.slotID, amount, item.invID)
 		if err != nil {
-			return fmt.Errorf("unable to take item")
+			return fmt.Errorf("unable to take Item")
 		}
 
-		d.inst.dropPool.createDrop(dropSpawnNormal, dropFreeForAll, 0, d.pos, true, d.id, 0, dropItem)
+		d.inst.dropPool.createDrop(dropSpawnNormal, dropFreeForAll, 0, d.pos, true, d.ID, 0, dropItem)
 	} else if end < 0 { // Move to equip slot
 		item1, err := d.getItem(invID, start)
 
@@ -956,12 +978,12 @@ func (d *player) moveItem(start, end, amount int16, invID byte) error {
 
 		if item1.twoHanded {
 			if _, err := d.getItem(invID, -10); err == nil {
-				d.send(packetInventoryNoChange()) // Should this do switching if space is available?
+				d.Send(packetInventoryNoChange()) // Should this do switching if space is available?
 				return nil
 			}
 		} else if item1.shield() {
 			if weapon, err := d.getItem(invID, -11); err == nil && weapon.twoHanded {
-				d.send(packetInventoryNoChange()) // should this move weapon into into item 1 slot?
+				d.Send(packetInventoryNoChange()) // should this move weapon into into Item 1 slot?
 				return nil
 			}
 		}
@@ -970,15 +992,15 @@ func (d *player) moveItem(start, end, amount int16, invID byte) error {
 
 		if err == nil {
 			item2.slotID = start
-			item2.save(d.id)
+			item2.save(d.ID)
 			d.updateItem(item2)
 		}
 
 		item1.slotID = end
-		item1.save(d.id)
+		item1.save(d.ID)
 		d.updateItem(item1)
 
-		d.send(packetInventoryChangeItemSlot(invID, start, end))
+		d.Send(packetInventoryChangeItemSlot(invID, start, end))
 		d.inst.send(packetInventoryChangeEquip(*d))
 	} else { // move within inventory
 		item1, err := d.getItem(invID, start)
@@ -991,20 +1013,20 @@ func (d *player) moveItem(start, end, amount int16, invID byte) error {
 
 		if err != nil { // empty slot
 			item1.slotID = end
-			item1.save(d.id)
+			item1.save(d.ID)
 			d.updateItem(item1)
 
-			d.send(packetInventoryChangeItemSlot(invID, start, end))
-		} else { // moved onto item
-			if (item1.isStackable() && item2.isStackable()) && (item1.id == item2.id) {
+			d.Send(packetInventoryChangeItemSlot(invID, start, end))
+		} else { // moved onto Item
+			if (item1.isStackable() && item2.isStackable()) && (item1.ID == item2.ID) {
 				if item1.amount == constant.MaxItemStack || item2.amount == constant.MaxItemStack { // swap items
 					d.swapItems(item1, item2, start, end)
 				} else if item2.amount < constant.MaxItemStack { // full merge
 					if item2.amount+item1.amount <= constant.MaxItemStack {
 						item2.amount = item2.amount + item1.amount
-						item2.save(d.id)
+						item2.save(d.ID)
 						d.updateItem(item2)
-						d.send(packetInventoryAddItem(item2, false))
+						d.Send(packetInventoryAddItem(item2, false))
 
 						d.removeItem(item1)
 					} else { // partial merge is just a swap
@@ -1024,37 +1046,110 @@ func (d *player) moveItem(start, end, amount int16, invID byte) error {
 	return nil
 }
 
-func (d *player) updateSkill(updatedSkill playerSkill) {
+func (d *Player) updateSkill(updatedSkill playerSkill) {
 	if d.skills == nil {
 		d.skills = make(map[int32]playerSkill)
 	}
 	d.skills[updatedSkill.ID] = updatedSkill
-	d.send(packetPlayerSkillBookUpdate(updatedSkill.ID, int32(updatedSkill.Level)))
-	d.markDirty(DirtySkills, 800*time.Millisecond)
+	d.Send(packetPlayerSkillBookUpdate(updatedSkill.ID, int32(updatedSkill.Level)))
+	d.MarkDirty(DirtySkills, 800*time.Millisecond)
 }
 
-func (d *player) useSkill(id int32, level byte) error {
+func (d *Player) useSkill(id int32, level byte, projectileID int32) error {
 	skillInfo, _ := nx.GetPlayerSkill(id)
 
-	for lvl, skill := range skillInfo {
-		if lvl == int(level) {
+	skillUsed, ok := d.skills[id]
+	if !ok {
+		return nil
+	}
 
-			d.giveMP(-int16(skill.MpCon))
+	if skillUsed.Level != level {
+		d.Conn.Send(packetMessageRedText("skill level mismatch"))
+		return errors.New("skill level mismatch")
+	}
 
-			// Use item
-			// d.consumeItem(skill.itemCon, skill.itemConNo)
+	idx := int(skillUsed.Level) - 1
+	if idx < 0 || idx >= len(skillInfo) {
+		d.Conn.Send(packetMessageRedText("invalid skill data"))
+		return errors.New("invalid skill data index")
+	}
+	si := skillInfo[idx]
 
+	// Resource costs
+	if si.MpCon > 0 {
+		d.giveMP(-int16(si.MpCon))
+	}
+	if si.HpCon > 0 {
+		d.giveHP(-int16(si.HpCon))
+	}
+	if si.MoneyConsume > 0 {
+		d.takeMesos(int32(si.MoneyConsume))
+	}
+
+	if si.ItemCon > 0 {
+		itemID := int32(si.ItemCon)
+		need := int32(si.ItemConNo)
+		if need <= 0 {
+			need = 1
 		}
+		if !d.consumeItemsByID(itemID, need) {
+			d.Conn.Send(packetMessageRedText("not enough items to use this skill"))
+			return errors.New("not enough required items")
+		}
+	}
 
-		// If haste, etc
+	if projectileID > 0 {
+		need := int32(si.BulletConsume)
+		if need <= 0 {
+			need = int32(si.BulletCount)
+		}
+		if need > 0 {
+			if !d.consumeItemsByID(projectileID, need) {
+				d.Conn.Send(packetMessageRedText("not enough projectiles to use this skill"))
+				return errors.New("not enough projectiles")
+			}
+		}
 	}
 
 	return nil
 }
 
-func (d player) admin() bool { return d.conn.GetAdminLevel() > 0 }
+func (d *Player) consumeItemsByID(itemID int32, reqCount int32) bool {
+	if reqCount <= 0 {
+		return true
+	}
+	remaining := reqCount
 
-func (d player) displayBytes() []byte {
+	drain := func(invID byte, items []Item) {
+		for i := range items {
+			if remaining == 0 {
+				return
+			}
+			it := items[i]
+			if it.ID != itemID || it.amount <= 0 {
+				continue
+			}
+			take := int16(it.amount)
+			if int32(take) > remaining {
+				take = int16(remaining)
+			}
+			if _, err := d.takeItem(itemID, it.slotID, take, invID); err == nil {
+				remaining -= int32(take)
+			}
+		}
+	}
+	// Order: USE, SETUP, ETC, CASH
+	drain(2, d.use)
+	drain(3, d.setUp)
+	drain(4, d.etc)
+	drain(5, d.cash)
+
+	return remaining == 0
+}
+
+func (d Player) admin() bool { return d.Conn.GetAdminLevel() > 0 }
+
+func (d Player) displayBytes() []byte {
 	pkt := mpacket.NewPacket()
 	pkt.WriteByte(d.gender)
 	pkt.WriteByte(d.skin)
@@ -1067,17 +1162,17 @@ func (d player) displayBytes() []byte {
 	for _, b := range d.equip {
 		if b.slotID < 0 && b.slotID > -20 {
 			pkt.WriteByte(byte(math.Abs(float64(b.slotID))))
-			pkt.WriteInt32(b.id)
+			pkt.WriteInt32(b.ID)
 		}
 	}
 
 	for _, b := range d.equip {
 		if b.slotID < -100 {
 			if b.slotID == -111 {
-				cashWeapon = b.id
+				cashWeapon = b.ID
 			} else {
 				pkt.WriteByte(byte(math.Abs(float64(b.slotID + 100))))
-				pkt.WriteInt32(b.id)
+				pkt.WriteInt32(b.ID)
 			}
 		}
 	}
@@ -1090,27 +1185,27 @@ func (d player) displayBytes() []byte {
 }
 
 // Logout flushes coalesced state and does a full checkpoint save.
-func (d player) Logout() {
+func (d Player) Logout() {
 	if d.inst != nil {
 		if pos, err := d.inst.calculateNearestSpawnPortalID(d.pos); err == nil {
 			d.mapPos = pos
 		}
 	}
 
-	flushNow(&d)
+	FlushNow(&d)
 
 	if err := d.save(); err != nil {
-		log.Printf("player(%d) logout save failed: %v", d.id, err)
+		log.Printf("Player(%d) logout save failed: %v", d.ID, err)
 	}
 
 }
 
 // Save data - this needs to be split to occur at relevant points in time
-func (d player) save() error {
+func (d Player) save() error {
 	query := `UPDATE characters set skin=?, hair=?, face=?, level=?,
 	job=?, str=?, dex=?, intt=?, luk=?, hp=?, maxHP=?, mp=?, maxMP=?,
 	ap=?, sp=?, exp=?, fame=?, mapID=?, mapPos=?, mesos=?, miniGameWins=?,
-	miniGameDraw=?, miniGameLoss=?, miniGamePoints=?, buddyListSize=? WHERE id=?`
+	miniGameDraw=?, miniGameLoss=?, miniGamePoints=?, buddyListSize=? WHERE ID=?`
 
 	var mapPos byte
 	var err error
@@ -1126,7 +1221,7 @@ func (d player) save() error {
 	_, err = common.DB.Exec(query,
 		d.skin, d.hair, d.face, d.level, d.job, d.str, d.dex, d.intt, d.luk, d.hp, d.maxHP, d.mp,
 		d.maxMP, d.ap, d.sp, d.exp, d.fame, d.mapID, d.mapPos, d.mesos, d.miniGameWins,
-		d.miniGameDraw, d.miniGameLoss, d.miniGamePoints, d.buddyListSize, d.id)
+		d.miniGameDraw, d.miniGameLoss, d.miniGamePoints, d.buddyListSize, d.ID)
 	if err != nil {
 		return err
 	}
@@ -1135,7 +1230,7 @@ func (d player) save() error {
 	         VALUES(?,?,?,?)
 	         ON DUPLICATE KEY UPDATE level=VALUES(level), cooldown=VALUES(cooldown)`
 	for skillID, skill := range d.skills {
-		if _, err := common.DB.Exec(query, d.id, skillID, skill.Level, skill.Cooldown); err != nil {
+		if _, err := common.DB.Exec(query, d.ID, skillID, skill.Level, skill.Cooldown); err != nil {
 			return err
 		}
 	}
@@ -1143,7 +1238,7 @@ func (d player) save() error {
 	return nil
 }
 
-func (d *player) damagePlayer(damage int16) {
+func (d *Player) damagePlayer(damage int16) {
 	if damage < -1 {
 		return
 	}
@@ -1155,10 +1250,10 @@ func (d *player) damagePlayer(damage int16) {
 		d.hp = newHP
 	}
 
-	d.send(packetPlayerStatChange(true, constant.HpID, int32(d.hp)))
+	d.Send(packetPlayerStatChange(true, constant.HpID, int32(d.hp)))
 }
 
-func (d *player) setInventorySlotSizes(equip, use, setup, etc, cash byte) {
+func (d *Player) setInventorySlotSizes(equip, use, setup, etc, cash byte) {
 	changed := (d.equipSlotSize != equip) || (d.useSlotSize != use) ||
 		(d.setupSlotSize != setup) || (d.etcSlotSize != etc) || (d.cashSlotSize != cash)
 	if !changed {
@@ -1169,43 +1264,43 @@ func (d *player) setInventorySlotSizes(equip, use, setup, etc, cash byte) {
 	d.setupSlotSize = setup
 	d.etcSlotSize = etc
 	d.cashSlotSize = cash
-	d.markDirty(DirtyInvSlotSizes, 2*time.Second)
+	d.MarkDirty(DirtyInvSlotSizes, 2*time.Second)
 }
 
-func (d *player) setBuddyListSize(size byte) {
+func (d *Player) setBuddyListSize(size byte) {
 	if d.buddyListSize == size {
 		return
 	}
 	d.buddyListSize = size
-	d.markDirty(DirtyBuddySize, 1*time.Second)
+	d.MarkDirty(DirtyBuddySize, 1*time.Second)
 }
 
-func (d *player) addMiniGameWin() {
+func (d *Player) addMiniGameWin() {
 	d.miniGameWins++
-	d.markDirty(DirtyMiniGame, 1*time.Second)
+	d.MarkDirty(DirtyMiniGame, 1*time.Second)
 }
 
-func (d *player) addMiniGameDraw() {
+func (d *Player) addMiniGameDraw() {
 	d.miniGameDraw++
-	d.markDirty(DirtyMiniGame, 1*time.Second)
+	d.MarkDirty(DirtyMiniGame, 1*time.Second)
 }
 
-func (d *player) addMiniGameLoss() {
+func (d *Player) addMiniGameLoss() {
 	d.miniGameLoss++
-	d.markDirty(DirtyMiniGame, 1*time.Second)
+	d.MarkDirty(DirtyMiniGame, 1*time.Second)
 }
 
-func (d *player) addMiniGamePoints(delta int32) {
+func (d *Player) addMiniGamePoints(delta int32) {
 	d.miniGamePoints += delta
-	d.markDirty(DirtyMiniGame, 1*time.Second)
+	d.MarkDirty(DirtyMiniGame, 1*time.Second)
 }
 
-func (d *player) sendBuddyList() {
-	d.send(packetBuddyListSizeUpdate(d.buddyListSize))
-	d.send(packetBuddyInfo(d.buddyList))
+func (d *Player) sendBuddyList() {
+	d.Send(packetBuddyListSizeUpdate(d.buddyListSize))
+	d.Send(packetBuddyInfo(d.buddyList))
 }
 
-func (d player) buddyListFull() bool {
+func (d Player) buddyListFull() bool {
 	count := 0
 	for _, v := range d.buddyList {
 		if v.status != 1 {
@@ -1216,7 +1311,7 @@ func (d player) buddyListFull() bool {
 	return count >= int(d.buddyListSize)
 }
 
-func (d *player) addOnlineBuddy(id int32, name string, channel int32) {
+func (d *Player) addOnlineBuddy(id int32, name string, channel int32) {
 	if d.buddyListFull() {
 		return
 	}
@@ -1225,7 +1320,7 @@ func (d *player) addOnlineBuddy(id int32, name string, channel int32) {
 		if v.id == id {
 			d.buddyList[i].status = 0
 			d.buddyList[i].channelID = channel
-			d.send(packetBuddyUpdate(id, name, d.buddyList[i].status, channel, false))
+			d.Send(packetBuddyUpdate(id, name, d.buddyList[i].status, channel, false))
 			return
 		}
 	}
@@ -1233,10 +1328,10 @@ func (d *player) addOnlineBuddy(id int32, name string, channel int32) {
 	newBuddy := buddy{id: id, name: name, status: 0, channelID: channel}
 
 	d.buddyList = append(d.buddyList, newBuddy)
-	d.send(packetBuddyInfo(d.buddyList))
+	d.Send(packetBuddyInfo(d.buddyList))
 }
 
-func (d *player) addOfflineBuddy(id int32, name string) {
+func (d *Player) addOfflineBuddy(id int32, name string) {
 	if d.buddyListFull() {
 		return
 	}
@@ -1245,7 +1340,7 @@ func (d *player) addOfflineBuddy(id int32, name string) {
 		if v.id == id {
 			d.buddyList[i].status = 2
 			d.buddyList[i].channelID = -1
-			d.send(packetBuddyUpdate(id, name, d.buddyList[i].status, -1, false))
+			d.Send(packetBuddyUpdate(id, name, d.buddyList[i].status, -1, false))
 			return
 		}
 	}
@@ -1253,10 +1348,10 @@ func (d *player) addOfflineBuddy(id int32, name string) {
 	newBuddy := buddy{id: id, name: name, status: 2, channelID: -1}
 
 	d.buddyList = append(d.buddyList, newBuddy)
-	d.send(packetBuddyInfo(d.buddyList))
+	d.Send(packetBuddyInfo(d.buddyList))
 }
 
-func (d player) hasBuddy(id int32) bool {
+func (d Player) hasBuddy(id int32) bool {
 	for _, v := range d.buddyList {
 		if v.id == id {
 			return true
@@ -1266,24 +1361,24 @@ func (d player) hasBuddy(id int32) bool {
 	return false
 }
 
-func (d *player) removeBuddy(id int32) {
+func (d *Player) removeBuddy(id int32) {
 	for i, v := range d.buddyList {
 		if v.id == id {
 			d.buddyList[i] = d.buddyList[len(d.buddyList)-1]
 			d.buddyList = d.buddyList[:len(d.buddyList)-1]
-			d.send(packetBuddyInfo(d.buddyList))
+			d.Send(packetBuddyInfo(d.buddyList))
 			return
 		}
 	}
 }
 
 // removeEquipAtSlot removes the equip from the given slot (equipped negative or inventory positive).
-func (d *player) removeEquipAtSlot(slot int16) bool {
+func (d *Player) removeEquipAtSlot(slot int16) bool {
 	if slot < 0 {
-		// Equipped item; find and clear
+		// Equipped Item; find and clear
 		for i := range d.equip {
 			if d.equip[i].slotID == slot {
-				// Remove equipped item
+				// Remove equipped Item
 				d.equip[i].amount = 0
 				return true
 			}
@@ -1304,8 +1399,8 @@ func (d *player) removeEquipAtSlot(slot int16) bool {
 	return false
 }
 
-// findUseItemBySlot returns the use item (scroll) at the given slot from USE inventory.
-func (d *player) findUseItemBySlot(slot int16) *item {
+// findUseItemBySlot returns the use Item (scroll) at the given slot from USE inventory.
+func (d *Player) findUseItemBySlot(slot int16) *Item {
 	for i := range d.use {
 		if d.use[i].slotID == slot {
 			return &d.use[i]
@@ -1315,7 +1410,7 @@ func (d *player) findUseItemBySlot(slot int16) *item {
 }
 
 // findEquipBySlot returns the equip by slot (negative = equipped, positive = inventory slot).
-func (d *player) findEquipBySlot(slot int16) *item {
+func (d *Player) findEquipBySlot(slot int16) *Item {
 	for i := range d.equip {
 		if d.equip[i].slotID == slot {
 			return &d.equip[i]
@@ -1324,15 +1419,15 @@ func (d *player) findEquipBySlot(slot int16) *item {
 	return nil
 }
 
-func loadPlayerFromID(id int32, conn mnet.Client) player {
-	c := player{}
-	filter := "id,accountID,worldID,name,gender,skin,hair,face,level,job,str,dex,intt," +
+func LoadPlayerFromID(id int32, conn mnet.Client) Player {
+	c := Player{}
+	filter := "ID,accountID,worldID,Name,gender,skin,hair,face,level,job,str,dex,intt," +
 		"luk,hp,maxHP,mp,maxMP,ap,sp, exp,fame,mapID,mapPos,previousMapID,mesos," +
 		"equipSlotSize,useSlotSize,setupSlotSize,etcSlotSize,cashSlotSize,miniGameWins," +
 		"miniGameDraw,miniGameLoss,miniGamePoints,buddyListSize"
 
-	err := common.DB.QueryRow("SELECT "+filter+" FROM characters where id=?", id).Scan(&c.id,
-		&c.accountID, &c.worldID, &c.name, &c.gender, &c.skin, &c.hair, &c.face,
+	err := common.DB.QueryRow("SELECT "+filter+" FROM characters where ID=?", id).Scan(&c.ID,
+		&c.accountID, &c.worldID, &c.Name, &c.gender, &c.skin, &c.hair, &c.face,
 		&c.level, &c.job, &c.str, &c.dex, &c.intt, &c.luk, &c.hp, &c.maxHP, &c.mp,
 		&c.maxMP, &c.ap, &c.sp, &c.exp, &c.fame, &c.mapID, &c.mapPos,
 		&c.previousMap, &c.mesos, &c.equipSlotSize, &c.useSlotSize, &c.setupSlotSize,
@@ -1344,9 +1439,13 @@ func loadPlayerFromID(id int32, conn mnet.Client) player {
 		return c
 	}
 
+	if err := common.DB.QueryRow("SELECT username, nx, maplepoints FROM accounts WHERE accountID=?", c.accountID).Scan(&c.accountName, &c.nx, &c.maplepoints); err != nil {
+		log.Printf("loadPlayerFromID: failed to fetch accountName for accountID=%d: %v", c.accountID, err)
+	}
+
 	c.skills = make(map[int32]playerSkill)
 
-	for _, s := range getSkillsFromCharID(c.id) {
+	for _, s := range getSkillsFromCharID(c.ID) {
 		c.skills[s.ID] = s
 	}
 
@@ -1360,18 +1459,18 @@ func loadPlayerFromID(id int32, conn mnet.Client) player {
 	c.pos.x = nxMap.Portals[c.mapPos].X
 	c.pos.y = nxMap.Portals[c.mapPos].Y
 
-	c.equip, c.use, c.setUp, c.etc, c.cash = loadInventoryFromDb(c.id)
+	c.equip, c.use, c.setUp, c.etc, c.cash = loadInventoryFromDb(c.ID)
 
-	c.buddyList = getBuddyList(c.id, c.buddyListSize)
+	c.buddyList = getBuddyList(c.ID, c.buddyListSize)
 
-	c.quests = loadQuestsFromDB(c.id)
+	c.quests = loadQuestsFromDB(c.ID)
 	c.quests.init()
-	c.quests.mobKills = loadQuestMobKillsFromDB(c.id)
+	c.quests.mobKills = loadQuestMobKillsFromDB(c.ID)
 
-	// Initialize the per-player buff manager so handlers can call plr.addBuff(...)
+	// Initialize the per-Player buff manager so handlers can call plr.addBuff(...)
 	c.buffs = NewCharacterBuffs(&c)
 
-	c.conn = conn
+	c.Conn = conn
 
 	return c
 }
@@ -1395,8 +1494,8 @@ func getBuddyList(playerID int32, buddySize byte) []buddy {
 		var accepted bool
 		rows.Scan(&newBuddy.id, &accepted)
 
-		filter := "channelID,name,inCashShop"
-		err := common.DB.QueryRow("SELECT "+filter+" FROM characters where id=?", newBuddy.id).Scan(&newBuddy.channelID, &newBuddy.name, &newBuddy.cashShop)
+		filter := "channelID,Name,inCashShop"
+		err := common.DB.QueryRow("SELECT "+filter+" FROM characters where ID=?", newBuddy.id).Scan(&newBuddy.channelID, &newBuddy.name, &newBuddy.cashShop)
 
 		if err != nil {
 			log.Fatal(err)
@@ -1421,7 +1520,7 @@ func getBuddyList(playerID int32, buddySize byte) []buddy {
 
 // Convenience helper used by handlers to apply a skill buff.
 // Keeps your call sites (“plr.addBuff(...)”) simple.
-func (d *player) addBuff(skillID int32, level byte, delay int16) {
+func (d *Player) addBuff(skillID int32, level byte, delay int16) {
 	if d == nil {
 		return
 	}
@@ -1429,14 +1528,14 @@ func (d *player) addBuff(skillID int32, level byte, delay int16) {
 		d.buffs = NewCharacterBuffs(d)
 	}
 	// You can pass any extra “sinc” values you need later; 0/0 is fine for standard buffs.
-	d.buffs.AddBuff(d.id, skillID, level, false, delay)
+	d.buffs.AddBuff(d.ID, skillID, level, false, delay)
 }
 
-func (d *player) addForeignBuff(charId, skillID int32, level byte, delay int16) {
+func (d *Player) addForeignBuff(charId, skillID int32, level byte, delay int16) {
 	d.buffs.AddBuff(charId, skillID, level, true, delay)
 }
 
-func (d *player) removeAllCooldowns() {
+func (d *Player) removeAllCooldowns() {
 	if d == nil || d.skills == nil {
 		return
 	}
@@ -1447,7 +1546,7 @@ func (d *player) removeAllCooldowns() {
 	}
 }
 
-func (d *player) saveBuffSnapshot() {
+func (d *Player) saveBuffSnapshot() {
 	if d.buffs == nil {
 		return
 	}
@@ -1457,7 +1556,7 @@ func (d *player) saveBuffSnapshot() {
 
 	snaps := d.buffs.Snapshot()
 	if len(snaps) == 0 {
-		_, _ = common.DB.Exec("DELETE FROM character_buffs WHERE characterID=?", d.id)
+		_, _ = common.DB.Exec("DELETE FROM character_buffs WHERE characterID=?", d.ID)
 		return
 	}
 
@@ -1468,7 +1567,7 @@ func (d *player) saveBuffSnapshot() {
 	}
 	defer func() { _ = tx.Commit() }()
 
-	if _, err := tx.Exec("DELETE FROM character_buffs WHERE characterID=?", d.id); err != nil {
+	if _, err := tx.Exec("DELETE FROM character_buffs WHERE characterID=?", d.ID); err != nil {
 		log.Println("saveBuffSnapshot: clear rows:", err)
 		return
 	}
@@ -1481,15 +1580,15 @@ func (d *player) saveBuffSnapshot() {
 	defer stmt.Close()
 
 	for _, s := range snaps {
-		if _, err := stmt.Exec(d.id, s.SourceID, s.Level, s.ExpiresAtMs); err != nil {
+		if _, err := stmt.Exec(d.ID, s.SourceID, s.Level, s.ExpiresAtMs); err != nil {
 			log.Println("saveBuffSnapshot: insert:", err)
 			return
 		}
 	}
 }
 
-func (d *player) loadAndApplyBuffSnapshot() {
-	rows, err := common.DB.Query("SELECT sourceID, level, expiresAtMs FROM character_buffs WHERE characterID=?", d.id)
+func (d *Player) loadAndApplyBuffSnapshot() {
+	rows, err := common.DB.Query("SELECT sourceID, level, expiresAtMs FROM character_buffs WHERE characterID=?", d.ID)
 	if err != nil {
 		log.Println("loadBuffSnapshot:", err)
 		return
@@ -1542,7 +1641,7 @@ func (d *player) loadAndApplyBuffSnapshot() {
 		b.WriteByte(')')
 
 		args := make([]interface{}, 0, 1+len(toDelete))
-		args = append(args, d.id)
+		args = append(args, d.ID)
 		for _, sid := range toDelete {
 			args = append(args, sid)
 		}
@@ -1559,21 +1658,21 @@ func (d *player) loadAndApplyBuffSnapshot() {
 	}
 }
 
-// countItem returns total count across USE/SETUP/ETC for an item id.
-func (d *player) countItem(itemID int32) int32 {
+// countItem returns total count across USE/SETUP/ETC for an Item ID.
+func (d *Player) countItem(itemID int32) int32 {
 	var total int32
 	for i := range d.use {
-		if d.use[i].id == itemID {
+		if d.use[i].ID == itemID {
 			total += int32(d.use[i].amount)
 		}
 	}
 	for i := range d.setUp {
-		if d.setUp[i].id == itemID {
+		if d.setUp[i].ID == itemID {
 			total += int32(d.setUp[i].amount)
 		}
 	}
 	for i := range d.etc {
-		if d.etc[i].id == itemID {
+		if d.etc[i].ID == itemID {
 			total += int32(d.etc[i].amount)
 		}
 	}
@@ -1581,19 +1680,19 @@ func (d *player) countItem(itemID int32) int32 {
 }
 
 // removeItemsByID removes up to reqCount across USE/SETUP/ETC. Returns true if fully removed.
-func (d *player) removeItemsByID(itemID int32, reqCount int32) bool {
+func (d *Player) removeItemsByID(itemID int32, reqCount int32) bool {
 	if reqCount <= 0 {
 		return true
 	}
 	remaining := reqCount
 
-	drain := func(invID byte, items []item) {
+	drain := func(invID byte, items []Item) {
 		for i := range items {
 			if remaining == 0 {
 				return
 			}
 			it := items[i]
-			if it.id != itemID || it.amount <= 0 {
+			if it.ID != itemID || it.amount <= 0 {
 				continue
 			}
 			take := int16(it.amount)
@@ -1612,7 +1711,7 @@ func (d *player) removeItemsByID(itemID int32, reqCount int32) bool {
 	return remaining == 0
 }
 
-func (d *player) meetsPrevQuestState(req nx.QuestStateReq) bool {
+func (d *Player) meetsPrevQuestState(req nx.QuestStateReq) bool {
 	switch req.State {
 	case 2: // completed
 		return d.quests.hasCompleted(req.ID)
@@ -1623,8 +1722,8 @@ func (d *player) meetsPrevQuestState(req nx.QuestStateReq) bool {
 	}
 }
 
-// meetsQuestBlock validates prereqs/item counts.
-func (d *player) meetsQuestBlock(blk nx.CheckBlock) bool {
+// meetsQuestBlock validates prereqs/Item counts.
+func (d *Player) meetsQuestBlock(blk nx.CheckBlock) bool {
 	// Previous quest states
 	for _, rq := range blk.PrevQuests {
 		if rq.State > 0 && !d.meetsPrevQuestState(rq) {
@@ -1641,8 +1740,8 @@ func (d *player) meetsQuestBlock(blk nx.CheckBlock) bool {
 	return true
 }
 
-// applyQuestAct grants EXP/Mesos and applies item +/- from NX Act block.
-func (d *player) applyQuestAct(act nx.ActBlock) {
+// applyQuestAct grants EXP/Mesos and applies Item +/- from NX Act block.
+func (d *Player) applyQuestAct(act nx.ActBlock) {
 	if act.Exp > 0 {
 		d.giveEXP(act.Exp, false, false)
 	}
@@ -1661,8 +1760,8 @@ func (d *player) applyQuestAct(act nx.ActBlock) {
 	for _, ai := range act.Items {
 		switch {
 		case ai.Count > 0:
-			if it, err := createItemFromID(ai.ID, int16(ai.Count)); err == nil {
-				_ = d.giveItem(it)
+			if it, err := CreateItemFromID(ai.ID, int16(ai.Count)); err == nil {
+				_ = d.GiveItem(it)
 			}
 		case ai.Count < 0:
 			_ = d.removeItemsByID(ai.ID, -ai.Count)
@@ -1671,10 +1770,10 @@ func (d *player) applyQuestAct(act nx.ActBlock) {
 }
 
 // tryStartQuest validates NX Start requirements, starts quest, applies Act(0).
-func (d *player) tryStartQuest(questID int16) bool {
+func (d *Player) tryStartQuest(questID int16) bool {
 	q, err := nx.GetQuest(questID)
 	if err != nil {
-		log.Printf("[Quest] start fail nx lookup: char=%s id=%d err=%v", d.name, questID, err)
+		log.Printf("[Quest] start fail nx lookup: char=%s ID=%d err=%v", d.Name, questID, err)
 		return false
 	}
 
@@ -1683,17 +1782,17 @@ func (d *player) tryStartQuest(questID int16) bool {
 	}
 
 	d.quests.add(questID, "")
-	upsertQuestRecord(d.id, questID, "")
-	d.send(packetQuestUpdate(questID, ""))
+	upsertQuestRecord(d.ID, questID, "")
+	d.Send(packetQuestUpdate(questID, ""))
 
 	d.applyQuestAct(q.ActOnStart)
 	return true
 }
 
-func (d *player) tryCompleteQuest(questID int16) bool {
+func (d *Player) tryCompleteQuest(questID int16) bool {
 	q, err := nx.GetQuest(questID)
 	if err != nil {
-		log.Printf("[Quest] complete fail nx lookup: char=%s id=%d err=%v", d.name, questID, err)
+		log.Printf("[Quest] complete fail nx lookup: char=%s ID=%d err=%v", d.Name, questID, err)
 		return false
 	}
 
@@ -1708,11 +1807,11 @@ func (d *player) tryCompleteQuest(questID int16) bool {
 	d.quests.remove(questID)
 	nowMs := time.Now().UnixMilli()
 	d.quests.complete(questID, nowMs)
-	setQuestCompleted(d.id, questID, nowMs)
-	clearQuestMobKills(d.id, q.ID)
+	setQuestCompleted(d.ID, questID, nowMs)
+	clearQuestMobKills(d.ID, q.ID)
 
-	d.send(packetQuestUpdate(questID, ""))
-	d.send(packetQuestComplete(questID))
+	d.Send(packetQuestUpdate(questID, ""))
+	d.Send(packetQuestComplete(questID))
 
 	d.applyQuestAct(q.ActOnComplete)
 
@@ -1722,7 +1821,7 @@ func (d *player) tryCompleteQuest(questID int16) bool {
 	return true
 }
 
-func (d *player) buildQuestKillString(q nx.Quest) string {
+func (d *Player) buildQuestKillString(q nx.Quest) string {
 	if d.quests.mobKills == nil {
 		return ""
 	}
@@ -1749,7 +1848,7 @@ func (d *player) buildQuestKillString(q nx.Quest) string {
 	return string(out)
 }
 
-func (d *player) onMobKilled(mobID int32) {
+func (d *Player) onMobKilled(mobID int32) {
 	if d == nil {
 		return
 	}
@@ -1781,14 +1880,14 @@ func (d *player) onMobKilled(mobID int32) {
 		cur := d.quests.mobKills[qid][mobID]
 		if cur < needed {
 			d.quests.mobKills[qid][mobID] = cur + 1
-			upsertQuestMobKill(d.id, qid, mobID, 1)
+			upsertQuestMobKill(d.ID, qid, mobID, 1)
 		}
 
-		d.send(packetQuestUpdateMobKills(qid, d.buildQuestKillString(q)))
+		d.Send(packetQuestUpdateMobKills(qid, d.buildQuestKillString(q)))
 	}
 }
 
-func (d *player) meetsMobKills(questID int16, reqs []nx.ReqMob) bool {
+func (d *Player) meetsMobKills(questID int16, reqs []nx.ReqMob) bool {
 	if len(reqs) == 0 {
 		return true
 	}
@@ -1804,7 +1903,7 @@ func (d *player) meetsMobKills(questID int16, reqs []nx.ReqMob) bool {
 	return true
 }
 
-func (d *player) allowsQuestDrop(qid int32) bool {
+func (d *Player) allowsQuestDrop(qid int32) bool {
 	if qid == 0 {
 		return true
 	}
@@ -1814,13 +1913,13 @@ func (d *player) allowsQuestDrop(qid int32) bool {
 	return d.quests.hasInProgress(int16(qid))
 }
 
-func (p *player) ensureSummonState() {
+func (p *Player) ensureSummonState() {
 	if p.summons == nil {
 		p.summons = &summonState{}
 	}
 }
 
-func (p *player) addSummon(su *summon) {
+func (p *Player) addSummon(su *summon) {
 	p.ensureSummonState()
 
 	if su.IsPuppet {
@@ -1838,7 +1937,7 @@ func (p *player) addSummon(su *summon) {
 	p.broadcastShowSummon(su)
 }
 
-func (p *player) removeSummon(puppet bool, reason byte) {
+func (p *Player) removeSummon(puppet bool, reason byte) {
 	p.ensureSummonState()
 
 	shouldCancelBuff := func(r byte) bool {
@@ -1868,7 +1967,7 @@ func (p *player) removeSummon(puppet bool, reason byte) {
 	}
 }
 
-func (p *player) getSummon(skillID int32) *summon {
+func (p *Player) getSummon(skillID int32) *summon {
 	p.ensureSummonState()
 	if p.summons.summon != nil && p.summons.summon.SkillID == skillID {
 		return p.summons.summon
@@ -1879,20 +1978,31 @@ func (p *player) getSummon(skillID int32) *summon {
 	return nil
 }
 
-func (p *player) broadcastShowSummon(su *summon) {
-	if p == nil || p.inst == nil {
-		return
+func (p *Player) expireSummons() {
+	if p != nil && p.buffs != nil {
+		for sid := range p.buffs.activeSkillLevels {
+			switch skill.Skill(sid) {
+			case skill.SilverHawk, skill.GoldenEagle, skill.SummonDragon, skill.Puppet, skill.SniperPuppet:
+				p.buffs.expireBuffNow(sid)
+			}
+		}
 	}
-
-	p.inst.send(packetShowSummon(p.id, su))
 }
 
-func (p *player) broadcastRemoveSummon(summonSkillID int32, reason byte) {
+func (p *Player) broadcastShowSummon(su *summon) {
 	if p == nil || p.inst == nil {
 		return
 	}
 
-	p.inst.send(packetRemoveSummon(p.id, summonSkillID, reason))
+	p.inst.send(packetShowSummon(p.ID, su))
+}
+
+func (p *Player) broadcastRemoveSummon(summonSkillID int32, reason byte) {
+	if p == nil || p.inst == nil {
+		return
+	}
+
+	p.inst.send(packetRemoveSummon(p.ID, summonSkillID, reason))
 }
 
 func packetPlayerReceivedDmg(charID int32, attack int8, initalAmmount, reducedAmmount, spawnID, mobID, healSkillID int32,
@@ -2191,7 +2301,7 @@ func packetCannotEnterCashShop() mpacket.Packet {
 	return p
 }
 
-func packetPlayerEnterGame(plr player, channelID int32) mpacket.Packet {
+func packetPlayerEnterGame(plr Player, channelID int32) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelWarpToMap)
 	p.WriteInt32(channelID)
 	p.WriteByte(0) // character portal counter
@@ -2207,12 +2317,12 @@ func packetPlayerEnterGame(plr player, channelID int32) mpacket.Packet {
 	p.WriteBytes(randomBytes)
 	p.WriteBytes(randomBytes)
 
-	// Are active buffs name encoded in here?
+	// Are active buffs Name encoded in here?
 	p.WriteByte(0xFF)
 	p.WriteByte(0xFF)
 
-	p.WriteInt32(plr.id)
-	p.WritePaddedString(plr.name, 13)
+	p.WriteInt32(plr.ID)
+	p.WritePaddedString(plr.Name, 13)
 	p.WriteByte(plr.gender)
 	p.WriteByte(plr.skin)
 	p.WriteInt32(plr.face)
@@ -2249,7 +2359,7 @@ func packetPlayerEnterGame(plr player, channelID int32) mpacket.Packet {
 
 	for _, v := range plr.equip {
 		if v.slotID < 0 && !v.cash {
-			p.WriteBytes(v.inventoryBytes())
+			p.WriteBytes(v.InventoryBytes())
 		}
 	}
 
@@ -2258,7 +2368,7 @@ func packetPlayerEnterGame(plr player, channelID int32) mpacket.Packet {
 	// Equips
 	for _, v := range plr.equip {
 		if v.slotID < 0 && v.cash {
-			p.WriteBytes(v.inventoryBytes())
+			p.WriteBytes(v.InventoryBytes())
 		}
 	}
 
@@ -2267,32 +2377,32 @@ func packetPlayerEnterGame(plr player, channelID int32) mpacket.Packet {
 	// Inventory windows starts
 	for _, v := range plr.equip {
 		if v.slotID > -1 {
-			p.WriteBytes(v.inventoryBytes())
+			p.WriteBytes(v.InventoryBytes())
 		}
 	}
 
 	p.WriteByte(0)
 
 	for _, v := range plr.use {
-		p.WriteBytes(v.inventoryBytes())
+		p.WriteBytes(v.InventoryBytes())
 	}
 
 	p.WriteByte(0)
 
 	for _, v := range plr.setUp {
-		p.WriteBytes(v.inventoryBytes())
+		p.WriteBytes(v.InventoryBytes())
 	}
 
 	p.WriteByte(0)
 
 	for _, v := range plr.etc {
-		p.WriteBytes(v.inventoryBytes())
+		p.WriteBytes(v.InventoryBytes())
 	}
 
 	p.WriteByte(0)
 
 	for _, v := range plr.cash {
-		p.WriteBytes(v.inventoryBytes())
+		p.WriteBytes(v.InventoryBytes())
 	}
 
 	p.WriteByte(0)
@@ -2341,7 +2451,7 @@ func packetPlayerEnterGame(plr player, channelID int32) mpacket.Packet {
 	return p
 }
 
-func packetInventoryAddItem(item item, newItem bool) mpacket.Packet {
+func packetInventoryAddItem(item Item, newItem bool) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelInventoryOperation)
 	p.WriteByte(0x01)
 	p.WriteByte(0x01)
@@ -2358,7 +2468,7 @@ func packetInventoryAddItem(item item, newItem bool) mpacket.Packet {
 	return p
 }
 
-func packetInventoryModifyItemAmount(item item) mpacket.Packet {
+func packetInventoryModifyItemAmount(item Item) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelInventoryOperation)
 	p.WriteByte(0x01)
 	p.WriteByte(0x01)
@@ -2370,7 +2480,7 @@ func packetInventoryModifyItemAmount(item item) mpacket.Packet {
 	return p
 }
 
-func packetInventoryAddItems(items []item, newItem []bool) mpacket.Packet {
+func packetInventoryAddItems(items []Item, newItem []bool) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelInventoryOperation)
 
 	p.WriteByte(0x01)
@@ -2409,7 +2519,7 @@ func packetInventoryChangeItemSlot(invTabID byte, origPos, newPos int16) mpacket
 	return p
 }
 
-func packetInventoryRemoveItem(item item) mpacket.Packet {
+func packetInventoryRemoveItem(item Item) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelInventoryOperation)
 	p.WriteByte(0x01)
 	p.WriteByte(0x01)
@@ -2421,13 +2531,13 @@ func packetInventoryRemoveItem(item item) mpacket.Packet {
 	return p
 }
 
-func packetInventoryChangeEquip(chr player) mpacket.Packet {
+func packetInventoryChangeEquip(chr Player) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelPlayerChangeAvatar)
-	p.WriteInt32(chr.id)
+	p.WriteInt32(chr.ID)
 	p.WriteByte(1)
 	p.WriteBytes(chr.displayBytes())
 
-	// Pet ID (spawned pet item id).
+	// Pet ID (spawned pet Item ID).
 	p.WriteInt32(0)
 
 	// 15 x long(0) placeholders
@@ -2473,12 +2583,12 @@ func packetBuddyInfo(buddyList []buddy) mpacket.Packet {
 	return p
 }
 
-// It is possible to change id's using this packet, however if the id is a request it will crash the users
-// client when selecting an option in notification, therefore the id has not been allowed to change
+// It is possible to change ID's using this packet, however if the ID is a request it will crash the users
+// client when selecting an option in notification, therefore the ID has not been allowed to change
 func packetBuddyUpdate(id int32, name string, status byte, channelID int32, cashShop bool) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelBuddyInfo)
 	p.WriteByte(0x08)
-	p.WriteInt32(id) // original id
+	p.WriteInt32(id) // original ID
 	p.WriteInt32(id)
 	p.WritePaddedString(name, 13)
 	p.WriteByte(status)
@@ -2496,9 +2606,9 @@ func packetBuddyListSizeUpdate(size byte) mpacket.Packet {
 	return p
 }
 
-func packetPlayerAvatarSummaryWindow(charID int32, plr player) mpacket.Packet {
+func packetPlayerAvatarSummaryWindow(charID int32, plr Player) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelAvatarInfoWindow)
-	p.WriteInt32(plr.id)
+	p.WriteInt32(plr.ID)
 	p.WriteByte(plr.level)
 	p.WriteInt16(plr.job)
 	p.WriteInt16(plr.fame)
@@ -2607,4 +2717,145 @@ func packetMapChange(mapID int32, channelID int32, mapPos byte, hp int16) mpacke
 	p.WriteByte(0) // flag for more reading
 
 	return p
+}
+
+func (plr *Player) WriteCharacterInfoPacket(p *mpacket.Packet) {
+	p.WriteInt16(-1)
+
+	// Stats
+	p.WriteInt32(plr.ID)
+	p.WritePaddedString(plr.Name, 13)
+	p.WriteByte(plr.gender)
+	p.WriteByte(plr.skin)
+	p.WriteInt32(plr.face)
+	p.WriteInt32(plr.hair)
+	p.WriteInt64(0) // Pet Cash ID
+
+	p.WriteByte(plr.level)
+	p.WriteInt16(plr.job)
+	p.WriteInt16(plr.str)
+	p.WriteInt16(plr.dex)
+	p.WriteInt16(plr.intt)
+	p.WriteInt16(plr.luk)
+	p.WriteInt16(plr.hp)
+	p.WriteInt16(plr.maxHP)
+	p.WriteInt16(plr.mp)
+	p.WriteInt16(plr.maxMP)
+	p.WriteInt16(plr.ap)
+	p.WriteInt16(plr.sp)
+	p.WriteInt32(plr.exp)
+	p.WriteInt16(plr.fame)
+
+	p.WriteInt32(plr.mapID)
+	p.WriteByte(plr.mapPos)
+
+	p.WriteByte(plr.buddyListSize)
+
+	// Money
+	p.WriteInt32(plr.mesos)
+
+	if plr.equipSlotSize == 0 {
+		plr.equipSlotSize = 24
+	}
+	if plr.useSlotSize == 0 {
+		plr.useSlotSize = 24
+	}
+	if plr.setupSlotSize == 0 {
+		plr.setupSlotSize = 24
+	}
+	if plr.etcSlotSize == 0 {
+		plr.etcSlotSize = 24
+	}
+	if plr.cashSlotSize == 0 {
+		plr.cashSlotSize = 24
+	}
+
+	p.WriteByte(plr.equipSlotSize)
+	p.WriteByte(plr.useSlotSize)
+	p.WriteByte(plr.setupSlotSize)
+	p.WriteByte(plr.etcSlotSize)
+	p.WriteByte(plr.cashSlotSize)
+
+	// Equipped (normal then cash)
+	for _, it := range plr.equip {
+		if it.slotID < 0 && !it.cash {
+			p.WriteBytes(it.InventoryBytes())
+		}
+	}
+	p.WriteByte(0)
+	for _, it := range plr.equip {
+		if it.slotID < 0 && it.cash {
+			p.WriteBytes(it.InventoryBytes())
+		}
+	}
+	p.WriteByte(0)
+
+	// Inventory tabs
+	writeInv := func(items []Item) {
+		cp := make([]Item, 0, len(items))
+		for _, it := range items {
+			if it.slotID > 0 {
+				cp = append(cp, it)
+			}
+		}
+		sort.Slice(cp, func(i, j int) bool { return cp[i].slotID < cp[j].slotID })
+		for _, it := range cp {
+			p.WriteBytes(it.InventoryBytes())
+		}
+		p.WriteByte(0)
+	}
+	writeInv(plr.equip)
+	writeInv(plr.use)
+	writeInv(plr.setUp)
+	writeInv(plr.etc)
+	writeInv(plr.cash)
+
+	// Skills
+	p.WriteInt16(int16(len(plr.skills)))
+	skillCooldowns := make(map[int32]int16)
+
+	for _, skill := range plr.skills {
+		p.WriteInt32(skill.ID)
+		p.WriteInt32(int32(skill.Level))
+
+		if skill.Cooldown > 0 {
+			skillCooldowns[skill.ID] = skill.Cooldown
+		}
+	}
+
+	p.WriteInt16(int16(len(skillCooldowns)))
+
+	for id, cooldown := range skillCooldowns {
+		p.WriteInt32(id)
+		p.WriteInt16(cooldown)
+	}
+
+	// Quests
+	writeActiveQuests(p, plr.quests.inProgressList())
+	writeCompletedQuests(p, plr.quests.completedList())
+
+	p.WriteInt16(0) // MiniGames
+	/*
+	   - uint16 count
+	   - repeat count times:
+	       - int32 a
+	       - int32 b
+	       - int32 c
+	       - int32 d
+	       - int32 e
+	*/
+	p.WriteInt16(0) // Rings
+	/*
+	   - uint16 count
+	   - repeat count times:
+	       - decode ring object
+	*/
+
+	// Teleport rocks (5 normal, 10 VIP) INT32 = Saved MapID
+	for i := 0; i < 5; i++ {
+		p.WriteInt32(999999999) // Reg Tele rocks
+	}
+	for i := 0; i < 10; i++ {
+		p.WriteInt32(999999999) // VIP Tele rocks
+	}
 }

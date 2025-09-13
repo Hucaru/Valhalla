@@ -44,13 +44,13 @@ func PopulateDropTable(dropJSON string) error {
 	return json.Unmarshal(jsonBytes, &dropTable)
 }
 
-type item struct {
+type Item struct {
 	dbID         int64
 	uuid         uuid.UUID
 	cash         bool
 	invID        byte
 	slotID       int16
-	id           int32
+	ID           int32
 	expireTime   int64
 	amount       int16
 	creatorName  string
@@ -88,29 +88,29 @@ type item struct {
 
 const neverExpire int64 = 150842304000000000
 
-func loadInventoryFromDb(charID int32) ([]item, []item, []item, []item, []item) {
-	filter := "id,inventoryID,itemID,slotNumber,amount,flag,upgradeSlots,level,str,dex,intt,luk,hp,mp,watk,matk,wdef,mdef,accuracy,avoid,hands,speed,jump,expireTime,creatorName"
+func loadInventoryFromDb(charID int32) ([]Item, []Item, []Item, []Item, []Item) {
+	filter := "ID,inventoryID,itemID,slotNumber,amount,flag,upgradeSlots,level,str,dex,intt,luk,hp,mp,watk,matk,wdef,mdef,accuracy,avoid,hands,speed,jump,expireTime,creatorName"
 	row, err := common.DB.Query("SELECT "+filter+" FROM items WHERE characterID=?", charID)
 
 	if err != nil {
 		panic(err)
 	}
 
-	equip := []item{}
-	use := []item{}
-	setUp := []item{}
-	etc := []item{}
-	cash := []item{}
+	equip := []Item{}
+	use := []Item{}
+	setUp := []Item{}
+	etc := []Item{}
+	cash := []Item{}
 
 	defer row.Close()
 
 	for row.Next() {
 
-		item := item{uuid: uuid.New()}
+		item := Item{uuid: uuid.New()}
 
 		err := row.Scan(&item.dbID,
 			&item.invID,
-			&item.id,
+			&item.ID,
 			&item.slotID,
 			&item.amount,
 			&item.flag,
@@ -139,6 +139,12 @@ func loadInventoryFromDb(charID int32) ([]item, []item, []item, []item, []item) 
 			continue
 		}
 
+		if nxInfo, err := nx.GetItem(item.ID); err == nil {
+			item.cash = nxInfo.Cash
+			item.pet = nxInfo.Pet
+			item.buffTime = nxInfo.Time
+		}
+
 		item.calculateWeaponType()
 
 		switch item.invID {
@@ -160,23 +166,23 @@ func loadInventoryFromDb(charID int32) ([]item, []item, []item, []item, []item) 
 	return equip, use, setUp, etc, cash
 }
 
-func createPerfectItemFromID(id int32, amount int16) (item, error) {
+func createPerfectItemFromID(id int32, amount int16) (Item, error) {
 	return createBiasItemFromID(id, amount, 1, false)
 }
 
-func createItemFromID(id int32, amount int16) (item, error) {
+func CreateItemFromID(id int32, amount int16) (Item, error) {
 	return createBiasItemFromID(id, amount, 0, false)
 }
 
-func createItemWorstFromID(id int32, amount int16) (item, error) {
+func createItemWorstFromID(id int32, amount int16) (Item, error) {
 	return createBiasItemFromID(id, amount, -1, false)
 }
 
-func createAverageItemFromID(id int32, amount int16) (item, error) {
+func createAverageItemFromID(id int32, amount int16) (Item, error) {
 	return createBiasItemFromID(id, amount, 0, true)
 }
 
-func createBiasItemFromID(id int32, amount int16, bias int8, average bool) (item, error) {
+func createBiasItemFromID(id int32, amount int16, bias int8, average bool) (Item, error) {
 	randomStat := func(stat float64, average bool) int16 {
 		if average {
 			return int16(stat)
@@ -200,17 +206,17 @@ func createBiasItemFromID(id int32, amount int16, bias int8, average bool) (item
 		return int16(rand.Intn(max-min) + min)
 	}
 
-	newItem := item{dbID: 0, uuid: uuid.New()}
+	newItem := Item{dbID: 0, uuid: uuid.New()}
 
 	nxInfo, err := nx.GetItem(id)
 
 	if err != nil {
-		return item{}, fmt.Errorf("Unable to generate item of id: %v", id)
+		return Item{}, fmt.Errorf("Unable to generate Item of ID: %v", id)
 	}
 
 	newItem.cash = nxInfo.Cash
 	newItem.invID = byte(id / 1e6)
-	newItem.id = id
+	newItem.ID = id
 	newItem.buffTime = nxInfo.Time
 	newItem.accuracy = randomStat(nxInfo.IncACC, average)
 	newItem.avoid = randomStat(nxInfo.IncEVA, average)
@@ -247,8 +253,8 @@ func createBiasItemFromID(id int32, amount int16, bias int8, average bool) (item
 	return newItem, nil
 }
 
-func (v *item) calculateWeaponType() {
-	switch v.id / 10000 % 100 {
+func (v *Item) calculateWeaponType() {
+	switch v.ID / 10000 % 100 {
 	case 30:
 		v.weaponType = 1 // Sword1H
 	case 31:
@@ -292,10 +298,10 @@ func (v *item) calculateWeaponType() {
 	}
 }
 
-func (v item) isStackable() bool {
-	bullet := v.id / 1e4
+func (v Item) isStackable() bool {
+	bullet := v.ID / 1e4
 
-	if v.invID != 5.0 && // pet item
+	if v.invID != 5.0 && // pet Item
 		v.invID != 1.0 && // equip
 		bullet != 207 && // star/arrow etc
 		v.amount <= constant.MaxItemStack {
@@ -306,23 +312,23 @@ func (v item) isStackable() bool {
 	return false
 }
 
-func (v item) getSlots() int {
+func (v Item) getSlots() int {
 	return int(v.upgradeSlots)
 }
 
-func (v *item) setSlots(slots int) {
+func (v *Item) setSlots(slots int) {
 	v.upgradeSlots = byte(slots)
 }
 
-func (v item) isRechargeable() bool {
-	return float64(v.id/10000) == 207 // Taken from client
+func (v Item) isRechargeable() bool {
+	return float64(v.ID/10000) == 207 // Taken from client
 }
 
-func (v item) shield() bool {
+func (v Item) shield() bool {
 	return v.weaponType == 17
 }
 
-func (v *item) save(charID int32) (bool, error) {
+func (v *Item) save(charID int32) (bool, error) {
 	if v.dbID == 0 {
 		props := `characterID,inventoryID,itemID,slotNumber,amount,flag,upgradeSlots,level,
 				str,dex,intt,luk,hp,mp,watk,matk,wdef,mdef,accuracy,avoid,hands,speed,jump,
@@ -331,7 +337,7 @@ func (v *item) save(charID int32) (bool, error) {
 		query := "INSERT into items (" + props + ") VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
 
 		res, err := common.DB.Exec(query,
-			charID, v.invID, v.id, v.slotID, v.amount, v.flag, v.upgradeSlots, v.scrollLevel,
+			charID, v.invID, v.ID, v.slotID, v.amount, v.flag, v.upgradeSlots, v.scrollLevel,
 			v.str, v.dex, v.intt, v.luk, v.hp, v.mp, v.watk, v.matk, v.wdef, v.mdef, v.accuracy, v.avoid, v.hands, v.speed, v.jump,
 			v.expireTime, v.creatorName)
 
@@ -349,7 +355,7 @@ func (v *item) save(charID int32) (bool, error) {
 			str=?,dex=?,intt=?,luk=?,hp=?,mp=?,watk=?,matk=?,wdef=?,mdef=?,accuracy=?,avoid=?,hands=?,speed=?,jump=?,
 			expireTime=?`
 
-		query := "UPDATE items SET " + props + " WHERE id=?"
+		query := "UPDATE items SET " + props + " WHERE ID=?"
 
 		_, err := common.DB.Exec(query,
 			v.slotID, v.amount, v.flag, v.upgradeSlots, v.scrollLevel,
@@ -363,8 +369,8 @@ func (v *item) save(charID int32) (bool, error) {
 	return true, nil
 }
 
-func (v item) delete() error {
-	query := "DELETE FROM `items` WHERE id=?"
+func (v Item) delete() error {
+	query := "DELETE FROM `items` WHERE ID=?"
 	_, err := common.DB.Exec(query, v.dbID)
 
 	if err != nil {
@@ -375,23 +381,27 @@ func (v item) delete() error {
 }
 
 // InventoryBytes to display in character inventory window
-func (v item) inventoryBytes() []byte {
+func (v Item) InventoryBytes() []byte {
 	return v.bytes(false)
 }
 
 // ShortBytes e.g. inventory operation, storage window
-func (v item) shortBytes() []byte {
+func (v Item) shortBytes() []byte {
 	return v.bytes(true)
 }
 
-func (v item) bytes(shortSlot bool) []byte {
+func (v Item) bytes(shortSlot bool) []byte {
 	p := mpacket.NewPacket()
 
 	if !shortSlot {
-		if v.cash && v.slotID < 0 {
-			p.WriteByte(byte(math.Abs(float64(v.slotID + 100))))
+		if v.slotID < 0 {
+			if v.slotID < -100 {
+				p.WriteByte(byte(math.Abs(float64(v.slotID + 100))))
+			} else {
+				p.WriteByte(byte(math.Abs(float64(v.slotID))))
+			}
 		} else {
-			p.WriteByte(byte(math.Abs(float64(v.slotID))))
+			p.WriteByte(byte(v.slotID))
 		}
 	} else {
 		p.WriteInt16(v.slotID)
@@ -405,11 +415,15 @@ func (v item) bytes(shortSlot bool) []byte {
 		p.WriteByte(0x02)
 	}
 
-	p.WriteInt32(v.id)
+	p.WriteInt32(v.ID)
 
 	p.WriteBool(v.cash)
 	if v.cash {
-		p.WriteUint64(uint64(v.id)) // I think this is somekind of cashshop transaction ID for the item
+		if sn, ok := nx.GetCommoditySNByItemID(v.ID); ok {
+			p.WriteUint64(uint64(sn))
+		} else {
+			p.WriteUint64(uint64(v.ID))
+		}
 	}
 
 	p.WriteInt64(v.expireTime)
@@ -446,16 +460,16 @@ func (v item) bytes(shortSlot bool) []byte {
 		p.WriteString(v.creatorName)
 		p.WriteInt16(v.flag) // even (normal), odd (sealed) ?
 
-		if v.isRechargeable() {
-			p.WriteInt64(0) // ?
-		}
+		//if v.isRechargeable() {
+		//	p.WriteInt64(0) // ?
+		//}
 	}
 
 	return p
 }
 
 // Use applies stat changes for items
-func (v item) use(plr *player) {
+func (v Item) use(plr *Player) {
 	if plr.hp < 1 {
 		plr.noChange()
 		return
@@ -475,7 +489,7 @@ func (v item) use(plr *player) {
 }
 
 // applyScrollEffects mutates the equip with the scroll increments from NX.
-func (v *item) applyScrollEffects(scroll nx.Item) {
+func (v *Item) applyScrollEffects(scroll nx.Item) {
 	v.str += scroll.IncSTR
 	v.dex += scroll.IncDEX
 	v.intt += scroll.IncINT
@@ -495,7 +509,7 @@ func (v *item) applyScrollEffects(scroll nx.Item) {
 	v.jump += int16(scroll.IncJump)
 }
 
-func (v *item) incrementScrollCount() {
+func (v *Item) incrementScrollCount() {
 	v.scrollLevel++
 }
 

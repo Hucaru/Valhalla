@@ -8,7 +8,7 @@ const (
 	RecvLoginCheckLogin            byte = 0x08
 	RecvLoginRegisterPin           byte = 0x09
 	RecvLoginSelectCharacter       byte = 0x0B
-	RecvChannelPlayerLoad          byte = 0x0C
+	RecvClientMigrate              byte = 0x0C
 	RecvLoginNameCheck             byte = 0x0D
 	RecvLoginNewCharacter          byte = 0x0E
 	RecvLoginDeleteChar            byte = 0x0F
@@ -62,4 +62,5 @@ const (
 	RecvChannelNpcMovement         byte = 0x6F
 	RecvChannelPlayerPickup        byte = 0x73
 	RecvChannelBoatMap             byte = 0x80
+	RecvCashShopPurchase           byte = 0x85
 )

@@ -17,6 +17,8 @@ CREATE TABLE `accounts` (
   `gender` tinyint(4) NOT NULL DEFAULT '0',
   `dob` int(11) NOT NULL,
   `eula` tinyint(4) NOT NULL,
+  `nx` int(11) unsigned NOT NULL DEFAULT '0',
+  `maplepoints` int(11) unsigned NOT NULL DEFAULT '0',
   PRIMARY KEY (`accountID`)
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 
@@ -43,6 +45,7 @@ CREATE TABLE `characters` (
   `guildRank` tinyint(4) NOT NULL DEFAULT '1',
   `worldID` int(11) unsigned NOT NULL,
   `channelID` tinyint(2) NOT NULL DEFAULT '-1',
+  `previousChannelID` tinyint(2) NOT NULL DEFAULT '-1',
   `migrationID` tinyint(4) NOT NULL DEFAULT '-1',
   `name` tinytext NOT NULL,
   `gender` int(11) unsigned NOT NULL,

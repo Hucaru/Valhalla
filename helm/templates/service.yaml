@@ -29,6 +29,20 @@ spec:
       port: 8584
       targetPort: 8584
   type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: cashshop-server
+  namespace: {{ .Release.Namespace }}
+spec:
+  selector:
+    app: cashshop-server
+  ports:
+    - name: tcp-cashshop
+      port: 8600
+      targetPort: 8600
+  type: ClusterIP
 
 {{- $root := . -}}
 {{ $replicas := int .Values.channel.replicas -}}

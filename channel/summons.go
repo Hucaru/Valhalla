@@ -8,7 +8,7 @@ import (
 	"github.com/Hucaru/Valhalla/mpacket"
 )
 
-// Summon represents a player-owned summon/puppet instance.
+// Summon represents a Player-owned summon/puppet instance.
 type summon struct {
 	OwnerID int32
 	SkillID int32

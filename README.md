@@ -145,6 +145,7 @@ See screenshots section for an example Grafana dashboard
 - The following projects were used to help reverse packet structures that were not clearly shown in the idb
     - [Vana](https://github.com/retep998/Vana)
     - [WvsGlobal](https://github.com/diamondo25/WvsGlobal)
+    - [OpenMG](https://github.com/sewil/OpenMG)
 - [NX](https://nxformat.github.io/) file format (see acknowledgements at link)
 
 ## NPC chat display info (use this when scripting NPCs)
@@ -220,6 +221,7 @@ The following values should be used to deploy the helm chart:
 ```
 tcp:
   8484: valhalla/login-server:8484
+  8600: valhalla/cashShop-server:8600
   8685: valhalla/channel-server-1:8685
   8684: valhalla/channel-server-2:8684
   8683: valhalla/channel-server-3:8683

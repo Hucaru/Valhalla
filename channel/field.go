@@ -475,10 +475,10 @@ func (f *field) getInstance(id int) (*fieldInstance, error) {
 		return f.instances[id], nil
 	}
 
-	return nil, fmt.Errorf("Invalid instance id")
+	return nil, fmt.Errorf("Invalid instance ID")
 }
 
-func (f *field) changePlayerInstance(player *player, id int) error {
+func (f *field) changePlayerInstance(player *Player, id int) error {
 	if id == player.inst.id {
 		return fmt.Errorf("In specified instance")
 	}
@@ -502,7 +502,7 @@ func (f *field) changePlayerInstance(player *player, id int) error {
 		return nil
 	}
 
-	return fmt.Errorf("Invalid instance id")
+	return fmt.Errorf("Invalid instance ID")
 }
 
 type portal struct {
@@ -534,7 +534,7 @@ type fieldInstance struct {
 	roomPool roomPool
 
 	portals []portal
-	players []*player
+	players []*Player
 
 	idCounter int32
 	town      bool
@@ -559,7 +559,7 @@ func (inst fieldInstance) String() string {
 	info += "players(" + strconv.Itoa(len(inst.players)) + "): "
 
 	for _, v := range inst.players {
-		info += " " + v.name + "(" + v.pos.String() + ")"
+		info += " " + v.Name + "(" + v.pos.String() + ")"
 	}
 
 	return info
@@ -578,12 +578,12 @@ func (inst fieldInstance) findController() interface{} {
 	return nil
 }
 
-func (inst *fieldInstance) addPlayer(plr *player) error {
+func (inst *fieldInstance) addPlayer(plr *Player) error {
 	plr.inst = inst
 
 	for _, other := range inst.players {
-		other.send(packetMapPlayerEnter(plr))
-		plr.send(packetMapPlayerEnter(other))
+		other.Send(packetMapPlayerEnter(plr))
+		plr.Send(packetMapPlayerEnter(other))
 	}
 
 	inst.lifePool.addPlayer(plr)
@@ -596,7 +596,7 @@ func (inst *fieldInstance) addPlayer(plr *player) error {
 
 	inst.players = append(inst.players, plr)
 
-	// For now pools run on all maps forever after first player enters.
+	// For now pools run on all maps forever after first Player enters.
 	// If this hits perf too much then a set of params for each pool
 	// will need to be determined to allow it to stop updating e.g.
 	// drop pool, no drops and no players
@@ -606,31 +606,31 @@ func (inst *fieldInstance) addPlayer(plr *player) error {
 	}
 
 	if len(inst.bgm) > 0 {
-		plr.send(packetBgmChange(inst.bgm))
+		plr.Send(packetBgmChange(inst.bgm))
 	}
 
 	return nil
 }
 
-func (inst *fieldInstance) removePlayer(plr *player) error {
+func (inst *fieldInstance) removePlayer(plr *Player) error {
 	index := -1
 
 	for i, v := range inst.players {
-		if v.conn == plr.conn {
+		if v.Conn == plr.Conn {
 			index = i
 			break
 		}
 	}
 
 	if index == -1 {
-		return fmt.Errorf("player does not exist in instance")
+		return fmt.Errorf("Player does not exist in instance")
 	}
 
 	inst.players = append(inst.players[:index], inst.players[index+1:]...)
 
 	for _, v := range inst.players {
-		v.send(packetMapPlayerLeft(plr.id))
-		plr.send(packetMapPlayerLeft(v.id))
+		v.Send(packetMapPlayerLeft(plr.ID))
+		plr.Send(packetMapPlayerLeft(v.ID))
 	}
 
 	inst.lifePool.removePlayer(plr)
@@ -639,9 +639,9 @@ func (inst *fieldInstance) removePlayer(plr *player) error {
 	return nil
 }
 
-func (inst fieldInstance) getPlayerFromID(id int32) (*player, error) {
+func (inst fieldInstance) getPlayerFromID(id int32) (*Player, error) {
 	for i, v := range inst.players {
-		if v.id == id {
+		if v.ID == id {
 			return inst.players[i], nil
 		}
 	}
@@ -649,8 +649,8 @@ func (inst fieldInstance) getPlayerFromID(id int32) (*player, error) {
 	return nil, fmt.Errorf("Player not in instance")
 }
 
-func (inst fieldInstance) movePlayer(id int32, moveBytes []byte, plr *player) {
-	inst.sendExcept(packetPlayerMove(id, moveBytes), plr.conn)
+func (inst fieldInstance) movePlayer(id int32, moveBytes []byte, plr *Player) {
+	inst.sendExcept(packetPlayerMove(id, moveBytes), plr.Conn)
 }
 
 func (inst *fieldInstance) nextID() int32 {
@@ -660,17 +660,17 @@ func (inst *fieldInstance) nextID() int32 {
 
 func (inst fieldInstance) send(p mpacket.Packet) {
 	for _, v := range inst.players {
-		v.send(p)
+		v.Send(p)
 	}
 }
 
 func (inst fieldInstance) sendExcept(p mpacket.Packet, exception mnet.Client) {
 	for _, v := range inst.players {
-		if v.conn == exception {
+		if v.Conn == exception {
 			continue
 		}
 
-		v.send(p)
+		v.Send(p)
 	}
 }
 
@@ -720,7 +720,7 @@ func (inst fieldInstance) getPortalFromName(name string) (portal, error) {
 		}
 	}
 
-	return portal{}, fmt.Errorf("No portal with that name")
+	return portal{}, fmt.Errorf("No portal with that Name")
 }
 
 func (inst fieldInstance) getPortalFromID(id byte) (portal, error) {
@@ -730,7 +730,7 @@ func (inst fieldInstance) getPortalFromID(id byte) (portal, error) {
 		}
 	}
 
-	return portal{}, fmt.Errorf("No portal with that name")
+	return portal{}, fmt.Errorf("No portal with that Name")
 }
 
 func (inst *fieldInstance) startFieldTimer() {
@@ -773,21 +773,21 @@ func (inst *fieldInstance) showBoats(show bool, boatType byte) {
 	}
 }
 
-func displayBoat(plr *player, show bool, boatType byte) {
+func displayBoat(plr *Player, show bool, boatType byte) {
 	switch boatType {
 	case 0: // docked boat in station
-		plr.send(packetMapBoat(show))
+		plr.Send(packetMapBoat(show))
 	case 1: // crog
-		plr.send(packetMapShowMovingObject(show))
+		plr.Send(packetMapShowMovingObject(show))
 	default:
 		log.Println("Unkown docked boat type:", boatType)
 	}
 }
 
-func packetMapPlayerEnter(plr *player) mpacket.Packet {
+func packetMapPlayerEnter(plr *Player) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelCharacterEnterField)
-	p.WriteInt32(plr.id)
-	p.WriteString(plr.name)
+	p.WriteInt32(plr.ID)
+	p.WriteString(plr.Name)
 
 	if plr.guild != nil {
 		p.WriteString(plr.guild.name)

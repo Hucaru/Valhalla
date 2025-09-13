@@ -106,7 +106,7 @@ func (server *Server) gmCommand(conn mnet.Client, msg string) {
 		}
 
 		for _, v := range server.players {
-			v.send(packetMessageNotice(strings.Join(command[1:], " ")))
+			v.Send(packetMessageNotice(strings.Join(command[1:], " ")))
 		}
 	case "msgBox":
 		if len(command) < 2 {
@@ -114,7 +114,7 @@ func (server *Server) gmCommand(conn mnet.Client, msg string) {
 		}
 
 		for _, v := range server.players {
-			v.send(packetMessageDialogueBox(strings.Join(command[1:], " ")))
+			v.Send(packetMessageDialogueBox(strings.Join(command[1:], " ")))
 		}
 	case "header":
 		if len(command) < 2 {
@@ -124,7 +124,7 @@ func (server *Server) gmCommand(conn mnet.Client, msg string) {
 		}
 
 		for _, v := range server.players {
-			v.send(packetMessageScrollingHeader(server.header))
+			v.Send(packetMessageScrollingHeader(server.header))
 		}
 	case "wheader": // sends to world server to propagate to all channels
 
@@ -501,7 +501,7 @@ func (server *Server) gmCommand(conn mnet.Client, msg string) {
 			}
 		}
 
-		item, err := createItemFromID(itemID, amount)
+		item, err := CreateItemFromID(itemID, amount)
 
 		if err != nil {
 			conn.Send(packetMessageRedText(err.Error()))
@@ -515,8 +515,8 @@ func (server *Server) gmCommand(conn mnet.Client, msg string) {
 			return
 		}
 
-		item.creatorName = player.name
-		err = player.giveItem(item)
+		item.creatorName = player.Name
+		err = player.GiveItem(item)
 
 		if err != nil {
 			conn.Send(packetMessageRedText(err.Error()))
@@ -538,6 +538,42 @@ func (server *Server) gmCommand(conn mnet.Client, msg string) {
 			}
 
 			player.setMesos(int32(val))
+		}
+	case "nx":
+		if len(command) == 2 {
+			val, err := strconv.Atoi(command[1])
+
+			if err != nil {
+				conn.Send(packetMessageRedText(err.Error()))
+				return
+			}
+
+			player, err := server.players.getFromConn(conn)
+
+			if err != nil {
+				conn.Send(packetMessageRedText(err.Error()))
+				return
+			}
+
+			player.nx += (int32(val))
+		}
+	case "maplepoints":
+		if len(command) == 2 {
+			val, err := strconv.Atoi(command[1])
+
+			if err != nil {
+				conn.Send(packetMessageRedText(err.Error()))
+				return
+			}
+
+			player, err := server.players.getFromConn(conn)
+
+			if err != nil {
+				conn.Send(packetMessageRedText(err.Error()))
+				return
+			}
+
+			player.maplepoints += (int32(val))
 		}
 	case "warp":
 		var val int
@@ -606,7 +642,7 @@ func (server *Server) gmCommand(conn mnet.Client, msg string) {
 		dstField, ok := server.fields[id]
 
 		if !ok {
-			conn.Send(packetMessageRedText("Invalid map id"))
+			conn.Send(packetMessageRedText("Invalid map ID"))
 			return
 		}
 
@@ -628,7 +664,7 @@ func (server *Server) gmCommand(conn mnet.Client, msg string) {
 		dstField, ok := server.fields[person.inst.fieldID]
 
 		if !ok {
-			conn.Send(packetMessageRedText("Invalid map id"))
+			conn.Send(packetMessageRedText("Invalid map ID"))
 			return
 		}
 
@@ -669,8 +705,8 @@ func (server *Server) gmCommand(conn mnet.Client, msg string) {
 				return
 			}
 
-			item.creatorName = player.name
-			err = player.giveItem(item)
+			item.creatorName = player.Name
+			err = player.GiveItem(item)
 
 			if err != nil {
 				conn.Send(packetMessageRedText(err.Error()))
@@ -795,7 +831,7 @@ func (server *Server) gmCommand(conn mnet.Client, msg string) {
 		}
 
 		for i := 0; i < count; i++ {
-			err := inst.lifePool.spawnMobFromID(mobID, plr.pos, false, true, true, plr.id)
+			err := inst.lifePool.spawnMobFromID(mobID, plr.pos, false, true, true, plr.ID)
 
 			if err != nil {
 				conn.Send(packetMessageRedText(err.Error()))
@@ -848,7 +884,7 @@ func (server *Server) gmCommand(conn mnet.Client, msg string) {
 
 		for i := 0; i < count; i++ {
 			for _, id := range mobID {
-				err = inst.lifePool.spawnMobFromID(id, plr.pos, false, true, true, plr.id)
+				err = inst.lifePool.spawnMobFromID(id, plr.pos, false, true, true, plr.ID)
 			}
 
 			if err != nil {
@@ -864,7 +900,7 @@ func (server *Server) gmCommand(conn mnet.Client, msg string) {
 			return
 		}
 
-		server.world.Send(internal.PacketChannelPartyCreateRequest(plr.id, server.id, plr.mapID, int32(plr.job), int32(plr.level), plr.name))
+		server.world.Send(internal.PacketChannelPartyCreateRequest(plr.ID, server.id, plr.mapID, int32(plr.job), int32(plr.level), plr.Name))
 	case "guildCreate":
 		plr, err := server.players.getFromConn(conn)
 
@@ -954,37 +990,37 @@ func (server *Server) gmCommand(conn mnet.Client, msg string) {
 			return
 		}
 
-		err = inst.lifePool.spawnMobFromID(5100001, plr.pos, true, true, true, plr.id)
+		err = inst.lifePool.spawnMobFromID(5100001, plr.pos, true, true, true, plr.ID)
 
 		if err != nil {
 			conn.Send(packetMessageRedText(err.Error()))
 		}
 	case "portal":
-		// plr, err := server.players.getFromConn(conn)
+		// plr, err := server.players.getFromConn(Conn)
 
 		// if err != nil {
-		// 	conn.Send(packetMessageRedText(err.Error()))
+		// 	Conn.Send(packetMessageRedText(err.Error()))
 		// 	return
 		// }
 
 		// field, ok := server.fields[plr.MapID()]
 
 		// if !ok {
-		// 	conn.Send(packetMessageRedText("Could not find field ID"))
+		// 	Conn.Send(packetMessageRedText("Could not find field ID"))
 		// 	return
 		// }
 
 		// inst, err := field.GetInstance(plr.InstanceID())
 
 		// if err != nil {
-		// 	conn.Send(packetMessageRedText(err.Error()))
+		// 	Conn.Send(packetMessageRedText(err.Error()))
 		// 	return
 		// }
 
 		// dstField, ok := server.fields[180000000]
 
 		// if !ok {
-		// 	conn.Send(packetMessageRedText("Could not find field ID"))
+		// 	Conn.Send(packetMessageRedText("Could not find field ID"))
 		// 	return
 		// }
 
@@ -1016,7 +1052,7 @@ func (server *Server) gmCommand(conn mnet.Client, msg string) {
 		var mesos int32 = 1000
 
 		items := []int32{1372010, 1402005, 1422013, 1412021, 1382016, 1432030, 1442002, 1302023, 1322045, 1312015, 1332027, 1332026, 1462017, 1472033, 1452020, 1092029, 1092025}
-		drops := make([]item, len(items))
+		drops := make([]Item, len(items))
 
 		for i, v := range items {
 			item, err := createPerfectItemFromID(v, 1)
@@ -1026,11 +1062,11 @@ func (server *Server) gmCommand(conn mnet.Client, msg string) {
 				return
 			}
 
-			item.creatorName = plr.name
+			item.creatorName = plr.Name
 			drops[i] = item
 		}
 
-		pool.createDrop(dropSpawnNormal, dropFreeForAll, mesos, plr.pos, true, plr.id, 0, drops...)
+		pool.createDrop(dropSpawnNormal, dropFreeForAll, mesos, plr.pos, true, plr.ID, 0, drops...)
 	case "dropr":
 		var id int32
 		var err error
@@ -1045,7 +1081,7 @@ func (server *Server) gmCommand(conn mnet.Client, msg string) {
 
 			id = int32(val)
 		} else {
-			conn.Send(packetMessageRedText("Supply drop id"))
+			conn.Send(packetMessageRedText("Supply drop ID"))
 			return
 		}
 
@@ -1075,7 +1111,7 @@ func (server *Server) gmCommand(conn mnet.Client, msg string) {
 		// This isn't working, either incorrect opcode or script string is invalid
 		p := mpacket.CreateWithOpcode(0x9F)
 		p.WriteByte(2)        // amount
-		p.WriteInt32(9200000) // npc id
+		p.WriteInt32(9200000) // npc ID
 		p.WriteString("cody") // string
 		var startDate uint32 = 1 + (1 * 100) + (2001 * 10000)
 		var endDate uint32 = 1 + (1 * 100) + (2099 * 10000)
@@ -1230,5 +1266,5 @@ func covnertMobNameToID(name string) ([]int32, error) {
 		return []int32{6300005}, nil
 	}
 
-	return nil, fmt.Errorf("Unkown mob name")
+	return nil, fmt.Errorf("Unkown mob Name")
 }

@@ -48,7 +48,30 @@ data:
     listenAddress = "0.0.0.0"
     listenPort = "8584"
     packetQueueSize = {{ .Values.world.packetQueueSize }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cashshop-config
+  namespace: {{ .Release.Namespace }}
+data:
+  config_cashshop.toml: |
+    [database]
+    address = "{{ .Values.mysql.host }}"
+    port = "{{ .Values.mysql.port }}"
+    user = "{{ .Values.mysql.user }}"
+    password = "{{ .Values.mysql.password }}"
+    database = "{{ .Values.mysql.database }}"
 
+    [cashshop]
+    worldAddress = "world-server.{{ .Release.Namespace }}.svc.{{ .Values.clusterDomain }}"
+    worldPort = "8584"
+    listenAddress = "0.0.0.0"
+    listenPort = "8600"
+    clientConnectionAddress = "{{ .Values.cashshop.clientConnectionAddress }}"
+    packetQueueSize = {{ .Values.cashshop.packetQueueSize }}
+    latency = {{ .Values.cashshop.latency }}
+    jitter = {{ .Values.cashshop.jitter }}
 {{- $root := . -}}
 {{ $replicas := int .Values.channel.replicas -}}
 {{- range $i, $_ := until $replicas }}

@@ -50,11 +50,23 @@ type channelConfig struct {
 	Jitter                  int
 }
 
+type cashShopConfig struct {
+	WorldAddress            string
+	WorldPort               string
+	ListenAddress           string
+	ClientConnectionAddress string
+	ListenPort              string
+	PacketQueueSize         int
+	Latency                 int
+	Jitter                  int
+}
+
 type fullConfig struct {
 	Database dbConfig
 	Login    loginConfig
 	World    worldConfig
 	Channel  channelConfig
+	CashShop cashShopConfig
 }
 
 func loginConfigFromFile(fname string) (loginConfig, dbConfig) {
@@ -85,4 +97,14 @@ func channelConfigFromFile(fname string) (channelConfig, dbConfig) {
 	}
 
 	return config.Channel, config.Database
+}
+
+func cashShopConfigFromFile(fname string) (cashShopConfig, dbConfig) {
+	config := &fullConfig{}
+
+	if _, err := toml.DecodeFile(fname, config); err != nil {
+		log.Fatal(err)
+	}
+
+	return config.CashShop, config.Database
 }

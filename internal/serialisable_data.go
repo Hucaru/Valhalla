@@ -19,6 +19,7 @@ type World struct {
 	Name, Message string
 	Ribbon        byte
 	Channels      []Channel
+	CashShop      CashShop
 	Rates         Rates
 	DefaultRates  Rates
 }
@@ -53,6 +54,12 @@ func (w *World) SerialisePacket(reader mpacket.Reader) {
 }
 
 type Channel struct {
+	Conn        mnet.Server
+	IP          []byte
+	Port        int16
+	MaxPop, Pop int16
+}
+type CashShop struct {
 	Conn        mnet.Server
 	IP          []byte
 	Port        int16

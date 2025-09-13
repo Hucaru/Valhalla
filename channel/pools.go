@@ -44,7 +44,7 @@ type lifePool struct {
 	lastMobSpawnTime     time.Time
 	mobCapMin, mobCapMax int
 
-	activeMobCtrl map[*player]bool
+	activeMobCtrl map[*Player]bool
 
 	dropPool *dropPool
 
@@ -52,7 +52,7 @@ type lifePool struct {
 }
 
 func creatNewLifePool(inst *fieldInstance, npcData, mobData []nx.Life, mobCapMin, mobCapMax int) lifePool {
-	pool := lifePool{instance: inst, activeMobCtrl: make(map[*player]bool)}
+	pool := lifePool{instance: inst, activeMobCtrl: make(map[*Player]bool)}
 
 	pool.npcs = make(map[int32]*npc)
 
@@ -108,7 +108,7 @@ func (pool lifePool) mobCount() int {
 }
 
 func (pool *lifePool) nextMobID() (int32, error) {
-	for i := 0; i < 100; i++ { // Try 100 times to generate an id if first time fails
+	for i := 0; i < 100; i++ { // Try 100 times to generate an ID if first time fails
 		pool.mobID++
 
 		if pool.mobID == math.MaxInt32-1 {
@@ -122,11 +122,11 @@ func (pool *lifePool) nextMobID() (int32, error) {
 		}
 	}
 
-	return 0, fmt.Errorf("no space to generate id in life pool")
+	return 0, fmt.Errorf("no space to generate ID in life pool")
 }
 
 func (pool *lifePool) nextNpcID() (int32, error) {
-	for i := 0; i < 100; i++ { // Try 100 times to generate an id if first time fails
+	for i := 0; i < 100; i++ { // Try 100 times to generate an ID if first time fails
 		pool.npcID++
 
 		if pool.npcID == math.MaxInt32-1 {
@@ -140,7 +140,7 @@ func (pool *lifePool) nextNpcID() (int32, error) {
 		}
 	}
 
-	return 0, fmt.Errorf("no space to generate id in life pool")
+	return 0, fmt.Errorf("no space to generate ID in life pool")
 }
 
 func (pool lifePool) canPause() bool {
@@ -155,12 +155,12 @@ func (pool lifePool) getNPCFromSpawnID(id int32) (npc, error) {
 		}
 	}
 
-	return npc{}, fmt.Errorf("Could not find npc with id %d", id)
+	return npc{}, fmt.Errorf("Could not find npc with ID %d", id)
 }
 
-func (pool *lifePool) addPlayer(plr *player) {
+func (pool *lifePool) addPlayer(plr *Player) {
 	for i, npc := range pool.npcs {
-		plr.send(packetNpcShow(npc))
+		plr.Send(packetNpcShow(npc))
 
 		if npc.controller == nil {
 			pool.npcs[i].setController(plr)
@@ -168,7 +168,7 @@ func (pool *lifePool) addPlayer(plr *player) {
 	}
 
 	for i, m := range pool.mobs {
-		plr.send(packetMobShow(m))
+		plr.Send(packetMobShow(m))
 
 		if m.controller == nil {
 			pool.mobs[i].setController(plr, false)
@@ -178,14 +178,14 @@ func (pool *lifePool) addPlayer(plr *player) {
 	}
 }
 
-func (pool *lifePool) removePlayer(plr *player) {
+func (pool *lifePool) removePlayer(plr *Player) {
 	for i, v := range pool.npcs {
-		if v.controller != nil && v.controller.conn == plr.conn {
+		if v.controller != nil && v.controller.Conn == plr.Conn {
 			pool.npcs[i].removeController()
 
 			// find new controller
 			if plr := pool.instance.findController(); plr != nil {
-				if cont, ok := plr.(*player); ok {
+				if cont, ok := plr.(*Player); ok {
 					pool.npcs[i].setController(cont)
 				}
 			}
@@ -193,24 +193,24 @@ func (pool *lifePool) removePlayer(plr *player) {
 	}
 
 	for i, v := range pool.mobs {
-		if v.controller != nil && v.controller.conn == plr.conn {
+		if v.controller != nil && v.controller.Conn == plr.Conn {
 			pool.mobs[i].removeController()
 
 			// find new controller
 			if plr := pool.instance.findController(); plr != nil {
-				if cont, ok := plr.(*player); ok {
+				if cont, ok := plr.(*Player); ok {
 					pool.mobs[i].setController(cont, false)
 				}
 			}
 		}
 
-		plr.send(packetMobRemove(v.spawnID, 0x0)) // need to tell client to remove mobs for instance swapping
+		plr.Send(packetMobRemove(v.spawnID, 0x0)) // need to tell client to remove mobs for instance swapping
 	}
 
 	delete(pool.activeMobCtrl, plr)
 }
 
-func (pool *lifePool) npcAcknowledge(poolID int32, plr *player, data []byte) {
+func (pool *lifePool) npcAcknowledge(poolID int32, plr *Player, data []byte) {
 	for i := range pool.npcs {
 		if poolID == pool.npcs[i].spawnID {
 			pool.npcs[i].acknowledgeController(plr, pool.instance, data)
@@ -220,11 +220,11 @@ func (pool *lifePool) npcAcknowledge(poolID int32, plr *player, data []byte) {
 
 }
 
-func (pool *lifePool) mobAcknowledge(poolID int32, plr *player, moveID int16, skillPossible bool, action int8, skillData uint32, moveData movement, finalData movementFrag, moveBytes []byte) {
+func (pool *lifePool) mobAcknowledge(poolID int32, plr *Player, moveID int16, skillPossible bool, action int8, skillData uint32, moveData movement, finalData movementFrag, moveBytes []byte) {
 	for i, v := range pool.mobs {
 		mob := pool.mobs[i]
 
-		if poolID == v.spawnID && v.controller.conn == plr.conn {
+		if poolID == v.spawnID && v.controller.Conn == plr.Conn {
 			skillID := byte(skillData)
 			skillLevel := byte(skillData >> 8)
 			skillDelay := int16(skillData >> 16)
@@ -273,12 +273,12 @@ func (pool *lifePool) mobAcknowledge(poolID int32, plr *player, moveID int16, sk
 			}
 
 			pool.mobs[i].acknowledgeController(moveID, finalData, skillPossible, skillID, skillLevel)
-			pool.instance.sendExcept(packetMobMove(poolID, skillPossible, action, skillData, moveBytes), v.controller.conn)
+			pool.instance.sendExcept(packetMobMove(poolID, skillPossible, action, skillData, moveBytes), v.controller.Conn)
 		}
 	}
 }
 
-func (pool *lifePool) mobDamaged(poolID int32, damager *player, dmg ...int32) {
+func (pool *lifePool) mobDamaged(poolID int32, damager *Player, dmg ...int32) {
 	for i, v := range pool.mobs {
 		if v.spawnID == poolID {
 			pool.mobs[i].removeController()
@@ -320,7 +320,7 @@ func (pool *lifePool) mobDamaged(poolID int32, damager *player, dmg ...int32) {
 
 					if plr.party != nil {
 						// TODO: check level difference is appropriate
-						plr.party.giveExp(plr.id, partyExp, true)
+						plr.party.giveExp(plr.ID, partyExp, true)
 					}
 				}
 
@@ -352,7 +352,7 @@ func (pool *lifePool) mobDamaged(poolID int32, damager *player, dmg ...int32) {
 
 				if dropEntry, ok := dropTable[v.id]; ok {
 					var mesos int32
-					drops := make([]item, 0, len(dropEntry))
+					drops := make([]Item, 0, len(dropEntry))
 
 					for _, entry := range dropEntry {
 						if entry.IsMesos {
@@ -360,8 +360,8 @@ func (pool *lifePool) mobDamaged(poolID int32, damager *player, dmg ...int32) {
 							continue
 						}
 
-						// Quest-gated item: only allow if killer has quest active
-						// This should probably be hidden from instance and only viewable to player
+						// Quest-gated Item: only allow if killer has quest active
+						// This should probably be hidden from instance and only viewable to Player
 						if entry.QuestID != 0 && !damager.allowsQuestDrop(entry.QuestID) {
 							continue
 						}
@@ -384,7 +384,7 @@ func (pool *lifePool) mobDamaged(poolID int32, damager *player, dmg ...int32) {
 							}
 						}
 
-						newItem, err := createItemFromID(entry.ItemID, amount)
+						newItem, err := CreateItemFromID(entry.ItemID, amount)
 						if err != nil {
 							log.Println("Failed to create drop for mobID:", v.id, "with error:", err)
 							continue
@@ -479,7 +479,7 @@ func (pool *lifePool) spawnMob(m *monster, hasAgro bool) bool {
 	pool.instance.send(packetMobShow(m))
 
 	if plr := pool.instance.findController(); plr != nil {
-		if cont, ok := plr.(*player); ok {
+		if cont, ok := plr.(*Player); ok {
 			for _, v := range pool.mobs {
 				v.setController(cont, hasAgro)
 			}
@@ -510,7 +510,7 @@ func (pool *lifePool) spawnMobFromID(mobID int32, location pos, hasAgro, items, 
 	return nil
 }
 
-func (pool *lifePool) spawnReviveMob(m *monster, cont *player) {
+func (pool *lifePool) spawnReviveMob(m *monster, cont *Player) {
 	pool.spawnMob(m, true)
 
 	pool.mobs[m.spawnID].summonType = -2
@@ -530,10 +530,10 @@ func (pool *lifePool) removeMob(poolID int32, deathType byte) {
 	pool.instance.send(packetMobRemove(poolID, deathType))
 }
 
-func (pool lifePool) showMobBossHPBar(mob *monster, plr *player) {
+func (pool lifePool) showMobBossHPBar(mob *monster, plr *Player) {
 	if plr != nil {
 		if show, mobID, hp, maxHP, hpFgColour, hpBgColour := mob.hasHPBar(); show {
-			plr.send(packetMobShowBossHP(mobID, hp, maxHP, hpFgColour, hpBgColour))
+			plr.Send(packetMobShowBossHP(mobID, hp, maxHP, hpFgColour, hpBgColour))
 		}
 	} else {
 		if show, mobID, hp, maxHP, hpFgColour, hpBgColour := mob.hasHPBar(); show {
@@ -638,7 +638,7 @@ func (pool *lifePool) getMobFromID(mobID int32) (monster, error) {
 		return *m, nil
 	}
 
-	return monster{}, fmt.Errorf("Could not find mob with id %d", mobID)
+	return monster{}, fmt.Errorf("Could not find mob with ID %d", mobID)
 }
 
 type roomPool struct {
@@ -652,7 +652,7 @@ func createNewRoomPool(inst *fieldInstance) roomPool {
 }
 
 func (pool *roomPool) nextID() (int32, error) {
-	for i := 0; i < 100; i++ { // Try 99 times to generate an id if first time fails
+	for i := 0; i < 100; i++ { // Try 99 times to generate an ID if first time fails
 		pool.poolID++
 
 		if pool.poolID == math.MaxInt32-1 {
@@ -666,13 +666,13 @@ func (pool *roomPool) nextID() (int32, error) {
 		}
 	}
 
-	return 0, fmt.Errorf("No space to generate id in drop pool")
+	return 0, fmt.Errorf("No space to generate ID in drop pool")
 }
 
-func (pool *roomPool) playerShowRooms(plr *player) {
+func (pool *roomPool) playerShowRooms(plr *Player) {
 	for _, r := range pool.rooms {
 		if game, valid := r.(gameRoomer); valid {
-			plr.send(packetMapShowGameBox(game.displayBytes()))
+			plr.Send(packetMapShowGameBox(game.displayBytes()))
 		}
 	}
 }
@@ -695,7 +695,7 @@ func (pool *roomPool) addRoom(r roomer) error {
 
 func (pool *roomPool) removeRoom(id int32) error {
 	if _, ok := pool.rooms[id]; !ok {
-		return fmt.Errorf("Could not delete room as id was not found")
+		return fmt.Errorf("Could not delete room as ID was not found")
 	}
 
 	if _, valid := pool.rooms[id].(gameRoomer); valid {
@@ -709,7 +709,7 @@ func (pool *roomPool) removeRoom(id int32) error {
 
 func (pool roomPool) getRoom(id int32) (roomer, error) {
 	if _, ok := pool.rooms[id]; !ok {
-		return nil, fmt.Errorf("Could not retrieve room as id was not found")
+		return nil, fmt.Errorf("Could not retrieve room as ID was not found")
 	}
 
 	return pool.rooms[id], nil
@@ -722,7 +722,7 @@ func (pool roomPool) getPlayerRoom(id int32) (roomer, error) {
 		}
 	}
 
-	return nil, fmt.Errorf("no room with id")
+	return nil, fmt.Errorf("no room with ID")
 }
 
 func (pool roomPool) updateGameBox(r roomer) {
@@ -731,8 +731,8 @@ func (pool roomPool) updateGameBox(r roomer) {
 	}
 }
 
-func (pool *roomPool) removePlayer(plr *player) {
-	r, err := pool.getPlayerRoom(plr.id)
+func (pool *roomPool) removePlayer(plr *Player) {
+	r, err := pool.getPlayerRoom(plr.ID)
 
 	if err != nil {
 		return
@@ -760,7 +760,7 @@ type fieldDrop struct {
 	partyID int32
 
 	mesos int32
-	item  item
+	item  Item
 
 	expireTime  int64
 	timeoutTime int64
@@ -791,7 +791,7 @@ func createNewDropPool(inst *fieldInstance, rates *rates) dropPool {
 }
 
 func (pool *dropPool) nextID() (int32, error) {
-	for i := 0; i < 100; i++ { // Try 99 times to generate an id if first time fails
+	for i := 0; i < 100; i++ { // Try 99 times to generate an ID if first time fails
 		pool.poolID++
 
 		if pool.poolID == math.MaxInt32-1 {
@@ -805,16 +805,16 @@ func (pool *dropPool) nextID() (int32, error) {
 		}
 	}
 
-	return 0, fmt.Errorf("No space to generate id in drop pool")
+	return 0, fmt.Errorf("No space to generate ID in drop pool")
 }
 
 func (pool dropPool) canPause() bool {
 	return len(pool.drops) == 0
 }
 
-func (pool dropPool) playerShowDrops(plr *player) {
+func (pool dropPool) playerShowDrops(plr *Player) {
 	for _, drop := range pool.drops {
-		plr.send(packetShowDrop(dropSpawnShow, drop))
+		plr.Send(packetShowDrop(dropSpawnShow, drop))
 	}
 }
 
@@ -832,10 +832,10 @@ func (pool *dropPool) eraseDrops() {
 	pool.drops = make(map[int32]fieldDrop)
 }
 
-func (pool *dropPool) playerAttemptPickup(drop fieldDrop, player *player) {
+func (pool *dropPool) playerAttemptPickup(drop fieldDrop, player *Player) {
 	var amount int16
 
-	pool.instance.send(packetRemoveDrop(2, drop.ID, player.id))
+	pool.instance.send(packetRemoveDrop(2, drop.ID, player.ID))
 
 	if drop.mesos > 0 {
 		amount = int16(pool.rates.mesos * float32(drop.mesos))
@@ -843,7 +843,7 @@ func (pool *dropPool) playerAttemptPickup(drop fieldDrop, player *player) {
 		amount = drop.item.amount
 	}
 
-	player.send(packetPickupNotice(drop.item.id, amount, drop.mesos > 0, drop.item.invID == 1.0))
+	player.Send(packetPickupNotice(drop.item.ID, amount, drop.mesos > 0, drop.item.invID == 1.0))
 	delete(pool.drops, drop.ID)
 }
 
@@ -861,7 +861,7 @@ const itemDistance = 20 // Between 15 and 20?
 const itemDisppearTimeout = time.Minute * 2
 const itemLootableByAllTimeout = time.Minute * 1
 
-func (pool *dropPool) createDrop(spawnType byte, dropType byte, mesos int32, dropFrom pos, expire bool, ownerID, partyID int32, items ...item) {
+func (pool *dropPool) createDrop(spawnType byte, dropType byte, mesos int32, dropFrom pos, expire bool, ownerID, partyID int32, items ...Item) {
 	iCount := len(items)
 	var offset int16 = 0
 
@@ -961,9 +961,9 @@ func (pool *dropPool) update(t time.Time) {
 	}
 }
 
-func (pool dropPool) HideDrops(plr *player) {
+func (pool dropPool) HideDrops(plr *Player) {
 	for id := range pool.drops {
-		plr.send(packetRemoveDrop(1, id, 0))
+		plr.Send(packetRemoveDrop(1, id, 0))
 	}
 }
 
@@ -1054,7 +1054,7 @@ func packetShowDrop(spawnType byte, drop fieldDrop) mpacket.Packet {
 		p.WriteInt32(drop.mesos)
 	} else {
 		p.WriteByte(0)
-		p.WriteInt32(drop.item.id)
+		p.WriteInt32(drop.item.ID)
 	}
 
 	p.WriteInt32(drop.ownerID)
@@ -1076,7 +1076,7 @@ func packetShowDrop(spawnType byte, drop fieldDrop) mpacket.Packet {
 
 	if drop.mesos == 0 {
 		p.WriteByte(0)    // ?
-		p.WriteByte(0x80) // constants to indicate it's for item
+		p.WriteByte(0x80) // constants to indicate it's for Item
 		p.WriteByte(0x05)
 
 		if drop.neverExpire {
@@ -1089,7 +1089,7 @@ func packetShowDrop(spawnType byte, drop fieldDrop) mpacket.Packet {
 		}
 	}
 
-	p.WriteByte(0) // Did player drop it, used by pet with equip?
+	p.WriteByte(0) // Did Player drop it, used by pet with equip?
 
 	return p
 }

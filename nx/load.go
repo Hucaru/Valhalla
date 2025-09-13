@@ -13,6 +13,10 @@ var mobs map[int32]Mob
 var quests map[int16]Quest
 var playerSkills map[int32][]PlayerSkill
 var mobSkills map[byte][]MobSkill
+var commodities map[int32]Commodity
+var packages map[int32][]int32
+var itemIDToSN map[int32]int32
+var bestItems = make(map[FeaturedKey]int32)
 
 // LoadFile into useable types
 func LoadFile(fname string) {
@@ -27,6 +31,10 @@ func LoadFile(fname string) {
 	mobs = extractMobs(nodes, textLookup)
 	playerSkills, mobSkills = extractSkills(nodes, textLookup)
 	quests = extractQuests(nodes, textLookup)
+	commodities = extractCommodities(nodes, textLookup)
+	packages = extractPackages(nodes, textLookup)
+
+	loadBestItems()
 }
 
 // GetItem from loaded nx

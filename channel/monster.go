@@ -14,7 +14,7 @@ import (
 )
 
 type monster struct {
-	controller, summoner   *player
+	controller, summoner   *Player
 	id                     int32
 	spawnID                int32
 	pos                    pos
@@ -53,7 +53,7 @@ type monster struct {
 	skillLevel byte
 	statBuff   int32
 
-	dmgTaken map[*player]int32
+	dmgTaken map[*Player]int32
 
 	dropsItems bool
 	dropsMesos bool
@@ -86,7 +86,7 @@ func createMonsterFromData(spawnID int32, life nx.Life, m nx.Mob, dropsItems, dr
 		hpBgColour:    byte(m.HPTagBGColor),
 		hpFgColour:    byte(m.HPTagColor),
 		spawnInterval: life.MobTime,
-		dmgTaken:      make(map[*player]int32),
+		dmgTaken:      make(map[*Player]int32),
 		skills:        nx.GetMobSkills(life.ID),
 		skillTimes:    make(map[byte]int64),
 		poison:        false,
@@ -94,30 +94,30 @@ func createMonsterFromData(spawnID int32, life nx.Life, m nx.Mob, dropsItems, dr
 	}
 }
 
-func createMonsterFromID(spawnID, id int32, p pos, controller *player, dropsItems, dropsMesos bool, summoner int32) (monster, error) {
+func createMonsterFromID(spawnID, id int32, p pos, controller *Player, dropsItems, dropsMesos bool, summoner int32) (monster, error) {
 	m, err := nx.GetMob(id)
 	if err != nil {
-		return monster{}, fmt.Errorf("Unknown mob id: %v", id)
+		return monster{}, fmt.Errorf("Unknown mob ID: %v", id)
 	}
 
-	// If this isn't working with regards to position make the foothold equal to player? nearest to pos?
+	// If this isn't working with regards to position make the foothold equal to Player? nearest to pos?
 	mob := createMonsterFromData(spawnID, nx.Life{ID: id, Foothold: p.foothold, X: p.x, Y: p.y, FaceLeft: true}, m, dropsItems, dropsMesos)
 	mob.summoner = controller
 
 	return mob, nil
 }
 
-func (m *monster) setController(controller *player, follow bool) {
+func (m *monster) setController(controller *Player, follow bool) {
 	if controller == nil {
 		return
 	}
 	m.controller = controller
-	controller.send(packetMobControl(*m, follow))
+	controller.Send(packetMobControl(*m, follow))
 }
 
 func (m *monster) removeController() {
 	if m.controller != nil {
-		m.controller.send(packetMobEndControl(*m))
+		m.controller.Send(packetMobEndControl(*m))
 		m.controller = nil
 	}
 }
@@ -139,7 +139,7 @@ func (m *monster) acknowledgeController(moveID int16, movData movementFrag, allo
 		mp16 = int16(m.mp)
 	}
 
-	m.controller.send(packetMobControlAcknowledge(m.spawnID, moveID, allowedToUseSkill, mp16, skill, level))
+	m.controller.Send(packetMobControlAcknowledge(m.spawnID, moveID, allowedToUseSkill, mp16, skill, level))
 }
 
 func (m monster) hasHPBar() (bool, int32, int32, int32, byte, byte) {
@@ -218,7 +218,7 @@ func (m *monster) performAttack(attackID byte) {
 	// TODO: implement mob attack handling
 }
 
-func (m *monster) giveDamage(damager *player, dmg ...int32) {
+func (m *monster) giveDamage(damager *Player, dmg ...int32) {
 	for _, v := range dmg {
 		if v > m.hp {
 			v = m.hp
@@ -233,7 +233,7 @@ func (m *monster) giveDamage(damager *player, dmg ...int32) {
 	m.lastTimeAttacked = time.Now().Unix()
 }
 
-func (m *monster) kill(inst fieldInstance, plr *player) {
+func (m *monster) kill(inst fieldInstance, plr *Player) {
 	inst.lifePool.removeMob(m.spawnID, 0x0)
 	plr.giveEXP(m.exp, true, false)
 }
