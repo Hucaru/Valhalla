@@ -17,6 +17,7 @@ var commodities map[int32]Commodity
 var packages map[int32][]int32
 var itemIDToSN map[int32]int32
 var bestItems = make(map[FeaturedKey]int32)
+var reactorInfos map[int32]ReactorInfo
 
 // LoadFile into useable types
 func LoadFile(fname string) {
@@ -33,6 +34,7 @@ func LoadFile(fname string) {
 	quests = extractQuests(nodes, textLookup)
 	commodities = extractCommodities(nodes, textLookup)
 	packages = extractPackages(nodes, textLookup)
+	reactorInfos = extractReactors(nodes, textLookup)
 
 	loadBestItems()
 }
@@ -107,4 +109,17 @@ func GetMobSkills(id int32) map[byte]byte {
 	}
 
 	return mob.Skills
+}
+
+// GetReactorInfo from loaded nx
+func GetReactorInfo(id int32) (ReactorInfo, error) {
+	if _, ok := reactorInfos[id]; !ok {
+		return ReactorInfo{}, fmt.Errorf("Invalid reactor id: %v", id)
+	}
+	return reactorInfos[id], nil
+}
+
+// GetReactorInfoList from loaded nx
+func GetReactorInfoList() map[int32]ReactorInfo {
+	return reactorInfos
 }

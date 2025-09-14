@@ -1,0 +1,1 @@
+npc.sendOk("It's been a months since I ran away from home, and frankly I'm sick of wandering around strange places now. But I feel weird about going back home...")

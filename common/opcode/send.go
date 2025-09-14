@@ -81,6 +81,9 @@ const (
 	SendChannelDropExitMap             byte = 0xA5
 	SendChannelSpawnDoor               byte = 0xB1
 	SendChannelRemoveDoor              byte = 0xB2
+	SendChannelReactorChangeState      byte = 0xB5
+	SendChannelReactorEnterField       byte = 0xB7
+	SendChannelReactorLeaveField       byte = 0xB8
 	SendChannelNpcDialogueBox          byte = 0xC5
 	SendChannelNpcShop                 byte = 0xC8
 	SendChannelNpcShopResult           byte = 0xC9

@@ -1,0 +1,1 @@
+npc.sendOk("My dream is to travel the world, just like you do, but my father won't let me.")

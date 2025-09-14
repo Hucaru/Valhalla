@@ -1,0 +1,41 @@
+// Showa plastic surgery / cosmetic lenses NPC – stateless
+town_choice = npc.sendMenu(
+    "Hi, I pretty much shouldn't be doing this, but with a #b#t5152056##k or #b#t5152046##k, I will do it anyways for you. But don't forget, it will be random! Now, what would you like to use?",
+    "#bPlastic Surgery at Showa (REG coupon)#l",
+    "#bCosmetic Lenses at Showa (REG coupon)#l"
+)
+
+var gender = (plr.job() % 1000) < 1000 ? 0 : 1   // 0=male, 1=female proxy
+
+if (town_choice === 0) {                     // ----- Plastic surgery -----
+    var face_list = gender === 0
+        ? [20000, 20016, 20019, 20020, 20021, 20024, 20026]
+        : [21000, 21002, 21009, 21016, 21022, 21025, 21027]
+
+    var new_base = face_list[Math.floor(Math.random() * face_list.length)]
+    var old_variant = Math.floor(plr.face() / 100 % 10)
+    var new_face = new_base + old_variant * 100
+
+    if (plr.itemCount(5152056) > 0) {
+        plr.takeItem(5152056, 0, 1, 1)          // remove one coupon
+        plr.setFace(new_face)
+        npc.sendBackNext("Okay, the surgery's done. Here's a mirror--check it out. What a masterpiece, no? Haha! If you ever get tired of this look, please feel free to come visit me again.", false, true)
+    } else {
+        npc.sendBackNext("Hmm ... it looks like you don't have the coupon specifically for this place. Sorry to say this, but without the coupon, there's no plastic surgery for you...", false, true)
+    }
+
+} else {                                     // ----- Cosmetic lenses -----
+    var color_list = [100, 200, 300, 400, 500, 600, 700]
+
+    var rest_eye = plr.face() % 100
+    var base_face = (gender === 0 ? 20000 : 21000) + rest_eye
+    var new_face = color_list[Math.floor(Math.random() * color_list.length)] + base_face
+
+    if (plr.itemCount(5152046) > 0) {
+        plr.takeItem(5152046, 0, 1, 1)          // remove one coupon
+        plr.setFace(new_face)
+        npc.sendBackNext("Here's the mirror. What do you think? I think they look tailor-made for you. I have to say, you look faaabulous. Please come again.", false, true)
+    } else {
+        npc.sendBackNext("I'm sorry, but I don't think you have our cosmetic lens coupon with you right now. Without the coupon, I'm afraid I can't do it for you..", false, true)
+    }
+}

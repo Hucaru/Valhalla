@@ -1,0 +1,1 @@
+npc.sendOk("My Son...! That ungrateful kid... He just didn't listen to me and ran out. I can never ever forgive him...! He can never come to this town again...!")

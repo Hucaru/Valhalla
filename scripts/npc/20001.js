@@ -1,0 +1,1 @@
+npc.sendOk("The ship here takes you to #bVictoria Island#k, though I've never been there before... I wonder what it's like...");

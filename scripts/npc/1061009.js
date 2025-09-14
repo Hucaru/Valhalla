@@ -1,0 +1,1 @@
+npc.sendOk("The door seems to be closed...");

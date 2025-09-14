@@ -1,0 +1,1 @@
+npc.sendStorage(1002005);

@@ -1,0 +1,1 @@
+npc.sendOk("Hmmm... I guess these things must be very useful in some places...")

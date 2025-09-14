@@ -1,0 +1,1 @@
+npc.sendOk("Just a kid... Don't talk to me...");

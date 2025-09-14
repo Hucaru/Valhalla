@@ -1,0 +1,21 @@
+// EOS Rock IV – 221020000
+var map = [221021200, 221022100, 221023200];
+
+// Offer destinations and build menu manually
+var chat = "It's a magic stone for Eos Tower tourists. It will take you to your desired location for a small fee. \r\n(You can use a #bEos Rock Scroll#k in lieu of mesos.)\r\n";
+for (var i = 0; i < map.length; i++) {
+    chat += "\r\n#L" + i + "##b#m" + map[i] + "# (15000 Mesos)#l";
+}
+npc.sendSelection(chat);
+var select = npc.selection();
+
+if (npc.sendYesNo("Would you like to move to #b#m" + map[select] + "##k? The price is #b15000 mesos#k.")) {
+    if (plr.mesos() < 15000) {
+        npc.sendOk("You don't have enough mesos. Sorry, but you can't use this service if you can't pay the fee.");
+    } else {
+        plr.giveMesos(-15000);
+        plr.warp(map[select]);
+    }
+} else {
+    npc.sendOk("Please try again later.");
+}

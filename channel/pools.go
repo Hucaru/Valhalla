@@ -1,11 +1,17 @@
 package channel
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"log"
 	"math"
 	"math/rand"
+	"os"
+	"sort"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/Hucaru/Valhalla/common/opcode"
@@ -393,7 +399,7 @@ func (pool *lifePool) mobDamaged(poolID int32, damager *Player, dmg ...int32) {
 					}
 
 					// TODO: droppool type determination between DropTimeoutNonOwner and DropTimeoutNonOwnerParty
-					pool.dropPool.createDrop(dropSpawnNormal, dropFreeForAll, mesos, v.pos, true, 0, 0, drops...)
+					pool.dropPool.createDrop(dropSpawnNormal, dropFreeForAll, int32(damager.rates.mesos*float32(mesos)), v.pos, true, 0, 0, drops...)
 
 					// If has hp bar: remove
 				}
@@ -880,7 +886,6 @@ func (pool *dropPool) createDrop(spawnType byte, dropType byte, mesos int32, dro
 	if dropType == dropTimeoutNonOwner || dropType == dropTimeoutNonOwnerParty {
 		timeoutTime = now.Add(itemLootableByAllTimeout).UnixMilli()
 	}
-
 	if len(items) > 0 {
 		for i, item := range items {
 			tmp := dropFrom
@@ -908,6 +913,15 @@ func (pool *dropPool) createDrop(spawnType byte, dropType byte, mesos int32, dro
 				pool.drops[drop.ID] = drop
 
 				pool.instance.send(packetShowDrop(spawnType, drop))
+
+				d := drop
+				time.AfterFunc(5*time.Second, func() {
+					if _, ok := pool.drops[d.ID]; !ok {
+						return
+					}
+
+					pool.instance.reactorPool.TryTriggerByDrop(d)
+				})
 			}
 		}
 	}
@@ -964,6 +978,347 @@ func (pool *dropPool) update(t time.Time) {
 func (pool dropPool) HideDrops(plr *Player) {
 	for id := range pool.drops {
 		plr.Send(packetRemoveDrop(1, id, 0))
+	}
+}
+
+// Reactors
+
+type fieldReactor struct {
+	spawnID    int32
+	templateID int32
+	state      byte
+	frameDelay int16
+	pos        pos
+	faceLeft   bool
+	name       string
+
+	info        nx.ReactorInfo
+	reactorTime int32
+}
+
+type reactorPool struct {
+	instance *fieldInstance
+	reactors map[int32]*fieldReactor
+	nextID   int32
+}
+
+func createNewReactorPool(inst *fieldInstance, data []nx.Reactor) reactorPool {
+	pool := reactorPool{
+		instance: inst,
+		reactors: make(map[int32]*fieldReactor),
+	}
+
+	for _, r := range data {
+		if r.ID == 0 {
+			log.Println("Reactor skipped: templateID=0, map:", inst.fieldID, "name:", r.Name)
+			continue
+		}
+
+		info, err := nx.GetReactorInfo(int32(r.ID))
+		if err != nil {
+			log.Println("Reactor skipped: template not found:", r.ID, "map:", inst.fieldID, "name:", r.Name, "err:", err)
+			continue
+		}
+
+		id, err := pool.nextReactorID()
+		if err != nil {
+			continue
+		}
+
+		p := pos{x: int16(r.X), y: int16(r.Y)}
+		pool.reactors[id] = &fieldReactor{
+			spawnID:    id,
+			templateID: int32(r.ID),
+			state:      0, // default initial state
+			frameDelay: 0,
+			pos:        p,
+			faceLeft:   r.FaceLeft != 0,
+			name:       r.Name,
+			info:       info,
+			reactorTime: func() int32 {
+				if r.ReactorTime > math.MaxInt32 {
+					return math.MaxInt32
+				}
+				return int32(r.ReactorTime)
+			}(),
+		}
+	}
+
+	return pool
+}
+
+func (pool *reactorPool) nextReactorID() (int32, error) {
+	for i := 0; i < 100; i++ {
+		pool.nextID++
+
+		if pool.nextID == math.MaxInt32-1 {
+			pool.nextID = math.MaxInt32 / 2
+		} else if pool.nextID == 0 {
+			pool.nextID = 1
+		}
+
+		if _, ok := pool.reactors[pool.nextID]; !ok {
+			return pool.nextID, nil
+		}
+	}
+	return 0, fmt.Errorf("no space to generate ID in reactor pool")
+}
+
+func (pool *reactorPool) playerShowReactors(plr *Player) {
+	for _, r := range pool.reactors {
+		plr.Send(packetMapReactorEnterField(r.spawnID, r.templateID, r.state, r.pos.x, r.pos.y, r.faceLeft))
+	}
+}
+
+func (pool *reactorPool) Reset(send bool) {
+	for _, r := range pool.reactors {
+		r.state = 0
+		r.frameDelay = 0
+		if send {
+			pool.instance.send(packetMapReactorChangeState(r.spawnID, r.state, r.pos.x, r.pos.y, r.frameDelay, r.faceLeft, 0))
+		}
+	}
+}
+
+type reactorTableEntry map[string]interface{}
+
+var reactorTable map[string]map[string]reactorTableEntry
+
+func PopulateReactorTable(reactorJSON string) error {
+	f, err := os.Open(reactorJSON)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	b, err := io.ReadAll(f)
+	if err != nil {
+		return err
+	}
+	return json.Unmarshal(b, &reactorTable)
+}
+
+type rect struct{ left, top, right, bottom int16 }
+
+func (r rect) contains(x, y int16) bool {
+	return !(r.right < r.left || r.bottom < r.top) && x >= r.left && x <= r.right && y >= r.top && y <= r.bottom
+}
+
+func (r *fieldReactor) calcEventRect() (rect, bool) {
+	st, ok := r.info.States[int(r.state)]
+	if !ok || len(st.Events) == 0 {
+		return rect{}, false
+	}
+	ev := st.Events[0]
+	if ev.LT.X == 0 && ev.LT.Y == 0 && ev.RB.X == 0 && ev.RB.Y == 0 {
+		return rect{}, false
+	}
+	L := int16(int(ev.LT.X) + int(r.pos.x))
+	T := int16(int(ev.LT.Y) + int(r.pos.y))
+	R := int16(int(ev.RB.X) + int(r.pos.x))
+	B := int16(int(ev.RB.Y) + int(r.pos.y))
+	return rect{left: L, top: T, right: R, bottom: B}, true
+}
+
+func (r *fieldReactor) nextStateFromTemplate() (byte, bool) {
+	cur := int(r.state)
+	st, ok := r.info.States[cur]
+	if ok && len(st.Events) > 0 {
+		ns := int(st.Events[0].State)
+		if _, ok2 := r.info.States[ns]; ok2 {
+			return byte(ns), true
+		}
+	}
+	if _, ok := r.info.States[cur+1]; ok {
+		return byte(cur + 1), true
+	}
+	return r.state, false
+}
+
+func (r *fieldReactor) isTerminal() bool {
+	_, ok := r.info.States[int(r.state)+1]
+	return !ok
+}
+
+func (pool *reactorPool) changeState(r *fieldReactor, next byte, frameDelay int16, cause byte) {
+	r.state = next
+	r.frameDelay = frameDelay
+	pool.instance.send(packetMapReactorChangeState(r.spawnID, r.state, r.pos.x, r.pos.y, r.frameDelay, r.faceLeft, cause))
+	pool.processStateSideEffects(r)
+}
+
+func (pool *reactorPool) leaveAndMaybeRespawn(r *fieldReactor, _ int) {
+	pool.instance.send(packetMapReactorLeaveField(r.spawnID, r.state, r.pos.x, r.pos.y))
+	if r.reactorTime > 0 {
+		time.AfterFunc(time.Duration(r.reactorTime)*time.Second, func() {
+			r.state = 0
+			r.frameDelay = 0
+			pool.instance.send(packetMapReactorEnterField(r.spawnID, r.templateID, r.state, r.pos.x, r.pos.y, r.faceLeft))
+		})
+	}
+}
+
+func (pool *reactorPool) TriggerHit(spawnID int32, cause byte) {
+	r, ok := pool.reactors[spawnID]
+	if !ok {
+		return
+	}
+	if next, ok := r.nextStateFromTemplate(); ok && next != r.state {
+		pool.changeState(r, next, 0, cause)
+		if r.isTerminal() {
+			pool.leaveAndMaybeRespawn(r, 0)
+		}
+	}
+}
+
+func (pool *reactorPool) TryTriggerByDrop(drop fieldDrop) bool {
+	if drop.mesos > 0 {
+		return false
+	}
+	for _, r := range pool.reactors {
+		st, has := r.info.States[int(r.state)]
+		if !has || len(st.Events) == 0 {
+			continue
+		}
+		ev := st.Events[0]
+		if ev.ReqItemID != drop.item.ID {
+			continue
+		}
+		if ev.ReqItemCnt > 0 && int16(ev.ReqItemCnt) != drop.item.amount {
+			continue
+		}
+		if rr, okRect := r.calcEventRect(); okRect && !rr.contains(drop.finalPos.x, drop.finalPos.y) {
+			continue
+		}
+		if next, okNext := r.nextStateFromTemplate(); okNext && next != r.state {
+			pool.changeState(r, next, 0, 0)
+			pool.instance.dropPool.removeDrop(0, drop.ID)
+			if r.isTerminal() {
+				pool.leaveAndMaybeRespawn(r, 0)
+			}
+			return true
+		}
+	}
+	return false
+}
+
+func getInt(e reactorTableEntry, key string, def int) int {
+	if v, ok := e[key]; ok && v != nil {
+		switch t := v.(type) {
+		case float64:
+			return int(t)
+		case int:
+			return t
+		case int32:
+			return int(t)
+		case int64:
+			return int(t)
+		}
+	}
+	return def
+}
+
+func getString(e reactorTableEntry, key, def string) string {
+	if v, ok := e[key]; ok && v != nil {
+		if s, ok := v.(string); ok {
+			return s
+		}
+	}
+	return def
+}
+
+func entriesForReactor(r *fieldReactor) []reactorTableEntry {
+	groupName := strings.TrimSpace(r.info.Action)
+	if groupName == "" {
+		groupName = strings.TrimSpace(r.name)
+	}
+	group, ok := reactorTable[groupName]
+	if !ok {
+		return nil
+	}
+	type kv struct {
+		n int
+		k string
+	}
+	keys := make([]kv, 0, len(group))
+	for k := range group {
+		if n, err := strconv.Atoi(k); err == nil {
+			keys = append(keys, kv{n: n, k: k})
+		}
+	}
+	sort.Slice(keys, func(i, j int) bool { return keys[i].n < keys[j].n })
+
+	out := make([]reactorTableEntry, 0, len(keys))
+	for _, it := range keys {
+		e := group[it.k]
+		if getInt(e, "state", -1) == int(r.state) {
+			out = append(out, e)
+		}
+	}
+	return out
+}
+
+func (pool *reactorPool) processStateSideEffects(r *fieldReactor) {
+	if st, ok := r.info.States[int(r.state)]; ok && len(st.Events) > 0 {
+		ev := st.Events[0]
+		if mobID, ok := ev.ExtraInts["mob"]; ok && mobID > 0 {
+			count := int32(1)
+			if c, ok := ev.ExtraInts["count"]; ok && c > 0 {
+				count = c
+			} else if a, ok := ev.ExtraInts["amount"]; ok && a > 0 {
+				count = a
+			}
+			if count < 1 {
+				count = 1
+			} else if count > 15 {
+				count = 15
+			}
+			spawnPos := r.pos
+			if rr, okRect := r.calcEventRect(); okRect {
+				spawnPos = pos{
+					x:        int16((int(rr.left) + int(rr.right)) / 2),
+					y:        int16((int(rr.top) + int(rr.bottom)) / 2),
+					foothold: r.pos.foothold,
+				}
+			}
+			for i := int32(0); i < count; i++ {
+				_ = pool.instance.lifePool.spawnMobFromID(mobID, spawnPos, false, true, true, 0)
+			}
+		}
+	}
+
+	entries := entriesForReactor(r)
+	if len(entries) == 0 {
+		return
+	}
+
+	for _, e := range entries {
+		if msg := getString(e, "message", ""); msg != "" {
+			pool.instance.send(packetMessageRedText(msg))
+			break
+		}
+	}
+
+	for _, e := range entries {
+		if getInt(e, "type", -1) != 1 {
+			continue
+		}
+		mobID := getInt(e, "0", 0)
+		if mobID <= 0 {
+			continue
+		}
+		count := getInt(e, "2", 1)
+		if count < 1 {
+			count = 1
+		} else if count > 15 {
+			count = 15
+		}
+		x := int16(getInt(e, "4", int(r.pos.x)))
+		y := int16(getInt(e, "5", int(r.pos.y)))
+		spawnPos := pos{x: x, y: y, foothold: r.pos.foothold}
+		for i := 0; i < count; i++ {
+			_ = pool.instance.lifePool.spawnMobFromID(int32(mobID), spawnPos, false, true, true, 0)
+		}
 	}
 }
 

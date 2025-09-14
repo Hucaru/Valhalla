@@ -346,7 +346,12 @@ func getMapReactors(node *gonx.Node, nodes []gonx.Node, textLookup []string) []R
 
 			switch optionName {
 			case "id":
-				reactor.ID = gonx.DataToInt64(option.Data)
+				idStr := textLookup[gonx.DataToUint32(option.Data)]
+				if v, err := strconv.Atoi(strings.TrimSpace(idStr)); err == nil {
+					reactor.ID = int64(v)
+				} else {
+					log.Println("Unsupported NX reactor id parse:", idStr, "err:", err)
+				}
 			case "x":
 				reactor.X = gonx.DataToInt64(option.Data)
 			case "y":
@@ -356,11 +361,12 @@ func getMapReactors(node *gonx.Node, nodes []gonx.Node, textLookup []string) []R
 			case "reactorTime":
 				reactor.ReactorTime = gonx.DataToInt64(option.Data)
 			case "name":
-				reactor.Name = textLookup[gonx.DataToUint32(option.Data)] // boss, ludigate
+				reactor.Name = textLookup[gonx.DataToUint32(option.Data)]
 			default:
-				fmt.Println("Unsupported NX reactor option:", optionName, "->", option.Data)
 			}
 		}
+
+		reactors[i] = reactor
 	}
 
 	return reactors

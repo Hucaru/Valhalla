@@ -1,0 +1,1 @@
+npc.sendOk("You can be much stronger, if you get to be trained by me. Come to me, whenever you are ready.")

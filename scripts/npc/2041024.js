@@ -1,0 +1,1 @@
+npc.sendBackNext("造型物", false, false)

@@ -1,0 +1,1 @@
+npc.sendOk("When will I be able to explore outside #bMaple Island#k?!")
