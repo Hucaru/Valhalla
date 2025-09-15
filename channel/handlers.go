@@ -2251,12 +2251,8 @@ func (server *Server) npcChatStart(conn mnet.Client, reader mpacket.Reader) {
 
 	// Run the script. If it returns true, chat flow ended.
 	// If a shop was opened (persistShop), keep the controller for shop ops.
-	ended := controller.run()
-	if ended {
-		if controller.persistShop {
-		} else {
-			delete(server.npcChat, conn)
-		}
+	if ended := controller.run(); ended && !controller.persistShop {
+		delete(server.npcChat, conn)
 	}
 }
 
@@ -4176,6 +4172,6 @@ func (server *Server) playerHitReactor(conn mnet.Client, reader mpacket.Reader) 
 	_ = reader.ReadInt32() // stance
 	_ = reader.ReadInt16() // delay
 
-	plr.inst.reactorPool.TriggerHit(spawnID, 0)
+	plr.inst.reactorPool.triggerHit(spawnID, 0)
 
 }

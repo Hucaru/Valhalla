@@ -920,7 +920,7 @@ func (pool *dropPool) createDrop(spawnType byte, dropType byte, mesos int32, dro
 						return
 					}
 
-					pool.instance.reactorPool.TryTriggerByDrop(d)
+					pool.instance.reactorPool.tryTriggerByDrop(d)
 				})
 			}
 		}
@@ -1158,7 +1158,7 @@ func (pool *reactorPool) leaveAndMaybeRespawn(r *fieldReactor, _ int) {
 	}
 }
 
-func (pool *reactorPool) TriggerHit(spawnID int32, cause byte) {
+func (pool *reactorPool) triggerHit(spawnID int32, cause byte) {
 	r, ok := pool.reactors[spawnID]
 	if !ok {
 		return
@@ -1171,7 +1171,7 @@ func (pool *reactorPool) TriggerHit(spawnID int32, cause byte) {
 	}
 }
 
-func (pool *reactorPool) TryTriggerByDrop(drop fieldDrop) bool {
+func (pool *reactorPool) tryTriggerByDrop(drop fieldDrop) bool {
 	if drop.mesos > 0 {
 		return false
 	}
