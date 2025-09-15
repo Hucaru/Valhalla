@@ -470,9 +470,24 @@ func (ctrl *npcChatPlayerController) SetHair(id int32) {
 	if ctrl.plr.hair == id {
 		return
 	}
-	ctrl.plr.hair = id
-	// Refresh avatar appearance on client
-	ctrl.plr.Send(packetInventoryChangeEquip(*ctrl.plr))
+	err := ctrl.plr.setHair(id)
+	if err != nil {
+		return
+	}
+}
+
+func (ctrl *npcChatPlayerController) Face() int32 {
+	return ctrl.plr.face
+}
+
+func (ctrl *npcChatPlayerController) SetFace(id int32) {
+	if ctrl.plr.face == id {
+		return
+	}
+	err := ctrl.plr.setFace(id)
+	if err != nil {
+		return
+	}
 }
 
 // Skin returns the current skin tone (0..n)
@@ -485,9 +500,10 @@ func (ctrl *npcChatPlayerController) SetSkinColor(skin byte) {
 	if ctrl.plr.skin == skin {
 		return
 	}
-	ctrl.plr.skin = skin
-	// Refresh avatar appearance on client
-	ctrl.plr.Send(packetInventoryChangeEquip(*ctrl.plr))
+	err := ctrl.plr.setSkin(skin)
+	if err != nil {
+		return
+	}
 }
 
 type scriptQuestView struct {
