@@ -498,6 +498,30 @@ func (d *Player) saveMesos() error {
 	return err
 }
 
+func (d *Player) setHair(id int32) error {
+	query := "UPDATE characters SET hair=? WHERE ID=?"
+	_, err := common.DB.Exec(query, id, d.ID)
+	d.hair = id
+	d.Send(packetPlayerStatChange(true, constant.HairID, id))
+	return err
+}
+
+func (d *Player) setFace(id int32) error {
+	query := "UPDATE characters SET face=? WHERE ID=?"
+	_, err := common.DB.Exec(query, id, d.ID)
+	d.face = id
+	d.Send(packetPlayerStatChange(true, constant.FaceID, id))
+	return err
+}
+
+func (d *Player) setSkin(id byte) error {
+	query := "UPDATE characters SET skin=? WHERE ID=?"
+	_, err := common.DB.Exec(query, id, d.ID)
+	d.skin = id
+	d.Send(packetPlayerStatChange(true, constant.SkinID, int32(id)))
+	return err
+}
+
 // UpdateMovement - update Data from position data
 func (d *Player) UpdateMovement(frag movementFrag) {
 	d.pos.x = frag.x
@@ -1673,6 +1697,11 @@ func (d *Player) countItem(itemID int32) int32 {
 			total += int32(d.etc[i].amount)
 		}
 	}
+	for i := range d.cash {
+		if d.cash[i].ID == itemID {
+			total += int32(d.cash[i].amount)
+		}
+	}
 	return total
 }
 
@@ -1704,6 +1733,7 @@ func (d *Player) removeItemsByID(itemID int32, reqCount int32) bool {
 	drain(2, d.use)
 	drain(3, d.setUp)
 	drain(4, d.etc)
+	drain(5, d.cash)
 
 	return remaining == 0
 }

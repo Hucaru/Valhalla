@@ -13,23 +13,23 @@ const (
 const (
 	MaxItemStack = 200
 
+	SkinID  = 0x01
+	FaceID  = 0x02 // Eyes
+	HairID  = 0x04
+	PetID   = 0x08
+	LevelID = 0x10
+	JobID   = 0x20
+	StrID   = 0x40
+	DexID   = 0x80
+	IntID   = 0x100
+	LukID   = 0x200
 	HpID    = 0x400
 	MaxHpID = 0x800
 	MpID    = 0x1000
 	MaxMpID = 0x2000
-
-	StrID = 0x40
-	DexID = 0x80
-	IntID = 0x100
-	LukID = 0x200
-
-	LevelID = 0x10
-	JobID   = 0x20
+	ApID    = 0x4000
+	SpID    = 0x8000
 	ExpID   = 0x10000
-
-	ApID = 0x4000
-	SpID = 0x8000
-
 	FameID  = 0x20000
 	MesosID = 0x40000
 

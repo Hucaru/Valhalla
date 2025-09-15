@@ -33,14 +33,11 @@ if (sel === 0) {
     } else if (plr.itemCount(couponCut) > 0) {
         plr.removeItemsByID(couponCut, 1);
         plr.setHair(hair[choice]);
-        npc.sendBackNext(
-            "Check it out!! What do you think? Even I think this one is a work of art! AHAHAHA. Please let me know when you want another haircut, because I'll make you look good each time!",
-            false, true
-        );
+        npc.sendOk(
+            "Check it out!! What do you think? Even I think this one is a work of art! AHAHAHA. Please let me know when you want another haircut, because I'll make you look good each time!");
     } else {
-        npc.sendBackNext(
-            "Hmmm... it looks like you don't have our designated coupon... I'm afraid I can't give you a haircut without it. I'm sorry...",
-            false, true
+        npc.sendOk(
+            "Hmmm... it looks like you don't have our designated coupon... I'm afraid I can't give you a haircut without it. I'm sorry..."
         );
     }
 
@@ -60,14 +57,12 @@ if (sel === 0) {
     } else if (plr.itemCount(couponDye) > 0) {
         plr.removeItemsByID(couponDye, 1);
         plr.setHair(colors[choice]);
-        npc.sendBackNext(
-            "Check it out!! What do you think? Even I think this one is a work of art! AHAHAHA. Please let me know when you want to dye your hair again, because I'll make you look good each time!",
-            false, true
+        npc.sendOk(
+            "Check it out!! What do you think? Even I think this one is a work of art! AHAHAHA. Please let me know when you want to dye your hair again, because I'll make you look good each time!"
         );
     } else {
-        npc.sendBackNext(
-            "Hmmm... it looks like you don't have our designated coupon... I'm afraid I can't dye your hair without it. I'm sorry...",
-            false, true
+        npc.sendOk(
+            "Hmmm... it looks like you don't have our designated coupon... I'm afraid I can't dye your hair without it. I'm sorry..."
         );
     }
 }
