@@ -646,6 +646,14 @@ func (ctrl *npcChatController) SendStyles(msg string, styles []int32) {
 	}
 }
 
+func (ctrl *npcChatController) SendAvatar(text string, avatars ...int32) {
+	if ctrl.stateTracker.performInterrupt() {
+		ctrl.stateTracker.addState(npcSelectionState)
+		ctrl.conn.Send(packetNpcChatStyleWindow(ctrl.npcID, text, avatars))
+		ctrl.vm.Interrupt("SendAvatar")
+	}
+}
+
 // SendGuildCreation
 func (ctrl *npcChatController) SendGuildCreation() {
 	if ctrl.stateTracker.performInterrupt() {
@@ -775,22 +783,6 @@ func (ctrl *npcChatController) SendSlideMenu(text string) int {
 	return -1
 }
 
-func (ctrl *npcChatController) SendAvatar(text string, avatars ...int32) int {
-	if ctrl.stateTracker.performInterrupt() {
-		ctrl.stateTracker.addState(npcSelectionState)
-		ctrl.conn.Send(packetNpcChatStyleWindow(ctrl.npcID, text, avatars))
-		ctrl.vm.Interrupt("SendAvatar")
-		return -1
-	}
-
-	if len(ctrl.stateTracker.selections) > ctrl.stateTracker.selection {
-		val := ctrl.stateTracker.selections[ctrl.stateTracker.selection]
-		ctrl.stateTracker.selection++
-		return int(val)
-	}
-	return -1
-}
-
 func (ctrl *npcChatPlayerController) InventoryExchange(itemSource int32, srcCount int32, itemExchangeFor int32, count int16) bool {
 	if !ctrl.plr.removeItemsByID(itemSource, srcCount) {
 		return false
@@ -807,7 +799,7 @@ func (ctrl *npcChatPlayerController) InventoryExchange(itemSource int32, srcCoun
 }
 
 func (ctrl *npcChatController) clearUserInput() {
-	ctrl.stateTracker.input = 0
+	// Reset counters but preserve the data
 	ctrl.stateTracker.selection = 0
 	ctrl.stateTracker.input = 0
 	ctrl.stateTracker.number = 0
@@ -818,7 +810,32 @@ func (ctrl *npcChatController) Selection() int32 {
 	if len(ctrl.stateTracker.selections) == 0 {
 		return -1
 	}
-	return ctrl.stateTracker.selections[len(ctrl.stateTracker.selections)-1]
+
+	needsSecondSelection := false
+
+	if len(ctrl.stateTracker.selections) >= 2 && ctrl.stateTracker.currentPos >= 2 {
+		if ctrl.stateTracker.currentPos > 1 {
+			selectionStatesCount := 0
+			for _, state := range ctrl.stateTracker.list {
+				if state == npcSelectionState {
+					selectionStatesCount++
+					if selectionStatesCount >= 2 {
+						needsSecondSelection = true
+						break
+					}
+				}
+			}
+		}
+	}
+
+	var value int32
+	if needsSecondSelection {
+		value = ctrl.stateTracker.selections[1]
+	} else {
+		value = ctrl.stateTracker.selections[0]
+	}
+
+	return value
 }
 
 // InputString value
@@ -838,15 +855,32 @@ func (ctrl *npcChatController) InputNumber() int32 {
 }
 
 func (ctrl *npcChatController) run() bool {
-	ctrl.stateTracker.currentPos = 0
+	currentConversationPos := ctrl.stateTracker.currentPos
+
+	if currentConversationPos == 0 && ctrl.stateTracker.lastPos == 0 {
+		// Initial execution, consume
+	} else {
+		ctrl.stateTracker.currentPos = 0
+	}
+
+	if ctrl.vm == nil || ctrl.program == nil {
+		return true
+	}
 
 	_, err := ctrl.vm.RunProgram(ctrl.program)
 
-	if _, ok := err.(*goja.InterruptedError); ok {
-		return false
+	if err != nil {
+		if _, isInterrupted := err.(*goja.InterruptedError); isInterrupted {
+			return false
+		}
+		return true
 	}
 
-	return true
+	if ctrl.stateTracker.currentPos >= ctrl.stateTracker.lastPos {
+		return true
+	}
+
+	return false
 }
 
 type eventScriptController struct {
