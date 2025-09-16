@@ -537,6 +537,8 @@ type npcChatController struct {
 
 	vm      *goja.Runtime
 	program *goja.Program
+
+	selectionCalls int
 }
 
 func createNpcChatController(npcID int32, conn mnet.Client, program *goja.Program, plr *Player, fields map[int32]*field, warpFunc warpFn, worldConn mnet.Server) (*npcChatController, error) {
@@ -811,31 +813,22 @@ func (ctrl *npcChatController) Selection() int32 {
 		return -1
 	}
 
-	needsSecondSelection := false
+	if len(ctrl.stateTracker.selections) == 1 {
+		ctrl.selectionCalls++
+		return ctrl.stateTracker.selections[0]
+	}
 
-	if len(ctrl.stateTracker.selections) >= 2 && ctrl.stateTracker.currentPos >= 2 {
-		if ctrl.stateTracker.currentPos > 1 {
-			selectionStatesCount := 0
-			for _, state := range ctrl.stateTracker.list {
-				if state == npcSelectionState {
-					selectionStatesCount++
-					if selectionStatesCount >= 2 {
-						needsSecondSelection = true
-						break
-					}
-				}
-			}
+	var idx int
+	if ctrl.selectionCalls == 0 {
+		idx = 0
+	} else {
+		idx = 1
+		if idx >= len(ctrl.stateTracker.selections) {
+			idx = len(ctrl.stateTracker.selections) - 1
 		}
 	}
-
-	var value int32
-	if needsSecondSelection {
-		value = ctrl.stateTracker.selections[1]
-	} else {
-		value = ctrl.stateTracker.selections[0]
-	}
-
-	return value
+	ctrl.selectionCalls++
+	return ctrl.stateTracker.selections[idx]
 }
 
 // InputString value
@@ -856,9 +849,10 @@ func (ctrl *npcChatController) InputNumber() int32 {
 
 func (ctrl *npcChatController) run() bool {
 	currentConversationPos := ctrl.stateTracker.currentPos
+	ctrl.selectionCalls = 0
 
 	if currentConversationPos == 0 && ctrl.stateTracker.lastPos == 0 {
-		// Initial execution, consume
+		ctrl.stateTracker.selections = ctrl.stateTracker.selections[:0]
 	} else {
 		ctrl.stateTracker.currentPos = 0
 	}
@@ -866,7 +860,7 @@ func (ctrl *npcChatController) run() bool {
 	if ctrl.vm == nil || ctrl.program == nil {
 		return true
 	}
-
+	
 	_, err := ctrl.vm.RunProgram(ctrl.program)
 
 	if err != nil {
@@ -879,7 +873,6 @@ func (ctrl *npcChatController) run() bool {
 	if ctrl.stateTracker.currentPos >= ctrl.stateTracker.lastPos {
 		return true
 	}
-
 	return false
 }
 
