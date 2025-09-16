@@ -531,8 +531,7 @@ type npcChatController struct {
 	npcID int32
 	conn  mnet.Client
 
-	goods       [][]int32
-	persistShop bool
+	goods [][]int32
 
 	stateTracker npcChatStateTracker
 
@@ -542,11 +541,10 @@ type npcChatController struct {
 
 func createNpcChatController(npcID int32, conn mnet.Client, program *goja.Program, plr *Player, fields map[int32]*field, warpFunc warpFn, worldConn mnet.Server) (*npcChatController, error) {
 	ctrl := &npcChatController{
-		npcID:       npcID,
-		conn:        conn,
-		vm:          goja.New(),
-		program:     program,
-		persistShop: false,
+		npcID:   npcID,
+		conn:    conn,
+		vm:      goja.New(),
+		program: program,
 	}
 
 	plrCtrl := &npcChatPlayerController{
@@ -666,9 +664,11 @@ func (ctrl *npcChatController) SendGuildEmblemEditor() {
 
 // SendShop packet to Player
 func (ctrl *npcChatController) SendShop(goods [][]int32) {
-	ctrl.goods = goods
-	ctrl.persistShop = true
-	ctrl.conn.Send(packetNpcShop(ctrl.npcID, goods))
+	if ctrl.stateTracker.performInterrupt() {
+		ctrl.goods = goods
+		ctrl.conn.Send(packetNpcShop(ctrl.npcID, goods))
+		ctrl.vm.Interrupt("SendShop")
+	}
 }
 
 func (ctrl *npcChatController) SendMenu(baseText string, selections ...string) int {

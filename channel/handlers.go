@@ -2250,8 +2250,7 @@ func (server *Server) npcChatStart(conn mnet.Client, reader mpacket.Reader) {
 	server.npcChat[conn] = controller
 
 	// Run the script. If it returns true, chat flow ended.
-	// If a shop was opened (persistShop), keep the controller for shop ops.
-	if ended := controller.run(); ended && !controller.persistShop {
+	if ended := controller.run(); ended {
 		delete(server.npcChat, conn)
 	}
 }
