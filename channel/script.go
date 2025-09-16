@@ -815,23 +815,26 @@ func (ctrl *npcChatController) clearUserInput() {
 
 // Selection value
 func (ctrl *npcChatController) Selection() int32 {
-	val := ctrl.stateTracker.selections[ctrl.stateTracker.selection]
-	ctrl.stateTracker.selection++
-	return val
+	if len(ctrl.stateTracker.selections) == 0 {
+		return -1
+	}
+	return ctrl.stateTracker.selections[len(ctrl.stateTracker.selections)-1]
 }
 
 // InputString value
 func (ctrl *npcChatController) InputString() string {
-	val := ctrl.stateTracker.inputs[ctrl.stateTracker.input]
-	ctrl.stateTracker.input++
-	return val
+	if len(ctrl.stateTracker.inputs) == 0 {
+		return ""
+	}
+	return ctrl.stateTracker.inputs[len(ctrl.stateTracker.inputs)-1]
 }
 
 // InputNumber value
 func (ctrl *npcChatController) InputNumber() int32 {
-	val := ctrl.stateTracker.numbers[ctrl.stateTracker.number]
-	ctrl.stateTracker.number++
-	return val
+	if len(ctrl.stateTracker.numbers) == 0 {
+		return 0
+	}
+	return ctrl.stateTracker.numbers[len(ctrl.stateTracker.numbers)-1]
 }
 
 func (ctrl *npcChatController) run() bool {
