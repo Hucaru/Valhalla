@@ -1,0 +1,1 @@
+npc.sendOk("Oh my gosh ... I lost the coin that my friend lent me ... I can't find it!!")

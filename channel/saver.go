@@ -21,6 +21,7 @@ const (
 	DirtyMaxMP
 	DirtyEXP
 	DirtyMap
+	DirtyPrevMap
 	DirtyJob
 	DirtyLevel
 	DirtyStr
@@ -47,6 +48,7 @@ type snapshot struct {
 	MP, MaxMP              int16
 	EXP                    int32
 	MapID                  int32
+	PrevMapID              int32
 	MapPos                 byte
 	Job                    int16
 	Level                  byte
@@ -131,6 +133,7 @@ func snapshotFromPlayer(p *Player) snapshot {
 		MaxMP:          p.maxMP,
 		EXP:            p.exp,
 		MapID:          p.mapID,
+		PrevMapID:      p.previousMap,
 		MapPos:         p.mapPos,
 		Job:            p.job,
 		Level:          p.level,
@@ -289,6 +292,7 @@ func mergeSnapshot(lhs *snapshot, rhs snapshot) {
 	lhs.MP, lhs.MaxMP = rhs.MP, rhs.MaxMP
 	lhs.EXP = rhs.EXP
 	lhs.MapID, lhs.MapPos = rhs.MapID, rhs.MapPos
+	lhs.PrevMapID = rhs.PrevMapID
 	lhs.Job, lhs.Level = rhs.Job, rhs.Level
 	lhs.Str, lhs.Dex, lhs.Intt, lhs.Luk, lhs.Fame = rhs.Str, rhs.Dex, rhs.Intt, rhs.Luk, rhs.Fame
 
@@ -353,6 +357,10 @@ func (s *saver) persist(job pendingSave) bool {
 	if job.bits&DirtyMap != 0 {
 		cols = append(cols, "mapID=?, mapPos=?")
 		args = append(args, job.snap.MapID, job.snap.MapPos)
+	}
+	if job.bits&DirtyPrevMap != 0 {
+		cols = append(cols, "previousMapID=?")
+		args = append(args, job.snap.PrevMapID)
 	}
 	if job.bits&DirtyJob != 0 {
 		cols = append(cols, "job=?")

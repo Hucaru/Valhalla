@@ -1,0 +1,1 @@
+npc.sendOk("In the third stage, you'll find boxes with numbers written on them. When you step on the correct box and press the Up Arrow button, you'll be moved to the next box. Do this to proceed.")

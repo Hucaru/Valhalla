@@ -1,0 +1,1 @@
+npc.sendOk("Hey, how's it going? I've been doing well here.")

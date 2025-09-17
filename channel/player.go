@@ -485,7 +485,7 @@ func (d *Player) setMesos(amount int32) {
 }
 
 func (d *Player) giveMesos(amount int32) {
-	d.setMesos(d.mesos + int32(d.rates.mesos*float32(amount)))
+	d.setMesos(d.mesos + amount)
 }
 
 func (d *Player) takeMesos(amount int32) {
@@ -495,6 +495,30 @@ func (d *Player) takeMesos(amount int32) {
 func (d *Player) saveMesos() error {
 	query := "UPDATE characters SET mesos=? WHERE accountID=? and Name=?"
 	_, err := common.DB.Exec(query, d.mesos, d.accountID, d.Name)
+	return err
+}
+
+func (d *Player) setHair(id int32) error {
+	query := "UPDATE characters SET hair=? WHERE ID=?"
+	_, err := common.DB.Exec(query, id, d.ID)
+	d.hair = id
+	d.Send(packetPlayerStatChange(true, constant.HairID, id))
+	return err
+}
+
+func (d *Player) setFace(id int32) error {
+	query := "UPDATE characters SET face=? WHERE ID=?"
+	_, err := common.DB.Exec(query, id, d.ID)
+	d.face = id
+	d.Send(packetPlayerStatChange(true, constant.FaceID, id))
+	return err
+}
+
+func (d *Player) setSkin(id byte) error {
+	query := "UPDATE characters SET skin=? WHERE ID=?"
+	_, err := common.DB.Exec(query, id, d.ID)
+	d.skin = id
+	d.Send(packetPlayerStatChange(true, constant.SkinID, int32(id)))
 	return err
 }
 
@@ -530,8 +554,17 @@ func (d Player) checkPos(pos pos, xRange, yRange int16) bool {
 	return xValid && yValid
 }
 
+func isExcludedMap(id int32) bool {
+	// Free Market range (inclusive)
+	return id >= 910000000 && id <= 910000022
+}
+
 func (d *Player) setMapID(id int32) {
-	oldMapID := d.mapID
+	// Never set previousMap to a FM ID
+	if !isExcludedMap(d.mapID) {
+		d.previousMap = d.mapID
+	}
+
 	d.mapID = id
 
 	if d.party != nil {
@@ -540,25 +573,7 @@ func (d *Player) setMapID(id int32) {
 
 	// write-behind for mapID/pos (mapPos updated on save())
 	d.MarkDirty(DirtyMap, 500*time.Millisecond)
-	if err := d.saveMapID(id, oldMapID); err != nil {
-		log.Println(err)
-	}
-}
-
-func (d *Player) saveMapID(newMapId, oldMapId int32) error {
-	query := "UPDATE characters SET mapID=?,previousMapID=? WHERE accountID=? and Name=?"
-
-	_, err := common.DB.Exec(query,
-		newMapId,
-		oldMapId,
-		d.accountID,
-		d.Name)
-
-	if err != nil {
-		return err
-	}
-
-	return nil
+	d.MarkDirty(DirtyPrevMap, 500*time.Millisecond)
 }
 
 func (d Player) noChange() {
@@ -584,61 +599,70 @@ func (d *Player) SetMaplePoints(points int32) {
 }
 
 func (d *Player) GiveItem(newItem Item) error { // TODO: Refactor
+	isRechargeable := func(itemID int32) bool {
+		base := itemID / 10000
+		return base == 207
+	}
+
 	findFirstEmptySlot := func(items []Item, size byte) (int16, error) {
 		slotsUsed := make([]bool, size)
-
 		for _, v := range items {
 			if v.slotID > 0 {
 				slotsUsed[v.slotID-1] = true
 			}
 		}
-
 		slot := 0
-
 		for i, v := range slotsUsed {
 			if !v {
 				slot = i + 1
 				break
 			}
 		}
-
 		if slot == 0 {
 			slot = len(slotsUsed) + 1
 		}
-
 		if byte(slot) > size {
 			return 0, fmt.Errorf("No empty Item slot left")
 		}
-
 		return int16(slot), nil
 	}
 
 	switch newItem.invID {
 	case 1: // Equip
 		slotID, err := findFirstEmptySlot(d.equip, d.equipSlotSize)
-
 		if err != nil {
 			return err
 		}
-
 		newItem.slotID = slotID
-		newItem.amount = 1 // just in case
+		newItem.amount = 1
 		newItem.save(d.ID)
 		d.equip = append(d.equip, newItem)
 		d.Send(packetInventoryAddItem(newItem, true))
+
 	case 2: // Use
+		if isRechargeable(newItem.ID) {
+			slotID, err := findFirstEmptySlot(d.use, d.useSlotSize)
+			if err != nil {
+				return err
+			}
+			newItem.slotID = slotID
+			newItem.save(d.ID)
+			d.use = append(d.use, newItem)
+			d.Send(packetInventoryAddItem(newItem, true))
+			return nil
+		}
+
+		// Non-rechargeable
 		size := newItem.amount
 		for size > 0 {
 			var value int16 = 200
 			value -= size
-
 			if value < 1 {
 				value = 200
 			} else {
 				value = size
 			}
 			size -= constant.MaxItemStack
-
 			newItem.amount = value
 
 			var slotID int16
@@ -653,29 +677,23 @@ func (d *Player) GiveItem(newItem Item) error { // TODO: Refactor
 
 			if slotID == 0 {
 				slotID, err := findFirstEmptySlot(d.use, d.useSlotSize)
-
 				if err != nil {
 					return err
 				}
-
 				newItem.slotID = slotID
 				newItem.save(d.ID)
 				d.use = append(d.use, newItem)
 				d.Send(packetInventoryAddItem(newItem, true))
 			} else {
 				remainder := newItem.amount - (constant.MaxItemStack - d.use[index].amount)
-
-				if remainder > 0 { //partial merge
+				if remainder > 0 { // partial merge -> place remainder to new slot
 					slotID, err := findFirstEmptySlot(d.use, d.useSlotSize)
-
 					if err != nil {
 						return err
 					}
-
 					newItem.amount = value
 					newItem.slotID = slotID
 					newItem.save(d.ID)
-
 					d.use = append(d.use, newItem)
 					d.Send(packetInventoryAddItems([]Item{d.use[index], newItem}, []bool{false, true}))
 				} else { // full merge
@@ -684,32 +702,29 @@ func (d *Player) GiveItem(newItem Item) error { // TODO: Refactor
 					d.use[index].save(d.ID)
 				}
 			}
-
 		}
+
 	case 3: // Set-up
 		slotID, err := findFirstEmptySlot(d.setUp, d.setupSlotSize)
-
 		if err != nil {
 			return err
 		}
-
 		newItem.slotID = slotID
 		newItem.save(d.ID)
 		d.setUp = append(d.setUp, newItem)
 		d.Send(packetInventoryAddItem(newItem, true))
+
 	case 4: // Etc
 		size := newItem.amount
 		for size > 0 {
 			var value int16 = 200
 			value -= size
-
 			if value < 1 {
 				value = 200
 			} else {
 				value = size
 			}
 			size -= constant.MaxItemStack
-
 			newItem.amount = value
 
 			var slotID int16
@@ -724,51 +739,43 @@ func (d *Player) GiveItem(newItem Item) error { // TODO: Refactor
 
 			if slotID == 0 {
 				slotID, err := findFirstEmptySlot(d.etc, d.etcSlotSize)
-
 				if err != nil {
 					return err
 				}
-
 				newItem.slotID = slotID
 				newItem.save(d.ID)
 				d.etc = append(d.etc, newItem)
 				d.Send(packetInventoryAddItem(newItem, true))
 			} else {
 				remainder := newItem.amount - (constant.MaxItemStack - d.etc[index].amount)
-
-				if remainder > 0 { //partial merge
+				if remainder > 0 {
 					slotID, err := findFirstEmptySlot(d.etc, d.etcSlotSize)
-
 					if err != nil {
 						return err
 					}
-
 					newItem.amount = value
 					newItem.slotID = slotID
 					newItem.save(d.ID)
-
 					d.etc = append(d.etc, newItem)
 					d.Send(packetInventoryAddItems([]Item{d.etc[index], newItem}, []bool{false, true}))
-				} else { // full merge
+				} else {
 					d.etc[index].amount = d.etc[index].amount + newItem.amount
 					d.Send(packetInventoryAddItem(d.etc[index], false))
 					d.etc[index].save(d.ID)
 				}
 			}
-
 		}
-	case 5: // Cash
-		// some are stackable, how to tell?
-		slotID, err := findFirstEmptySlot(d.cash, d.cashSlotSize)
 
+	case 5: // Cash
+		slotID, err := findFirstEmptySlot(d.cash, d.cashSlotSize)
 		if err != nil {
 			return err
 		}
-
 		newItem.slotID = slotID
 		newItem.save(d.ID)
 		d.cash = append(d.cash, newItem)
 		d.Send(packetInventoryAddItem(newItem, true))
+
 	default:
 		return fmt.Errorf("Unkown inventory ID: %d", newItem.invID)
 	}
@@ -779,26 +786,33 @@ func (d *Player) GiveItem(newItem Item) error { // TODO: Refactor
 func (d *Player) takeItem(id int32, slot int16, amount int16, invID byte) (Item, error) {
 	item, err := d.getItem(invID, slot)
 	if err != nil {
-		return item, err
+		return item, fmt.Errorf("item not found at inv=%d slot=%d", invID, slot)
 	}
 
 	if item.ID != id {
 		return item, fmt.Errorf("Item.ID(%d) does not match ID(%d) provided", item.ID, id)
 	}
+	if item.invID != invID {
+		return item, fmt.Errorf("inventory ID mismatch: item.invID(%d) vs provided invID(%d)", item.invID, invID)
+	}
+	if amount <= 0 {
+		return item, fmt.Errorf("invalid amount requested: %d", amount)
+	}
 
-	maxRemove := math.Min(float64(item.amount), float64(amount))
-	item.amount = item.amount - int16(maxRemove)
+	if amount > item.amount {
+		return item, fmt.Errorf("insufficient quantity: have=%d requested=%d", item.amount, amount)
+	}
+
+	item.amount -= amount
 	if item.amount == 0 {
-		// Delete Item
+		// Delete item
 		d.removeItem(item)
 	} else {
-		// Update Item with new stack size
+		// Update item with new stack size
 		d.updateItemStack(item)
-
 	}
 
 	return item, nil
-
 }
 
 func (d Player) updateItemStack(item Item) {
@@ -952,11 +966,19 @@ func (d *Player) dropMesos(amount int32) error {
 }
 
 func (d *Player) moveItem(start, end, amount int16, invID byte) error {
-	if end == 0 { //drop Item
-		item, err := d.getItem(invID, start)
+	isRechargeable := func(itemID int32) bool {
+		base := itemID / 10000
+		return base == 207
+	}
 
+	if end == 0 { // drop item
+		item, err := d.getItem(invID, start)
 		if err != nil {
 			return fmt.Errorf("Item to move doesn't exist")
+		}
+
+		if isRechargeable(item.ID) {
+			amount = item.amount
 		}
 
 		dropItem := item
@@ -969,27 +991,28 @@ func (d *Player) moveItem(start, end, amount int16, invID byte) error {
 		}
 
 		d.inst.dropPool.createDrop(dropSpawnNormal, dropFreeForAll, 0, d.pos, true, d.ID, 0, dropItem)
-	} else if end < 0 { // Move to equip slot
-		item1, err := d.getItem(invID, start)
+		return nil
+	}
 
+	if end < 0 { // move to equip slot
+		item1, err := d.getItem(invID, start)
 		if err != nil {
 			return fmt.Errorf("Item to move doesn't exist")
 		}
 
 		if item1.twoHanded {
 			if _, err := d.getItem(invID, -10); err == nil {
-				d.Send(packetInventoryNoChange()) // Should this do switching if space is available?
+				d.Send(packetInventoryNoChange())
 				return nil
 			}
 		} else if item1.shield() {
 			if weapon, err := d.getItem(invID, -11); err == nil && weapon.twoHanded {
-				d.Send(packetInventoryNoChange()) // should this move weapon into into Item 1 slot?
+				d.Send(packetInventoryNoChange())
 				return nil
 			}
 		}
 
 		item2, err := d.getItem(invID, end)
-
 		if err == nil {
 			item2.slotID = start
 			item2.save(d.ID)
@@ -1002,45 +1025,43 @@ func (d *Player) moveItem(start, end, amount int16, invID byte) error {
 
 		d.Send(packetInventoryChangeItemSlot(invID, start, end))
 		d.inst.send(packetInventoryChangeEquip(*d))
-	} else { // move within inventory
-		item1, err := d.getItem(invID, start)
+		return nil
+	}
 
-		if err != nil {
-			return fmt.Errorf("Item to move doesn't exist")
-		}
+	item1, err := d.getItem(invID, start)
+	if err != nil {
+		return fmt.Errorf("Item to move doesn't exist")
+	}
 
-		item2, err := d.getItem(invID, end)
-
-		if err != nil { // empty slot
-			item1.slotID = end
-			item1.save(d.ID)
-			d.updateItem(item1)
-
-			d.Send(packetInventoryChangeItemSlot(invID, start, end))
-		} else { // moved onto Item
-			if (item1.isStackable() && item2.isStackable()) && (item1.ID == item2.ID) {
-				if item1.amount == constant.MaxItemStack || item2.amount == constant.MaxItemStack { // swap items
-					d.swapItems(item1, item2, start, end)
-				} else if item2.amount < constant.MaxItemStack { // full merge
-					if item2.amount+item1.amount <= constant.MaxItemStack {
-						item2.amount = item2.amount + item1.amount
-						item2.save(d.ID)
-						d.updateItem(item2)
-						d.Send(packetInventoryAddItem(item2, false))
-
-						d.removeItem(item1)
-					} else { // partial merge is just a swap
-						d.swapItems(item1, item2, start, end)
-					}
-				}
-			} else {
+	item2, err := d.getItem(invID, end)
+	if err != nil { // empty slot, simple move
+		item1.slotID = end
+		item1.save(d.ID)
+		d.updateItem(item1)
+		d.Send(packetInventoryChangeItemSlot(invID, start, end))
+	} else { // destination occupied
+		if (item1.isStackable() && item2.isStackable()) && (item1.ID == item2.ID) {
+			if item1.amount == constant.MaxItemStack || item2.amount == constant.MaxItemStack { // swap
 				d.swapItems(item1, item2, start, end)
-			}
-		}
+			} else if item2.amount < constant.MaxItemStack { // try full merge
+				if item2.amount+item1.amount <= constant.MaxItemStack {
+					item2.amount = item2.amount + item1.amount
+					item2.save(d.ID)
+					d.updateItem(item2)
+					d.Send(packetInventoryAddItem(item2, false))
 
-		if start < 0 || end < 0 {
-			d.inst.send(packetInventoryChangeEquip(*d))
+					d.removeItem(item1)
+				} else {
+					d.swapItems(item1, item2, start, end)
+				}
+			}
+		} else {
+			d.swapItems(item1, item2, start, end)
 		}
+	}
+
+	if start < 0 || end < 0 {
+		d.inst.send(packetInventoryChangeEquip(*d))
 	}
 
 	return nil
@@ -1676,6 +1697,11 @@ func (d *Player) countItem(itemID int32) int32 {
 			total += int32(d.etc[i].amount)
 		}
 	}
+	for i := range d.cash {
+		if d.cash[i].ID == itemID {
+			total += int32(d.cash[i].amount)
+		}
+	}
 	return total
 }
 
@@ -1707,6 +1733,7 @@ func (d *Player) removeItemsByID(itemID int32, reqCount int32) bool {
 	drain(2, d.use)
 	drain(3, d.setUp)
 	drain(4, d.etc)
+	drain(5, d.cash)
 
 	return remaining == 0
 }

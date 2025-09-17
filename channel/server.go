@@ -75,26 +75,28 @@ type rates struct {
 
 // Server state
 type Server struct {
-	id               byte
-	worldName        string
-	dispatch         chan func()
-	world            mnet.Server
-	ip               []byte
-	port             int16
-	maxPop           int16
-	migrating        []mnet.Client
-	players          players
-	channels         [20]internal.Channel
-	cashShop         internal.CashShop
-	fields           map[int32]*field
-	header           string
-	npcChat          map[mnet.Client]*npcChatController
-	npcScriptStore   *scriptStore
-	eventCtrl        map[string]*eventScriptController
-	eventScriptStore *scriptStore
-	parties          map[int32]*party
-	guilds           map[int32]*guild
-	rates            rates
+	id                byte
+	worldName         string
+	dispatch          chan func()
+	world             mnet.Server
+	ip                []byte
+	port              int16
+	maxPop            int16
+	migrating         []mnet.Client
+	players           players
+	channels          [20]internal.Channel
+	cashShop          internal.CashShop
+	fields            map[int32]*field
+	header            string
+	npcChat           map[mnet.Client]*npcChatController
+	npcScriptStore    *scriptStore
+	eventCtrl         map[string]*eventScriptController
+	eventScriptStore  *scriptStore
+	portalCtrl        map[mnet.Client]*portalScriptController
+	portalScriptStore *scriptStore
+	parties           map[int32]*party
+	guilds            map[int32]*guild
+	rates             rates
 }
 
 // Initialise the server
@@ -149,6 +151,7 @@ func (server *Server) Initialise(work chan func(), dbuser, dbpassword, dbaddress
 
 func (server *Server) loadScripts() {
 	server.npcChat = make(map[mnet.Client]*npcChatController)
+	server.portalCtrl = make(map[mnet.Client]*portalScriptController)
 	server.eventCtrl = make(map[string]*eventScriptController)
 
 	server.npcScriptStore = createScriptStore("scripts/npc", server.dispatch) // make folder a config param
@@ -157,6 +160,13 @@ func (server *Server) loadScripts() {
 	elapsed := time.Since(start)
 	log.Println("Loaded npc scripts in", elapsed)
 	go server.npcScriptStore.monitor(func(name string, program *goja.Program) {})
+
+	server.portalScriptStore = createScriptStore("scripts/portals", server.dispatch) // make folder a config param
+	start = time.Now()
+	_ = server.portalScriptStore.loadScripts()
+	elapsed = time.Since(start)
+	log.Println("Loaded portal scripts in", elapsed)
+	go server.portalScriptStore.monitor(func(name string, program *goja.Program) {})
 
 	server.eventScriptStore = createScriptStore("scripts/event", server.dispatch) // make folder a config param
 	start = time.Now()

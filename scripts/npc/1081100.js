@@ -1,0 +1,2 @@
+// Welcome message
+npc.sendOk("Welcome to Florina Beach! How can I help you?")

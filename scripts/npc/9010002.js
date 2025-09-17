@@ -1,0 +1,1 @@
+npc.sendOk("Hi, I'm Mia.");

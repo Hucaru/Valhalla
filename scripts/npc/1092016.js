@@ -1,0 +1,1 @@
+npc.sendOk("It's a beautiful, shiny rock. You can feel the mysterious power surrounding it.");

@@ -1,0 +1,1848 @@
+{
+  "JPludiMob0": {
+    "0": {
+      "0": 9400209,
+      "1": 1,
+      "2": 10,
+      "4": -5,
+      "5": 120,
+      "message": "Some monsters are summoned.",
+      "state": 4,
+      "type": 1
+    },
+    "1": {
+      "0": 9400210,
+      "1": 1,
+      "2": 10,
+      "4": -5,
+      "5": 120,
+      "state": 4,
+      "type": 1
+    }
+  },
+  "JPludiMob1": {
+    "0": {
+      "0": 9400211,
+      "1": 1,
+      "2": 3,
+      "4": -5,
+      "5": 120,
+      "message": "Some monsters are summoned.",
+      "state": 4,
+      "type": 1
+    },
+    "1": {
+      "0": 9400212,
+      "1": 1,
+      "2": 3,
+      "4": -5,
+      "5": 120,
+      "state": 4,
+      "type": 1
+    }
+  },
+  "JPludiMob2": {
+    "0": {
+      "0": 9400213,
+      "1": 1,
+      "2": 3,
+      "4": -5,
+      "5": 120,
+      "message": "Some monsters are summoned.",
+      "state": 4,
+      "type": 1
+    },
+    "1": {
+      "0": 9400214,
+      "1": 1,
+      "2": 3,
+      "4": -5,
+      "5": 120,
+      "state": 4,
+      "type": 1
+    }
+  },
+  "JPludiMob3": {
+    "0": {
+      "0": 9400215,
+      "1": 1,
+      "2": 3,
+      "4": -5,
+      "5": 120,
+      "message": "Some monsters are summoned.",
+      "state": 4,
+      "type": 1
+    },
+    "1": {
+      "0": 9400216,
+      "1": 1,
+      "2": 3,
+      "4": -5,
+      "5": 120,
+      "state": 4,
+      "type": 1
+    }
+  },
+  "JPludiMob4": {
+    "0": {
+      "0": 9400217,
+      "1": 1,
+      "2": 3,
+      "4": -5,
+      "5": 120,
+      "message": "Some monsters are summoned.",
+      "state": 4,
+      "type": 1
+    },
+    "1": {
+      "0": 9400218,
+      "1": 1,
+      "2": 3,
+      "4": -5,
+      "5": 120,
+      "state": 4,
+      "type": 1
+    }
+  },
+  "amoriaItem0": {
+    "0": {
+      "state": 1,
+      "type": 2
+    }
+  },
+  "amoriaItem1": {
+    "0": {
+      "state": 1,
+      "type": 2
+    }
+  },
+  "amoriaItem10": {
+    "0": {
+      "state": 4,
+      "type": 2
+    }
+  },
+  "amoriaItem11": {
+    "0": {
+      "state": 4,
+      "type": 2
+    }
+  },
+  "amoriaItem12": {
+    "0": {
+      "state": 4,
+      "type": 2
+    }
+  },
+  "amoriaItem2": {
+    "0": {
+      "state": 4,
+      "type": 2
+    }
+  },
+  "amoriaItem3": {
+    "0": {
+      "state": 4,
+      "type": 2
+    }
+  },
+  "amoriaItem4": {
+    "0": {
+      "state": 4,
+      "type": 2
+    }
+  },
+  "amoriaItem5": {
+    "0": {
+      "state": 4,
+      "type": 2
+    }
+  },
+  "amoriaItem6": {
+    "0": {
+      "state": 4,
+      "type": 2
+    }
+  },
+  "amoriaItem7": {
+    "0": {
+      "state": 4,
+      "type": 2
+    }
+  },
+  "amoriaItem8": {
+    "0": {
+      "state": 4,
+      "type": 2
+    }
+  },
+  "amoriaItem9": {
+    "0": {
+      "state": 4,
+      "type": 2
+    }
+  },
+  "amoriaboxMob0": {
+    "0": {
+      "0": 9400524,
+      "1": 1,
+      "2": 5,
+      "message": "The monsters are summoned.",
+      "state": 4,
+      "type": 1
+    }
+  },
+  "amoriaboxMob1": {
+    "0": {
+      "0": 9400530,
+      "1": 1,
+      "2": 5,
+      "message": "The monsters are summoned.",
+      "state": 4,
+      "type": 1
+    }
+  },
+  "amoriaboxMob2": {
+    "0": {
+      "0": 9400531,
+      "1": 1,
+      "2": 5,
+      "message": "The monsters are summoned.",
+      "state": 4,
+      "type": 1
+    }
+  },
+  "aquaItem0": {
+    "0": {
+      "state": 4,
+      "type": 2
+    }
+  },
+  "aquaItem1": {
+    "0": {
+      "state": 5,
+      "type": 2
+    }
+  },
+  "aquaItem2": {
+    "0": {
+      "state": 4,
+      "type": 2
+    }
+  },
+  "ariantItem0": {
+    "0": {
+      "state": 4,
+      "type": 2
+    }
+  },
+  "boss": {
+    "0": {
+      "0": 8800000,
+      "1": -4,
+      "2": 1,
+      "3": 2,
+      "4": -10,
+      "5": -215,
+      "message": "Zakum is summoned by the force of Eye of Fire.",
+      "state": 1,
+      "type": 1
+    },
+    "1": {
+      "0": 8800003,
+      "1": -2,
+      "2": 1,
+      "3": 1,
+      "4": -10,
+      "5": -215,
+      "state": 1,
+      "type": 1
+    },
+    "2": {
+      "0": 8800004,
+      "1": -2,
+      "2": 1,
+      "3": 1,
+      "4": -10,
+      "5": -215,
+      "state": 1,
+      "type": 1
+    },
+    "3": {
+      "0": 8800005,
+      "1": -2,
+      "2": 1,
+      "3": 1,
+      "4": -10,
+      "5": -215,
+      "state": 1,
+      "type": 1
+    },
+    "4": {
+      "0": 8800006,
+      "1": -2,
+      "2": 1,
+      "3": 1,
+      "4": -10,
+      "5": -215,
+      "state": 1,
+      "type": 1
+    },
+    "5": {
+      "0": 8800007,
+      "1": -2,
+      "2": 1,
+      "3": 1,
+      "4": -10,
+      "5": -215,
+      "state": 1,
+      "type": 1
+    },
+    "6": {
+      "0": 8800008,
+      "1": -2,
+      "2": 1,
+      "3": 1,
+      "4": -10,
+      "5": -215,
+      "state": 1,
+      "type": 1
+    },
+    "7": {
+      "0": 8800009,
+      "1": -2,
+      "2": 1,
+      "3": 1,
+      "4": -10,
+      "5": -215,
+      "state": 1,
+      "type": 1
+    },
+    "8": {
+      "0": 8800010,
+      "1": -2,
+      "2": 1,
+      "3": 1,
+      "4": -10,
+      "5": -215,
+      "state": 1,
+      "type": 1
+    }
+  },
+  "boss2": {
+    "0": {
+      "0": 8500000,
+      "1": 1,
+      "2": 1,
+      "3": 0,
+      "4": -413,
+      "5": -400,
+      "message": "The crack of dimension was filled by the \u003cPiece of Cracked Dimension\u003e.",
+      "state": 1,
+      "type": 1
+    }
+  },
+  "boxBItem0": {
+    "0": {
+      "state": 1,
+      "type": 2
+    }
+  },
+  "boxItem0": {
+    "0": {
+      "state": 4,
+      "type": 2
+    }
+  },
+  "boxItem1": {
+    "0": {
+      "state": 4,
+      "type": 2
+    }
+  },
+  "boxItem2": {
+    "0": {
+      "state": 4,
+      "type": 2
+    }
+  },
+  "boxItem3": {
+    "0": {
+      "state": 4,
+      "type": 2
+    }
+  },
+  "boxKey0": {
+    "0": {
+      "state": 4,
+      "type": 2
+    }
+  },
+  "boxMob0": {
+    "0": {
+      "0": 9300004,
+      "1": 1,
+      "2": 3,
+      "message": "The monster is summoned.",
+      "state": 4,
+      "type": 1
+    }
+  },
+  "boxPaper0": {
+    "0": {
+      "state": 4,
+      "type": 2
+    }
+  },
+  "coconut0": {
+    "0": {
+      "state": 4,
+      "type": 2
+    }
+  },
+  "coconut1": {
+    "0": {
+      "state": 3,
+      "type": 2
+    }
+  },
+  "coconut2": {
+    "0": {
+      "state": 3,
+      "type": 2
+    }
+  },
+  "davyItem0": {
+    "0": {
+      "state": 4,
+      "type": 2
+    }
+  },
+  "davyItem1": {
+    "0": {
+      "state": 2,
+      "type": 2
+    }
+  },
+  "davyMob0": {
+    "0": {
+      "0": 9300109,
+      "1": 1,
+      "2": 6,
+      "3": 0,
+      "message": "Here comes Ginseng Jar, appearing from the box.",
+      "state": 4,
+      "type": 1
+    }
+  },
+  "davyMob1": {
+    "0": {
+      "0": 9300124,
+      "1": 1,
+      "2": 6,
+      "3": 0,
+      "message": "Here comes Kru, appearing from the box.",
+      "state": 4,
+      "type": 1
+    }
+  },
+  "davyNPC0": {
+    "0": {
+      "0": 2094001,
+      "1": 759,
+      "2": 233,
+      "message": "Miss Wu has been saved from Lord Pirate",
+      "state": 1,
+      "type": 6
+    }
+  },
+  "davyScript0": {
+    "0": {
+      "0": "davy_sMob0",
+      "message": "The door to the Pirate Ship has closed.",
+      "state": 1,
+      "type": 10
+    }
+  },
+  "davyScript1": {
+    "0": {
+      "0": "davy_sMob1",
+      "message": "The door to the Pirate Ship has closed.",
+      "state": 1,
+      "type": 10
+    }
+  },
+  "davyScript2": {
+    "0": {
+      "0": "davy_sMob2",
+      "message": "The door to the Pirate Ship has closed.",
+      "state": 1,
+      "type": 10
+    }
+  },
+  "davyScript3": {
+    "0": {
+      "0": "davy_sMob3",
+      "message": "The door to the Pirate Ship has closed.",
+      "state": 1,
+      "type": 10
+    }
+  },
+  "eventItem0": {
+    "0": {
+      "state": 4,
+      "type": 2
+    }
+  },
+  "eventItem1": {
+    "0": {
+      "state": 4,
+      "type": 2
+    }
+  },
+  "eventItem2": {
+    "0": {
+      "state": 4,
+      "type": 2
+    }
+  },
+  "eventMap0": {
+    "0": {
+      "0": 1,
+      "1": 109010104,
+      "10": "out00",
+      "2": "out00",
+      "3": 109010105,
+      "4": "out00",
+      "5": 109010106,
+      "6": "out00",
+      "7": 109010107,
+      "8": "out00",
+      "9": 109010108,
+      "message": "You will be moved to a different map.",
+      "state": 4,
+      "type": 0
+    }
+  },
+  "eventMap1": {
+    "0": {
+      "0": 1,
+      "1": 109010109,
+      "2": "out00",
+      "3": 109010110,
+      "4": "out00",
+      "message": "You will be moved to a hidden map.",
+      "state": 4,
+      "type": 0
+    }
+  },
+  "eventMap2": {
+    "0": {
+      "0": 1,
+      "1": 109010201,
+      "10": "out00",
+      "11": 109010206,
+      "12": "out00",
+      "2": "out00",
+      "3": 109010202,
+      "4": "out00",
+      "5": 109010203,
+      "6": "out00",
+      "7": 109010204,
+      "8": "out00",
+      "9": 109010205,
+      "message": "You will be moved to a hidden map.",
+      "state": 4,
+      "type": 0
+    }
+  },
+  "eventMob0": {
+    "0": {
+      "0": 9100001,
+      "1": 1,
+      "2": 1,
+      "message": "Monster is summoned.",
+      "state": 4,
+      "type": 1
+    }
+  },
+  "fgodBoss": {
+    "0": {
+      "0": 9300039,
+      "1": 1,
+      "2": 1,
+      "3": 0,
+      "4": -500,
+      "5": 530,
+      "message": "Here comes Papa Pixie.",
+      "state": 1,
+      "type": 1
+    }
+  },
+  "fgodItem0": {
+    "0": {
+      "state": 4,
+      "type": 2
+    }
+  },
+  "fgodItem1": {
+    "0": {
+      "state": 4,
+      "type": 2
+    }
+  },
+  "fgodItem10": {
+    "0": {
+      "state": 5,
+      "type": 2
+    }
+  },
+  "fgodItem11": {
+    "0": {
+      "state": 5,
+      "type": 2
+    }
+  },
+  "fgodItem12": {
+    "0": {
+      "state": 5,
+      "type": 2
+    }
+  },
+  "fgodItem13": {
+    "0": {
+      "state": 4,
+      "type": 2
+    }
+  },
+  "fgodItem14": {
+    "0": {
+      "state": 4,
+      "type": 2
+    }
+  },
+  "fgodItem15": {
+    "0": {
+      "state": 4,
+      "type": 2
+    }
+  },
+  "fgodItem16": {
+    "0": {
+      "state": 4,
+      "type": 2
+    }
+  },
+  "fgodItem17": {
+    "0": {
+      "state": 5,
+      "type": 2
+    }
+  },
+  "fgodItem2": {
+    "0": {
+      "state": 5,
+      "type": 2
+    }
+  },
+  "fgodItem3": {
+    "0": {
+      "state": 4,
+      "type": 2
+    }
+  },
+  "fgodItem4": {
+    "0": {
+      "state": 4,
+      "type": 2
+    }
+  },
+  "fgodItem5": {
+    "0": {
+      "state": 4,
+      "type": 2
+    }
+  },
+  "fgodItem6": {
+    "0": {
+      "state": 4,
+      "type": 2
+    }
+  },
+  "fgodItem7": {
+    "0": {
+      "state": 4,
+      "type": 2
+    }
+  },
+  "fgodItem8": {
+    "0": {
+      "state": 4,
+      "type": 2
+    }
+  },
+  "fgodItem9": {
+    "0": {
+      "state": 4,
+      "type": 2
+    }
+  },
+  "fgodMob0": {
+    "0": {
+      "0": 9300048,
+      "1": 1,
+      "2": 1,
+      "3": 0,
+      "state": 1,
+      "type": 1
+    }
+  },
+  "fgodMob1": {
+    "0": {
+      "0": 9300049,
+      "1": 1,
+      "2": 1,
+      "3": 0,
+      "state": 1,
+      "type": 1
+    }
+  },
+  "fgodMob10": {
+    "0": {
+      "0": 9300040,
+      "1": 1,
+      "2": 1,
+      "3": 0,
+      "4": -263,
+      "5": -2925,
+      "message": "Cellion has been summoned at an unknown place.",
+      "state": 1,
+      "type": 1
+    }
+  },
+  "fgodMob11": {
+    "0": {
+      "0": 9300040,
+      "1": 1,
+      "2": 1,
+      "3": 0,
+      "4": -222,
+      "5": -2131,
+      "message": "Cellion has been summoned at an unknown place.",
+      "state": 1,
+      "type": 1
+    }
+  },
+  "fgodMob12": {
+    "0": {
+      "0": 9300040,
+      "1": 1,
+      "2": 1,
+      "3": 0,
+      "4": 140,
+      "5": -1542,
+      "message": "Cellion has been summoned at an unknown place.",
+      "state": 1,
+      "type": 1
+    }
+  },
+  "fgodMob13": {
+    "0": {
+      "0": 9300040,
+      "1": 1,
+      "2": 1,
+      "3": 0,
+      "4": 140,
+      "5": -733,
+      "message": "Cellion has been summoned at an unknown place.",
+      "state": 1,
+      "type": 1
+    }
+  },
+  "fgodMob14": {
+    "0": {
+      "0": 9300040,
+      "1": 1,
+      "2": 1,
+      "3": 0,
+      "4": -222,
+      "5": -2526,
+      "message": "Cellion has been summoned at an unknown place.",
+      "state": 1,
+      "type": 1
+    }
+  },
+  "fgodMob15": {
+    "0": {
+      "0": 9300040,
+      "1": 1,
+      "2": 1,
+      "3": 0,
+      "4": 140,
+      "5": -1928,
+      "message": "Cellion has been summoned at an unknown place.",
+      "state": 1,
+      "type": 1
+    }
+  },
+  "fgodMob2": {
+    "0": {
+      "0": 9300040,
+      "1": 1,
+      "2": 1,
+      "3": 0,
+      "4": 178,
+      "5": -2337,
+      "message": "Cellion has been summoned at an unknown place.",
+      "state": 1,
+      "type": 1
+    }
+  },
+  "fgodMob3": {
+    "0": {
+      "0": 9300040,
+      "1": 1,
+      "2": 1,
+      "3": 0,
+      "4": -222,
+      "5": -1326,
+      "message": "Cellion has been summoned at an unknown place.",
+      "state": 1,
+      "type": 1
+    }
+  },
+  "fgodMob4": {
+    "0": {
+      "0": 9300057,
+      "1": 1,
+      "2": 1,
+      "3": 0,
+      "4": 140,
+      "5": -3132,
+      "message": "Cellion has been summoned at an unknown place.",
+      "state": 1,
+      "type": 1
+    }
+  },
+  "fgodMob5": {
+    "0": {
+      "0": 9300040,
+      "1": 1,
+      "2": 1,
+      "3": 0,
+      "4": -269,
+      "5": -1750,
+      "message": "Cellion has been summoned at an unknown place.",
+      "state": 1,
+      "type": 1
+    }
+  },
+  "fgodMob6": {
+    "0": {
+      "0": 9300040,
+      "1": 1,
+      "2": 1,
+      "3": 0,
+      "4": -222,
+      "5": -3381,
+      "message": "Cellion has been summoned at an unknown place.",
+      "state": 1,
+      "type": 1
+    }
+  },
+  "fgodMob7": {
+    "0": {
+      "0": 9300040,
+      "1": 1,
+      "2": 1,
+      "3": 0,
+      "4": 140,
+      "5": -2731,
+      "message": "Cellion has been summoned at an unknown place.",
+      "state": 1,
+      "type": 1
+    }
+  },
+  "fgodMob8": {
+    "0": {
+      "0": 9300040,
+      "1": 1,
+      "2": 1,
+      "3": 0,
+      "4": -222,
+      "5": -931,
+      "message": "Cellion has been summoned at an unknown place.",
+      "state": 1,
+      "type": 1
+    }
+  },
+  "fgodMob9": {
+    "0": {
+      "0": 9300040,
+      "1": 1,
+      "2": 1,
+      "3": 0,
+      "4": 181,
+      "5": -1137,
+      "message": "Cellion has been summoned at an unknown place.",
+      "state": 1,
+      "type": 1
+    }
+  },
+  "fgodNPC0": {
+    "0": {
+      "0": 2013001,
+      "1": 375,
+      "2": 94,
+      "message": "As the light slowly disappears, someone emerges from the light.",
+      "state": 1,
+      "type": 6
+    }
+  },
+  "fgodNPC1": {
+    "0": {
+      "0": 2013002,
+      "1": -49,
+      "2": -973,
+      "message": "The Goddess has appeared in front of the restored statue.",
+      "state": 7,
+      "type": 6
+    }
+  },
+  "florinaBox0": {
+    "0": {
+      "state": 4,
+      "type": 2
+    }
+  },
+  "fvMob0": {
+    "0": {
+      "0": 7130400,
+      "1": 1,
+      "2": 1,
+      "3": 0,
+      "message": "Here comes Yellow King Goblin.",
+      "state": 1,
+      "type": 1
+    }
+  },
+  "fvMob1": {
+    "0": {
+      "0": 7130401,
+      "1": 1,
+      "2": 1,
+      "3": 0,
+      "message": "Here comes Blue King Goblin.",
+      "state": 1,
+      "type": 1
+    }
+  },
+  "fvMob2": {
+    "0": {
+      "0": 7130402,
+      "1": 1,
+      "2": 1,
+      "3": 0,
+      "4": -347,
+      "5": 134,
+      "message": "Here comes Green King Goblin.",
+      "state": 1,
+      "type": 1
+    }
+  },
+  "fvevent0": {
+    "0": {
+      "state": 4,
+      "type": 2
+    }
+  },
+  "fvquest0": {
+    "0": {
+      "0": 9500400,
+      "1": 1,
+      "2": 1,
+      "3": 0,
+      "state": 1,
+      "type": 1
+    }
+  },
+  "fvquest1": {
+    "0": {
+      "0": 9500400,
+      "1": 1,
+      "2": 1,
+      "3": 0,
+      "state": 1,
+      "type": 1
+    }
+  },
+  "fvquest2": {
+    "0": {
+      "state": 4,
+      "type": 2
+    }
+  },
+  "go221024400": {
+    "0": {
+      "0": 0,
+      "1": 221024400,
+      "2": "q000",
+      "message": "You will be expelled from this map by an unknown force.",
+      "state": 1,
+      "type": 0
+    }
+  },
+  "go280010000": {
+    "0": {
+      "0": 1,
+      "1": 280010000,
+      "2": "st00",
+      "message": "You will go back to the first place by an unknown force.",
+      "state": 4,
+      "type": 0
+    }
+  },
+  "go922010201": {
+    "0": {
+      "0": 0,
+      "1": 922010201,
+      "2": "st00",
+      "message": "You will be moved to a different map.",
+      "state": 4,
+      "type": 0
+    }
+  },
+  "halloweenbox": {
+    "0": {
+      "0": "Halloween_Box",
+      "message": "Nothing happens...",
+      "state": 6,
+      "type": 10
+    }
+  },
+  "hontaleBoss": {
+    "0": {
+      "0": 8810026,
+      "1": 12,
+      "2": 1,
+      "3": 0,
+      "4": 92,
+      "5": 250,
+      "message": "As the cave shakes and rattles, here comes Horntail.",
+      "state": 6,
+      "type": 1
+    }
+  },
+  "hontaleItem0": {
+    "0": {
+      "state": 1,
+      "type": 2
+    }
+  },
+  "hontaleItem1": {
+    "0": {
+      "state": 1,
+      "type": 2
+    }
+  },
+  "hontaleItem2": {
+    "0": {
+      "state": 1,
+      "type": 2
+    }
+  },
+  "hontaleItem3": {
+    "0": {
+      "state": 1,
+      "type": 2
+    }
+  },
+  "hontaleItem4": {
+    "0": {
+      "0": 9300079,
+      "1": 1,
+      "2": 1,
+      "3": 0,
+      "4": 100,
+      "5": 240,
+      "message": "Round Nest Golem has been summoned.",
+      "state": 4,
+      "type": 1
+    },
+    "1": {
+      "0": 9300079,
+      "1": 1,
+      "2": 1,
+      "3": 0,
+      "4": 820,
+      "5": 240,
+      "state": 4,
+      "type": 1
+    },
+    "2": {
+      "0": 9300079,
+      "1": 1,
+      "2": 1,
+      "3": 0,
+      "4": 1900,
+      "5": 240,
+      "state": 4,
+      "type": 1
+    },
+    "3": {
+      "state": 4,
+      "type": 2
+    }
+  },
+  "hontaleNPC0": {
+    "0": {
+      "0": 2081008,
+      "1": -15,
+      "2": -238,
+      "message": "A baby dragon has hatched the egg.",
+      "state": 2,
+      "type": 6
+    }
+  },
+  "leafItem0": {
+    "0": {
+      "state": 4,
+      "type": 2
+    }
+  },
+  "leafItem1": {
+    "0": {
+      "state": 4,
+      "type": 2
+    }
+  },
+  "ludiBoss0": {
+    "0": {
+      "0": 9300012,
+      "1": 1,
+      "2": 1,
+      "3": 0,
+      "4": 970,
+      "5": 150,
+      "message": "Alishar is summoned.",
+      "state": 1,
+      "type": 1
+    }
+  },
+  "ludiMob0": {
+    "0": {
+      "0": 9300011,
+      "1": 1,
+      "2": 10,
+      "state": 4,
+      "type": 1
+    }
+  },
+  "ludiMob1": {
+    "0": {
+      "0": 9300007,
+      "1": 1,
+      "2": 3,
+      "state": 4,
+      "type": 1
+    }
+  },
+  "ludiMob2": {
+    "0": {
+      "0": 9300010,
+      "1": 1,
+      "2": 1,
+      "3": 0,
+      "4": 0,
+      "5": -250,
+      "message": "Rombard is summoned somewhere in the map.",
+      "state": 1,
+      "type": 1
+    }
+  },
+  "ludiPotal0": {
+    "0": {
+      "0": 1,
+      "1": 922000020,
+      "2": "sp",
+      "3": 922000021,
+      "4": "sp",
+      "message": "You will be moved to a different map.",
+      "state": 4,
+      "type": 0
+    }
+  },
+  "ludiquest0": {
+    "0": {
+      "state": 2,
+      "type": 2
+    }
+  },
+  "ludiquest1": {
+    "0": {
+      "state": 4,
+      "type": 2
+    }
+  },
+  "ludiquest2": {
+    "0": {
+      "state": 4,
+      "type": 2
+    }
+  },
+  "ludiquest3": {
+    "0": {
+      "state": 4,
+      "type": 2
+    }
+  },
+  "ludiquest4": {
+    "0": {
+      "state": 4,
+      "type": 2
+    }
+  },
+  "mBoxItem0": {
+    "0": {
+      "state": 4,
+      "type": 2
+    }
+  },
+  "magaScript0": {
+    "0": {
+      "state": 1,
+      "type": 2
+    },
+    "1": {
+      "0": "Homun",
+      "state": 1,
+      "type": 10
+    }
+  },
+  "magatiaItem0": {
+    "0": {
+      "state": 7,
+      "type": 2
+    }
+  },
+  "magatiaItem1": {
+    "0": {
+      "state": 1,
+      "type": 2
+    }
+  },
+  "mcGuardian0": {
+    "0": {
+      "state": 5,
+      "type": 11
+    }
+  },
+  "money100": {
+    "0": {
+      "state": 4,
+      "type": 2
+    }
+  },
+  "money10000": {
+    "0": {
+      "state": 4,
+      "type": 2
+    }
+  },
+  "moonItem0": {
+    "0": {
+      "state": 4,
+      "type": 2
+    }
+  },
+  "moonItem1": {
+    "0": {
+      "state": 4,
+      "type": 2
+    }
+  },
+  "moonItem2": {
+    "0": {
+      "state": 4,
+      "type": 2
+    }
+  },
+  "moonItem3": {
+    "0": {
+      "state": 4,
+      "type": 2
+    }
+  },
+  "moonItem4": {
+    "0": {
+      "state": 4,
+      "type": 2
+    }
+  },
+  "moonItem5": {
+    "0": {
+      "state": 4,
+      "type": 2
+    }
+  },
+  "moonMob0": {
+    "0": {
+      "0": "moonrabbit_mobgen",
+      "message": "Protect the Moon Bunny!!!",
+      "state": 6,
+      "type": 10
+    }
+  },
+  "muruengItem0": {
+    "0": {
+      "state": 4,
+      "type": 2
+    }
+  },
+  "muruengItem1": {
+    "0": {
+      "state": 4,
+      "type": 2
+    }
+  },
+  "oBoxItem0": {
+    "0": {
+      "state": 4,
+      "type": 2
+    }
+  },
+  "osquest0": {
+    "0": {
+      "state": 4,
+      "type": 2
+    }
+  },
+  "osquest1": {
+    "0": {
+      "state": 4,
+      "type": 2
+    }
+  },
+  "osquest2": {
+    "0": {
+      "state": 4,
+      "type": 2
+    }
+  },
+  "osquest3": {
+    "0": {
+      "state": 4,
+      "type": 2
+    }
+  },
+  "osquest4": {
+    "0": {
+      "state": 4,
+      "type": 2
+    }
+  },
+  "osquest5": {
+    "0": {
+      "state": 4,
+      "type": 2
+    }
+  },
+  "rnjItem0": {
+    "0": {
+      "state": 4,
+      "type": 2
+    }
+  },
+  "rnjItem1": {
+    "0": {
+      "state": 4,
+      "type": 2
+    }
+  },
+  "rnjItem2": {
+    "0": {
+      "state": 4,
+      "type": 2
+    }
+  },
+  "rnjScript0": {
+    "0": {
+      "0": "rnj_end",
+      "state": 1,
+      "type": 10
+    }
+  },
+  "rnjScript1": {
+    "0": {
+      "0": "jnr_end",
+      "state": 1,
+      "type": 10
+    }
+  },
+  "s4berserkItem0": {
+    "0": {
+      "state": 4,
+      "type": 2
+    }
+  },
+  "s4berserkMap0": {
+    "0": {
+      "0": 1,
+      "1": 105090200,
+      "2": "east01",
+      "message": "Você será movido para um mapa diferente",
+      "state": 4,
+      "type": 0
+    }
+  },
+  "s4fireHawkItem0": {
+    "0": {
+      "state": 4,
+      "type": 2
+    }
+  },
+  "s4fireHawkMob0": {
+    "0": {
+      "0": 9300089,
+      "1": 1,
+      "2": 1,
+      "3": 0,
+      "message": "Phoenix has been summoned.",
+      "state": 4,
+      "type": 1
+    }
+  },
+  "s4frameItem0": {
+    "0": {
+      "state": 1,
+      "type": 2
+    }
+  },
+  "s4hitmanItem0": {
+    "0": {
+      "state": 4,
+      "type": 2
+    }
+  },
+  "s4hitmanMap0": {
+    "0": {
+      "0": 1,
+      "1": 910200000,
+      "2": "pt00",
+      "message": "Você será movido para um mapa diferente",
+      "state": 4,
+      "type": 0
+    }
+  },
+  "s4hitmanMap1": {
+    "0": {
+      "0": 1,
+      "1": 910200000,
+      "2": "pt01",
+      "message": "Você será movido para um mapa diferente",
+      "state": 4,
+      "type": 0
+    }
+  },
+  "s4hitmanMap2": {
+    "0": {
+      "0": 1,
+      "1": 910200000,
+      "2": "pt02",
+      "message": "Você será movido para um mapa diferente",
+      "state": 4,
+      "type": 0
+    }
+  },
+  "s4hitmanMap3": {
+    "0": {
+      "0": 1,
+      "1": 910200000,
+      "2": "pt00",
+      "message": "Você será movido para um mapa diferente",
+      "state": 4,
+      "type": 0
+    }
+  },
+  "s4hitmanMap4": {
+    "0": {
+      "0": 1,
+      "1": 910200000,
+      "2": "pt01",
+      "message": "Você será movido para um mapa diferente",
+      "state": 4,
+      "type": 0
+    }
+  },
+  "s4hitmanMap5": {
+    "0": {
+      "0": 1,
+      "1": 910200000,
+      "2": "pt02",
+      "message": "Você será movido para um mapa diferente",
+      "state": 4,
+      "type": 0
+    }
+  },
+  "s4hitmanMap6": {
+    "0": {
+      "0": 1,
+      "1": 910200000,
+      "2": "pt00",
+      "message": "Você será movido para um mapa diferente",
+      "state": 4,
+      "type": 0
+    }
+  },
+  "s4hitmanMap7": {
+    "0": {
+      "0": 1,
+      "1": 910200000,
+      "2": "pt01",
+      "message": "Você será movido para um mapa diferente",
+      "state": 4,
+      "type": 0
+    }
+  },
+  "s4hitmanMap8": {
+    "0": {
+      "0": 1,
+      "1": 910200000,
+      "2": "pt02",
+      "message": "Você será movido para um mapa diferente",
+      "state": 4,
+      "type": 0
+    }
+  },
+  "s4hitmanMob0": {
+    "0": {
+      "0": 9300091,
+      "1": 1,
+      "2": 1,
+      "3": 0,
+      "4": -83,
+      "5": -198,
+      "message": "Dark Muscle Stone has been summoned.",
+      "state": 4,
+      "type": 1
+    }
+  },
+  "s4hitmanMob1": {
+    "0": {
+      "0": 9300091,
+      "1": 1,
+      "2": 1,
+      "3": 0,
+      "4": -45,
+      "5": -526,
+      "message": "Dark Muscle Stone has been summoned.",
+      "state": 4,
+      "type": 1
+    }
+  },
+  "s4iceEagleItem0": {
+    "0": {
+      "state": 4,
+      "type": 2
+    }
+  },
+  "s4iceEagleMob0": {
+    "0": {
+      "0": 9300090,
+      "1": 1,
+      "2": 1,
+      "3": 0,
+      "message": "Freezer has been summoned.",
+      "state": 4,
+      "type": 1
+    }
+  },
+  "s4resurItem0": {
+    "0": {
+      "state": 2,
+      "type": 2
+    }
+  },
+  "sBoxItem0": {
+    "0": {
+      "state": 4,
+      "type": 2
+    }
+  },
+  "sBoxItem1": {
+    "0": {
+      "state": 4,
+      "type": 2
+    }
+  },
+  "scaScript0": {
+    "0": {
+      "0": "sca_boogi",
+      "state": 4,
+      "type": 10
+    }
+  },
+  "scaScript1": {
+    "0": {
+      "0": "sca_lich0",
+      "state": 1,
+      "type": 10
+    },
+    "1": {
+      "0": "sca_lich1",
+      "state": 5,
+      "type": 10
+    }
+  },
+  "scaScript2": {
+    "0": {
+      "0": "sca_lich2",
+      "state": 1,
+      "type": 10
+    },
+    "1": {
+      "0": "sca_lich3",
+      "state": 5,
+      "type": 10
+    }
+  },
+  "scaScript3": {
+    "0": {
+      "0": "sca_lich4",
+      "state": 1,
+      "type": 10
+    },
+    "1": {
+      "0": "sca_lich5",
+      "state": 5,
+      "type": 10
+    }
+  },
+  "scaScript4": {
+    "0": {
+      "0": "sca_lich6",
+      "state": 1,
+      "type": 10
+    },
+    "1": {
+      "0": "sca_lich7",
+      "state": 5,
+      "type": 10
+    }
+  },
+  "shouwaBoss": {
+    "0": {
+      "0": 9400112,
+      "1": 1,
+      "2": 1,
+      "3": 0,
+      "4": 435,
+      "5": 152,
+      "message": "Bodyguard A is summoned.",
+      "state": 1,
+      "type": 1
+    }
+  },
+  "snowScript0": {
+    "0": {
+      "0": "wxmas_End",
+      "state": 1,
+      "type": 10
+    }
+  },
+  "snowdrop": {
+    "0": {
+      "state": 1,
+      "type": 2
+    }
+  },
+  "snowdrop1": {
+    "0": {
+      "state": 4,
+      "type": 2
+    }
+  },
+  "syarenItem0": {
+    "0": {
+      "state": 5,
+      "type": 2
+    }
+  },
+  "syarenItem1": {
+    "0": {
+      "state": 5,
+      "type": 2
+    }
+  },
+  "syarenItem10": {
+    "0": {
+      "state": 4,
+      "type": 2
+    }
+  },
+  "syarenItem11": {
+    "0": {
+      "state": 4,
+      "type": 2
+    }
+  },
+  "syarenItem12": {
+    "0": {
+      "state": 5,
+      "type": 2
+    }
+  },
+  "syarenItem2": {
+    "0": {
+      "state": 30,
+      "type": 2
+    }
+  },
+  "syarenItem3": {
+    "0": {
+      "state": 4,
+      "type": 2
+    }
+  },
+  "syarenItem4": {
+    "0": {
+      "state": 4,
+      "type": 2
+    }
+  },
+  "syarenItem5": {
+    "0": {
+      "state": 5,
+      "type": 2
+    }
+  },
+  "syarenItem6": {
+    "0": {
+      "state": 5,
+      "type": 2
+    }
+  },
+  "syarenItem7": {
+    "0": {
+      "state": 5,
+      "type": 2
+    }
+  },
+  "syarenItem8": {
+    "0": {
+      "state": 5,
+      "type": 2
+    }
+  },
+  "syarenItem9": {
+    "0": {
+      "state": 5,
+      "type": 2
+    }
+  },
+  "syarenMob0": {
+    "0": {
+      "0": 9300033,
+      "1": 1,
+      "2": 8,
+      "3": 0,
+      "4": -80,
+      "5": 145,
+      "state": 1,
+      "type": 1
+    }
+  },
+  "syarenMob1": {
+    "0": {
+      "0": 9300028,
+      "1": 1,
+      "2": 1,
+      "3": 0,
+      "4": 344,
+      "5": 62,
+      "message": "As Rubian disappears, in comes Ergoth!",
+      "state": 5,
+      "type": 1
+    },
+    "1": {
+      "0": 9300029,
+      "1": 1,
+      "2": 1,
+      "3": 0,
+      "4": 145,
+      "5": 152,
+      "state": 5,
+      "type": 1
+    },
+    "2": {
+      "0": 9300030,
+      "1": 1,
+      "2": 1,
+      "3": 0,
+      "4": 420,
+      "5": 152,
+      "state": 5,
+      "type": 1
+    },
+    "3": {
+      "0": 9300031,
+      "1": 1,
+      "2": 1,
+      "3": 0,
+      "4": 183,
+      "5": 98,
+      "state": 5,
+      "type": 1
+    },
+    "4": {
+      "0": 9300032,
+      "1": 1,
+      "2": 1,
+      "3": 0,
+      "4": 492,
+      "5": 98,
+      "state": 5,
+      "type": 1
+    }
+  },
+  "syarenNPC0": {
+    "0": {
+      "0": 9040003,
+      "1": 1438,
+      "2": 170,
+      "message": "Everything went out of focus for a second, and then a faint presence appeared from afar.",
+      "state": 4,
+      "type": 6
+    }
+  },
+  "tameItem0": {
+    "0": {
+      "state": 4,
+      "type": 2
+    }
+  },
+  "vFlowerItem0": {
+    "0": {
+      "state": 4,
+      "type": 2
+    }
+  },
+  "vFlowerItem1": {
+    "0": {
+      "state": 3,
+      "type": 2
+    }
+  },
+  "weddingItem0": {
+    "0": {
+      "state": 4,
+      "type": 2
+    }
+  },
+  "weddingItem1": {
+    "0": {
+      "state": 4,
+      "type": 2
+    }
+  }
+}

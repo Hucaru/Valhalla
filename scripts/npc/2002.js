@@ -1,0 +1,1 @@
+npc.sendOk("Are you having a pleasant journey so far?")

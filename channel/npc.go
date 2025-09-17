@@ -176,13 +176,14 @@ func packetNpcShop(npcID int32, items [][]int32) mpacket.Packet {
 	p.WriteInt16(int16(len(items)))
 
 	for _, currentItem := range items {
-		p.WriteInt32(currentItem[0])
+		id := currentItem[0]
+		p.WriteInt32(id)
 
-		item, err := nx.GetItem(currentItem[0])
+		item, err := nx.GetItem(id)
 
+		// Price: explicit when provided
 		if len(currentItem) == 2 {
 			p.WriteInt32(currentItem[1])
-
 		} else {
 			if err != nil {
 				p.WriteInt32(math.MaxInt32)
@@ -191,16 +192,32 @@ func packetNpcShop(npcID int32, items [][]int32) mpacket.Packet {
 			}
 		}
 
-		if float64(currentItem[0]/10000) == 207 {
-			p.WriteUint64(uint64(item.UnitPrice * float64(item.SlotMax)))
+		// Rechargeable
+		cat := id / 10000
+		if cat == 207 || cat == 233 {
+			unitPrice := 0.0
+			if err == nil {
+				unitPrice = item.UnitPrice
+			}
+			// Write as double raw bits
+			p.WriteUint64(math.Float64bits(unitPrice))
 		}
 
-		if item.SlotMax == 0 {
-			p.WriteInt16(100)
-		} else {
-			p.WriteInt16(item.SlotMax)
+		// Slot max (unsigned 16-bit), default 100 when 0 or missing
+		var slotMax uint16 = 100
+		if err == nil && item.SlotMax != 0 {
+			// item.SlotMax is likely int16; clamp to uint16 range just in case
+			if item.SlotMax > 0 {
+				slotMax = uint16(item.SlotMax)
+			}
 		}
+		p.WriteUint16(slotMax)
 	}
+
+	// Trailing padding used by clients
+	p.WriteInt64(0)
+	p.WriteInt64(0)
+	p.WriteInt64(0)
 
 	return p
 }

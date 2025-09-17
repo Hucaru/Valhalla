@@ -1,10 +1,4 @@
-/*
-	NPC Name: 		Phil
-	Map(s): 		Victoria Road : Lith Harbour (104000000)
-	Description: 		Explains Victoria Island Towns and can take you to them
-*/
-
-var towns = [104000000, 102000000, 101000000, 103000000]
+var towns = [100000000, 102000000, 101000000, 103000000]
 var prices_text = ["800", "1,000", "1,000", "1,200"]
 var prices_num = [800, 1000, 1000, 1200]
 

@@ -1,0 +1,1 @@
+npc.sendOk("Ah~! It is really getting to me!!! #o2220100#... Oh... Are you a stranger?")

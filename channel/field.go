@@ -311,7 +311,6 @@ func (f *field) createInstance(rates *rates) int {
 	portals := make([]portal, len(f.Data.Portals))
 	for i, p := range f.Data.Portals {
 		portals[i] = createPortalFromData(p)
-		portals[i].id = byte(i)
 	}
 
 	inst := &fieldInstance{
@@ -330,6 +329,7 @@ func (f *field) createInstance(rates *rates) int {
 	inst.dropPool = createNewDropPool(inst, rates)
 	inst.lifePool = creatNewLifePool(inst, f.Data.NPCs, f.Data.Mobs, f.mobCapacityMin, f.mobCapacityMax)
 	inst.lifePool.setDropPool(&inst.dropPool)
+	inst.reactorPool = createNewReactorPool(inst, f.Data.Reactors)
 
 	f.instances = append(f.instances, inst)
 
@@ -529,9 +529,10 @@ type fieldInstance struct {
 	returnMapID int32
 	timeLimit   int64
 
-	lifePool lifePool
-	dropPool dropPool
-	roomPool roomPool
+	lifePool    lifePool
+	dropPool    dropPool
+	roomPool    roomPool
+	reactorPool reactorPool
 
 	portals []portal
 	players []*Player
@@ -589,6 +590,7 @@ func (inst *fieldInstance) addPlayer(plr *Player) error {
 	inst.lifePool.addPlayer(plr)
 	inst.dropPool.playerShowDrops(plr)
 	inst.roomPool.playerShowRooms(plr)
+	inst.reactorPool.playerShowReactors(plr)
 
 	if inst.showBoat {
 		displayBoat(plr, inst.showBoat, inst.boatType)
@@ -908,5 +910,37 @@ func packetMapPortal(srcMap, dstmap int32, pos pos) mpacket.Packet {
 	p.WriteInt16(pos.x)
 	p.WriteInt16(pos.y)
 
+	return p
+}
+
+func packetMapReactorEnterField(spawnID int32, reactorID int32, state byte, x int16, y int16, facesLeft bool) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelReactorEnterField)
+	p.WriteInt32(spawnID)   // unique object id in field
+	p.WriteInt32(reactorID) // template/reactor data id
+	p.WriteByte(state)      // reactor state
+	p.WriteInt16(x)
+	p.WriteInt16(y)
+	p.WriteBool(facesLeft)
+	return p
+}
+
+func packetMapReactorChangeState(spawnID int32, state byte, x int16, y int16, frameDelay int16, facesLeft bool, cause byte) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelReactorChangeState)
+	p.WriteInt32(spawnID) // unique object id in field
+	p.WriteByte(state)    // new state
+	p.WriteInt16(x)
+	p.WriteInt16(y)
+	p.WriteInt16(frameDelay) // frame delay
+	p.WriteBool(facesLeft)
+	p.WriteByte(cause) // 0 = default
+	return p
+}
+
+func packetMapReactorLeaveField(spawnID int32, state byte, x int16, y int16) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelReactorLeaveField)
+	p.WriteInt32(spawnID) // unique object id in field
+	p.WriteByte(state)    // current state
+	p.WriteInt16(x)
+	p.WriteInt16(y)
 	return p
 }
