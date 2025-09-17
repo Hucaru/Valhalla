@@ -812,39 +812,36 @@ func (ctrl *npcChatController) Selection() int32 {
 	if len(ctrl.stateTracker.selections) == 0 {
 		return -1
 	}
-
-	if len(ctrl.stateTracker.selections) == 1 {
-		ctrl.selectionCalls++
-		return ctrl.stateTracker.selections[0]
+	if ctrl.stateTracker.selection >= len(ctrl.stateTracker.selections) {
+		return ctrl.stateTracker.selections[len(ctrl.stateTracker.selections)-1]
 	}
-
-	var idx int
-	if ctrl.selectionCalls == 0 {
-		idx = 0
-	} else {
-		idx = 1
-		if idx >= len(ctrl.stateTracker.selections) {
-			idx = len(ctrl.stateTracker.selections) - 1
-		}
-	}
-	ctrl.selectionCalls++
-	return ctrl.stateTracker.selections[idx]
+	val := ctrl.stateTracker.selections[ctrl.stateTracker.selection]
+	ctrl.stateTracker.selection++
+	return val
 }
 
-// InputString value
 func (ctrl *npcChatController) InputString() string {
 	if len(ctrl.stateTracker.inputs) == 0 {
 		return ""
 	}
-	return ctrl.stateTracker.inputs[len(ctrl.stateTracker.inputs)-1]
+	if ctrl.stateTracker.input >= len(ctrl.stateTracker.inputs) {
+		return ctrl.stateTracker.inputs[len(ctrl.stateTracker.inputs)-1]
+	}
+	val := ctrl.stateTracker.inputs[ctrl.stateTracker.input]
+	ctrl.stateTracker.input++
+	return val
 }
 
-// InputNumber value
 func (ctrl *npcChatController) InputNumber() int32 {
 	if len(ctrl.stateTracker.numbers) == 0 {
 		return 0
 	}
-	return ctrl.stateTracker.numbers[len(ctrl.stateTracker.numbers)-1]
+	if ctrl.stateTracker.number >= len(ctrl.stateTracker.numbers) {
+		return ctrl.stateTracker.numbers[len(ctrl.stateTracker.numbers)-1]
+	}
+	val := ctrl.stateTracker.numbers[ctrl.stateTracker.number]
+	ctrl.stateTracker.number++
+	return val
 }
 
 func (ctrl *npcChatController) run() bool {
@@ -860,7 +857,7 @@ func (ctrl *npcChatController) run() bool {
 	if ctrl.vm == nil || ctrl.program == nil {
 		return true
 	}
-	
+
 	_, err := ctrl.vm.RunProgram(ctrl.program)
 
 	if err != nil {
