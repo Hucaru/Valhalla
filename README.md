@@ -49,8 +49,8 @@ World server:
 - [ ] Guild sync when channel or world server are restarted
 
 Cashshop server:
-- [ ] List items
-- [ ] Allow purchases via different currencies
+- [x] List items
+- [x] Allow purchases via different currencies
 
 Channel server:
 - [x] GM commands
@@ -114,7 +114,7 @@ Channel server:
 - [ ] Trade
 - [ ] Communication Window
 - [x] Quests
-- [ ] Reactors
+- [x] Reactors
 - [x] Server resets login status upon restart for dangling characters
 
 Metrics:
