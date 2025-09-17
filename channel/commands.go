@@ -7,7 +7,9 @@ import (
 	"math"
 	"strconv"
 	"strings"
+	"time"
 
+	"github.com/Hucaru/Valhalla/constant"
 	"github.com/Hucaru/Valhalla/internal"
 
 	"github.com/Hucaru/Valhalla/mpacket"
@@ -314,6 +316,342 @@ func (server *Server) gmCommand(conn mnet.Client, msg string) {
 		}
 
 		player.setMP(int16(amount))
+
+	case "setMaxHP":
+		player, err := server.players.getFromConn(conn)
+		if err != nil {
+			conn.Send(packetMessageRedText(err.Error()))
+			return
+		}
+		if len(command) < 2 {
+			conn.Send(packetMessageRedText("Usage: /setMaxHP <amount>"))
+			return
+		}
+		val, err := strconv.Atoi(command[1])
+		if err != nil {
+			conn.Send(packetMessageRedText("Amount must be a number"))
+			return
+		}
+		if val < 1 {
+			conn.Send(packetMessageRedText("Max HP must be at least 1"))
+			return
+		}
+		player.setMaxHP(int16(val))
+		conn.Send(packetMessageNotice(fmt.Sprintf("Set Max HP to %d", val)))
+
+	case "setMaxMP":
+		player, err := server.players.getFromConn(conn)
+		if err != nil {
+			conn.Send(packetMessageRedText(err.Error()))
+			return
+		}
+		if len(command) < 2 {
+			conn.Send(packetMessageRedText("Usage: /setMaxMP <amount>"))
+			return
+		}
+		val, err := strconv.Atoi(command[1])
+		if err != nil {
+			conn.Send(packetMessageRedText("Amount must be a number"))
+			return
+		}
+		if val < 0 {
+			conn.Send(packetMessageRedText("Max MP cannot be negative"))
+			return
+		}
+		player.setMaxMP(int16(val))
+		conn.Send(packetMessageNotice(fmt.Sprintf("Set Max MP to %d", val)))
+
+	case "str", "dex", "int", "luk":
+		var (
+			target *Player
+			val    int
+			err    error
+		)
+
+		switch len(command) {
+		case 2:
+			target, err = server.players.getFromConn(conn)
+			if err != nil {
+				conn.Send(packetMessageRedText(err.Error()))
+				return
+			}
+			val, err = strconv.Atoi(command[1])
+			if err != nil {
+				conn.Send(packetMessageRedText("Amount must be a number"))
+				return
+			}
+		case 3:
+			target, err = server.players.getFromName(command[1])
+			if err != nil {
+				conn.Send(packetMessageRedText(err.Error()))
+				return
+			}
+			val, err = strconv.Atoi(command[2])
+			if err != nil {
+				conn.Send(packetMessageRedText("Amount must be a number"))
+				return
+			}
+		default:
+			conn.Send(packetMessageRedText("Usage: /str <amount> | /str <player> <amount> (same for /dex /int /luk)"))
+			return
+		}
+
+		if val < 0 {
+			conn.Send(packetMessageRedText("Stat cannot be negative"))
+			return
+		}
+
+		switch command[0] {
+		case "str":
+			target.str = int16(val)
+			target.MarkDirty(DirtyStr, time.Millisecond*300)
+			target.Send(packetPlayerStatChange(false, constant.StrID, int32(target.str)))
+		case "dex":
+			target.dex = int16(val)
+			target.MarkDirty(DirtyDex, time.Millisecond*300)
+			target.Send(packetPlayerStatChange(false, constant.DexID, int32(target.dex)))
+		case "int":
+			target.intt = int16(val)
+			target.MarkDirty(DirtyInt, time.Millisecond*300)
+			target.Send(packetPlayerStatChange(false, constant.IntID, int32(target.intt)))
+		case "luk":
+			target.luk = int16(val)
+			target.MarkDirty(DirtyLuk, time.Millisecond*300)
+			target.Send(packetPlayerStatChange(false, constant.LukID, int32(target.luk)))
+		}
+
+	case "questFinish":
+		if len(command) < 2 {
+			conn.Send(packetMessageRedText("Usage: /questFinish <quest-id>"))
+			return
+		}
+		qid64, err := strconv.ParseInt(command[1], 10, 16)
+		if err != nil {
+			conn.Send(packetMessageRedText("Quest ID must be a number"))
+			return
+		}
+		questID := int16(qid64)
+
+		plr, err := server.players.getFromConn(conn)
+		if err != nil {
+			conn.Send(packetMessageRedText(err.Error()))
+			return
+		}
+
+		nowMs := time.Now().UnixMilli()
+		plr.quests.complete(questID, nowMs)
+		setQuestCompleted(plr.ID, questID, nowMs)
+
+		plr.Send(packetQuestComplete(questID))
+		conn.Send(packetMessageNotice(fmt.Sprintf("Quest %d completed", questID)))
+
+	case "questUntil":
+		// Example: /questUntil 1001 3
+		if len(command) < 3 {
+			conn.Send(packetMessageRedText("Usage: /questUntil <quest-id> <part>"))
+			return
+		}
+		qid64, err := strconv.ParseInt(command[1], 10, 16)
+		if err != nil {
+			conn.Send(packetMessageRedText("Quest ID must be a number"))
+			return
+		}
+		part, err := strconv.Atoi(command[2])
+		if err != nil || part < 0 {
+			conn.Send(packetMessageRedText("Part must be a non-negative number"))
+			return
+		}
+		questID := int16(qid64)
+		record := fmt.Sprintf("p%d", part)
+
+		plr, err := server.players.getFromConn(conn)
+		if err != nil {
+			conn.Send(packetMessageRedText(err.Error()))
+			return
+		}
+
+		plr.quests.add(questID, record)
+		upsertQuestRecord(plr.ID, questID, record)
+
+		plr.Send(packetQuestUpdate(questID, record))
+		conn.Send(packetMessageNotice(fmt.Sprintf("Quest %d progressed to %s", questID, record)))
+
+	case "questReset":
+		if len(command) < 2 {
+			conn.Send(packetMessageRedText("Usage: /questReset <quest-id>"))
+			return
+		}
+		qid64, err := strconv.ParseInt(command[1], 10, 16)
+		if err != nil {
+			conn.Send(packetMessageRedText("Quest ID must be a number"))
+			return
+		}
+		questID := int16(qid64)
+
+		plr, err := server.players.getFromConn(conn)
+		if err != nil {
+			conn.Send(packetMessageRedText(err.Error()))
+			return
+		}
+
+		delete(plr.quests.inProgress, questID)
+		delete(plr.quests.completed, questID)
+		delete(plr.quests.mobKills, questID)
+
+		deleteQuest(plr.ID, questID)
+		clearQuestMobKills(plr.ID, questID)
+
+		plr.Send(packetQuestRemove(questID))
+		conn.Send(packetMessageNotice(fmt.Sprintf("Quest %d has been reset", questID)))
+
+	case "skillLv":
+		var target *Player
+		var err error
+		args := command[1:]
+		switch len(args) {
+		case 2:
+			target, err = server.players.getFromConn(conn)
+			if err != nil {
+				conn.Send(packetMessageRedText(err.Error()))
+				return
+			}
+		case 3:
+			target, err = server.players.getFromName(args[0])
+			if err != nil {
+				conn.Send(packetMessageRedText(err.Error()))
+				return
+			}
+			args = args[1:]
+		default:
+			conn.Send(packetMessageRedText("Usage: /skillLv <skill-id> <level|max> OR /skillLv <player> <skill-id> <level|max>"))
+			return
+		}
+		id64, err := strconv.ParseInt(args[0], 10, 32)
+		if err != nil {
+			conn.Send(packetMessageRedText("Skill must be a numeric ID"))
+			return
+		}
+		skillID := int32(id64)
+		levels, err := nx.GetPlayerSkill(skillID)
+		if err != nil || len(levels) == 0 {
+			conn.Send(packetMessageRedText(fmt.Sprintf("Unknown or invalid skill ID: %d", skillID)))
+			return
+		}
+		var level byte
+		if strings.EqualFold(args[1], "max") {
+			level = byte(len(levels))
+		} else {
+			lv64, err := strconv.ParseInt(args[1], 10, 32)
+			if err != nil {
+				conn.Send(packetMessageRedText("Level must be a number or 'max'"))
+				return
+			}
+			if lv64 < 0 || int(lv64) > len(levels) {
+				conn.Send(packetMessageRedText(fmt.Sprintf("Invalid level, max for skill %d is %d", skillID, len(levels))))
+				return
+			}
+			level = byte(lv64)
+		}
+		if level == 0 {
+			delete(target.skills, skillID)
+			target.MarkDirty(DirtySkills, time.Millisecond*300)
+			conn.Send(packetMessageNotice(fmt.Sprintf("Removed skill %d from %s", skillID, target.Name)))
+			return
+		}
+		ps, err := createPlayerSkillFromData(skillID, level)
+		if err != nil {
+			conn.Send(packetMessageRedText(err.Error()))
+			return
+		}
+		if target.skills == nil {
+			target.skills = make(map[int32]playerSkill, 8)
+		}
+		target.skills[skillID] = ps
+		target.MarkDirty(DirtySkills, time.Millisecond*300)
+		conn.Send(packetMessageNotice(fmt.Sprintf("Set %s's skill %d to level %d", target.Name, skillID, ps.Level)))
+
+	case "maxSkills":
+		target, err := server.players.getFromConn(conn)
+		if err != nil {
+			conn.Send(packetMessageRedText(err.Error()))
+			return
+		}
+		if target.skills == nil {
+			target.skills = make(map[int32]playerSkill, 1024)
+		}
+
+		jobFamilies := []int{
+			int(constant.BeginnerJobID),
+
+			int(constant.WarriorJobID),
+			int(constant.FighterJobID),
+			int(constant.CrusaderJobID),
+			int(constant.PageJobID),
+			int(constant.WhiteKnightJobID),
+			int(constant.SpearmanJobID),
+			int(constant.DragonKnightJobID),
+
+			int(constant.MagicianJobID),
+			int(constant.FirePoisonWizardJobID),
+			int(constant.FirePoisonMageJobID),
+			int(constant.IceLightWizardJobID),
+			int(constant.IceLightMageJobID),
+			int(constant.ClericJobID),
+			int(constant.PriestJobID),
+
+			int(constant.BowmanJobID),
+			int(constant.HunterJobID),
+			int(constant.RangerJobID),
+			int(constant.CrossbowmanJobID),
+			int(constant.SniperJobID),
+
+			int(constant.ThiefJobID),
+			int(constant.AssassinJobID),
+			int(constant.HermitJobID),
+			int(constant.BanditJobID),
+			int(constant.ChiefBanditJobID),
+
+			int(constant.GmJobID),
+			int(constant.SuperGmJobID),
+		}
+
+		var count int
+		for _, job := range jobFamilies {
+			base := job * 10000
+			for idx := 0; idx <= 1999; idx++ {
+				skillID := int32(base + idx)
+				levels, err := nx.GetPlayerSkill(skillID)
+				if err != nil || len(levels) == 0 {
+					continue
+				}
+				maxLv := byte(len(levels))
+				ps, err := createPlayerSkillFromData(skillID, maxLv)
+				if err != nil {
+					continue
+				}
+				target.skills[skillID] = ps
+				count++
+			}
+		}
+
+		target.MarkDirty(DirtySkills, time.Millisecond*300)
+		conn.Send(packetMessageNotice(fmt.Sprintf("Maxed %d skills across all classes for %s", count, target.Name)))
+
+	case "resetSkills":
+		target, err := server.players.getFromConn(conn)
+		if err != nil {
+			conn.Send(packetMessageRedText(err.Error()))
+			return
+		}
+		if target.skills != nil {
+			for k := range target.skills {
+				delete(target.skills, k)
+			}
+		}
+
+		target.MarkDirty(DirtySkills, time.Millisecond*300)
+		conn.Send(packetMessageNotice(fmt.Sprintf("Reset all skills for %s", target.Name)))
+
 	case "exp":
 		player, err := server.players.getFromConn(conn)
 
@@ -712,6 +1050,54 @@ func (server *Server) gmCommand(conn mnet.Client, msg string) {
 				conn.Send(packetMessageRedText(err.Error()))
 			}
 		}
+	case "clearDrops":
+		plr, err := server.players.getFromConn(conn)
+
+		if err != nil {
+			conn.Send(packetMessageRedText(err.Error()))
+			return
+		}
+
+		field, ok := server.fields[plr.mapID]
+
+		if !ok {
+			conn.Send(packetMessageRedText("Could not find field ID"))
+			return
+		}
+
+		inst, err := field.getInstance(plr.inst.id)
+
+		if err != nil {
+			conn.Send(packetMessageRedText(err.Error()))
+			return
+		}
+
+		inst.dropPool.clearDrops()
+
+	case "removeTimer":
+		plr, err := server.players.getFromConn(conn)
+
+		if err != nil {
+			conn.Send(packetMessageRedText(err.Error()))
+			return
+		}
+
+		field, ok := server.fields[plr.mapID]
+
+		if !ok {
+			conn.Send(packetMessageRedText("Could not find field ID"))
+			return
+		}
+
+		inst, err := field.getInstance(plr.inst.id)
+
+		if err != nil {
+			conn.Send(packetMessageRedText(err.Error()))
+			return
+		}
+
+		inst.fieldTimer.Reset(0)
+
 	case "killMob":
 		var spawnID int32
 
@@ -748,6 +1134,8 @@ func (server *Server) gmCommand(conn mnet.Client, msg string) {
 		}
 
 		inst.lifePool.mobDamaged(spawnID, plr, math.MaxInt32)
+	case "killAll":
+		fallthrough
 	case "killmobs":
 		var deathType byte = 1
 		if len(command) > 1 {
@@ -783,6 +1171,8 @@ func (server *Server) gmCommand(conn mnet.Client, msg string) {
 		}
 
 		inst.lifePool.killMobs(deathType)
+	case "spawn":
+		fallthrough
 	case "spawnMob":
 		var mobID int32
 		var count int = 1
@@ -1130,7 +1520,7 @@ func (server *Server) gmCommand(conn mnet.Client, msg string) {
 		conn.Send(packetMessageRedText(fmt.Sprintf("%d", player.mapID)))
 
 	default:
-		conn.Send(packetMessageRedText("Unkown gm command " + command[0]))
+		conn.Send(packetMessageRedText("Unknown gm command " + command[0]))
 	}
 }
 

@@ -838,6 +838,16 @@ func (pool *dropPool) eraseDrops() {
 	pool.drops = make(map[int32]fieldDrop)
 }
 
+func (pool *dropPool) clearDrops() {
+	for id, _ := range pool.drops {
+		pool.instance.send(packetRemoveDrop(0, id, 0))
+
+		if _, ok := pool.drops[id]; ok {
+			delete(pool.drops, id)
+		}
+	}
+}
+
 func (pool *dropPool) playerAttemptPickup(drop fieldDrop, player *Player) {
 	var amount int16
 
