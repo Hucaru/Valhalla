@@ -214,4 +214,50 @@ CREATE TABLE `fame_log` (
   CONSTRAINT `fame_log_ibfk_to`   FOREIGN KEY (`to`)   REFERENCES `characters` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 
+CREATE TABLE IF NOT EXISTS account_storage (
+    accountID   INT(10) UNSIGNED NOT NULL,
+    slots       TINYINT UNSIGNED NOT NULL DEFAULT 4,
+    mesos       INT(11) UNSIGNED NOT NULL DEFAULT 0,
+    updatedAt   TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (accountID),
+    CONSTRAINT fk_storage_account
+    FOREIGN KEY (accountID) REFERENCES accounts(accountID)
+    ON DELETE CASCADE ON UPDATE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+
+CREATE TABLE IF NOT EXISTS account_storage_items (
+    id           INT(11) NOT NULL AUTO_INCREMENT,
+    accountID    INT(10) UNSIGNED NOT NULL,
+    itemID       INT(11) NOT NULL,
+    inventoryID  TINYINT(3) UNSIGNED NOT NULL,
+    slotNumber   INT(11) NOT NULL,
+    amount       INT(11) NOT NULL DEFAULT 1,
+    flag         TINYINT(4) NOT NULL DEFAULT 0,
+    upgradeSlots TINYINT(4) NOT NULL DEFAULT 0,
+    level        TINYINT(4) NOT NULL DEFAULT 0,
+    str          SMALLINT(6) NOT NULL DEFAULT 0,
+    dex          SMALLINT(6) NOT NULL DEFAULT 0,
+    intt         SMALLINT(6) NOT NULL DEFAULT 0,
+    luk          SMALLINT(6) NOT NULL DEFAULT 0,
+    hp           SMALLINT(6) NOT NULL DEFAULT 0,
+    mp           SMALLINT(6) NOT NULL DEFAULT 0,
+    watk         SMALLINT(6) NOT NULL DEFAULT 0,
+    matk         SMALLINT(6) NOT NULL DEFAULT 0,
+    wdef         SMALLINT(6) NOT NULL DEFAULT 0,
+    mdef         SMALLINT(6) NOT NULL DEFAULT 0,
+    accuracy     SMALLINT(6) NOT NULL DEFAULT 0,
+    avoid        SMALLINT(6) NOT NULL DEFAULT 0,
+    hands        SMALLINT(6) NOT NULL DEFAULT 0,
+    speed        SMALLINT(6) NOT NULL DEFAULT 0,
+    jump         SMALLINT(6) NOT NULL DEFAULT 0,
+    expireTime   BIGINT(20) NOT NULL DEFAULT 0,
+    creatorName  TINYTEXT NULL,
+    PRIMARY KEY (id),
+    KEY idx_storage_account (accountID),
+    KEY idx_storage_tab_slot (accountID, inventoryID, slotNumber),
+    CONSTRAINT fk_storage_items_account
+    FOREIGN KEY (accountID) REFERENCES accounts(accountID)
+    ON DELETE CASCADE ON UPDATE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+
 -- 2025-08-19 16:51:40 UTC

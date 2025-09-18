@@ -29,6 +29,7 @@ const (
 	RecvChannelNpcDialogue         byte = 0x27
 	RecvChannelNpcDialogueContinue byte = 0x28
 	RecvChannelNpcShop             byte = 0x29
+	RecvChannelNpcStorage          byte = 0x2A
 	RecvChannelInvMoveItem         byte = 0x2D
 	RecvChannelInvUseItem          byte = 0x2E
 	RecvChannelNearestTown         byte = 0x34

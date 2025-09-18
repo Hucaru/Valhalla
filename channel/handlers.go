@@ -155,6 +155,8 @@ func (server *Server) HandleClientPacket(conn mnet.Client, reader mpacket.Reader
 		server.playerSummonAttack(conn, reader)
 	case opcode.RecvChannelReactorHit:
 		server.playerHitReactor(conn, reader)
+	case opcode.RecvChannelNpcStorage:
+		server.playerUseStorage(conn, reader)
 	default:
 		unknownPacketsTotal.Inc()
 		log.Println("UNKNOWN CLIENT PACKET(", op, "):", reader)
@@ -4173,4 +4175,186 @@ func (server *Server) playerHitReactor(conn mnet.Client, reader mpacket.Reader) 
 
 	plr.inst.reactorPool.triggerHit(spawnID, 0)
 
+}
+
+func (server *Server) playerUseStorage(conn mnet.Client, reader mpacket.Reader) {
+	plr, err := server.players.getFromConn(conn)
+	if err != nil {
+		return
+	}
+
+	// Actions (mirroring the common reference)
+	const (
+		actionWithdraw   byte = 4
+		actionDeposit         = 5
+		actionStoreMesos      = 6
+		actionExit            = 7
+	)
+
+	accountID := conn.GetAccountID()
+	if accountID == 0 {
+		return
+	}
+
+	// Helpers
+	rechargeable := func(itemID int32) bool {
+		base := itemID / 10000
+		return base == 207 || base == 233
+	}
+
+	// Load storage
+	st := NewStorage(accountID)
+	if err := st.Load(); err != nil {
+		// Could send an error packet; for now just abort
+		return
+	}
+
+	op := reader.ReadByte()
+	switch op {
+	case actionWithdraw:
+		// [inv byte][slot byte]
+		inv := reader.ReadByte()
+		slot := reader.ReadByte() // zero-based slot within that inv
+
+		it := st.GetItem(inv, slot)
+		if it == nil || it.ID == 0 {
+			return
+		}
+
+		// Build a copy for the player's inventory
+		withdraw := *it
+		if !withdraw.isStackable() || withdraw.amount <= 0 {
+			withdraw.amount = 1
+		}
+		if rechargeable(withdraw.ID) {
+			// Withdraw full stack for rechargeable
+			// (client doesn't supply amount for storage withdraw)
+		}
+
+		// Strip DB and slot assignment; GiveItem persists under character
+		withdraw.dbID = 0
+		withdraw.slotID = 0
+
+		if err := plr.GiveItem(withdraw); err != nil {
+			// Inventory full or other issue
+			// Optionally send a result/error packet here
+			return
+		}
+
+		// Remove from storage and save
+		st.TakeItemOut(inv, slot)
+		_ = st.Save()
+
+		// Refresh storage window
+		var flat []Item
+		for t := byte(1); t <= 5; t++ {
+			if xs := st.GetInventoryItems(t); len(xs) > 0 {
+				flat = append(flat, xs...)
+			}
+		}
+		plr.Send(packetNpcStorageShow(0, st.Mesos, st.MaxSlots, flat))
+
+	case actionDeposit:
+		// [slot int16][itemID int32][amount int16]
+		srcSlot := reader.ReadInt16() // character inventory slot
+		itemID := reader.ReadInt32()
+		amt := reader.ReadInt16()
+
+		if amt <= 0 {
+			return
+		}
+
+		inv := byte(itemID / 1000000)
+
+		// Find the item on the character (validate id and slot)
+		itemOnChar, getErr := plr.getItem(inv, srcSlot)
+		if getErr != nil || itemOnChar.ID != itemID {
+			return
+		}
+		// Disallow cash items etc. if needed (optional)
+		// if itemOnChar.cash { return }
+
+		// Capacity check
+		if !st.SlotsAvailable() {
+			// Optionally Send "storage full" result packet here
+			return
+		}
+
+		// Rechargeables deposit full stack regardless of amt
+		if rechargeable(itemID) {
+			amt = itemOnChar.amount
+		} else if !itemOnChar.isStackable() {
+			amt = 1
+		} else if amt > itemOnChar.amount {
+			amt = itemOnChar.amount
+		}
+
+		// Build the stored copy (before mutating player's item)
+		storeCopy := itemOnChar
+		storeCopy.amount = amt
+		storeCopy.dbID = 0
+		storeCopy.slotID = 0
+
+		// Remove from player's inventory
+		if _, remErr := plr.takeItem(itemID, srcSlot, amt, inv); remErr != nil {
+			return
+		}
+
+		// Add to storage and persist
+		if !st.AddItem(storeCopy) {
+			// Should not happen given SlotsAvailable, but bail out and (optionally) refund
+			// Attempt refund:
+			_ = plr.GiveItem(storeCopy)
+			return
+		}
+		_ = st.Save()
+
+		// Refresh storage window
+		var flat []Item
+		for t := byte(1); t <= 5; t++ {
+			if xs := st.GetInventoryItems(t); len(xs) > 0 {
+				flat = append(flat, xs...)
+			}
+		}
+		plr.Send(packetNpcStorageShow(0, st.Mesos, st.MaxSlots, flat))
+
+	case actionStoreMesos:
+		// [mesos int32] negative means "store", positive means "withdraw"
+		val := reader.ReadInt32()
+		if val < 0 {
+			store := -val
+			if store <= 0 || plr.mesos < store {
+				return
+			}
+			// Move from player -> storage
+			plr.giveMesos(-store)
+			st.ChangeMesos(store)
+			_ = st.Save()
+		} else if val > 0 {
+			if int32(val) > st.Mesos {
+				return
+			}
+			// Move from storage -> player
+			plr.giveMesos(val)
+			st.ChangeMesos(-val)
+			_ = st.Save()
+		}
+
+		// Refresh storage window or send mesos-only update
+		var flat []Item
+		for t := byte(1); t <= 5; t++ {
+			if xs := st.GetInventoryItems(t); len(xs) > 0 {
+				flat = append(flat, xs...)
+			}
+		}
+		plr.Send(packetNpcStorageShow(0, st.Mesos, st.MaxSlots, flat))
+
+	case actionExit:
+		// Nothing to do server-side for a simple implementation
+		return
+
+	default:
+		// Unknown operation
+		return
+	}
 }

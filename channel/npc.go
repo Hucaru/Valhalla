@@ -260,10 +260,31 @@ func packetNpcStorageShow(npcID, storageMesos int32, storageSlots byte, items []
 	p.WriteInt16(0x7e) // allow everything
 	p.WriteInt32(storageMesos)
 	// loop over valid tabs and show items
-	// p.WriteByte(length of items in this inventory slot)
-	for _, item := range items {
-		p.WriteBytes(item.shortBytes())
+	count := byte(0)
+	if len(items) > 255 {
+		count = 255
+	} else {
+		count = byte(len(items))
+	}
+	p.WriteByte(count)
+
+	for i := 0; i < int(count); i++ {
+		p.WriteBytes(items[i].shortBytes())
 	}
 
+	return p
+
+}
+
+func packetNpcStorageResult(op storageResultOp) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelNpcStorageResult)
+	p.WriteByte(byte(op))
+	return p
+}
+
+func packetNpcStorageMesosChanged(mesos int32) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelNpcStorageResult)
+	p.WriteByte(byte(storageSuccess))
+	p.WriteInt32(mesos)
 	return p
 }
