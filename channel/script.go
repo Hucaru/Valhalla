@@ -690,22 +690,17 @@ func (ctrl *npcChatController) SendShop(goods [][]int32) {
 
 func (ctrl *npcChatController) SendStorage(npcID int32) {
 	if ctrl.stateTracker.performInterrupt() {
-		var storageMesos int32 = 0
-		var storageSlots byte = 4
+		var storageMesos int32
+		var storageSlots byte
 		var allItems []Item
 
 		accountID := ctrl.conn.GetAccountID()
 		if accountID != 0 {
-			st := NewStorage(accountID)
-			if err := st.Load(); err == nil {
-				storageMesos = st.Mesos
-				storageSlots = st.MaxSlots
-
-				for inv := byte(1); inv <= 5; inv++ {
-					if items := st.GetInventoryItems(inv); len(items) > 0 {
-						allItems = append(allItems, items...)
-					}
-				}
+			st := newStorage(accountID)
+			if err := st.load(); err == nil {
+				storageMesos = st.mesos
+				storageSlots = st.maxSlots
+				allItems = st.getAllItems()
 			}
 		}
 
