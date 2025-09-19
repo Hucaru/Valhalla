@@ -119,6 +119,12 @@ const (
 	SummonRemoveReasonReplaced = 0x04
 	SummonAttackMob            = 0x06
 	SummonTakeDamage           = 0xFF
+
+	StorageEquipTab = 0x04
+	StorageUseTab   = 0x08
+	StorageSetupTab = 0x10
+	StorageEtcTab   = 0x20
+	StorageCashTab  = 0x40
 )
 
 var ExpTable = [...]int32{15, 34, 57, 92, 135, 372, 560, 840, 1242, 1144, // Beginner

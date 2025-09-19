@@ -4,6 +4,7 @@ import (
 	"math"
 
 	"github.com/Hucaru/Valhalla/common/opcode"
+	"github.com/Hucaru/Valhalla/constant"
 	"github.com/Hucaru/Valhalla/mpacket"
 	"github.com/Hucaru/Valhalla/nx"
 )
@@ -249,15 +250,15 @@ func packetTradeError() mpacket.Packet {
 func storageFlagForInv(inv byte) uint16 {
 	switch inv {
 	case 1:
-		return 0x04 // equip
+		return constant.StorageEquipTab
 	case 2:
-		return 0x08 // use
+		return constant.StorageUseTab
 	case 3:
-		return 0x10 // setup
+		return constant.StorageSetupTab
 	case 4:
-		return 0x20 // etc
+		return constant.StorageEtcTab
 	case 5:
-		return 0x40 // cash/pet
+		return constant.StorageCashTab
 	default:
 		return 0
 	}
@@ -293,12 +294,12 @@ func encodeStorageBody(p *mpacket.Packet, slots byte, flags uint16, mesos int32,
 	}
 }
 
-func packetNpcStorageItemsChanged(enc byte, slots byte, inv byte, _ int32, itemsInTab []Item) mpacket.Packet {
+func packetNpcStorageItemsChanged(enc byte, slots byte, inv byte, mesos int32, itemsInTab []Item) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelNpcStorageResult)
 	p.WriteByte(enc)
 
 	flag := storageFlagForInv(inv)
-	encodeStorageBody(&p, slots, flag, 0, func(q byte) []Item {
+	encodeStorageBody(&p, slots, flag, mesos, func(q byte) []Item {
 		if q == inv {
 			return itemsInTab
 		}

@@ -4211,8 +4211,9 @@ func (server *Server) playerUseStorage(conn mnet.Client, reader mpacket.Reader) 
 	case actionWithdraw:
 		tab := reader.ReadByte()
 		slot := reader.ReadByte()
-		it := plr.storageInventory.getItemAt(slot)
-		if it == nil || it.ID == 0 {
+
+		stIdx, it := plr.storageInventory.getBySectionSlot(tab, slot)
+		if stIdx < 0 || it == nil || it.ID == 0 {
 			plr.Send(packetNpcStorageResult(storageDueToAnError))
 			return
 		}
@@ -4229,14 +4230,14 @@ func (server *Server) playerUseStorage(conn mnet.Client, reader mpacket.Reader) 
 			return
 		}
 
-		plr.storageInventory.removeAt(slot)
+		plr.storageInventory.removeAt(byte(stIdx))
 		if err := plr.storageInventory.save(); err != nil {
 			plr.Send(packetNpcStorageResult(storageDueToAnError))
 			return
 		}
 
-		all := plr.storageInventory.getAllItems()
-		plr.Send(packetNpcStorageItemsChanged(encWithdraw, plr.storageInventory.maxSlots, tab, 0, all))
+		sectionItems := plr.storageInventory.getItemsInSection(tab)
+		plr.Send(packetNpcStorageItemsChanged(encWithdraw, plr.storageInventory.maxSlots, tab, 0, sectionItems))
 
 	case actionDeposit:
 		srcSlot := reader.ReadInt16()
@@ -4247,8 +4248,8 @@ func (server *Server) playerUseStorage(conn mnet.Client, reader mpacket.Reader) 
 			return
 		}
 
-		inv := byte(itemID / 1000000)
-		itemOnChar, getErr := plr.getItem(inv, srcSlot)
+		tab := byte(itemID / 1000000)
+		itemOnChar, getErr := plr.getItem(tab, srcSlot)
 		if getErr != nil || itemOnChar.ID != itemID {
 			plr.Send(packetNpcStorageResult(storageDueToAnError))
 			return
@@ -4272,7 +4273,7 @@ func (server *Server) playerUseStorage(conn mnet.Client, reader mpacket.Reader) 
 		storeCopy.dbID = 0
 		storeCopy.slotID = 0
 
-		if _, remErr := plr.takeItem(itemID, srcSlot, amt, inv); remErr != nil {
+		if _, remErr := plr.takeItem(itemID, srcSlot, amt, tab); remErr != nil {
 			plr.Send(packetNpcStorageResult(storageDueToAnError))
 			return
 		}
@@ -4289,9 +4290,8 @@ func (server *Server) playerUseStorage(conn mnet.Client, reader mpacket.Reader) 
 			return
 		}
 
-		all := plr.storageInventory.getAllItems()
-		const anySection byte = 1
-		plr.Send(packetNpcStorageItemsChanged(encDeposit, plr.storageInventory.maxSlots, anySection, 0, all))
+		sectionItems := plr.storageInventory.getItemsInSection(tab)
+		plr.Send(packetNpcStorageItemsChanged(encDeposit, plr.storageInventory.maxSlots, tab, 0, sectionItems))
 
 	case actionStoreMesos:
 		val := reader.ReadInt32()

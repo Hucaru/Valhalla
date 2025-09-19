@@ -382,29 +382,35 @@ func (v Item) delete() error {
 
 // InventoryBytes to display in character inventory window
 func (v Item) InventoryBytes() []byte {
-	return v.bytes(false)
+	return v.bytes(false, false)
+}
+
+func (v Item) storageBytes() []byte {
+	return v.bytes(false, true)
 }
 
 // ShortBytes e.g. inventory operation, storage window
 func (v Item) shortBytes() []byte {
-	return v.bytes(true)
+	return v.bytes(true, false)
 }
 
-func (v Item) bytes(shortSlot bool) []byte {
+func (v Item) bytes(shortSlot, storage bool) []byte {
 	p := mpacket.NewPacket()
 
-	if !shortSlot {
-		if v.slotID < 0 {
-			if v.slotID < -100 {
-				p.WriteByte(byte(math.Abs(float64(v.slotID + 100))))
+	if !storage {
+		if !shortSlot {
+			if v.slotID < 0 {
+				if v.slotID < -100 {
+					p.WriteByte(byte(math.Abs(float64(v.slotID + 100))))
+				} else {
+					p.WriteByte(byte(math.Abs(float64(v.slotID))))
+				}
 			} else {
-				p.WriteByte(byte(math.Abs(float64(v.slotID))))
+				p.WriteByte(byte(v.slotID))
 			}
 		} else {
-			p.WriteByte(byte(v.slotID))
+			p.WriteInt16(v.slotID)
 		}
-	} else {
-		p.WriteInt16(v.slotID)
 	}
 
 	if v.invID == 1 {
@@ -463,63 +469,6 @@ func (v Item) bytes(shortSlot bool) []byte {
 		//if v.isRechargeable() {
 		//	p.WriteInt64(0) // ?
 		//}
-	}
-
-	return p
-}
-
-func (v Item) storageBytes() []byte {
-	p := mpacket.NewPacket()
-	if v.invID == 1 {
-		p.WriteByte(0x01)
-	} else if v.pet {
-		p.WriteByte(0x03)
-	} else {
-		p.WriteByte(0x02)
-	}
-
-	p.WriteInt32(v.ID)
-	p.WriteBool(v.cash)
-	if v.cash {
-		if sn, ok := nx.GetCommoditySNByItemID(v.ID); ok {
-			p.WriteUint64(uint64(sn))
-		} else {
-			p.WriteUint64(uint64(v.ID))
-		}
-	}
-	p.WriteInt64(v.expireTime)
-
-	if v.invID == 1 {
-		p.WriteByte(v.upgradeSlots)
-		p.WriteByte(v.scrollLevel)
-		p.WriteInt16(v.str)
-		p.WriteInt16(v.dex)
-		p.WriteInt16(v.intt)
-		p.WriteInt16(v.luk)
-		p.WriteInt16(v.hp)
-		p.WriteInt16(v.mp)
-		p.WriteInt16(v.watk)
-		p.WriteInt16(v.matk)
-		p.WriteInt16(v.wdef)
-		p.WriteInt16(v.mdef)
-		p.WriteInt16(v.accuracy)
-		p.WriteInt16(v.avoid)
-		p.WriteInt16(v.hands)
-		p.WriteInt16(v.speed)
-		p.WriteInt16(v.jump)
-		p.WriteString(v.creatorName)
-		p.WriteInt16(v.flag)
-	} else if v.pet {
-		p.WritePaddedString(v.creatorName, 13)
-		p.WriteByte(0)
-		p.WriteInt16(0)
-		p.WriteByte(0)
-		p.WriteInt64(v.expireTime)
-		p.WriteInt32(0) // reserved
-	} else {
-		p.WriteInt16(v.amount)
-		p.WriteString(v.creatorName)
-		p.WriteInt16(v.flag)
 	}
 
 	return p

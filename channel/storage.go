@@ -294,3 +294,39 @@ func (s *storage) changeMesos(delta int32) error {
 	s.mesos += delta
 	return nil
 }
+
+func (s *storage) getItemsInSection(inv byte) []Item {
+	out := make([]Item, 0, s.totalSlotsUsed)
+	for i := range s.items {
+		it := s.items[i]
+		if it.ID != 0 && it.invID == inv {
+			out = append(out, it)
+		}
+	}
+	return out
+}
+
+func (s *storage) getBySectionSlot(inv, slot byte) (int, *Item) {
+	if slot >= s.maxSlots {
+		return -1, nil
+	}
+	idxInSection := 0
+	for i := range s.items {
+		if s.items[i].ID == 0 || s.items[i].invID != inv {
+			continue
+		}
+		if idxInSection == int(slot) {
+			return i, &s.items[i]
+		}
+		idxInSection++
+	}
+	return -1, nil
+}
+
+func (s *storage) removeBySectionSlot(inv, slot byte) {
+	i, _ := s.getBySectionSlot(inv, slot)
+	if i < 0 {
+		return
+	}
+	s.removeAt(byte(i))
+}
