@@ -3,9 +3,9 @@ var TICKET_ID = 4031047;
 var BOARD_MAP = 200000112;
 
 var props = plr.instanceProperties();
-var salesOpen = ("canSellTickets" in props) && props["canSellTickets"];
+var boardingOpen = ("canBoard" in props) && props["canBoard"];
 
-if (!salesOpen) {
+if (!boardingOpen) {
     npc.sendOk("Boarding is not available right now. Please wait for the next boarding announcement.");
 } else if (plr.itemCount(TICKET_ID) < 1) {
     npc.sendOk(
