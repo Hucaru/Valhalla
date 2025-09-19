@@ -1,2 +1,1 @@
-// 良太 (801000000) – stateless storage opener
-plr.openStorage(npc.getId())
+plr.sendStorage(9120009)
