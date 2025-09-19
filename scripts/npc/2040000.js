@@ -1,6 +1,9 @@
-// Station attendant Mel (bridge area entrance)
-npc.sendBackNext("Pleased to meet you. I'm Mel, the station attendant. Are you ready to leave Ludibrium and go to another area? At our station, we have an #bairship#k bound for #bOrbis Station#k, on the continent of Ossyria, always standing by for you to use.", true, true)
+// Ludi station ticket seller
 
-npc.sendBackNext("If you are planning on heading to Orbis, please use the portal on the right and head to the station, then talk to #bTian#k.", true, true)
+var props = plr.instanceProperties()
 
-npc.sendOk("Sigh... Free flights to everywhere... I don't understand what got the alchemists of Magatia to come up with something like this. This is making our job that much harder, because there are so many more passengers now. Sigh...")
+if ("canSellTickets" in props && props["canSellTickets"]) {
+    npc.sendOk("Buy ticket")
+} else {
+    npc.sendOk("Cannot buy ticket")
+}
