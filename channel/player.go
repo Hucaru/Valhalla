@@ -1493,8 +1493,9 @@ func LoadPlayerFromID(id int32, conn mnet.Client) Player {
 	// Initialize the per-Player buff manager so handlers can call plr.addBuff(...)
 	c.buffs = NewCharacterBuffs(&c)
 
-	c.storageInventory = newStorage(c.accountID)
-	if err := c.storageInventory.load(); err != nil {
+	c.storageInventory = new(storage)
+
+	if err := c.storageInventory.load(c.accountID); err != nil {
 		log.Printf("loadPlayerFromID: failed to load storage inventory for accountID=%d: %v", c.accountID, err)
 	}
 

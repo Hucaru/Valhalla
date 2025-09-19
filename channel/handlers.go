@@ -4231,7 +4231,7 @@ func (server *Server) playerUseStorage(conn mnet.Client, reader mpacket.Reader) 
 		}
 
 		plr.storageInventory.removeAt(byte(stIdx))
-		if err := plr.storageInventory.save(); err != nil {
+		if err := plr.storageInventory.save(plr.accountID); err != nil {
 			plr.Send(packetNpcStorageResult(storageDueToAnError))
 			return
 		}
@@ -4284,7 +4284,7 @@ func (server *Server) playerUseStorage(conn mnet.Client, reader mpacket.Reader) 
 			return
 		}
 
-		if err := plr.storageInventory.save(); err != nil {
+		if err := plr.storageInventory.save(plr.accountID); err != nil {
 			_ = plr.GiveItem(storeCopy)
 			plr.Send(packetNpcStorageResult(storageDueToAnError))
 			return
@@ -4307,7 +4307,7 @@ func (server *Server) playerUseStorage(conn mnet.Client, reader mpacket.Reader) 
 				plr.Send(packetNpcStorageResult(storageDueToAnError))
 				return
 			}
-			if err := plr.storageInventory.save(); err != nil {
+			if err := plr.storageInventory.save(plr.accountID); err != nil {
 				_ = plr.storageInventory.changeMesos(-store)
 				plr.giveMesos(store)
 				plr.Send(packetNpcStorageResult(storageDueToAnError))
@@ -4321,7 +4321,7 @@ func (server *Server) playerUseStorage(conn mnet.Client, reader mpacket.Reader) 
 				return
 			}
 			plr.giveMesos(withdraw)
-			if err := plr.storageInventory.save(); err != nil {
+			if err := plr.storageInventory.save(plr.accountID); err != nil {
 				_ = plr.storageInventory.changeMesos(withdraw)
 				plr.giveMesos(-withdraw)
 				plr.Send(packetNpcStorageResult(storageDueToAnError))

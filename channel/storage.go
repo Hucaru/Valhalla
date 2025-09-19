@@ -15,21 +15,11 @@ const (
 )
 
 type storage struct {
-	accountID int32
-
 	maxSlots       byte
 	totalSlotsUsed byte
 	mesos          int32
 
 	items []Item
-}
-
-func newStorage(accountID int32) *storage {
-	return &storage{
-		accountID: accountID,
-		maxSlots:  storageMinSlots,
-		items:     make([]Item, storageMinSlots),
-	}
 }
 
 func clampByte(v, min, max byte) byte {
@@ -52,22 +42,18 @@ func (s *storage) ensureCapacity() {
 	}
 }
 
-func (s *storage) load() error {
-	if s.accountID == 0 {
-		return fmt.Errorf("cannot load storage: missing account id")
-	}
-
+func (s *storage) load(accountID int32) error {
 	var slots, mesos sql.NullInt64
 	if err := common.DB.QueryRow(
 		"SELECT slots, mesos FROM account_storage WHERE accountID=?",
-		s.accountID,
+		accountID,
 	).Scan(&slots, &mesos); err != nil {
 		if err == sql.ErrNoRows {
 			if _, ierr := common.DB.Exec(
 				"INSERT INTO account_storage(accountID, slots, mesos) VALUES(?,?,?)",
-				s.accountID, storageMinSlots, 0,
+				accountID, storageMinSlots, 0,
 			); ierr != nil {
-				return fmt.Errorf("couldn't initialize storage for account %d: %w", s.accountID, ierr)
+				return fmt.Errorf("couldn't initialize storage for account %d: %w", accountID, ierr)
 			}
 			s.maxSlots = storageMinSlots
 			s.mesos = 0
@@ -75,7 +61,7 @@ func (s *storage) load() error {
 			s.totalSlotsUsed = 0
 			return nil
 		}
-		return fmt.Errorf("failed to load storage header for account %d: %w", s.accountID, err)
+		return fmt.Errorf("failed to load storage header for account %d: %w", accountID, err)
 	}
 
 	if slots.Valid {
@@ -98,9 +84,9 @@ func (s *storage) load() error {
 			expireTime, creatorName
 		FROM account_storage_items
 		WHERE accountID=?
-		ORDER BY slotNumber ASC`, s.accountID)
+		ORDER BY slotNumber ASC`, accountID)
 	if qerr != nil {
-		return fmt.Errorf("failed to load storage items for account %d: %w", s.accountID, qerr)
+		return fmt.Errorf("failed to load storage items for account %d: %w", accountID, qerr)
 	}
 	defer rows.Close()
 
@@ -129,20 +115,16 @@ func (s *storage) load() error {
 		}
 	}
 	if err := rows.Err(); err != nil {
-		return fmt.Errorf("error while reading storage items for account %d: %w", s.accountID, err)
+		return fmt.Errorf("error while reading storage items for account %d: %w", accountID, err)
 	}
 
 	return nil
 }
 
-func (s *storage) save() (err error) {
-	if s.accountID == 0 {
-		return fmt.Errorf("cannot save storage: missing account id")
-	}
-
+func (s *storage) save(accountID int32) (err error) {
 	tx, terr := common.DB.Begin()
 	if terr != nil {
-		return fmt.Errorf("couldn't open transaction to save storage (acct %d): %w", s.accountID, terr)
+		return fmt.Errorf("couldn't open transaction to save storage (acct %d): %w", accountID, terr)
 	}
 	defer func() {
 		if err != nil {
@@ -152,17 +134,17 @@ func (s *storage) save() (err error) {
 
 	if _, uerr := tx.Exec(
 		"UPDATE account_storage SET slots=?, mesos=? WHERE accountID=?",
-		s.maxSlots, s.mesos, s.accountID,
+		s.maxSlots, s.mesos, accountID,
 	); uerr != nil {
-		err = fmt.Errorf("failed to update storage header (acct %d): %w", s.accountID, uerr)
+		err = fmt.Errorf("failed to update storage header (acct %d): %w", accountID, uerr)
 		return
 	}
 
 	if _, derr := tx.Exec(
 		"DELETE FROM account_storage_items WHERE accountID=?",
-		s.accountID,
+		accountID,
 	); derr != nil {
-		err = fmt.Errorf("failed to clear storage items (acct %d): %w", s.accountID, derr)
+		err = fmt.Errorf("failed to clear storage items (acct %d): %w", accountID, derr)
 		return
 	}
 
@@ -175,7 +157,7 @@ func (s *storage) save() (err error) {
 	`
 	stmt, perr := tx.Prepare(ins)
 	if perr != nil {
-		err = fmt.Errorf("failed to prepare item insert (acct %d): %w", s.accountID, perr)
+		err = fmt.Errorf("failed to prepare item insert (acct %d): %w", accountID, perr)
 		return
 	}
 	defer stmt.Close()
@@ -196,18 +178,18 @@ func (s *storage) save() (err error) {
 
 		slotNumber := int16(k.slot + 1)
 		if _, ierr := stmt.Exec(
-			s.accountID, it.ID, it.invID, slotNumber, it.amount, it.flag, it.upgradeSlots, it.scrollLevel,
+			accountID, it.ID, it.invID, slotNumber, it.amount, it.flag, it.upgradeSlots, it.scrollLevel,
 			it.str, it.dex, it.intt, it.luk, it.hp, it.mp, it.watk, it.matk, it.wdef, it.mdef, it.accuracy, it.avoid, it.hands,
 			it.speed, it.jump, it.expireTime, it.creatorName,
 		); ierr != nil {
-			err = fmt.Errorf("failed inserting item %d (acct %d, slot %d): %w", it.ID, s.accountID, slotNumber, ierr)
+			err = fmt.Errorf("failed inserting item %d (acct %d, slot %d): %w", it.ID, accountID, slotNumber, ierr)
 			return
 		}
 		written++
 	}
 
 	if cerr := tx.Commit(); cerr != nil {
-		err = fmt.Errorf("failed to commit storage save (acct %d): %w", s.accountID, cerr)
+		err = fmt.Errorf("failed to commit storage save (acct %d): %w", accountID, cerr)
 		return
 	}
 
@@ -237,16 +219,6 @@ func (s *storage) getAllItems() []Item {
 	return out
 }
 
-func (s *storage) getItemAt(idx byte) *Item {
-	if idx >= s.maxSlots {
-		return nil
-	}
-	if s.items[idx].ID == 0 {
-		return nil
-	}
-	return &s.items[idx]
-}
-
 func (s *storage) removeAt(idx byte) {
 	if idx >= s.maxSlots {
 		return
@@ -271,16 +243,6 @@ func (s *storage) removeAt(idx byte) {
 	if s.totalSlotsUsed > 0 {
 		s.totalSlotsUsed--
 	}
-}
-
-func (s *storage) setSlots(amount byte) bool {
-	amount = clampByte(amount, storageMinSlots, storageMaxSlots)
-	if amount < s.totalSlotsUsed {
-		return false
-	}
-	s.maxSlots = amount
-	s.ensureCapacity()
-	return true
 }
 
 func (s *storage) slotsAvailable() bool {
@@ -321,12 +283,4 @@ func (s *storage) getBySectionSlot(inv, slot byte) (int, *Item) {
 		idxInSection++
 	}
 	return -1, nil
-}
-
-func (s *storage) removeBySectionSlot(inv, slot byte) {
-	i, _ := s.getBySectionSlot(inv, slot)
-	if i < 0 {
-		return
-	}
-	s.removeAt(byte(i))
 }

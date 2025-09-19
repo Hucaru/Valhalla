@@ -696,8 +696,8 @@ func (ctrl *npcChatController) SendStorage(npcID int32) {
 
 		accountID := ctrl.conn.GetAccountID()
 		if accountID != 0 {
-			st := newStorage(accountID)
-			if err := st.load(); err == nil {
+			st := new(storage)
+			if err := st.load(accountID); err == nil {
 				storageMesos = st.mesos
 				storageSlots = st.maxSlots
 				allItems = st.getAllItems()
