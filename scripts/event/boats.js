@@ -45,11 +45,11 @@ function showBoats(controller, maps, show, type) {
     }
 }
 
-function allowTicketSales(controller, maps, allow) {
+function allowBoarding(controller, maps, allow) {
     for (var i = 0; i < maps.length; i++) {
         var field = controller.field(maps[i])
         for (var j = 0; j < field.instanceCount(); j++) {
-            field.getProperties(j)["canSellTickets"] = allow
+            field.getProperties(j)["canBoard"] = allow
         }
     }
     
@@ -68,14 +68,14 @@ function init(controller) {
 
 function dock(controller) {
     showBoats(controller, platforms, true, shipBoat)
-    allowTicketSales(controller, platforms, true)
+    allowBoarding(controller, platforms, true)
 
     controller.schedule("closeGate", closeGateTime)
     controller.schedule("takeoff", takeoffTime)
 }
 
 function closeGate(controller) {
-    allowTicketSales(controller, platforms, false)
+    allowBoarding(controller, platforms, false)
 }
 
 function takeoff(controller) {

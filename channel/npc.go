@@ -4,6 +4,7 @@ import (
 	"math"
 
 	"github.com/Hucaru/Valhalla/common/opcode"
+	"github.com/Hucaru/Valhalla/constant"
 	"github.com/Hucaru/Valhalla/mpacket"
 	"github.com/Hucaru/Valhalla/nx"
 )
@@ -246,24 +247,87 @@ func packetTradeError() mpacket.Packet {
 	return packetNpcShopResult(0xFF)
 }
 
+func storageFlagForInv(inv byte) uint16 {
+	switch inv {
+	case 1:
+		return constant.StorageEquipTab
+	case 2:
+		return constant.StorageUseTab
+	case 3:
+		return constant.StorageSetupTab
+	case 4:
+		return constant.StorageEtcTab
+	case 5:
+		return constant.StorageCashTab
+	default:
+		return 0
+	}
+}
+
+func packetNpcStorageResult(op byte) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelNpcStorageResult)
+	p.WriteByte(op)
+	return p
+}
+
+func encodeStorageBody(p *mpacket.Packet, slots byte, flags uint16, mesos int32, perTab func(inv byte) []Item) {
+	p.WriteByte(slots)
+	p.WriteInt16(int16(flags))
+
+	if (flags & 0x02) != 0 {
+		p.WriteInt32(mesos)
+	}
+
+	for inv := byte(1); inv <= 5; inv++ {
+		flag := storageFlagForInv(inv)
+		if flags&flag == 0 {
+			continue
+		}
+		items := perTab(inv)
+		if len(items) > 255 {
+			items = items[:255]
+		}
+		p.WriteByte(byte(len(items)))
+		for i := range items {
+			p.WriteBytes(items[i].storageBytes())
+		}
+	}
+}
+
+func packetNpcStorageItemsChanged(enc byte, slots byte, inv byte, mesos int32, itemsInTab []Item) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelNpcStorageResult)
+	p.WriteByte(enc)
+
+	flag := storageFlagForInv(inv)
+	encodeStorageBody(&p, slots, flag, mesos, func(q byte) []Item {
+		if q == inv {
+			return itemsInTab
+		}
+		return nil
+	})
+	return p
+}
+
+func packetNpcStorageMesosChanged(op byte, mesos int32, slots byte) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelNpcStorageResult)
+	p.WriteByte(op)
+	encodeStorageBody(&p, slots, 0x0002, mesos, func(inv byte) []Item { return nil })
+	return p
+}
+
 func packetNpcStorageShow(npcID, storageMesos int32, storageSlots byte, items []Item) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelNpcStorage)
 	p.WriteInt32(npcID)
-	p.WriteByte(storageSlots)
-	// flag for if to show mesos, and Item tabs 1 - 5
-	// mesos = 0x02
-	// equip = 0x04
-	// use = 0x08
-	// setup = 0x10
-	// etc = equip (old version bug)/0x20
-	// pet = 0x40
-	p.WriteInt16(0x7e) // allow everything
-	p.WriteInt32(storageMesos)
-	// loop over valid tabs and show items
-	// p.WriteByte(length of items in this inventory slot)
-	for _, item := range items {
-		p.WriteBytes(item.shortBytes())
-	}
+
+	encodeStorageBody(&p, storageSlots, 0x007E, storageMesos, func(inv byte) []Item {
+		section := make([]Item, 0, 16)
+		for _, it := range items {
+			if it.invID == inv && it.ID != 0 {
+				section = append(section, it)
+			}
+		}
+		return section
+	})
 
 	return p
 }

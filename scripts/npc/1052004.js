@@ -6,27 +6,30 @@
 
 const coupon = 5152001;
 
-// Build the base face lists and add the current color block (hundreds)
+// Base faces; we'll add the player's current color block (hundreds)
 var baseMale   = [20000, 20001, 20002, 20003, 20004, 20005, 20006, 20007, 20008];
 var baseFemale = [21000, 21001, 21002, 21003, 21004, 21005, 21006, 21007, 21008];
 
-// Compute color offset (same style, different color block)
-var colorOffset = (Math.floor(plr.getFace() / 100) % 10) * 100;
+// Compute color offset from current face
+var currentFace = plr.face();
+var colorOffset = (Math.floor(currentFace / 100) % 10) * 100;
 
-// Prepare gender-specific faces with current color
-var faces = (plr.getGender() < 1) ? baseMale.slice() : baseFemale.slice();
+// Gender-specific list with current color block applied
+var faces = (plr.gender() < 1) ? baseMale.slice() : baseFemale.slice();
 for (var i = 0; i < faces.length; i++) {
     faces[i] += colorOffset;
 }
 
-// Intro + preview select (variadic via apply)
-var sel = npc.sendAvatar.apply(
+// Show preview selector (stateless flow: show, then read selection)
+npc.sendAvatar.apply(
     npc,
     ["Let's see...for #b#t" + coupon + "##k, you can get a new face. That's right, I can completely transform your face! Wanna give it a shot? Please consider your choice carefully."]
         .concat(faces)
 );
 
-// Validate choice and apply
+var sel = npc.selection();
+
+// Validate and apply
 if (sel < 0 || sel >= faces.length) {
     npc.sendOk("Changed your mind? That's fine. Come back any time.");
 } else if (plr.itemCount(coupon) >= 1) {

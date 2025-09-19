@@ -527,6 +527,13 @@ func (ctrl *npcChatPlayerController) MapID() int32 {
 	return ctrl.plr.mapID
 }
 
+func (ctrl *npcChatPlayerController) Position() map[string]int16 {
+	return map[string]int16{
+		"x": ctrl.plr.pos.x,
+		"y": ctrl.plr.pos.y,
+	}
+}
+
 type npcChatController struct {
 	npcID int32
 	conn  mnet.Client
@@ -678,6 +685,27 @@ func (ctrl *npcChatController) SendShop(goods [][]int32) {
 		ctrl.goods = goods
 		ctrl.conn.Send(packetNpcShop(ctrl.npcID, goods))
 		ctrl.vm.Interrupt("SendShop")
+	}
+}
+
+func (ctrl *npcChatController) SendStorage(npcID int32) {
+	if ctrl.stateTracker.performInterrupt() {
+		var storageMesos int32
+		var storageSlots byte
+		var allItems []Item
+
+		accountID := ctrl.conn.GetAccountID()
+		if accountID != 0 {
+			st := new(storage)
+			if err := st.load(accountID); err == nil {
+				storageMesos = st.mesos
+				storageSlots = st.maxSlots
+				allItems = st.getAllItems()
+			}
+		}
+
+		ctrl.conn.Send(packetNpcStorageShow(npcID, storageMesos, storageSlots, allItems))
+		ctrl.vm.Interrupt("SendStorage")
 	}
 }
 

@@ -1,49 +1,59 @@
-// Ticket vendor (200000100)
-var sel = npc.sendMenu(
-    "I can guide you to the right ship to reach your destination. Where are you headed?",
-    "Victoria Island",
-    "Ludibrium Castle",
-    "Leafre",
-    "Mu Lung",
-    "Ariant",
-    "Ereve",
-    "Edelstein"
+// Orbis station ticket seller
+var TICKETS = [
+    { id: 4031047, dest: "Ellinia",   price: 5000 },
+    { id: 4031074, dest: "Ludibrium", price: 5000 }
+];
+
+npc.sendBackNext(
+    "Welcome! Looking to travel by airship?\r\n" +
+    "I can sell you boarding tickets for Ellinia or Ludibrium right here.",
+    false, true
 );
 
-switch (sel) {
-    case 0:
-        npc.sendBackNext("You're headed to Victoria Island? Oh, it's a beautiful island with a variety of villages. A #b1-seater ship for Victoria is always standing by#k for you to use.", false, true);
-        npc.sendBackNext("Talk to #bIsa the Platform Guide#k on the right if you would like to take the Airship to Victoria. If anyone can show you the way, it's Isa.", true, true);
-        break;
+var menu = "What would you like to do?\r\n";
+for (var i = 0; i < TICKETS.length; i++) {
+    var tk = TICKETS[i];
+    menu += "#L" + i + "##bPurchase #t" + tk.id + "# (" + tk.price + " mesos)#k#l\r\n";
+}
+menu += "#L9#What are these tickets?#l\r\n#L8#Never mind.#l";
 
-    case 1:
-        npc.sendBackNext("You're headed to Ludibrium Castle at Ludus Lake? It's such a fun village made of toys. A #b1-seater ship for Ludibrium Fortress is always standing by#k for you to use.", false, true);
-        npc.sendBackNext("Talk to #bIsa the Platform Guide#k on the right if you would like to take the Airship to Ludibrium. If anyone can show you the way, it's Isa.", true, true);
-        break;
+npc.sendSelection(menu);
+var sel = npc.selection();
 
-    case 2:
-        npc.sendBackNext("You're headed to Leafre in Minar Forest? I love that quaint little village of Halflingers. A #b1-seater ship for Leafre is always standing by#k for you to use.", false, true);
-        npc.sendBackNext("Talk to #bIsa the Platform Guide#k on the right if you would like to take the Airship to Leafre. If anyone can show you the way, it's Isa.", true, true);
-        break;
+if (sel >= 0 && sel < TICKETS.length) {
+    var choice = TICKETS[sel];
 
-    case 3:
-        npc.sendBackNext("Are you heading toward Mu Lung in the Mu Lung Temple? I'm sorry, but there's no ship that flies from Orbis to Mu Lung. There is another way to get there, though. There's a #bCrane that runs a cab service for 1 that's always available#k, so you'll get there as soon as you wish.", false, true);
-        npc.sendBackNext("Unlike the ships that fly for free, however, this cab requires a set fee. This personalized flight to Mu Lung will cost you #b1,500 mesos#k, so please have the fee ready before riding the Crane.", true, true);
-        npc.sendBackNext("Talk to #bIsa the Platform Guide#k on the right if you would like to take the Crane to Mu Lung. If anyone can show you the way, it's Isa.", true, true);
-        break;
+    if (npc.sendYesNo(
+        "You chose the ticket to " + choice.dest + ".\r\n" +
+        "The price is " + choice.price + " mesos.\r\n\r\n" +
+        "Would you like to purchase #t" + choice.id + "# now?"
+    )) {
+        if (plr.mesos() < choice.price) {
+            npc.sendOk("You do not have enough mesos. You will need " + choice.price + " mesos to buy this ticket.");
+        } else {
+            npc.sendOk(
+                "Here is your #t" + choice.id + "#.\r\n" +
+                "Present it at the boarding gate when the airship is ready. Safe travels to " + choice.dest + "!"
+            );
 
-    case 4:
-        npc.sendBackNext("You're headed to Ariant in the Nihal Desert? The people living there have a passion as hot as the desert. A #bship that heads to Ariant is always standing by#k for you to use.", false, true);
-        npc.sendBackNext("Talk to #bIsa the Platform Guide#k on the right if you would like to take the Genie to Ariant. If anyone can show you the way, it's Isa.", true, true);
-        break;
+            if (plr.giveItem(choice.id, 1)) {
+                plr.giveMesos(-choice.price);
+            }
+        }
+    } else {
+        npc.sendOk("All right. Take your time and let me know if you decide to travel.");
+    }
 
-    case 5:
-        npc.sendBackNext("Are you heading toward Ereve? It's a beautiful island blessed with the presence of the Shinsoo the Holy Beast and Empress Cygnus. #bThe boat is for 1 person and it's always readily available#k so you can travel to Ereve fast.", false, true);
-        npc.sendBackNext("Talk to #bIsa the Platform Guide#k on the right if you would like to take the ship to Ereve. If anyone can show you the way, it's Isa.", true, true);
-        break;
+} else if (sel === 9) {
+    npc.sendBackNext(
+        "These tickets allow you to board the airship bound for their respective destinations.\r\n" +
+        "#t" + TICKETS[0].id + "# -> " + TICKETS[0].dest + "\r\n" +
+        "#t" + TICKETS[1].id + "# -> " + TICKETS[1].dest + "\r\n\r\n" +
+        "Keep the ticket in your inventory and show it to the usher at the platform when boarding starts.",
+        true, true
+    );
+    npc.sendOk("If you decide to go, come back and I will sell you a ticket.");
 
-    case 6:
-        npc.sendBackNext("Are you going to Edelstein? The brave people who live there constantly fight the influence of dangerous monsters. #b1-person Airship to Edelstein is always on standby#k, so you can use it at any time.", false, true);
-        npc.sendBackNext("Talk to #bIsa the Platform Guide#k on the right if you would like to take the ship to Edelstein. If anyone can show you the way, it's Isa.", true, true);
-        break;
+} else {
+    npc.sendOk("No problem. If you change your mind, I will be right here to help with your travel plans.");
 }

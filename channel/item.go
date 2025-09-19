@@ -382,29 +382,35 @@ func (v Item) delete() error {
 
 // InventoryBytes to display in character inventory window
 func (v Item) InventoryBytes() []byte {
-	return v.bytes(false)
+	return v.bytes(false, false)
+}
+
+func (v Item) storageBytes() []byte {
+	return v.bytes(false, true)
 }
 
 // ShortBytes e.g. inventory operation, storage window
 func (v Item) shortBytes() []byte {
-	return v.bytes(true)
+	return v.bytes(true, false)
 }
 
-func (v Item) bytes(shortSlot bool) []byte {
+func (v Item) bytes(shortSlot, storage bool) []byte {
 	p := mpacket.NewPacket()
 
-	if !shortSlot {
-		if v.slotID < 0 {
-			if v.slotID < -100 {
-				p.WriteByte(byte(math.Abs(float64(v.slotID + 100))))
+	if !storage {
+		if !shortSlot {
+			if v.slotID < 0 {
+				if v.slotID < -100 {
+					p.WriteByte(byte(math.Abs(float64(v.slotID + 100))))
+				} else {
+					p.WriteByte(byte(math.Abs(float64(v.slotID))))
+				}
 			} else {
-				p.WriteByte(byte(math.Abs(float64(v.slotID))))
+				p.WriteByte(byte(v.slotID))
 			}
 		} else {
-			p.WriteByte(byte(v.slotID))
+			p.WriteInt16(v.slotID)
 		}
-	} else {
-		p.WriteInt16(v.slotID)
 	}
 
 	if v.invID == 1 {

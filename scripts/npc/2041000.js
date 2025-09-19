@@ -1,36 +1,26 @@
-```
-if (plr.getSkillLevel(80001027) == 1 || plr.getSkillLevel(80001028) == 1) {
-    var sel = npc.sendMenu(
-        "If you have an airplane, you can fly to stations all over the world. Would you rather take an airplane than wait for a ship? It'll cost you 5,000 mesos to use the station.",
-        "I'd like to use the plane. (5000 mesos)",
-        "I'd like to board the ship."
-    )
+// Ludi -> Orbis station boarding
+var TICKET_ID = 4031045;
+var BOARD_MAP = 220000111;
 
-    if (sel == 0) {
-        var planeIdx = 0
-        if (plr.getSkillLevel(80001027) == 1 && plr.getSkillLevel(80001028) == 1) {
-            planeIdx = npc.sendMenu(
-                "Which airplane would you like to take?",
-                "Wooden Airplane",
-                "Rad Airplane"
-            )
-        }
+var props = plr.instanceProperties();
+var boardingOpen = ("canBoard" in props) && props["canBoard"];
 
-        if (plr.mesos() > 5000) {
-            plr.giveMesos(-5000)
-            plr.giveBuff(planeIdx == 0 ? 80001027 : 80001028, 1)
-            plr.warp(200110020)
-        } else {
-            npc.sendOk("You don't have enough money for the Station fee.")
-        }
-    } else if (sel == 1) {
-        if (npc.sendYesNo("Would you like to board the ship to Orbis now? It takes about a minute to get there.")) {
-            plr.warp(200090110)
-        }
-    }
+if (!boardingOpen) {
+    npc.sendOk("Boarding is not available right now. Please wait for the next boarding announcement.");
+} else if (plr.itemCount(TICKET_ID) < 1) {
+    npc.sendOk(
+        "You need an Orbis Ticket to board.\r\n" +
+        "Please purchase #t" + TICKET_ID + "# at the ticket counter and come back."
+    );
 } else {
-    if (npc.sendYesNo("Would you like to board the ship to Orbis now? It takes about a minute to get there.")) {
-        plr.warp(200090110)
+    var go = npc.sendYesNo(
+        "Boarding for the airship to Orbis is now open.\r\n" +
+        "Your ticket will be collected upon entry. Would you like to board now?"
+    );
+    if (go) {
+        plr.removeItemsByID(TICKET_ID, 1);
+        plr.warp(BOARD_MAP);
+    } else {
+        npc.sendOk("All right. Please let me know when you are ready to board.");
     }
 }
-```

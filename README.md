@@ -72,7 +72,7 @@ Channel server:
 - [x] NPC basic chat
 - [x] NPC shops
 - [x] NPC stylist
-- [ ] NPC storage
+- [x] NPC storage
 - [x] Load scripts from folder (incl. hot loading)
 - [x] Map instancing
 - [x] Mob visible

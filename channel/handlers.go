@@ -155,6 +155,8 @@ func (server *Server) HandleClientPacket(conn mnet.Client, reader mpacket.Reader
 		server.playerSummonAttack(conn, reader)
 	case opcode.RecvChannelReactorHit:
 		server.playerHitReactor(conn, reader)
+	case opcode.RecvChannelNpcStorage:
+		server.playerUseStorage(conn, reader)
 	default:
 		unknownPacketsTotal.Inc()
 		log.Println("UNKNOWN CLIENT PACKET(", op, "):", reader)
@@ -4173,4 +4175,164 @@ func (server *Server) playerHitReactor(conn mnet.Client, reader mpacket.Reader) 
 
 	plr.inst.reactorPool.triggerHit(spawnID, 0)
 
+}
+
+func (server *Server) playerUseStorage(conn mnet.Client, reader mpacket.Reader) {
+	plr, err := server.players.getFromConn(conn)
+	if err != nil {
+		return
+	}
+
+	const (
+		actionWithdraw        byte = 4
+		actionDeposit              = 5
+		actionStoreMesos           = 6
+		actionExit                 = 7
+		storageInvFullOrNot        = 9
+		encWithdraw                = 8
+		encDeposit                 = 10
+		storageNotEnoughMesos      = 12
+		storageIsFull              = 13
+		storageDueToAnError        = 14
+		storageSuccess             = 15
+	)
+
+	accountID := conn.GetAccountID()
+	if accountID == 0 {
+		return
+	}
+
+	isRechargeable := func(itemID int32) bool {
+		base := itemID / 10000
+		return base == 207
+	}
+
+	switch reader.ReadByte() {
+	case actionWithdraw:
+		tab := reader.ReadByte()
+		slot := reader.ReadByte()
+
+		stIdx, it := plr.storageInventory.getBySectionSlot(tab, slot)
+		if stIdx < 0 || it == nil || it.ID == 0 {
+			plr.Send(packetNpcStorageResult(storageDueToAnError))
+			return
+		}
+
+		out := *it
+		if !out.isStackable() || out.amount <= 0 {
+			out.amount = 1
+		}
+		out.dbID = 0
+		out.slotID = 0
+
+		if err := plr.GiveItem(out); err != nil {
+			plr.Send(packetNpcStorageResult(storageInvFullOrNot))
+			return
+		}
+
+		plr.storageInventory.removeAt(byte(stIdx))
+		if err := plr.storageInventory.save(plr.accountID); err != nil {
+			plr.Send(packetNpcStorageResult(storageDueToAnError))
+			return
+		}
+
+		sectionItems := plr.storageInventory.getItemsInSection(tab)
+		plr.Send(packetNpcStorageItemsChanged(encWithdraw, plr.storageInventory.maxSlots, tab, 0, sectionItems))
+
+	case actionDeposit:
+		srcSlot := reader.ReadInt16()
+		itemID := reader.ReadInt32()
+		amt := reader.ReadInt16()
+		if amt <= 0 {
+			plr.Send(packetNpcStorageResult(storageDueToAnError))
+			return
+		}
+
+		tab := byte(itemID / 1000000)
+		itemOnChar, getErr := plr.getItem(tab, srcSlot)
+		if getErr != nil || itemOnChar.ID != itemID {
+			plr.Send(packetNpcStorageResult(storageDueToAnError))
+			return
+		}
+
+		if !plr.storageInventory.slotsAvailable() {
+			plr.Send(packetNpcStorageResult(storageIsFull))
+			return
+		}
+
+		if isRechargeable(itemID) {
+			amt = itemOnChar.amount
+		} else if !itemOnChar.isStackable() {
+			amt = 1
+		} else if amt > itemOnChar.amount {
+			amt = itemOnChar.amount
+		}
+
+		storeCopy := itemOnChar
+		storeCopy.amount = amt
+		storeCopy.dbID = 0
+		storeCopy.slotID = 0
+
+		if _, remErr := plr.takeItem(itemID, srcSlot, amt, tab); remErr != nil {
+			plr.Send(packetNpcStorageResult(storageDueToAnError))
+			return
+		}
+
+		if !plr.storageInventory.addItem(storeCopy) {
+			_ = plr.GiveItem(storeCopy)
+			plr.Send(packetNpcStorageResult(storageIsFull))
+			return
+		}
+
+		if err := plr.storageInventory.save(plr.accountID); err != nil {
+			_ = plr.GiveItem(storeCopy)
+			plr.Send(packetNpcStorageResult(storageDueToAnError))
+			return
+		}
+
+		sectionItems := plr.storageInventory.getItemsInSection(tab)
+		plr.Send(packetNpcStorageItemsChanged(encDeposit, plr.storageInventory.maxSlots, tab, 0, sectionItems))
+
+	case actionStoreMesos:
+		val := reader.ReadInt32()
+		if val < 0 {
+			store := -val
+			if store <= 0 || plr.mesos < store {
+				plr.Send(packetNpcStorageResult(storageNotEnoughMesos))
+				return
+			}
+			plr.giveMesos(-store)
+			if err := plr.storageInventory.changeMesos(store); err != nil {
+				plr.giveMesos(store)
+				plr.Send(packetNpcStorageResult(storageDueToAnError))
+				return
+			}
+			if err := plr.storageInventory.save(plr.accountID); err != nil {
+				_ = plr.storageInventory.changeMesos(-store)
+				plr.giveMesos(store)
+				plr.Send(packetNpcStorageResult(storageDueToAnError))
+				return
+			}
+			plr.Send(packetNpcStorageMesosChanged(storageSuccess, plr.storageInventory.mesos, plr.storageInventory.maxSlots))
+		} else if val > 0 {
+			withdraw := val
+			if err := plr.storageInventory.changeMesos(-withdraw); err != nil {
+				plr.Send(packetNpcStorageResult(storageDueToAnError))
+				return
+			}
+			plr.giveMesos(withdraw)
+			if err := plr.storageInventory.save(plr.accountID); err != nil {
+				_ = plr.storageInventory.changeMesos(withdraw)
+				plr.giveMesos(-withdraw)
+				plr.Send(packetNpcStorageResult(storageDueToAnError))
+				return
+			}
+			plr.Send(packetNpcStorageMesosChanged(storageSuccess, plr.storageInventory.mesos, plr.storageInventory.maxSlots))
+		} else {
+			plr.Send(packetNpcStorageResult(storageIsFull))
+		}
+
+	case actionExit:
+		return
+	}
 }

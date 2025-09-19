@@ -152,6 +152,8 @@ type Player struct {
 	nx          int32
 	maplepoints int32
 
+	storageInventory *storage
+
 	skills map[int32]playerSkill
 
 	miniGameWins, miniGameDraw, miniGameLoss, miniGamePoints int32
@@ -1490,6 +1492,12 @@ func LoadPlayerFromID(id int32, conn mnet.Client) Player {
 
 	// Initialize the per-Player buff manager so handlers can call plr.addBuff(...)
 	c.buffs = NewCharacterBuffs(&c)
+
+	c.storageInventory = new(storage)
+
+	if err := c.storageInventory.load(c.accountID); err != nil {
+		log.Printf("loadPlayerFromID: failed to load storage inventory for accountID=%d: %v", c.accountID, err)
+	}
 
 	c.Conn = conn
 
