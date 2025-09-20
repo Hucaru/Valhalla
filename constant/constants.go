@@ -125,6 +125,16 @@ const (
 	StorageSetupTab = 0x10
 	StorageEtcTab   = 0x20
 	StorageCashTab  = 0x40
+
+	MessengerEnter        byte = 0x00
+	MessengerEnterResult  byte = 0x01
+	MessengerLeave        byte = 0x02
+	MessengerInvite       byte = 0x03
+	MessengerInviteResult byte = 0x04
+	MessengerBlocked      byte = 0x05
+	MessengerChat         byte = 0x06
+	MessengerAvatar       byte = 0x07
+	MessengerMigrated     byte = 0x08
 )
 
 var ExpTable = [...]int32{15, 34, 57, 92, 135, 372, 560, 840, 1242, 1144, // Beginner

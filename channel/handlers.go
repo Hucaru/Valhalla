@@ -6,6 +6,7 @@ import (
 	"log"
 	"math"
 	"math/rand"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -157,6 +158,8 @@ func (server *Server) HandleClientPacket(conn mnet.Client, reader mpacket.Reader
 		server.playerHitReactor(conn, reader)
 	case opcode.RecvChannelNpcStorage:
 		server.playerUseStorage(conn, reader)
+	case opcode.RecvChannelMessenger:
+		server.playerHandleMessenger(conn, reader)
 	default:
 		unknownPacketsTotal.Inc()
 		log.Println("UNKNOWN CLIENT PACKET(", op, "):", reader)
@@ -3260,6 +3263,8 @@ func (server *Server) HandleServerPacket(conn mnet.Server, reader mpacket.Reader
 		server.handleChangeRate(conn, reader)
 	case opcode.CashShopInfo:
 		server.handleCashShopInfo(conn, reader)
+	case opcode.ChannelPlayerMessengerEvent:
+		server.handleMessengerEvent(conn, reader)
 
 	default:
 		log.Println("UNKNOWN SERVER PACKET:", reader)
@@ -3629,6 +3634,198 @@ func (server Server) handleChatEvent(conn mnet.Server, reader mpacket.Reader) {
 		}
 	default:
 		log.Println("Unknown chat event type:", op)
+	}
+}
+
+func (server *Server) handleMessengerEvent(conn mnet.Server, reader mpacket.Reader) {
+	op := reader.ReadByte()
+	switch op {
+	case constant.MessengerEnter:
+		recipientID := reader.ReadInt32()
+		slot := reader.ReadByte()
+		if plr, err := server.players.getFromID(recipientID); err == nil {
+			plr.Send(packetMessengerSelfEnter(slot))
+		}
+	case constant.MessengerEnterResult:
+		recipientID := reader.ReadInt32()
+		slot := reader.ReadByte()
+
+		gender := reader.ReadByte()
+		skin := reader.ReadByte()
+		face := reader.ReadInt32()
+		_ = reader.ReadBool()
+		hair := reader.ReadInt32()
+
+		vis := make([]struct {
+			k byte
+			v int32
+		}, 0, 16)
+		for {
+			b := reader.ReadByte()
+			if int8(b) == -1 {
+				break
+			}
+			vis = append(vis, struct {
+				k byte
+				v int32
+			}{b, reader.ReadInt32()})
+		}
+		hid := make([]struct {
+			k byte
+			v int32
+		}, 0, 16)
+		for {
+			b := reader.ReadByte()
+			if int8(b) == -1 {
+				break
+			}
+			hid = append(hid, struct {
+				k byte
+				v int32
+			}{b, reader.ReadInt32()})
+		}
+		cashW := reader.ReadInt32()
+		petAcc := reader.ReadInt32()
+
+		name := reader.ReadString(reader.ReadInt16())
+		ch := reader.ReadByte()
+		announce := reader.ReadBool()
+
+		if plr, err := server.players.getFromID(recipientID); err == nil {
+			p := mpacket.CreateWithOpcode(opcode.SendChannelMessenger)
+			p.WriteByte(constant.MessengerEnter)
+			p.WriteByte(slot)
+			p.WriteByte(gender)
+			p.WriteByte(skin)
+			p.WriteInt32(face)
+			p.WriteBool(true)
+			p.WriteInt32(hair)
+			for _, kv := range vis {
+				p.WriteByte(kv.k)
+				p.WriteInt32(kv.v)
+			}
+			p.WriteInt8(-1)
+			for _, kv := range hid {
+				p.WriteByte(kv.k)
+				p.WriteInt32(kv.v)
+			}
+			p.WriteInt8(-1)
+			p.WriteInt32(cashW)
+			p.WriteInt32(petAcc)
+			p.WriteString(name)
+			p.WriteByte(ch)
+			p.WriteBool(announce)
+			plr.Send(p)
+		}
+
+	case constant.MessengerLeave:
+		recipientID := reader.ReadInt32()
+		slot := reader.ReadByte()
+		if plr, err := server.players.getFromID(recipientID); err == nil {
+			plr.Send(packetMessengerLeave(slot))
+		}
+	case constant.MessengerInvite:
+		inviteeID := reader.ReadInt32()
+		sender := reader.ReadString(reader.ReadInt16())
+		mID := reader.ReadInt32()
+		nameResolution := reader.ReadBool()
+		if nameResolution {
+			targetName := reader.ReadString(reader.ReadInt16())
+			if plr, err := server.players.getFromName(targetName); err == nil {
+				plr.Send(packetMessengerInvite(sender, mID))
+			}
+			return
+		}
+		if inviteeID != 0 {
+			if plr, err := server.players.getFromID(inviteeID); err == nil {
+				plr.Send(packetMessengerInvite(sender, mID))
+			}
+		}
+	case constant.MessengerInviteResult:
+		senderID := reader.ReadInt32()
+		recipient := reader.ReadString(reader.ReadInt16())
+		success := reader.ReadBool()
+		if plr, err := server.players.getFromID(senderID); err == nil {
+			plr.Send(packetMessengerInviteResult(recipient, success))
+		}
+	case constant.MessengerBlocked:
+		senderID := reader.ReadInt32()
+		receiver := reader.ReadString(reader.ReadInt16())
+		mode := reader.ReadByte()
+		if plr, err := server.players.getFromID(senderID); err == nil {
+			plr.Send(packetMessengerBlocked(receiver, mode))
+		}
+	case constant.MessengerChat:
+		recipientID := reader.ReadInt32()
+		msg := reader.ReadString(reader.ReadInt16())
+		if plr, err := server.players.getFromID(recipientID); err == nil {
+			plr.Send(packetMessengerChat(msg))
+		}
+	case constant.MessengerAvatar:
+		recipientID := reader.ReadInt32()
+		slot := reader.ReadByte()
+
+		gender := reader.ReadByte()
+		skin := reader.ReadByte()
+		face := reader.ReadInt32()
+		_ = reader.ReadBool()
+		hair := reader.ReadInt32()
+
+		vis := make([]struct {
+			k byte
+			v int32
+		}, 0, 16)
+		for {
+			b := reader.ReadByte()
+			if int8(b) == -1 {
+				break
+			}
+			vis = append(vis, struct {
+				k byte
+				v int32
+			}{b, reader.ReadInt32()})
+		}
+		hid := make([]struct {
+			k byte
+			v int32
+		}, 0, 16)
+		for {
+			b := reader.ReadByte()
+			if int8(b) == -1 {
+				break
+			}
+			hid = append(hid, struct {
+				k byte
+				v int32
+			}{b, reader.ReadInt32()})
+		}
+		cashW := reader.ReadInt32()
+		petAcc := reader.ReadInt32()
+
+		if plr, err := server.players.getFromID(recipientID); err == nil {
+			p := mpacket.CreateWithOpcode(opcode.SendChannelMessenger)
+			p.WriteByte(constant.MessengerAvatar)
+			p.WriteByte(slot)
+			p.WriteByte(gender)
+			p.WriteByte(skin)
+			p.WriteInt32(face)
+			p.WriteBool(true)
+			p.WriteInt32(hair)
+			for _, kv := range vis {
+				p.WriteByte(kv.k)
+				p.WriteInt32(kv.v)
+			}
+			p.WriteInt8(-1)
+			for _, kv := range hid {
+				p.WriteByte(kv.k)
+				p.WriteInt32(kv.v)
+			}
+			p.WriteInt8(-1)
+			p.WriteInt32(cashW)
+			p.WriteInt32(petAcc)
+			plr.Send(p)
+		}
+	default:
 	}
 }
 
@@ -4335,4 +4532,211 @@ func (server *Server) playerUseStorage(conn mnet.Client, reader mpacket.Reader) 
 	case actionExit:
 		return
 	}
+}
+
+func (server *Server) playerHandleMessenger(conn mnet.Client, reader mpacket.Reader) {
+	plr, err := server.players.getFromConn(conn)
+	if err != nil {
+		return
+	}
+
+	mode := reader.ReadByte()
+
+	p := mpacket.CreateInternal(opcode.ChannelPlayerMessengerEvent)
+	p.WriteByte(mode)
+	p.WriteInt32(plr.ID)
+	p.WriteByte(server.id)
+	p.WriteString(plr.Name)
+
+	switch mode {
+	case constant.MessengerEnter:
+		messengerID := reader.ReadInt32()
+		p.WriteInt32(messengerID)
+
+		p.WriteByte(plr.gender)
+		p.WriteByte(plr.skin)
+		p.WriteInt32(plr.face)
+		p.WriteBool(true)
+		p.WriteInt32(plr.hair)
+
+		var petAccessory int32
+		visible := [][2]int32{}
+		hidden := [][2]int32{}
+
+		base := make(map[byte]int32)
+		cash := make(map[byte]int32)
+		cashWeapon := int32(0)
+
+		for _, it := range plr.equip {
+			if it.slotID >= 0 {
+				continue
+			}
+
+			slot := byte(-it.slotID)
+			if it.slotID < -100 {
+				slot = byte(-(it.slotID + 100))
+			}
+
+			if slot == 11 {
+				if it.slotID < -100 {
+					cashWeapon = it.ID
+				}
+				continue
+			}
+
+			if it.slotID < -100 {
+				cash[slot] = it.ID
+			} else {
+				if _, ok := base[slot]; !ok {
+					base[slot] = it.ID
+				}
+			}
+		}
+
+		order := func(m map[byte]int32) []byte {
+			ks := make([]byte, 0, len(m))
+			for k := range m {
+				ks = append(ks, k)
+			}
+			sort.Slice(ks, func(i, j int) bool { return ks[i] < ks[j] })
+			return ks
+		}
+
+		for _, k := range order(base) {
+			if v, ok := cash[k]; ok {
+				visible = append(visible, [2]int32{int32(k), v})
+				hidden = append(hidden, [2]int32{int32(k), base[k]})
+			} else {
+				visible = append(visible, [2]int32{int32(k), base[k]})
+			}
+		}
+
+		for _, k := range order(cash) {
+			if _, used := base[k]; !used {
+				visible = append(visible, [2]int32{int32(k), cash[k]})
+			}
+		}
+
+		for _, kv := range visible {
+			slot := byte(kv[0])
+			id := kv[1]
+			p.WriteByte(slot)
+			p.WriteInt32(id)
+		}
+		p.WriteInt8(-1)
+
+		for _, kv := range hidden {
+			slot := byte(kv[0])
+			id := kv[1]
+			p.WriteByte(slot)
+			p.WriteInt32(id)
+		}
+
+		p.WriteInt8(-1)
+		p.WriteInt32(cashWeapon)
+		p.WriteInt32(petAccessory)
+
+	case constant.MessengerLeave:
+	case constant.MessengerInvite:
+		invitee := reader.ReadString(reader.ReadInt16())
+		p.WriteString(invitee)
+	case constant.MessengerBlocked:
+		invitee := reader.ReadString(reader.ReadInt16())
+		inviter := reader.ReadString(reader.ReadInt16())
+		blockMode := reader.ReadByte()
+		p.WriteString(invitee)
+		p.WriteString(inviter)
+		p.WriteByte(blockMode)
+	case constant.MessengerChat:
+		message := reader.ReadString(reader.ReadInt16())
+		p.WriteString(message)
+	case constant.MessengerAvatar:
+		p.WriteByte(plr.gender)
+		p.WriteByte(plr.skin)
+		p.WriteInt32(plr.face)
+		p.WriteBool(true)
+		p.WriteInt32(plr.hair)
+
+		var petAccessory int32
+		visible := [][2]int32{}
+		hidden := [][2]int32{}
+
+		base := make(map[byte]int32)
+		cash := make(map[byte]int32)
+		cashWeapon := int32(0)
+
+		for _, it := range plr.equip {
+			if it.slotID >= 0 {
+				continue
+			}
+
+			slot := byte(-it.slotID)
+			if it.slotID < -100 {
+				slot = byte(-(it.slotID + 100))
+			}
+
+			if slot == 11 {
+				if it.slotID < -100 {
+					cashWeapon = it.ID
+				}
+				continue
+			}
+
+			if it.slotID < -100 {
+				cash[slot] = it.ID
+			} else {
+				if _, ok := base[slot]; !ok {
+					base[slot] = it.ID
+				}
+			}
+		}
+
+		order := func(m map[byte]int32) []byte {
+			ks := make([]byte, 0, len(m))
+			for k := range m {
+				ks = append(ks, k)
+			}
+			sort.Slice(ks, func(i, j int) bool { return ks[i] < ks[j] })
+			return ks
+		}
+
+		for _, k := range order(base) {
+			if v, ok := cash[k]; ok {
+				visible = append(visible, [2]int32{int32(k), v})
+				hidden = append(hidden, [2]int32{int32(k), base[k]})
+			} else {
+				visible = append(visible, [2]int32{int32(k), base[k]})
+			}
+		}
+
+		for _, k := range order(cash) {
+			if _, used := base[k]; !used {
+				visible = append(visible, [2]int32{int32(k), cash[k]})
+			}
+		}
+
+		for _, kv := range visible {
+			slot := byte(kv[0])
+			id := kv[1]
+			p.WriteByte(slot)
+			p.WriteInt32(id)
+		}
+		p.WriteInt8(-1)
+
+		for _, kv := range hidden {
+			slot := byte(kv[0])
+			id := kv[1]
+			p.WriteByte(slot)
+			p.WriteInt32(id)
+		}
+
+		p.WriteInt8(-1)
+		p.WriteInt32(cashWeapon)
+		p.WriteInt32(petAccessory)
+
+	default:
+		return
+	}
+
+	server.world.Send(p)
 }
