@@ -1,2 +1,1 @@
-// Opens warehouse storage directly
-plr.warehouse(1022005);
+npc.sendStorage(1022005)
