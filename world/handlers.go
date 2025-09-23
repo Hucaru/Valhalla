@@ -7,6 +7,7 @@ import (
 
 	"github.com/Hucaru/Valhalla/common"
 	"github.com/Hucaru/Valhalla/common/opcode"
+	"github.com/Hucaru/Valhalla/constant"
 	"github.com/Hucaru/Valhalla/internal"
 	"github.com/Hucaru/Valhalla/mnet"
 	"github.com/Hucaru/Valhalla/mpacket"
@@ -492,8 +493,8 @@ type messengerMember struct {
 	skin      byte
 	face      int32
 	hair      int32
-	vis       []kv
-	hid       []kv
+	vis       []internal.KV
+	hid       []internal.KV
 	cashW     int32
 	petAcc    int32
 }
@@ -529,8 +530,6 @@ func (m *messengerRoom) findMemberSlot(id int32) (byte, bool) {
 	return 0, false
 }
 
-var messengerRooms = map[int32]*messengerRoom{}
-
 func (server *Server) handleMessengerEvent(conn mnet.Server, reader mpacket.Reader) {
 	mode := reader.ReadByte()
 	senderID := reader.ReadInt32()
@@ -538,43 +537,43 @@ func (server *Server) handleMessengerEvent(conn mnet.Server, reader mpacket.Read
 	senderName := reader.ReadString(reader.ReadInt16())
 
 	switch mode {
-	case 0:
+	case constant.MessengerEnter:
 		mID := reader.ReadInt32()
-
 		gender := reader.ReadByte()
 		skin := reader.ReadByte()
 		face := reader.ReadInt32()
 		_ = reader.ReadBool()
 		hair := reader.ReadInt32()
 
-		vis := make([]kv, 0, 16)
+		var vis []internal.KV
 		for {
 			b := reader.ReadByte()
-			if int8(b) == -1 {
+			if b == 0xFF {
 				break
 			}
-			vis = append(vis, kv{b, reader.ReadInt32()})
+			vis = append(vis, internal.KV{K: b, V: reader.ReadInt32()})
 		}
-		hid := make([]kv, 0, 16)
+		var hid []internal.KV
 		for {
 			b := reader.ReadByte()
-			if int8(b) == -1 {
+			if b == 0xFF {
 				break
 			}
-			hid = append(hid, kv{b, reader.ReadInt32()})
+			hid = append(hid, internal.KV{K: b, V: reader.ReadInt32()})
 		}
+
 		cashWeapon := reader.ReadInt32()
 		petAccessory := reader.ReadInt32()
 
-		room := messengerRooms[mID]
+		room := server.messengerRooms[mID]
 		if mID <= 0 || room == nil {
 			room = &messengerRoom{id: senderID}
-			messengerRooms[room.id] = room
+			server.messengerRooms[room.id] = room
 		}
 
 		if _, exists := room.findMemberSlot(senderID); exists {
 			slot, _ := room.findMemberSlot(senderID)
-			server.channelBroadcast(packetWorldMessengerSelfEnter(senderID, slot))
+			server.channelBroadcast(internal.PacketWorldMessengerSelfEnter(senderID, slot))
 			return
 		}
 
@@ -598,24 +597,19 @@ func (server *Server) handleMessengerEvent(conn mnet.Server, reader mpacket.Read
 			petAcc:    petAccessory,
 		}
 
-		server.channelBroadcast(packetWorldMessengerSelfEnter(senderID, slot))
+		server.channelBroadcast(internal.PacketWorldMessengerSelfEnter(senderID, slot))
 
 		for _, mm := range room.members {
 			if mm == nil || mm.charID == senderID {
 				continue
 			}
-			server.channelBroadcast(packetWorldMessengerEnterInline(senderID, mm.slot, mm))
-		}
-		for _, mm := range room.members {
-			if mm == nil || mm.charID == senderID {
-				continue
-			}
-			server.channelBroadcast(packetWorldMessengerEnterInline(mm.charID, slot, room.members[slot]))
+			server.channelBroadcast(internal.PacketWorldMessengerEnter(senderID, mm.face, mm.hair, mm.cashW, mm.petAcc, mm.slot, mm.channelID, mm.gender, mm.skin, mm.name, mm.vis, mm.hid))
+			server.channelBroadcast(internal.PacketWorldMessengerEnter(mm.charID, room.members[slot].face, room.members[slot].hair, room.members[slot].cashW, room.members[slot].petAcc, room.members[slot].slot, room.members[slot].channelID, room.members[slot].gender, room.members[slot].skin, room.members[slot].name, room.members[slot].vis, room.members[slot].hid))
 		}
 
-	case 2:
+	case constant.MessengerLeave:
 		var found *messengerRoom
-		for _, r := range messengerRooms {
+		for _, r := range server.messengerRooms {
 			if _, ok := r.findMemberSlot(senderID); ok {
 				found = r
 				break
@@ -630,27 +624,27 @@ func (server *Server) handleMessengerEvent(conn mnet.Server, reader mpacket.Read
 			if mm == nil {
 				continue
 			}
-			server.channelBroadcast(packetWorldMessengerLeave(mm.charID, slot))
+			server.channelBroadcast(internal.PacketWorldMessengerLeave(mm.charID, slot))
 		}
 
 		found.members[slot] = nil
 
 		if found.count() == 0 {
-			delete(messengerRooms, found.id)
+			delete(server.messengerRooms, found.id)
 		}
 
-	case 3:
+	case constant.MessengerInvite:
 		invitee := reader.ReadString(reader.ReadInt16())
 
 		var found *messengerRoom
-		for _, r := range messengerRooms {
+		for _, r := range server.messengerRooms {
 			if _, ok := r.findMemberSlot(senderID); ok {
 				found = r
 				break
 			}
 		}
 		if found == nil {
-			server.channelBroadcast(packetWorldMessengerInviteResult(senderID, invitee, false))
+			server.channelBroadcast(internal.PacketWorldMessengerInviteResult(senderID, invitee, false))
 			return
 		}
 
@@ -666,19 +660,19 @@ func (server *Server) handleMessengerEvent(conn mnet.Server, reader mpacket.Read
 				ch.Conn.Send(p)
 			}
 		}
-		server.channelBroadcast(packetWorldMessengerInviteResult(senderID, invitee, true))
+		server.channelBroadcast(internal.PacketWorldMessengerInviteResult(senderID, invitee, true))
 
-	case 5:
+	case constant.MessengerBlocked:
 		receiver := reader.ReadString(reader.ReadInt16())
 		inviter := reader.ReadString(reader.ReadInt16())
 		md := reader.ReadByte()
 		_ = inviter
-		server.channelBroadcast(packetWorldMessengerBlocked(senderID, receiver, md))
+		server.channelBroadcast(internal.PacketWorldMessengerBlocked(senderID, receiver, md))
 
-	case 6:
+	case constant.MessengerChat:
 		msg := reader.ReadString(reader.ReadInt16())
 		var found *messengerRoom
-		for _, r := range messengerRooms {
+		for _, r := range server.messengerRooms {
 			if _, ok := r.findMemberSlot(senderID); ok {
 				found = r
 				break
@@ -691,37 +685,38 @@ func (server *Server) handleMessengerEvent(conn mnet.Server, reader mpacket.Read
 			if mm == nil || mm.charID == senderID {
 				continue
 			}
-			server.channelBroadcast(packetWorldMessengerChat(mm.charID, msg))
+			server.channelBroadcast(internal.PacketWorldMessengerChat(mm.charID, msg))
 		}
 
-	case 7:
+	case constant.MessengerAvatar:
 		gender := reader.ReadByte()
 		skin := reader.ReadByte()
 		face := reader.ReadInt32()
 		_ = reader.ReadBool()
 		hair := reader.ReadInt32()
 
-		vis := make([]kv, 0, 16)
+		var vis []internal.KV
 		for {
 			b := reader.ReadByte()
-			if int8(b) == -1 {
+			if b == 0xFF {
 				break
 			}
-			vis = append(vis, kv{b, reader.ReadInt32()})
+			vis = append(vis, internal.KV{K: b, V: reader.ReadInt32()})
 		}
-		hid := make([]kv, 0, 16)
+		var hid []internal.KV
 		for {
 			b := reader.ReadByte()
-			if int8(b) == -1 {
+			if b == 0xFF {
 				break
 			}
-			hid = append(hid, kv{b, reader.ReadInt32()})
+			hid = append(hid, internal.KV{K: b, V: reader.ReadInt32()})
 		}
+
 		cashWeapon := reader.ReadInt32()
 		petAccessory := reader.ReadInt32()
 
 		var found *messengerRoom
-		for _, r := range messengerRooms {
+		for _, r := range server.messengerRooms {
 			if _, ok := r.findMemberSlot(senderID); ok {
 				found = r
 				break
@@ -748,101 +743,10 @@ func (server *Server) handleMessengerEvent(conn mnet.Server, reader mpacket.Read
 			if other == nil || other.charID == senderID {
 				continue
 			}
-			server.channelBroadcast(packetWorldMessengerAvatarInline(other.charID, slot, mm))
+			server.channelBroadcast(internal.PacketWorldMessengerAvatar(other.charID, mm.face, mm.hair, cashWeapon, petAccessory, slot, mm.gender, mm.skin, mm.vis, mm.hid))
 		}
 
 	default:
 		log.Println("Unknown messenger op (channel->world):", mode)
 	}
-}
-
-// ===== World->Channel packets for Messenger (inline AvatarLook fields) =====
-
-func packetWorldMessengerSelfEnter(recipientID int32, slot byte) mpacket.Packet {
-	p := mpacket.CreateInternal(opcode.ChannelPlayerMessengerEvent)
-	p.WriteByte(0x00)
-	p.WriteInt32(recipientID)
-	p.WriteByte(slot)
-	return p
-}
-func packetWorldMessengerEnterInline(recipientID int32, slot byte, m *messengerMember) mpacket.Packet {
-	p := mpacket.CreateInternal(opcode.ChannelPlayerMessengerEvent)
-	p.WriteByte(0x01)
-	p.WriteInt32(recipientID)
-	p.WriteByte(slot)
-	p.WriteByte(m.gender)
-	p.WriteByte(m.skin)
-	p.WriteInt32(m.face)
-	p.WriteBool(true)
-	p.WriteInt32(m.hair)
-	for _, e := range m.vis {
-		p.WriteByte(e.k)
-		p.WriteInt32(e.v)
-	}
-	p.WriteInt8(-1)
-	for _, e := range m.hid {
-		p.WriteByte(e.k)
-		p.WriteInt32(e.v)
-	}
-	p.WriteInt8(-1)
-	p.WriteInt32(m.cashW)
-	p.WriteInt32(m.petAcc)
-	p.WriteString(m.name)
-	p.WriteByte(m.channelID)
-	p.WriteBool(true)
-	return p
-}
-func packetWorldMessengerLeave(recipientID int32, slot byte) mpacket.Packet {
-	p := mpacket.CreateInternal(opcode.ChannelPlayerMessengerEvent)
-	p.WriteByte(0x02)
-	p.WriteInt32(recipientID)
-	p.WriteByte(slot)
-	return p
-}
-func packetWorldMessengerInviteResult(senderID int32, recipient string, ok bool) mpacket.Packet {
-	p := mpacket.CreateInternal(opcode.ChannelPlayerMessengerEvent)
-	p.WriteByte(0x04)
-	p.WriteInt32(senderID)
-	p.WriteString(recipient)
-	p.WriteBool(ok)
-	return p
-}
-func packetWorldMessengerBlocked(senderID int32, receiver string, mode byte) mpacket.Packet {
-	p := mpacket.CreateInternal(opcode.ChannelPlayerMessengerEvent)
-	p.WriteByte(0x05)
-	p.WriteInt32(senderID)
-	p.WriteString(receiver)
-	p.WriteByte(mode)
-	return p
-}
-func packetWorldMessengerChat(recipientID int32, msg string) mpacket.Packet {
-	p := mpacket.CreateInternal(opcode.ChannelPlayerMessengerEvent)
-	p.WriteByte(0x06)
-	p.WriteInt32(recipientID)
-	p.WriteString(msg)
-	return p
-}
-func packetWorldMessengerAvatarInline(recipientID int32, slot byte, m *messengerMember) mpacket.Packet {
-	p := mpacket.CreateInternal(opcode.ChannelPlayerMessengerEvent)
-	p.WriteByte(0x07)
-	p.WriteInt32(recipientID)
-	p.WriteByte(slot)
-	p.WriteByte(m.gender)
-	p.WriteByte(m.skin)
-	p.WriteInt32(m.face)
-	p.WriteBool(true)
-	p.WriteInt32(m.hair)
-	for _, e := range m.vis {
-		p.WriteByte(e.k)
-		p.WriteInt32(e.v)
-	}
-	p.WriteInt8(-1)
-	for _, e := range m.hid {
-		p.WriteByte(e.k)
-		p.WriteInt32(e.v)
-	}
-	p.WriteInt8(-1)
-	p.WriteInt32(m.cashW)
-	p.WriteInt32(m.petAcc)
-	return p
 }

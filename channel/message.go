@@ -3,6 +3,7 @@ package channel
 import (
 	"github.com/Hucaru/Valhalla/common/opcode"
 	"github.com/Hucaru/Valhalla/constant"
+	"github.com/Hucaru/Valhalla/internal"
 	"github.com/Hucaru/Valhalla/mpacket"
 )
 
@@ -325,5 +326,56 @@ func packetMessengerChat(message string) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelMessenger)
 	p.WriteByte(constant.MessengerChat)
 	p.WriteString(message)
+	return p
+}
+
+func packetMessengerEnter(slot, gender, skin, ch byte, face, hair, cashW, petAcc int32, name string, announce bool, vis, hid []internal.KV) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelMessenger)
+	p.WriteByte(constant.MessengerEnter)
+	p.WriteByte(slot)
+	p.WriteByte(gender)
+	p.WriteByte(skin)
+	p.WriteInt32(face)
+	p.WriteBool(true)
+	p.WriteInt32(hair)
+	for _, kv := range vis {
+		p.WriteByte(kv.K)
+		p.WriteInt32(kv.V)
+	}
+	p.WriteInt8(-1)
+	for _, kv := range hid {
+		p.WriteByte(kv.K)
+		p.WriteInt32(kv.V)
+	}
+	p.WriteInt8(-1)
+	p.WriteInt32(cashW)
+	p.WriteInt32(petAcc)
+	p.WriteString(name)
+	p.WriteByte(ch)
+	p.WriteBool(announce)
+	return p
+}
+
+func packetMessengerAvatar(slot, gender, skin byte, face, hair, cashW, petAcc int32, vis, hid []internal.KV) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelMessenger)
+	p.WriteByte(constant.MessengerAvatar)
+	p.WriteByte(slot)
+	p.WriteByte(gender)
+	p.WriteByte(skin)
+	p.WriteInt32(face)
+	p.WriteBool(true)
+	p.WriteInt32(hair)
+	for _, kv := range vis {
+		p.WriteByte(kv.K)
+		p.WriteInt32(kv.V)
+	}
+	p.WriteInt8(-1)
+	for _, kv := range hid {
+		p.WriteByte(kv.K)
+		p.WriteInt32(kv.V)
+	}
+	p.WriteInt8(-1)
+	p.WriteInt32(cashW)
+	p.WriteInt32(petAcc)
 	return p
 }
