@@ -339,13 +339,11 @@ func packetMessengerEnter(slot, gender, skin, ch byte, face, hair, cashW, petAcc
 	p.WriteBool(true)
 	p.WriteInt32(hair)
 	for _, kv := range vis {
-		p.WriteByte(kv.K)
-		p.WriteInt32(kv.V)
+		kv.Serialise(&p)
 	}
 	p.WriteInt8(-1)
 	for _, kv := range hid {
-		p.WriteByte(kv.K)
-		p.WriteInt32(kv.V)
+		kv.Serialise(&p)
 	}
 	p.WriteInt8(-1)
 	p.WriteInt32(cashW)
@@ -366,13 +364,11 @@ func packetMessengerAvatar(slot, gender, skin byte, face, hair, cashW, petAcc in
 	p.WriteBool(true)
 	p.WriteInt32(hair)
 	for _, kv := range vis {
-		p.WriteByte(kv.K)
-		p.WriteInt32(kv.V)
+		kv.Serialise(&p)
 	}
 	p.WriteInt8(-1)
 	for _, kv := range hid {
-		p.WriteByte(kv.K)
-		p.WriteInt32(kv.V)
+		kv.Serialise(&p)
 	}
 	p.WriteInt8(-1)
 	p.WriteInt32(cashW)

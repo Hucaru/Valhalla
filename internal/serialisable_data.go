@@ -128,3 +128,8 @@ type KV struct {
 	K byte
 	V int32
 }
+
+func (kv *KV) Serialise(p *mpacket.Packet) {
+	p.WriteByte(kv.K)
+	p.WriteInt32(kv.V)
+}

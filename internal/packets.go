@@ -329,13 +329,11 @@ func PacketWorldMessengerEnter(recipientID, face, hair, cashW, petAcc int32, slo
 	p.WriteBool(true)
 	p.WriteInt32(hair)
 	for _, kv := range vis {
-		p.WriteByte(kv.K)
-		p.WriteInt32(kv.V)
+		kv.Serialise(&p)
 	}
 	p.WriteInt8(-1)
 	for _, kv := range hid {
-		p.WriteByte(kv.K)
-		p.WriteInt32(kv.V)
+		kv.Serialise(&p)
 	}
 	p.WriteInt8(-1)
 	p.WriteInt32(cashW)
@@ -386,13 +384,11 @@ func PacketWorldMessengerAvatar(recipientID, face, hair, cashW, petAcc int32, sl
 	p.WriteBool(true)
 	p.WriteInt32(hair)
 	for _, kv := range vis {
-		p.WriteByte(kv.K)
-		p.WriteInt32(kv.V)
+		kv.Serialise(&p)
 	}
 	p.WriteInt8(-1)
 	for _, kv := range hid {
-		p.WriteByte(kv.K)
-		p.WriteInt32(kv.V)
+		kv.Serialise(&p)
 	}
 	p.WriteInt8(-1)
 	p.WriteInt32(cashW)
@@ -413,14 +409,11 @@ func PacketMessengerEnter(charID, messengerID, face, hair, cashWeapon, petAccess
 	p.WriteBool(true)
 	p.WriteInt32(hair)
 	for _, kv := range vis {
-		p.WriteByte(kv.K)
-		p.WriteInt32(kv.V)
+		kv.Serialise(&p)
 	}
 	p.WriteInt8(-1)
-
 	for _, kv := range hid {
-		p.WriteByte(kv.K)
-		p.WriteInt32(kv.V)
+		kv.Serialise(&p)
 	}
 	p.WriteInt8(-1)
 
@@ -484,14 +477,11 @@ func PacketMessengerAvatar(gender, skin, channelID byte, charID, face, hair, cas
 	p.WriteBool(true)
 	p.WriteInt32(hair)
 	for _, kv := range vis {
-		p.WriteByte(kv.K)
-		p.WriteInt32(kv.V)
+		kv.Serialise(&p)
 	}
 	p.WriteInt8(-1)
-
 	for _, kv := range hid {
-		p.WriteByte(kv.K)
-		p.WriteInt32(kv.V)
+		kv.Serialise(&p)
 	}
 	p.WriteInt8(-1)
 
