@@ -4306,7 +4306,7 @@ func (server *Server) playerHitReactor(conn mnet.Client, reader mpacket.Reader) 
 	_ = reader.ReadInt32() // stance
 	_ = reader.ReadInt16() // delay
 
-	plr.inst.reactorPool.triggerHit(spawnID, 0)
+	plr.inst.reactorPool.triggerHit(spawnID, 0, server, plr)
 
 }
 

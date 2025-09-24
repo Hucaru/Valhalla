@@ -135,6 +135,12 @@ const (
 	MessengerChat         byte = 0x06
 	MessengerAvatar       byte = 0x07
 	MessengerMigrated     byte = 0x08
+
+	ReactorWarp      = 0
+	ReactorSpawn     = 1
+	ReactorDrop      = 2
+	ReactorSpawnNPC  = 6
+	ReactorRunScript = 10
 )
 
 var ExpTable = [...]int32{15, 34, 57, 92, 135, 372, 560, 840, 1242, 1144, // Beginner

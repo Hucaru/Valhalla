@@ -14,6 +14,7 @@ WORKDIR /app
 COPY Data.nx /app/Data.nx
 COPY drops.json /app/drops.json
 COPY reactors.json /app/reactors.json
+COPY reactor_drops.json /app/reactor_drops.json
 COPY scripts/ /app/scripts/
 
 COPY --from=builder /out/Valhalla /app/Valhalla
