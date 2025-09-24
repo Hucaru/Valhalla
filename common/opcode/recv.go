@@ -50,6 +50,7 @@ const (
 	RecvChannelCharacterReport     byte = 0x49
 	RecvChannelGroupChat           byte = 0x4B
 	RecvChannelSlashCommands       byte = 0x4C
+	RecvChannelMessenger           byte = 0x4D
 	RecvChannelCharacterUIWindow   byte = 0x4E
 	RecvChannelPartyInfo           byte = 0x4F
 	RecvChannelGuildManagement     byte = 0x51

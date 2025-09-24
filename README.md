@@ -112,7 +112,7 @@ Channel server:
 - [ ] Deleted character removes from guild
 - [ ] Deleted character removes from party
 - [ ] Trade
-- [ ] Communication Window
+- [x] Communication Window
 - [x] Quests
 - [x] Reactors
 - [x] Server resets login status upon restart for dangling characters

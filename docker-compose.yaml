@@ -30,7 +30,6 @@ services:
             - 8584:8584
         depends_on:
             - login_server
-            -
     cashshop_server:
       build:
         context: .

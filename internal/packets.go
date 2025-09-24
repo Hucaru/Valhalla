@@ -4,6 +4,7 @@ import (
 	"log"
 
 	"github.com/Hucaru/Valhalla/common/opcode"
+	"github.com/Hucaru/Valhalla/constant"
 	"github.com/Hucaru/Valhalla/mpacket"
 )
 
@@ -308,4 +309,183 @@ func PacketChangeDropRate(rate float32) mpacket.Packet {
 
 func PacketChangeMesosRate(rate float32) mpacket.Packet {
 	return PacketRateOperation(3, rate)
+}
+
+func PacketWorldMessengerSelfEnter(recipientID int32, slot byte) mpacket.Packet {
+	p := mpacket.CreateInternal(opcode.ChannelPlayerMessengerEvent)
+	p.WriteByte(0x00)
+	p.WriteInt32(recipientID)
+	p.WriteByte(slot)
+	return p
+}
+func PacketWorldMessengerEnter(recipientID, face, hair, cashW, petAcc int32, slot, channelID, gender, skin byte, name string, vis, hid []KV) mpacket.Packet {
+	p := mpacket.CreateInternal(opcode.ChannelPlayerMessengerEvent)
+	p.WriteByte(0x01)
+	p.WriteInt32(recipientID)
+	p.WriteByte(slot)
+	p.WriteByte(gender)
+	p.WriteByte(skin)
+	p.WriteInt32(face)
+	p.WriteBool(true)
+	p.WriteInt32(hair)
+	for _, kv := range vis {
+		kv.Serialise(&p)
+	}
+	p.WriteInt8(-1)
+	for _, kv := range hid {
+		kv.Serialise(&p)
+	}
+	p.WriteInt8(-1)
+	p.WriteInt32(cashW)
+	p.WriteInt32(petAcc)
+	p.WriteString(name)
+	p.WriteByte(channelID)
+	p.WriteBool(true)
+	return p
+}
+func PacketWorldMessengerLeave(recipientID int32, slot byte) mpacket.Packet {
+	p := mpacket.CreateInternal(opcode.ChannelPlayerMessengerEvent)
+	p.WriteByte(0x02)
+	p.WriteInt32(recipientID)
+	p.WriteByte(slot)
+	return p
+}
+func PacketWorldMessengerInviteResult(senderID int32, recipient string, ok bool) mpacket.Packet {
+	p := mpacket.CreateInternal(opcode.ChannelPlayerMessengerEvent)
+	p.WriteByte(0x04)
+	p.WriteInt32(senderID)
+	p.WriteString(recipient)
+	p.WriteBool(ok)
+	return p
+}
+func PacketWorldMessengerBlocked(senderID int32, receiver string, mode byte) mpacket.Packet {
+	p := mpacket.CreateInternal(opcode.ChannelPlayerMessengerEvent)
+	p.WriteByte(0x05)
+	p.WriteInt32(senderID)
+	p.WriteString(receiver)
+	p.WriteByte(mode)
+	return p
+}
+func PacketWorldMessengerChat(recipientID int32, msg string) mpacket.Packet {
+	p := mpacket.CreateInternal(opcode.ChannelPlayerMessengerEvent)
+	p.WriteByte(0x06)
+	p.WriteInt32(recipientID)
+	p.WriteString(msg)
+	return p
+}
+func PacketWorldMessengerAvatar(recipientID, face, hair, cashW, petAcc int32, slot, gender, skin byte, vis, hid []KV) mpacket.Packet {
+	p := mpacket.CreateInternal(opcode.ChannelPlayerMessengerEvent)
+	p.WriteByte(0x07)
+	p.WriteInt32(recipientID)
+	p.WriteByte(slot)
+	p.WriteByte(gender)
+	p.WriteByte(skin)
+	p.WriteInt32(face)
+	p.WriteBool(true)
+	p.WriteInt32(hair)
+	for _, kv := range vis {
+		kv.Serialise(&p)
+	}
+	p.WriteInt8(-1)
+	for _, kv := range hid {
+		kv.Serialise(&p)
+	}
+	p.WriteInt8(-1)
+	p.WriteInt32(cashW)
+	p.WriteInt32(petAcc)
+	return p
+}
+
+func PacketMessengerEnter(charID, messengerID, face, hair, cashWeapon, petAccessory int32, channelID, gender, skin byte, name string, vis, hid []KV) mpacket.Packet {
+	p := mpacket.CreateInternal(opcode.ChannelPlayerMessengerEvent)
+	p.WriteByte(constant.MessengerEnter)
+	p.WriteInt32(charID)
+	p.WriteByte(channelID)
+	p.WriteString(name)
+	p.WriteInt32(messengerID)
+	p.WriteByte(gender)
+	p.WriteByte(skin)
+	p.WriteInt32(face)
+	p.WriteBool(true)
+	p.WriteInt32(hair)
+	for _, kv := range vis {
+		kv.Serialise(&p)
+	}
+	p.WriteInt8(-1)
+	for _, kv := range hid {
+		kv.Serialise(&p)
+	}
+	p.WriteInt8(-1)
+
+	p.WriteInt32(cashWeapon)
+	p.WriteInt32(petAccessory)
+
+	return p
+}
+
+func PacketMessengerLeave(charID int32) mpacket.Packet {
+	p := mpacket.CreateInternal(opcode.ChannelPlayerMessengerEvent)
+	p.WriteByte(constant.MessengerLeave)
+	p.WriteInt32(charID)
+	return p
+}
+
+func PacketMessengerInvite(charID int32, channelID byte, name, invitee string) mpacket.Packet {
+	p := mpacket.CreateInternal(opcode.ChannelPlayerMessengerEvent)
+	p.WriteByte(constant.MessengerInvite)
+	p.WriteInt32(charID)
+	p.WriteByte(channelID)
+	p.WriteString(name)
+	p.WriteString(invitee)
+
+	return p
+}
+
+func PacketMessengerBlocked(charID int32, channelID, blockMode byte, name, invitee, inviter string) mpacket.Packet {
+	p := mpacket.CreateInternal(opcode.ChannelPlayerMessengerEvent)
+	p.WriteByte(constant.MessengerBlocked)
+	p.WriteInt32(charID)
+	p.WriteByte(channelID)
+	p.WriteString(name)
+	p.WriteString(invitee)
+	p.WriteString(inviter)
+	p.WriteByte(blockMode)
+
+	return p
+}
+
+func PacketMessengerChat(charID int32, channelID byte, name, message string) mpacket.Packet {
+	p := mpacket.CreateInternal(opcode.ChannelPlayerMessengerEvent)
+	p.WriteByte(constant.MessengerChat)
+	p.WriteInt32(charID)
+	p.WriteByte(channelID)
+	p.WriteString(name)
+	p.WriteString(message)
+
+	return p
+}
+
+func PacketMessengerAvatar(gender, skin, channelID byte, charID, face, hair, cashWeapon, petAccessory int32, name string, vis, hid []KV) mpacket.Packet {
+	p := mpacket.CreateInternal(opcode.ChannelPlayerMessengerEvent)
+	p.WriteByte(constant.MessengerAvatar)
+	p.WriteInt32(charID)
+	p.WriteByte(channelID)
+	p.WriteString(name)
+	p.WriteByte(gender)
+	p.WriteByte(skin)
+	p.WriteInt32(face)
+	p.WriteBool(true)
+	p.WriteInt32(hair)
+	for _, kv := range vis {
+		kv.Serialise(&p)
+	}
+	p.WriteInt8(-1)
+	for _, kv := range hid {
+		kv.Serialise(&p)
+	}
+	p.WriteInt8(-1)
+
+	p.WriteInt32(cashWeapon)
+	p.WriteInt32(petAccessory)
+	return p
 }

@@ -89,6 +89,7 @@ const (
 	SendChannelNpcShopResult           byte = 0xC9
 	SendChannelNpcStorage              byte = 0xCD
 	SendChannelNpcStorageResult        byte = 0xCE
+	SendChannelMessenger               byte = 0xD9
 	SendChannelRoom                    byte = 0xDC
 	SendChannelCSRecharge              byte = 0xE7
 	SendChannelCSUpdateAmounts         byte = 0xE8

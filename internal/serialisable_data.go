@@ -123,3 +123,13 @@ func (party *Party) SerialisePacket(reader *mpacket.Reader) {
 		party.Level[i] = reader.ReadInt32()
 	}
 }
+
+type KV struct {
+	K byte
+	V int32
+}
+
+func (kv *KV) Serialise(p *mpacket.Packet) {
+	p.WriteByte(kv.K)
+	p.WriteInt32(kv.V)
+}

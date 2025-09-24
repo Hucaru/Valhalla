@@ -6,6 +6,7 @@ import (
 	"log"
 	"math"
 	"math/rand"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -157,6 +158,8 @@ func (server *Server) HandleClientPacket(conn mnet.Client, reader mpacket.Reader
 		server.playerHitReactor(conn, reader)
 	case opcode.RecvChannelNpcStorage:
 		server.playerUseStorage(conn, reader)
+	case opcode.RecvChannelMessenger:
+		server.playerHandleMessenger(conn, reader)
 	default:
 		unknownPacketsTotal.Inc()
 		log.Println("UNKNOWN CLIENT PACKET(", op, "):", reader)
@@ -3260,6 +3263,8 @@ func (server *Server) HandleServerPacket(conn mnet.Server, reader mpacket.Reader
 		server.handleChangeRate(conn, reader)
 	case opcode.CashShopInfo:
 		server.handleCashShopInfo(conn, reader)
+	case opcode.ChannelPlayerMessengerEvent:
+		server.handleMessengerEvent(conn, reader)
 
 	default:
 		log.Println("UNKNOWN SERVER PACKET:", reader)
@@ -3629,6 +3634,134 @@ func (server Server) handleChatEvent(conn mnet.Server, reader mpacket.Reader) {
 		}
 	default:
 		log.Println("Unknown chat event type:", op)
+	}
+}
+
+func (server *Server) handleMessengerEvent(conn mnet.Server, reader mpacket.Reader) {
+	op := reader.ReadByte()
+
+	switch op {
+	case constant.MessengerEnter:
+		recipientID := reader.ReadInt32()
+		slot := reader.ReadByte()
+		if plr, err := server.players.getFromID(recipientID); err == nil {
+			plr.Send(packetMessengerSelfEnter(slot))
+		}
+	case constant.MessengerEnterResult:
+		recipientID := reader.ReadInt32()
+		slot := reader.ReadByte()
+		gender := reader.ReadByte()
+		skin := reader.ReadByte()
+		face := reader.ReadInt32()
+		_ = reader.ReadBool()
+		hair := reader.ReadInt32()
+
+		var vis []internal.KV
+		for {
+			b := reader.ReadByte()
+			if b == 0xFF {
+				break
+			}
+			vis = append(vis, internal.KV{K: b, V: reader.ReadInt32()})
+		}
+		var hid []internal.KV
+		for {
+			b := reader.ReadByte()
+			if b == 0xFF {
+				break
+			}
+			hid = append(hid, internal.KV{K: b, V: reader.ReadInt32()})
+		}
+
+		cashW := reader.ReadInt32()
+		petAcc := reader.ReadInt32()
+
+		name := reader.ReadString(reader.ReadInt16())
+		ch := reader.ReadByte()
+		announce := reader.ReadBool()
+
+		if plr, err := server.players.getFromID(recipientID); err == nil {
+			p := packetMessengerEnter(slot, gender, skin, ch, face, hair, cashW, petAcc, name, announce, vis, hid)
+			plr.Send(p)
+		}
+
+	case constant.MessengerLeave:
+		recipientID := reader.ReadInt32()
+		slot := reader.ReadByte()
+		if plr, err := server.players.getFromID(recipientID); err == nil {
+			plr.Send(packetMessengerLeave(slot))
+		}
+	case constant.MessengerInvite:
+		inviteeID := reader.ReadInt32()
+		sender := reader.ReadString(reader.ReadInt16())
+		mID := reader.ReadInt32()
+		nameResolution := reader.ReadBool()
+		if nameResolution {
+			targetName := reader.ReadString(reader.ReadInt16())
+			if plr, err := server.players.getFromName(targetName); err == nil {
+				plr.Send(packetMessengerInvite(sender, mID))
+			}
+			return
+		}
+		if inviteeID != 0 {
+			if plr, err := server.players.getFromID(inviteeID); err == nil {
+				plr.Send(packetMessengerInvite(sender, mID))
+			}
+		}
+	case constant.MessengerInviteResult:
+		senderID := reader.ReadInt32()
+		recipient := reader.ReadString(reader.ReadInt16())
+		success := reader.ReadBool()
+		if plr, err := server.players.getFromID(senderID); err == nil {
+			plr.Send(packetMessengerInviteResult(recipient, success))
+		}
+	case constant.MessengerBlocked:
+		senderID := reader.ReadInt32()
+		receiver := reader.ReadString(reader.ReadInt16())
+		mode := reader.ReadByte()
+		if plr, err := server.players.getFromID(senderID); err == nil {
+			plr.Send(packetMessengerBlocked(receiver, mode))
+		}
+	case constant.MessengerChat:
+		recipientID := reader.ReadInt32()
+		msg := reader.ReadString(reader.ReadInt16())
+		if plr, err := server.players.getFromID(recipientID); err == nil {
+			plr.Send(packetMessengerChat(msg))
+		}
+	case constant.MessengerAvatar:
+		recipientID := reader.ReadInt32()
+		slot := reader.ReadByte()
+		gender := reader.ReadByte()
+		skin := reader.ReadByte()
+		face := reader.ReadInt32()
+		_ = reader.ReadBool()
+		hair := reader.ReadInt32()
+
+		var vis []internal.KV
+		for {
+			b := reader.ReadByte()
+			if b == 0xFF {
+				break
+			}
+			vis = append(vis, internal.KV{K: b, V: reader.ReadInt32()})
+		}
+		var hid []internal.KV
+		for {
+			b := reader.ReadByte()
+			if b == 0xFF {
+				break
+			}
+			hid = append(hid, internal.KV{K: b, V: reader.ReadInt32()})
+		}
+
+		cashW := reader.ReadInt32()
+		petAcc := reader.ReadInt32()
+
+		if plr, err := server.players.getFromID(recipientID); err == nil {
+			p := packetMessengerAvatar(slot, gender, skin, face, hair, cashW, petAcc, vis, hid)
+			plr.Send(p)
+		}
+	default:
 	}
 }
 
@@ -4335,4 +4468,159 @@ func (server *Server) playerUseStorage(conn mnet.Client, reader mpacket.Reader) 
 	case actionExit:
 		return
 	}
+}
+
+func (server *Server) playerHandleMessenger(conn mnet.Client, reader mpacket.Reader) {
+	plr, err := server.players.getFromConn(conn)
+	if err != nil {
+		return
+	}
+
+	mode := reader.ReadByte()
+
+	switch mode {
+	case constant.MessengerEnter:
+		messengerID := reader.ReadInt32()
+		var petAcc int32
+		var vis []internal.KV
+		var hid []internal.KV
+
+		base := make(map[byte]int32)
+		cash := make(map[byte]int32)
+		cashW := int32(0)
+
+		for _, it := range plr.equip {
+			if it.slotID >= 0 {
+				continue
+			}
+
+			slot := byte(-it.slotID)
+			if it.slotID < -100 {
+				slot = byte(-(it.slotID + 100))
+			}
+
+			if slot == 11 {
+				if it.slotID < -100 {
+					cashW = it.ID
+				}
+				continue
+			}
+
+			if it.slotID < -100 {
+				cash[slot] = it.ID
+			} else {
+				if _, ok := base[slot]; !ok {
+					base[slot] = it.ID
+				}
+			}
+		}
+
+		order := func(m map[byte]int32) []byte {
+			ks := make([]byte, 0, len(m))
+			for k := range m {
+				ks = append(ks, k)
+			}
+			sort.Slice(ks, func(i, j int) bool { return ks[i] < ks[j] })
+			return ks
+		}
+
+		for _, k := range order(base) {
+			if v, ok := cash[k]; ok {
+				vis = append(vis, internal.KV{K: k, V: v})
+				hid = append(hid, internal.KV{K: k, V: base[k]})
+			} else {
+				vis = append(vis, internal.KV{K: k, V: base[k]})
+			}
+		}
+
+		for _, k := range order(cash) {
+			if _, used := base[k]; !used {
+				vis = append(vis, internal.KV{K: k, V: cash[k]})
+			}
+		}
+
+		p := internal.PacketMessengerEnter(plr.ID, messengerID, plr.face, plr.hair, cashW, petAcc, server.id, plr.gender, plr.skin, plr.Name, vis, hid)
+		server.world.Send(p)
+	case constant.MessengerLeave:
+		p := internal.PacketMessengerLeave(plr.ID)
+		server.world.Send(p)
+	case constant.MessengerInvite:
+		invitee := reader.ReadString(reader.ReadInt16())
+		p := internal.PacketMessengerInvite(plr.ID, server.id, plr.Name, invitee)
+		server.world.Send(p)
+	case constant.MessengerBlocked:
+		invitee := reader.ReadString(reader.ReadInt16())
+		inviter := reader.ReadString(reader.ReadInt16())
+		blockMode := reader.ReadByte()
+		p := internal.PacketMessengerBlocked(plr.ID, server.id, blockMode, plr.Name, invitee, inviter)
+		server.world.Send(p)
+	case constant.MessengerChat:
+		message := reader.ReadString(reader.ReadInt16())
+		p := internal.PacketMessengerChat(plr.ID, server.id, plr.Name, message)
+		server.world.Send(p)
+	case constant.MessengerAvatar:
+		var petAcc int32
+		var vis []internal.KV
+		var hid []internal.KV
+
+		base := make(map[byte]int32)
+		cash := make(map[byte]int32)
+		cashW := int32(0)
+
+		for _, it := range plr.equip {
+			if it.slotID >= 0 {
+				continue
+			}
+
+			slot := byte(-it.slotID)
+			if it.slotID < -100 {
+				slot = byte(-(it.slotID + 100))
+			}
+
+			if slot == 11 {
+				if it.slotID < -100 {
+					cashW = it.ID
+				}
+				continue
+			}
+
+			if it.slotID < -100 {
+				cash[slot] = it.ID
+			} else {
+				if _, ok := base[slot]; !ok {
+					base[slot] = it.ID
+				}
+			}
+		}
+
+		order := func(m map[byte]int32) []byte {
+			ks := make([]byte, 0, len(m))
+			for k := range m {
+				ks = append(ks, k)
+			}
+			sort.Slice(ks, func(i, j int) bool { return ks[i] < ks[j] })
+			return ks
+		}
+
+		for _, k := range order(base) {
+			if v, ok := cash[k]; ok {
+				vis = append(vis, internal.KV{K: k, V: v})
+				hid = append(hid, internal.KV{K: k, V: base[k]})
+			} else {
+				vis = append(vis, internal.KV{K: k, V: base[k]})
+			}
+		}
+
+		for _, k := range order(cash) {
+			if _, used := base[k]; !used {
+				vis = append(vis, internal.KV{K: k, V: cash[k]})
+			}
+		}
+
+		p := internal.PacketMessengerAvatar(plr.gender, plr.skin, server.id, plr.ID, plr.face, plr.hair, cashW, petAcc, plr.Name, vis, hid)
+		server.world.Send(p)
+	default:
+		return
+	}
+
 }

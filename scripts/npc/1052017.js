@@ -1,3 +1,2 @@
 // Mr. Hong - Kerning
-
-npc.sendOK("Storage not implemented")
+npc.sendStorage(1052017)
