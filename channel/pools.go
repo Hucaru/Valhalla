@@ -1155,22 +1155,6 @@ func (r rect) contains(x, y int16) bool {
 	return !(r.right < r.left || r.bottom < r.top) && x >= r.left && x <= r.right && y >= r.top && y <= r.bottom
 }
 
-func (r *fieldReactor) calcEventRect() (rect, bool) {
-	st, ok := r.info.States[int(r.state)]
-	if !ok || len(st.Events) == 0 {
-		return rect{}, false
-	}
-	ev := st.Events[0]
-	if ev.LT.X == 0 && ev.LT.Y == 0 && ev.RB.X == 0 && ev.RB.Y == 0 {
-		return rect{}, false
-	}
-	L := int16(int(ev.LT.X) + int(r.pos.x))
-	T := int16(int(ev.LT.Y) + int(r.pos.y))
-	R := int16(int(ev.RB.X) + int(r.pos.x))
-	B := int16(int(ev.RB.Y) + int(r.pos.y))
-	return rect{left: L, top: T, right: R, bottom: B}, true
-}
-
 func (r *fieldReactor) nextStateFromTemplate() (byte, bool) {
 	cur := int(r.state)
 	st, ok := r.info.States[cur]
@@ -1236,9 +1220,6 @@ func (pool *reactorPool) tryTriggerByDrop(drop fieldDrop) bool {
 			continue
 		}
 		if ev.ReqItemCnt > 0 && int16(ev.ReqItemCnt) != drop.item.amount {
-			continue
-		}
-		if rr, okRect := r.calcEventRect(); okRect && !rr.contains(drop.finalPos.x, drop.finalPos.y) {
 			continue
 		}
 		if next, okNext := r.nextStateFromTemplate(); okNext && next != r.state {
@@ -1408,14 +1389,7 @@ func (pool *reactorPool) processStateSideEffects(r *fieldReactor, server *Server
 				continue
 			}
 			count := getInt(e, "2", 1)
-			spawnPos := r.pos
-			if rr, okRect := r.calcEventRect(); okRect {
-				spawnPos = pos{
-					x:        int16((int(rr.left) + int(rr.right)) / 2),
-					y:        int16((int(rr.top) + int(rr.bottom)) / 2),
-					foothold: r.pos.foothold,
-				}
-			}
+			spawnPos := pool.instance.calculateFinalDropPos(r.pos)
 			for i := 0; i < count; i++ {
 				_ = pool.instance.lifePool.spawnMobFromID(int32(mobID), spawnPos, false, true, true, 0)
 			}
