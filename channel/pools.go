@@ -1369,7 +1369,7 @@ func (pool *reactorPool) processStateSideEffects(r *fieldReactor, server *Server
 			}
 
 			if warpInfo.warpAll {
-				players = pool.instance.lifePool.instance.players
+				players = append(players, pool.instance.lifePool.instance.players...)
 			} else {
 				players = append(players, plr)
 			}
