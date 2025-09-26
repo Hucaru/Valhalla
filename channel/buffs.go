@@ -130,6 +130,11 @@ func LoadBuffs() {
 
 	// 3rd Job - Priest
 	AddSkillBuff(int32(skill.HolySymbol), BuffHolySymbol)
+	AddSkillBuff(int32(skill.Bless), BuffWeaponAttack, BuffWeaponDefense, BuffMagicAttack, BuffMagicDefense, BuffAccuracy, BuffAvoidability)
+
+	// 3rd Job - Magician
+	AddSkillBuff(int32(skill.SpellBooster), BuffBooster)
+	AddSkillBuff(int32(skill.ILSpellBooster), BuffBooster)
 
 	// GM skills
 	AddSkillBuff(int32(skill.GMShadowPartner), BuffShadowPartner)

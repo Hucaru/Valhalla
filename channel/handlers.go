@@ -3848,7 +3848,7 @@ func (server *Server) playerSpecialSkill(conn mnet.Client, reader mpacket.Reader
 
 	switch skill.Skill(skillID) {
 	// Party buffs handled earlier remain unchanged...
-	case skill.Haste, skill.BanditHaste, skill.Bless, skill.IronWill, skill.Rage,
+	case skill.Haste, skill.BanditHaste, skill.Bless, skill.IronWill, skill.Rage, skill.GMHaste, skill.GMBless, skill.GMHolySymbol,
 		skill.Meditation, skill.ILMeditation, skill.MesoUp, skill.HolySymbol, skill.HyperBody:
 		plr.addBuff(skillID, skillLevel, delay)
 		plr.inst.send(packetPlayerSkillAnimThirdParty(plr.ID, false, true, skillID, skillLevel))
@@ -3871,13 +3871,14 @@ func (server *Server) playerSpecialSkill(conn mnet.Client, reader mpacket.Reader
 		skill.MagicGuard,
 		skill.Invincible,
 		skill.SoulArrow, skill.CBSoulArrow,
-		skill.ShadowPartner,
+		skill.ShadowPartner, skill.GMShadowPartner,
 		skill.MesoGuard,
 		// Attack speed boosters (self)
 		skill.SwordBooster, skill.AxeBooster, skill.PageSwordBooster, skill.BwBooster,
 		skill.SpearBooster, skill.PolearmBooster,
 		skill.BowBooster, skill.CrossbowBooster,
 		skill.ClawBooster, skill.DaggerBooster,
+		skill.SpellBooster, skill.ILSpellBooster,
 		// GM Hide (mapped to invincible bit)
 		skill.Hide:
 		plr.addBuff(skillID, skillLevel, delay)
@@ -4306,7 +4307,7 @@ func (server *Server) playerHitReactor(conn mnet.Client, reader mpacket.Reader) 
 	_ = reader.ReadInt32() // stance
 	_ = reader.ReadInt16() // delay
 
-	plr.inst.reactorPool.triggerHit(spawnID, 0)
+	plr.inst.reactorPool.triggerHit(spawnID, 0, server, plr)
 
 }
 

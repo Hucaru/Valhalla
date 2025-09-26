@@ -77,21 +77,15 @@ func (cs *channelServer) run() {
 	elapsed := time.Since(start)
 	log.Println("Loaded and parsed Wizet data (NX) in", elapsed)
 
-	start = time.Now()
-	if err := channel.PopulateDropTable("drops.json"); err != nil {
-		log.Fatal(err)
-	}
-	elapsed = time.Since(start)
-	log.Println("Loaded and parsed drop data in", elapsed)
-
-	start = time.Now()
-	if err := channel.PopulateReactorTable("reactors.json"); err != nil {
-		log.Fatal(err)
-	}
-	elapsed = time.Since(start)
-	log.Println("Loaded and parsed reactor data in", elapsed)
-
-	cs.gameState.Initialise(cs.wRecv, cs.dbConfig.User, cs.dbConfig.Password, cs.dbConfig.Address, cs.dbConfig.Port, cs.dbConfig.Database)
+	cs.gameState.Initialise(cs.wRecv,
+		cs.dbConfig.User,
+		cs.dbConfig.Password,
+		cs.dbConfig.Address,
+		cs.dbConfig.Port,
+		cs.dbConfig.Database,
+		"drops.json",
+		"reactors.json",
+		"reactor_drops.json")
 
 	cs.wg.Add(1)
 	go cs.acceptNewConnections()

@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/Hucaru/Valhalla/common/opcode"
+	"github.com/Hucaru/Valhalla/constant"
 	"github.com/Hucaru/Valhalla/mpacket"
 	"github.com/Hucaru/Valhalla/nx"
 )
@@ -929,7 +930,6 @@ func (pool *dropPool) createDrop(spawnType byte, dropType byte, mesos int32, dro
 					if _, ok := pool.drops[d.ID]; !ok {
 						return
 					}
-
 					pool.instance.reactorPool.tryTriggerByDrop(d)
 				})
 			}
@@ -1094,7 +1094,7 @@ type reactorTableEntry map[string]interface{}
 
 var reactorTable map[string]map[string]reactorTableEntry
 
-func PopulateReactorTable(reactorJSON string) error {
+func populateReactorTable(reactorJSON string) error {
 	f, err := os.Open(reactorJSON)
 	if err != nil {
 		return err
@@ -1108,26 +1108,51 @@ func PopulateReactorTable(reactorJSON string) error {
 	return json.Unmarshal(b, &reactorTable)
 }
 
+type reactorDrops struct {
+	items []int
+	money int
+}
+
+var reactorDropTable map[string]reactorDrops
+
+func populateReactorDropTable(reactorJSON string) error {
+	b, err := os.ReadFile(reactorJSON)
+	if err != nil {
+		return err
+	}
+
+	var raw map[string]map[string]map[string]interface{}
+	if err := json.Unmarshal(b, &raw); err != nil {
+		return err
+	}
+
+	reactorDropTable = make(map[string]reactorDrops, len(raw))
+	for rid, slots := range raw {
+		rd := reactorDrops{}
+
+		for _, slot := range slots {
+			if v, ok := slot["item"].(string); ok {
+				if id, _ := strconv.Atoi(v); id != 0 {
+					rd.items = append(rd.items, id)
+				}
+			}
+			if v, ok := slot["money"].(string); ok {
+				if m, _ := strconv.Atoi(v); m != 0 {
+					rd.money = m
+				}
+			}
+		}
+
+		reactorDropTable[rid] = rd
+	}
+
+	return nil
+}
+
 type rect struct{ left, top, right, bottom int16 }
 
 func (r rect) contains(x, y int16) bool {
 	return !(r.right < r.left || r.bottom < r.top) && x >= r.left && x <= r.right && y >= r.top && y <= r.bottom
-}
-
-func (r *fieldReactor) calcEventRect() (rect, bool) {
-	st, ok := r.info.States[int(r.state)]
-	if !ok || len(st.Events) == 0 {
-		return rect{}, false
-	}
-	ev := st.Events[0]
-	if ev.LT.X == 0 && ev.LT.Y == 0 && ev.RB.X == 0 && ev.RB.Y == 0 {
-		return rect{}, false
-	}
-	L := int16(int(ev.LT.X) + int(r.pos.x))
-	T := int16(int(ev.LT.Y) + int(r.pos.y))
-	R := int16(int(ev.RB.X) + int(r.pos.x))
-	B := int16(int(ev.RB.Y) + int(r.pos.y))
-	return rect{left: L, top: T, right: R, bottom: B}, true
 }
 
 func (r *fieldReactor) nextStateFromTemplate() (byte, bool) {
@@ -1150,11 +1175,11 @@ func (r *fieldReactor) isTerminal() bool {
 	return !ok
 }
 
-func (pool *reactorPool) changeState(r *fieldReactor, next byte, frameDelay int16, cause byte) {
+func (pool *reactorPool) changeState(r *fieldReactor, next byte, frameDelay int16, cause byte, server *Server, plr *Player) {
 	r.state = next
 	r.frameDelay = frameDelay
 	pool.instance.send(packetMapReactorChangeState(r.spawnID, r.state, r.pos.x, r.pos.y, r.frameDelay, r.faceLeft, cause))
-	pool.processStateSideEffects(r)
+	pool.processStateSideEffects(r, server, plr)
 }
 
 func (pool *reactorPool) leaveAndMaybeRespawn(r *fieldReactor, _ int) {
@@ -1168,13 +1193,13 @@ func (pool *reactorPool) leaveAndMaybeRespawn(r *fieldReactor, _ int) {
 	}
 }
 
-func (pool *reactorPool) triggerHit(spawnID int32, cause byte) {
+func (pool *reactorPool) triggerHit(spawnID int32, cause byte, server *Server, plr *Player) {
 	r, ok := pool.reactors[spawnID]
 	if !ok {
 		return
 	}
 	if next, ok := r.nextStateFromTemplate(); ok && next != r.state {
-		pool.changeState(r, next, 0, cause)
+		pool.changeState(r, next, 0, cause, server, plr)
 		if r.isTerminal() {
 			pool.leaveAndMaybeRespawn(r, 0)
 		}
@@ -1197,11 +1222,8 @@ func (pool *reactorPool) tryTriggerByDrop(drop fieldDrop) bool {
 		if ev.ReqItemCnt > 0 && int16(ev.ReqItemCnt) != drop.item.amount {
 			continue
 		}
-		if rr, okRect := r.calcEventRect(); okRect && !rr.contains(drop.finalPos.x, drop.finalPos.y) {
-			continue
-		}
 		if next, okNext := r.nextStateFromTemplate(); okNext && next != r.state {
-			pool.changeState(r, next, 0, 0)
+			pool.changeState(r, next, 0, 0, &Server{}, nil)
 			pool.instance.dropPool.removeDrop(0, drop.ID)
 			if r.isTerminal() {
 				pool.leaveAndMaybeRespawn(r, 0)
@@ -1268,35 +1290,61 @@ func entriesForReactor(r *fieldReactor) []reactorTableEntry {
 	return out
 }
 
-func (pool *reactorPool) processStateSideEffects(r *fieldReactor) {
-	if st, ok := r.info.States[int(r.state)]; ok && len(st.Events) > 0 {
-		ev := st.Events[0]
-		if mobID, ok := ev.ExtraInts["mob"]; ok && mobID > 0 {
-			count := int32(1)
-			if c, ok := ev.ExtraInts["count"]; ok && c > 0 {
-				count = c
-			} else if a, ok := ev.ExtraInts["amount"]; ok && a > 0 {
-				count = a
-			}
-			if count < 1 {
-				count = 1
-			} else if count > 15 {
-				count = 15
-			}
-			spawnPos := r.pos
-			if rr, okRect := r.calcEventRect(); okRect {
-				spawnPos = pos{
-					x:        int16((int(rr.left) + int(rr.right)) / 2),
-					y:        int16((int(rr.top) + int(rr.bottom)) / 2),
-					foothold: r.pos.foothold,
-				}
-			}
-			for i := int32(0); i < count; i++ {
-				_ = pool.instance.lifePool.spawnMobFromID(mobID, spawnPos, false, true, true, 0)
-			}
-		}
+type reactorWarpInfo struct {
+	warpAll bool
+	targets []reactorWarpTarget
+}
+type reactorWarpTarget struct {
+	mapID  int32
+	portal string
+}
+
+func loadReactorWarpData(entry reactorTableEntry) *reactorWarpInfo {
+	if entry["type"].(float64) != 0 {
+		return nil
 	}
 
+	var out reactorWarpInfo
+	out.warpAll = int(entry["0"].(float64)) == 1
+
+	for i := 1; ; i += 2 {
+		mapKey := strconv.Itoa(i)
+		portalKey := strconv.Itoa(i + 1)
+
+		_, ok1 := entry[mapKey]
+		_, ok2 := entry[portalKey]
+		if !ok1 || !ok2 {
+			break
+		}
+
+		mapID := int32(getInt(entry, mapKey, 0))
+		if mapID == 0 {
+			continue
+		}
+
+		portalName := getString(entry, portalKey, "")
+		if portalName == "" {
+			continue
+		}
+
+		out.targets = append(out.targets, reactorWarpTarget{
+			mapID:  mapID,
+			portal: portalName,
+		})
+	}
+	return &out
+}
+
+func pickRndMap(warp *reactorWarpInfo) (reactorWarpTarget, error) {
+	rnd := rand.New(rand.NewSource(time.Now().UnixNano()))
+	n := len(warp.targets)
+	if n == 0 {
+		return reactorWarpTarget{}, errors.New("no warp targets available")
+	}
+	return warp.targets[rnd.Intn(n)], nil
+}
+
+func (pool *reactorPool) processStateSideEffects(r *fieldReactor, server *Server, plr *Player) {
 	entries := entriesForReactor(r)
 	if len(entries) == 0 {
 		return
@@ -1305,29 +1353,66 @@ func (pool *reactorPool) processStateSideEffects(r *fieldReactor) {
 	for _, e := range entries {
 		if msg := getString(e, "message", ""); msg != "" {
 			pool.instance.send(packetMessageRedText(msg))
-			break
 		}
-	}
 
-	for _, e := range entries {
-		if getInt(e, "type", -1) != 1 {
+		actionType := getInt(e, "type", -1)
+
+		switch actionType {
+		case constant.ReactorWarp:
+			var players []*Player
+
+			warpInfo := loadReactorWarpData(e)
+			mapToWarpTo, err := pickRndMap(warpInfo)
+			if err != nil {
+				log.Println(err)
+				return
+			}
+
+			if warpInfo.warpAll {
+				players = append(players, pool.instance.lifePool.instance.players...)
+			} else {
+				players = append(players, plr)
+			}
+
+			for _, player := range players {
+				err := server.warpPlayer(player,
+					server.fields[mapToWarpTo.mapID],
+					portal{name: mapToWarpTo.portal})
+				if err != nil {
+					log.Println(err)
+				}
+			}
+
+		case constant.ReactorSpawn:
+			mobID := getInt(e, "0", 0)
+			if mobID <= 0 {
+				continue
+			}
+			count := getInt(e, "2", 1)
+			spawnPos := pool.instance.calculateFinalDropPos(r.pos)
+			for i := 0; i < count; i++ {
+				_ = pool.instance.lifePool.spawnMobFromID(int32(mobID), spawnPos, false, true, true, 0)
+			}
+		case constant.ReactorDrop:
+			reactorID := strconv.Itoa(int(r.info.ID))
+			reactorDrops := reactorDropTable[reactorID]
+			var items []Item
+			for _, val := range reactorDrops.items {
+				newItem, err := CreateItemFromID(int32(val), 1)
+				if err != nil {
+					log.Println(err)
+					continue
+				}
+				items = append(items, newItem)
+			}
+
+			pool.instance.dropPool.createDrop(dropSpawnNormal, dropFreeForAll, int32(reactorDrops.money), r.pos, true, 0, 0, items...)
+
+		case constant.ReactorSpawnNPC:
+		case constant.ReactorRunScript:
+
+		default:
 			continue
-		}
-		mobID := getInt(e, "0", 0)
-		if mobID <= 0 {
-			continue
-		}
-		count := getInt(e, "2", 1)
-		if count < 1 {
-			count = 1
-		} else if count > 15 {
-			count = 15
-		}
-		x := int16(getInt(e, "4", int(r.pos.x)))
-		y := int16(getInt(e, "5", int(r.pos.y)))
-		spawnPos := pos{x: x, y: y, foothold: r.pos.foothold}
-		for i := 0; i < count; i++ {
-			_ = pool.instance.lifePool.spawnMobFromID(int32(mobID), spawnPos, false, true, true, 0)
 		}
 	}
 }
