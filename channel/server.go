@@ -100,7 +100,7 @@ type Server struct {
 }
 
 // Initialise the server
-func (server *Server) Initialise(work chan func(), dbuser, dbpassword, dbaddress, dbport, dbdatabase string) {
+func (server *Server) Initialise(work chan func(), dbuser, dbpassword, dbaddress, dbport, dbdatabase, dropsJson, reactorJson, reactorDropsJson string) {
 	server.dispatch = work
 
 	if err := common.ConnectToDB(dbuser, dbpassword, dbaddress, dbport, dbdatabase); err != nil {
@@ -116,6 +116,27 @@ func (server *Server) Initialise(work chan func(), dbuser, dbpassword, dbaddress
 		drop:  1,
 		mesos: 1,
 	}
+
+	start := time.Now()
+	if err := populateDropTable(dropsJson); err != nil {
+		log.Fatal(err)
+	}
+	elapsed := time.Since(start)
+	log.Println("Loaded and parsed drop data in", elapsed)
+
+	start = time.Now()
+	if err := populateReactorTable(reactorJson); err != nil {
+		log.Fatal(err)
+	}
+	elapsed = time.Since(start)
+	log.Println("Loaded and parsed reactor data in", elapsed)
+
+	start = time.Now()
+	if err := populateReactorDropTable(reactorDropsJson); err != nil {
+		log.Fatal(err)
+	}
+	elapsed = time.Since(start)
+	log.Println("Loaded and parsed reactor drop data in", elapsed)
 
 	for fieldID, nxMap := range nx.GetMaps() {
 		server.fields[fieldID] = &field{

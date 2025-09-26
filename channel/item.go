@@ -30,7 +30,7 @@ type dropTableEntry struct {
 var dropTable map[int32][]dropTableEntry
 
 // PopulateDropTable from json file
-func PopulateDropTable(dropJSON string) error {
+func populateDropTable(dropJSON string) error {
 	jsonFile, err := os.Open(dropJSON)
 
 	if err != nil {

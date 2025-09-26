@@ -1094,7 +1094,7 @@ type reactorTableEntry map[string]interface{}
 
 var reactorTable map[string]map[string]reactorTableEntry
 
-func PopulateReactorTable(reactorJSON string) error {
+func populateReactorTable(reactorJSON string) error {
 	f, err := os.Open(reactorJSON)
 	if err != nil {
 		return err
@@ -1115,7 +1115,7 @@ type reactorDrops struct {
 
 var reactorDropTable map[string]reactorDrops
 
-func PopulateReactorDropTable(reactorJSON string) error {
+func populateReactorDropTable(reactorJSON string) error {
 	b, err := os.ReadFile(reactorJSON)
 	if err != nil {
 		return err
