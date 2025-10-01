@@ -1,13 +1,22 @@
-FROM golang:1.16.0
+FROM golang:1.25 AS builder
+WORKDIR /src
 
+COPY go.mod go.sum ./
+RUN go mod download
+
+COPY . .
+ENV CGO_ENABLED=0
+RUN go build -o /out/Valhalla
+
+FROM alpine:3.20
 WORKDIR /app
-COPY . /app
 
-RUN go get
-RUN go build
-RUN chmod +x Valhalla
+COPY drops.json /app/drops.json
+COPY reactors.json /app/reactors.json
+COPY reactor_drops.json /app/reactor_drops.json
+COPY scripts/ /app/scripts/
 
-COPY Data.nx /app/Data.nx
+COPY --from=builder /out/Valhalla /app/Valhalla
 
 RUN echo "#!/bin/sh" > docker-entrypoint.sh && \
   echo "set -ex" >> docker-entrypoint.sh && \
@@ -15,4 +24,3 @@ RUN echo "#!/bin/sh" > docker-entrypoint.sh && \
   chmod +x docker-entrypoint.sh
 
 ENTRYPOINT ["/app/docker-entrypoint.sh"]
-CMD ["/app/Valhalla", "-type", "login", "-config", "/app/config_login.toml"]

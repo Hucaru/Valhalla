@@ -560,13 +560,8 @@ func (cb *CharacterBuffs) AddBuffFromCC(charId, skillID int32, expiresAtMs int64
 	extra := byte(0)
 
 	// Send
-	if foreign {
-		cb.plr.inst.send(packetPlayerGiveForeignBuff(charId, maskBytes, values, extra))
-	} else {
-		cb.plr.Send(packetPlayerGiveBuff(maskBytes, values, delay, extra))
-	}
+	cb.plr.Send(packetPlayerGiveBuff(maskBytes, values, delay, extra))
 
-	cb.plr.Send(packetPlayerShowBuffEffect(charId, skillID, 3, 1))
 	cb.activeSkillLevels[skillID] = level
 
 	cb.expireAt[skillID] = expiresAtMs

@@ -167,7 +167,6 @@ func (server *Server) Initialise(work chan func(), dbuser, dbpassword, dbaddress
 
 	server.parties = make(map[int32]*party)
 	server.guilds = make(map[int32]*guild)
-
 }
 
 func (server *Server) loadScripts() {

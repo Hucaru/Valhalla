@@ -72,12 +72,6 @@ func (server *Server) playerCashShopPurchase(conn mnet.Client, reader mpacket.Re
 			return
 		}
 
-		// Block pets for now
-		if newItem.ID >= 5000000 && newItem.ID <= 5000100 {
-			plr.Send(packetCashShopUpdateAmounts(plrNX, plrMaplePoints))
-			return
-		}
-
 		if err := plr.GiveItem(newItem); err != nil {
 			plr.Send(packetCashShopUpdateAmounts(plrNX, plrMaplePoints))
 			return

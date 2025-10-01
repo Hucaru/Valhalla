@@ -141,6 +141,20 @@ const (
 	ReactorDrop      = 2
 	ReactorSpawnNPC  = 6
 	ReactorRunScript = 10
+
+	PlayerEffectLevelUp          = 0
+	PlayerEffectSkillOnSelf      = 1
+	PlayerEffectSkillOnOther     = 2
+	PlayerEffectQuestEffect      = 3
+	PlayerEffectInventoryChanged = 3
+	PlayerEffectPet              = 4
+	PlayerEffectExpCharm         = 6
+	PlayerEffectPortal           = 7
+	PlayerEffectJobChange        = 8
+
+	PetRemoveNone   byte = 0
+	PetRemoveHungry byte = 1
+	PetRemoveExpire byte = 2
 )
 
 var ExpTable = [...]int32{15, 34, 57, 92, 135, 372, 560, 840, 1242, 1144, // Beginner

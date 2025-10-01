@@ -127,14 +127,15 @@ type Player struct {
 	exp   int32
 	fame  int16
 
-	Name    string
-	gender  byte
-	skin    byte
-	face    int32
-	hair    int32
-	chairID int32
-	stance  byte
-	pos     pos
+	Name      string
+	gender    byte
+	skin      byte
+	face      int32
+	hair      int32
+	chairID   int32
+	petCashID int64
+	stance    byte
+	pos       pos
 
 	equipSlotSize byte
 	useSlotSize   byte
@@ -175,6 +176,7 @@ type Player struct {
 	quests quests
 
 	summons *summonState
+	pet     *pet
 
 	// Per-Player RNG for deterministic randomness
 	rng *rand.Rand
@@ -1177,7 +1179,7 @@ func (d Player) displayBytes() []byte {
 	pkt.WriteByte(d.gender)
 	pkt.WriteByte(d.skin)
 	pkt.WriteInt32(d.face)
-	pkt.WriteByte(0x00) // ?
+	pkt.WriteByte(0x00) // Messenger
 	pkt.WriteInt32(d.hair)
 
 	cashWeapon := int32(0)
@@ -1461,6 +1463,8 @@ func LoadPlayerFromID(id int32, conn mnet.Client) Player {
 		log.Println(err)
 		return c
 	}
+
+	c.petCashID = 0
 
 	if err := common.DB.QueryRow("SELECT username, nx, maplepoints FROM accounts WHERE accountID=?", c.accountID).Scan(&c.accountName, &c.nx, &c.maplepoints); err != nil {
 		log.Printf("loadPlayerFromID: failed to fetch accountName for accountID=%d: %v", c.accountID, err)
@@ -2040,6 +2044,11 @@ func (p *Player) broadcastRemoveSummon(summonSkillID int32, reason byte) {
 	p.inst.send(packetRemoveSummon(p.ID, summonSkillID, reason))
 }
 
+func (p *Player) updatePet() {
+	p.MarkDirty(DirtyPet, time.Millisecond*300)
+	p.inst.send(packetPlayerPetUpdate(p.pet.sn))
+}
+
 func packetPlayerReceivedDmg(charID int32, attack int8, initalAmmount, reducedAmmount, spawnID, mobID, healSkillID int32,
 	stance, reflectAction byte, reflected byte, reflectX, reflectY int16) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelPlayerTakeDmg)
@@ -2071,39 +2080,21 @@ func packetPlayerReceivedDmg(charID int32, attack int8, initalAmmount, reducedAm
 func packetPlayerLevelUpAnimation(charID int32) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelPlayerAnimation)
 	p.WriteInt32(charID)
-	p.WriteByte(0x00)
+	p.WriteByte(constant.PlayerEffectLevelUp)
 
 	return p
 }
 
-func packetPlayerSkillAnimSelf(charID int32, skillID int32, level byte) mpacket.Packet {
+func packetPlayerSkillAnimation(charID int32, party bool, skillID int32, level byte) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelPlayerAnimation)
 	p.WriteInt32(charID)
-	p.WriteByte(0x01)
+	if party {
+		p.WriteByte(constant.PlayerEffectSkillOnOther)
+	} else {
+		p.WriteByte(constant.PlayerEffectSkillOnSelf)
+	}
 	p.WriteInt32(skillID)
 	p.WriteByte(level)
-	return p
-}
-
-func packetPlayerSkillAnimThirdParty(charID int32, party bool, self bool, skillID int32, level byte) mpacket.Packet {
-	var p mpacket.Packet
-	if party && self {
-		p = mpacket.CreateWithOpcode(opcode.SendChannelSkillAnimation)
-	} else {
-		p = mpacket.CreateWithOpcode(opcode.SendChannelPlayerAnimation)
-		p.WriteInt32(charID)
-	}
-
-	if party {
-		p.WriteByte(0x02)
-	} else {
-		p.WriteByte(0x01)
-	}
-	p.WriteInt32(skillID)
-	// Basis uses WriteInt for level; encode as int32 to match
-	p.WriteInt32(int32(level))
-	p.WriteUint64(0)
-	p.WriteUint64(0)
 	return p
 }
 
@@ -2139,34 +2130,6 @@ func packetPlayerGiveBuff(mask []byte, values []byte, delay int16, extra byte) m
 	return p
 }
 
-func packetPlayerGiveForeignBuff(charID int32, mask []byte, values []byte, extra byte) mpacket.Packet {
-	p := mpacket.CreateWithOpcode(opcode.SendChannelPlayerGiveForeignBuff)
-	p.WriteInt32(charID)
-
-	// Normalize to 8 bytes (low dword, high dword)
-	if len(mask) < 8 {
-		tmp := make([]byte, 8)
-		copy(tmp[8-len(mask):], mask)
-		mask = tmp
-	} else if len(mask) > 8 {
-		mask = mask[len(mask)-8:]
-	}
-
-	p.WriteBytes(mask)
-
-	// Per-stat value triples
-	p.WriteBytes(values)
-
-	// Foreign path: no delay, but still optional extra byte
-	if buffMaskNeedsExtraByte(mask) {
-		p.WriteByte(extra)
-	}
-	p.WriteInt64(0)
-	p.WriteInt64(0)
-
-	return p
-}
-
 func buffMaskNeedsExtraByte(mask []byte) bool {
 	isSetLSB := func(bit int) bool {
 		idx := bit / 8
@@ -2196,82 +2159,11 @@ func packetPlayerCancelBuff(mask []byte) mpacket.Packet {
 	return p
 }
 
-func packetPlayerGiveDebuff(mask []byte, values []byte) mpacket.Packet {
-	p := mpacket.CreateWithOpcode(opcode.SendChannelTempStatChange)
-	p.WriteInt64(0)
-	p.WriteBytes(mask)
-	p.WriteBytes(values)
-	p.WriteInt16(900)
-	p.WriteByte(1)
-
-	return p
-}
-
-func packetPlayerGiveForeignDebuff(charID int32, mask []byte, skillID, skillLevel int16) mpacket.Packet {
-	p := mpacket.CreateWithOpcode(opcode.SendChannelPlayerGiveForeignBuff)
-	p.WriteInt32(charID)
-	p.WriteInt64(0)
-	p.WriteBytes(mask)
-	p.WriteInt16(skillID)
-	p.WriteInt16(skillLevel)
-	p.WriteInt16(900)
-
-	return p
-}
-
 func packetPlayerCancelForeignBuff(charID int32, mask []byte) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelPlayerResetForeignBuff)
 	p.WriteInt32(charID)
 	p.WriteUint64(0)
 	p.WriteBytes(mask)
-	return p
-}
-
-func packetPlayerCancelDebuff(mask []byte) mpacket.Packet {
-	p := mpacket.CreateWithOpcode(opcode.SendChannelRemoveTempStat)
-	p.WriteInt64(0)
-	p.WriteBytes(mask)
-	p.WriteInt32(0)
-
-	return p
-}
-
-func packetPlayerCancelForeignDebuff(charID int32, mask []byte) mpacket.Packet {
-	p := mpacket.CreateWithOpcode(opcode.SendChannelPlayerResetForeignBuff)
-	p.WriteInt32(charID)
-	p.WriteUint64(0)
-	p.WriteBytes(mask)
-
-	return p
-}
-
-func packetPlayerShowForeignEffect(charID int32, effectID int32) mpacket.Packet {
-	p := mpacket.CreateWithOpcode(opcode.SendChannelPlayerShowForeignEffect)
-	p.WriteInt32(charID)
-	p.WriteInt32(effectID)
-
-	return p
-}
-
-func packetPlayerShowBuffEffect(charID, skillID, effectID int32, direction byte) mpacket.Packet {
-	p := mpacket.CreateWithOpcode(opcode.SendChannelPlayerShowItemGainChat)
-	p.WriteInt32(charID)
-	p.WriteInt32(effectID)
-	p.WriteInt32(skillID)
-	p.WriteByte(1)
-	if direction != 0x03 {
-		p.WriteByte(direction)
-	}
-	return p
-}
-
-func packetPlayerShowOwnBuffEffect(skillId, effectId int32) mpacket.Packet {
-	p := mpacket.CreateWithOpcode(opcode.SendChannelPlayerShowForeignEffect)
-	p.WriteInt32(0)
-	p.WriteInt32(effectId)
-	p.WriteInt32(skillId)
-	p.WriteByte(0)
-
 	return p
 }
 
@@ -2363,7 +2255,7 @@ func packetPlayerEnterGame(plr Player, channelID int32) mpacket.Packet {
 	p.WriteInt32(plr.face)
 	p.WriteInt32(plr.hair)
 
-	p.WriteInt64(0) // Pet Cash ID
+	p.WriteInt64(plr.petCashID)
 
 	p.WriteByte(plr.level)
 	p.WriteInt16(plr.job)
@@ -2654,8 +2546,18 @@ func packetPlayerAvatarSummaryWindow(charID int32, plr Player) mpacket.Packet {
 		p.WriteString("")
 	}
 
-	p.WriteBool(false) // if has pet
-	p.WriteByte(0)     // wishlist count
+	if plr.petCashID != 0 {
+		p.WriteBool(true)
+		p.WriteInt32(plr.pet.itemID)
+		p.WriteString(plr.pet.name)
+		p.WriteByte(plr.pet.level)
+		p.WriteInt16(plr.pet.closeness)
+		p.WriteByte(plr.pet.fullness)
+		p.WriteInt32(0) // equipped items
+	} else {
+		p.WriteBool(false)
+	}
+	p.WriteByte(0) // wishlist count
 
 	return p
 }
@@ -2764,7 +2666,7 @@ func (plr *Player) WriteCharacterInfoPacket(p *mpacket.Packet) {
 	p.WriteByte(plr.skin)
 	p.WriteInt32(plr.face)
 	p.WriteInt32(plr.hair)
-	p.WriteInt64(0) // Pet Cash ID
+	p.WriteInt64(plr.petCashID) // Pet Cash ID
 
 	p.WriteByte(plr.level)
 	p.WriteInt16(plr.job)
@@ -2893,4 +2795,14 @@ func (plr *Player) WriteCharacterInfoPacket(p *mpacket.Packet) {
 	for i := 0; i < 10; i++ {
 		p.WriteInt32(999999999) // VIP Tele rocks
 	}
+}
+
+func packetPlayerPetUpdate(sn int32) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelStatChange)
+	p.WriteBool(false)
+	p.WriteInt32(constant.PetID)
+	p.WriteUint64(uint64(sn))
+	p.WriteByte(0)
+
+	return p
 }

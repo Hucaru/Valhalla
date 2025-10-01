@@ -64,9 +64,10 @@ Channel server:
 - [x] Player use skills
 - [x] Player skill logic (haste etc)
 - [x] Player inventory (needs a re-write)
-- [x] Player use item (scrolls, potions etc)
+- [x] Player use item (scrolls, potions etc
+- [ ] Player use cash item (super megaphones, etc)
 - [x] Player drop item(s)
-- [ ] Player pets
+- [x] Player pets
 - [x] NPC visible
 - [x] NPC movement
 - [x] NPC basic chat
@@ -106,8 +107,8 @@ Channel server:
 - [x] Guild notice update
 - [x] Guild expel
 - [x] Guild member online notice
-- [ ] PQs
-- [ ] Guild PQ
+- [ ] Kerning PQ
+- [ ] Ludi PQ
 - [x] Balrog boat invasion
 - [ ] Deleted character removes from guild
 - [ ] Deleted character removes from party

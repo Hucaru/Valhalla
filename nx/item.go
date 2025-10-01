@@ -1,6 +1,7 @@
 package nx
 
 import (
+	"fmt"
 	"log"
 	"path/filepath"
 	"strconv"
@@ -12,6 +13,7 @@ import (
 // Item data from nx
 type Item struct {
 	InvTabID                                                       byte
+	Name                                                           string
 	Cash, Pet                                                      bool
 	Only, TradeBlock, ExpireOnLogout, Quest, TimeLimited           int64
 	ReqLevel                                                       byte
@@ -57,6 +59,13 @@ type Item struct {
 	Fs                                                             int64
 	ChatBalloon                                                    int64
 	MoveTo                                                         int32
+	Interact                                                       map[byte]PetReaction
+}
+type PetReaction struct {
+	Inc      byte
+	Prob     byte
+	LevelMin byte
+	LevelMax byte
 }
 
 func extractItems(nodes []gonx.Node, textLookup []string) map[int32]Item {
@@ -135,25 +144,55 @@ func extractItems(nodes []gonx.Node, textLookup []string) map[int32]Item {
 		log.Println("Invalid node search:", consumeBase)
 	}
 
-	// Pet items: /Item/Pet/<ItemID>.img/info
+	// Pet items: /Item/Pet/<ItemID>.img
 	petBase := "/Item/Pet"
-	ok = gonx.FindNode(petBase, nodes, textLookup, func(node *gonx.Node) {
+	gonx.FindNode(petBase, nodes, textLookup, func(node *gonx.Node) {
 		iterateChildren(node, nodes, textLookup, func(itemNode gonx.Node, name string) {
-			subSearch := petBase + "/" + name + "/info"
+			basePath := petBase + "/" + name
 			var itm Item
-			if !findAndExtract(subSearch, nodes, textLookup, &itm) {
-				log.Println("Invalid node search:", subSearch)
-				return
-			}
-			// Mark as pet and register
 			itm.Pet = true
-			if !addItemByName(name, &itm, items) {
-				return
+
+			infoPath := basePath + "/info"
+			findAndExtract(infoPath, nodes, textLookup, &itm)
+
+			itm.Interact = make(map[byte]PetReaction)
+			if interactNode := findChildNode(basePath+"/interact", nodes, textLookup); interactNode != nil {
+				iterateChildren(interactNode, nodes, textLookup, func(reactNode gonx.Node, idx string) {
+					idx64, _ := strconv.ParseUint(idx, 10, 8)
+					var react PetReaction
+					for j := uint32(0); j < uint32(reactNode.ChildCount); j++ {
+						field := nodes[reactNode.ChildID+j]
+						key := textLookup[field.NameID]
+						val := byte(gonx.DataToInt32(field.Data))
+						switch key {
+						case "inc":
+							react.Inc = val
+						case "prob":
+							react.Prob = val
+						case "l0":
+							react.LevelMin = val
+						case "l1":
+							react.LevelMax = val
+						}
+					}
+					itm.Interact[byte(idx64)] = react
+				})
 			}
+
+			addItemByName(name, &itm, items)
 		})
 	})
+
 	if !ok {
 		log.Println("Invalid node search:", petBase)
+	}
+
+	for id, it := range items {
+		name, err := itemName(id, nodes, textLookup)
+		if err == nil {
+			it.Name = name
+			items[id] = it
+		}
 	}
 
 	return items
@@ -166,6 +205,12 @@ func iterateChildren(node *gonx.Node, nodes []gonx.Node, textLookup []string, fn
 		name := textLookup[child.NameID]
 		fn(child, name)
 	}
+}
+
+func findChildNode(path string, nodes []gonx.Node, textLookup []string) *gonx.Node {
+	var ret *gonx.Node
+	gonx.FindNode(path, nodes, textLookup, func(n *gonx.Node) { ret = n })
+	return ret
 }
 
 // findAndExtract finds a node by path and fills item data using getItem
@@ -380,4 +425,55 @@ func (item *Item) getItem(node *gonx.Node, nodes []gonx.Node, textLookup []strin
 		}
 
 	}
+}
+
+func (itm *Item) loadPetInteract(node *gonx.Node, nodes []gonx.Node, textLookup []string) {
+	if itm.Interact == nil {
+		itm.Interact = make(map[byte]PetReaction)
+	}
+
+	if !strings.Contains(textLookup[node.NameID], "/interact") {
+		return
+	}
+
+	for i := uint32(0); i < uint32(node.ChildCount); i++ {
+		idxNode := nodes[node.ChildID+i]
+		idxStr := textLookup[idxNode.NameID]
+
+		idx, err := strconv.ParseUint(idxStr, 10, 8)
+		if err != nil {
+			continue
+		}
+
+		var react PetReaction
+		for j := uint32(0); j < uint32(idxNode.ChildCount); j++ {
+			child := nodes[idxNode.ChildID+j]
+			key := textLookup[child.NameID]
+
+			switch key {
+			case "inc":
+				react.Inc = byte(gonx.DataToInt32(child.Data))
+			case "prob":
+				react.Prob = byte(gonx.DataToInt32(child.Data))
+			case "l0":
+				react.LevelMin = byte(gonx.DataToInt32(child.Data))
+			case "l1":
+				react.LevelMax = byte(gonx.DataToInt32(child.Data))
+			}
+		}
+		itm.Interact[byte(idx)] = react
+	}
+}
+
+func itemName(id int32, nodes []gonx.Node, textLookup []string) (string, error) {
+	groups := []string{"Cash", "Con", "Eqp", "Etc", "Ins", "Pet"}
+	for _, g := range groups {
+		path := fmt.Sprintf("/String/Item.img/%s/%07d/name", g, id)
+		var nameNode *gonx.Node
+		gonx.FindNode(path, nodes, textLookup, func(n *gonx.Node) { nameNode = n })
+		if nameNode != nil {
+			return textLookup[gonx.DataToUint32(nameNode.Data)], nil
+		}
+	}
+	return "", fmt.Errorf("no string node for %07d", id)
 }

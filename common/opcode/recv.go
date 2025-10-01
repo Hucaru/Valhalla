@@ -42,6 +42,7 @@ const (
 	RecvChannelPlayerDropMesos     byte = 0x3C
 	RecvChannelPlayerFame          byte = 0x3D
 	RecvChannelCharacterInfo       byte = 0x3F
+	RecvChannelPetSpawn            byte = 0x40
 	RecvChannelCancelBuff          byte = 0x41 // This is received by the client when the buff needs to be cancelled
 	RecvChannelScriptedPortal      byte = 0x42
 	RecvChannelLieDetectorResult   byte = 0x45
@@ -57,6 +58,10 @@ const (
 	RecvChannelGuildReject         byte = 0x52
 	RecvChannelBuddyOperation      byte = 0x55
 	RecvChannelUseMysticDoor       byte = 0x58
+	RecvChannelPetMove             byte = 0x5B
+	RecvChannelPetAction           byte = 0x5C
+	RecvChannelPetInteraction      byte = 0x5D
+	RecvChannelPetLoot             byte = 0x5E
 	RecvChannelSummonMove          byte = 0x62
 	RecvChannelSummonAttack        byte = 0x63
 	RecvChannelSummonDamage        byte = 0x64

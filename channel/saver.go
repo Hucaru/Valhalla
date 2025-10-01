@@ -35,6 +35,7 @@ const (
 	DirtySkills
 	DirtyNX
 	DirtyMaplePoints
+	DirtyPet
 )
 
 // snapshot contains only columns we may persist.
@@ -69,6 +70,8 @@ type snapshot struct {
 	BuddyListSize byte
 
 	Skills map[int32]playerSkill
+
+	Pet *pet
 }
 
 type pendingSave struct {
@@ -152,11 +155,13 @@ func snapshotFromPlayer(p *Player) snapshot {
 		MiniGameLoss:   p.miniGameLoss,
 		MiniGamePoints: p.miniGamePoints,
 		BuddyListSize:  p.buddyListSize,
+		Pet:            p.pet,
 	}
 
 	if p.dirty&DirtySkills != 0 {
 		s.Skills = copySkills(p.skills)
 	}
+
 	return s
 }
 
@@ -309,9 +314,14 @@ func mergeSnapshot(lhs *snapshot, rhs snapshot) {
 
 	lhs.BuddyListSize = rhs.BuddyListSize
 
+	if rhs.Pet != nil {
+		lhs.Pet = rhs.Pet
+	}
+
 	if rhs.Skills != nil {
 		lhs.Skills = rhs.Skills
 	}
+
 }
 
 func (s *saver) persist(job pendingSave) bool {
@@ -426,6 +436,13 @@ func (s *saver) persist(job pendingSave) bool {
 		query := "UPDATE accounts SET nx=?, maplepoints=? WHERE accountID=?"
 		if _, err := common.DB.Exec(query, job.snap.NX, job.snap.MaplePoints, job.snap.AccountID); err != nil {
 			log.Printf("saver.persist: UPDATE accounts (ID=%d) failed: %v", job.snap.AccountID, err)
+		}
+	}
+
+	if job.bits&DirtyPet != 0 {
+		query := "UPDATE pets SET name=?, sn=?, level=?, closeness=?, fullness=?, deadDate=?, spawnDate=?, lastInteraction=? WHERE parentID=?"
+		if _, err := common.DB.Exec(query, job.snap.Pet.name, job.snap.Pet.sn, job.snap.Pet.level, job.snap.Pet.closeness, job.snap.Pet.fullness, job.snap.Pet.deadDate, job.snap.Pet.spawnDate, job.snap.Pet.lastInteraction, job.snap.Pet.itemDBID); err != nil {
+			log.Printf("saver.persist: UPDATE pets (itemID=%d) failed: %v", job.snap.Pet.itemDBID, err)
 		}
 	}
 

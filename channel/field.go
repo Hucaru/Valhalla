@@ -655,6 +655,10 @@ func (inst fieldInstance) movePlayer(id int32, moveBytes []byte, plr *Player) {
 	inst.sendExcept(packetPlayerMove(id, moveBytes), plr.Conn)
 }
 
+func (inst fieldInstance) movePlayerPet(id int32, moveBytes []byte, plr *Player) {
+	inst.sendExcept(packetPetMove(id, moveBytes), plr.Conn)
+}
+
 func (inst *fieldInstance) nextID() int32 {
 	inst.idCounter++
 	return inst.idCounter
@@ -817,6 +821,20 @@ func packetMapPlayerEnter(plr *Player) mpacket.Packet {
 	p.WriteInt16(plr.pos.y)
 	p.WriteByte(plr.stance)
 	p.WriteInt16(plr.pos.foothold)
+
+	p.WriteBool(false) // GM Hide
+
+	if plr.petCashID != 0 {
+		plr.pet.pos = plr.pos
+		p.WriteBool(true)
+		p.WriteInt32(plr.pet.itemID)
+		p.WriteString(plr.pet.name)
+		p.WriteUint64(uint64(plr.pet.sn))
+		p.WriteInt16(plr.pet.pos.x)
+		p.WriteInt16(plr.pet.pos.y)
+		p.WriteByte(plr.pet.stance)
+		p.WriteInt16(plr.pet.pos.foothold)
+	}
 	p.WriteInt32(0) // ?
 
 	return p
