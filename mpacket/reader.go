@@ -138,3 +138,8 @@ func (r *Reader) ReadString(size int16) string {
 
 	return ""
 }
+
+// ReadRestAsString -
+func (r *Reader) ReadRestAsString() string {
+	return string((*r.packet)[r.pos:])
+}

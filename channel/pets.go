@@ -116,25 +116,17 @@ func handlePetInteraction(plr *Player, pet *pet, interactionID byte, multiplier 
 	successProb := float64(react.Prob) * ((elapsed/10_000.0)*0.01 + 1) * mult
 	success := float64(rand.Intn(100)) < successProb
 	if success {
-		increasePetCloseness(plr, pet, int16(react.Inc))
+		pet.closeness += int16(react.Inc)
+		if pet.closeness < 0 {
+			pet.closeness = 0
+		}
+		if pet.closeness > 30_000 {
+			pet.closeness = 30_000
+		}
+		pet.level = petLevelFromCloseness(pet.closeness)
+		plr.updatePet()
 	}
 	return success
-}
-
-func increasePetCloseness(plr *Player, pet *pet, inc int16) {
-	pet.closeness += inc
-	if pet.closeness < 0 {
-		pet.closeness = 0
-	}
-	if pet.closeness > 30_000 {
-		pet.closeness = 30_000
-	}
-	old := pet.level
-	pet.level = petLevelFromCloseness(pet.closeness)
-	if pet.level > old {
-		plr.inst.send(packetPetAction(plr.ID, 0, 1, ""))
-	}
-	plr.updatePet()
 }
 
 var thresholds = []int16{0, 1, 100, 300, 600, 1000, 1800, 3100, 5000, 8000, 12000, 17000, 22000, 28000}

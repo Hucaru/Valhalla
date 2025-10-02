@@ -4727,7 +4727,7 @@ func (server *Server) playerPetAction(conn mnet.Client, reader mpacket.Reader) {
 
 	actType := reader.ReadByte()
 	act := reader.ReadByte()
-	msg := reader.String()
+	msg := reader.ReadRestAsString()
 
 	plr.inst.send(packetPetAction(plr.ID, actType, act, msg))
 }
@@ -4762,6 +4762,14 @@ func (server *Server) playerPetLoot(conn mnet.Client, reader mpacket.Reader) {
 	err, drop := plr.inst.dropPool.findDropFromID(dropID)
 	if err != nil {
 		// Pet spams pickup so just silently return :)
+		return
+	}
+
+	if plr.pet.pos.x-drop.finalPos.x > 800 || plr.pet.pos.y-drop.finalPos.y > 600 {
+		// Hax
+		log.Printf("Player: %s pet tried to pickup an item from far away", plr.Name)
+		plr.Send(packetDropNotAvailable())
+		plr.Send(packetInventoryDontTake())
 		return
 	}
 
