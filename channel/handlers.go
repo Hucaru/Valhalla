@@ -474,13 +474,23 @@ func (server Server) playerRequestAvatarInfoWindow(conn mnet.Client, reader mpac
 }
 
 func (server Server) playerPassiveRegen(conn mnet.Client, reader mpacket.Reader) {
-	reader.ReadBytes(4) //?
+	flag := reader.ReadInt32()
 
-	hp := reader.ReadInt16()
-	mp := reader.ReadInt16()
+	var hp, mp int16
+
+	if flag&0x0400 != 0 {
+		hp = reader.ReadInt16()
+	} else {
+		hp = 0
+	}
+
+	if flag&0x1000 != 0 {
+		mp = reader.ReadInt16()
+	} else {
+		mp = 0
+	}
 
 	player, err := server.players.getFromConn(conn)
-
 	if err != nil {
 		return
 	}
@@ -490,9 +500,9 @@ func (server Server) playerPassiveRegen(conn mnet.Client, reader mpacket.Reader)
 	}
 
 	if hp > 0 {
-		player.giveHP(int16(hp))
+		player.giveHP(hp)
 	} else if mp > 0 {
-		player.giveMP(int16(mp))
+		player.giveMP(mp)
 	}
 }
 

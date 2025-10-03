@@ -220,7 +220,7 @@ func (ctrl *npcChatPlayerController) Warp(id int32) {
 
 func (ctrl *npcChatPlayerController) WarpFromName(id int32, name string) {
 	if field, ok := ctrl.fields[id]; ok {
-		inst, err := field.getInstance(0)
+		inst, err := field.getInstance(ctrl.plr.inst.id)
 
 		if err != nil {
 			return
@@ -238,6 +238,35 @@ func (ctrl *npcChatPlayerController) WarpFromName(id int32, name string) {
 
 func (ctrl *npcChatPlayerController) InstanceProperties() map[string]interface{} {
 	return ctrl.plr.inst.properties
+}
+
+func (ctrl *npcChatPlayerController) PlayerCount(mapID int32) int {
+	f, ok := ctrl.fields[mapID]
+	if !ok {
+		return 0
+	}
+	inst, err := f.getInstance(ctrl.plr.inst.id)
+	if err != nil {
+		return 0
+	}
+	return len(inst.players)
+}
+
+func (ctrl *npcChatPlayerController) EventActive(mapID int32) bool {
+	f, ok := ctrl.fields[mapID]
+	if !ok {
+		return false
+	}
+	inst, err := f.getInstance(ctrl.plr.inst.id)
+	if err != nil {
+		return false
+	}
+	active, _ := inst.properties["eventActive"].(bool)
+	return active
+}
+
+func (ctrl *npcChatPlayerController) SendMessage(msg string) {
+	ctrl.plr.Send(packetMessageRedText(msg))
 }
 
 func (ctrl *npcChatPlayerController) Mesos() int32 {
@@ -1127,6 +1156,20 @@ func (f *fieldWrapper) Clear(id int, mobs, items bool) {
 	}
 }
 
+func (f *fieldWrapper) Reset() {
+	i, _ := f.field.getInstance(0)
+	if i == nil {
+		return
+	}
+
+	i.lifePool.eraseMobs()
+	i.dropPool.eraseDrops()
+	i.reactorPool.Reset(true)
+	i.properties = map[string]interface{}{
+		"eventActive": false,
+	}
+}
+
 func (f *fieldWrapper) WarpPlayersToPortal(mapID int32, portalID byte) {
 	if f.field == nil {
 		return
@@ -1163,6 +1206,20 @@ func (f *fieldWrapper) MobCount(id int) int {
 	}
 
 	return i.lifePool.mobCount()
+}
+
+func (f *fieldWrapper) PlayerCount(id int) int {
+	if f.field == nil {
+		return 0
+	}
+
+	i, err := f.getInstance(id)
+
+	if err != nil {
+		return 0
+	}
+
+	return len(i.players)
 }
 
 type playerWrapper struct {

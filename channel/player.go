@@ -418,32 +418,6 @@ func (d *Player) setHP(amount int16) {
 	d.MarkDirty(DirtyHP, 500*time.Millisecond)
 }
 
-func (d *Player) giveHP(amount int16) {
-	newHP := d.hp + amount
-	if newHP < 0 {
-		d.setHP(0)
-		return
-	}
-	if newHP > d.maxHP {
-		d.setHP(d.maxHP)
-		return
-	}
-	d.setHP(newHP)
-}
-
-func (d *Player) giveMP(amount int16) {
-	newMP := d.mp + amount
-	if newMP < 0 {
-		d.setMP(0)
-		return
-	}
-	if newMP > d.maxMP {
-		d.setMP(d.maxMP)
-		return
-	}
-	d.setMP(newMP)
-}
-
 func (d *Player) setMaxHP(amount int16) {
 	if amount > constant.MaxHpValue {
 		amount = constant.MaxHpValue
@@ -451,6 +425,14 @@ func (d *Player) setMaxHP(amount int16) {
 	d.maxHP = amount
 	d.Send(packetPlayerStatChange(true, constant.MaxHpID, int32(amount)))
 	d.MarkDirty(DirtyMaxHP, 500*time.Millisecond)
+}
+
+func (d *Player) giveHP(amount int16) {
+	d.setHP(d.hp + amount)
+}
+
+func (d *Player) giveMP(amount int16) {
+	d.setMP(d.mp + amount)
 }
 
 func (d *Player) setMP(amount int16) {
@@ -1264,18 +1246,16 @@ func (d Player) save() error {
 }
 
 func (d *Player) damagePlayer(damage int16) {
-	if damage < -1 {
+	if damage <= 0 {
 		return
 	}
-	newHP := d.hp - damage
 
-	if newHP <= -1 {
-		d.hp = 0
-	} else {
-		d.hp = newHP
+	newHP := d.hp - damage
+	if newHP < 0 {
+		newHP = 0
 	}
 
-	d.Send(packetPlayerStatChange(true, constant.HpID, int32(d.hp)))
+	d.setHP(newHP)
 }
 
 func (d *Player) setInventorySlotSizes(equip, use, setup, etc, cash byte) {

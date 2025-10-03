@@ -827,7 +827,7 @@ func packetMapPlayerEnter(plr *Player) mpacket.Packet {
 	} else {
 		p.WriteBool(false)
 	}
-	
+
 	if plr.petCashID != 0 {
 		plr.pet.pos = plr.pos
 		p.WriteBool(true)
