@@ -821,7 +821,7 @@ func (pool dropPool) canPause() bool {
 
 func (pool dropPool) playerShowDrops(plr *Player) {
 	for _, drop := range pool.drops {
-		plr.Send(packetShowDrop(dropSpawnShow, drop))
+		plr.Send(packetShowDrop(dropSpawnShow, drop, true))
 	}
 }
 
@@ -849,10 +849,10 @@ func (pool *dropPool) clearDrops() {
 	}
 }
 
-func (pool *dropPool) playerAttemptPickup(drop fieldDrop, player *Player) {
+func (pool *dropPool) playerAttemptPickup(drop fieldDrop, player *Player, pickupType int8) {
 	var amount int16
 
-	pool.instance.send(packetRemoveDrop(2, drop.ID, player.ID))
+	pool.instance.send(packetRemoveDrop(pickupType, drop.ID, player.ID))
 
 	if drop.mesos > 0 {
 		amount = int16(pool.rates.mesos * float32(drop.mesos))
@@ -923,7 +923,7 @@ func (pool *dropPool) createDrop(spawnType byte, dropType byte, mesos int32, dro
 
 				pool.drops[drop.ID] = drop
 
-				pool.instance.send(packetShowDrop(spawnType, drop))
+				pool.instance.send(packetShowDrop(spawnType, drop, true))
 
 				d := drop
 				time.AfterFunc(5*time.Second, func() {
@@ -964,7 +964,7 @@ func (pool *dropPool) createDrop(spawnType byte, dropType byte, mesos int32, dro
 
 			pool.drops[drop.ID] = drop
 
-			pool.instance.send(packetShowDrop(spawnType, drop))
+			pool.instance.send(packetShowDrop(spawnType, drop, true))
 		}
 	}
 }
@@ -1494,7 +1494,7 @@ func packetMapRemoveGameBox(charID int32) mpacket.Packet {
 	return p
 }
 
-func packetShowDrop(spawnType byte, drop fieldDrop) mpacket.Packet {
+func packetShowDrop(spawnType byte, drop fieldDrop, allowPet bool) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelDrobEnterMap)
 	p.WriteByte(spawnType) // 0 = disappears on land, 1 = normal drop, 2 = show drop, 3 = fade at top of drop
 	p.WriteInt32(drop.ID)
@@ -1539,14 +1539,14 @@ func packetShowDrop(spawnType byte, drop fieldDrop) mpacket.Packet {
 		}
 	}
 
-	p.WriteByte(0) // Did Player drop it, used by pet with equip?
+	p.WriteBool(allowPet)
 
 	return p
 }
 
 func packetRemoveDrop(dropType int8, dropID int32, lootedBy int32) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelDropExitMap)
-	p.WriteInt8(dropType) // 0 - fade away, 1 - instant, 2 - loot by user, 3 - loot by mob
+	p.WriteInt8(dropType) // 0 - fade away, 1 - instant, 2 - loot by user, 3 - loot by mob, 4 - explode, 5 - loot by pet
 	p.WriteInt32(dropID)
 	p.WriteInt32(lootedBy)
 

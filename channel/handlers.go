@@ -55,6 +55,7 @@ func (server *Server) HandleClientPacket(conn mnet.Client, reader mpacket.Reader
 			log.Printf("panic in HandleClientPacket op=%d: %v", op, r)
 		}
 	}()
+
 	switch op {
 	case opcode.RecvPing:
 	case opcode.RecvClientMigrate:
@@ -160,6 +161,19 @@ func (server *Server) HandleClientPacket(conn mnet.Client, reader mpacket.Reader
 		server.playerUseStorage(conn, reader)
 	case opcode.RecvChannelMessenger:
 		server.playerHandleMessenger(conn, reader)
+	case opcode.RecvChannelPetSpawn:
+		server.playerPetSpawn(conn, reader)
+	case opcode.RecvChannelPetMove:
+		server.playerPetMove(conn, reader)
+	case opcode.RecvChannelPetAction:
+		server.playerPetAction(conn, reader)
+	case opcode.RecvChannelPetInteraction:
+		server.playerPetInteraction(conn, reader)
+	case opcode.RecvChannelPetLoot:
+		server.playerPetLoot(conn, reader)
+	case 159:
+		// I have no idea what this is but it's super spammy
+		// So let's just silently drop it
 	default:
 		unknownPacketsTotal.Inc()
 		log.Println("UNKNOWN CLIENT PACKET(", op, "):", reader)
@@ -460,13 +474,23 @@ func (server Server) playerRequestAvatarInfoWindow(conn mnet.Client, reader mpac
 }
 
 func (server Server) playerPassiveRegen(conn mnet.Client, reader mpacket.Reader) {
-	reader.ReadBytes(4) //?
+	flag := reader.ReadInt32()
 
-	hp := reader.ReadInt16()
-	mp := reader.ReadInt16()
+	var hp, mp int16
+
+	if flag&0x0400 != 0 {
+		hp = reader.ReadInt16()
+	} else {
+		hp = 0
+	}
+
+	if flag&0x1000 != 0 {
+		mp = reader.ReadInt16()
+	} else {
+		mp = 0
+	}
 
 	player, err := server.players.getFromConn(conn)
-
 	if err != nil {
 		return
 	}
@@ -476,9 +500,9 @@ func (server Server) playerPassiveRegen(conn mnet.Client, reader mpacket.Reader)
 	}
 
 	if hp > 0 {
-		player.giveHP(int16(hp))
+		player.giveHP(hp)
 	} else if mp > 0 {
-		player.giveMP(int16(mp))
+		player.giveMP(mp)
 	}
 }
 
@@ -965,6 +989,12 @@ func (server Server) warpPlayer(plr *Player, dstField *field, dstPortal portal) 
 		dstInst.send(packetShowSummon(plr.ID, plr.summons.summon))
 	}
 
+	if plr.petCashID != 0 && plr.pet.spawned {
+		plr.pet.pos = plr.pos
+		plr.pet.pos.y -= 15
+		dstInst.send(packetPetSpawn(plr.ID, plr.pet))
+	}
+
 	return nil
 }
 
@@ -1263,7 +1293,7 @@ func (server Server) playerPickupItem(conn mnet.Client, reader mpacket.Reader) {
 
 	}
 
-	plr.inst.dropPool.playerAttemptPickup(drop, plr)
+	plr.inst.dropPool.playerAttemptPickup(drop, plr, 2)
 
 }
 
@@ -3851,7 +3881,7 @@ func (server *Server) playerSpecialSkill(conn mnet.Client, reader mpacket.Reader
 	case skill.Haste, skill.BanditHaste, skill.Bless, skill.IronWill, skill.Rage, skill.GMHaste, skill.GMBless, skill.GMHolySymbol,
 		skill.Meditation, skill.ILMeditation, skill.MesoUp, skill.HolySymbol, skill.HyperBody:
 		plr.addBuff(skillID, skillLevel, delay)
-		plr.inst.send(packetPlayerSkillAnimThirdParty(plr.ID, false, true, skillID, skillLevel))
+		plr.inst.send(packetPlayerSkillAnimation(plr.ID, false, skillID, skillLevel))
 
 		// Apply to eligible party members in same map/instance per mask
 		if plr.party != nil {
@@ -3862,7 +3892,7 @@ func (server *Server) playerSpecialSkill(conn mnet.Client, reader mpacket.Reader
 				}
 				// Apply buff to the target member (not as a “foreign” state on the caster)
 				member.addBuff(skillID, skillLevel, delay)
-				plr.inst.send(packetPlayerSkillAnimThirdParty(member.ID, true, false, skillID, skillLevel))
+				member.inst.send(packetPlayerSkillAnimation(member.ID, true, skillID, skillLevel))
 			}
 		}
 
@@ -3882,7 +3912,7 @@ func (server *Server) playerSpecialSkill(conn mnet.Client, reader mpacket.Reader
 		// GM Hide (mapped to invincible bit)
 		skill.Hide:
 		plr.addBuff(skillID, skillLevel, delay)
-		plr.inst.send(packetPlayerSkillAnimThirdParty(plr.ID, false, true, skillID, skillLevel))
+		plr.inst.send(packetPlayerSkillAnimation(plr.ID, false, skillID, skillLevel))
 
 	// Debuffs on mobs: [mobCount][mobIDs...][delay]
 	case skill.Threaten,
@@ -3940,12 +3970,12 @@ func (server *Server) playerSpecialSkill(conn mnet.Client, reader mpacket.Reader
 
 		plr.addBuff(skillID, skillLevel, delay)
 		plr.addSummon(summ)
-		plr.inst.send(packetPlayerSkillAnimThirdParty(plr.ID, false, true, skillID, skillLevel))
+		plr.inst.send(packetPlayerSkillAnimation(plr.ID, false, skillID, skillLevel))
 
 	default:
 		// Always Send a self animation so client shows casting even for non-buffs.
 		plr.addBuff(skillID, skillLevel, delay)
-		plr.inst.send(packetPlayerSkillAnimThirdParty(plr.ID, false, true, skillID, skillLevel))
+		plr.inst.send(packetPlayerSkillAnimation(plr.ID, false, skillID, skillLevel))
 	}
 
 	// Apply MP cost/cooldown, if any (reuses the same flow as attack skills).
@@ -3953,8 +3983,6 @@ func (server *Server) playerSpecialSkill(conn mnet.Client, reader mpacket.Reader
 		plr.Send(packetPlayerNoChange())
 		return
 	}
-
-	plr.Send(packetPlayerNoChange())
 }
 
 func (server *Server) playerCancelBuff(conn mnet.Client, reader mpacket.Reader) {
@@ -4624,4 +4652,148 @@ func (server *Server) playerHandleMessenger(conn mnet.Client, reader mpacket.Rea
 		return
 	}
 
+}
+
+func (server *Server) playerPetSpawn(conn mnet.Client, reader mpacket.Reader) {
+	plr, err := server.players.getFromConn(conn)
+	if err != nil {
+		return
+	}
+
+	slot := reader.ReadInt16()
+
+	petItem, err := plr.getItem(5, slot)
+	if !petItem.pet || err != nil {
+		plr.Send(packetPlayerNoChange())
+		return
+	}
+
+	if petItem.petData == nil {
+		sn, _ := nx.GetCommoditySNByItemID(petItem.ID)
+		petItem.petData = newPet(petItem.ID, sn, petItem.dbID)
+		savePet(&petItem)
+	}
+
+	petEquipped := plr.petCashID != 0
+	changePet := petEquipped && plr.petCashID == int64(petItem.petData.sn)
+
+	if petEquipped {
+		plr.inst.send(packetPetRemove(plr.ID, constant.PetRemoveNone))
+		plr.petCashID = 0
+	}
+
+	if !changePet {
+		plr.petCashID = int64(petItem.petData.sn)
+
+		if plr.pet == nil || plr.pet.sn != petItem.petData.sn {
+			plr.pet = petItem.petData
+		}
+
+		plr.pet.pos = plr.pos
+		plr.inst.send(packetPetSpawn(plr.ID, plr.pet))
+
+		if plr.pet.spawnDate == 0 {
+			plr.Send(packetPlayerPetUpdate(plr.pet.sn))
+		}
+		plr.pet.spawnDate = time.Now().Unix()
+		plr.pet.spawned = true
+	}
+
+	plr.MarkDirty(DirtyPet, time.Millisecond*300)
+	plr.Send(packetPlayerNoChange())
+}
+
+func (server *Server) playerPetMove(conn mnet.Client, reader mpacket.Reader) {
+	plr, err := server.players.getFromConn(conn)
+	if err != nil {
+		return
+	}
+
+	moveData, finalData := parseMovement(reader)
+	moveBytes := generateMovementBytes(moveData)
+
+	plr.pet.updateMovement(finalData)
+
+	field, ok := server.fields[plr.mapID]
+
+	if !ok {
+		return
+	}
+
+	inst, err := field.getInstance(plr.inst.id)
+
+	if err != nil {
+		return
+	}
+
+	inst.movePlayerPet(plr.ID, moveBytes, plr)
+}
+
+func (server *Server) playerPetAction(conn mnet.Client, reader mpacket.Reader) {
+	plr, err := server.players.getFromConn(conn)
+	if err != nil {
+		return
+	}
+
+	actType := reader.ReadByte()
+	act := reader.ReadByte()
+	msg := reader.ReadRestAsString()
+
+	plr.inst.send(packetPetAction(plr.ID, actType, act, msg))
+}
+
+func (server *Server) playerPetInteraction(conn mnet.Client, reader mpacket.Reader) {
+	plr, err := server.players.getFromConn(conn)
+	if err != nil {
+		return
+	}
+
+	if plr.pet == nil || !plr.pet.spawned {
+		return
+	}
+
+	doMultiplier := reader.ReadByte()
+	interactionID := reader.ReadByte()
+
+	petItem := plr.pet
+	success := handlePetInteraction(plr, petItem, interactionID, doMultiplier == 1)
+	plr.Send(packetPetInteraction(plr.ID, interactionID, success, false))
+}
+
+func (server *Server) playerPetLoot(conn mnet.Client, reader mpacket.Reader) {
+	plr, err := server.players.getFromConn(conn)
+	if err != nil || plr.pet == nil || !plr.pet.spawned {
+		return
+	}
+
+	reader.Skip(4) // unused pos
+	dropID := reader.ReadInt32()
+
+	err, drop := plr.inst.dropPool.findDropFromID(dropID)
+	if err != nil {
+		// Pet spams pickup so just silently return :)
+		return
+	}
+
+	if plr.pet.pos.x-drop.finalPos.x > 800 || plr.pet.pos.y-drop.finalPos.y > 600 {
+		// Hax
+		log.Printf("Player: %s pet tried to pickup an item from far away", plr.Name)
+		plr.Send(packetDropNotAvailable())
+		plr.Send(packetInventoryDontTake())
+		return
+	}
+
+	if drop.mesos > 0 {
+		plr.giveMesos(drop.mesos)
+	} else {
+		err = plr.GiveItem(drop.item)
+		if err != nil {
+			plr.Send(packetInventoryFull())
+			plr.Send(packetInventoryDontTake())
+			return
+		}
+
+	}
+
+	plr.inst.dropPool.playerAttemptPickup(drop, plr, 5)
 }
