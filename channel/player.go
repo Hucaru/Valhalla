@@ -413,6 +413,9 @@ func (d *Player) setHP(amount int16) {
 	if amount > constant.MaxHpValue {
 		amount = constant.MaxHpValue
 	}
+	if amount > d.maxHP {
+		amount = d.maxHP
+	}
 	d.hp = amount
 	d.Send(packetPlayerStatChange(true, constant.HpID, int32(amount)))
 	d.MarkDirty(DirtyHP, 500*time.Millisecond)
@@ -438,6 +441,9 @@ func (d *Player) giveMP(amount int16) {
 func (d *Player) setMP(amount int16) {
 	if amount > constant.MaxMpValue {
 		amount = constant.MaxMpValue
+	}
+	if amount > d.maxMP {
+		amount = d.maxMP
 	}
 	d.mp = amount
 	d.Send(packetPlayerStatChange(true, constant.MpID, int32(amount)))
