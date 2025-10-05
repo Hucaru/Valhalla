@@ -1865,6 +1865,12 @@ func (server Server) playerMeleeSkill(conn mnet.Client, reader mpacket.Reader) {
 		return
 	}
 
+	err = plr.useSkill(data.skillID, data.skillLevel, data.projectileID)
+	if err != nil {
+		// Send packet to stop?
+		return
+	}
+
 	packetSkillMelee := func(char Player, ad attackData) mpacket.Packet {
 		p := mpacket.CreateWithOpcode(opcode.SendChannelPlayerUseMeleeSkill)
 		p.WriteInt32(char.ID)

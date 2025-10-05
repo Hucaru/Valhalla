@@ -300,30 +300,43 @@ func (d *Player) levelUp() {
 }
 
 func (d *Player) setEXP(amount int32) {
-	if d.level > 199 {
+	if d.level >= 200 {
 		d.exp = amount
 		d.Send(packetPlayerStatChange(false, constant.ExpID, int32(amount)))
 		d.MarkDirty(DirtyEXP, 800*time.Millisecond)
 		return
 	}
-	remainder := amount - constant.ExpTable[d.level-1]
-	if remainder >= 0 {
-		d.levelUp()
-		d.setEXP(remainder)
-	} else {
-		d.exp = amount
-		d.Send(packetPlayerStatChange(false, constant.ExpID, int32(amount)))
-		d.MarkDirty(DirtyEXP, 800*time.Millisecond)
+
+	for {
+		if d.level >= 200 {
+			d.exp = amount
+			break
+		}
+
+		expForLevel := constant.ExpTable[d.level-1]
+		remainder := amount - expForLevel
+		if remainder >= 0 {
+			d.levelUp()
+			amount = remainder
+		} else {
+			d.exp = amount
+			break
+		}
 	}
+
+	d.Send(packetPlayerStatChange(false, constant.ExpID, d.exp))
+	d.MarkDirty(DirtyEXP, 800*time.Millisecond)
 }
 
 func (d *Player) giveEXP(amount int32, fromMob, fromParty bool) {
 	amount = int32(d.rates.exp * float32(amount))
-	if fromMob {
+
+	switch {
+	case fromMob:
 		d.Send(packetMessageExpGained(true, false, amount))
-	} else if fromParty {
+	case fromParty:
 		d.Send(packetMessageExpGained(false, false, amount))
-	} else {
+	default:
 		d.Send(packetMessageExpGained(false, true, amount))
 	}
 
@@ -409,7 +422,15 @@ func (d *Player) giveLuk(amount int16) {
 	d.setLuk(d.luk + amount)
 }
 
+func (d *Player) giveHP(amount int16) {
+	newHP := int(d.hp) + int(amount)
+	d.setHP(int16(newHP))
+}
+
 func (d *Player) setHP(amount int16) {
+	if amount < 0 {
+		amount = 0
+	}
 	if amount > constant.MaxHpValue {
 		amount = constant.MaxHpValue
 	}
@@ -430,15 +451,15 @@ func (d *Player) setMaxHP(amount int16) {
 	d.MarkDirty(DirtyMaxHP, 500*time.Millisecond)
 }
 
-func (d *Player) giveHP(amount int16) {
-	d.setHP(d.hp + amount)
-}
-
 func (d *Player) giveMP(amount int16) {
-	d.setMP(d.mp + amount)
+	newMP := int(d.mp) + int(amount)
+	d.setMP(int16(newMP))
 }
 
 func (d *Player) setMP(amount int16) {
+	if amount < 0 {
+		amount = 0
+	}
 	if amount > constant.MaxMpValue {
 		amount = constant.MaxMpValue
 	}
