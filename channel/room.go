@@ -1075,6 +1075,23 @@ func packetRoomEnterErrorMsg(errorCode byte) mpacket.Packet {
 	return p
 }
 
+func packetRoomTradePutItem(tradeSlot, invSlot byte, item Item) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelRoom)
+	p.WriteByte(13)
+	p.WriteByte(invSlot)
+	p.WriteByte(tradeSlot)
+	p.WriteBytes(item.bytes(false, false))
+	return p
+}
+
+func packetRoomTradePutMesos(amount int32, slot byte) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelRoom)
+	p.WriteByte(14)
+	p.WriteByte(slot)
+	p.WriteInt32(amount)
+	return p
+}
+
 func packetRoomClosed() mpacket.Packet {
 	return packetRoomEnterErrorMsg(0x01)
 }

@@ -68,6 +68,8 @@ func AddSkillBuff(skillID int32, bits ...int) {
 func LoadBuffs() {
 	skillBuffBits = make(map[int32][]int)
 
+	AddSkillBuff(int32(skill.NimbleBody), BuffSpeed)
+
 	// 1st Job
 	AddSkillBuff(int32(skill.IronBody), BuffWeaponDefense)
 	AddSkillBuff(int32(skill.MagicGuard), BuffMagicGuard)

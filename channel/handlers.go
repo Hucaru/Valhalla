@@ -1282,7 +1282,8 @@ func (server Server) playerPickupItem(conn mnet.Client, reader mpacket.Reader) {
 	}
 
 	if drop.mesos > 0 {
-		plr.giveMesos(drop.mesos)
+		amount := int32(plr.inst.dropPool.rates.mesos * float32(drop.mesos))
+		plr.giveMesos(amount)
 	} else {
 		err = plr.GiveItem(drop.item)
 		if err != nil {
@@ -3879,7 +3880,7 @@ func (server *Server) playerSpecialSkill(conn mnet.Client, reader mpacket.Reader
 	switch skill.Skill(skillID) {
 	// Party buffs handled earlier remain unchanged...
 	case skill.Haste, skill.BanditHaste, skill.Bless, skill.IronWill, skill.Rage, skill.GMHaste, skill.GMBless, skill.GMHolySymbol,
-		skill.Meditation, skill.ILMeditation, skill.MesoUp, skill.HolySymbol, skill.HyperBody:
+		skill.Meditation, skill.ILMeditation, skill.MesoUp, skill.HolySymbol, skill.HyperBody, skill.NimbleBody:
 		plr.addBuff(skillID, skillLevel, delay)
 		plr.inst.send(packetPlayerSkillAnimation(plr.ID, false, skillID, skillLevel))
 
@@ -4784,7 +4785,8 @@ func (server *Server) playerPetLoot(conn mnet.Client, reader mpacket.Reader) {
 	}
 
 	if drop.mesos > 0 {
-		plr.giveMesos(drop.mesos)
+		amount := int32(plr.inst.dropPool.rates.mesos * float32(drop.mesos))
+		plr.giveMesos(amount)
 	} else {
 		err = plr.GiveItem(drop.item)
 		if err != nil {

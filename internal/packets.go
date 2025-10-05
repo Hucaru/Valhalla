@@ -489,3 +489,8 @@ func PacketMessengerAvatar(gender, skin, channelID byte, charID, face, hair, cas
 	p.WriteInt32(petAccessory)
 	return p
 }
+
+func PacketRequestChannelInfo() mpacket.Packet {
+	p := mpacket.CreateInternal(opcode.CashShopRequestChannelInfo)
+	return p
+}
