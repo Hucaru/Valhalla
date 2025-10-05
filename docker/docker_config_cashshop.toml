@@ -1,12 +1,12 @@
 [database]
-address = "127.0.0.1"
+address = "db"
 port = "3306"
 user = "root"
 password = "password"
 database = "maplestory"
 
 [cashshop]
-worldAddress = "127.0.0.1"
+worldAddress = "world_server"
 worldPort = "8584"
 listenAddress = "0.0.0.0"
 listenPort = "8600"
