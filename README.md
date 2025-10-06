@@ -149,6 +149,45 @@ See screenshots section for an example Grafana dashboard
     - [OpenMG](https://github.com/sewil/OpenMG)
 - [NX](https://nxformat.github.io/) file format (see acknowledgements at link)
 
+## How to Run
+
+All instances are run through the main executable by passing a **type** and an optional **config** file.
+
+### Windows
+
+```bash
+Valhalla.exe -type login -config config_login.toml
+````
+
+### Linux
+
+```bash
+Valhalla -type login -config config_login.toml
+```
+
+## Configuration
+
+Each server type can be configured either via its corresponding `config_<type>.toml` file or through environment variables.
+
+For containerized setups, the TOML files used are the ones inside the `docker` directory.
+
+Environment variable names follow the same structure as the TOML keys, but with prefixes added.
+
+For example, in TOML:
+
+```toml
+[login]
+clientListenAddress = "0.0.0.0"
+clientListenPort = "8484"
+```
+
+The equivalent environment variables would be:
+
+```bash
+VALHALLA_LOGIN_CLIENTLISTENADDRESS=0.0.0.0
+VALHALLA_LOGIN_CLIENTLISTENPORT=8484
+```
+
 ## NPC chat display info (use this when scripting NPCs)
 
 NPCs are scripted in javscript powered by [goja](https://github.com/dop251/goja)
