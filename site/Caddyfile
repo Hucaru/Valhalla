@@ -1,0 +1,39 @@
+:80 {
+  encode gzip
+  root * /srv
+  file_server
+
+  @register path /register*
+  handle @register {
+    reverse_proxy register:8080
+  }
+
+  header {
+    X-Content-Type-Options "nosniff"
+    Referrer-Policy "no-referrer"
+  }
+}
+
+# # Redirect plain HTTP → HTTPS for the domain
+# http://register.your-domain.tld {
+#   redir https://register.your-domain.tld{uri} 308
+# }
+
+# # HTTPS site
+# register.your-domain.tld {
+#   encode gzip
+#   root * /srv
+#   file_server
+
+#   # Keep /register path intact when proxying
+#   @register path /register*
+#   handle @register {
+#     reverse_proxy register:8080
+#   }
+
+#   header {
+#     Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+#     X-Content-Type-Options "nosniff"
+#     Referrer-Policy "no-referrer"
+#   }
+# }

@@ -176,6 +176,25 @@ services:
         #     GF_INSTALL_PLUGINS: ""
         ports:
             - 3000:3000
+    
+    register:
+        build:
+            context: ./site/register
+        environment:
+            <<: *common_env
+        depends_on:
+            - db
+
+    caddy:
+        image: caddy:2
+        ports:
+            - "80:80"
+        # - "443:443"
+        volumes:
+            - ./site:/srv:ro
+            - ./site/Caddyfile:/etc/caddy/Caddyfile:ro
+        depends_on:
+            - register
 
 volumes:
     db-data:

@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Register</title>
+    <style>
+      body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; max-width: 560px; margin: 3rem auto; }
+      form { display: grid; gap: 0.75rem; }
+      label { display: grid; gap: 0.35rem; }
+      button { padding: .6rem 1rem; cursor: pointer; }
+      #notice { margin-top: 1rem; white-space: pre-wrap; }
+    </style>
+  </head>
+  <body>
+    <h1>Create your game account</h1>
+
+    <form id="reg" novalidate>
+      <label>
+        Username
+        <input type="text" id="username" name="username"
+               required minlength="3" maxlength="32"
+               pattern="[A-Za-z0-9_.\-]{3,32}" />
+      </label>
+
+      <label>
+        Password (min 8 chars)
+        <input type="password" id="password" name="password"
+               required minlength="8" />
+      </label>
+
+      <label>
+        PIN (exactly 4 digits)
+        <input type="text" id="pin" name="pin"
+               required pattern="\d{4}" inputmode="numeric" maxlength="4" />
+      </label>
+
+      <label>
+        Gender
+        <select id="gender" name="gender" required>
+          <option value="" disabled selected>Select your gender…</option>
+          <option value="0">Male</option>
+          <option value="1">Female</option>
+        </select>
+      </label>
+
+      <label>
+        DOB (YYYYMMDD — 8 digits)
+        <input type="text" id="dob" name="dob"
+               required pattern="\d{8}" inputmode="numeric" maxlength="8" />
+      </label>
+
+      <button type="submit">Register</button>
+    </form>
+
+    <div id="notice" role="status" aria-live="polite"></div>
+
+    <script>
+      const f = document.getElementById('reg');
+      const notice = document.getElementById('notice');
+
+      function msg(text, ok=false){
+        notice.textContent = text;
+        notice.style.color = ok ? "green" : "crimson";
+      }
+
+      f.addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        // native validation first
+        if (!f.reportValidity()) return;
+
+        const payload = {
+          username: document.getElementById('username').value.trim(),
+          password: document.getElementById('password').value,
+          pin: document.getElementById('pin').value.trim(),
+          gender: Number(document.getElementById('gender').value),
+          dob: Number(document.getElementById('dob').value),
+        };
+
+        msg("Submitting…", true);
+
+        try {
+          const res = await fetch('/register', {
+            method: 'POST',
+            headers: {'Content-Type':'application/json'},
+            body: JSON.stringify(payload),
+          });
+
+          const text = await res.text();
+          let data;
+          try { data = JSON.parse(text); } catch { data = {status:"error", error:text}; }
+
+          if (res.ok && data.status === "ok") {
+            msg("Account created! You can now log in.", true);
+            f.reset();
+          } else if (res.status === 409) {
+            msg("Username is already taken. Please choose another.");
+          } else if (res.status === 400) {
+            msg(data.error || "Invalid input.");
+          } else {
+            msg(data.error || "Server error. Please try again.");
+          }
+        } catch {
+          msg("Network error. Please try again.");
+        }
+      });
+    </script>
+  </body>
+</html>
