@@ -62,6 +62,7 @@ func newLoginServer(configFile string) *loginServer {
 
 func (ls *loginServer) run() {
 	log.Println("Login Server")
+	log.Printf("Listening on %q:%q", ls.config.ClientListenAddress, ls.config.ClientListenPort)
 
 	start := time.Now()
 	nx.LoadFile("Data.nx")

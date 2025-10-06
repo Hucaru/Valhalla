@@ -99,7 +99,6 @@ func LoadConfig(fname string) *fullConfig {
 	if err := v.Unmarshal(&config); err != nil {
 		log.Fatalf("failed to unmarshal config: %v", err)
 	}
-	log.Printf("World → login %q:%q | listen %q:%q", config.World.LoginAddress, config.World.LoginPort, config.World.ListenAddress, config.World.ListenPort)
 
 	return &config
 }
