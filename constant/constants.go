@@ -12,7 +12,6 @@ const (
 
 const (
 	MaxItemStack = 200
-	MaxMesos     = 2147483647
 
 	SkinID  = 0x01
 	FaceID  = 0x02 // Eyes

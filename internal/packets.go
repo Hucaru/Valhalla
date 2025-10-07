@@ -490,7 +490,7 @@ func PacketMessengerAvatar(gender, skin, channelID byte, charID, face, hair, cas
 	return p
 }
 
-func PacketRequestChannelInfo() mpacket.Packet {
+func PacketCashShopRequestChannelInfo() mpacket.Packet {
 	p := mpacket.CreateInternal(opcode.CashShopRequestChannelInfo)
 	return p
 }

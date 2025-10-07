@@ -166,7 +166,7 @@ func (server *Server) leaveCashShopToChannel(conn mnet.Client, reader mpacket.Re
 		log.Printf("cashshop: target channel %d missing IP/port, searching for fallback...", targetChan)
 
 		log.Println("cashshop: sent request to world for updated channel information")
-		server.world.Send(internal.PacketRequestChannelInfo())
+		server.world.Send(internal.PacketCashShopRequestChannelInfo())
 
 		found := false
 		for i, ch := range server.channels {

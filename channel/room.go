@@ -825,14 +825,14 @@ func (r *tradeRoom) completeTrade() {
 	p2 := r.players[1]
 
 	if m1, ok := r.mesos[p1.ID]; ok && m1 > 0 {
-		if (p2.mesos + m1) > constant.MaxMesos {
+		if (p2.mesos + m1) > math.MaxInt32 {
 			r.closeWithReason(constant.MiniRoomTradeFail)
 			r.rollback()
 		}
 		p2.giveMesos(m1)
 	}
 	if m2, ok := r.mesos[p2.ID]; ok && m2 > 0 {
-		if (p1.mesos + m2) > constant.MaxMesos {
+		if (p1.mesos + m2) > math.MaxInt32 {
 			r.closeWithReason(constant.MiniRoomTradeFail)
 			r.rollback()
 		}
