@@ -53,6 +53,7 @@ func newChannelServer(configFile string) *channelServer {
 
 func (cs *channelServer) run() {
 	log.Println("Channel Server")
+	log.Printf("Listening on %q:%q", cs.config.ListenAddress, cs.config.ListenPort)
 
 	cs.wg.Add(1)
 	go func() {
