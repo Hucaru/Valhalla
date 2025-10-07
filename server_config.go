@@ -1,110 +1,154 @@
 package main
 
 import (
+	"errors"
 	"log"
+	"reflect"
+	"strings"
 
-	"github.com/BurntSushi/toml"
+	"github.com/spf13/viper"
 )
 
 type dbConfig struct {
-	Address  string
-	Port     string
-	User     string
-	Password string
-	Database string
+	Address  string	`mapstructure:"address"`
+	Port     string	`mapstructure:"port"`
+	User     string	`mapstructure:"user"`
+	Password string	`mapstructure:"password"`
+	Database string	`mapstructure:"database"`
 }
 
 type loginConfig struct {
-	ClientListenAddress string
-	ClientListenPort    string
-	ServerListenAddress string
-	ServerListenPort    string
-	WithPin             bool
-	PacketQueueSize     int
-	Latency             int
-	Jitter              int
+	ClientListenAddress string	`mapstructure:"clientListenAddress"`
+	ClientListenPort    string	`mapstructure:"clientListenPort"`
+	ServerListenAddress string	`mapstructure:"serverListenAddress"`
+	ServerListenPort    string	`mapstructure:"serverListenPort"`
+	WithPin             bool	`mapstructure:"withPin"`
+	PacketQueueSize     int		`mapstructure:"packetQueueSize"`
+	Latency             int		`mapstructure:"latency"`
+	Jitter              int		`mapstructure:"jitter"`
 }
 
 type worldConfig struct {
-	Message         string
-	Ribbon          byte
-	ExpRate         float32
-	DropRate        float32
-	MesosRate       float32
-	LoginAddress    string
-	LoginPort       string
-	ListenAddress   string
-	ListenPort      string
-	PacketQueueSize int
+	Message         string		`mapstructure:"message"`
+	Ribbon          byte		`mapstructure:"ribbon"`
+	ExpRate         float32		`mapstructure:"expRate"`
+	DropRate        float32		`mapstructure:"dropRate"`
+	MesosRate       float32		`mapstructure:"mesosRate"`
+	LoginAddress    string		`mapstructure:"loginAddress"`
+	LoginPort       string		`mapstructure:"loginPort"`
+	ListenAddress   string		`mapstructure:"listenAddress"`
+	ListenPort      string		`mapstructure:"listenPort"`
+	PacketQueueSize int			`mapstructure:"packetQueueSize"`
 }
 
 type channelConfig struct {
-	WorldAddress            string
-	WorldPort               string
-	ListenAddress           string
-	ClientConnectionAddress string
-	ListenPort              string
-	PacketQueueSize         int
-	MaxPop                  int16
-	Latency                 int
-	Jitter                  int
+	WorldAddress            string	`mapstructure:"worldAddress"`
+	WorldPort               string	`mapstructure:"worldPort"`
+	ListenAddress           string	`mapstructure:"listenAddress"`
+	ClientConnectionAddress string	`mapstructure:"clientConnectionAddress"`
+	ListenPort              string	`mapstructure:"listenPort"`
+	PacketQueueSize         int		`mapstructure:"packetQueueSize"`
+	MaxPop                  int16	`mapstructure:"maxPop"`
+	Latency                 int		`mapstructure:"latency"`
+	Jitter                  int		`mapstructure:"jitter"`
 }
 
 type cashShopConfig struct {
-	WorldAddress            string
-	WorldPort               string
-	ListenAddress           string
-	ClientConnectionAddress string
-	ListenPort              string
-	PacketQueueSize         int
-	Latency                 int
-	Jitter                  int
+	WorldAddress            string	`mapstructure:"worldAddress"`
+	WorldPort               string	`mapstructure:"worldPort"`
+	ListenAddress           string	`mapstructure:"listenAddress"`
+	ClientConnectionAddress string	`mapstructure:"clientConnectionAddress"`
+	ListenPort              string	`mapstructure:"listenPort"`
+	PacketQueueSize         int		`mapstructure:"packetQueueSize"`
+	Latency                 int		`mapstructure:"latency"`
+	Jitter                  int		`mapstructure:"jitter"`
 }
 
 type fullConfig struct {
-	Database dbConfig
-	Login    loginConfig
-	World    worldConfig
-	Channel  channelConfig
-	CashShop cashShopConfig
+	Database dbConfig		`mapstructure:"database"`
+	Login    loginConfig	`mapstructure:"login"`
+	World    worldConfig	`mapstructure:"world"`
+	Channel  channelConfig	`mapstructure:"channel"`
+	CashShop cashShopConfig	`mapstructure:"cashshop"`
+}
+
+// Load from TOML if exists, then load/overwrite with ENV
+func LoadConfig(fname string) *fullConfig {
+	v := viper.New()
+
+	if fname != "" {
+		v.SetConfigFile(fname)
+		v.SetConfigType("toml")
+		if err := v.ReadInConfig(); err != nil {
+			var notFound viper.ConfigFileNotFoundError
+			if errors.As(err, &notFound) {
+				log.Printf("warning: config file %q not found; continuing with env", fname)
+			} else {
+				log.Fatalf("failed to read config file %q: %v", fname, err)
+			}
+		}
+	}
+
+	v.SetEnvPrefix("VALHALLA")
+	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
+	v.AutomaticEnv()
+
+	bindEnvs(v, reflect.TypeOf(fullConfig{}), nil, "VALHALLA")
+
+	var config fullConfig
+	if err := v.Unmarshal(&config); err != nil {
+		log.Fatalf("failed to unmarshal config: %v", err)
+	}
+
+	return &config
 }
 
 func loginConfigFromFile(fname string) (loginConfig, dbConfig) {
-	config := &fullConfig{}
-
-	if _, err := toml.DecodeFile(fname, config); err != nil {
-		log.Fatal(err)
-	}
-
+	config := LoadConfig(fname)
 	return config.Login, config.Database
 }
 
 func worldConfigFromFile(fname string) (worldConfig, dbConfig) {
-	config := &fullConfig{}
-
-	if _, err := toml.DecodeFile(fname, config); err != nil {
-		log.Fatal(err)
-	}
-
+	config := LoadConfig(fname)
 	return config.World, config.Database
 }
 
 func channelConfigFromFile(fname string) (channelConfig, dbConfig) {
-	config := &fullConfig{}
-
-	if _, err := toml.DecodeFile(fname, config); err != nil {
-		log.Fatal(err)
-	}
-
+	config := LoadConfig(fname)
 	return config.Channel, config.Database
 }
 
 func cashShopConfigFromFile(fname string) (cashShopConfig, dbConfig) {
-	config := &fullConfig{}
+	config := LoadConfig(fname)
+	return config.CashShop, config.Database
+}
 
-	if _, err := toml.DecodeFile(fname, config); err != nil {
-		log.Fatal(err)
+func bindEnvs(v *viper.Viper, typ reflect.Type, path []string, envPrefix string) {
+	for typ.Kind() == reflect.Pointer {
+		typ = typ.Elem()
+	}
+	if typ.Kind() != reflect.Struct {
+		return
 	}
 
-	return config.CashShop, config.Database
+	for i := 0; i < typ.NumField(); i++ {
+		f := typ.Field(i)
+		if f.PkgPath != "" {
+			continue
+		}
+
+		tag := f.Tag.Get("mapstructure")
+		if tag == "" || tag == "-" {
+			continue // skip untagged
+		}
+
+		fullPath := append(path, tag)
+		if f.Type.Kind() == reflect.Struct {
+			bindEnvs(v, f.Type, fullPath, envPrefix)
+			continue
+		}
+		cfgKey := strings.Join(fullPath, ".")
+		env := envPrefix + "_" + strings.ToUpper(strings.ReplaceAll(cfgKey, ".", "_"))
+		_ = v.BindEnv(cfgKey, env)
+	}
 }

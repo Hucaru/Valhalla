@@ -53,6 +53,7 @@ func newCashShopServer(configFile string) *cashShopServer {
 
 func (cs *cashShopServer) run() {
 	log.Println("CashShop Server")
+	log.Printf("Listening on %q:%q", cs.config.ListenAddress, cs.config.ListenPort)
 
 	cs.wg.Add(1)
 	go func() {
