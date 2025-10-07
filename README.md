@@ -112,7 +112,7 @@ Channel server:
 - [x] Balrog boat invasion
 - [ ] Deleted character removes from guild
 - [ ] Deleted character removes from party
-- [ ] Trade
+- [x] Trade
 - [x] Communication Window
 - [x] Quests
 - [x] Reactors
