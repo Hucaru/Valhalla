@@ -12,6 +12,7 @@ const (
 
 const (
 	MaxItemStack = 200
+	MaxMesos     = 2147483647
 
 	SkinID  = 0x01
 	FaceID  = 0x02 // Eyes
@@ -155,6 +156,130 @@ const (
 	PetRemoveNone   byte = 0
 	PetRemoveHungry byte = 1
 	PetRemoveExpire byte = 2
+)
+
+const (
+	MiniRoomCreate        byte = 0
+	MiniRoomInvite        byte = 2
+	MiniRoomDeclineInvite byte = 3
+	MiniRoomEnter         byte = 4
+	MiniRoomEnterResult   byte = 5
+	MiniRoomChat          byte = 6
+	MiniRoomAvatar        byte = 9
+	MiniRoomLeave         byte = 10
+	MiniRoomOpen          byte = 11
+
+	MiniRoomTradePutItem  byte = 13
+	MiniRoomTradePutMesos byte = 14
+	MiniRoomTradeAccept   byte = 15
+
+	MiniRoomAddShopItem          byte = 18
+	MiniRoomBuyShopItem          byte = 19
+	MiniRoomPlayerShopItemResult byte = 0x14
+	MiniRoomPlayerShopSoldItem   byte = 0x16
+	MiniRoomMoveItemShopToInv    byte = 23
+
+	MiniRoomRequestTie            byte = 24
+	MiniRoomRequestTieResult      byte = 25
+	MiniRoomGiveUp                byte = 26
+	MiniRoomRequestHandicap       byte = 28
+	MiniRoomRequestHandicapResult byte = 29
+	MiniRoomRequestLeave          byte = 30
+	MiniRoomCancelRequestLeave    byte = 31
+	MiniRoomReady                 byte = 32
+	MiniRoomUnready               byte = 33
+	MiniRoomExpel                 byte = 34
+	MiniRoomStartGame             byte = 35
+	MiniRoomEndGame               byte = 37
+	MiniRoomPlaceOmokPiece        byte = 38
+	MiniRoomMatchCardsPickCard    byte = 0x2A
+)
+
+const (
+	MiniRoomTypeNone          byte = 0
+	MiniRoomTypeOmok          byte = 1
+	MiniRoomTypeMatchCards    byte = 2
+	MiniRoomTypeTrade         byte = 3
+	MiniRoomTypePlayerShop    byte = 4
+	MiniRoomTypeEntrustedShop byte = 5
+)
+
+const (
+	MiniGameTypeOmok       byte = 1
+	MiniGameTypeMatchCards byte = 2
+)
+
+const (
+	MiniRoomEnterRoomAlreadyClosed     byte = 0x01
+	MiniRoomEnterFullCapacity          byte = 0x02
+	MiniRoomEnterOtherRequests         byte = 0x03
+	MiniRoomEnterCantWhileDead         byte = 0x04
+	MiniRoomEnterCantInMiddleEvent     byte = 0x05
+	MiniRoomEnterUnableToDoIt          byte = 0x06
+	MiniRoomEnterOtherItemsAtPoint     byte = 0x07
+	MiniRoomEnterCantEstablishRoom     byte = 0x0A
+	MiniRoomEnterTrade2OnSameMap       byte = 0x09
+	MiniRoomEnterNotEnoughMesos        byte = 0x0F
+	MiniRoomEnterCantStartGameHere     byte = 0x0B
+	MiniRoomEnterBuiltAtMainTown       byte = 0x0C
+	MiniRoomEnterUnableEnterTournament byte = 0x0D
+	MiniRoomEnterIncorrectPassword     byte = 0x10
+)
+
+const (
+	PlayerShopNotEnoughInStock       byte = 1
+	PlayerShopNotEnoughMesos         byte = 2
+	PlayerShopPriceTooHighForTrade   byte = 3
+	PlayerShopBuyerNotEnoughMoney    byte = 4
+	PlayerShopCannotCarryMoreThanOne byte = 5
+	PlayerShopInventoryFull          byte = 6
+)
+
+const (
+	MiniRoomLeaveReason          byte = 0
+	MiniRoomCantEstablish        byte = 1
+	MiniRoomCancel               byte = 2
+	MiniRoomClosed               byte = 3
+	MiniRoomExpelled             byte = 4
+	MiniRoomForcedLeave          byte = 5
+	MiniRoomTradeSuccess         byte = 6
+	MiniRoomTradeFail            byte = 7
+	MiniRoomTradeInventoryFull   byte = 8
+	MiniRoomTradeWrongMap        byte = 9
+	MiniRoomPlayerShopOutOfStock byte = 10
+)
+
+const (
+	GameWin     byte = 0
+	GameTie     byte = 1
+	GameForfeit byte = 2
+)
+
+const (
+	MiniRoomChatText   byte = 0
+	MiniRoomChatNotice byte = 7
+)
+
+const (
+	NoticeExpelled                      byte = 0
+	NoticePlayersTurn                   byte = 1
+	NoticeForfeited                     byte = 2
+	NoticeHandicapRequested             byte = 3
+	NoticePlayerLeft                    byte = 4
+	NoticeCalledToLeave                 byte = 5
+	NoticeLeaveCancelled                byte = 6
+	NoticePlayerHasEntered              byte = 7
+	NoticeCantStartGameNotEnoughMesos   byte = 8
+	NoticeHasMatchedCardsPleaseContinue byte = 9
+	NoticeTenSecondsLeft                byte = 101
+	NoticeGameHasStarted                byte = 102
+	NoticeGameHasEnded                  byte = 103
+)
+
+const (
+	MatchCardsSizeSmall  byte = 0
+	MatchCardsSizeMedium byte = 1
+	MatchCardsSizeLarge  byte = 2
 )
 
 var ExpTable = [...]int32{15, 34, 57, 92, 135, 372, 560, 840, 1242, 1144, // Beginner

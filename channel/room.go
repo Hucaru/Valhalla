@@ -2,11 +2,13 @@ package channel
 
 import (
 	"fmt"
+	"log"
 	"math"
 	"math/rand"
 	"time"
 
 	"github.com/Hucaru/Valhalla/common/opcode"
+	"github.com/Hucaru/Valhalla/constant"
 	"github.com/Hucaru/Valhalla/mpacket"
 )
 
@@ -20,7 +22,7 @@ const (
 	roomUnkownOp              = 11
 	roomInsertItem            = 13
 	roomMesos                 = 14
-	roomAcceptTrade           = 16
+	roomAcceptTrade           = 15
 	roomRequestTie            = 42
 	roomRequestTieResult      = 43
 	roomForfeit               = 44
@@ -743,11 +745,14 @@ func (r *memoryRoom) shuffleCards() {
 
 type tradeRoom struct {
 	room
+	mesos     map[int32]int32
+	items     map[int32]map[byte]Item
+	confirmed map[int32]bool
 }
 
 func newTradeRoom(id int32) roomer {
 	r := room{roomID: id, roomType: roomTypeTrade}
-	return &tradeRoom{room: r}
+	return &tradeRoom{room: r, mesos: make(map[int32]int32), items: make(map[int32]map[byte]Item), confirmed: make(map[int32]bool)}
 }
 
 func (r *tradeRoom) addPlayer(plr *Player) bool {
@@ -760,6 +765,9 @@ func (r *tradeRoom) addPlayer(plr *Player) bool {
 	if len(r.players) > 1 {
 		r.sendExcept(packetRoomJoin(r.roomType, byte(len(r.players)-1), r.players[len(r.players)-1]), plr)
 	}
+
+	r.items[plr.ID] = make(map[byte]Item)
+	r.confirmed[plr.ID] = false
 
 	return true
 }
@@ -781,16 +789,90 @@ func (r tradeRoom) reject(code byte, name string) {
 	r.send(packetRoomInviteResult(code, name))
 }
 
-func (r *tradeRoom) insertItem() {
-
+func (r *tradeRoom) insertItem(tradeSlot byte, plrID int32, item Item) {
+	r.items[plrID][tradeSlot] = item
+	isUser0 := r.players[0].ID == plrID
+	r.players[0].Send(packetRoomTradePutItem(tradeSlot, !isUser0, item))
+	r.players[1].Send(packetRoomTradePutItem(tradeSlot, isUser0, item))
 }
 
-func (r *tradeRoom) addMesos(amount int32, plr *Player) {
-
+func (r *tradeRoom) updateMesos(amount, plrID int32) {
+	r.mesos[plrID] += amount
+	isUser0 := r.players[0].ID == plrID
+	r.players[0].Send(packetRoomTradePutMesos(r.mesos[plrID], !isUser0))
+	r.players[1].Send(packetRoomTradePutMesos(r.mesos[plrID], isUser0))
 }
 
-func (r *tradeRoom) swapItems() bool {
-	return true
+func (r *tradeRoom) acceptTrade(plr *Player) bool {
+	r.confirmed[plr.ID] = true
+
+	for _, user := range r.players {
+		if user.ID != plr.ID {
+			user.Send(packetRoomTradeAccept())
+		}
+	}
+
+	if r.confirmed[r.players[0].ID] && r.confirmed[r.players[1].ID] {
+		r.completeTrade()
+		return true
+	}
+
+	return false
+}
+
+func (r *tradeRoom) completeTrade() {
+	p1 := r.players[0]
+	p2 := r.players[1]
+
+	if m1, ok := r.mesos[p1.ID]; ok && m1 > 0 {
+		if (p2.mesos + m1) > constant.MaxMesos {
+			r.closeWithReason(constant.MiniRoomTradeFail)
+			r.rollback()
+		}
+		p2.giveMesos(m1)
+	}
+	if m2, ok := r.mesos[p2.ID]; ok && m2 > 0 {
+		if (p1.mesos + m2) > constant.MaxMesos {
+			r.closeWithReason(constant.MiniRoomTradeFail)
+			r.rollback()
+		}
+		p1.giveMesos(m2)
+	}
+
+	for _, item := range r.items[p1.ID] {
+		if err := p2.GiveItem(item); err != nil {
+			log.Printf("Trade error: failed to give item %v to %s: %v", item.ID, p2.Name, err)
+			r.closeWithReason(constant.MiniRoomTradeInventoryFull)
+			r.rollback()
+		}
+	}
+	for _, item := range r.items[p2.ID] {
+		if err := p1.GiveItem(item); err != nil {
+			log.Printf("Trade error: failed to give item %v to %s: %v", item.ID, p1.Name, err)
+			r.closeWithReason(constant.MiniRoomTradeInventoryFull)
+			r.rollback()
+		}
+	}
+
+	r.closeWithReason(constant.MiniRoomTradeSuccess)
+}
+
+func (r *tradeRoom) closeWithReason(reason byte) {
+	for i, plr := range r.players {
+		plr.Send(packetRoomLeave(byte(i), reason))
+	}
+}
+
+func (r *tradeRoom) rollback() {
+	for _, player := range r.players {
+		player.giveMesos(r.mesos[player.ID])
+		for _, item := range r.items[player.ID] {
+			err := player.GiveItem(item)
+			if err != nil {
+				log.Println("tradeRoom rollback failed: ", err)
+			}
+		}
+	}
 }
 
 func packetRoomShowWindow(roomType, boardType, maxPlayers, roomSlot byte, roomTitle string, players []*Player) mpacket.Packet {
@@ -1075,20 +1157,27 @@ func packetRoomEnterErrorMsg(errorCode byte) mpacket.Packet {
 	return p
 }
 
-func packetRoomTradePutItem(tradeSlot, invSlot byte, item Item) mpacket.Packet {
+func packetRoomTradePutItem(tradeSlot byte, user bool, item Item) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelRoom)
-	p.WriteByte(13)
-	p.WriteByte(invSlot)
+	p.WriteByte(constant.MiniRoomTradePutItem)
+	p.WriteBool(user)
 	p.WriteByte(tradeSlot)
-	p.WriteBytes(item.bytes(false, false))
+	p.WriteBytes(item.storageBytes())
 	return p
 }
 
-func packetRoomTradePutMesos(amount int32, slot byte) mpacket.Packet {
+func packetRoomTradePutMesos(amount int32, user bool) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelRoom)
-	p.WriteByte(14)
-	p.WriteByte(slot)
+	p.WriteByte(constant.MiniRoomTradePutMesos)
+	p.WriteBool(user)
 	p.WriteInt32(amount)
+	return p
+}
+
+func packetRoomTradeAccept() mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelRoom)
+	p.WriteByte(constant.MiniRoomTradeAccept)
+
 	return p
 }
 

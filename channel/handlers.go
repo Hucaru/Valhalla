@@ -2764,6 +2764,7 @@ func (server Server) roomWindow(conn mnet.Client, reader mpacket.Reader) {
 			}
 		} else if trade, valid := r.(*tradeRoom); valid {
 			trade.removePlayer(plr)
+			trade.rollback()
 			err = pool.removeRoom(trade.roomID)
 
 			if err != nil {
@@ -2771,13 +2772,67 @@ func (server Server) roomWindow(conn mnet.Client, reader mpacket.Reader) {
 			}
 		}
 	case roomInsertItem:
-		// invTab := reader.ReadByte()
-		// itemSlot := reader.ReadInt16()
-		// quantity := reader.ReadInt16()
-		// tradeWindowSlot := reader.ReadByte()
+		invType := reader.ReadByte()
+		invSlot := reader.ReadInt16()
+		amount := reader.ReadInt16()
+		tradeSlot := reader.ReadByte()
+
+		item, err := plr.getItem(invType, invSlot)
+		if err != nil || item.amount < amount {
+			plr.Send(packetPlayerNoChange())
+			return
+		}
+
+		if item.isRechargeable() {
+			amount = item.amount
+		}
+
+		_, err = plr.takeItem(item.ID, invSlot, amount, invType)
+		if err != nil {
+			plr.Send(packetPlayerNoChange())
+			return
+		}
+
+		newItem := item
+		newItem.amount = amount
+
+		if r, err := pool.getPlayerRoom(plr.ID); err == nil {
+			if tr, ok := r.(*tradeRoom); ok {
+				tr.insertItem(tradeSlot, plr.ID, newItem)
+			}
+		}
+
+		plr.Send(packetPlayerNoChange())
+
 	case roomMesos:
-		// amount := reader.ReadInt32()
+		amount := reader.ReadInt32()
+
+		if plr.mesos < amount {
+			plr.Send(packetPlayerNoChange())
+			return
+		}
+
+		plr.takeMesos(amount)
+
+		if r, err := pool.getPlayerRoom(plr.ID); err == nil {
+			if tr, ok := r.(*tradeRoom); ok {
+				tr.updateMesos(amount, plr.ID)
+			}
+		}
+
 	case roomAcceptTrade:
+		if r, err := pool.getPlayerRoom(plr.ID); err == nil {
+			if tr, ok := r.(*tradeRoom); ok {
+				if tr.acceptTrade(plr) {
+					err = pool.removeRoom(tr.roomID)
+
+					if err != nil {
+						log.Println(err)
+					}
+				}
+			}
+		}
+
 	case roomRequestTie:
 		r, err := pool.getPlayerRoom(plr.ID)
 
