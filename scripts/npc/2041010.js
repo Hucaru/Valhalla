@@ -1,23 +1,17 @@
-```javascript
-var itemId = 5152057;
-var face = [];
+var couponFace = 5152006; // EXP Face Coupon
 
-if (plr.job() < 1000) {   // male
-    face = [20000, 20001, 20002, 20003, 20004, 20005, 20006, 20008, 20012, 20014, 20011];
-} else {                  // female
-    face = [21000, 21001, 21002, 21003, 21004, 21005, 21006, 21007, 21008, 21012, 21010];
-}
+npc.sendNext("Hey there! If you have a #b#t" + couponFace + "##k, I can change your face for you!");
 
-for (var i = 0; i < face.length; i++)
-    face[i] += Math.floor(plr.face / 100) % 10 * 100;
+var z = plr.face() % 1000;
+var baseMale = [20035, 20036, 20037, 20038, 20039];
+var baseFemale = [21035, 21036, 21037, 21038, 21039];
+var src = (plr.gender() < 1) ? baseMale : baseFemale;
+var newFace = src[Math.floor(Math.random() * src.length)] + z;
 
-if (plr.itemCount(itemId)) {
-    var sel = npc.askAvatar("Let's see... for #b#t5152057##k, you can get a new face. That's right. I can completely transform your face! Wanna give it a shot? Please consider your choice carefully.", face);
-    
-    plr.removeItemsByID(itemId, 1);
-    plr.setFace(face[sel]);
-    npc.sendBackNext("Ok, the surgery's over. See for it yourself.. What do you think? Quite fantastic, if I should say so myself. Please come again when you want another look, okay?", false, true);
+if (plr.itemCount(couponFace) > 0) {
+    plr.removeItemsByID(couponFace, 1);
+    plr.setFace(newFace);
+    npc.sendOk("All done! What do you think of your new look?");
 } else {
-    npc.sendOk("Hmm ... it looks like you don't have the coupon specifically for this place. Sorry to say this, but without the coupon, there's no plastic surgery for you...");
+    npc.sendOk("Hmm… looks like you don’t have a #b#t" + couponFace + "##k.");
 }
-```
