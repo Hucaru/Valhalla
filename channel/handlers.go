@@ -171,11 +171,10 @@ func (server *Server) HandleClientPacket(conn mnet.Client, reader mpacket.Reader
 		server.playerPetInteraction(conn, reader)
 	case opcode.RecvChannelPetLoot:
 		server.playerPetLoot(conn, reader)
-	case 159:
-		// I have no idea what this is but it's super spammy
-		// So let's just silently drop it
 	default:
 		unknownPacketsTotal.Inc()
+		// Let's send a no change to make sure characters aren't stuck on unknown packets
+		conn.Send(packetPlayerNoChange())
 		log.Println("UNKNOWN CLIENT PACKET(", op, "):", reader)
 	}
 }
