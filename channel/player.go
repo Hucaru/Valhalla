@@ -273,7 +273,9 @@ func (d *Player) setJob(id int16) {
 
 func (d *Player) levelUp() {
 	d.giveAP(5)
-	d.giveSP(3)
+	if d.level > 10 {
+		d.giveSP(3)
+	}
 
 	// Use per-Player RNG and job-based helper for deterministic gains.
 	hpGain, mpGain := d.levelUpGains()
