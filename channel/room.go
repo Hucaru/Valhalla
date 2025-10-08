@@ -12,42 +12,6 @@ import (
 	"github.com/Hucaru/Valhalla/mpacket"
 )
 
-const (
-	roomCreate                = 0
-	roomSendInvite            = 2
-	roomReject                = 3
-	roomAccept                = 4
-	roomChat                  = 6
-	roomCloseWindow           = 10
-	roomUnkownOp              = 11
-	roomInsertItem            = 13
-	roomMesos                 = 14
-	roomAcceptTrade           = 15
-	roomRequestTie            = 42
-	roomRequestTieResult      = 43
-	roomForfeit               = 44
-	roomRequestUndo           = 46
-	roomRequestUndoResult     = 47
-	roomRequestExitDuringGame = 48
-	roomUndoRequestExit       = 49
-	roomReadyButtonPressed    = 50
-	roomUnready               = 51
-	roomOwnerExpells          = 52
-	roomGameStart             = 53
-	roomChangeTurn            = 55
-	roomPlacePiece            = 56
-	roomSelectCard            = 60
-)
-
-const (
-	roomTypeOmok         = 0x01
-	roomTypeMemory       = 0x02
-	roomTypeTrade        = 0x03
-	roomTypePersonalShop = 0x04
-)
-
-const roomMaxPlayers = 2
-
 type roomer interface {
 	id() int32
 	setID(int32)
@@ -80,7 +44,7 @@ func (r room) ownerID() int32 {
 func (r *room) addPlayer(plr *Player) bool {
 	if len(r.players) == 0 {
 		r.ownerPlayerID = plr.ID
-	} else if len(r.players) == 2 {
+	} else if len(r.players) == constant.RoomMaxPlayers {
 		plr.Send(packetRoomFull())
 		return false
 	}
@@ -176,7 +140,7 @@ func (r *gameRoom) addPlayer(plr *Player) bool {
 		return false
 	}
 
-	plr.Send(packetRoomShowWindow(r.roomType, r.boardType, byte(roomMaxPlayers), byte(len(r.players)-1), r.name, r.players))
+	plr.Send(packetRoomShowWindow(r.roomType, r.boardType, byte(constant.RoomMaxPlayers), byte(len(r.players)-1), r.name, r.players))
 
 	if len(r.players) > 1 {
 		r.sendExcept(packetRoomJoin(r.roomType, byte(len(r.players)-1), r.players[len(r.players)-1]), plr)
@@ -206,7 +170,7 @@ func (r *gameRoom) kickPlayer(plr *Player, reason byte) bool {
 
 			plr.Send(packetRoomLeave(byte(i), reason))
 
-			if i == 0 { // owner is always at index 0
+			if i == constant.RoomOwnerSlot { // owner is always at index 0
 				for j := range r.players {
 					fmt.Println(packetRoomLeave(byte(j+1), 0x0))
 					r.send(packetRoomLeave(byte(j+1), 0x0))
@@ -226,8 +190,8 @@ func (r *gameRoom) kickPlayer(plr *Player, reason byte) bool {
 
 func (r *gameRoom) expel() bool {
 	if len(r.players) > 1 {
-		r.send(packetRoomYellowChat(0, r.players[1].Name))
-		r.kickPlayer(r.players[1], 0x5)
+		r.send(packetRoomYellowChat(constant.RoomYellowChatExpelled, r.players[1].Name))
+		r.kickPlayer(r.players[1], constant.MiniRoomExpelled)
 
 		return true
 	}
@@ -237,7 +201,7 @@ func (r *gameRoom) expel() bool {
 
 func (r *gameRoom) ready(plr *Player) {
 	for i, v := range r.players {
-		if v.Conn == plr.Conn && i == 1 {
+		if v.Conn == plr.Conn && i == constant.RoomGuestSlot {
 			r.send(packetRoomReady())
 		}
 	}
@@ -245,7 +209,7 @@ func (r *gameRoom) ready(plr *Player) {
 
 func (r *gameRoom) unready(plr *Player) {
 	for i, v := range r.players {
-		if v.Conn == plr.Conn && i == 1 {
+		if v.Conn == plr.Conn && i == constant.RoomGuestSlot {
 			r.send(packetRoomUnready())
 		}
 	}
@@ -373,9 +337,9 @@ func (r gameRoom) displayBytes() []byte {
 	p.WriteString(r.name)
 	p.WriteBool(len(r.password) > 0)
 	p.WriteByte(r.boardType)
-	p.WriteByte(byte(len(r.players))) // number that is seen in the box? Player count?
-	p.WriteByte(2)                    // ?
-	p.WriteBool(r.inProgress)         //Sets some korean text, does it mean game is ongoing?
+	p.WriteByte(byte(len(r.players)))    // number that is seen in the box? Player count?
+	p.WriteByte(constant.RoomMaxPlayers) // ?
+	p.WriteBool(r.inProgress)            //Sets some korean text, does it mean game is ongoing?
 
 	return p
 }
@@ -393,13 +357,13 @@ type omokRoom struct {
 }
 
 func newOmokRoom(id int32, name, password string, boardType byte) roomer {
-	r := room{roomID: id, roomType: roomTypeOmok}
+	r := room{roomID: id, roomType: constant.MiniRoomTypeOmok}
 	g := gameRoom{room: r, name: name, password: password, boardType: boardType, ownerStart: false}
 	return &omokRoom{gameRoom: g}
 }
 
 func (r *omokRoom) placePiece(x, y int32, piece byte, plr *Player) bool {
-	if x > 14 || y > 14 || x < 0 || y < 0 {
+	if x > constant.OmokBoardSize-1 || y > constant.OmokBoardSize-1 || x < 0 || y < 0 {
 		return false
 	}
 
@@ -555,8 +519,8 @@ func checkOmokDraw(board [15][15]byte) bool {
 
 func checkOmokWin(board [15][15]byte, piece byte) bool {
 	// Check horizontal
-	for i := 0; i < 15; i++ {
-		for j := 0; j < 11; j++ {
+	for i := 0; i < constant.OmokBoardSize; i++ {
+		for j := 0; j < constant.OmokBoardSize-4; j++ {
 			if board[j][i] == piece &&
 				board[j+1][i] == piece &&
 				board[j+2][i] == piece &&
@@ -568,8 +532,8 @@ func checkOmokWin(board [15][15]byte, piece byte) bool {
 	}
 
 	// Check vertical
-	for i := 0; i < 11; i++ {
-		for j := 0; j < 15; j++ {
+	for i := 0; i < constant.OmokBoardSize-4; i++ {
+		for j := 0; j < constant.OmokBoardSize; j++ {
 			if board[j][i] == piece &&
 				board[j][i+1] == piece &&
 				board[j][i+2] == piece &&
@@ -581,8 +545,8 @@ func checkOmokWin(board [15][15]byte, piece byte) bool {
 	}
 
 	// Check diagonal 1
-	for i := 4; i < 15; i++ {
-		for j := 0; j < 11; j++ {
+	for i := 4; i < constant.OmokBoardSize; i++ {
+		for j := 0; j < constant.OmokBoardSize-4; j++ {
 			if board[j][i] == piece &&
 				board[j+1][i-1] == piece &&
 				board[j+2][i-2] == piece &&
@@ -594,8 +558,8 @@ func checkOmokWin(board [15][15]byte, piece byte) bool {
 	}
 
 	// Check diagonal 2
-	for i := 0; i < 11; i++ {
-		for j := 0; j < 11; j++ {
+	for i := 0; i < constant.OmokBoardSize-4; i++ {
+		for j := 0; j < constant.OmokBoardSize-4; j++ {
 			if board[j][i] == piece &&
 				board[j+1][i+1] == piece &&
 				board[j+2][i+2] == piece &&
@@ -618,7 +582,7 @@ type memoryRoom struct {
 }
 
 func newMemoryRoom(id int32, name, password string, boardType byte) roomer {
-	r := room{roomID: id, roomType: roomTypeMemory}
+	r := room{roomID: id, roomType: constant.MiniRoomTypeMatchCards}
 	g := gameRoom{room: r, name: name, password: password, boardType: boardType, ownerStart: false}
 	return &memoryRoom{gameRoom: g}
 }
@@ -642,7 +606,7 @@ func (r *memoryRoom) selectCard(turn, cardID byte, plr *Player) bool {
 		}
 
 		r.send(packetRoomSelectCard(turn, cardID, r.firstCardPick, points))
-		r.send(packetRoomYellowChat(0x09, plr.Name))
+		r.send(packetRoomYellowChat(constant.RoomYellowChatMatchedCards, plr.Name))
 
 		win, draw := r.checkCardWin()
 
@@ -674,24 +638,24 @@ func (r *memoryRoom) checkCardWin() (bool, bool) {
 	totalMatches := r.matches[0] + r.matches[1]
 
 	switch r.boardType {
-	case 0:
-		if totalMatches == 6 {
+	case constant.MatchCardsSizeSmall:
+		if totalMatches == constant.MatchCardsPairsSmall {
 			if r.matches[0] == r.matches[1] {
 				draw = true
 			} else {
 				win = true
 			}
 		}
-	case 1:
-		if totalMatches == 10 {
+	case constant.MatchCardsSizeMedium:
+		if totalMatches == constant.MatchCardsPairsMedium {
 			if r.matches[0] == r.matches[1] {
 				draw = true
 			} else {
 				win = true
 			}
 		}
-	case 2:
-		if totalMatches == 15 {
+	case constant.MatchCardsSizeLarge:
+		if totalMatches == constant.MatchCardsPairsLarge {
 			if r.matches[0] == r.matches[1] {
 				draw = true
 			} else {
@@ -719,12 +683,12 @@ func (r *memoryRoom) start() {
 func (r *memoryRoom) shuffleCards() {
 	loopCounter := byte(0)
 	switch r.boardType {
-	case 0:
-		loopCounter = 6
-	case 1:
-		loopCounter = 10
-	case 2:
-		loopCounter = 15
+	case constant.MatchCardsSizeSmall:
+		loopCounter = constant.MatchCardsPairsSmall
+	case constant.MatchCardsSizeMedium:
+		loopCounter = constant.MatchCardsPairsMedium
+	case constant.MatchCardsSizeLarge:
+		loopCounter = constant.MatchCardsPairsLarge
 	default:
 		fmt.Println("Cannot shuffle unkown card type")
 	}
@@ -751,7 +715,7 @@ type tradeRoom struct {
 }
 
 func newTradeRoom(id int32) roomer {
-	r := room{roomID: id, roomType: roomTypeTrade}
+	r := room{roomID: id, roomType: constant.MiniRoomTypeTrade}
 	return &tradeRoom{room: r, mesos: make(map[int32]int32), items: make(map[int32]map[byte]Item), confirmed: make(map[int32]bool)}
 }
 
@@ -760,7 +724,7 @@ func (r *tradeRoom) addPlayer(plr *Player) bool {
 		return false
 	}
 
-	plr.Send(packetRoomShowWindow(r.roomType, 0x00, byte(roomMaxPlayers), byte(len(r.players)-1), "", r.players))
+	plr.Send(packetRoomShowWindow(r.roomType, 0x00, byte(constant.RoomMaxPlayers), byte(len(r.players)-1), "", r.players))
 
 	if len(r.players) > 1 {
 		r.sendExcept(packetRoomJoin(r.roomType, byte(len(r.players)-1), r.players[len(r.players)-1]), plr)
@@ -776,13 +740,13 @@ func (r *tradeRoom) removePlayer(plr *Player) {
 	// Note: since anyone leaving the room causes it to close we don't need to remove players
 	for i, v := range r.players {
 		if v.Conn != plr.Conn {
-			v.Send(packetRoomLeave(byte(i), 0x02))
+			v.Send(packetRoomLeave(byte(i), constant.RoomLeaveTradeCancelled))
 		}
 	}
 }
 
 func (r tradeRoom) sendInvite(plr *Player) {
-	plr.Send(packetRoomInvite(roomTypeTrade, r.players[0].Name, r.roomID))
+	plr.Send(packetRoomInvite(constant.MiniRoomTypeTrade, r.players[0].Name, r.roomID))
 }
 
 func (r tradeRoom) reject(code byte, name string) {
@@ -877,7 +841,7 @@ func (r *tradeRoom) rollback() {
 
 func packetRoomShowWindow(roomType, boardType, maxPlayers, roomSlot byte, roomTitle string, players []*Player) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelRoom)
-	p.WriteByte(0x05)
+	p.WriteByte(constant.RoomPacketShowWindow)
 	p.WriteByte(roomType)
 	p.WriteByte(maxPlayers)
 	p.WriteByte(roomSlot)
@@ -891,7 +855,7 @@ func packetRoomShowWindow(roomType, boardType, maxPlayers, roomSlot byte, roomTi
 
 	p.WriteByte(0xFF)
 
-	if roomType == 0x03 {
+	if roomType == constant.MiniRoomTypeTrade {
 		return p
 	}
 
@@ -914,13 +878,13 @@ func packetRoomShowWindow(roomType, boardType, maxPlayers, roomSlot byte, roomTi
 
 func packetRoomJoin(roomType, roomSlot byte, plr *Player) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelRoom)
-	p.WriteByte(0x04)
+	p.WriteByte(constant.RoomPacketJoin)
 	p.WriteByte(roomSlot)
 	p.Append(plr.displayBytes())
 	p.WriteInt32(0) //?
 	p.WriteString(plr.Name)
 
-	if roomType == 0x03 || roomType == 0x04 {
+	if roomType == constant.MiniRoomTypeTrade || roomType == constant.MiniRoomTypePlayerShop {
 		return p
 	}
 
@@ -935,7 +899,7 @@ func packetRoomJoin(roomType, roomSlot byte, plr *Player) mpacket.Packet {
 
 func packetRoomLeave(roomSlot byte, leaveCode byte) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelRoom)
-	p.WriteByte(0x0A)
+	p.WriteByte(constant.RoomPacketLeave)
 	p.WriteByte(roomSlot)
 	p.WriteByte(leaveCode) // 2 - trade cancelled, 6 - trade success
 
@@ -944,8 +908,8 @@ func packetRoomLeave(roomSlot byte, leaveCode byte) mpacket.Packet {
 
 func packetRoomYellowChat(msgType byte, name string) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelRoom)
-	p.WriteByte(0x06)
-	p.WriteByte(7)
+	p.WriteByte(constant.MiniRoomChat)
+	p.WriteByte(constant.RoomChatTypeNotice)
 	// expelled: 0, x's turn: 1, forfeit: 2, handicap request: 3, left: 4,
 	// called to leave/expeled: 5, cancelled leave: 6, entered: 7, can't start lack of mesos:8
 	// has matched cards: 9
@@ -957,16 +921,16 @@ func packetRoomYellowChat(msgType byte, name string) mpacket.Packet {
 
 func packetRoomReady() mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelRoom)
-	p.WriteByte(0x32)
+	p.WriteByte(constant.RoomReadyButtonPressed)
 
 	return p
 }
 
 func packetRoomChat(sender, message string, roomSlot byte) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelRoom)
-	p.WriteByte(0x06)
-	p.WriteByte(8)        // msg type
-	p.WriteByte(roomSlot) //
+	p.WriteByte(constant.MiniRoomChat)
+	p.WriteByte(constant.RoomChatTypeChat)
+	p.WriteByte(roomSlot)
 	p.WriteString(sender + " : " + message)
 
 	return p
@@ -974,14 +938,14 @@ func packetRoomChat(sender, message string, roomSlot byte) mpacket.Packet {
 
 func packetRoomUnready() mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelRoom)
-	p.WriteByte(0x33)
+	p.WriteByte(constant.RoomUnready)
 
 	return p
 }
 
 func packetRoomOmokStart(ownerStart bool) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelRoom)
-	p.WriteByte(0x35)
+	p.WriteByte(constant.RoomGameStart)
 	p.WriteBool(ownerStart)
 
 	return p
@@ -989,9 +953,9 @@ func packetRoomOmokStart(ownerStart bool) mpacket.Packet {
 
 func packetRoomMemoryStart(ownerStart bool, boardType int32, cards []byte) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelRoom)
-	p.WriteByte(0x35)
+	p.WriteByte(constant.RoomGameStart)
 	p.WriteBool(ownerStart)
-	p.WriteByte(0x0C)
+	p.WriteByte(constant.RoomPacketMemoryStart)
 
 	for i := 0; i < len(cards); i++ {
 		p.WriteInt32(int32(cards[i]))
@@ -1002,7 +966,7 @@ func packetRoomMemoryStart(ownerStart bool, boardType int32, cards []byte) mpack
 
 func packetRoomGameSkip(isOwner bool) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelRoom)
-	p.WriteByte(0x37)
+	p.WriteByte(constant.RoomChangeTurn)
 
 	if isOwner {
 		p.WriteByte(0)
@@ -1015,7 +979,7 @@ func packetRoomGameSkip(isOwner bool) mpacket.Packet {
 
 func packetRoomPlaceOmokPiece(x, y int32, piece byte) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelRoom)
-	p.WriteByte(0x38)
+	p.WriteByte(constant.RoomPlacePiece)
 	p.WriteInt32(x)
 	p.WriteInt32(y)
 	p.WriteByte(piece)
@@ -1025,7 +989,7 @@ func packetRoomPlaceOmokPiece(x, y int32, piece byte) mpacket.Packet {
 
 func packetRoomOmokInvalidPlaceMsg() mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelRoom)
-	p.WriteByte(0x39)
+	p.WriteByte(constant.RoomInvalidPlace)
 	p.WriteByte(0x0)
 
 	return p
@@ -1033,7 +997,7 @@ func packetRoomOmokInvalidPlaceMsg() mpacket.Packet {
 
 func packetRoomSelectCard(turn, cardID, firstCardPick byte, result byte) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelRoom)
-	p.WriteByte(0x3c)
+	p.WriteByte(constant.RoomSelectCard)
 	p.WriteByte(turn)
 
 	if turn == 1 {
@@ -1049,28 +1013,28 @@ func packetRoomSelectCard(turn, cardID, firstCardPick byte, result byte) mpacket
 
 func packetRoomRequestTie() mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelRoom)
-	p.WriteByte(0x2a)
+	p.WriteByte(constant.RoomRequestTie)
 
 	return p
 }
 
 func packetRoomRejectTie() mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelRoom)
-	p.WriteByte(0x2b)
+	p.WriteByte(constant.RoomRequestTieResult)
 
 	return p
 }
 
 func packetRoomRequestUndo() mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelRoom)
-	p.WriteByte(0x2e)
+	p.WriteByte(constant.RoomRequestUndo)
 
 	return p
 }
 
 func packetRoomRejectUndo() mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelRoom)
-	p.WriteByte(0x2f)
+	p.WriteByte(constant.RoomRequestUndoResult)
 	p.WriteByte(0x00)
 
 	return p
@@ -1078,9 +1042,9 @@ func packetRoomRejectUndo() mpacket.Packet {
 
 func packetRoomUndo(piece, slot byte) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelRoom)
-	p.WriteByte(0x2f)
+	p.WriteByte(constant.RoomRequestUndoResult)
 	p.WriteByte(0x01)
-	p.WriteByte(piece) // 0x00 seems to do nothing?
+	p.WriteByte(piece)
 	p.WriteByte(slot)
 
 	return p
@@ -1088,14 +1052,14 @@ func packetRoomUndo(piece, slot byte) mpacket.Packet {
 
 func packetRoomGameResult(draw bool, winningSlot byte, forfeit bool, plr []*Player) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelRoom)
-	p.WriteByte(0x36)
+	p.WriteByte(constant.RoomGameResult)
 
 	if !draw && !forfeit {
 		p.WriteBool(draw)
 	} else if draw {
 		p.WriteBool(draw)
 	} else if forfeit {
-		p.WriteByte(2)
+		p.WriteByte(constant.GameForfeit)
 	}
 
 	p.WriteByte(winningSlot)
@@ -1124,7 +1088,7 @@ func packetRoomGameResult(draw bool, winningSlot byte, forfeit bool, plr []*Play
 
 func packetRoomInvite(roomType byte, name string, roomID int32) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelRoom)
-	p.WriteByte(0x02)
+	p.WriteByte(constant.RoomPacketInvite)
 	p.WriteByte(roomType)
 	p.WriteString(name)
 	p.WriteInt32(roomID)
@@ -1134,7 +1098,7 @@ func packetRoomInvite(roomType byte, name string, roomID int32) mpacket.Packet {
 
 func packetRoomInviteResult(resultCode byte, name string) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelRoom)
-	p.WriteByte(0x03)
+	p.WriteByte(constant.RoomPacketInviteResult)
 	p.WriteByte(resultCode)
 	p.WriteString(name)
 
@@ -1143,14 +1107,14 @@ func packetRoomInviteResult(resultCode byte, name string) mpacket.Packet {
 
 func packetRoomShowAccept() mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelRoom)
-	p.WriteByte(0x0F)
+	p.WriteByte(constant.RoomPacketShowAccept)
 
 	return p
 }
 
 func packetRoomEnterErrorMsg(errorCode byte) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelRoom)
-	p.WriteByte(0x05)
+	p.WriteByte(constant.RoomPacketShowWindow)
 	p.WriteByte(0x00)
 	p.WriteByte(errorCode)
 
@@ -1182,31 +1146,31 @@ func packetRoomTradeAccept() mpacket.Packet {
 }
 
 func packetRoomClosed() mpacket.Packet {
-	return packetRoomEnterErrorMsg(0x01)
+	return packetRoomEnterErrorMsg(constant.RoomEnterClosed)
 }
 
 func packetRoomFull() mpacket.Packet {
-	return packetRoomEnterErrorMsg(0x02)
+	return packetRoomEnterErrorMsg(constant.RoomEnterFull)
 }
 
 func packetRoomBusy() mpacket.Packet {
-	return packetRoomEnterErrorMsg(0x03)
+	return packetRoomEnterErrorMsg(constant.RoomEnterBusy)
 }
 
 func packetRoomNotAllowedWhenDead() mpacket.Packet {
-	return packetRoomEnterErrorMsg(0x04)
+	return packetRoomEnterErrorMsg(constant.RoomEnterNotAllowedDead)
 }
 
 func packetRoomNotAllowedDuringEvent() mpacket.Packet {
-	return packetRoomEnterErrorMsg(0x05)
+	return packetRoomEnterErrorMsg(constant.RoomEnterNotAllowedEvent)
 }
 
 func packetRoomThisCharacterNotAllowed() mpacket.Packet {
-	return packetRoomEnterErrorMsg(0x06)
+	return packetRoomEnterErrorMsg(constant.RoomEnterThisCharNotAllow)
 }
 
 func packetRoomNoTradeAtm() mpacket.Packet {
-	return packetRoomEnterErrorMsg(0x07)
+	return packetRoomEnterErrorMsg(constant.RoomEnterNoTradeATM)
 }
 
 func packetRoomMiniRoomNotHere() mpacket.Packet {
@@ -1214,44 +1178,44 @@ func packetRoomMiniRoomNotHere() mpacket.Packet {
 }
 
 func packetRoomTradeRequireSameMap() mpacket.Packet {
-	return packetRoomEnterErrorMsg(0x09)
+	return packetRoomEnterErrorMsg(constant.RoomEnterTradeSameMap)
 }
 
 func packetRoomcannotCreateMiniroomHere() mpacket.Packet {
-	return packetRoomEnterErrorMsg(0x0a)
+	return packetRoomEnterErrorMsg(constant.RoomEnterCannotCreateHere)
 }
 
 func packetRoomCannotStartGameHere() mpacket.Packet {
-	return packetRoomEnterErrorMsg(0x0b)
+	return packetRoomEnterErrorMsg(constant.RoomEnterCannotStartHere)
 }
 
 func packetRoomPersonalStoreFMOnly() mpacket.Packet {
-	return packetRoomEnterErrorMsg(0x0c)
+	return packetRoomEnterErrorMsg(constant.RoomEnterStoreFMOnly)
 }
 func packetRoomGarbageMsgAboutFloorInFm() mpacket.Packet {
-	return packetRoomEnterErrorMsg(0x0d)
+	return packetRoomEnterErrorMsg(constant.RoomEnterGarbageFloorFM)
 }
 
 func packetRoomMayNotEnterStore() mpacket.Packet {
-	return packetRoomEnterErrorMsg(0x0e)
+	return packetRoomEnterErrorMsg(constant.RoomEnterMayNotEnterStore)
 }
 
 func packetRoomStoreMaintenance() mpacket.Packet {
-	return packetRoomEnterErrorMsg(0x0F)
+	return packetRoomEnterErrorMsg(constant.RoomEnterStoreMaint)
 }
 
 func packetRoomCannotEnterTournament() mpacket.Packet {
-	return packetRoomEnterErrorMsg(0x10)
+	return packetRoomEnterErrorMsg(constant.MiniRoomEnterUnableEnterTournament)
 }
 
 func packetRoomGarbageTradeMsg() mpacket.Packet {
-	return packetRoomEnterErrorMsg(0x11)
+	return packetRoomEnterErrorMsg(constant.RoomEnterGarbageTradeMsg)
 }
 
 func packetRoomNotEnoughMesos() mpacket.Packet {
-	return packetRoomEnterErrorMsg(0x12)
+	return packetRoomEnterErrorMsg(constant.MiniRoomEnterNotEnoughMesos)
 }
 
 func packetRoomIncorrectPassword() mpacket.Packet {
-	return packetRoomEnterErrorMsg(0x13)
+	return packetRoomEnterErrorMsg(constant.MiniRoomEnterIncorrectPassword)
 }

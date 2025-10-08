@@ -2607,9 +2607,9 @@ func (server Server) roomWindow(conn mnet.Client, reader mpacket.Reader) {
 	operation := reader.ReadByte()
 
 	switch operation {
-	case roomCreate:
+	case constant.MiniRoomCreate:
 		switch roomType := reader.ReadByte(); roomType {
-		case roomTypeOmok:
+		case constant.MiniRoomTypeOmok:
 			name := reader.ReadString(reader.ReadInt16())
 
 			var password string
@@ -2632,7 +2632,7 @@ func (server Server) roomWindow(conn mnet.Client, reader mpacket.Reader) {
 					log.Println(err)
 				}
 			}
-		case roomTypeMemory:
+		case constant.MiniRoomTypeMatchCards:
 			name := reader.ReadString(reader.ReadInt16())
 
 			var password string
@@ -2655,7 +2655,7 @@ func (server Server) roomWindow(conn mnet.Client, reader mpacket.Reader) {
 					log.Println(err)
 				}
 			}
-		case roomTypeTrade:
+		case constant.MiniRoomTypeTrade:
 			r, valid := newTradeRoom(inst.nextID()).(roomer)
 
 			if !valid {
@@ -2669,12 +2669,12 @@ func (server Server) roomWindow(conn mnet.Client, reader mpacket.Reader) {
 					log.Println(err)
 				}
 			}
-		case roomTypePersonalShop:
+		case constant.MiniRoomTypePlayerShop:
 			log.Println("Personal shop not implemented")
 		default:
 			log.Println("Unknown room type", roomType)
 		}
-	case roomSendInvite:
+	case constant.MiniRoomInvite:
 		id := reader.ReadInt32()
 
 		plr2, err := inst.getPlayerFromID(id)
@@ -2693,7 +2693,7 @@ func (server Server) roomWindow(conn mnet.Client, reader mpacket.Reader) {
 		if trade, valid := r.(*tradeRoom); valid {
 			trade.sendInvite(plr2)
 		}
-	case roomReject:
+	case constant.MiniRoomDeclineInvite:
 		id := reader.ReadInt32()
 		code := reader.ReadByte()
 
@@ -2706,7 +2706,7 @@ func (server Server) roomWindow(conn mnet.Client, reader mpacket.Reader) {
 		if trade, valid := r.(*tradeRoom); valid {
 			trade.reject(code, plr.Name)
 		}
-	case roomAccept:
+	case constant.MiniRoomEnter:
 		id := reader.ReadInt32()
 
 		r, err := pool.getRoom(id)
@@ -2731,7 +2731,7 @@ func (server Server) roomWindow(conn mnet.Client, reader mpacket.Reader) {
 		if _, valid := r.(gameRoomer); valid {
 			pool.updateGameBox(r)
 		}
-	case roomChat:
+	case constant.MiniRoomChat:
 		msg := reader.ReadString(reader.ReadInt16())
 
 		if len(msg) > 0 {
@@ -2743,7 +2743,7 @@ func (server Server) roomWindow(conn mnet.Client, reader mpacket.Reader) {
 
 			r.chatMsg(plr, msg)
 		}
-	case roomCloseWindow:
+	case constant.MiniRoomLeave:
 		r, err := pool.getPlayerRoom(plr.ID)
 
 		if err != nil {
@@ -2771,7 +2771,7 @@ func (server Server) roomWindow(conn mnet.Client, reader mpacket.Reader) {
 				log.Println(err)
 			}
 		}
-	case roomInsertItem:
+	case constant.MiniRoomTradePutItem:
 		invType := reader.ReadByte()
 		invSlot := reader.ReadInt16()
 		amount := reader.ReadInt16()
@@ -2804,7 +2804,7 @@ func (server Server) roomWindow(conn mnet.Client, reader mpacket.Reader) {
 
 		plr.Send(packetPlayerNoChange())
 
-	case roomMesos:
+	case constant.MiniRoomTradePutMesos:
 		amount := reader.ReadInt32()
 
 		if plr.mesos < amount {
@@ -2820,7 +2820,7 @@ func (server Server) roomWindow(conn mnet.Client, reader mpacket.Reader) {
 			}
 		}
 
-	case roomAcceptTrade:
+	case constant.MiniRoomTradeAccept:
 		if r, err := pool.getPlayerRoom(plr.ID); err == nil {
 			if tr, ok := r.(*tradeRoom); ok {
 				if tr.acceptTrade(plr) {
@@ -2833,7 +2833,7 @@ func (server Server) roomWindow(conn mnet.Client, reader mpacket.Reader) {
 			}
 		}
 
-	case roomRequestTie:
+	case constant.RoomRequestTie:
 		r, err := pool.getPlayerRoom(plr.ID)
 
 		if err != nil {
@@ -2843,7 +2843,7 @@ func (server Server) roomWindow(conn mnet.Client, reader mpacket.Reader) {
 		if game, valid := r.(gameRoomer); valid {
 			game.requestTie(plr)
 		}
-	case roomRequestTieResult:
+	case constant.RoomRequestTieResult:
 		r, err := pool.getPlayerRoom(plr.ID)
 
 		if err != nil {
@@ -2864,7 +2864,7 @@ func (server Server) roomWindow(conn mnet.Client, reader mpacket.Reader) {
 				pool.updateGameBox(r)
 			}
 		}
-	case roomForfeit:
+	case constant.RoomForfeit:
 		r, err := pool.getPlayerRoom(plr.ID)
 
 		if err != nil {
@@ -2884,7 +2884,7 @@ func (server Server) roomWindow(conn mnet.Client, reader mpacket.Reader) {
 				pool.updateGameBox(r)
 			}
 		}
-	case roomRequestUndo:
+	case constant.RoomRequestUndo:
 		r, err := pool.getPlayerRoom(plr.ID)
 
 		if err != nil {
@@ -2894,7 +2894,7 @@ func (server Server) roomWindow(conn mnet.Client, reader mpacket.Reader) {
 		if game, valid := r.(*omokRoom); valid {
 			game.requestUndo(plr)
 		}
-	case roomRequestUndoResult:
+	case constant.RoomRequestUndoResult:
 		r, err := pool.getPlayerRoom(plr.ID)
 
 		if err != nil {
@@ -2905,7 +2905,7 @@ func (server Server) roomWindow(conn mnet.Client, reader mpacket.Reader) {
 			undo := reader.ReadBool()
 			game.requestUndoResult(undo, plr)
 		}
-	case roomRequestExitDuringGame:
+	case constant.RoomRequestExitDuringGame:
 		r, err := pool.getPlayerRoom(plr.ID)
 
 		if err != nil {
@@ -2915,7 +2915,7 @@ func (server Server) roomWindow(conn mnet.Client, reader mpacket.Reader) {
 		if game, valid := r.(gameRoomer); valid {
 			game.requestExit(true, plr)
 		}
-	case roomUndoRequestExit:
+	case constant.RoomUndoRequestExit:
 		r, err := pool.getPlayerRoom(plr.ID)
 
 		if err != nil {
@@ -2925,7 +2925,7 @@ func (server Server) roomWindow(conn mnet.Client, reader mpacket.Reader) {
 		if game, valid := r.(gameRoomer); valid {
 			game.requestExit(false, plr)
 		}
-	case roomReadyButtonPressed:
+	case constant.RoomReadyButtonPressed:
 		r, err := pool.getPlayerRoom(plr.ID)
 
 		if err != nil {
@@ -2935,7 +2935,7 @@ func (server Server) roomWindow(conn mnet.Client, reader mpacket.Reader) {
 		if game, valid := r.(gameRoomer); valid {
 			game.ready(plr)
 		}
-	case roomUnready:
+	case constant.RoomUnready:
 		r, err := pool.getPlayerRoom(plr.ID)
 
 		if err != nil {
@@ -2945,7 +2945,7 @@ func (server Server) roomWindow(conn mnet.Client, reader mpacket.Reader) {
 		if game, valid := r.(gameRoomer); valid {
 			game.unready(plr)
 		}
-	case roomOwnerExpells:
+	case constant.RoomOwnerExpell:
 		r, err := pool.getPlayerRoom(plr.ID)
 
 		if err != nil {
@@ -2956,7 +2956,7 @@ func (server Server) roomWindow(conn mnet.Client, reader mpacket.Reader) {
 			game.expel()
 			pool.updateGameBox(r)
 		}
-	case roomGameStart:
+	case constant.RoomGameStart:
 		r, err := pool.getPlayerRoom(plr.ID)
 
 		if err != nil {
@@ -2967,7 +2967,7 @@ func (server Server) roomWindow(conn mnet.Client, reader mpacket.Reader) {
 			game.start()
 			pool.updateGameBox(r)
 		}
-	case roomChangeTurn:
+	case constant.RoomChangeTurn:
 		r, err := pool.getPlayerRoom(plr.ID)
 
 		if err != nil {
@@ -2977,7 +2977,7 @@ func (server Server) roomWindow(conn mnet.Client, reader mpacket.Reader) {
 		if game, valid := r.(gameRoomer); valid {
 			game.changeTurn()
 		}
-	case roomPlacePiece:
+	case constant.RoomPlacePiece:
 		x := reader.ReadInt32()
 		y := reader.ReadInt32()
 		piece := reader.ReadByte()
@@ -3001,7 +3001,7 @@ func (server Server) roomWindow(conn mnet.Client, reader mpacket.Reader) {
 				}
 			}
 		}
-	case roomSelectCard:
+	case constant.RoomSelectCard:
 		turn := reader.ReadByte()
 		cardID := reader.ReadByte()
 
