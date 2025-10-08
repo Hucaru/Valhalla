@@ -531,6 +531,7 @@ func (v Item) use(plr *Player) {
 		plr.buffs = NewCharacterBuffs(plr)
 	}
 
+	plr.buffs.plr.inst = plr.inst
 	plr.buffs.AddItemBuff(v)
 }
 

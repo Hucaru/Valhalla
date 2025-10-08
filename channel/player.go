@@ -11,13 +11,12 @@ import (
 	"time"
 
 	"github.com/Hucaru/Valhalla/common"
-	"github.com/Hucaru/Valhalla/constant/skill"
-	"github.com/Hucaru/Valhalla/nx"
-
 	"github.com/Hucaru/Valhalla/common/opcode"
 	"github.com/Hucaru/Valhalla/constant"
+	"github.com/Hucaru/Valhalla/constant/skill"
 	"github.com/Hucaru/Valhalla/mnet"
 	"github.com/Hucaru/Valhalla/mpacket"
+	"github.com/Hucaru/Valhalla/nx"
 )
 
 type buddy struct {
@@ -1503,6 +1502,7 @@ func LoadPlayerFromID(id int32, conn mnet.Client) Player {
 
 	// Initialize the per-Player buff manager so handlers can call plr.addBuff(...)
 	c.buffs = NewCharacterBuffs(&c)
+	c.buffs.plr.inst = c.inst
 
 	c.storageInventory = new(storage)
 
@@ -1567,7 +1567,7 @@ func (d *Player) addBuff(skillID int32, level byte, delay int16) {
 	if d.buffs == nil {
 		d.buffs = NewCharacterBuffs(d)
 	}
-	// You can pass any extra “sinc” values you need later; 0/0 is fine for standard buffs.
+	d.buffs.plr.inst = d.inst
 	d.buffs.AddBuff(d.ID, skillID, level, false, delay)
 }
 
@@ -1592,6 +1592,7 @@ func (d *Player) saveBuffSnapshot() {
 	}
 
 	// Ensure we don't snapshot already-stale buffs
+	d.buffs.plr.inst = d.inst
 	d.buffs.AuditAndExpireStaleBuffs()
 
 	snaps := d.buffs.Snapshot()
@@ -1694,6 +1695,7 @@ func (d *Player) loadAndApplyBuffSnapshot() {
 		if d.buffs == nil {
 			d.buffs = NewCharacterBuffs(d)
 		}
+		d.buffs.plr.inst = d.inst
 		d.buffs.RestoreFromSnapshot(snaps)
 	}
 }
@@ -2092,6 +2094,18 @@ func packetPlayerLevelUpAnimation(charID int32) mpacket.Packet {
 	return p
 }
 
+func packetPlayerEffectSkill(onOther bool, skillID int32, level byte) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelPlayerEffect)
+	if onOther {
+		p.WriteByte(constant.PlayerEffectSkillOnOther)
+	} else {
+		p.WriteByte(constant.PlayerEffectSkillOnSelf)
+	}
+	p.WriteInt32(skillID)
+	p.WriteByte(level)
+	return p
+}
+
 func packetPlayerSkillAnimation(charID int32, party bool, skillID int32, level byte) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelPlayerAnimation)
 	p.WriteInt32(charID)
@@ -2169,7 +2183,6 @@ func packetPlayerCancelBuff(mask []byte) mpacket.Packet {
 func packetPlayerCancelForeignBuff(charID int32, mask []byte) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelPlayerResetForeignBuff)
 	p.WriteInt32(charID)
-	p.WriteUint64(0)
 	p.WriteBytes(mask)
 	return p
 }
@@ -2811,5 +2824,27 @@ func packetPlayerPetUpdate(sn int32) mpacket.Packet {
 	p.WriteUint64(uint64(sn))
 	p.WriteByte(0)
 
+	return p
+}
+
+func packetPlayerGiveForeignBuff(charID int32, mask []byte, values []byte, delay int16) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelPlayerGiveForeignBuff)
+	p.WriteInt32(charID)
+
+	// Normalize to 8 bytes (low dword, high dword) like self path
+	if len(mask) < 8 {
+		tmp := make([]byte, 8)
+		copy(tmp[8-len(mask):], mask)
+		mask = tmp
+	} else if len(mask) > 8 {
+		mask = mask[len(mask)-8:]
+	}
+	p.WriteBytes(mask)
+
+	// Subset payload in reference order
+	p.WriteBytes(values)
+
+	// Delay (usually 0)
+	p.WriteInt16(delay)
 	return p
 }

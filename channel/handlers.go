@@ -313,6 +313,7 @@ func (server *Server) playerConnect(conn mnet.Client, reader mpacket.Reader) {
 	newPlr.loadAndApplyBuffSnapshot()
 
 	if newPlr.buffs != nil {
+		newPlr.buffs.plr.inst = newPlr.inst
 		newPlr.buffs.AuditAndExpireStaleBuffs()
 	}
 
@@ -3951,8 +3952,9 @@ func (server *Server) playerSpecialSkill(conn mnet.Client, reader mpacket.Reader
 				if member == nil {
 					continue
 				}
-				// Apply buff to the target member (not as a “foreign” state on the caster)
-				member.addBuff(skillID, skillLevel, delay)
+
+				member.addForeignBuff(member.ID, skillID, skillLevel, delay)
+				member.Send(packetPlayerEffectSkill(true, skillID, skillLevel))
 				member.inst.send(packetPlayerSkillAnimation(member.ID, true, skillID, skillLevel))
 			}
 		}
@@ -3973,7 +3975,7 @@ func (server *Server) playerSpecialSkill(conn mnet.Client, reader mpacket.Reader
 		// GM Hide (mapped to invincible bit)
 		skill.Hide:
 		plr.addBuff(skillID, skillLevel, delay)
-		plr.inst.send(packetPlayerSkillAnimation(plr.ID, false, skillID, skillLevel))
+		plr.inst.send(packetPlayerSkillAnimation(plr.ID, true, skillID, skillLevel))
 
 	// Debuffs on mobs: [mobCount][mobIDs...][delay]
 	case skill.Threaten,
@@ -4070,6 +4072,7 @@ func (server *Server) playerCancelBuff(conn mnet.Client, reader mpacket.Reader) 
 	}
 
 	// Final sweep for any edge cases
+	cb.plr.inst = plr.inst
 	cb.AuditAndExpireStaleBuffs()
 }
 
