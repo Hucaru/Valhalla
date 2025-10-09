@@ -273,7 +273,9 @@ func (d *Player) setJob(id int16) {
 
 func (d *Player) levelUp() {
 	d.giveAP(5)
-	if d.level > 10 {
+	if d.level < 10 {
+		d.giveSP(1)
+	} else {
 		d.giveSP(3)
 	}
 
