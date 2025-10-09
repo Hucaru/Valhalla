@@ -40,6 +40,8 @@ func (server *Server) HandleServerPacket(conn mnet.Server, reader mpacket.Reader
 		server.handleChangeRate(conn, reader)
 	case opcode.CashShopNew:
 		server.handleNewCashShop(conn, reader)
+	case opcode.CashShopRequestChannelInfo:
+		server.sendChannelInfo()
 	case opcode.ChannelPlayerMessengerEvent:
 		server.handleMessengerEvent(conn, reader)
 	default:

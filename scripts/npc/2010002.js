@@ -1,37 +1,27 @@
-// 𝑱̶𝒖̶𝒔̶𝒕̶, Frank Francis – Sunrise Cosmetics (Stateless)
+var couponFace = 5152005; // VIP Face Coupon
 
-// --- Female preset faces (add 100 * skin later) -------------------------
-var femaleFaces = [
-    21000, 21001, 21002, 21003, 21004, 21005,
-    21006, 21007, 21008, 21012, 21023, 21026
-];
-
-// --- Male preset faces (add 100 * skin later) ---------------------------
-var maleFaces = [
-    20000, 20001, 20002, 20003, 20004, 20005,
-    20006, 20008, 20012, 20014, 20022, 20028
-];
-
-// Determine sex and obtain the skin digit
-var isMale = plr.level(); // Using level() as a boolean proxy; see explanation
-var base   = Math.floor(plr.getFace() / 100) % 10;
-var faces  = plr.getLevel();
-    faces  = isMale ? maleFaces : femaleFaces;
-
-for (var k = 0; k < faces.length; k++)
-    faces[k] += base * 100;
-
-// Ask the player to pick a face
-var choice = npc.sendStyles(
-    "Welcome, welcome! Not happy with your look? Neither am I. But for #b#t5152057##k, I can transform your face and get you the look you've always wanted.",
-    faces
+npc.sendSelection(
+    "Welcome! If you have a #b#t" + couponFace + "##k, I can give you a brand new face!\r\n#L0#Get a face makeover (VIP coupon)#l"
 );
 
-// Check coupon and complete
-if (plr.itemCount(5152057) > 0) {
-    plr.removeItemsByID(5152057, 1);
-    plr._pureWz('setFace', faces[choice]);           // internal WZ stub
-    npc.sendOk("Ok, the surgery's over. See for it yourself... What do you think? Quite fantastic, if I should say so myself. Please come again when you want another look, okay?");
-} else {
-    npc.sendOk("Hmm ... it looks like you don't have the coupon specifically for this place. Sorry to say this, but without the coupon, there's no plastic surgery for you...");
+if (npc.selection() === 0) {
+    var z = plr.face() % 1000;
+    var baseMale = [20020, 20021, 20022, 20023, 20024];
+    var baseFemale = [21020, 21021, 21022, 21023, 21024];
+    var src = (plr.gender() < 1) ? baseMale : baseFemale;
+    var faceList = [];
+    for (var i = 0; i < src.length; i++) {
+        faceList.push(src[i] + z);
+    }
+    npc.sendAvatar.apply(npc, ["Choose the face you want!"].concat(faceList));
+    var choice = npc.selection();
+    if (choice < 0 || choice >= faceList.length) {
+        npc.sendOk("Changed your mind? That’s fine, come back any time.");
+    } else if (plr.itemCount(couponFace) > 0) {
+        plr.removeItemsByID(couponFace, 1);
+        plr.setFace(faceList[choice]);
+        npc.sendOk("Enjoy your new look!");
+    } else {
+        npc.sendOk("It seems like you don’t have a #b#t" + couponFace + "##k.");
+    }
 }

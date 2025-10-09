@@ -157,6 +157,89 @@ const (
 	PetRemoveExpire byte = 2
 )
 
+const (
+	MiniRoomCreate        byte = 0
+	MiniRoomInvite        byte = 2
+	MiniRoomDeclineInvite byte = 3
+	MiniRoomEnter         byte = 4
+	MiniRoomEnterResult   byte = 5
+	MiniRoomChat          byte = 6
+	MiniRoomAvatar        byte = 9
+	MiniRoomLeave         byte = 10
+	MiniRoomOpen          byte = 11
+
+	MiniRoomTradePutItem  byte = 13
+	MiniRoomTradePutMesos byte = 14
+	MiniRoomTradeAccept   byte = 15
+
+	MiniRoomAddShopItem          byte = 18
+	MiniRoomBuyShopItem          byte = 19
+	MiniRoomPlayerShopItemResult byte = 0x14
+	MiniRoomPlayerShopSoldItem   byte = 0x16
+	MiniRoomMoveItemShopToInv    byte = 23
+)
+
+const (
+	MiniRoomTypeNone          byte = 0
+	MiniRoomTypeOmok          byte = 1
+	MiniRoomTypeMatchCards    byte = 2
+	MiniRoomTypeTrade         byte = 3
+	MiniRoomTypePlayerShop    byte = 4
+	MiniRoomTypeEntrustedShop byte = 5
+)
+
+const (
+	MiniRoomEnterRoomAlreadyClosed     byte = 0x01
+	MiniRoomEnterFullCapacity          byte = 0x02
+	MiniRoomEnterOtherRequests         byte = 0x03
+	MiniRoomEnterCantWhileDead         byte = 0x04
+	MiniRoomEnterCantInMiddleEvent     byte = 0x05
+	MiniRoomEnterUnableToDoIt          byte = 0x06
+	MiniRoomEnterOtherItemsAtPoint     byte = 0x07
+	MiniRoomEnterCantEstablishRoom     byte = 0x0A
+	MiniRoomEnterTradeOnSameMap        byte = 0x09
+	MiniRoomEnterNotEnoughMesos        byte = 0x0F
+	MiniRoomEnterCantStartGameHere     byte = 0x0B
+	MiniRoomEnterBuiltAtMainTown       byte = 0x0C
+	MiniRoomEnterUnableEnterTournament byte = 0x0D
+	MiniRoomEnterIncorrectPassword     byte = 0x10
+)
+
+const (
+	PlayerShopNotEnoughInStock       byte = 1
+	PlayerShopNotEnoughMesos         byte = 2
+	PlayerShopPriceTooHighForTrade   byte = 3
+	PlayerShopBuyerNotEnoughMoney    byte = 4
+	PlayerShopCannotCarryMoreThanOne byte = 5
+	PlayerShopInventoryFull          byte = 6
+)
+
+const (
+	MiniRoomLeaveReason          byte = 0
+	MiniRoomCantEstablish        byte = 1
+	MiniRoomCancel               byte = 2
+	MiniRoomClosed               byte = 3
+	MiniRoomExpelled             byte = 4
+	MiniRoomForcedLeave          byte = 5
+	MiniRoomTradeSuccess         byte = 6
+	MiniRoomTradeFail            byte = 7
+	MiniRoomTradeInventoryFull   byte = 8
+	MiniRoomTradeWrongMap        byte = 9
+	MiniRoomPlayerShopOutOfStock byte = 10
+)
+
+const (
+	GameWin     byte = 0
+	GameTie     byte = 1
+	GameForfeit byte = 2
+)
+
+const (
+	MatchCardsSizeSmall  byte = 0
+	MatchCardsSizeMedium byte = 1
+	MatchCardsSizeLarge  byte = 2
+)
+
 var ExpTable = [...]int32{15, 34, 57, 92, 135, 372, 560, 840, 1242, 1144, // Beginner
 
 	// 1st Job
@@ -189,3 +272,61 @@ var ExpTable = [...]int32{15, 34, 57, 92, 135, 372, 560, 840, 1242, 1144, // Beg
 	894634784, 943660770, 995373379, 1049919840, 1107455447, 1168144006, 1232158297, 1299680571,
 	1370903066, 1446028554, 1525246918, 1608855764, 1697021059, // 0 is the amount of exp needed for level 200 to level up i.e. never shall
 }
+
+const (
+	RoomMaxPlayers = 2
+
+	OmokBoardSize = 15
+
+	MatchCardsPairsSmall  = 6
+	MatchCardsPairsMedium = 10
+	MatchCardsPairsLarge  = 15
+
+	RoomOwnerSlot = 0
+	RoomGuestSlot = 1
+
+	RoomLeaveTradeCancelled    = 0x02
+	RoomYellowChatExpelled     = 0
+	RoomYellowChatMatchedCards = 9
+	RoomChatTypeChat           = 8
+	RoomChatTypeNotice         = 7
+	RoomPacketShowWindow       = 0x05
+	RoomPacketJoin             = 0x04
+	RoomPacketLeave            = 0x0A
+	RoomEnterClosed            = 0x01
+	RoomEnterFull              = 0x02
+	RoomEnterBusy              = 0x03
+	RoomEnterNotAllowedDead    = 0x04
+	RoomEnterNotAllowedEvent   = 0x05
+	RoomEnterThisCharNotAllow  = 0x06
+	RoomEnterNoTradeATM        = 0x07
+	RoomEnterTradeSameMap      = 0x09
+	RoomEnterCannotCreateHere  = 0x0A
+	RoomEnterCannotStartHere   = 0x0B
+	RoomEnterStoreFMOnly       = 0x0C
+	RoomEnterGarbageFloorFM    = 0x0D
+	RoomEnterMayNotEnterStore  = 0x0E
+	RoomEnterStoreMaint        = 0x0F
+	RoomEnterGarbageTradeMsg   = 0x11
+	RoomPacketInvite           = 0x02
+	RoomPacketInviteResult     = 0x03
+	RoomPacketShowAccept       = 0x0F
+	RoomPacketMemoryStart      = 0x0C
+
+	RoomRequestTie            byte = 42
+	RoomRequestTieResult      byte = 43
+	RoomForfeit               byte = 44
+	RoomRequestUndo           byte = 46
+	RoomRequestUndoResult     byte = 47
+	RoomRequestExitDuringGame byte = 48
+	RoomUndoRequestExit       byte = 49
+	RoomReadyButtonPressed    byte = 50
+	RoomUnready               byte = 51
+	RoomOwnerExpell           byte = 52
+	RoomGameStart             byte = 53
+	RoomGameResult            byte = 54
+	RoomChangeTurn            byte = 55
+	RoomPlacePiece            byte = 56
+	RoomInvalidPlace          byte = 57
+	RoomSelectCard            byte = 60
+)

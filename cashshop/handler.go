@@ -154,15 +154,36 @@ func (server *Server) leaveCashShopToChannel(conn mnet.Client, reader mpacket.Re
 		return
 	}
 
-	if int(targetChan) >= len(server.channels) {
-		log.Println("cashshop: invalid target channel index:", targetChan)
-		return
+	var ip []byte
+	var port int16
+
+	if int(targetChan) < len(server.channels) {
+		ip = server.channels[targetChan].IP
+		port = server.channels[targetChan].Port
 	}
-	ip := server.channels[targetChan].IP
-	port := server.channels[targetChan].Port
+
 	if len(ip) != 4 || port == 0 {
-		log.Println("cashshop: target channel missing IP/port:", targetChan)
-		return
+		log.Printf("cashshop: target channel %d missing IP/port, searching for fallback...", targetChan)
+
+		log.Println("cashshop: sent request to world for updated channel information")
+		server.world.Send(internal.PacketCashShopRequestChannelInfo())
+
+		found := false
+		for i, ch := range server.channels {
+			if len(ch.IP) == 4 && ch.Port != 0 {
+				targetChan = byte(i)
+				ip = ch.IP
+				port = ch.Port
+				found = true
+				log.Printf("cashshop: using fallback channel %d", targetChan)
+				break
+			}
+		}
+
+		if !found {
+			log.Println("cashshop: no valid fallback channels available")
+			return
+		}
 	}
 
 	p := mpacket.CreateWithOpcode(opcode.SendChannelChange)
@@ -170,5 +191,4 @@ func (server *Server) leaveCashShopToChannel(conn mnet.Client, reader mpacket.Re
 	p.WriteBytes(ip)
 	p.WriteInt16(port)
 	conn.Send(p)
-
 }

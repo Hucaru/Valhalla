@@ -68,6 +68,8 @@ func AddSkillBuff(skillID int32, bits ...int) {
 func LoadBuffs() {
 	skillBuffBits = make(map[int32][]int)
 
+	AddSkillBuff(int32(skill.NimbleBody), BuffSpeed)
+
 	// 1st Job
 	AddSkillBuff(int32(skill.IronBody), BuffWeaponDefense)
 	AddSkillBuff(int32(skill.MagicGuard), BuffMagicGuard)
@@ -246,7 +248,7 @@ func buildMaskBytes64(bits []int) []byte {
 
 // Emit triples by scanning maskBytes in the same wire order we Send:
 // bytes 0..7, bits 0..7 (LSB-first).
-func (cb *CharacterBuffs) buildBuffTriplesWireOrder(skillID int32, level byte, maskBytes []byte, expiresAtMs int64) []byte {
+func (cb *CharacterBuffs) buildBuffTriplesWireOrder(skillID int32, level byte, maskBytes []byte, remainSec int16) []byte {
 	levels, err := nx.GetPlayerSkill(skillID)
 	if err != nil || level == 0 || int(level) > len(levels) {
 		return nil
@@ -321,7 +323,8 @@ func (cb *CharacterBuffs) buildBuffTriplesWireOrder(skillID int32, level byte, m
 		out = append(out, byte(v), byte(v>>8))
 		id := skillID
 		out = append(out, byte(id), byte(id>>8), byte(id>>16), byte(id>>24))
-		t := expiresAtMs
+		// short remaining time in seconds
+		t := remainSec
 		out = append(out, byte(t), byte(t>>8))
 	}
 
@@ -549,8 +552,20 @@ func (cb *CharacterBuffs) AddBuffFromCC(charId, skillID int32, expiresAtMs int64
 	}
 	maskBytes := buildMaskBytes64(bits)
 
-	// Emit value triples in exactly the same mask byte/bit order.
-	values := cb.buildBuffTriplesWireOrder(skillID, level, maskBytes, expiresAtMs)
+	// Compute client-visible remaining time in seconds (ceil), clamped to int16 range.
+	remainSec := int16(0)
+	if expiresAtMs > 0 {
+		now := time.Now().UnixMilli()
+		if d := expiresAtMs - now; d > 0 {
+			if d > 32767*1000 {
+				d = 32767 * 1000
+			}
+			remainSec = int16((d + 500) / 1000)
+		}
+	}
+
+	// Emit value triples in exactly the same mask byte/bit order for local (self) path.
+	values := cb.buildBuffTriplesWireOrder(skillID, level, maskBytes, remainSec)
 	if len(values) == 0 {
 		log.Printf("BUFF ABORT: no values produced for skillID=%d", skillID)
 		return
@@ -559,8 +574,14 @@ func (cb *CharacterBuffs) AddBuffFromCC(charId, skillID int32, expiresAtMs int64
 	// Extra trailing byte only for combo/charges.
 	extra := byte(0)
 
-	// Send
+	// Send to self
 	cb.plr.Send(packetPlayerGiveBuff(maskBytes, values, delay, extra))
+
+	// Build and broadcast the foreign buff state so others see the effect/state.
+	if cb.plr != nil && cb.plr.inst != nil {
+		fMask, fVals := cb.buildForeignBuffMaskAndValues(skillID, level, bits)
+		cb.plr.inst.send(packetPlayerGiveForeignBuff(cb.plr.ID, fMask, fVals, delay))
+	}
 
 	cb.activeSkillLevels[skillID] = level
 
@@ -595,85 +616,103 @@ func (cb *CharacterBuffs) AddBuffFromCC(charId, skillID int32, expiresAtMs int64
 	}
 }
 
-func (cb *CharacterBuffs) post(fn func()) {
-	if cb.plr.inst != nil && cb.plr.inst.dispatch != nil {
-		cb.plr.inst.dispatch <- fn
-		return
+func (cb *CharacterBuffs) buildForeignBuffMaskAndValues(skillID int32, level byte, skillBits []int) ([]byte, []byte) {
+	levels, err := nx.GetPlayerSkill(skillID)
+	if err != nil || level == 0 || int(level) > len(levels) {
+		return nil, nil
 	}
-	fn()
-}
+	sl := levels[level-1]
 
-func (cb *CharacterBuffs) scheduleExpiryLocked(skillID int32, after time.Duration) {
-	// Cancel previous
-	if t, ok := cb.expireTimers[skillID]; ok && t != nil {
-		t.Stop()
-		delete(cb.expireTimers, skillID)
-	}
-
-	if after <= 0 {
-		cb.post(func() { cb.expireBuffNow(skillID) })
-		return
-	}
-
-	cb.expireTimers[skillID] = time.AfterFunc(after, func() {
-		// Always hop via post; it will inline if instance/dispatch is nil.
-		cb.post(func() { cb.expireBuffNow(skillID) })
-	})
-}
-
-func (cb *CharacterBuffs) expireBuffNow(skillID int32) {
-	if cb.plr == nil {
-		return
-	}
-	if t, ok := cb.expireTimers[skillID]; ok && t != nil {
-		t.Stop()
-		delete(cb.expireTimers, skillID)
-	}
-	delete(cb.expireAt, skillID)
-
-	bits, ok := skillBuffBits[skillID]
-	if !ok || len(bits) == 0 {
-		if skillID < 0 {
-			if mask, ok2 := cb.itemMasks[skillID]; ok2 {
-				cb.plr.Send(packetPlayerCancelBuff(mask))
-				if cb.plr.inst != nil {
-					cb.plr.inst.send(packetPlayerCancelForeignBuff(cb.plr.ID, mask))
-				}
-				delete(cb.itemMasks, skillID)
+	// Helper to check if this skill sets a given bit
+	hasBit := func(bit int) bool {
+		for _, b := range skillBits {
+			if b == bit {
+				return true
 			}
 		}
-		cb.despawnSummonIfMatches(skillID)
-		return
-	}
-	maskBytes := buildMaskBytes64(bits)
-
-	cb.plr.Send(packetPlayerCancelBuff(maskBytes))
-	if cb.plr.inst != nil {
-		cb.plr.inst.send(packetPlayerCancelForeignBuff(cb.plr.ID, maskBytes))
+		return false
 	}
 
-	delete(cb.activeSkillLevels, skillID)
+	addedBits := make([]int, 0, 8)
+	out := make([]byte, 0, 32)
 
-	cb.despawnSummonIfMatches(skillID)
-}
+	// Speed: write byte N
+	if hasBit(BuffSpeed) {
+		addedBits = append(addedBits, BuffSpeed)
+		val := byte(1)
+		if sl.Speed != 0 {
+			val = byte(sl.Speed)
+		}
+		out = append(out, val)
+	}
+	// ComboAttack: write byte N
+	if hasBit(BuffComboAttack) {
+		addedBits = append(addedBits, BuffComboAttack)
+		val := byte(1)
+		if sl.X != 0 {
+			val = byte(sl.X)
+		}
+		out = append(out, val)
+	}
+	// Charges: write int32 R (reason/source skill)
+	if hasBit(BuffCharges) {
+		addedBits = append(addedBits, BuffCharges)
+		id := skillID
+		out = append(out, byte(id), byte(id>>8), byte(id>>16), byte(id>>24))
+	}
+	// Stun: write int32 R
+	if hasBit(BuffStun) {
+		addedBits = append(addedBits, BuffStun)
+		id := skillID
+		out = append(out, byte(id), byte(id>>8), byte(id>>16), byte(id>>24))
+	}
+	// Darkness: write int32 R
+	if hasBit(BuffDarkness) {
+		addedBits = append(addedBits, BuffDarkness)
+		id := skillID
+		out = append(out, byte(id), byte(id>>8), byte(id>>16), byte(id>>24))
+	}
+	// Seal: write int32 R
+	if hasBit(BuffSeal) {
+		addedBits = append(addedBits, BuffSeal)
+		id := skillID
+		out = append(out, byte(id), byte(id>>8), byte(id>>16), byte(id>>24))
+	}
+	// Weakness: write int32 R
+	if hasBit(BuffWeakness) {
+		addedBits = append(addedBits, BuffWeakness)
+		id := skillID
+		out = append(out, byte(id), byte(id>>8), byte(id>>16), byte(id>>24))
+	}
+	// Poison: write short N, int32 R
+	if hasBit(BuffPoison) {
+		addedBits = append(addedBits, BuffPoison)
+		n := int16(1)
+		if sl.X != 0 {
+			n = int16(sl.X)
+		}
+		out = append(out, byte(n), byte(n>>8))
+		id := skillID
+		out = append(out, byte(id), byte(id>>8), byte(id>>16), byte(id>>24))
+	}
+	// SoulArrow: toggle, no payload
+	if hasBit(BuffSoulArrow) {
+		addedBits = append(addedBits, BuffSoulArrow)
+	}
+	// ShadowPartner: toggle, no payload
+	if hasBit(BuffShadowPartner) {
+		addedBits = append(addedBits, BuffShadowPartner)
+	}
+	// DarkSight: toggle, no payload
+	if hasBit(BuffDarkSight) {
+		addedBits = append(addedBits, BuffDarkSight)
+	}
 
-func (cb *CharacterBuffs) despawnSummonIfMatches(skillID int32) {
-	p := cb.plr
-	if p == nil || p.summons == nil {
-		return
+	if len(addedBits) == 0 {
+		return nil, nil
 	}
-	if p.summons.puppet != nil && p.summons.puppet.SkillID == skillID {
-		p.removeSummon(true, constant.SummonRemoveReasonKeepBuff)
-		return
-	}
-	if p.summons.summon != nil && p.summons.summon.SkillID == skillID {
-		p.removeSummon(false, constant.SummonRemoveReasonKeepBuff)
-		return
-	}
-}
-
-func (cb *CharacterBuffs) check(skillID int32) {
-	// Implement conflicting buff cleanup if needed.
+	mask := buildMaskBytes64(addedBits)
+	return mask, out
 }
 
 // ClearBuff removes a specific buff from Player and DB.
@@ -762,4 +801,84 @@ func buildBuffMask(skillID int32) *Flag {
 		uMask.SetBitNumber(bit, 1)
 	}
 	return uMask
+}
+
+func (cb *CharacterBuffs) post(fn func()) {
+	if cb.plr != nil && cb.plr.inst != nil && cb.plr.inst.dispatch != nil {
+		cb.plr.inst.dispatch <- fn
+		return
+	}
+	fn()
+}
+
+func (cb *CharacterBuffs) scheduleExpiryLocked(skillID int32, after time.Duration) {
+	// Cancel previous
+	if t, ok := cb.expireTimers[skillID]; ok && t != nil {
+		t.Stop()
+		delete(cb.expireTimers, skillID)
+	}
+
+	if after <= 0 {
+		cb.post(func() { cb.expireBuffNow(skillID) })
+		return
+	}
+
+	cb.expireTimers[skillID] = time.AfterFunc(after, func() {
+		cb.post(func() { cb.expireBuffNow(skillID) })
+	})
+}
+
+func (cb *CharacterBuffs) expireBuffNow(skillID int32) {
+	if cb == nil || cb.plr == nil {
+		return
+	}
+	if t, ok := cb.expireTimers[skillID]; ok && t != nil {
+		t.Stop()
+		delete(cb.expireTimers, skillID)
+	}
+	delete(cb.expireAt, skillID)
+
+	// Item-source (negative) or skill-source (positive)
+	bits, ok := skillBuffBits[skillID]
+	if !ok || len(bits) == 0 {
+		if skillID < 0 {
+			if mask, ok2 := cb.itemMasks[skillID]; ok2 {
+				cb.plr.Send(packetPlayerCancelBuff(mask))
+				if cb.plr.inst != nil {
+					cb.plr.inst.send(packetPlayerCancelForeignBuff(cb.plr.ID, mask))
+				}
+				delete(cb.itemMasks, skillID)
+			}
+		}
+		cb.despawnSummonIfMatches(skillID)
+		return
+	}
+	maskBytes := buildMaskBytes64(bits)
+
+	cb.plr.Send(packetPlayerCancelBuff(maskBytes))
+	if cb.plr.inst != nil {
+		cb.plr.inst.send(packetPlayerCancelForeignBuff(cb.plr.ID, maskBytes))
+	}
+
+	delete(cb.activeSkillLevels, skillID)
+	cb.despawnSummonIfMatches(skillID)
+}
+
+func (cb *CharacterBuffs) despawnSummonIfMatches(skillID int32) {
+	p := cb.plr
+	if p == nil || p.summons == nil {
+		return
+	}
+	if p.summons.puppet != nil && p.summons.puppet.SkillID == skillID {
+		p.removeSummon(true, constant.SummonRemoveReasonKeepBuff)
+		return
+	}
+	if p.summons.summon != nil && p.summons.summon.SkillID == skillID {
+		p.removeSummon(false, constant.SummonRemoveReasonKeepBuff)
+		return
+	}
+}
+
+func (cb *CharacterBuffs) check(skillID int32) {
+	// Placeholder for conflicting buff cleanup if needed.
 }

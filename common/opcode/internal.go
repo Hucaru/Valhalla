@@ -22,5 +22,6 @@ const (
 	CashShopOk                  byte = 0x11
 	CashShopBad                 byte = 0x12
 	CashShopInfo                byte = 0x13
-	ChannelPlayerMessengerEvent byte = 0x14
+	CashShopRequestChannelInfo  byte = 0x14
+	ChannelPlayerMessengerEvent byte = 0x15
 )

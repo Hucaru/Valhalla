@@ -171,11 +171,10 @@ func (server *Server) HandleClientPacket(conn mnet.Client, reader mpacket.Reader
 		server.playerPetInteraction(conn, reader)
 	case opcode.RecvChannelPetLoot:
 		server.playerPetLoot(conn, reader)
-	case 159:
-		// I have no idea what this is but it's super spammy
-		// So let's just silently drop it
 	default:
 		unknownPacketsTotal.Inc()
+		// Let's send a no change to make sure characters aren't stuck on unknown packets
+		conn.Send(packetPlayerNoChange())
 		log.Println("UNKNOWN CLIENT PACKET(", op, "):", reader)
 	}
 }
@@ -314,6 +313,7 @@ func (server *Server) playerConnect(conn mnet.Client, reader mpacket.Reader) {
 	newPlr.loadAndApplyBuffSnapshot()
 
 	if newPlr.buffs != nil {
+		newPlr.buffs.plr.inst = newPlr.inst
 		newPlr.buffs.AuditAndExpireStaleBuffs()
 	}
 
@@ -1282,9 +1282,10 @@ func (server Server) playerPickupItem(conn mnet.Client, reader mpacket.Reader) {
 	}
 
 	if drop.mesos > 0 {
-		plr.giveMesos(drop.mesos)
+		amount := int32(plr.inst.dropPool.rates.mesos * float32(drop.mesos))
+		plr.giveMesos(amount)
 	} else {
-		err = plr.GiveItem(drop.item)
+		err, _ = plr.GiveItem(drop.item)
 		if err != nil {
 			plr.Send(packetInventoryFull())
 			plr.Send(packetInventoryDontTake())
@@ -1861,6 +1862,12 @@ func (server Server) playerMeleeSkill(conn mnet.Client, reader mpacket.Reader) {
 
 	if err != nil {
 		conn.Send(packetMessageRedText(err.Error()))
+		return
+	}
+
+	err = plr.useSkill(data.skillID, data.skillLevel, data.projectileID)
+	if err != nil {
+		// Send packet to stop?
 		return
 	}
 
@@ -2463,7 +2470,7 @@ func (server *Server) npcShop(conn mnet.Client, reader mpacket.Reader) {
 			plr.Send(packetNpcShopResult(shopBuyUnknown))
 			return
 		}
-		if err := plr.GiveItem(newItem); err != nil {
+		if err, _ := plr.GiveItem(newItem); err != nil {
 			plr.Send(packetNpcShopResult(shopBuyUnknown))
 			return
 		}
@@ -2600,9 +2607,9 @@ func (server Server) roomWindow(conn mnet.Client, reader mpacket.Reader) {
 	operation := reader.ReadByte()
 
 	switch operation {
-	case roomCreate:
+	case constant.MiniRoomCreate:
 		switch roomType := reader.ReadByte(); roomType {
-		case roomTypeOmok:
+		case constant.MiniRoomTypeOmok:
 			name := reader.ReadString(reader.ReadInt16())
 
 			var password string
@@ -2625,7 +2632,7 @@ func (server Server) roomWindow(conn mnet.Client, reader mpacket.Reader) {
 					log.Println(err)
 				}
 			}
-		case roomTypeMemory:
+		case constant.MiniRoomTypeMatchCards:
 			name := reader.ReadString(reader.ReadInt16())
 
 			var password string
@@ -2648,7 +2655,7 @@ func (server Server) roomWindow(conn mnet.Client, reader mpacket.Reader) {
 					log.Println(err)
 				}
 			}
-		case roomTypeTrade:
+		case constant.MiniRoomTypeTrade:
 			r, valid := newTradeRoom(inst.nextID()).(roomer)
 
 			if !valid {
@@ -2662,12 +2669,12 @@ func (server Server) roomWindow(conn mnet.Client, reader mpacket.Reader) {
 					log.Println(err)
 				}
 			}
-		case roomTypePersonalShop:
+		case constant.MiniRoomTypePlayerShop:
 			log.Println("Personal shop not implemented")
 		default:
 			log.Println("Unknown room type", roomType)
 		}
-	case roomSendInvite:
+	case constant.MiniRoomInvite:
 		id := reader.ReadInt32()
 
 		plr2, err := inst.getPlayerFromID(id)
@@ -2686,7 +2693,7 @@ func (server Server) roomWindow(conn mnet.Client, reader mpacket.Reader) {
 		if trade, valid := r.(*tradeRoom); valid {
 			trade.sendInvite(plr2)
 		}
-	case roomReject:
+	case constant.MiniRoomDeclineInvite:
 		id := reader.ReadInt32()
 		code := reader.ReadByte()
 
@@ -2699,7 +2706,7 @@ func (server Server) roomWindow(conn mnet.Client, reader mpacket.Reader) {
 		if trade, valid := r.(*tradeRoom); valid {
 			trade.reject(code, plr.Name)
 		}
-	case roomAccept:
+	case constant.MiniRoomEnter:
 		id := reader.ReadInt32()
 
 		r, err := pool.getRoom(id)
@@ -2724,7 +2731,7 @@ func (server Server) roomWindow(conn mnet.Client, reader mpacket.Reader) {
 		if _, valid := r.(gameRoomer); valid {
 			pool.updateGameBox(r)
 		}
-	case roomChat:
+	case constant.MiniRoomChat:
 		msg := reader.ReadString(reader.ReadInt16())
 
 		if len(msg) > 0 {
@@ -2736,7 +2743,7 @@ func (server Server) roomWindow(conn mnet.Client, reader mpacket.Reader) {
 
 			r.chatMsg(plr, msg)
 		}
-	case roomCloseWindow:
+	case constant.MiniRoomLeave:
 		r, err := pool.getPlayerRoom(plr.ID)
 
 		if err != nil {
@@ -2763,15 +2770,69 @@ func (server Server) roomWindow(conn mnet.Client, reader mpacket.Reader) {
 				log.Println(err)
 			}
 		}
-	case roomInsertItem:
-		// invTab := reader.ReadByte()
-		// itemSlot := reader.ReadInt16()
-		// quantity := reader.ReadInt16()
-		// tradeWindowSlot := reader.ReadByte()
-	case roomMesos:
-		// amount := reader.ReadInt32()
-	case roomAcceptTrade:
-	case roomRequestTie:
+	case constant.MiniRoomTradePutItem:
+		invType := reader.ReadByte()
+		invSlot := reader.ReadInt16()
+		amount := reader.ReadInt16()
+		tradeSlot := reader.ReadByte()
+
+		item, err := plr.getItem(invType, invSlot)
+		if err != nil || item.amount < amount {
+			plr.Send(packetPlayerNoChange())
+			return
+		}
+
+		if item.isRechargeable() {
+			amount = item.amount
+		}
+
+		_, err = plr.takeItem(item.ID, invSlot, amount, invType)
+		if err != nil {
+			plr.Send(packetPlayerNoChange())
+			return
+		}
+
+		newItem := item
+		newItem.amount = amount
+
+		if r, err := pool.getPlayerRoom(plr.ID); err == nil {
+			if tr, ok := r.(*tradeRoom); ok {
+				tr.insertItem(tradeSlot, plr.ID, newItem)
+			}
+		}
+
+		plr.Send(packetPlayerNoChange())
+
+	case constant.MiniRoomTradePutMesos:
+		amount := reader.ReadInt32()
+
+		if plr.mesos < amount {
+			plr.Send(packetPlayerNoChange())
+			return
+		}
+
+		plr.takeMesos(amount)
+
+		if r, err := pool.getPlayerRoom(plr.ID); err == nil {
+			if tr, ok := r.(*tradeRoom); ok {
+				tr.updateMesos(amount, plr.ID)
+			}
+		}
+
+	case constant.MiniRoomTradeAccept:
+		if r, err := pool.getPlayerRoom(plr.ID); err == nil {
+			if tr, ok := r.(*tradeRoom); ok {
+				if tr.acceptTrade(plr) {
+					err = pool.removeRoom(tr.roomID)
+
+					if err != nil {
+						log.Println(err)
+					}
+				}
+			}
+		}
+
+	case constant.RoomRequestTie:
 		r, err := pool.getPlayerRoom(plr.ID)
 
 		if err != nil {
@@ -2781,7 +2842,7 @@ func (server Server) roomWindow(conn mnet.Client, reader mpacket.Reader) {
 		if game, valid := r.(gameRoomer); valid {
 			game.requestTie(plr)
 		}
-	case roomRequestTieResult:
+	case constant.RoomRequestTieResult:
 		r, err := pool.getPlayerRoom(plr.ID)
 
 		if err != nil {
@@ -2802,7 +2863,7 @@ func (server Server) roomWindow(conn mnet.Client, reader mpacket.Reader) {
 				pool.updateGameBox(r)
 			}
 		}
-	case roomForfeit:
+	case constant.RoomForfeit:
 		r, err := pool.getPlayerRoom(plr.ID)
 
 		if err != nil {
@@ -2822,7 +2883,7 @@ func (server Server) roomWindow(conn mnet.Client, reader mpacket.Reader) {
 				pool.updateGameBox(r)
 			}
 		}
-	case roomRequestUndo:
+	case constant.RoomRequestUndo:
 		r, err := pool.getPlayerRoom(plr.ID)
 
 		if err != nil {
@@ -2832,7 +2893,7 @@ func (server Server) roomWindow(conn mnet.Client, reader mpacket.Reader) {
 		if game, valid := r.(*omokRoom); valid {
 			game.requestUndo(plr)
 		}
-	case roomRequestUndoResult:
+	case constant.RoomRequestUndoResult:
 		r, err := pool.getPlayerRoom(plr.ID)
 
 		if err != nil {
@@ -2843,7 +2904,7 @@ func (server Server) roomWindow(conn mnet.Client, reader mpacket.Reader) {
 			undo := reader.ReadBool()
 			game.requestUndoResult(undo, plr)
 		}
-	case roomRequestExitDuringGame:
+	case constant.RoomRequestExitDuringGame:
 		r, err := pool.getPlayerRoom(plr.ID)
 
 		if err != nil {
@@ -2853,7 +2914,7 @@ func (server Server) roomWindow(conn mnet.Client, reader mpacket.Reader) {
 		if game, valid := r.(gameRoomer); valid {
 			game.requestExit(true, plr)
 		}
-	case roomUndoRequestExit:
+	case constant.RoomUndoRequestExit:
 		r, err := pool.getPlayerRoom(plr.ID)
 
 		if err != nil {
@@ -2863,7 +2924,7 @@ func (server Server) roomWindow(conn mnet.Client, reader mpacket.Reader) {
 		if game, valid := r.(gameRoomer); valid {
 			game.requestExit(false, plr)
 		}
-	case roomReadyButtonPressed:
+	case constant.RoomReadyButtonPressed:
 		r, err := pool.getPlayerRoom(plr.ID)
 
 		if err != nil {
@@ -2873,7 +2934,7 @@ func (server Server) roomWindow(conn mnet.Client, reader mpacket.Reader) {
 		if game, valid := r.(gameRoomer); valid {
 			game.ready(plr)
 		}
-	case roomUnready:
+	case constant.RoomUnready:
 		r, err := pool.getPlayerRoom(plr.ID)
 
 		if err != nil {
@@ -2883,7 +2944,7 @@ func (server Server) roomWindow(conn mnet.Client, reader mpacket.Reader) {
 		if game, valid := r.(gameRoomer); valid {
 			game.unready(plr)
 		}
-	case roomOwnerExpells:
+	case constant.RoomOwnerExpell:
 		r, err := pool.getPlayerRoom(plr.ID)
 
 		if err != nil {
@@ -2894,7 +2955,7 @@ func (server Server) roomWindow(conn mnet.Client, reader mpacket.Reader) {
 			game.expel()
 			pool.updateGameBox(r)
 		}
-	case roomGameStart:
+	case constant.RoomGameStart:
 		r, err := pool.getPlayerRoom(plr.ID)
 
 		if err != nil {
@@ -2905,7 +2966,7 @@ func (server Server) roomWindow(conn mnet.Client, reader mpacket.Reader) {
 			game.start()
 			pool.updateGameBox(r)
 		}
-	case roomChangeTurn:
+	case constant.RoomChangeTurn:
 		r, err := pool.getPlayerRoom(plr.ID)
 
 		if err != nil {
@@ -2915,7 +2976,7 @@ func (server Server) roomWindow(conn mnet.Client, reader mpacket.Reader) {
 		if game, valid := r.(gameRoomer); valid {
 			game.changeTurn()
 		}
-	case roomPlacePiece:
+	case constant.RoomPlacePiece:
 		x := reader.ReadInt32()
 		y := reader.ReadInt32()
 		piece := reader.ReadByte()
@@ -2939,7 +3000,7 @@ func (server Server) roomWindow(conn mnet.Client, reader mpacket.Reader) {
 				}
 			}
 		}
-	case roomSelectCard:
+	case constant.RoomSelectCard:
 		turn := reader.ReadByte()
 		cardID := reader.ReadByte()
 
@@ -3879,7 +3940,7 @@ func (server *Server) playerSpecialSkill(conn mnet.Client, reader mpacket.Reader
 	switch skill.Skill(skillID) {
 	// Party buffs handled earlier remain unchanged...
 	case skill.Haste, skill.BanditHaste, skill.Bless, skill.IronWill, skill.Rage, skill.GMHaste, skill.GMBless, skill.GMHolySymbol,
-		skill.Meditation, skill.ILMeditation, skill.MesoUp, skill.HolySymbol, skill.HyperBody:
+		skill.Meditation, skill.ILMeditation, skill.MesoUp, skill.HolySymbol, skill.HyperBody, skill.NimbleBody:
 		plr.addBuff(skillID, skillLevel, delay)
 		plr.inst.send(packetPlayerSkillAnimation(plr.ID, false, skillID, skillLevel))
 
@@ -3890,8 +3951,9 @@ func (server *Server) playerSpecialSkill(conn mnet.Client, reader mpacket.Reader
 				if member == nil {
 					continue
 				}
-				// Apply buff to the target member (not as a “foreign” state on the caster)
-				member.addBuff(skillID, skillLevel, delay)
+
+				member.addForeignBuff(member.ID, skillID, skillLevel, delay)
+				member.Send(packetPlayerEffectSkill(true, skillID, skillLevel))
 				member.inst.send(packetPlayerSkillAnimation(member.ID, true, skillID, skillLevel))
 			}
 		}
@@ -3912,7 +3974,7 @@ func (server *Server) playerSpecialSkill(conn mnet.Client, reader mpacket.Reader
 		// GM Hide (mapped to invincible bit)
 		skill.Hide:
 		plr.addBuff(skillID, skillLevel, delay)
-		plr.inst.send(packetPlayerSkillAnimation(plr.ID, false, skillID, skillLevel))
+		plr.inst.send(packetPlayerSkillAnimation(plr.ID, true, skillID, skillLevel))
 
 	// Debuffs on mobs: [mobCount][mobIDs...][delay]
 	case skill.Threaten,
@@ -4009,6 +4071,7 @@ func (server *Server) playerCancelBuff(conn mnet.Client, reader mpacket.Reader) 
 	}
 
 	// Final sweep for any edge cases
+	cb.plr.inst = plr.inst
 	cb.AuditAndExpireStaleBuffs()
 }
 
@@ -4262,7 +4325,7 @@ func (server *Server) playerQuestOperation(conn mnet.Client, reader mpacket.Read
 		questItem := reader.ReadInt16()
 		if count > 0 {
 			if it, err := CreateItemFromID(int32(questItem), count); err == nil {
-				_ = plr.GiveItem(it)
+				_, _ = plr.GiveItem(it)
 			} else {
 				log.Printf("[QuestPkt] lostItem give failed: err=%v", err)
 			}
@@ -4387,7 +4450,7 @@ func (server *Server) playerUseStorage(conn mnet.Client, reader mpacket.Reader) 
 		out.dbID = 0
 		out.slotID = 0
 
-		if err := plr.GiveItem(out); err != nil {
+		if err, _ := plr.GiveItem(out); err != nil {
 			plr.Send(packetNpcStorageResult(storageInvFullOrNot))
 			return
 		}
@@ -4441,13 +4504,13 @@ func (server *Server) playerUseStorage(conn mnet.Client, reader mpacket.Reader) 
 		}
 
 		if !plr.storageInventory.addItem(storeCopy) {
-			_ = plr.GiveItem(storeCopy)
+			_, _ = plr.GiveItem(storeCopy)
 			plr.Send(packetNpcStorageResult(storageIsFull))
 			return
 		}
 
 		if err := plr.storageInventory.save(plr.accountID); err != nil {
-			_ = plr.GiveItem(storeCopy)
+			_, _ = plr.GiveItem(storeCopy)
 			plr.Send(packetNpcStorageResult(storageDueToAnError))
 			return
 		}
@@ -4784,9 +4847,10 @@ func (server *Server) playerPetLoot(conn mnet.Client, reader mpacket.Reader) {
 	}
 
 	if drop.mesos > 0 {
-		plr.giveMesos(drop.mesos)
+		amount := int32(plr.inst.dropPool.rates.mesos * float32(drop.mesos))
+		plr.giveMesos(amount)
 	} else {
-		err = plr.GiveItem(drop.item)
+		err, _ = plr.GiveItem(drop.item)
 		if err != nil {
 			plr.Send(packetInventoryFull())
 			plr.Send(packetInventoryDontTake())

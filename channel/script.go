@@ -284,7 +284,7 @@ func (ctrl *npcChatPlayerController) GiveItem(id int32, amount int16) bool {
 		return false
 	}
 
-	if err = ctrl.plr.GiveItem(item); err != nil {
+	if err, _ = ctrl.plr.GiveItem(item); err != nil {
 		return false
 	}
 
@@ -851,7 +851,7 @@ func (ctrl *npcChatPlayerController) InventoryExchange(itemSource int32, srcCoun
 	if err != nil {
 		return false
 	}
-	if err = ctrl.plr.GiveItem(item); err != nil {
+	if err, _ = ctrl.plr.GiveItem(item); err != nil {
 		return false
 	}
 	return true

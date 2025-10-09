@@ -3,7 +3,7 @@ var couponDye  = 5151001; // Hair dye coupon
 
 // Main menu
 npc.sendSelection(
-    "I'm the head of this hair salon Natalie. If you have #b#t" + couponCut + "##k or #b#t" + couponDye + "##k, allow me to take care of your hairdo. Please choose the one you want.\r\n"
+    "I'm the head of this hair salon. If you have #b#t" + couponCut + "##k or #b#t" + couponDye + "##k, allow me to take care of your hairdo. Please choose the one you want.\r\n"
     + "#L0#Haircut (VIP coupon)#l\r\n"
     + "#L1#Dye your hair (VIP coupon)#l"
 );
@@ -12,9 +12,13 @@ var sel = npc.selection();
 var z = plr.hair() % 10;
 
 if (sel === 0) {
-    // Haircut branch — build from base IDs + current color digit
-    var baseMale   = [30030, 30020, 30000, 30060, 30150, 30210, 30140, 30120, 30200, 30170];
-    var baseFemale = [31050, 31040, 31000, 31150, 31160, 31100, 31030, 31080, 31030, 31070];
+    var baseMale = [
+        30030, 30020, 30000, 30480, 30310, 30330, 30060, 30150, 30410, 30210, 30140, 30120, 30200
+    ];
+
+    var baseFemale = [
+        31050, 31040, 31000, 31700, 31150, 31310, 31300, 31160, 31100, 31410, 31030, 31080, 31070
+    ];
 
     var hair = [];
     var src = (plr.gender() < 1) ? baseMale : baseFemale;
@@ -42,7 +46,6 @@ if (sel === 0) {
     }
 
 } else if (sel === 1) {
-    // Hair dye branch — keep style, vary color 0..7
     var base = Math.floor(plr.hair() / 10) * 10;
     var colors = [base + 0, base + 1, base + 2, base + 3, base + 4, base + 5, base + 6, base + 7];
 

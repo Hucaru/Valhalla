@@ -14,5 +14,5 @@
         return;
     }
 
-    plr.warpFromName(BOSS_MAP, "west00");
+    plr.warpFromName(BOSS_MAP, "st00");
 })();

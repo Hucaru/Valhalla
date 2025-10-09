@@ -11,13 +11,12 @@ import (
 	"time"
 
 	"github.com/Hucaru/Valhalla/common"
-	"github.com/Hucaru/Valhalla/constant/skill"
-	"github.com/Hucaru/Valhalla/nx"
-
 	"github.com/Hucaru/Valhalla/common/opcode"
 	"github.com/Hucaru/Valhalla/constant"
+	"github.com/Hucaru/Valhalla/constant/skill"
 	"github.com/Hucaru/Valhalla/mnet"
 	"github.com/Hucaru/Valhalla/mpacket"
+	"github.com/Hucaru/Valhalla/nx"
 )
 
 type buddy struct {
@@ -274,7 +273,11 @@ func (d *Player) setJob(id int16) {
 
 func (d *Player) levelUp() {
 	d.giveAP(5)
-	d.giveSP(3)
+	if d.level < 10 {
+		d.giveSP(1)
+	} else {
+		d.giveSP(3)
+	}
 
 	// Use per-Player RNG and job-based helper for deterministic gains.
 	hpGain, mpGain := d.levelUpGains()
@@ -300,30 +303,43 @@ func (d *Player) levelUp() {
 }
 
 func (d *Player) setEXP(amount int32) {
-	if d.level > 199 {
+	if d.level >= 200 {
 		d.exp = amount
 		d.Send(packetPlayerStatChange(false, constant.ExpID, int32(amount)))
 		d.MarkDirty(DirtyEXP, 800*time.Millisecond)
 		return
 	}
-	remainder := amount - constant.ExpTable[d.level-1]
-	if remainder >= 0 {
-		d.levelUp()
-		d.setEXP(remainder)
-	} else {
-		d.exp = amount
-		d.Send(packetPlayerStatChange(false, constant.ExpID, int32(amount)))
-		d.MarkDirty(DirtyEXP, 800*time.Millisecond)
+
+	for {
+		if d.level >= 200 {
+			d.exp = amount
+			break
+		}
+
+		expForLevel := constant.ExpTable[d.level-1]
+		remainder := amount - expForLevel
+		if remainder >= 0 {
+			d.levelUp()
+			amount = remainder
+		} else {
+			d.exp = amount
+			break
+		}
 	}
+
+	d.Send(packetPlayerStatChange(false, constant.ExpID, d.exp))
+	d.MarkDirty(DirtyEXP, 800*time.Millisecond)
 }
 
 func (d *Player) giveEXP(amount int32, fromMob, fromParty bool) {
 	amount = int32(d.rates.exp * float32(amount))
-	if fromMob {
+
+	switch {
+	case fromMob:
 		d.Send(packetMessageExpGained(true, false, amount))
-	} else if fromParty {
+	case fromParty:
 		d.Send(packetMessageExpGained(false, false, amount))
-	} else {
+	default:
 		d.Send(packetMessageExpGained(false, true, amount))
 	}
 
@@ -409,9 +425,20 @@ func (d *Player) giveLuk(amount int16) {
 	d.setLuk(d.luk + amount)
 }
 
+func (d *Player) giveHP(amount int16) {
+	newHP := int(d.hp) + int(amount)
+	d.setHP(int16(newHP))
+}
+
 func (d *Player) setHP(amount int16) {
+	if amount < 0 {
+		amount = 0
+	}
 	if amount > constant.MaxHpValue {
 		amount = constant.MaxHpValue
+	}
+	if amount > d.maxHP {
+		amount = d.maxHP
 	}
 	d.hp = amount
 	d.Send(packetPlayerStatChange(true, constant.HpID, int32(amount)))
@@ -427,17 +454,20 @@ func (d *Player) setMaxHP(amount int16) {
 	d.MarkDirty(DirtyMaxHP, 500*time.Millisecond)
 }
 
-func (d *Player) giveHP(amount int16) {
-	d.setHP(d.hp + amount)
-}
-
 func (d *Player) giveMP(amount int16) {
-	d.setMP(d.mp + amount)
+	newMP := int(d.mp) + int(amount)
+	d.setMP(int16(newMP))
 }
 
 func (d *Player) setMP(amount int16) {
+	if amount < 0 {
+		amount = 0
+	}
 	if amount > constant.MaxMpValue {
 		amount = constant.MaxMpValue
+	}
+	if amount > d.maxMP {
+		amount = d.maxMP
 	}
 	d.mp = amount
 	d.Send(packetPlayerStatChange(true, constant.MpID, int32(amount)))
@@ -584,11 +614,14 @@ func (d *Player) SetMaplePoints(points int32) {
 	d.MarkDirty(DirtyMaplePoints, 300*time.Millisecond)
 }
 
-func (d *Player) GiveItem(newItem Item) error { // TODO: Refactor
+// GiveItem grants the given item to a player and returns the item
+func (d *Player) GiveItem(newItem Item) (error, Item) { // TODO: Refactor
 	isRechargeable := func(itemID int32) bool {
 		base := itemID / 10000
 		return base == 207
 	}
+
+	newItem.dbID = 0
 
 	findFirstEmptySlot := func(items []Item, size byte) (int16, error) {
 		slotsUsed := make([]bool, size)
@@ -617,7 +650,7 @@ func (d *Player) GiveItem(newItem Item) error { // TODO: Refactor
 	case 1: // Equip
 		slotID, err := findFirstEmptySlot(d.equip, d.equipSlotSize)
 		if err != nil {
-			return err
+			return err, Item{}
 		}
 		newItem.slotID = slotID
 		newItem.amount = 1
@@ -629,13 +662,13 @@ func (d *Player) GiveItem(newItem Item) error { // TODO: Refactor
 		if isRechargeable(newItem.ID) {
 			slotID, err := findFirstEmptySlot(d.use, d.useSlotSize)
 			if err != nil {
-				return err
+				return err, Item{}
 			}
 			newItem.slotID = slotID
 			newItem.save(d.ID)
 			d.use = append(d.use, newItem)
 			d.Send(packetInventoryAddItem(newItem, true))
-			return nil
+			return nil, newItem
 		}
 
 		// Non-rechargeable
@@ -664,7 +697,7 @@ func (d *Player) GiveItem(newItem Item) error { // TODO: Refactor
 			if slotID == 0 {
 				slotID, err := findFirstEmptySlot(d.use, d.useSlotSize)
 				if err != nil {
-					return err
+					return err, Item{}
 				}
 				newItem.slotID = slotID
 				newItem.save(d.ID)
@@ -675,7 +708,7 @@ func (d *Player) GiveItem(newItem Item) error { // TODO: Refactor
 				if remainder > 0 { // partial merge -> place remainder to new slot
 					slotID, err := findFirstEmptySlot(d.use, d.useSlotSize)
 					if err != nil {
-						return err
+						return err, Item{}
 					}
 					newItem.amount = value
 					newItem.slotID = slotID
@@ -693,7 +726,7 @@ func (d *Player) GiveItem(newItem Item) error { // TODO: Refactor
 	case 3: // Set-up
 		slotID, err := findFirstEmptySlot(d.setUp, d.setupSlotSize)
 		if err != nil {
-			return err
+			return err, Item{}
 		}
 		newItem.slotID = slotID
 		newItem.save(d.ID)
@@ -726,7 +759,7 @@ func (d *Player) GiveItem(newItem Item) error { // TODO: Refactor
 			if slotID == 0 {
 				slotID, err := findFirstEmptySlot(d.etc, d.etcSlotSize)
 				if err != nil {
-					return err
+					return err, Item{}
 				}
 				newItem.slotID = slotID
 				newItem.save(d.ID)
@@ -737,7 +770,7 @@ func (d *Player) GiveItem(newItem Item) error { // TODO: Refactor
 				if remainder > 0 {
 					slotID, err := findFirstEmptySlot(d.etc, d.etcSlotSize)
 					if err != nil {
-						return err
+						return err, Item{}
 					}
 					newItem.amount = value
 					newItem.slotID = slotID
@@ -755,7 +788,7 @@ func (d *Player) GiveItem(newItem Item) error { // TODO: Refactor
 	case 5: // Cash
 		slotID, err := findFirstEmptySlot(d.cash, d.cashSlotSize)
 		if err != nil {
-			return err
+			return err, Item{}
 		}
 		newItem.slotID = slotID
 		newItem.save(d.ID)
@@ -763,10 +796,10 @@ func (d *Player) GiveItem(newItem Item) error { // TODO: Refactor
 		d.Send(packetInventoryAddItem(newItem, true))
 
 	default:
-		return fmt.Errorf("Unkown inventory ID: %d", newItem.invID)
+		return fmt.Errorf("Unknown inventory ID: %d", newItem.invID), Item{}
 	}
 
-	return nil
+	return nil, newItem
 }
 
 func (d *Player) takeItem(id int32, slot int16, amount int16, invID byte) (Item, error) {
@@ -1476,6 +1509,7 @@ func LoadPlayerFromID(id int32, conn mnet.Client) Player {
 
 	// Initialize the per-Player buff manager so handlers can call plr.addBuff(...)
 	c.buffs = NewCharacterBuffs(&c)
+	c.buffs.plr.inst = c.inst
 
 	c.storageInventory = new(storage)
 
@@ -1540,7 +1574,7 @@ func (d *Player) addBuff(skillID int32, level byte, delay int16) {
 	if d.buffs == nil {
 		d.buffs = NewCharacterBuffs(d)
 	}
-	// You can pass any extra “sinc” values you need later; 0/0 is fine for standard buffs.
+	d.buffs.plr.inst = d.inst
 	d.buffs.AddBuff(d.ID, skillID, level, false, delay)
 }
 
@@ -1565,6 +1599,7 @@ func (d *Player) saveBuffSnapshot() {
 	}
 
 	// Ensure we don't snapshot already-stale buffs
+	d.buffs.plr.inst = d.inst
 	d.buffs.AuditAndExpireStaleBuffs()
 
 	snaps := d.buffs.Snapshot()
@@ -1667,6 +1702,7 @@ func (d *Player) loadAndApplyBuffSnapshot() {
 		if d.buffs == nil {
 			d.buffs = NewCharacterBuffs(d)
 		}
+		d.buffs.plr.inst = d.inst
 		d.buffs.RestoreFromSnapshot(snaps)
 	}
 }
@@ -1780,7 +1816,7 @@ func (d *Player) applyQuestAct(act nx.ActBlock) {
 		switch {
 		case ai.Count > 0:
 			if it, err := CreateItemFromID(ai.ID, int16(ai.Count)); err == nil {
-				_ = d.GiveItem(it)
+				_, _ = d.GiveItem(it)
 			}
 		case ai.Count < 0:
 			_ = d.removeItemsByID(ai.ID, -ai.Count)
@@ -2065,6 +2101,18 @@ func packetPlayerLevelUpAnimation(charID int32) mpacket.Packet {
 	return p
 }
 
+func packetPlayerEffectSkill(onOther bool, skillID int32, level byte) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelPlayerEffect)
+	if onOther {
+		p.WriteByte(constant.PlayerEffectSkillOnOther)
+	} else {
+		p.WriteByte(constant.PlayerEffectSkillOnSelf)
+	}
+	p.WriteInt32(skillID)
+	p.WriteByte(level)
+	return p
+}
+
 func packetPlayerSkillAnimation(charID int32, party bool, skillID int32, level byte) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelPlayerAnimation)
 	p.WriteInt32(charID)
@@ -2142,7 +2190,6 @@ func packetPlayerCancelBuff(mask []byte) mpacket.Packet {
 func packetPlayerCancelForeignBuff(charID int32, mask []byte) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelPlayerResetForeignBuff)
 	p.WriteInt32(charID)
-	p.WriteUint64(0)
 	p.WriteBytes(mask)
 	return p
 }
@@ -2777,6 +2824,41 @@ func (plr *Player) WriteCharacterInfoPacket(p *mpacket.Packet) {
 	}
 }
 
+func (p *Player) canReceiveItems(items []Item) bool {
+	invCounts := map[byte]int{}
+	for _, item := range items {
+		invType := byte(item.ID / 1000000)
+		invCounts[invType]++
+	}
+
+	for invType, needed := range invCounts {
+		var cur, max byte
+		switch invType {
+		case 1:
+			cur = byte(len(p.equip))
+			max = p.equipSlotSize
+		case 2:
+			cur = byte(len(p.use))
+			max = p.useSlotSize
+		case 3:
+			cur = byte(len(p.setUp))
+			max = p.setupSlotSize
+		case 4:
+			cur = byte(len(p.etc))
+			max = p.etcSlotSize
+		case 5:
+			cur = byte(len(p.cash))
+			max = p.cashSlotSize
+		default:
+			continue
+		}
+		if cur+byte(needed) > max {
+			return false
+		}
+	}
+	return true
+}
+
 func packetPlayerPetUpdate(sn int32) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelStatChange)
 	p.WriteBool(false)
@@ -2784,5 +2866,27 @@ func packetPlayerPetUpdate(sn int32) mpacket.Packet {
 	p.WriteUint64(uint64(sn))
 	p.WriteByte(0)
 
+	return p
+}
+
+func packetPlayerGiveForeignBuff(charID int32, mask []byte, values []byte, delay int16) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelPlayerGiveForeignBuff)
+	p.WriteInt32(charID)
+
+	// Normalize to 8 bytes (low dword, high dword) like self path
+	if len(mask) < 8 {
+		tmp := make([]byte, 8)
+		copy(tmp[8-len(mask):], mask)
+		mask = tmp
+	} else if len(mask) > 8 {
+		mask = mask[len(mask)-8:]
+	}
+	p.WriteBytes(mask)
+
+	// Subset payload in reference order
+	p.WriteBytes(values)
+
+	// Delay (usually 0)
+	p.WriteInt16(delay)
 	return p
 }
