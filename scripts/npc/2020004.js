@@ -1,1 +1,1 @@
-plr.sendStorage(2020004);
+npc.sendStorage(2020004);

@@ -1,1 +1,1 @@
-plr.sendStorage(9120009)
+npc.sendStorage(9120009)
