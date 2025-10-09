@@ -614,7 +614,7 @@ func (d *Player) SetMaplePoints(points int32) {
 	d.MarkDirty(DirtyMaplePoints, 300*time.Millisecond)
 }
 
-// GiveItem grants the given item to a player and returns the db ID
+// GiveItem grants the given item to a player and returns the item
 func (d *Player) GiveItem(newItem Item) (error, Item) { // TODO: Refactor
 	isRechargeable := func(itemID int32) bool {
 		base := itemID / 10000
