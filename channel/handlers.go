@@ -1285,7 +1285,7 @@ func (server Server) playerPickupItem(conn mnet.Client, reader mpacket.Reader) {
 		amount := int32(plr.inst.dropPool.rates.mesos * float32(drop.mesos))
 		plr.giveMesos(amount)
 	} else {
-		err = plr.GiveItem(drop.item)
+		err, _ = plr.GiveItem(drop.item)
 		if err != nil {
 			plr.Send(packetInventoryFull())
 			plr.Send(packetInventoryDontTake())
@@ -2470,7 +2470,7 @@ func (server *Server) npcShop(conn mnet.Client, reader mpacket.Reader) {
 			plr.Send(packetNpcShopResult(shopBuyUnknown))
 			return
 		}
-		if err := plr.GiveItem(newItem); err != nil {
+		if err, _ := plr.GiveItem(newItem); err != nil {
 			plr.Send(packetNpcShopResult(shopBuyUnknown))
 			return
 		}
@@ -4325,7 +4325,7 @@ func (server *Server) playerQuestOperation(conn mnet.Client, reader mpacket.Read
 		questItem := reader.ReadInt16()
 		if count > 0 {
 			if it, err := CreateItemFromID(int32(questItem), count); err == nil {
-				_ = plr.GiveItem(it)
+				_, _ = plr.GiveItem(it)
 			} else {
 				log.Printf("[QuestPkt] lostItem give failed: err=%v", err)
 			}
@@ -4450,7 +4450,7 @@ func (server *Server) playerUseStorage(conn mnet.Client, reader mpacket.Reader) 
 		out.dbID = 0
 		out.slotID = 0
 
-		if err := plr.GiveItem(out); err != nil {
+		if err, _ := plr.GiveItem(out); err != nil {
 			plr.Send(packetNpcStorageResult(storageInvFullOrNot))
 			return
 		}
@@ -4504,13 +4504,13 @@ func (server *Server) playerUseStorage(conn mnet.Client, reader mpacket.Reader) 
 		}
 
 		if !plr.storageInventory.addItem(storeCopy) {
-			_ = plr.GiveItem(storeCopy)
+			_, _ = plr.GiveItem(storeCopy)
 			plr.Send(packetNpcStorageResult(storageIsFull))
 			return
 		}
 
 		if err := plr.storageInventory.save(plr.accountID); err != nil {
-			_ = plr.GiveItem(storeCopy)
+			_, _ = plr.GiveItem(storeCopy)
 			plr.Send(packetNpcStorageResult(storageDueToAnError))
 			return
 		}
@@ -4850,7 +4850,7 @@ func (server *Server) playerPetLoot(conn mnet.Client, reader mpacket.Reader) {
 		amount := int32(plr.inst.dropPool.rates.mesos * float32(drop.mesos))
 		plr.giveMesos(amount)
 	} else {
-		err = plr.GiveItem(drop.item)
+		err, _ = plr.GiveItem(drop.item)
 		if err != nil {
 			plr.Send(packetInventoryFull())
 			plr.Send(packetInventoryDontTake())

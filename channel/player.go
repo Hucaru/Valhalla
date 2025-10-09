@@ -614,7 +614,8 @@ func (d *Player) SetMaplePoints(points int32) {
 	d.MarkDirty(DirtyMaplePoints, 300*time.Millisecond)
 }
 
-func (d *Player) GiveItem(newItem Item) error { // TODO: Refactor
+// GiveItem grants the given item to a player and returns the db ID
+func (d *Player) GiveItem(newItem Item) (error, Item) { // TODO: Refactor
 	isRechargeable := func(itemID int32) bool {
 		base := itemID / 10000
 		return base == 207
@@ -649,7 +650,7 @@ func (d *Player) GiveItem(newItem Item) error { // TODO: Refactor
 	case 1: // Equip
 		slotID, err := findFirstEmptySlot(d.equip, d.equipSlotSize)
 		if err != nil {
-			return err
+			return err, Item{}
 		}
 		newItem.slotID = slotID
 		newItem.amount = 1
@@ -661,13 +662,13 @@ func (d *Player) GiveItem(newItem Item) error { // TODO: Refactor
 		if isRechargeable(newItem.ID) {
 			slotID, err := findFirstEmptySlot(d.use, d.useSlotSize)
 			if err != nil {
-				return err
+				return err, Item{}
 			}
 			newItem.slotID = slotID
 			newItem.save(d.ID)
 			d.use = append(d.use, newItem)
 			d.Send(packetInventoryAddItem(newItem, true))
-			return nil
+			return nil, newItem
 		}
 
 		// Non-rechargeable
@@ -696,7 +697,7 @@ func (d *Player) GiveItem(newItem Item) error { // TODO: Refactor
 			if slotID == 0 {
 				slotID, err := findFirstEmptySlot(d.use, d.useSlotSize)
 				if err != nil {
-					return err
+					return err, Item{}
 				}
 				newItem.slotID = slotID
 				newItem.save(d.ID)
@@ -707,7 +708,7 @@ func (d *Player) GiveItem(newItem Item) error { // TODO: Refactor
 				if remainder > 0 { // partial merge -> place remainder to new slot
 					slotID, err := findFirstEmptySlot(d.use, d.useSlotSize)
 					if err != nil {
-						return err
+						return err, Item{}
 					}
 					newItem.amount = value
 					newItem.slotID = slotID
@@ -725,7 +726,7 @@ func (d *Player) GiveItem(newItem Item) error { // TODO: Refactor
 	case 3: // Set-up
 		slotID, err := findFirstEmptySlot(d.setUp, d.setupSlotSize)
 		if err != nil {
-			return err
+			return err, Item{}
 		}
 		newItem.slotID = slotID
 		newItem.save(d.ID)
@@ -758,7 +759,7 @@ func (d *Player) GiveItem(newItem Item) error { // TODO: Refactor
 			if slotID == 0 {
 				slotID, err := findFirstEmptySlot(d.etc, d.etcSlotSize)
 				if err != nil {
-					return err
+					return err, Item{}
 				}
 				newItem.slotID = slotID
 				newItem.save(d.ID)
@@ -769,7 +770,7 @@ func (d *Player) GiveItem(newItem Item) error { // TODO: Refactor
 				if remainder > 0 {
 					slotID, err := findFirstEmptySlot(d.etc, d.etcSlotSize)
 					if err != nil {
-						return err
+						return err, Item{}
 					}
 					newItem.amount = value
 					newItem.slotID = slotID
@@ -787,7 +788,7 @@ func (d *Player) GiveItem(newItem Item) error { // TODO: Refactor
 	case 5: // Cash
 		slotID, err := findFirstEmptySlot(d.cash, d.cashSlotSize)
 		if err != nil {
-			return err
+			return err, Item{}
 		}
 		newItem.slotID = slotID
 		newItem.save(d.ID)
@@ -795,10 +796,10 @@ func (d *Player) GiveItem(newItem Item) error { // TODO: Refactor
 		d.Send(packetInventoryAddItem(newItem, true))
 
 	default:
-		return fmt.Errorf("Unkown inventory ID: %d", newItem.invID)
+		return fmt.Errorf("Unknown inventory ID: %d", newItem.invID), Item{}
 	}
 
-	return nil
+	return nil, newItem
 }
 
 func (d *Player) takeItem(id int32, slot int16, amount int16, invID byte) (Item, error) {
@@ -1815,7 +1816,7 @@ func (d *Player) applyQuestAct(act nx.ActBlock) {
 		switch {
 		case ai.Count > 0:
 			if it, err := CreateItemFromID(ai.ID, int16(ai.Count)); err == nil {
-				_ = d.GiveItem(it)
+				_, _ = d.GiveItem(it)
 			}
 		case ai.Count < 0:
 			_ = d.removeItemsByID(ai.ID, -ai.Count)
