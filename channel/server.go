@@ -336,26 +336,7 @@ func (server *Server) cleanupMiniRoom(plr *Player) {
 		return
 	}
 
-	pool := inst.roomPool
-	r, err := pool.getPlayerRoom(plr.ID)
-	if err != nil || r == nil {
-		return
-	}
-
-	if trade, ok := r.(*tradeRoom); ok {
-		trade.removePlayer(plr)
-		_ = pool.removeRoom(trade.id())
-		return
-	}
-
-	if game, ok := r.(gameRoomer); ok {
-		game.kickPlayer(plr, 0x00)
-		if r.closed() {
-			_ = pool.removeRoom(r.id())
-		} else {
-			pool.updateGameBox(r)
-		}
-	}
+	inst.roomPool.removePlayer(plr)
 }
 
 func (server *Server) flushPlayers() {
