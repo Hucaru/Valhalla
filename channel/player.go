@@ -618,6 +618,8 @@ func (d *Player) GiveItem(newItem Item) error { // TODO: Refactor
 		return base == 207
 	}
 
+	newItem.dbID = 0
+
 	findFirstEmptySlot := func(items []Item, size byte) (int16, error) {
 		slotsUsed := make([]bool, size)
 		for _, v := range items {
@@ -2817,6 +2819,41 @@ func (plr *Player) WriteCharacterInfoPacket(p *mpacket.Packet) {
 	for i := 0; i < 10; i++ {
 		p.WriteInt32(999999999) // VIP Tele rocks
 	}
+}
+
+func (p *Player) canReceiveItems(items []Item) bool {
+	invCounts := map[byte]int{}
+	for _, item := range items {
+		invType := byte(item.ID / 1000000)
+		invCounts[invType]++
+	}
+
+	for invType, needed := range invCounts {
+		var cur, max byte
+		switch invType {
+		case 1:
+			cur = byte(len(p.equip))
+			max = p.equipSlotSize
+		case 2:
+			cur = byte(len(p.use))
+			max = p.useSlotSize
+		case 3:
+			cur = byte(len(p.setUp))
+			max = p.setupSlotSize
+		case 4:
+			cur = byte(len(p.etc))
+			max = p.etcSlotSize
+		case 5:
+			cur = byte(len(p.cash))
+			max = p.cashSlotSize
+		default:
+			continue
+		}
+		if cur+byte(needed) > max {
+			return false
+		}
+	}
+	return true
 }
 
 func packetPlayerPetUpdate(sn int32) mpacket.Packet {

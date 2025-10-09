@@ -270,6 +270,8 @@ func (server *Server) ClientDisconnected(conn mnet.Client) {
 		return
 	}
 
+	server.cleanupMiniRoom(plr)
+
 	defer func() {
 		conn.Cleanup()
 		common.MetricsGauges["player_count"].With(prometheus.Labels{
@@ -316,6 +318,43 @@ func (server *Server) ClientDisconnected(conn mnet.Client) {
 	}
 	if _, dbErr := common.DB.Exec("UPDATE accounts SET isLogedIn=0 WHERE accountID=?", conn.GetAccountID()); dbErr != nil {
 		log.Println("Unable to complete logout for ", conn.GetAccountID())
+	}
+}
+
+func (server *Server) cleanupMiniRoom(plr *Player) {
+	if plr == nil || plr.inst == nil {
+		return
+	}
+
+	field, ok := server.fields[plr.mapID]
+	if !ok || field == nil {
+		return
+	}
+
+	inst, err := field.getInstance(plr.inst.id)
+	if err != nil || inst == nil {
+		return
+	}
+
+	pool := inst.roomPool
+	r, err := pool.getPlayerRoom(plr.ID)
+	if err != nil || r == nil {
+		return
+	}
+
+	if trade, ok := r.(*tradeRoom); ok {
+		trade.removePlayer(plr)
+		_ = pool.removeRoom(trade.id())
+		return
+	}
+
+	if game, ok := r.(gameRoomer); ok {
+		game.kickPlayer(plr, 0x00)
+		if r.closed() {
+			_ = pool.removeRoom(r.id())
+		} else {
+			pool.updateGameBox(r)
+		}
 	}
 }
 

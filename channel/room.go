@@ -737,12 +737,7 @@ func (r *tradeRoom) addPlayer(plr *Player) bool {
 }
 
 func (r *tradeRoom) removePlayer(plr *Player) {
-	// Note: since anyone leaving the room causes it to close we don't need to remove players
-	for i, v := range r.players {
-		if v.Conn != plr.Conn {
-			v.Send(packetRoomLeave(byte(i), constant.RoomLeaveTradeCancelled))
-		}
-	}
+	r.closeWithReason(constant.RoomLeaveTradeCancelled, true)
 }
 
 func (r tradeRoom) sendInvite(plr *Player) {
@@ -788,40 +783,67 @@ func (r *tradeRoom) completeTrade() {
 	p1 := r.players[0]
 	p2 := r.players[1]
 
-	if m1, ok := r.mesos[p1.ID]; ok && m1 > 0 {
-		if (p2.mesos + m1) > math.MaxInt32 {
-			r.closeWithReason(constant.MiniRoomTradeFail)
-			r.rollback()
-		}
-		p2.giveMesos(m1)
+	type tradeChange struct {
+		plr         *Player
+		mesosChange int32
+		itemsToGive []Item
 	}
-	if m2, ok := r.mesos[p2.ID]; ok && m2 > 0 {
-		if (p1.mesos + m2) > math.MaxInt32 {
-			r.closeWithReason(constant.MiniRoomTradeFail)
-			r.rollback()
-		}
-		p1.giveMesos(m2)
+	changes := []tradeChange{
+		{plr: p1, mesosChange: r.mesos[p2.ID], itemsToGive: nil},
+		{plr: p2, mesosChange: r.mesos[p1.ID], itemsToGive: nil},
 	}
 
 	for _, item := range r.items[p1.ID] {
-		if err := p2.GiveItem(item); err != nil {
-			log.Printf("Trade error: failed to give item %v to %s: %v", item.ID, p2.Name, err)
-			r.closeWithReason(constant.MiniRoomTradeInventoryFull)
-			r.rollback()
-		}
+		changes[1].itemsToGive = append(changes[1].itemsToGive, item)
 	}
 	for _, item := range r.items[p2.ID] {
+		changes[0].itemsToGive = append(changes[0].itemsToGive, item)
+	}
+
+	if (p1.mesos+changes[0].mesosChange) > math.MaxInt32 || (p2.mesos+changes[1].mesosChange) > math.MaxInt32 {
+		r.closeWithReason(constant.MiniRoomTradeFail, true)
+		return
+	}
+
+	if !p1.canReceiveItems(changes[0].itemsToGive) {
+		r.closeWithReason(constant.MiniRoomTradeInventoryFull, true)
+		return
+	}
+	if !p2.canReceiveItems(changes[1].itemsToGive) {
+		r.closeWithReason(constant.MiniRoomTradeInventoryFull, true)
+		return
+	}
+
+	if changes[0].mesosChange > 0 {
+		p1.giveMesos(changes[0].mesosChange)
+	}
+	if changes[1].mesosChange > 0 {
+		p2.giveMesos(changes[1].mesosChange)
+	}
+
+	for _, item := range changes[0].itemsToGive {
 		if err := p1.GiveItem(item); err != nil {
 			log.Printf("Trade error: failed to give item %v to %s: %v", item.ID, p1.Name, err)
-			r.closeWithReason(constant.MiniRoomTradeInventoryFull)
-			r.rollback()
+			r.closeWithReason(constant.MiniRoomTradeInventoryFull, true)
+			return
+		}
+	}
+	for _, item := range changes[1].itemsToGive {
+		if err := p2.GiveItem(item); err != nil {
+			log.Printf("Trade error: failed to give item %v to %s: %v", item.ID, p2.Name, err)
+			r.closeWithReason(constant.MiniRoomTradeInventoryFull, true)
+			return
 		}
 	}
 
-	r.closeWithReason(constant.MiniRoomTradeSuccess)
+	r.closeWithReason(constant.MiniRoomTradeSuccess, false)
 }
 
-func (r *tradeRoom) closeWithReason(reason byte) {
+func (r *tradeRoom) closeWithReason(reason byte, rollback bool) {
+	if rollback {
+		r.rollback()
+	}
+
 	for i, plr := range r.players {
 		plr.Send(packetRoomLeave(byte(i), reason))
 	}
@@ -829,11 +851,21 @@ func (r *tradeRoom) closeWithReason(reason byte) {
 
 func (r *tradeRoom) rollback() {
 	for _, player := range r.players {
-		player.giveMesos(r.mesos[player.ID])
-		for _, item := range r.items[player.ID] {
-			err := player.GiveItem(item)
-			if err != nil {
-				log.Println("tradeRoom rollback failed: ", err)
+		if player == nil {
+			continue
+		}
+
+		if m := r.mesos[player.ID]; m != 0 {
+			player.giveMesos(m)
+			r.mesos[player.ID] = 0
+		}
+
+		if bag, ok := r.items[player.ID]; ok {
+			for slot, item := range bag {
+				if err := player.GiveItem(item); err != nil {
+					log.Println("tradeRoom rollback failed:", err)
+				}
+				delete(bag, slot)
 			}
 		}
 	}

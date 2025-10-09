@@ -2764,7 +2764,6 @@ func (server Server) roomWindow(conn mnet.Client, reader mpacket.Reader) {
 			}
 		} else if trade, valid := r.(*tradeRoom); valid {
 			trade.removePlayer(plr)
-			trade.rollback()
 			err = pool.removeRoom(trade.roomID)
 
 			if err != nil {
