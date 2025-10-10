@@ -1,2 +1,1 @@
-// Storage keeper in Toy Town
-plr.sendStorage(2041008)
+npc.sendStorage(2041008)

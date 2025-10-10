@@ -1,20 +1,27 @@
-// beauty coupon dialog
-if (npc.sendYesNo("If you use the regular coupon, your face may transform into a random new look ... do you still want to do it using #b#t5152056##k?")) {
-    if (plr.itemCount(5152056) > 0) {
-        var face;
-        if (plr.job() < 1 || (plr.job() >= 1000 && plr.job() < 2000)) {
-            var maleChoices = [20001, 20003, 20007, 20013, 20021, 20023, 20025];
-            face = maleChoices[Math.floor(Math.random() * maleChoices.length)] + parseInt(plr.job() / 100 % 10) * 100;
-        } else {
-            var femaleChoices = [21002, 21004, 21006, 21008, 21022, 21027, 21029];
-            face = femaleChoices[Math.floor(Math.random() * femaleChoices.length)] + parseInt(plr.job() / 100 % 10) * 100;
-        }
-        
-        plr.removeItemsByID(5152056, 1);
-        plr.setFace(face);
-        plr.updateSingleStat(Packages.client.MapleStat.FACE, face);
-        npc.sendOk("Now the procedure's done ... check it out, here's the mirror for you ... what do you think? Even I admit this looks like a masterpiece ... hahah, well, give me a call once you get sick of that new look, alright?");
+var couponFace = 5152007; // VIP Face Coupon
+
+npc.sendSelection(
+    "Welcome! If you have a #b#t" + couponFace + "##k, I can give you a brand new face!\r\n#L0#Get a face makeover (VIP coupon)#l"
+);
+
+if (npc.selection() === 0) {
+    var z = plr.face() % 1000;
+    var baseMale = [20030, 20031, 20032, 20033, 20034];
+    var baseFemale = [21030, 21031, 21032, 21033, 21034];
+    var src = (plr.gender() < 1) ? baseMale : baseFemale;
+    var faceList = [];
+    for (var i = 0; i < src.length; i++) {
+        faceList.push(src[i] + z);
+    }
+    npc.sendAvatar.apply(npc, ["Choose the face you want!"].concat(faceList));
+    var choice = npc.selection();
+    if (choice < 0 || choice >= faceList.length) {
+        npc.sendOk("Changed your mind? That’s fine, come back any time.");
+    } else if (plr.itemCount(couponFace) > 0) {
+        plr.removeItemsByID(couponFace, 1);
+        plr.setFace(faceList[choice]);
+        npc.sendOk("Enjoy your new look!");
     } else {
-        npc.sendOk("Hmm ... it looks like you don't have the coupon specifically for this place. Sorry to say this, but without the coupon, there's no plastic surgery for you...");
+        npc.sendOk("It seems like you don’t have a #b#t" + couponFace + "##k.");
     }
 }

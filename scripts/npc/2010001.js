@@ -1,35 +1,71 @@
-npc.sendSelection("Hello I'm Mino the Owner. If you have either #b#t5150053##k or #b#t5151036##k, then please let me take care of your hair. Choose what you want to do with it. \r\n#L0##bHaircut(VIP coupon)#l\r\n#L1#Dye your hair(VIP coupon)#l");
+var couponCut  = 5150005; // Haircut coupon
+var couponDye  = 5151005; // Hair dye coupon
+
+// Main menu
+npc.sendSelection(
+    "I'm the head of this hair salon. If you have #b#t" + couponCut + "##k or #b#t" + couponDye + "##k, allow me to take care of your hairdo. Please choose the one you want.\r\n"
+    + "#L0#Haircut (VIP coupon)#l\r\n"
+    + "#L1#Dye your hair (VIP coupon)#l"
+);
 var sel = npc.selection();
 
-if (sel === 0) { // Haircut
-    var hair;
-    if (plr.job() < 1000) { // 0 = male, 1 = female
-        hair = [33240, 30230, 30490, 30260, 30280, 33050, 30340];
-    } else {
-        hair = [34060, 31220, 31110, 31790, 31230, 31630, 34260];
-    }
-    for (var i = 0; i < hair.length; i++) {
-        hair[i] = hair[i] + (plr.getHair() % 10);
+var z = plr.hair() % 10;
+
+if (sel === 0) {
+    var baseMale = [
+        30030, 30020, 30000, 30490, 30230, 30260, 30280, 30240, 30290, 30270, 30340
+    ];
+
+    var baseFemale = [
+        31040, 31000, 31670, 31250, 31220, 31260, 31240, 31110, 31270, 31030, 31230
+    ];
+
+    var hair = [];
+    var src = (plr.gender() < 1) ? baseMale : baseFemale;
+    for (var i = 0; i < src.length; i++) {
+        hair.push(src[i] + z);
     }
 
-    var choice = npc.sendAvatar("I can completely change the look of your hair. Are you ready for a change by any chance? With #b#t5150053##k I can change it up for you. please choose the one you want!", hair);
-    if (plr.itemCount(5150053) > 0) {
-        plr.removeItemsByID(5150053, 1);
+    npc.sendAvatar.apply(npc,
+        ["I can totally change up your hairstyle and make it look so good. Why don't you change it up a bit? With #b#t" + couponCut + "##k I'll change it for you. Choose the one to your liking~"]
+            .concat(hair)
+    );
+    var choice = npc.selection();
+
+    if (choice < 0 || choice >= hair.length) {
+        npc.sendOk("Changed your mind? That's fine. Come back any time.");
+    } else if (plr.itemCount(couponCut) > 0) {
+        plr.removeItemsByID(couponCut, 1);
         plr.setHair(hair[choice]);
-        npc.sendOk("Enjoy your new and improved hairstyle!");
+        npc.sendOk(
+            "Check it out!! What do you think? Even I think this one is a work of art! AHAHAHA. Please let me know when you want another haircut, because I'll make you look good each time!");
     } else {
-        npc.sendOk("Hmmm...it looks like you don't have our designated coupon...I'm afraid I can't give you a haircut without it. I'm sorry...");
+        npc.sendOk(
+            "Hmmm... it looks like you don't have our designated coupon... I'm afraid I can't give you a haircut without it. I'm sorry..."
+        );
     }
-} else { // Dye
-    var base = Math.floor(plr.getHair() / 10) * 10;
-    var dyes = [base + 0, base + 1, base + 3, base + 4, base + 5];
 
-    var dyeChoice = npc.sendAvatar("I can completely change your haircolor. Are you ready for a change by any chance? With #b#t5151036##k I can change it up for you. Please choose the one you want!", dyes);
-    if (plr.itemCount(5151036) > 0) {
-        plr.removeItemsByID(5151036, 1);
-        plr.setHair(dyes[dyeChoice]);
-        npc.sendOk("Enjoy your new and improved hair colour!");
+} else if (sel === 1) {
+    var base = Math.floor(plr.hair() / 10) * 10;
+    var colors = [base + 0, base + 1, base + 2, base + 3, base + 4, base + 5, base + 6, base + 7];
+
+    npc.sendAvatar.apply(npc,
+        ["I can totally change your haircolor and make it look so good. Why don't you change it up a bit? With #b#t" + couponDye + "##k I'll change it for you. Choose the one to your liking."]
+            .concat(colors)
+    );
+    var choice = npc.selection();
+
+    if (choice < 0 || choice >= colors.length) {
+        npc.sendOk("Changed your mind? That's fine. Come back any time.");
+    } else if (plr.itemCount(couponDye) > 0) {
+        plr.removeItemsByID(couponDye, 1);
+        plr.setHair(colors[choice]);
+        npc.sendOk(
+            "Check it out!! What do you think? Even I think this one is a work of art! AHAHAHA. Please let me know when you want to dye your hair again, because I'll make you look good each time!"
+        );
     } else {
-        npc.sendOk("Hmmm...it looks like you don't have our designated coupon...I'm afraid I can't dye your hair without it. I'm sorry...");
+        npc.sendOk(
+            "Hmmm... it looks like you don't have our designated coupon... I'm afraid I can't dye your hair without it. I'm sorry..."
+        );
     }
 }

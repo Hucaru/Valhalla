@@ -1,41 +1,27 @@
-/*
-** NPC: Denma the Owner
-** Location: Henesys
-** Purpose: Plastic Surgeon (VIP)
-*/
+var couponFace = 5152001; // VIP Face Coupon
 
-const coupon = 5152001;
-
-// Base faces; we'll add the player's current color block (hundreds)
-var baseMale   = [20000, 20001, 20002, 20003, 20004, 20005, 20006, 20007, 20008];
-var baseFemale = [21000, 21001, 21002, 21003, 21004, 21005, 21006, 21007, 21008];
-
-// Compute color offset from current face
-var currentFace = plr.face();
-var colorOffset = (Math.floor(currentFace / 100) % 10) * 100;
-
-// Gender-specific list with current color block applied
-var faces = (plr.gender() < 1) ? baseMale.slice() : baseFemale.slice();
-for (var i = 0; i < faces.length; i++) {
-    faces[i] += colorOffset;
-}
-
-// Show preview selector (stateless flow: show, then read selection)
-npc.sendAvatar.apply(
-    npc,
-    ["Let's see...for #b#t" + coupon + "##k, you can get a new face. That's right, I can completely transform your face! Wanna give it a shot? Please consider your choice carefully."]
-        .concat(faces)
+npc.sendSelection(
+    "Welcome! If you have a #b#t" + couponFace + "##k, I can give you a brand new face!\r\n#L0#Get a face makeover (VIP coupon)#l"
 );
 
-var sel = npc.selection();
-
-// Validate and apply
-if (sel < 0 || sel >= faces.length) {
-    npc.sendOk("Changed your mind? That's fine. Come back any time.");
-} else if (plr.itemCount(coupon) >= 1) {
-    plr.removeItemsByID(coupon, 1);
-    plr.setFace(faces[sel]);
-    npc.sendOk("Alright, it's all done! Check yourself out in the mirror. Well, aren't you lookin' marvelous? Haha! If you're sick of it, just give me another call, alright?");
-} else {
-    npc.sendNext("Hmm ... it looks like you don't have the coupon specifically for this place. Sorry to say this, but without the coupon, there's no plastic surgery for you...");
+if (npc.selection() === 0) {
+    var z = plr.face() % 1000;
+    var baseMale = [20000, 20001, 20002, 20003, 20004];
+    var baseFemale = [21000, 21001, 21002, 21003, 21004];
+    var src = (plr.gender() < 1) ? baseMale : baseFemale;
+    var faceList = [];
+    for (var i = 0; i < src.length; i++) {
+        faceList.push(src[i] + z);
+    }
+    npc.sendAvatar.apply(npc, ["Choose the face you want!"].concat(faceList));
+    var choice = npc.selection();
+    if (choice < 0 || choice >= faceList.length) {
+        npc.sendOk("Changed your mind? That’s fine, come back any time.");
+    } else if (plr.itemCount(couponFace) > 0) {
+        plr.removeItemsByID(couponFace, 1);
+        plr.setFace(faceList[choice]);
+        npc.sendOk("Enjoy your new look!");
+    } else {
+        npc.sendOk("It seems like you don’t have a #b#t" + couponFace + "##k.");
+    }
 }

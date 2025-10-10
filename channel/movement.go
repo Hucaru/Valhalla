@@ -8,7 +8,7 @@ import (
 
 type movementFrag struct {
 	x, y, vx, vy, foothold, duration int16
-	stance, mType                    byte
+	stance, stat, mType              byte
 	posSet                           bool
 }
 
@@ -55,22 +55,18 @@ func parseMovement(reader mpacket.Reader) (movement, movementFrag) {
 	mData.origY = reader.ReadInt16()
 
 	nFrags := reader.ReadByte()
-
 	mData.frags = make([]movementFrag, nFrags)
 
 	final := movementFrag{}
 
 	for i := byte(0); i < nFrags; i++ {
 		frag := movementFrag{posSet: false}
-
 		frag.mType = reader.ReadByte()
 
 		switch frag.mType {
-		case movementType.normalMovement:
-			fallthrough
-		case movementType.normalMovement2:
-			fallthrough
-		case movementType.normalMovement3:
+		case movementType.normalMovement,
+			movementType.normalMovement2,
+			movementType.normalMovement3:
 			frag.x = reader.ReadInt16()
 			frag.y = reader.ReadInt16()
 			frag.vx = reader.ReadInt16()
@@ -79,33 +75,19 @@ func parseMovement(reader mpacket.Reader) (movement, movementFrag) {
 			frag.stance = reader.ReadByte()
 			frag.duration = reader.ReadInt16()
 
-		case movementType.jump:
-			fallthrough
-		case movementType.jumpKb:
-			fallthrough
-		case movementType.flashJump:
-			fallthrough
-		case 12:
-			fallthrough
-		case 13:
-			fallthrough
-		case 16:
+		case movementType.jump,
+			movementType.jumpKb,
+			movementType.flashJump,
+			12, 13, 16:
 			frag.vx = reader.ReadInt16()
 			frag.vy = reader.ReadInt16()
 			frag.stance = reader.ReadByte()
 			frag.duration = reader.ReadInt16()
 
-		case movementType.immediate:
-			fallthrough
-		case movementType.teleport:
-			fallthrough
-		case movementType.assaulter:
-			fallthrough
-		// case movementType.falling:
-		// 	fallthrough
-		case 9:
-			fallthrough
-		case 14:
+		case movementType.immediate,
+			movementType.teleport,
+			movementType.assaulter,
+			9, 14:
 			frag.x = reader.ReadInt16()
 			frag.y = reader.ReadInt16()
 			frag.foothold = reader.ReadInt16()
@@ -113,10 +95,10 @@ func parseMovement(reader mpacket.Reader) (movement, movementFrag) {
 			frag.duration = reader.ReadInt16()
 
 		case movementType.falling:
-			reader.ReadByte() // what is this
+			frag.stat = reader.ReadByte()
 
 		default:
-			fmt.Println("unkown movement fragment type: ", frag.mType)
+			fmt.Println("unknown movement fragment type:", frag.mType)
 			frag.stance = reader.ReadByte()
 			frag.duration = reader.ReadInt16()
 		}
@@ -127,6 +109,13 @@ func parseMovement(reader mpacket.Reader) (movement, movementFrag) {
 		final.stance = frag.stance
 
 		mData.frags[i] = frag
+	}
+
+	keypadStates := reader.ReadByte()
+	for i := byte(0); i < keypadStates; i++ {
+		if i%2 == 0 {
+			reader.ReadByte()
+		}
 	}
 
 	return mData, final
@@ -177,7 +166,7 @@ func generateMovementBytes(moveData movement) mpacket.Packet {
 			p.WriteInt16(frag.duration)
 
 		case movementType.falling:
-			p.WriteByte(frag.stance)
+			p.WriteByte(frag.stat)
 
 		default:
 			p.WriteByte(frag.stance)

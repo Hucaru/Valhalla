@@ -740,14 +740,18 @@ func (pool roomPool) updateGameBox(r roomer) {
 
 func (pool *roomPool) removePlayer(plr *Player) {
 	r, err := pool.getPlayerRoom(plr.ID)
-
 	if err != nil {
 		return
 	}
 
-	if game, valid := r.(gameRoomer); valid {
-		game.kickPlayer(plr, 0x0)
-
+	switch v := r.(type) {
+	case *tradeRoom:
+		v.removePlayer(plr)
+		if r.closed() {
+			_ = pool.removeRoom(v.id())
+		}
+	case gameRoomer:
+		v.kickPlayer(plr, 0x0)
 		if r.closed() {
 			pool.removeRoom(r.id())
 		}

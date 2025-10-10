@@ -72,7 +72,7 @@ func (server *Server) playerCashShopPurchase(conn mnet.Client, reader mpacket.Re
 			return
 		}
 
-		if err := plr.GiveItem(newItem); err != nil {
+		if err, _ := plr.GiveItem(newItem); err != nil {
 			plr.Send(packetCashShopUpdateAmounts(plrNX, plrMaplePoints))
 			return
 		}
