@@ -276,6 +276,12 @@ func createBiasItemFromID(id int32, amount int16, bias int8, average bool) (Item
 	newItem.upgradeSlots = nxInfo.Tuc
 	newItem.pet = nxInfo.Pet
 
+	// Initialize pet data for pet items
+	if newItem.pet {
+		sn, _ := nx.GetCommoditySNByItemID(newItem.ID)
+		newItem.petData = newPet(newItem.ID, sn, newItem.dbID)
+	}
+
 	if amount < 1 {
 		amount = 1
 	}
