@@ -68,7 +68,9 @@ func AddSkillBuff(skillID int32, bits ...int) {
 func LoadBuffs() {
 	skillBuffBits = make(map[int32][]int)
 
-	AddSkillBuff(int32(skill.NimbleBody), BuffSpeed)
+	// Beginner Skills
+	AddSkillBuff(int32(skill.NimbleFeet), BuffSpeed)
+	AddSkillBuff(int32(skill.Recovery), BuffMaxHP) // Placeholder for HP recovery buff
 
 	// 1st Job
 	AddSkillBuff(int32(skill.IronBody), BuffWeaponDefense)
@@ -76,6 +78,7 @@ func LoadBuffs() {
 	AddSkillBuff(int32(skill.MagicArmor), BuffWeaponDefense) // some sources also set BuffMagicDefense
 	AddSkillBuff(int32(skill.Focus), BuffAvoidability)       // can add BuffAccuracy as well
 	AddSkillBuff(int32(skill.DarkSight), BuffDarkSight)
+	AddSkillBuff(int32(skill.NimbleBody), BuffSpeed)
 
 	// 2nd Job - Warrior branches
 	AddSkillBuff(int32(skill.SwordBooster), BuffBooster)

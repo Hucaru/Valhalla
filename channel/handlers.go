@@ -500,6 +500,12 @@ func (server Server) playerPassiveRegen(conn mnet.Client, reader mpacket.Reader)
 	}
 
 	if hp > 0 {
+		// Add Recovery skill bonus if buff is active
+		if recoverySkill, ok := player.skills[int32(skill.Recovery)]; ok {
+			// Recovery adds: Level 1: +8 HP, Level 2: +16 HP, Level 3: +24 HP per 10 sec
+			recoveryBonus := int16(recoverySkill.Level * 8)
+			hp += recoveryBonus
+		}
 		player.giveHP(hp)
 	} else if mp > 0 {
 		player.giveMP(mp)
@@ -3959,7 +3965,8 @@ func (server *Server) playerSpecialSkill(conn mnet.Client, reader mpacket.Reader
 		}
 
 	// Self toggles and non-party buffs (boolean/ratio-type): apply to self
-	case skill.DarkSight,
+	case skill.NimbleFeet, skill.Recovery,
+		skill.DarkSight,
 		skill.MagicGuard,
 		skill.Invincible,
 		skill.SoulArrow, skill.CBSoulArrow,
