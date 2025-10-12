@@ -1926,10 +1926,10 @@ func (d *Player) onMobKilled(mobID int32) {
 
 		// Init maps
 		if d.quests.mobKills == nil {
-			d.quests.mobKills = make(map[int16]map[int32]int32, 16)
+			d.quests.mobKills = make(map[int16]map[int32]int32)
 		}
 		if d.quests.mobKills[qid] == nil {
-			d.quests.mobKills[qid] = make(map[int32]int32, 4)
+			d.quests.mobKills[qid] = make(map[int32]int32)
 		}
 
 		cur := d.quests.mobKills[qid][mobID]
@@ -2063,6 +2063,37 @@ func (p *Player) broadcastRemoveSummon(summonSkillID int32, reason byte) {
 func (p *Player) updatePet() {
 	p.MarkDirty(DirtyPet, time.Millisecond*300)
 	p.inst.send(packetPlayerPetUpdate(p.pet.sn))
+}
+
+func (p *Player) petCanTakeDrop(drop fieldDrop) bool {
+	if p.pet == nil {
+		return false
+	}
+
+	if drop.mesos > 0 {
+		if p.hasEquipped(1812000) {
+			return true
+		}
+		return false
+	} else {
+		if p.hasEquipped(1812001) {
+			return true
+		}
+		return false
+	}
+}
+
+func (p *Player) hasEquipped(itemID int32) bool {
+	if p == nil || itemID <= 0 {
+		return false
+	}
+	for i := range p.equip {
+		it := p.equip[i]
+		if it.slotID < 0 && it.amount > 0 && it.ID == itemID {
+			return true
+		}
+	}
+	return false
 }
 
 func packetPlayerReceivedDmg(charID int32, attack int8, initalAmmount, reducedAmmount, spawnID, mobID, healSkillID int32,

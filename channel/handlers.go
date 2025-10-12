@@ -317,6 +317,22 @@ func (server *Server) playerConnect(conn mnet.Client, reader mpacket.Reader) {
 		newPlr.buffs.AuditAndExpireStaleBuffs()
 	}
 
+	// Check for quest mob kills
+	if len(newPlr.quests.inProgressList()) > 0 {
+		for _, q := range newPlr.quests.inProgressList() {
+			m := newPlr.quests.mobKills[q.id]
+			if m == nil {
+				continue
+			}
+			questData, err := nx.GetQuest(q.id)
+			if err != nil {
+				continue
+			}
+
+			newPlr.Send(packetQuestUpdateMobKills(q.id, newPlr.buildQuestKillString(questData)))
+		}
+	}
+
 	common.MetricsGauges["player_count"].With(prometheus.Labels{"channel": strconv.Itoa(int(server.id)), "world": server.worldName}).Inc()
 
 	server.world.Send(internal.PacketChannelPopUpdate(server.id, int16(len(server.players))))
@@ -4843,6 +4859,10 @@ func (server *Server) playerPetLoot(conn mnet.Client, reader mpacket.Reader) {
 		log.Printf("Player: %s pet tried to pickup an item from far away", plr.Name)
 		plr.Send(packetDropNotAvailable())
 		plr.Send(packetInventoryDontTake())
+		return
+	}
+
+	if !plr.petCanTakeDrop(drop) {
 		return
 	}
 
