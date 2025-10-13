@@ -2098,17 +2098,16 @@ func (p *Player) hasEquipped(itemID int32) bool {
 	}
 	return false
 }
-
 func (p *Player) chairSit(chairID int32) {
 	if chairID <= 0 {
+		delete(p.inst.chairs, p.ID)
+		p.chairID = -1
 		p.inst.send(packetPlayerShowChair(p.ID, 0))
 		p.Send(packetPlayerChairUpdate())
 		return
 	}
 
-	p.inst.chairs[p.ID] = 0
 	p.chairID = chairID
-
 	p.inst.send(packetPlayerShowChair(p.ID, chairID))
 	p.Send(packetPlayerChairUpdate())
 }
@@ -2118,14 +2117,18 @@ func (p *Player) chairResult(chairID int16) {
 		if p.chairID != -1 {
 			delete(p.inst.chairs, p.ID)
 			p.chairID = -1
+			p.inst.send(packetPlayerShowChair(p.ID, 0))
 			p.inst.send(packetPlayerChairResult(-1))
+			p.Send(packetPlayerChairUpdate())
 		} else {
 			p.Send(packetPlayerNoChange())
 		}
-	} else {
-		p.inst.chairs[p.ID] = chairID
-		p.inst.send(packetPlayerChairResult(chairID))
+		return
 	}
+
+	p.inst.chairs[p.ID] = chairID
+	p.inst.send(packetPlayerChairResult(chairID))
+	p.Send(packetPlayerChairUpdate())
 }
 
 func packetPlayerReceivedDmg(charID int32, attack int8, initalAmmount, reducedAmmount, spawnID, mobID, healSkillID int32,
