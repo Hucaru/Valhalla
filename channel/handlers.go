@@ -73,6 +73,8 @@ func (server *Server) HandleClientPacket(conn mnet.Client, reader mpacket.Reader
 		server.playerMovement(conn, reader)
 	case opcode.RecvChannelPlayerStand:
 		server.playerStand(conn, reader)
+	case opcode.RecvChannelChairHeal:
+		server.playerChairHeal(conn, reader)
 	case opcode.RecvChannelPlayerUseChair:
 		server.playerUseChair(conn, reader)
 	case opcode.RecvChannelMeleeSkill:
@@ -523,34 +525,54 @@ func (server Server) playerPassiveRegen(conn mnet.Client, reader mpacket.Reader)
 }
 
 func (server Server) playerUseChair(conn mnet.Client, reader mpacket.Reader) {
-	player, err := server.players.getFromConn(conn)
+	plr, err := server.players.getFromConn(conn)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	chairID := reader.ReadInt32()
+	plr.chairSit(chairID)
+}
+
+func (server Server) playerStand(conn mnet.Client, reader mpacket.Reader) {
+	plr, err := server.players.getFromConn(conn)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+
+	seatID := reader.ReadInt16()
+	plr.chairResult(seatID)
+}
+
+func (server Server) playerChairHeal(conn mnet.Client, reader mpacket.Reader) {
+	plr, err := server.players.getFromConn(conn)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+
+	healAmount := reader.ReadInt16()
+
+	if plr.chairID == 0 {
+		return
+	}
+
+	chair, err := nx.GetItem(plr.chairID)
 	if err != nil {
 		return
 	}
 
-	chairID := reader.ReadInt32()
-
-	if chairID == -1 {
-		if player.chairID != -1 {
-			player.chairID = -1
-			player.inst.send(packetPlayerRemoveChair(-1))
-		} else {
-			player.Send(packetPlayerNoChange())
-		}
-	} else {
-		player.chairID = chairID
-		player.Send(packetPlayerChairUpdate())
-		player.inst.send(packetPlayerShowChair(player.ID, chairID))
+	if healAmount > int16(chair.RecoveryHP) {
+		return
 	}
 
-}
-
-func (server Server) playerStand(conn mnet.Client, reader mpacket.Reader) {
-	fmt.Println(reader)
-	if reader.ReadInt16() == -1 {
-
-	} else {
+	if time.Since(plr.lastChairHeal) < 10*time.Second {
+		return
 	}
+
+	plr.giveHP(healAmount)
+	plr.lastChairHeal = time.Now()
 }
 
 func (server Server) playerAddSkillPoint(conn mnet.Client, reader mpacket.Reader) {

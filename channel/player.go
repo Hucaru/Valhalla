@@ -182,6 +182,8 @@ type Player struct {
 
 	// write-behind persistence
 	dirty DirtyBits
+
+	lastChairHeal time.Time
 }
 
 // Helper: mark dirty and schedule debounced save.
@@ -2097,6 +2099,35 @@ func (p *Player) hasEquipped(itemID int32) bool {
 	return false
 }
 
+func (p *Player) chairSit(chairID int32) {
+	if chairID <= 0 {
+		p.inst.send(packetPlayerShowChair(p.ID, 0))
+		p.Send(packetPlayerChairUpdate())
+		return
+	}
+
+	p.inst.chairs[p.ID] = 0
+	p.chairID = chairID
+
+	p.inst.send(packetPlayerShowChair(p.ID, chairID))
+	p.Send(packetPlayerChairUpdate())
+}
+
+func (p *Player) chairResult(chairID int16) {
+	if chairID == -1 {
+		if p.chairID != -1 {
+			delete(p.inst.chairs, p.ID)
+			p.chairID = -1
+			p.inst.send(packetPlayerChairResult(-1))
+		} else {
+			p.Send(packetPlayerNoChange())
+		}
+	} else {
+		p.inst.chairs[p.ID] = chairID
+		p.inst.send(packetPlayerChairResult(chairID))
+	}
+}
+
 func packetPlayerReceivedDmg(charID int32, attack int8, initalAmmount, reducedAmmount, spawnID, mobID, healSkillID int32,
 	stance, reflectAction byte, reflected byte, reflectX, reflectY int16) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelPlayerTakeDmg)
@@ -2522,9 +2553,9 @@ func packetInventoryChangeEquip(chr Player) mpacket.Packet {
 	p.WriteInt32(chr.ID)
 	p.WriteByte(1)
 	p.WriteBytes(chr.displayBytes())
-
-	// Pet ID (spawned pet Item ID).
 	p.WriteInt32(0)
+	p.WriteInt32(0)
+	p.WriteInt32(chr.chairID)
 
 	// 15 x long(0) placeholders
 	for i := 0; i < 15; i++ {
@@ -2924,18 +2955,16 @@ func packetPlayerGiveForeignBuff(charID int32, mask []byte, values []byte, delay
 }
 
 func packetPlayerShowChair(plrID, chairID int32) mpacket.Packet {
-	p := mpacket.CreateWithOpcode(opcode.SendChannelPlayerSitResult)
+	p := mpacket.CreateWithOpcode(opcode.SendChannelPlayerSit)
 	p.WriteInt32(plrID)
 	p.WriteInt32(chairID)
 	return p
 }
 
-func packetPlayerRemoveChair(chairID int16) mpacket.Packet {
+func packetPlayerChairResult(chairID int16) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelPlayerSitResult)
-	if chairID < 0 {
-		p.WriteByte(0)
-	} else {
-		p.WriteByte(1)
+	p.WriteBool(chairID != -1)
+	if chairID != -1 {
 		p.WriteInt16(chairID)
 	}
 	return p
@@ -2945,6 +2974,5 @@ func packetPlayerChairUpdate() mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelStatChange)
 	p.WriteInt16(1)
 	p.WriteInt32(0)
-
 	return p
 }

@@ -64,6 +64,8 @@ const (
 	SendChannelPlayerUseMagicSkill    byte = 0x68
 	SendChannelPlayerTakeDmg          byte = 0x6B
 	SendChannelPlayerEmoticon         byte = 0x6C
+	SendChannelPlayerActiveEffect     byte = 0x6D
+	SendChannelPlayerSit              byte = 0x6E
 	SendChannelPlayerChangeAvatar     byte = 0x6F
 	SendChannelPlayerAnimation        byte = 0x70
 	SendChannelPlayerGiveForeignBuff  byte = 0x71
