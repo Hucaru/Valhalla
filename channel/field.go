@@ -812,10 +812,8 @@ func packetMapPlayerEnter(plr *Player) mpacket.Packet {
 
 	p.WriteBytes(plr.displayBytes())
 
-	p.WriteInt32(0)           // ?
-	p.WriteInt32(0)           // ?
-	p.WriteInt32(0)           // ?
-	p.WriteInt32(plr.chairID) // 0 means no chair in use, stance needs to be changed to match
+	p.WriteInt32(0) // Active Item ID
+	p.WriteInt32(0) // Choco count(what is choco lol)
 
 	p.WriteInt16(plr.pos.x)
 	p.WriteInt16(plr.pos.y)

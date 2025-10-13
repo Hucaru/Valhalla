@@ -523,8 +523,26 @@ func (server Server) playerPassiveRegen(conn mnet.Client, reader mpacket.Reader)
 }
 
 func (server Server) playerUseChair(conn mnet.Client, reader mpacket.Reader) {
-	fmt.Println("use chair:", reader)
-	// chairID := reader.ReadInt32()
+	player, err := server.players.getFromConn(conn)
+	if err != nil {
+		return
+	}
+
+	chairID := reader.ReadInt32()
+
+	if chairID == -1 {
+		if player.chairID != -1 {
+			player.chairID = -1
+			player.inst.send(packetPlayerRemoveChair(-1))
+		} else {
+			player.Send(packetPlayerNoChange())
+		}
+	} else {
+		player.chairID = chairID
+		player.Send(packetPlayerChairUpdate())
+		player.inst.send(packetPlayerShowChair(player.ID, chairID))
+	}
+
 }
 
 func (server Server) playerStand(conn mnet.Client, reader mpacket.Reader) {

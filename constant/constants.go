@@ -330,3 +330,8 @@ const (
 	RoomInvalidPlace          byte = 57
 	RoomSelectCard            byte = 60
 )
+
+const (
+	ItemMesoMagnet = 1812000
+	ItemItemPouch  = 1812001
+)

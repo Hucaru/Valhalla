@@ -68,8 +68,7 @@ const (
 	SendChannelPlayerAnimation        byte = 0x70
 	SendChannelPlayerGiveForeignBuff  byte = 0x71
 	SendChannelPlayerResetForeignBuff byte = 0x72
-	SendChannelPlayerShowItemEffect   byte = 0x75
-	SendChannelPlayerShowItemGainChat byte = 0x77
+	SendChannelPlayerSitResult        byte = 0x78
 	SendChannelPlayerEffect           byte = 0x79
 	SendChannelShowMob                byte = 0x86
 	SendChannelRemoveMob              byte = 0x87

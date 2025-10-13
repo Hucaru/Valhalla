@@ -1220,6 +1220,7 @@ func (d Player) displayBytes() []byte {
 	pkt.WriteByte(0xFF)
 	pkt.WriteByte(0xFF)
 	pkt.WriteInt32(cashWeapon)
+	pkt.WriteInt32(0) // Pet acc
 
 	return pkt
 }
@@ -2071,12 +2072,12 @@ func (p *Player) petCanTakeDrop(drop fieldDrop) bool {
 	}
 
 	if drop.mesos > 0 {
-		if p.hasEquipped(1812000) {
+		if p.hasEquipped(constant.ItemMesoMagnet) {
 			return true
 		}
 		return false
 	} else {
-		if p.hasEquipped(1812001) {
+		if p.hasEquipped(constant.ItemItemPouch) {
 			return true
 		}
 		return false
@@ -2919,5 +2920,31 @@ func packetPlayerGiveForeignBuff(charID int32, mask []byte, values []byte, delay
 
 	// Delay (usually 0)
 	p.WriteInt16(delay)
+	return p
+}
+
+func packetPlayerShowChair(plrID, chairID int32) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelPlayerSitResult)
+	p.WriteInt32(plrID)
+	p.WriteInt32(chairID)
+	return p
+}
+
+func packetPlayerRemoveChair(chairID int16) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelPlayerSitResult)
+	if chairID < 0 {
+		p.WriteByte(0)
+	} else {
+		p.WriteByte(1)
+		p.WriteInt16(chairID)
+	}
+	return p
+}
+
+func packetPlayerChairUpdate() mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelStatChange)
+	p.WriteInt16(1)
+	p.WriteInt32(0)
+
 	return p
 }
