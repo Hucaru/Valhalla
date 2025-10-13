@@ -70,7 +70,7 @@ func LoadBuffs() {
 
 	// Beginner Skills
 	AddSkillBuff(int32(skill.NimbleFeet), BuffSpeed)
-	AddSkillBuff(int32(skill.Recovery), BuffMaxHP) // Placeholder for HP recovery buff
+	AddSkillBuff(int32(skill.Recovery), BuffHands) // There isn't a real bit for Recovery
 
 	// 1st Job
 	AddSkillBuff(int32(skill.IronBody), BuffWeaponDefense)
