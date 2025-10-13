@@ -70,7 +70,7 @@ func LoadBuffs() {
 
 	// Beginner Skills
 	AddSkillBuff(int32(skill.NimbleFeet), BuffSpeed)
-	AddSkillBuff(int32(skill.Recovery), BuffMaxHP) // Placeholder for HP recovery buff
+	AddSkillBuff(int32(skill.Recovery), BuffHands) // Recovery buff (HP regen handled by 5-second ticker)
 
 	// 1st Job
 	AddSkillBuff(int32(skill.IronBody), BuffWeaponDefense)
@@ -166,6 +166,7 @@ type CharacterBuffs struct {
 	expireTimers      map[int32]*time.Timer
 	itemMasks         map[int32][]byte // sourceID (-itemId) -> mask
 	expireAt          map[int32]int64  // sourceID -> unix ms expiry
+	recoveryTicker    *time.Ticker     // 5-second ticker for Recovery skill
 }
 
 func NewCharacterBuffs(p *Player) *CharacterBuffs {
@@ -304,7 +305,7 @@ func (cb *CharacterBuffs) buildBuffTriplesWireOrder(skillID int32, level byte, m
 		case BuffMagicGuard, BuffBooster, BuffPowerGuard, BuffMaxHP, BuffMaxMP,
 			BuffHolySymbol, BuffMesoUP, BuffPickPocketMesoUP, BuffMesoGuard,
 			BuffDarkSight, BuffSoulArrow, BuffInvincible, BuffShadowPartner,
-			BuffThaw, BuffWeakness, BuffCurse, BuffComboAttack, BuffCharges:
+			BuffThaw, BuffWeakness, BuffCurse, BuffComboAttack, BuffCharges, BuffHands:
 			if sl.X != 0 {
 				return int16(sl.X)
 			}
@@ -592,6 +593,11 @@ func (cb *CharacterBuffs) AddBuffFromCC(charId, skillID int32, expiresAtMs int64
 	d := time.Until(time.UnixMilli(expiresAtMs))
 	cb.scheduleExpiryLocked(skillID, d)
 
+	// Start Recovery skill ticker if this is the Recovery skill
+	if skillID == int32(skill.Recovery) {
+		cb.startRecoveryTicker(level)
+	}
+
 	// If this is a non-puppet summon skill applied to self (e.g., on CC/login restore), spawn the summon entity now.
 	if !foreign {
 		switch skill.Skill(skillID) {
@@ -709,6 +715,10 @@ func (cb *CharacterBuffs) buildForeignBuffMaskAndValues(skillID int32, level byt
 	// DarkSight: toggle, no payload
 	if hasBit(BuffDarkSight) {
 		addedBits = append(addedBits, BuffDarkSight)
+	}
+	// BuffHands: toggle, no payload (used for Recovery skill visual indicator)
+	if hasBit(BuffHands) {
+		addedBits = append(addedBits, BuffHands)
 	}
 
 	if len(addedBits) == 0 {
@@ -841,6 +851,11 @@ func (cb *CharacterBuffs) expireBuffNow(skillID int32) {
 	}
 	delete(cb.expireAt, skillID)
 
+	// Stop Recovery skill ticker if this is the Recovery skill
+	if skillID == int32(skill.Recovery) {
+		cb.stopRecoveryTicker()
+	}
+
 	// Item-source (negative) or skill-source (positive)
 	bits, ok := skillBuffBits[skillID]
 	if !ok || len(bits) == 0 {
@@ -884,4 +899,51 @@ func (cb *CharacterBuffs) despawnSummonIfMatches(skillID int32) {
 
 func (cb *CharacterBuffs) check(skillID int32) {
 	// Placeholder for conflicting buff cleanup if needed.
+}
+
+func (cb *CharacterBuffs) startRecoveryTicker(level byte) {
+	// Stop any existing ticker first
+	cb.stopRecoveryTicker()
+
+	// Create new 5-second ticker
+	cb.recoveryTicker = time.NewTicker(5 * time.Second)
+
+	// Start goroutine to handle recovery ticks
+	go func() {
+		ticker := cb.recoveryTicker
+		if ticker == nil {
+			return
+		}
+
+		for range ticker.C {
+			cb.post(func() {
+				// Check if buff is still active and player is alive
+				currentLevel, hasRecovery := cb.activeSkillLevels[int32(skill.Recovery)]
+				if !hasRecovery || cb.plr == nil || cb.plr.hp <= 0 {
+					return
+				}
+
+				// Get skill data to retrieve the X value (recovery amount)
+				skillData, err := nx.GetPlayerSkill(int32(skill.Recovery))
+				if err != nil || currentLevel == 0 || int(currentLevel) > len(skillData) {
+					return
+				}
+
+				// Get the recovery amount from the X field
+				recoveryAmount := int16(skillData[currentLevel-1].X)
+				log.Printf("Recovery tick - Level: %d, X value: %d, HP before: %d/%d", currentLevel, recoveryAmount, cb.plr.hp, cb.plr.maxHP)
+				if recoveryAmount > 0 {
+					cb.plr.giveHP(recoveryAmount)
+					log.Printf("HP after: %d/%d", cb.plr.hp, cb.plr.maxHP)
+				}
+			})
+		}
+	}()
+}
+
+func (cb *CharacterBuffs) stopRecoveryTicker() {
+	if cb.recoveryTicker != nil {
+		cb.recoveryTicker.Stop()
+		cb.recoveryTicker = nil
+	}
 }
