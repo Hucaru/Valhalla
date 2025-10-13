@@ -90,7 +90,7 @@ func parseMovement(reader mpacket.Reader) (movement, movementFrag) {
 			movementType.teleport,
 			movementType.assaulter,
 			movementType.chair,
-			9, 14:
+			14:
 			frag.x = reader.ReadInt16()
 			frag.y = reader.ReadInt16()
 			frag.foothold = reader.ReadInt16()
