@@ -51,8 +51,10 @@ func newPet(itemID, sn int32, dbID int64) *pet {
 }
 
 func savePet(item *Item) error {
+	// Initialize pet data if it doesn't exist
 	if item.petData == nil {
-		return nil
+		sn, _ := nx.GetCommoditySNByItemID(item.ID)
+		item.petData = newPet(item.ID, sn, item.dbID)
 	}
 
 	p := item.petData
