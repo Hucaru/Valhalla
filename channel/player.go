@@ -182,6 +182,8 @@ type Player struct {
 
 	// write-behind persistence
 	dirty DirtyBits
+
+	lastChairHeal time.Time
 }
 
 // Helper: mark dirty and schedule debounced save.
@@ -1220,6 +1222,7 @@ func (d Player) displayBytes() []byte {
 	pkt.WriteByte(0xFF)
 	pkt.WriteByte(0xFF)
 	pkt.WriteInt32(cashWeapon)
+	pkt.WriteInt32(0) // Pet acc
 
 	return pkt
 }
@@ -1926,10 +1929,10 @@ func (d *Player) onMobKilled(mobID int32) {
 
 		// Init maps
 		if d.quests.mobKills == nil {
-			d.quests.mobKills = make(map[int16]map[int32]int32, 16)
+			d.quests.mobKills = make(map[int16]map[int32]int32)
 		}
 		if d.quests.mobKills[qid] == nil {
-			d.quests.mobKills[qid] = make(map[int32]int32, 4)
+			d.quests.mobKills[qid] = make(map[int32]int32)
 		}
 
 		cur := d.quests.mobKills[qid][mobID]
@@ -2063,6 +2066,37 @@ func (p *Player) broadcastRemoveSummon(summonSkillID int32, reason byte) {
 func (p *Player) updatePet() {
 	p.MarkDirty(DirtyPet, time.Millisecond*300)
 	p.inst.send(packetPlayerPetUpdate(p.pet.sn))
+}
+
+func (p *Player) petCanTakeDrop(drop fieldDrop) bool {
+	if p.pet == nil {
+		return false
+	}
+
+	if drop.mesos > 0 {
+		if p.hasEquipped(constant.ItemMesoMagnet) {
+			return true
+		}
+		return false
+	} else {
+		if p.hasEquipped(constant.ItemItemPouch) {
+			return true
+		}
+		return false
+	}
+}
+
+func (p *Player) hasEquipped(itemID int32) bool {
+	if p == nil || itemID <= 0 {
+		return false
+	}
+	for i := range p.equip {
+		it := p.equip[i]
+		if it.slotID < 0 && it.amount > 0 && it.ID == itemID {
+			return true
+		}
+	}
+	return false
 }
 
 func packetPlayerReceivedDmg(charID int32, attack int8, initalAmmount, reducedAmmount, spawnID, mobID, healSkillID int32,
@@ -2490,9 +2524,9 @@ func packetInventoryChangeEquip(chr Player) mpacket.Packet {
 	p.WriteInt32(chr.ID)
 	p.WriteByte(1)
 	p.WriteBytes(chr.displayBytes())
-
-	// Pet ID (spawned pet Item ID).
 	p.WriteInt32(0)
+	p.WriteInt32(0)
+	p.WriteInt32(chr.chairID)
 
 	// 15 x long(0) placeholders
 	for i := 0; i < 15; i++ {
@@ -2888,5 +2922,28 @@ func packetPlayerGiveForeignBuff(charID int32, mask []byte, values []byte, delay
 
 	// Delay (usually 0)
 	p.WriteInt16(delay)
+	return p
+}
+
+func packetPlayerShowChair(plrID, chairID int32) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelPlayerSit)
+	p.WriteInt32(plrID)
+	p.WriteInt32(chairID)
+	return p
+}
+
+func packetPlayerChairResult(chairID int16) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelPlayerSitResult)
+	p.WriteBool(chairID != -1)
+	if chairID != -1 {
+		p.WriteInt16(chairID)
+	}
+	return p
+}
+
+func packetPlayerChairUpdate() mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelStatChange)
+	p.WriteInt16(1)
+	p.WriteInt32(0)
 	return p
 }
