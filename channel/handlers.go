@@ -534,7 +534,7 @@ func (server Server) playerUseChair(conn mnet.Client, reader mpacket.Reader) {
 	chairID := reader.ReadInt32()
 	plr.chairID = chairID
 
-	plr.inst.send(packetPlayerShowChair(plr.ID, chairID))
+	plr.inst.sendExcept(packetPlayerShowChair(plr.ID, chairID), plr.Conn)
 	plr.Send(packetPlayerChairUpdate())
 }
 
@@ -548,7 +548,7 @@ func (server Server) playerStand(conn mnet.Client, reader mpacket.Reader) {
 	chairIndex := reader.ReadInt16()
 
 	plr.chairID = 0
-	plr.inst.send(packetPlayerShowChair(plr.ID, 0))
+	plr.inst.sendExcept(packetPlayerShowChair(plr.ID, 0), plr.Conn)
 	plr.Send(packetPlayerChairResult(chairIndex))
 	plr.Send(packetPlayerChairUpdate())
 }
