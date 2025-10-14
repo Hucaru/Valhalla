@@ -322,7 +322,6 @@ func (f *field) createInstance(rates *rates) int {
 		returnMapID: f.Data.ReturnMap,
 		timeLimit:   f.Data.TimeLimit,
 		properties:  make(map[string]interface{}),
-		chairs:      make(map[int32]int16),
 		fhHist:      f.fhHist,
 	}
 
@@ -549,8 +548,6 @@ type fieldInstance struct {
 	showBoat   bool
 	boatType   byte
 	properties map[string]interface{} // this is used to share state between npc and system scripts
-
-	chairs map[int32]int16
 
 	bgm string
 
