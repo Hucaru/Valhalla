@@ -11,6 +11,7 @@ clientListenPort = "8484"
 serverListenAddress = "0.0.0.0"
 serverListenPort = "8485"
 withPin = false
+autoRegister = false
 packetQueueSize = 512
 # The following should be set to zero when not testing on a local network environment
 latency = 0

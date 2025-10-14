@@ -335,3 +335,38 @@ const (
 	ItemMesoMagnet = 1812000
 	ItemItemPouch  = 1812001
 )
+
+// Login result codes
+const (
+	LoginResultSuccess            byte = 0x00
+	LoginResultBanned             byte = 0x02
+	LoginResultDeletedOrBlocked   byte = 0x03
+	LoginResultInvalidPassword    byte = 0x04
+	LoginResultNotRegistered      byte = 0x05
+	LoginResultSystemError        byte = 0x06
+	LoginResultAlreadyOnline      byte = 0x07
+	LoginResultSystemError9       byte = 0x09
+	LoginResultTooManyRequests    byte = 0x0A
+	LoginResultOlderThan20        byte = 0x0B
+	LoginResultValidLogin         byte = 0x0C
+	LoginResultMasterCannotLogin  byte = 0x0D
+	LoginResultWrongGatewayKR     byte = 0x0E
+	LoginResultProcessingKR       byte = 0x0F
+	LoginResultVerifyEmail        byte = 0x10
+	LoginResultGatewayEN          byte = 0x17
+	LoginResultVerifyEmail21      byte = 0x15
+	LoginResultEULA               byte = 0x17
+)
+
+// Auto-registration default values
+const (
+	AutoRegisterDefaultGender     byte  = 0
+	AutoRegisterDefaultDOB        int   = 1111111
+	AutoRegisterDefaultEULA       byte  = 1
+	AutoRegisterDefaultAdminLevel int   = 0
+	AutoRegisterDefaultIsBanned   int   = 0
+	AutoRegisterDefaultNX         int   = 0
+	AutoRegisterDefaultMaplePoints int  = 0
+	AutoRegisterDefaultIsLoggedIn int   = 0
+	AutoRegisterDefaultPIN        string = "1111"
+)

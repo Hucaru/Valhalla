@@ -64,18 +64,48 @@ func (server *Server) handleLoginRequest(conn mnet.Client, reader mpacket.Reader
 	err := common.DB.QueryRow("SELECT accountID, username, password, gender, isLogedIn, isBanned, adminLevel, eula FROM accounts WHERE username=?", username).
 		Scan(&accountID, &user, &databasePassword, &gender, &isLogedIn, &isBanned, &adminLevel, &eula)
 
-	result := byte(0x00)
+	result := constant.LoginResultSuccess
 
 	if err != nil {
-		result = 0x05
+		// Account does not exist
+		if server.autoRegister {
+			// Create new account with default values
+			res, insertErr := common.DB.Exec("INSERT INTO accounts (username, password, pin, isLogedIn, adminLevel, isBanned, gender, dob, eula, nx, maplepoints) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+				username, hashedPassword, constant.AutoRegisterDefaultPIN, constant.AutoRegisterDefaultIsLoggedIn, 
+				constant.AutoRegisterDefaultAdminLevel, constant.AutoRegisterDefaultIsBanned, constant.AutoRegisterDefaultGender, 
+				constant.AutoRegisterDefaultDOB, constant.AutoRegisterDefaultEULA, constant.AutoRegisterDefaultNX, 
+				constant.AutoRegisterDefaultMaplePoints)
+			
+			if insertErr != nil {
+				log.Println("Failed to auto-register account:", insertErr)
+				result = constant.LoginResultNotRegistered
+			} else {
+				// Get the newly created account ID
+				newAccountID, lastInsertErr := res.LastInsertId()
+				if lastInsertErr != nil {
+					log.Println("Failed to get new account ID:", lastInsertErr)
+					result = constant.LoginResultNotRegistered
+				} else {
+					accountID = int32(newAccountID)
+					gender = constant.AutoRegisterDefaultGender
+					adminLevel = constant.AutoRegisterDefaultAdminLevel
+					eula = constant.AutoRegisterDefaultEULA
+					log.Println("Auto-registered new account:", username, "with ID:", accountID)
+					// Account created successfully, proceed with login
+					result = constant.LoginResultSuccess
+				}
+			}
+		} else {
+			result = constant.LoginResultNotRegistered
+		}
 	} else if hashedPassword != databasePassword {
-		result = 0x04
+		result = constant.LoginResultInvalidPassword
 	} else if isLogedIn {
-		result = 0x07
+		result = constant.LoginResultAlreadyOnline
 	} else if isBanned > 0 {
-		result = 0x02
+		result = constant.LoginResultBanned
 	} else if eula == 0 {
-		result = 0x17
+		result = constant.LoginResultEULA
 	}
 
 	// Banned = 2, Deleted or Blocked = 3, Invalid Password = 4, Not Registered = 5, Sys Error = 6,
@@ -83,11 +113,11 @@ func (server *Server) handleLoginRequest(conn mnet.Client, reader mpacket.Reader
 	// wrong gateway korean text = 14, still processing request korean text = 15, verify email = 16, gateway english text = 17,
 	// verify email = 21, eula = 23
 
-	if result <= 0x01 {
+	if result <= constant.LoginResultSuccess {
 		conn.SetGender(gender)
 		conn.SetAdminLevel(adminLevel)
 		conn.SetAccountID(accountID)
-	} else if result == 0x17 {
+	} else if result == constant.LoginResultEULA {
 		conn.SetAccountID(accountID)
 	}
 

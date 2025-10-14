@@ -23,6 +23,7 @@ type loginConfig struct {
 	ServerListenAddress string	`mapstructure:"serverListenAddress"`
 	ServerListenPort    string	`mapstructure:"serverListenPort"`
 	WithPin             bool	`mapstructure:"withPin"`
+	AutoRegister        bool	`mapstructure:"autoRegister"`
 	PacketQueueSize     int		`mapstructure:"packetQueueSize"`
 	Latency             int		`mapstructure:"latency"`
 	Jitter              int		`mapstructure:"jitter"`

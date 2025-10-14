@@ -70,7 +70,7 @@ func (ls *loginServer) run() {
 
 	log.Println("Loaded and parsed Wizet data (NX) in", elapsed)
 
-	ls.gameState.Initialise(ls.dbConfig.User, ls.dbConfig.Password, ls.dbConfig.Address, ls.dbConfig.Port, ls.dbConfig.Database, ls.config.WithPin)
+	ls.gameState.Initialise(ls.dbConfig.User, ls.dbConfig.Password, ls.dbConfig.Address, ls.dbConfig.Port, ls.dbConfig.Database, ls.config.WithPin, ls.config.AutoRegister)
 
 	// OS signal handler for graceful shutdown
 	ls.wg.Add(1)
