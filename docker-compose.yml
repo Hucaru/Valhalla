@@ -53,7 +53,7 @@ services:
     login_server:
         build:
             context: .
-            dockerfile: docker/Dockerfile
+            dockerfile: Dockerfile
         container_name: login-server
         command: ["/app/Valhalla", "-type", "login"]
         restart: unless-stopped
@@ -70,7 +70,7 @@ services:
     world_server:
         build:
             context: .
-            dockerfile: docker/Dockerfile
+            dockerfile: Dockerfile
         container_name: world-server
         command: ["/app/Valhalla", "-type", "world"]
         restart: unless-stopped
@@ -87,7 +87,7 @@ services:
     cashshop_server:
         build:
             context: .
-            dockerfile: docker/Dockerfile
+            dockerfile: Dockerfile
         container_name: cashshop-server
         command: ["/app/Valhalla", "-type", "cashshop"]
         restart: unless-stopped
@@ -104,7 +104,7 @@ services:
     channel_server_1:
         build:
             context: .
-            dockerfile: docker/Dockerfile
+            dockerfile: Dockerfile
         container_name: channel-server-1
         command: ["/app/Valhalla", "-type", "channel"]
         restart: unless-stopped
@@ -122,7 +122,7 @@ services:
     channel_server_2:
         build:
             context: .
-            dockerfile: docker/Dockerfile
+            dockerfile: Dockerfile
         container_name: channel-server-2
         command: ["/app/Valhalla", "-type", "channel"]
         restart: unless-stopped
