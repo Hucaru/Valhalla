@@ -11,4 +11,5 @@ clientListenPort = "8484"
 serverListenAddress = "0.0.0.0"
 serverListenPort = "8485"
 withPin = true
+autoRegister = false
 packetQueueSize = 512

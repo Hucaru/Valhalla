@@ -9,6 +9,7 @@ certs/**
 database_data/**
 elastic_data/**
 Valhalla
+valhalla
 
 # Folders
 _obj

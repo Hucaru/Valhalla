@@ -19,6 +19,7 @@ login:
   maxPop: 250
   packetQueueSize: 512
   withPin: true
+  autoRegister: false
 mysql:
   database: maplestory
   host: mysql.mysql.svc.cluster.local
