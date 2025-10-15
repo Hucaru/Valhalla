@@ -1585,6 +1585,14 @@ func (d *Player) addForeignBuff(charId, skillID int32, level byte, delay int16) 
 	d.buffs.AddBuff(charId, skillID, level, true, delay)
 }
 
+func (d *Player) addMobDebuff(skillID, level byte, durationSec int16) {
+	if d == nil || d.buffs == nil {
+		return
+	}
+	d.buffs.plr.inst = d.inst
+	d.buffs.AddMobDebuff(skillID, level, durationSec)
+}
+
 func (d *Player) removeAllCooldowns() {
 	if d == nil || d.skills == nil {
 		return

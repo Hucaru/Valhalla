@@ -414,6 +414,9 @@ func (cb *CharacterBuffs) AddItemBuff(it Item) {
 		return
 	}
 
+	// Handle debuff curing first
+	cb.cureDebuffs(meta)
+
 	bits := make([]int, 0, 6)
 	if meta.ACC > 0 {
 		bits = append(bits, BuffAccuracy)
@@ -471,6 +474,62 @@ func (cb *CharacterBuffs) AddItemBuff(it Item) {
 		exp := time.Now().Add(time.Duration(durationSec) * time.Second).UnixMilli()
 		cb.expireAt[sourceID] = exp
 		cb.scheduleExpiryLocked(sourceID, time.Duration(durationSec)*time.Second)
+	}
+}
+
+// cureDebuffs removes debuffs based on the cure flags in the item
+func (cb *CharacterBuffs) cureDebuffs(meta nx.Item) {
+	if cb.plr == nil {
+		return
+	}
+
+	// Check which debuffs this item can cure
+	var debuffsToCure []int
+	
+	if meta.Poison > 0 {
+		debuffsToCure = append(debuffsToCure, BuffPoison)
+	}
+	if meta.Weakness > 0 {
+		debuffsToCure = append(debuffsToCure, BuffWeakness)
+	}
+	if meta.Curse > 0 {
+		debuffsToCure = append(debuffsToCure, BuffCurse)
+	}
+	if meta.Darkness > 0 {
+		debuffsToCure = append(debuffsToCure, BuffDarkness)
+	}
+	if meta.Seal > 0 {
+		debuffsToCure = append(debuffsToCure, BuffSeal)
+	}
+
+	if len(debuffsToCure) == 0 {
+		return
+	}
+
+	// Find and remove active debuffs that match
+	var toRemove []int32
+	for skillID := range cb.activeSkillLevels {
+		// Check if this is a mob debuff (rValue format: skillID | (level << 16))
+		baseSkillID := skillID & 0xFFFF
+		if baseSkillID >= 100 && baseSkillID <= 200 {
+			// This is a mob debuff, check if we should cure it
+			bits, ok := skillBuffBits[skillID]
+			if ok {
+				for _, bit := range bits {
+					for _, cureBit := range debuffsToCure {
+						if bit == cureBit {
+							toRemove = append(toRemove, skillID)
+							break
+						}
+					}
+				}
+			}
+		}
+	}
+
+	// Remove the debuffs
+	for _, skillID := range toRemove {
+		cb.expireBuffNow(skillID)
 	}
 }
 
@@ -536,6 +595,133 @@ func (cb *CharacterBuffs) AddItemBuffFromCC(itemID int32, expiresAtMs int64) {
 	if expiresAtMs > 0 {
 		cb.expireAt[sourceID] = expiresAtMs
 		cb.scheduleExpiryLocked(sourceID, time.Until(time.UnixMilli(expiresAtMs)))
+	}
+}
+
+// AddMobDebuff applies a debuff from a mob skill to the player
+func (cb *CharacterBuffs) AddMobDebuff(skillID, level byte, durationSec int16) {
+	if cb.plr == nil {
+		return
+	}
+
+	// Map mob skill IDs to buff bit positions
+	var bits []int
+	
+	switch skillID {
+	case skill.Mob.Seal:
+		bits = []int{BuffSeal}
+	case skill.Mob.Darkness:
+		bits = []int{BuffDarkness}
+	case skill.Mob.Weakness:
+		bits = []int{BuffWeakness}
+	case skill.Mob.Stun:
+		bits = []int{BuffStun}
+	case skill.Mob.Curse:
+		bits = []int{BuffCurse}
+	case skill.Mob.Poison:
+		bits = []int{BuffPoison}
+	case skill.Mob.Slow:
+		bits = []int{BuffSpeed}
+	default:
+		return
+	}
+
+	if len(bits) == 0 {
+		return
+	}
+
+	// Pack skill ID and level into R value: skillID | (level << 16)
+	// This matches the reference implementation
+	rValue := int32(skillID) | (int32(level) << 16)
+	
+	// Register the mob debuff in skillBuffBits so expiration can find it
+	skillBuffBits[rValue] = bits
+	
+	// Build mask bytes
+	maskBytes := buildMaskBytes64(bits)
+	
+	// Build value triples for the self packet - scan mask in wire order
+	out := make([]byte, 0, 32)
+	for byteIdx := 0; byteIdx < 8 && byteIdx < len(maskBytes); byteIdx++ {
+		b := maskBytes[byteIdx]
+		if b == 0 {
+			continue
+		}
+		for bitPos := 0; bitPos < 8; bitPos++ {
+			if (b & (1 << uint(bitPos))) != 0 {
+				globalBit := byteIdx*8 + bitPos
+				
+				var nValue int16
+				switch globalBit {
+				case BuffSpeed:
+					// Slow: negative speed value
+					nValue = -int16(level * 10)
+				case BuffPoison:
+					// Poison: damage value based on level (X value from skill data)
+					nValue = int16(level)
+				default:
+					// Other debuffs: just 1
+					nValue = 1
+				}
+				
+				// short N value
+				out = append(out, byte(nValue), byte(nValue>>8))
+				// int32 R value (packed skill ID and level)
+				out = append(out, byte(rValue), byte(rValue>>8), byte(rValue>>16), byte(rValue>>24))
+				// short time (seconds)
+				out = append(out, byte(durationSec), byte(durationSec>>8))
+			}
+		}
+	}
+
+	// Send to self
+	const extra byte = 0
+	const delay int16 = 0
+	cb.plr.Send(packetPlayerGiveBuff(maskBytes, out, delay, extra))
+
+	// Build foreign buff values for broadcasting - scan mask in wire order
+	fout := make([]byte, 0, 16)
+	for byteIdx := 0; byteIdx < 8 && byteIdx < len(maskBytes); byteIdx++ {
+		b := maskBytes[byteIdx]
+		if b == 0 {
+			continue
+		}
+		for bitPos := 0; bitPos < 8; bitPos++ {
+			if (b & (1 << uint(bitPos))) != 0 {
+				globalBit := byteIdx*8 + bitPos
+				
+				switch globalBit {
+				case BuffSpeed:
+					// Speed/Slow: write byte N (speed value)
+					speedVal := byte(-level * 10) // negative for slow
+					fout = append(fout, speedVal)
+				case BuffStun, BuffDarkness, BuffSeal, BuffWeakness:
+					// These need int32 R (packed skill ID and level)
+					fout = append(fout, byte(rValue), byte(rValue>>8), byte(rValue>>16), byte(rValue>>24))
+				case BuffPoison:
+					// Poison: write short N, int32 R
+					n := int16(level)
+					fout = append(fout, byte(n), byte(n>>8))
+					fout = append(fout, byte(rValue), byte(rValue>>8), byte(rValue>>16), byte(rValue>>24))
+				case BuffCurse:
+					// Curse: write int32 R (packed skill ID and level)
+					fout = append(fout, byte(rValue), byte(rValue>>8), byte(rValue>>16), byte(rValue>>24))
+				}
+			}
+		}
+	}
+	
+	// Broadcast to others in the instance
+	if cb.plr.inst != nil && len(fout) > 0 {
+		cb.plr.inst.send(packetPlayerGiveForeignBuff(cb.plr.ID, maskBytes, fout, delay))
+	}
+
+	// Track the debuff with expiry using the packed rValue as the key
+	if durationSec > 0 {
+		expiresAtMs := time.Now().Add(time.Duration(durationSec) * time.Second).UnixMilli()
+		cb.expireAt[rValue] = expiresAtMs
+		cb.scheduleExpiryLocked(rValue, time.Duration(durationSec)*time.Second)
+		cb.activeSkillLevels[rValue] = level
 	}
 }
 
@@ -729,6 +915,28 @@ func (cb *CharacterBuffs) ClearBuff(skillID int32, _ uint32) {
 	}
 }
 
+// DispelAllBuffs removes all active buffs from the player (used by mob Dispel skill)
+func (cb *CharacterBuffs) DispelAllBuffs() {
+	if cb.plr == nil {
+		return
+	}
+	
+	// Collect all active skill IDs to remove
+	toRemove := make([]int32, 0, len(cb.activeSkillLevels))
+	for skillID := range cb.activeSkillLevels {
+		// Remove all positive skill IDs (player buffs)
+		// Mob debuffs use skill IDs 120-126, so we check if it's a typical player skill
+		if skillID >= 1000 {
+			toRemove = append(toRemove, skillID)
+		}
+	}
+	
+	// Remove each buff
+	for _, skillID := range toRemove {
+		cb.expireBuffNow(skillID)
+	}
+}
+
 func (cb *CharacterBuffs) AuditAndExpireStaleBuffs() {
 	now := time.Now().UnixMilli()
 	toExpire := make([]int32, 0, 4)
@@ -861,6 +1069,14 @@ func (cb *CharacterBuffs) expireBuffNow(skillID int32) {
 	}
 
 	delete(cb.activeSkillLevels, skillID)
+	
+	// Clean up mob debuff from skillBuffBits (rValue format: skillID | (level << 16))
+	// Only clean up if it looks like a mob debuff (skill ID 100-200 range)
+	baseSkillID := skillID & 0xFFFF
+	if baseSkillID >= 100 && baseSkillID <= 200 {
+		delete(skillBuffBits, skillID)
+	}
+	
 	cb.despawnSummonIfMatches(skillID)
 }
 

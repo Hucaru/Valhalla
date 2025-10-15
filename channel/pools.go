@@ -16,6 +16,7 @@ import (
 
 	"github.com/Hucaru/Valhalla/common/opcode"
 	"github.com/Hucaru/Valhalla/constant"
+	"github.com/Hucaru/Valhalla/constant/skill"
 	"github.com/Hucaru/Valhalla/mpacket"
 	"github.com/Hucaru/Valhalla/nx"
 )
@@ -246,7 +247,11 @@ func (pool *lifePool) mobAcknowledge(poolID int32, plr *Player, moveID int16, sk
 
 			// Perform either skill or attack
 			if actualAction >= 21 && actualAction <= 25 {
-				pool.mobs[i].performSkill(skillDelay, skillLevel, skillID)
+				debuffSkillID, debuffSkillLevel, debuffSkillData := pool.mobs[i].performSkill(skillDelay, skillLevel, skillID)
+				// Apply debuffs to players in range if skill returned debuff info
+				if debuffSkillID != 0 {
+					pool.applyMobDebuffToPlayers(mob, debuffSkillID, debuffSkillLevel, debuffSkillData)
+				}
 			} else if actualAction > 12 && actualAction < 20 {
 				attackID := byte(actualAction - 12)
 
@@ -282,6 +287,70 @@ func (pool *lifePool) mobAcknowledge(poolID int32, plr *Player, moveID int16, sk
 			pool.mobs[i].acknowledgeController(moveID, finalData, skillPossible, skillID, skillLevel)
 			pool.instance.sendExcept(packetMobMove(poolID, skillPossible, action, skillData, moveBytes), v.controller.Conn)
 		}
+	}
+}
+
+func (pool *lifePool) applyMobDebuffToPlayers(mob *monster, skillID, skillLevel byte, skillData nx.MobSkill) {
+	if pool.instance == nil {
+		return
+	}
+
+	// Handle special skills first
+	switch skillID {
+	case skill.Mob.Dispel:
+		// Dispel removes all buffs from players
+		for _, plr := range pool.instance.players {
+			if plr == nil || plr.buffs == nil {
+				continue
+			}
+			plr.buffs.DispelAllBuffs()
+		}
+		return
+	case skill.Mob.HealAoe:
+		// Heal all mobs in the area
+		healAmount := skillData.Hp
+		for _, m := range pool.mobs {
+			if m != nil {
+				m.healMob(healAmount, 0)
+			}
+		}
+		return
+	// Mob self-buffs
+	case skill.Mob.WeaponAttackUp, skill.Mob.WeaponAttackUpAoe:
+		mob.statBuff |= skill.MobStat.PowerUp
+		return
+	case skill.Mob.MagicAttackUp, skill.Mob.MagicAttackUpAoe:
+		mob.statBuff |= skill.MobStat.MagicUp
+		return
+	case skill.Mob.WeaponDefenceUp, skill.Mob.WeaponDefenceUpAoe:
+		mob.statBuff |= skill.MobStat.PowerGuardUp
+		return
+	case skill.Mob.MagicDefenceUp, skill.Mob.MagicDefenceUpAoe:
+		mob.statBuff |= skill.MobStat.MagicGuardUp
+		return
+	case skill.Mob.WeaponImmunity:
+		mob.statBuff |= skill.MobStat.PhysicalImmune
+		return
+	case skill.Mob.MagicImmunity:
+		mob.statBuff |= skill.MobStat.MagicImmune
+		return
+	}
+
+	// Get all players in the field instance
+	for _, plr := range pool.instance.players {
+		if plr == nil || plr.buffs == nil {
+			continue
+		}
+
+		// Apply the debuff
+		// The duration is in the skill data Time field (in seconds)
+		durationSec := int16(0)
+		if skillData.Time > 0 {
+			durationSec = int16(skillData.Time) // Time is already in seconds
+		}
+
+		// Use AddMobDebuff which we'll add to CharacterBuffs
+		plr.addMobDebuff(skillID, skillLevel, durationSec)
 	}
 }
 
