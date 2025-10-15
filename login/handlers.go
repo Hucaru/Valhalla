@@ -67,33 +67,26 @@ func (server *Server) handleLoginRequest(conn mnet.Client, reader mpacket.Reader
 	result := constant.LoginResultSuccess
 
 	if err != nil {
-		// Account does not exist
 		if server.autoRegister {
-			// Create new account with default values
 			res, insertErr := common.DB.Exec("INSERT INTO accounts (username, password, pin, isLogedIn, adminLevel, isBanned, gender, dob, eula, nx, maplepoints) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-				username, hashedPassword, constant.AutoRegisterDefaultPIN, constant.AutoRegisterDefaultIsLoggedIn, 
-				constant.AutoRegisterDefaultAdminLevel, constant.AutoRegisterDefaultIsBanned, constant.AutoRegisterDefaultGender, 
-				constant.AutoRegisterDefaultDOB, constant.AutoRegisterDefaultEULA, constant.AutoRegisterDefaultNX, 
+				username, hashedPassword, constant.AutoRegisterDefaultPIN, constant.AutoRegisterDefaultIsLoggedIn,
+				constant.AutoRegisterDefaultAdminLevel, constant.AutoRegisterDefaultIsBanned, constant.AutoRegisterDefaultGender,
+				constant.AutoRegisterDefaultDOB, constant.AutoRegisterDefaultEULA, constant.AutoRegisterDefaultNX,
 				constant.AutoRegisterDefaultMaplePoints)
-			
+
 			if insertErr != nil {
-				log.Println("Failed to auto-register account:", insertErr)
+				log.Println("Failed to create new account", err)
 				result = constant.LoginResultNotRegistered
+			} else if id, err := res.LastInsertId(); err == nil {
+				accountID = int32(id)
+				gender = constant.AutoRegisterDefaultGender
+				adminLevel = constant.AutoRegisterDefaultAdminLevel
+				eula = constant.AutoRegisterDefaultEULA
+				log.Println("Auto-registered new account:", username, "with ID:", accountID)
+				result = constant.LoginResultSuccess
 			} else {
-				// Get the newly created account ID
-				newAccountID, lastInsertErr := res.LastInsertId()
-				if lastInsertErr != nil {
-					log.Println("Failed to get new account ID:", lastInsertErr)
-					result = constant.LoginResultNotRegistered
-				} else {
-					accountID = int32(newAccountID)
-					gender = constant.AutoRegisterDefaultGender
-					adminLevel = constant.AutoRegisterDefaultAdminLevel
-					eula = constant.AutoRegisterDefaultEULA
-					log.Println("Auto-registered new account:", username, "with ID:", accountID)
-					// Account created successfully, proceed with login
-					result = constant.LoginResultSuccess
-				}
+				log.Println("Failed to get new account ID:", err)
+				result = constant.LoginResultSystemError
 			}
 		} else {
 			result = constant.LoginResultNotRegistered
