@@ -4023,7 +4023,8 @@ func (server *Server) playerSpecialSkill(conn mnet.Client, reader mpacket.Reader
 		}
 
 	// Self toggles and non-party buffs (boolean/ratio-type): apply to self
-	case skill.DarkSight,
+	case skill.NimbleFeet, skill.Recovery,
+		skill.DarkSight,
 		skill.MagicGuard,
 		skill.Invincible,
 		skill.SoulArrow, skill.CBSoulArrow,
