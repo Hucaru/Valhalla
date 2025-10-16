@@ -165,8 +165,8 @@ type CharacterBuffs struct {
 	expireAt          map[int32]int64  // sourceID -> unix ms expiry
 }
 
-func NewCharacterBuffs(p *Player) *CharacterBuffs {
-	return &CharacterBuffs{
+func NewCharacterBuffs(p *Player) {
+	p.buffs = &CharacterBuffs{
 		plr:               p,
 		activeSkillLevels: make(map[int32]byte),
 		expireTimers:      make(map[int32]*time.Timer),
@@ -485,7 +485,7 @@ func (cb *CharacterBuffs) cureDebuffs(meta nx.Item) {
 
 	// Check which debuffs this item can cure
 	var debuffsToCure []int
-	
+
 	if meta.Poison > 0 {
 		debuffsToCure = append(debuffsToCure, BuffPoison)
 	}
@@ -507,7 +507,6 @@ func (cb *CharacterBuffs) cureDebuffs(meta nx.Item) {
 	}
 
 	// Find and remove active debuffs that match
-	var toRemove []int32
 	for skillID := range cb.activeSkillLevels {
 		// Check if this is a mob debuff (rValue format: skillID | (level << 16))
 		baseSkillID := skillID & 0xFFFF
@@ -518,18 +517,13 @@ func (cb *CharacterBuffs) cureDebuffs(meta nx.Item) {
 				for _, bit := range bits {
 					for _, cureBit := range debuffsToCure {
 						if bit == cureBit {
-							toRemove = append(toRemove, skillID)
+							cb.expireBuffNow(skillID)
 							break
 						}
 					}
 				}
 			}
 		}
-	}
-
-	// Remove the debuffs
-	for _, skillID := range toRemove {
-		cb.expireBuffNow(skillID)
 	}
 }
 
@@ -606,7 +600,7 @@ func (cb *CharacterBuffs) AddMobDebuff(skillID, level byte, durationSec int16) {
 
 	// Map mob skill IDs to buff bit positions
 	var bits []int
-	
+
 	switch skillID {
 	case skill.Mob.Seal:
 		bits = []int{BuffSeal}
@@ -633,13 +627,13 @@ func (cb *CharacterBuffs) AddMobDebuff(skillID, level byte, durationSec int16) {
 	// Pack skill ID and level into R value: skillID | (level << 16)
 	// This matches the reference implementation
 	rValue := int32(skillID) | (int32(level) << 16)
-	
+
 	// Register the mob debuff in skillBuffBits so expiration can find it
 	skillBuffBits[rValue] = bits
-	
+
 	// Build mask bytes
 	maskBytes := buildMaskBytes64(bits)
-	
+
 	// Build value triples for the self packet - scan mask in wire order
 	out := make([]byte, 0, 32)
 	for byteIdx := 0; byteIdx < 8 && byteIdx < len(maskBytes); byteIdx++ {
@@ -650,7 +644,7 @@ func (cb *CharacterBuffs) AddMobDebuff(skillID, level byte, durationSec int16) {
 		for bitPos := 0; bitPos < 8; bitPos++ {
 			if (b & (1 << uint(bitPos))) != 0 {
 				globalBit := byteIdx*8 + bitPos
-				
+
 				var nValue int16
 				switch globalBit {
 				case BuffSpeed:
@@ -663,7 +657,7 @@ func (cb *CharacterBuffs) AddMobDebuff(skillID, level byte, durationSec int16) {
 					// Other debuffs: just 1
 					nValue = 1
 				}
-				
+
 				// short N value
 				out = append(out, byte(nValue), byte(nValue>>8))
 				// int32 R value (packed skill ID and level)
@@ -689,7 +683,7 @@ func (cb *CharacterBuffs) AddMobDebuff(skillID, level byte, durationSec int16) {
 		for bitPos := 0; bitPos < 8; bitPos++ {
 			if (b & (1 << uint(bitPos))) != 0 {
 				globalBit := byteIdx*8 + bitPos
-				
+
 				switch globalBit {
 				case BuffSpeed:
 					// Speed/Slow: write byte N (speed value)
@@ -710,7 +704,7 @@ func (cb *CharacterBuffs) AddMobDebuff(skillID, level byte, durationSec int16) {
 			}
 		}
 	}
-	
+
 	// Broadcast to others in the instance
 	if cb.plr.inst != nil && len(fout) > 0 {
 		cb.plr.inst.send(packetPlayerGiveForeignBuff(cb.plr.ID, maskBytes, fout, delay))
@@ -920,7 +914,7 @@ func (cb *CharacterBuffs) DispelAllBuffs() {
 	if cb.plr == nil {
 		return
 	}
-	
+
 	// Collect all active skill IDs to remove
 	toRemove := make([]int32, 0, len(cb.activeSkillLevels))
 	for skillID := range cb.activeSkillLevels {
@@ -930,7 +924,7 @@ func (cb *CharacterBuffs) DispelAllBuffs() {
 			toRemove = append(toRemove, skillID)
 		}
 	}
-	
+
 	// Remove each buff
 	for _, skillID := range toRemove {
 		cb.expireBuffNow(skillID)
@@ -1069,14 +1063,14 @@ func (cb *CharacterBuffs) expireBuffNow(skillID int32) {
 	}
 
 	delete(cb.activeSkillLevels, skillID)
-	
+
 	// Clean up mob debuff from skillBuffBits (rValue format: skillID | (level << 16))
 	// Only clean up if it looks like a mob debuff (skill ID 100-200 range)
 	baseSkillID := skillID & 0xFFFF
 	if baseSkillID >= 100 && baseSkillID <= 200 {
 		delete(skillBuffBits, skillID)
 	}
-	
+
 	cb.despawnSummonIfMatches(skillID)
 }
 

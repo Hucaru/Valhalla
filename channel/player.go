@@ -1511,8 +1511,7 @@ func LoadPlayerFromID(id int32, conn mnet.Client) Player {
 	c.quests.mobKills = loadQuestMobKillsFromDB(c.ID)
 
 	// Initialize the per-Player buff manager so handlers can call plr.addBuff(...)
-	c.buffs = NewCharacterBuffs(&c)
-	c.buffs.plr.inst = c.inst
+	NewCharacterBuffs(&c)
 
 	c.storageInventory = new(storage)
 
@@ -1568,16 +1567,10 @@ func getBuddyList(playerID int32, buddySize byte) []buddy {
 	return buddies
 }
 
-// Convenience helper used by handlers to apply a skill buff.
-// Keeps your call sites (“plr.addBuff(...)”) simple.
 func (d *Player) addBuff(skillID int32, level byte, delay int16) {
-	if d == nil {
-		return
-	}
 	if d.buffs == nil {
-		d.buffs = NewCharacterBuffs(d)
+		NewCharacterBuffs(d)
 	}
-	d.buffs.plr.inst = d.inst
 	d.buffs.AddBuff(d.ID, skillID, level, false, delay)
 }
 
@@ -1586,10 +1579,6 @@ func (d *Player) addForeignBuff(charId, skillID int32, level byte, delay int16) 
 }
 
 func (d *Player) addMobDebuff(skillID, level byte, durationSec int16) {
-	if d == nil || d.buffs == nil {
-		return
-	}
-	d.buffs.plr.inst = d.inst
 	d.buffs.AddMobDebuff(skillID, level, durationSec)
 }
 
@@ -1610,7 +1599,6 @@ func (d *Player) saveBuffSnapshot() {
 	}
 
 	// Ensure we don't snapshot already-stale buffs
-	d.buffs.plr.inst = d.inst
 	d.buffs.AuditAndExpireStaleBuffs()
 
 	snaps := d.buffs.Snapshot()
@@ -1711,9 +1699,8 @@ func (d *Player) loadAndApplyBuffSnapshot() {
 
 	if len(snaps) > 0 {
 		if d.buffs == nil {
-			d.buffs = NewCharacterBuffs(d)
+			NewCharacterBuffs(d)
 		}
-		d.buffs.plr.inst = d.inst
 		d.buffs.RestoreFromSnapshot(snaps)
 	}
 }
