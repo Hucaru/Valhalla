@@ -210,8 +210,9 @@ func (m *monster) performSkill(delay int16, skillLevel, skillID byte) (byte, byt
 	case skill.Mob.McSpeedUp:
 	case skill.Mob.McSeal:
 	case skill.Mob.Summon:
+		return skillID, skillLevel, skillData
 	}
-	
+
 	return 0, 0, nx.MobSkill{}
 }
 
