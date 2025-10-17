@@ -1887,7 +1887,16 @@ func (server Server) mobDamagePlayer(conn mnet.Client, reader mpacket.Reader, mo
 		inst.send(packetPlayerReceivedDmg(plr.ID, mobAttack, damage, reducedDamage, spawnID, mobID, healSkillID, stance, reflectAction, reflected, reflectX, reflectY))
 	}
 	if mobSkillID != 0 && mobSkillLevel != 0 {
-		// new skill
+		// Apply mob skill debuff to the player
+		levels, err := nx.GetMobSkill(mobSkillID)
+		if err == nil && int(mobSkillLevel) > 0 && int(mobSkillLevel) <= len(levels) {
+			skillData := levels[mobSkillLevel-1]
+			durationSec := int16(0)
+			if skillData.Time > 0 {
+				durationSec = int16(skillData.Time) // Time is already in seconds
+			}
+			plr.addMobDebuff(mobSkillID, mobSkillLevel, durationSec)
+		}
 	}
 
 }

@@ -528,7 +528,7 @@ func (v Item) use(plr *Player) {
 	}
 
 	if plr.buffs == nil {
-		plr.buffs = NewCharacterBuffs(plr)
+		NewCharacterBuffs(plr)
 	}
 
 	plr.buffs.plr.inst = plr.inst

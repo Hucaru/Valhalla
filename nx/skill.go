@@ -228,6 +228,13 @@ func getMobSkill(node *gonx.Node, nodes []gonx.Node, textLookup []string) MobSki
 		option := nodes[node.ChildID+i]
 		optionName := textLookup[option.NameID]
 
+		// Try parsing as a number first - if successful, it's a mob ID field
+		if _, err := strconv.Atoi(optionName); err == nil {
+			mobID := gonx.DataToInt64(option.Data)
+			skill.MobID = append(skill.MobID, mobID)
+			continue
+		}
+
 		switch optionName {
 		case "hp":
 			skill.Hp = gonx.DataToInt32(option.Data)
@@ -241,14 +248,6 @@ func getMobSkill(node *gonx.Node, nodes []gonx.Node, textLookup []string) MobSki
 			skill.Time = gonx.DataToInt64(option.Data)
 		case "mpCon":
 			skill.MpCon = gonx.DataToInt32(option.Data)
-
-		// ?
-		case "0":
-		case "1":
-		case "2":
-		case "3":
-		case "4":
-		case "5":
 
 		// not sure what these are used for
 		case "lt":
