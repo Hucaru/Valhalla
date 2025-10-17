@@ -237,47 +237,12 @@ func (pool *lifePool) mobAcknowledge(poolID int32, plr *Player, moveID int16, sk
 			skillLevel := byte(skillData >> 8)
 			skillDelay := int16(skillData >> 16)
 
-			var actualAction int8
-
-			if action < 0 {
-				actualAction = -1
-			} else {
-				actualAction = int8(action) >> 1
+			mobSkillID, mobSkillLevel, mobSkillData := pool.mobs[i].getMobSkill(skillDelay, skillLevel, skillID)
+			if mobSkillID != 0 {
+				pool.performSkill(mob, mobSkillID, mobSkillLevel, mobSkillData)
 			}
 
-			// Perform either skill or attack
-			if actualAction >= 21 && actualAction <= 25 {
-				debuffSkillID, debuffSkillLevel, debuffSkillData := pool.mobs[i].performSkill(skillDelay, skillLevel, skillID)
-				// Apply debuffs to players in range if skill returned debuff info
-				if debuffSkillID != 0 {
-					pool.performSkill(mob, debuffSkillID, debuffSkillLevel, debuffSkillData)
-				}
-			} else if actualAction > 12 && actualAction < 20 {
-				attackID := byte(actualAction - 12)
-
-				mobSkills := mob.skills
-
-				// check mob can use attack
-				if level, valid := mobSkills[attackID]; valid {
-					levels, err := nx.GetMobSkill(attackID)
-
-					if err != nil {
-						return
-					}
-
-					if int(level) < len(levels) {
-						skill := levels[level]
-						mob.mp = mob.mp - skill.MpCon
-						if mob.mp < 0 {
-							mob.mp = 0
-						}
-					}
-
-				}
-
-				pool.mobs[i].performAttack(attackID)
-			}
-
+			// Choose next skill
 			skillID, skillLevel = mob.canUseSkill(skillPossible)
 
 			if !moveData.validateMob(v) {
@@ -291,17 +256,13 @@ func (pool *lifePool) mobAcknowledge(poolID int32, plr *Player, moveID int16, sk
 }
 
 func (pool *lifePool) performSkill(mob *monster, skillID, skillLevel byte, skillData nx.MobSkill) {
-	if pool.instance == nil {
-		return
-	}
-
 	switch skillID {
 	case skill.Mob.Dispel:
 		for _, plr := range pool.instance.players {
 			if plr == nil || plr.buffs == nil {
 				continue
 			}
-			plr.buffs.DispelAllBuffs()
+			plr.buffs.dispelAllBuffs()
 		}
 		return
 	case skill.Mob.HealAoe:
@@ -334,19 +295,19 @@ func (pool *lifePool) performSkill(mob *monster, skillID, skillLevel byte, skill
 	case skill.Mob.Summon:
 		pool.handleMobSummon(mob, skillLevel, skillData)
 		return
-	}
+	default:
+		for _, plr := range pool.instance.players {
+			if plr == nil || plr.buffs == nil {
+				continue
+			}
 
-	for _, plr := range pool.instance.players {
-		if plr == nil || plr.buffs == nil {
-			continue
+			durationSec := int16(0)
+			if skillData.Time > 0 {
+				durationSec = int16(skillData.Time)
+			}
+
+			plr.addMobDebuff(skillID, skillLevel, durationSec)
 		}
-
-		durationSec := int16(0)
-		if skillData.Time > 0 {
-			durationSec = int16(skillData.Time) // Time is already in seconds
-		}
-
-		plr.addMobDebuff(skillID, skillLevel, durationSec)
 	}
 }
 

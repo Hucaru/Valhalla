@@ -146,7 +146,7 @@ func (m monster) hasHPBar() (bool, int32, int32, int32, byte, byte) {
 	return (m.boss && m.hpBgColour > 0), m.id, m.hp, m.maxHP, m.hpFgColour, m.hpBgColour
 }
 
-func (m *monster) performSkill(delay int16, skillLevel, skillID byte) (byte, byte, nx.MobSkill) {
+func (m *monster) getMobSkill(delay int16, skillLevel, skillID byte) (byte, byte, nx.MobSkill) {
 	currentTime := time.Now().Unix()
 	m.lastSkillTime = currentTime
 	m.skillTimes[skillID] = currentTime
@@ -162,7 +162,6 @@ func (m *monster) performSkill(delay int16, skillLevel, skillID byte) (byte, byt
 		return 0, 0, nx.MobSkill{}
 	}
 
-	// NX skill levels are typically 1-based; guard and index accordingly.
 	if skillLevel == 0 || int(skillLevel) > len(levels) {
 		return 0, 0, nx.MobSkill{}
 	}
@@ -173,47 +172,7 @@ func (m *monster) performSkill(delay int16, skillLevel, skillID byte) (byte, byt
 		m.mp = 0
 	}
 
-	// Return skill info for debuff/buff application by caller
-	switch skillID {
-	// Debuffs that should be applied to players
-	case skill.Mob.Seal, skill.Mob.Darkness, skill.Mob.Weakness,
-		skill.Mob.Stun, skill.Mob.Curse, skill.Mob.Poison, skill.Mob.Slow:
-		return skillID, skillLevel, skillData
-	// Special skills that need special handling
-	case skill.Mob.Dispel, skill.Mob.HealAoe:
-		return skillID, skillLevel, skillData
-	// Mob self-buffs
-	case skill.Mob.WeaponAttackUp, skill.Mob.WeaponAttackUpAoe,
-		skill.Mob.MagicAttackUp, skill.Mob.MagicAttackUpAoe,
-		skill.Mob.WeaponDefenceUp, skill.Mob.WeaponDefenceUpAoe,
-		skill.Mob.MagicDefenceUp, skill.Mob.MagicDefenceUpAoe,
-		skill.Mob.WeaponImmunity, skill.Mob.MagicImmunity:
-		return skillID, skillLevel, skillData
-	// Other skills (not yet implemented)
-	case skill.Mob.Seduce:
-	case skill.Mob.SendToTown:
-	case skill.Mob.PoisonMist:
-	case skill.Mob.CrazySkull:
-	case skill.Mob.Zombify:
-	case skill.Mob.WeaponImmunity:
-	case skill.Mob.MagicImmunity:
-	case skill.Mob.ArmorSkill:
-	case skill.Mob.WeaponDamageReflect:
-	case skill.Mob.MagicDamageReflect:
-	case skill.Mob.AnyDamageReflect:
-	case skill.Mob.McWeaponAttackUp:
-	case skill.Mob.McMagicAttackUp:
-	case skill.Mob.McWeaponDefenseUp:
-	case skill.Mob.McMagicDefenseUp:
-	case skill.Mob.McAccuracyUp:
-	case skill.Mob.McAvoidUp:
-	case skill.Mob.McSpeedUp:
-	case skill.Mob.McSeal:
-	case skill.Mob.Summon:
-		return skillID, skillLevel, skillData
-	}
-
-	return 0, 0, nx.MobSkill{}
+	return skillID, skillLevel, skillData
 }
 
 func (m *monster) performAttack(attackID byte) {
