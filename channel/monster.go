@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/Hucaru/Valhalla/common/opcode"
+	"github.com/Hucaru/Valhalla/constant"
 	"github.com/Hucaru/Valhalla/constant/skill"
 	"github.com/Hucaru/Valhalla/mpacket"
 	"github.com/Hucaru/Valhalla/nx"
@@ -81,7 +82,7 @@ func createMonsterFromData(spawnID int32, life nx.Life, m nx.Mob, dropsItems, dr
 		maxMP:         m.MaxMP,
 		exp:           int32(m.Exp),
 		revives:       m.Revives,
-		summonType:    -2,
+		summonType:    constant.MobSummonTypeRegen,
 		boss:          m.Boss > 0,
 		hpBgColour:    byte(m.HPTagBGColor),
 		hpFgColour:    byte(m.HPTagColor),
@@ -175,10 +176,6 @@ func (m *monster) getMobSkill(delay int16, skillLevel, skillID byte) (byte, byte
 	return skillID, skillLevel, skillData
 }
 
-func (m *monster) performAttack(attackID byte) {
-	// TODO: implement mob attack handling
-}
-
 func (m *monster) giveDamage(damager *Player, dmg ...int32) {
 	for _, v := range dmg {
 		if v > m.hp {
@@ -237,7 +234,7 @@ func (m monster) displayBytes() []byte {
 	p.WriteInt16(m.pos.foothold) // spawn foothold
 	p.WriteInt8(m.summonType)
 
-	if m.summonType == -3 || m.summonType >= 0 {
+	if m.summonType == constant.MobSummonTypeRevive || m.summonType >= 0 {
 		p.WriteInt32(m.summonOption) // when -3 used to link mob to a death using spawnID
 	}
 

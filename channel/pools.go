@@ -93,7 +93,7 @@ func creatNewLifePool(inst *fieldInstance, npcData, mobData []nx.Life, mobCapMin
 
 		val := createMonsterFromData(id, v, m, true, true)
 		pool.mobs[id] = &val
-		pool.mobs[id].summonType = -1
+		pool.mobs[id].summonType = constant.MobSummonTypeInstant
 
 		pool.spawnableMobs[i] = createMonsterFromData(id, v, m, true, true)
 	}
@@ -375,7 +375,7 @@ func (pool *lifePool) mobDamaged(poolID int32, damager *Player, dmg ...int32) {
 					}
 
 					newMob.faceLeft = v.faceLeft
-					newMob.summonType = -3
+					newMob.summonType = constant.MobSummonTypeRevive
 					newMob.summonOption = v.spawnID
 					pool.spawnReviveMob(&newMob, damager)
 				}
@@ -476,34 +476,16 @@ func (pool *lifePool) handleMobSummon(summoner *monster, skillLevel byte, skillD
 		err := pool.spawnMobFromID(
 			int32(mobID),
 			spawnPos,
-			true,
 			false,
 			false,
+			false,
+			constant.MobSummonTypeInstant,
 			summoner.spawnID,
 		)
-
 		if err != nil {
 			continue
 		}
 
-		var spawnedMob *monster
-		var highestID int32
-		for id, m := range pool.mobs {
-			if id > highestID {
-				highestID = id
-				spawnedMob = m
-			}
-		}
-
-		if spawnedMob != nil {
-			summonType := int8(skillData.SummonEffect)
-			if summonType == 0 {
-				summonType = -2
-			}
-			spawnedMob.summonType = summonType
-			spawnedMob.summoner = summoner.controller
-			spawnedMob.faceLeft = summoner.faceLeft
-		}
 	}
 }
 
@@ -582,12 +564,11 @@ func (pool *lifePool) spawnMob(m *monster, hasAgro bool) bool {
 	}
 
 	pool.showMobBossHPBar(m, nil)
-	m.summonType = -1
 
 	return false
 }
 
-func (pool *lifePool) spawnMobFromID(mobID int32, location pos, hasAgro, items, mesos bool, summoner int32) error {
+func (pool *lifePool) spawnMobFromID(mobID int32, location pos, hasAgro, items, mesos bool, summonType int8, summoner int32) error {
 	id, err := pool.nextMobID()
 
 	if err != nil {
@@ -600,6 +581,8 @@ func (pool *lifePool) spawnMobFromID(mobID int32, location pos, hasAgro, items, 
 		return err
 	}
 
+	m.summonType = summonType
+
 	pool.spawnMob(&m, hasAgro)
 
 	return nil
@@ -608,7 +591,7 @@ func (pool *lifePool) spawnMobFromID(mobID int32, location pos, hasAgro, items, 
 func (pool *lifePool) spawnReviveMob(m *monster, cont *Player) {
 	pool.spawnMob(m, true)
 
-	pool.mobs[m.spawnID].summonType = -2
+	pool.mobs[m.spawnID].summonType = constant.MobSummonTypeRevive
 	pool.mobs[m.spawnID].summonOption = 0
 
 	if cont != nil {
@@ -1483,7 +1466,7 @@ func (pool *reactorPool) processStateSideEffects(r *fieldReactor, server *Server
 			count := getInt(e, "2", 1)
 			spawnPos := pool.instance.calculateFinalDropPos(r.pos)
 			for i := 0; i < count; i++ {
-				_ = pool.instance.lifePool.spawnMobFromID(int32(mobID), spawnPos, false, true, true, 0)
+				pool.instance.lifePool.spawnMobFromID(int32(mobID), spawnPos, false, true, true, constant.MobSummonTypeInstant, 0)
 			}
 		case constant.ReactorDrop:
 			reactorID := strconv.Itoa(int(r.info.ID))

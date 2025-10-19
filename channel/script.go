@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Hucaru/Valhalla/constant"
 	"github.com/Hucaru/Valhalla/internal"
 	"github.com/Hucaru/Valhalla/mnet"
 	"github.com/dop251/goja"
@@ -1133,7 +1134,7 @@ func (f *fieldWrapper) SpawnMonster(inst int, mobID int32, x, y int16, hasAgro, 
 		return
 	}
 
-	_ = i.lifePool.spawnMobFromID(mobID, newPos(x, y, 0), hasAgro, items, mesos, 0)
+	i.lifePool.spawnMobFromID(mobID, newPos(x, y, 0), hasAgro, items, mesos, constant.MobSummonTypeInstant, 0)
 }
 
 func (f *fieldWrapper) Clear(id int, mobs, items bool) {
