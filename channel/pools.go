@@ -16,6 +16,7 @@ import (
 
 	"github.com/Hucaru/Valhalla/common/opcode"
 	"github.com/Hucaru/Valhalla/constant"
+	"github.com/Hucaru/Valhalla/constant/skill"
 	"github.com/Hucaru/Valhalla/mpacket"
 	"github.com/Hucaru/Valhalla/nx"
 )
@@ -92,7 +93,7 @@ func creatNewLifePool(inst *fieldInstance, npcData, mobData []nx.Life, mobCapMin
 
 		val := createMonsterFromData(id, v, m, true, true)
 		pool.mobs[id] = &val
-		pool.mobs[id].summonType = -1
+		pool.mobs[id].summonType = constant.MobSummonTypeInstant
 
 		pool.spawnableMobs[i] = createMonsterFromData(id, v, m, true, true)
 	}
@@ -236,44 +237,14 @@ func (pool *lifePool) mobAcknowledge(poolID int32, plr *Player, moveID int16, sk
 			skillLevel := byte(skillData >> 8)
 			skillDelay := int16(skillData >> 16)
 
-			var actualAction int8
+			mobSkillID, mobSkillLevel, mobSkillData := pool.mobs[i].getMobSkill(skillDelay, skillLevel, skillID)
 
-			if action < 0 {
-				actualAction = -1
-			} else {
-				actualAction = int8(action) >> 1
+			if mobSkillID != 0 {
+				pool.performSkill(mob, mobSkillID, mobSkillLevel, mobSkillData)
 			}
 
-			// Perform either skill or attack
-			if actualAction >= 21 && actualAction <= 25 {
-				pool.mobs[i].performSkill(skillDelay, skillLevel, skillID)
-			} else if actualAction > 12 && actualAction < 20 {
-				attackID := byte(actualAction - 12)
-
-				mobSkills := mob.skills
-
-				// check mob can use attack
-				if level, valid := mobSkills[attackID]; valid {
-					levels, err := nx.GetMobSkill(attackID)
-
-					if err != nil {
-						return
-					}
-
-					if int(level) < len(levels) {
-						skill := levels[level]
-						mob.mp = mob.mp - skill.MpCon
-						if mob.mp < 0 {
-							mob.mp = 0
-						}
-					}
-
-				}
-
-				pool.mobs[i].performAttack(attackID)
-			}
-
-			skillID, skillLevel = mob.canUseSkill(skillPossible)
+			// Choose next skill
+			skillID, skillLevel = mob.chooseNextSkill()
 
 			if !moveData.validateMob(v) {
 				return
@@ -281,6 +252,66 @@ func (pool *lifePool) mobAcknowledge(poolID int32, plr *Player, moveID int16, sk
 
 			pool.mobs[i].acknowledgeController(moveID, finalData, skillPossible, skillID, skillLevel)
 			pool.instance.sendExcept(packetMobMove(poolID, skillPossible, action, skillData, moveBytes), v.controller.Conn)
+		}
+	}
+}
+
+func (pool *lifePool) performSkill(mob *monster, skillID, skillLevel byte, skillData nx.MobSkill) {
+	currentTime := time.Now().Unix()
+	mob.lastSkillTime = currentTime
+	mob.skillTimes[skillID] = currentTime
+
+	switch skillID {
+	case skill.Mob.Dispel:
+		for _, plr := range pool.instance.players {
+			if plr == nil || plr.buffs == nil {
+				continue
+			}
+			plr.buffs.dispelAllBuffs()
+		}
+		return
+	case skill.Mob.HealAoe:
+		healAmount := skillData.Hp
+		for _, m := range pool.mobs {
+			if m != nil {
+				m.healMob(healAmount, 0)
+			}
+		}
+		return
+	// Mob self-buffs
+	case skill.Mob.WeaponAttackUp, skill.Mob.WeaponAttackUpAoe:
+		mob.statBuff |= skill.MobStat.PowerUp
+		return
+	case skill.Mob.MagicAttackUp, skill.Mob.MagicAttackUpAoe:
+		mob.statBuff |= skill.MobStat.MagicUp
+		return
+	case skill.Mob.WeaponDefenceUp, skill.Mob.WeaponDefenceUpAoe:
+		mob.statBuff |= skill.MobStat.PowerGuardUp
+		return
+	case skill.Mob.MagicDefenceUp, skill.Mob.MagicDefenceUpAoe:
+		mob.statBuff |= skill.MobStat.MagicGuardUp
+		return
+	case skill.Mob.WeaponImmunity:
+		mob.statBuff |= skill.MobStat.PhysicalImmune
+		return
+	case skill.Mob.MagicImmunity:
+		mob.statBuff |= skill.MobStat.MagicImmune
+		return
+	case skill.Mob.Summon:
+		pool.handleMobSummon(mob, skillLevel, skillData)
+		return
+	default:
+		for _, plr := range pool.instance.players {
+			if plr == nil || plr.buffs == nil {
+				continue
+			}
+
+			durationSec := int16(0)
+			if skillData.Time > 0 {
+				durationSec = int16(skillData.Time)
+			}
+
+			plr.addMobDebuff(skillID, skillLevel, durationSec)
 		}
 	}
 }
@@ -301,39 +332,39 @@ func (pool *lifePool) mobDamaged(poolID int32, damager *Player, dmg ...int32) {
 			pool.showMobBossHPBar(v, nil)
 
 			if pool.mobs[i].hp < 1 {
-				for plr, dmg := range pool.mobs[i].dmgTaken {
-					if damager != nil && damager.mapID != plr.mapID {
-						continue
-					}
-
-					var partyExp int32
-
-					if dmg == v.maxHP {
-						plr.giveEXP(v.exp, true, false)
-						partyExp = int32(float64(v.exp) * 0.25) // TODO: party exp needs to be properly calculated
-					} else if float64(dmg)/float64(v.maxHP) > 0.60 {
-						plr.giveEXP(v.exp, true, false)
-						partyExp = int32(float64(v.exp) * 0.25) // TODO: party exp needs to be properly calculated
-					} else {
-						newExp := int32(float64(v.exp) * 0.25)
-
-						if newExp == 0 {
-							newExp = 1
+				if damager != nil {
+					for plr, dmg := range pool.mobs[i].dmgTaken {
+						if damager.mapID != plr.mapID {
+							continue
 						}
 
-						plr.giveEXP(newExp, true, false)
-						partyExp = int32(float64(newExp) * 0.25) // TODO: party exp needs to be properly calculated
+						var partyExp int32
+
+						if dmg == v.maxHP {
+							plr.giveEXP(v.exp, true, false)
+							partyExp = int32(float64(v.exp) * 0.25)
+						} else if float64(dmg)/float64(v.maxHP) > 0.60 {
+							plr.giveEXP(v.exp, true, false)
+							partyExp = int32(float64(v.exp) * 0.25)
+						} else {
+							newExp := int32(float64(v.exp) * 0.25)
+
+							if newExp == 0 {
+								newExp = 1
+							}
+
+							plr.giveEXP(newExp, true, false)
+							partyExp = int32(float64(newExp) * 0.25)
+						}
+
+						if plr.party != nil {
+							plr.party.giveExp(plr.ID, partyExp, true)
+						}
 					}
 
-					if plr.party != nil {
-						// TODO: check level difference is appropriate
-						plr.party.giveExp(plr.ID, partyExp, true)
-					}
+					damager.onMobKilled(v.id)
 				}
 
-				// quest mob logic
-
-				// on die logic
 				for _, id := range v.revives {
 					spawnID, err := pool.nextMobID()
 
@@ -349,65 +380,61 @@ func (pool *lifePool) mobDamaged(poolID int32, damager *Player, dmg ...int32) {
 					}
 
 					newMob.faceLeft = v.faceLeft
-					newMob.summonType = -3
+					newMob.summonType = constant.MobSummonTypeRevive
 					newMob.summonOption = v.spawnID
 					pool.spawnReviveMob(&newMob, damager)
 				}
 
 				pool.removeMob(v.spawnID, 0x1)
-				damager.onMobKilled(v.id)
 
-				if dropEntry, ok := dropTable[v.id]; ok {
-					var mesos int32
-					drops := make([]Item, 0, len(dropEntry))
+				if damager != nil {
+					if dropEntry, ok := dropTable[v.id]; ok {
+						var mesos int32
+						drops := make([]Item, 0, len(dropEntry))
 
-					for _, entry := range dropEntry {
-						if entry.IsMesos {
-							mesos = randRangeInclusive(pool.rNumber, entry.Min, entry.Max)
-							continue
-						}
-
-						// Quest-gated Item: only allow if killer has quest active
-						// This should probably be hidden from instance and only viewable to Player
-						if entry.QuestID != 0 && !damager.allowsQuestDrop(entry.QuestID) {
-							continue
-						}
-
-						if !rollDrop(pool.rNumber, entry.Chance, pool.dropPool.rates.drop) {
-							continue
-						}
-
-						var amount int16 = 1
-						minAmt := entry.Min
-						maxAmt := entry.Max
-						if maxAmt != 1 {
-							val := randRangeInclusive(pool.rNumber, minAmt, maxAmt)
-							if val > math.MaxInt16 {
-								amount = math.MaxInt16
-							} else if val < 1 {
-								amount = 1
-							} else {
-								amount = int16(val)
+						for _, entry := range dropEntry {
+							if entry.IsMesos {
+								mesos = randRangeInclusive(pool.rNumber, entry.Min, entry.Max)
+								continue
 							}
+
+							if entry.QuestID != 0 && !damager.allowsQuestDrop(entry.QuestID) {
+								continue
+							}
+
+							if !rollDrop(pool.rNumber, entry.Chance, pool.dropPool.rates.drop) {
+								continue
+							}
+
+							var amount int16 = 1
+							minAmt := entry.Min
+							maxAmt := entry.Max
+							if maxAmt != 1 {
+								val := randRangeInclusive(pool.rNumber, minAmt, maxAmt)
+								if val > math.MaxInt16 {
+									amount = math.MaxInt16
+								} else if val < 1 {
+									amount = 1
+								} else {
+									amount = int16(val)
+								}
+							}
+
+							newItem, err := CreateItemFromID(entry.ItemID, amount)
+							if err != nil {
+								log.Println("Failed to create drop for mobID:", v.id, "with error:", err)
+								continue
+							}
+							drops = append(drops, newItem)
 						}
 
-						newItem, err := CreateItemFromID(entry.ItemID, amount)
-						if err != nil {
-							log.Println("Failed to create drop for mobID:", v.id, "with error:", err)
-							continue
-						}
-						drops = append(drops, newItem)
+						pool.dropPool.createDrop(dropSpawnNormal, dropFreeForAll, int32(damager.rates.mesos*float32(mesos)), v.pos, true, 0, 0, drops...)
 					}
-
-					// TODO: droppool type determination between DropTimeoutNonOwner and DropTimeoutNonOwnerParty
-					pool.dropPool.createDrop(dropSpawnNormal, dropFreeForAll, int32(damager.rates.mesos*float32(mesos)), v.pos, true, 0, 0, drops...)
-
-					// If has hp bar: remove
 				}
 
 				if v.spawnInterval > 0 {
 					for i, k := range pool.spawnableMobs {
-						if k.id == v.id { // if this needs strengthening then add a spawn pos check
+						if k.id == v.id {
 							pool.spawnableMobs[i].timeToSpawn = time.Now().Add(time.Millisecond * time.Duration(v.spawnInterval))
 							break
 						}
@@ -416,6 +443,54 @@ func (pool *lifePool) mobDamaged(poolID int32, damager *Player, dmg ...int32) {
 			}
 			break
 		}
+	}
+}
+
+func (pool *lifePool) handleMobSummon(summoner *monster, skillLevel byte, skillData nx.MobSkill) {
+	if len(skillData.MobID) == 0 {
+		return
+	}
+
+	minY := summoner.pos.y - 100
+	maxY := summoner.pos.y + 100
+	minX := summoner.pos.x - 200
+	maxX := summoner.pos.x + 200
+
+	randX := minX
+	if maxX > minX {
+		randX = minX + int16(pool.rNumber.Intn(int(maxX-minX)))
+	}
+
+	for i, mobID := range skillData.MobID {
+		summonY := minY
+		if maxY > minY {
+			summonY = minY + int16(pool.rNumber.Intn(int(maxY-minY)))
+		}
+
+		offset := int16(0)
+		if i > 0 {
+			if i%2 == 1 {
+				offset = int16(35 * (i + 1) / 2)
+			} else {
+				offset = int16(-40 * (i / 2))
+			}
+		}
+		summonX := randX + offset
+		spawnPos := newPos(summonX, summonY, summoner.pos.foothold)
+
+		err := pool.spawnMobFromID(
+			int32(mobID),
+			spawnPos,
+			false,
+			false,
+			false,
+			constant.MobSummonTypeInstant,
+			summoner.spawnID,
+		)
+		if err != nil {
+			continue
+		}
+
 	}
 }
 
@@ -494,12 +569,11 @@ func (pool *lifePool) spawnMob(m *monster, hasAgro bool) bool {
 	}
 
 	pool.showMobBossHPBar(m, nil)
-	m.summonType = -1
 
 	return false
 }
 
-func (pool *lifePool) spawnMobFromID(mobID int32, location pos, hasAgro, items, mesos bool, summoner int32) error {
+func (pool *lifePool) spawnMobFromID(mobID int32, location pos, hasAgro, items, mesos bool, summonType int8, summoner int32) error {
 	id, err := pool.nextMobID()
 
 	if err != nil {
@@ -512,6 +586,8 @@ func (pool *lifePool) spawnMobFromID(mobID int32, location pos, hasAgro, items, 
 		return err
 	}
 
+	m.summonType = summonType
+
 	pool.spawnMob(&m, hasAgro)
 
 	return nil
@@ -520,7 +596,7 @@ func (pool *lifePool) spawnMobFromID(mobID int32, location pos, hasAgro, items, 
 func (pool *lifePool) spawnReviveMob(m *monster, cont *Player) {
 	pool.spawnMob(m, true)
 
-	pool.mobs[m.spawnID].summonType = -2
+	pool.mobs[m.spawnID].summonType = constant.MobSummonTypeRevive
 	pool.mobs[m.spawnID].summonOption = 0
 
 	if cont != nil {
@@ -1395,7 +1471,7 @@ func (pool *reactorPool) processStateSideEffects(r *fieldReactor, server *Server
 			count := getInt(e, "2", 1)
 			spawnPos := pool.instance.calculateFinalDropPos(r.pos)
 			for i := 0; i < count; i++ {
-				_ = pool.instance.lifePool.spawnMobFromID(int32(mobID), spawnPos, false, true, true, 0)
+				pool.instance.lifePool.spawnMobFromID(int32(mobID), spawnPos, false, true, true, constant.MobSummonTypeInstant, 0)
 			}
 		case constant.ReactorDrop:
 			reactorID := strconv.Itoa(int(r.info.ID))

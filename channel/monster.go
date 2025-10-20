@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/Hucaru/Valhalla/common/opcode"
+	"github.com/Hucaru/Valhalla/constant"
 	"github.com/Hucaru/Valhalla/constant/skill"
 	"github.com/Hucaru/Valhalla/mpacket"
 	"github.com/Hucaru/Valhalla/nx"
@@ -81,7 +82,7 @@ func createMonsterFromData(spawnID int32, life nx.Life, m nx.Mob, dropsItems, dr
 		maxMP:         m.MaxMP,
 		exp:           int32(m.Exp),
 		revives:       m.Revives,
-		summonType:    -2,
+		summonType:    constant.MobSummonTypeRegen,
 		boss:          m.Boss > 0,
 		hpBgColour:    byte(m.HPTagBGColor),
 		hpFgColour:    byte(m.HPTagColor),
@@ -91,6 +92,7 @@ func createMonsterFromData(spawnID int32, life nx.Life, m nx.Mob, dropsItems, dr
 		skillTimes:    make(map[byte]int64),
 		poison:        false,
 		lastHeal:      time.Now().Unix(),
+		lastSkillTime: 0,
 	}
 }
 
@@ -146,25 +148,20 @@ func (m monster) hasHPBar() (bool, int32, int32, int32, byte, byte) {
 	return (m.boss && m.hpBgColour > 0), m.id, m.hp, m.maxHP, m.hpFgColour, m.hpBgColour
 }
 
-func (m *monster) performSkill(delay int16, skillLevel, skillID byte) {
-	currentTime := time.Now().Unix()
-	m.lastSkillTime = currentTime
-	m.skillTimes[skillID] = currentTime
-
+func (m *monster) getMobSkill(delay int16, skillLevel, skillID byte) (byte, byte, nx.MobSkill) {
 	// If sealed, cannot use skills
 	if (m.statBuff & skill.MobStat.SealSkill) > 0 {
-		return
+		return 0, 0, nx.MobSkill{}
 	}
 
 	levels, err := nx.GetMobSkill(skillID)
 	if err != nil {
 		m.skillID = 0
-		return
+		return 0, 0, nx.MobSkill{}
 	}
 
-	// NX skill levels are typically 1-based; guard and index accordingly.
 	if skillLevel == 0 || int(skillLevel) > len(levels) {
-		return
+		return 0, 0, nx.MobSkill{}
 	}
 	skillData := levels[skillLevel-1]
 
@@ -173,49 +170,7 @@ func (m *monster) performSkill(delay int16, skillLevel, skillID byte) {
 		m.mp = 0
 	}
 
-	// TODO: Implement effects per skillID (buffs/aoe/etc.)
-	switch skillID {
-	case skill.Mob.WeaponAttackUpAoe:
-	case skill.Mob.MagicAttackUp:
-	case skill.Mob.MagicAttackUpAoe:
-	case skill.Mob.WeaponDefenceUp:
-	case skill.Mob.WeaponDefenceUpAoe:
-	case skill.Mob.MagicDefenceUp:
-	case skill.Mob.MagicDefenceUpAoe:
-	case skill.Mob.HealAoe:
-	case skill.Mob.Seal:
-	case skill.Mob.Darkness:
-	case skill.Mob.Weakness:
-	case skill.Mob.Stun:
-	case skill.Mob.Curse:
-	case skill.Mob.Poison:
-	case skill.Mob.Slow:
-	case skill.Mob.Dispel:
-	case skill.Mob.Seduce:
-	case skill.Mob.SendToTown:
-	case skill.Mob.PoisonMist:
-	case skill.Mob.CrazySkull:
-	case skill.Mob.Zombify:
-	case skill.Mob.WeaponImmunity:
-	case skill.Mob.MagicImmunity:
-	case skill.Mob.ArmorSkill:
-	case skill.Mob.WeaponDamageReflect:
-	case skill.Mob.MagicDamageReflect:
-	case skill.Mob.AnyDamageReflect:
-	case skill.Mob.McWeaponAttackUp:
-	case skill.Mob.McMagicAttackUp:
-	case skill.Mob.McWeaponDefenseUp:
-	case skill.Mob.McMagicDefenseUp:
-	case skill.Mob.McAccuracyUp:
-	case skill.Mob.McAvoidUp:
-	case skill.Mob.McSpeedUp:
-	case skill.Mob.McSeal:
-	case skill.Mob.Summon:
-	}
-}
-
-func (m *monster) performAttack(attackID byte) {
-	// TODO: implement mob attack handling
+	return skillID, skillLevel, skillData
 }
 
 func (m *monster) giveDamage(damager *Player, dmg ...int32) {
@@ -276,7 +231,7 @@ func (m monster) displayBytes() []byte {
 	p.WriteInt16(m.pos.foothold) // spawn foothold
 	p.WriteInt8(m.summonType)
 
-	if m.summonType == -3 || m.summonType >= 0 {
+	if m.summonType == constant.MobSummonTypeRevive || m.summonType >= 0 {
 		p.WriteInt32(m.summonOption) // when -3 used to link mob to a death using spawnID
 	}
 
@@ -321,13 +276,11 @@ func (m *monster) update(t time.Time) {
 	}
 }
 
-// GetNextSkill returns the value of function chooseNextSkill
-func (m *monster) useChooseNextSkill() (byte, byte) {
-	return chooseNextSkill(m)
-}
-
-func chooseNextSkill(mob *monster) (byte, byte) {
+func (mob *monster) chooseNextSkill() (byte, byte) {
 	var chosenID, chosenLevel byte
+	if (mob.statBuff&skill.MobStat.SealSkill) > 0 || (time.Now().Unix()-mob.lastSkillTime) < 10 {
+		return 0, 0
+	}
 
 	candidates := make([]byte, 0, len(mob.skills))
 	for id, lvl := range mob.skills {
@@ -389,17 +342,6 @@ func chooseNextSkill(mob *monster) (byte, byte) {
 	}
 
 	return chosenID, chosenLevel
-}
-
-func (m *monster) canUseSkill(skillPossible bool) (byte, byte) {
-	// 10 second default cooldown
-	if !skillPossible || (m.statBuff&skill.MobStat.SealSkill) > 0 || (time.Now().Unix()-m.lastSkillTime) < 10 {
-		return 0, 0
-	}
-	id, lvl := chooseNextSkill(m)
-	// Store chosen skill so performSkill can validate/consume consistently
-	m.skillID, m.skillLevel = id, lvl
-	return id, lvl
 }
 
 func (m *monster) healMob(hp, mp int32) {

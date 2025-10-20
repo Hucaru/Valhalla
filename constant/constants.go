@@ -370,3 +370,12 @@ const (
 	AutoRegisterDefaultIsLoggedIn  int    = 0
 	AutoRegisterDefaultPIN         string = "1111"
 )
+
+const (
+	MobSummonTypeFake     int8 = -4
+	MobSummonTypeRevive   int8 = -3
+	MobSummonTypeRegen    int8 = -2
+	MobSummonTypeInstant  int8 = -1
+	MobSummonTypeJrBalrog int8 = 0
+	MobSummonTypePoof     int8 = 1
+)

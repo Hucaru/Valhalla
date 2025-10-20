@@ -1137,18 +1137,6 @@ func (server *Server) gmCommand(conn mnet.Client, msg string) {
 	case "killAll":
 		fallthrough
 	case "killmobs":
-		var deathType byte = 1
-		if len(command) > 1 {
-			val, err := strconv.Atoi(command[1])
-
-			if err != nil {
-				conn.Send(packetMessageRedText(err.Error()))
-				return
-			}
-
-			deathType = byte(val)
-		}
-
 		plr, err := server.players.getFromConn(conn)
 
 		if err != nil {
@@ -1170,7 +1158,10 @@ func (server *Server) gmCommand(conn mnet.Client, msg string) {
 			return
 		}
 
-		inst.lifePool.killMobs(deathType)
+		for spawnID, mob := range inst.lifePool.mobs {
+			inst.lifePool.mobDamaged(spawnID, plr, mob.hp)
+		}
+
 	case "spawn":
 		fallthrough
 	case "spawnMob":
@@ -1221,7 +1212,7 @@ func (server *Server) gmCommand(conn mnet.Client, msg string) {
 		}
 
 		for i := 0; i < count; i++ {
-			err := inst.lifePool.spawnMobFromID(mobID, plr.pos, false, true, true, plr.ID)
+			err := inst.lifePool.spawnMobFromID(mobID, plr.pos, false, true, true, constant.MobSummonTypeInstant, plr.ID)
 
 			if err != nil {
 				conn.Send(packetMessageRedText(err.Error()))
@@ -1274,7 +1265,7 @@ func (server *Server) gmCommand(conn mnet.Client, msg string) {
 
 		for i := 0; i < count; i++ {
 			for _, id := range mobID {
-				err = inst.lifePool.spawnMobFromID(id, plr.pos, false, true, true, plr.ID)
+				err = inst.lifePool.spawnMobFromID(id, plr.pos, false, true, true, constant.MobSummonTypeInstant, plr.ID)
 			}
 
 			if err != nil {
@@ -1380,7 +1371,7 @@ func (server *Server) gmCommand(conn mnet.Client, msg string) {
 			return
 		}
 
-		err = inst.lifePool.spawnMobFromID(5100001, plr.pos, true, true, true, plr.ID)
+		err = inst.lifePool.spawnMobFromID(5100001, plr.pos, true, true, true, constant.MobSummonTypeInstant, plr.ID)
 
 		if err != nil {
 			conn.Send(packetMessageRedText(err.Error()))
