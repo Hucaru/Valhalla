@@ -92,6 +92,7 @@ func createMonsterFromData(spawnID int32, life nx.Life, m nx.Mob, dropsItems, dr
 		skillTimes:    make(map[byte]int64),
 		poison:        false,
 		lastHeal:      time.Now().Unix(),
+		lastSkillTime: 0,
 	}
 }
 
@@ -148,10 +149,6 @@ func (m monster) hasHPBar() (bool, int32, int32, int32, byte, byte) {
 }
 
 func (m *monster) getMobSkill(delay int16, skillLevel, skillID byte) (byte, byte, nx.MobSkill) {
-	currentTime := time.Now().Unix()
-	m.lastSkillTime = currentTime
-	m.skillTimes[skillID] = currentTime
-
 	// If sealed, cannot use skills
 	if (m.statBuff & skill.MobStat.SealSkill) > 0 {
 		return 0, 0, nx.MobSkill{}
@@ -279,13 +276,11 @@ func (m *monster) update(t time.Time) {
 	}
 }
 
-// GetNextSkill returns the value of function chooseNextSkill
-func (m *monster) useChooseNextSkill() (byte, byte) {
-	return chooseNextSkill(m)
-}
-
-func chooseNextSkill(mob *monster) (byte, byte) {
+func (mob *monster) chooseNextSkill() (byte, byte) {
 	var chosenID, chosenLevel byte
+	if (mob.statBuff&skill.MobStat.SealSkill) > 0 || (time.Now().Unix()-mob.lastSkillTime) < 10 {
+		return 0, 0
+	}
 
 	candidates := make([]byte, 0, len(mob.skills))
 	for id, lvl := range mob.skills {
@@ -347,17 +342,6 @@ func chooseNextSkill(mob *monster) (byte, byte) {
 	}
 
 	return chosenID, chosenLevel
-}
-
-func (m *monster) canUseSkill(skillPossible bool) (byte, byte) {
-	// 10 second default cooldown
-	if !skillPossible || (m.statBuff&skill.MobStat.SealSkill) > 0 || (time.Now().Unix()-m.lastSkillTime) < 10 {
-		return 0, 0
-	}
-	id, lvl := chooseNextSkill(m)
-	// Store chosen skill so performSkill can validate/consume consistently
-	m.skillID, m.skillLevel = id, lvl
-	return id, lvl
 }
 
 func (m *monster) healMob(hp, mp int32) {

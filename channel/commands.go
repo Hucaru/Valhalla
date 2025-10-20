@@ -1137,18 +1137,6 @@ func (server *Server) gmCommand(conn mnet.Client, msg string) {
 	case "killAll":
 		fallthrough
 	case "killmobs":
-		var deathType byte = 1
-		if len(command) > 1 {
-			val, err := strconv.Atoi(command[1])
-
-			if err != nil {
-				conn.Send(packetMessageRedText(err.Error()))
-				return
-			}
-
-			deathType = byte(val)
-		}
-
 		plr, err := server.players.getFromConn(conn)
 
 		if err != nil {
@@ -1170,7 +1158,10 @@ func (server *Server) gmCommand(conn mnet.Client, msg string) {
 			return
 		}
 
-		inst.lifePool.killMobs(deathType)
+		for spawnID, mob := range inst.lifePool.mobs {
+			inst.lifePool.mobDamaged(spawnID, plr, mob.hp)
+		}
+
 	case "spawn":
 		fallthrough
 	case "spawnMob":

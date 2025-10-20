@@ -238,12 +238,13 @@ func (pool *lifePool) mobAcknowledge(poolID int32, plr *Player, moveID int16, sk
 			skillDelay := int16(skillData >> 16)
 
 			mobSkillID, mobSkillLevel, mobSkillData := pool.mobs[i].getMobSkill(skillDelay, skillLevel, skillID)
+
 			if mobSkillID != 0 {
 				pool.performSkill(mob, mobSkillID, mobSkillLevel, mobSkillData)
 			}
 
 			// Choose next skill
-			skillID, skillLevel = mob.canUseSkill(skillPossible)
+			skillID, skillLevel = mob.chooseNextSkill()
 
 			if !moveData.validateMob(v) {
 				return
@@ -256,6 +257,10 @@ func (pool *lifePool) mobAcknowledge(poolID int32, plr *Player, moveID int16, sk
 }
 
 func (pool *lifePool) performSkill(mob *monster, skillID, skillLevel byte, skillData nx.MobSkill) {
+	currentTime := time.Now().Unix()
+	mob.lastSkillTime = currentTime
+	mob.skillTimes[skillID] = currentTime
+
 	switch skillID {
 	case skill.Mob.Dispel:
 		for _, plr := range pool.instance.players {

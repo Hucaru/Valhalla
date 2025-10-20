@@ -825,15 +825,14 @@ func (d *Player) takeItem(id int32, slot int16, amount int16, invID byte) (Item,
 	}
 
 	item.amount -= amount
-	if item.amount == 0 {
-		// Delete item
+	if item.amount == 0 && !item.isRechargeable() {
 		d.removeItem(item)
 	} else {
-		// Update item with new stack size
 		d.updateItemStack(item)
 	}
 
 	return item, nil
+
 }
 
 func (d Player) updateItemStack(item Item) {
@@ -1171,7 +1170,7 @@ func (d *Player) consumeItemsByID(itemID int32, reqCount int32) bool {
 			if it.ID != itemID || it.amount <= 0 {
 				continue
 			}
-			take := int16(it.amount)
+			take := it.amount
 			if int32(take) > remaining {
 				take = int16(remaining)
 			}
