@@ -19,6 +19,7 @@ type PlayerSkill struct {
 	ItemCon               int64
 	ItemConNo             int64
 	Time                  int64
+	Cooltime              int64
 	Eva, Acc, Jump, Speed int64
 	Range                 int64
 	MobCount              int64
@@ -102,6 +103,14 @@ func extractSkills(nodes []gonx.Node, textLookup []string) (map[int32][]PlayerSk
 				})
 
 				for _, s := range skillIDs {
+					// First get cooltime at skill level (if it exists)
+					var skillCooltime int64
+					coolPath := playerSkillSearch + "/" + s + "/cooltime"
+					gonx.FindNode(coolPath, nodes, textLookup, func(node *gonx.Node) {
+						skillCooltime = gonx.DataToInt64(node.Data)
+					})
+
+					// Then get all levels
 					valid = gonx.FindNode(playerSkillSearch+"/"+s+"/level", nodes, textLookup, func(node *gonx.Node) {
 						skillID, err := strconv.Atoi(s)
 
@@ -117,7 +126,9 @@ func extractSkills(nodes []gonx.Node, textLookup []string) (map[int32][]PlayerSk
 							level, err := strconv.Atoi(skillLevel)
 
 							if err == nil {
-								playerSkills[int32(skillID)][level-1] = getPlayerSkill(&skillNode, nodes, textLookup)
+								skillData := getPlayerSkill(&skillNode, nodes, textLookup)
+								skillData.Cooltime = skillCooltime // Apply skill-level cooltime to this level
+								playerSkills[int32(skillID)][level-1] = skillData
 							}
 						}
 					})
