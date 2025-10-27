@@ -3958,9 +3958,28 @@ func (server *Server) playerSpecialSkill(conn mnet.Client, reader mpacket.Reader
 			}
 		}
 
+	// Nimble feet and recovery beginner skills with cooldown
+	case skill.NimbleFeet, skill.Recovery:
+		plr.addBuff(skillID, skillLevel, delay)
+		plr.inst.send(packetPlayerSkillAnimation(plr.ID, true, skillID, skillLevel))
+		// Send cooldown packet for beginner skills
+		if skillData, ok := plr.skills[skillID]; ok {
+			plr.Send(packetPlayerSkillCooldown(skillID, skillData.CooldownTime))
+			// Start timer to clear the cooldown when it expires
+			go func(sid int32, cooldownTime int16, inst *fieldInstance) {
+				time.Sleep(time.Duration(cooldownTime) * time.Second)
+				// Use dispatch pattern for thread safety
+				if inst != nil && inst.dispatch != nil {
+					inst.dispatch <- func() {
+						plr.Send(packetPlayerSkillCooldown(sid, 0))
+						log.Printf("packetPlayerSkillCooldown: skillID=%d, time=0", sid)
+					}
+				}
+			}(skillID, skillData.CooldownTime, plr.inst)
+		}
+
 	// Self toggles and non-party buffs (boolean/ratio-type): apply to self
-	case skill.NimbleFeet, skill.Recovery,
-		skill.DarkSight,
+	case skill.DarkSight,
 		skill.MagicGuard,
 		skill.Invincible,
 		skill.SoulArrow, skill.CBSoulArrow,

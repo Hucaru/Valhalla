@@ -2221,6 +2221,14 @@ func packetPlayerSkillBookUpdate(skillID int32, level int32) mpacket.Packet {
 	return p
 }
 
+func packetPlayerSkillCooldown(skillID int32, time int16) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelSkillCooldown)
+	p.WriteInt32(skillID)
+	p.WriteInt16(time)
+
+	return p
+}
+
 func packetPlayerStatChange(flag bool, stat int32, value int32) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelStatChange)
 	p.WriteBool(flag)

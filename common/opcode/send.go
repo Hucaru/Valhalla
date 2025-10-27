@@ -71,6 +71,7 @@ const (
 	SendChannelPlayerShowItemEffect   byte = 0x75
 	SendChannelPlayerShowItemGainChat byte = 0x77
 	SendChannelPlayerEffect           byte = 0x79
+	SendChannelSkillCooldown          byte = 0x82
 	SendChannelShowMob                byte = 0x86
 	SendChannelRemoveMob              byte = 0x87
 	SendChannelControlMob             byte = 0x88

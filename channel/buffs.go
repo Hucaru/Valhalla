@@ -931,10 +931,8 @@ func (cb *CharacterBuffs) startRecoveryTicker(level byte) {
 
 				// Get the recovery amount from the X field
 				recoveryAmount := int16(skillData[currentLevel-1].X)
-				log.Printf("Recovery tick - Level: %d, X value: %d, HP before: %d/%d", currentLevel, recoveryAmount, cb.plr.hp, cb.plr.maxHP)
 				if recoveryAmount > 0 {
 					cb.plr.giveHP(recoveryAmount)
-					log.Printf("HP after: %d/%d", cb.plr.hp, cb.plr.maxHP)
 				}
 			})
 		}
