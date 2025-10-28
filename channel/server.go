@@ -334,12 +334,10 @@ func (server *Server) CheckpointAll() {
 		return
 	}
 	done := make(chan struct{})
-	go func() {
-		server.dispatch <- func() {
-			server.flushPlayers()
-			close(done)
-		}
-	}()
+	server.dispatch <- func() {
+		server.flushPlayers()
+		close(done)
+	}
 	<-done
 }
 
