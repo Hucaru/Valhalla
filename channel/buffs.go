@@ -1008,7 +1008,7 @@ func (cb *CharacterBuffs) scheduleExpiryLocked(skillID int32, after time.Duratio
 	}
 
 	if after <= 0 {
-		cb.post(func() { cb.expireBuffNow(skillID) })
+		cb.expireBuffNow(skillID)
 		return
 	}
 

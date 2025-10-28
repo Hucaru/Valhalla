@@ -186,7 +186,7 @@ func (pool *lifePool) addPlayer(plr *Player) {
 	}
 }
 
-func (pool *lifePool) removePlayer(plr *Player) {
+func (pool *lifePool) removePlayer(plr *Player, usedPortal bool) {
 	for i, v := range pool.npcs {
 		if v.controller != nil && v.controller.Conn == plr.Conn {
 			pool.npcs[i].removeController()
@@ -212,7 +212,9 @@ func (pool *lifePool) removePlayer(plr *Player) {
 			}
 		}
 
-		plr.Send(packetMobRemove(v.spawnID, 0x0)) // need to tell client to remove mobs for instance swapping
+		if !usedPortal {
+			plr.Send(packetMobRemove(v.spawnID, 0x0)) // need to tell client to remove mobs for instance swapping
+		}
 	}
 
 	delete(pool.activeMobCtrl, plr)
@@ -1457,7 +1459,8 @@ func (pool *reactorPool) processStateSideEffects(r *fieldReactor, server *Server
 			for _, player := range players {
 				err := server.warpPlayer(player,
 					server.fields[mapToWarpTo.mapID],
-					portal{name: mapToWarpTo.portal})
+					portal{name: mapToWarpTo.portal},
+					true)
 				if err != nil {
 					log.Println(err)
 				}

@@ -192,7 +192,7 @@ func (tracker *npcChatStateTracker) popState() {
 	tracker.lastPos--
 }
 
-type warpFn func(plr *Player, dstField *field, dstPortal portal) error
+type warpFn func(plr *Player, dstField *field, dstPortal portal, usedPortal bool) error
 
 type npcChatPlayerController struct {
 	plr       *Player
@@ -215,7 +215,7 @@ func (ctrl *npcChatPlayerController) Warp(id int32) {
 			return
 		}
 
-		_ = ctrl.warpFunc(ctrl.plr, field, portal)
+		_ = ctrl.warpFunc(ctrl.plr, field, portal, true)
 	}
 }
 
@@ -233,7 +233,7 @@ func (ctrl *npcChatPlayerController) WarpFromName(id int32, name string) {
 			return
 		}
 
-		_ = ctrl.warpFunc(ctrl.plr, field, portal)
+		_ = ctrl.warpFunc(ctrl.plr, field, portal, true)
 	}
 }
 
@@ -1051,7 +1051,7 @@ func (controller eventScriptController) WarpPlayer(p *Player, mapID int32) bool 
 			return false
 		}
 
-		err = controller.warpFunc(p, field, portal)
+		err = controller.warpFunc(p, field, portal, true)
 
 		return err == nil
 	}
@@ -1185,7 +1185,7 @@ func (f *fieldWrapper) WarpPlayersToPortal(mapID int32, portalID byte) {
 
 		for _, i := range f.instances {
 			for _, p := range i.players {
-				err = f.controller.warpFunc(p, field, portal)
+				err = f.controller.warpFunc(p, field, portal, true)
 
 				if err != nil {
 					return

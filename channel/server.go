@@ -280,7 +280,7 @@ func (server *Server) ClientDisconnected(conn mnet.Client) {
 
 	if field, ok := server.fields[plr.mapID]; ok {
 		if inst, ierr := field.getInstance(plr.inst.id); ierr == nil {
-			if remErr := inst.removePlayer(plr); remErr != nil {
+			if remErr := inst.removePlayer(plr, true); remErr != nil {
 				log.Println(remErr)
 			}
 		}
@@ -334,10 +334,12 @@ func (server *Server) CheckpointAll() {
 		return
 	}
 	done := make(chan struct{})
-	server.dispatch <- func() {
-		server.flushPlayers()
-		close(done)
-	}
+	go func() {
+		server.dispatch <- func() {
+			server.flushPlayers()
+			close(done)
+		}
+	}()
 	<-done
 }
 

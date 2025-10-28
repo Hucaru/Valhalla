@@ -869,7 +869,7 @@ func (server Server) playerUsePortal(conn mnet.Client, reader mpacket.Reader) {
 				return
 			}
 
-			if err := server.warpPlayer(plr, dstFld, dstPortal); err != nil {
+			if err := server.warpPlayer(plr, dstFld, dstPortal, true); err != nil {
 				return
 			}
 
@@ -920,7 +920,7 @@ func (server Server) playerUsePortal(conn mnet.Client, reader mpacket.Reader) {
 			return
 		}
 
-		if err := server.warpPlayer(plr, dstFld, dstPortal); err != nil {
+		if err := server.warpPlayer(plr, dstFld, dstPortal, true); err != nil {
 			return
 		}
 	}
@@ -999,7 +999,7 @@ func (server Server) playerUseScriptedPortal(conn mnet.Client, reader mpacket.Re
 	ctrl.run()
 }
 
-func (server Server) warpPlayer(plr *Player, dstField *field, dstPortal portal) error {
+func (server Server) warpPlayer(plr *Player, dstField *field, dstPortal portal, usedPortal bool) error {
 	srcField, ok := server.fields[plr.mapID]
 	if !ok {
 		return fmt.Errorf("Error in map ID %d", plr.mapID)
@@ -1019,7 +1019,7 @@ func (server Server) warpPlayer(plr *Player, dstField *field, dstPortal portal) 
 
 	server.removeSummonsFromField(plr)
 
-	if err = srcInst.removePlayer(plr); err != nil {
+	if err = srcInst.removePlayer(plr, usedPortal); err != nil {
 		return err
 	}
 
@@ -1230,7 +1230,7 @@ func (server *Server) playerUseReturnScroll(conn mnet.Client, reader mpacket.Rea
 		return
 	}
 
-	_ = server.warpPlayer(plr, dstField, portal)
+	_ = server.warpPlayer(plr, dstField, portal, true)
 }
 
 func (server *Server) playerUseScroll(conn mnet.Client, reader mpacket.Reader) {
@@ -1944,43 +1944,6 @@ func (server Server) playerMeleeSkill(conn mnet.Client, reader mpacket.Reader) {
 		return
 	}
 
-	packetSkillMelee := func(char Player, ad attackData) mpacket.Packet {
-		p := mpacket.CreateWithOpcode(opcode.SendChannelPlayerUseMeleeSkill)
-		p.WriteInt32(char.ID)
-		p.WriteByte(ad.targets*0x10 + ad.hits)
-		p.WriteByte(ad.skillLevel)
-
-		if ad.skillLevel != 0 {
-			p.WriteInt32(ad.skillID)
-		}
-
-		if ad.facesLeft {
-			p.WriteByte(ad.action | (1 << 7))
-		} else {
-			p.WriteByte(ad.action)
-		}
-
-		p.WriteByte(ad.attackType)
-
-		p.WriteByte(char.skills[ad.skillID].Mastery)
-		p.WriteInt32(ad.projectileID)
-
-		for _, info := range ad.attackInfo {
-			p.WriteInt32(info.spawnID)
-			p.WriteByte(info.hitAction)
-
-			if ad.isMesoExplosion {
-				p.WriteByte(byte(len(info.damages)))
-			}
-
-			for _, dmg := range info.damages {
-				p.WriteInt32(dmg)
-			}
-		}
-
-		return p
-	}
-
 	inst.sendExcept(packetSkillMelee(*plr, data), conn)
 
 	for _, attack := range data.attackInfo {
@@ -2023,43 +1986,6 @@ func (server Server) playerRangedSkill(conn mnet.Client, reader mpacket.Reader) 
 
 	// if Player in party extract
 
-	packetSkillRanged := func(char Player, ad attackData) mpacket.Packet {
-		p := mpacket.CreateWithOpcode(opcode.SendChannelPlayerUseRangedSkill)
-		p.WriteInt32(char.ID)
-		p.WriteByte(ad.targets*0x10 + ad.hits)
-		p.WriteByte(ad.skillLevel)
-
-		if ad.skillLevel != 0 {
-			p.WriteInt32(ad.skillID)
-		}
-
-		if ad.facesLeft {
-			p.WriteByte(ad.action | (1 << 7))
-		} else {
-			p.WriteByte(ad.action | 0)
-		}
-
-		p.WriteByte(ad.attackType)
-
-		p.WriteByte(char.skills[ad.skillID].Mastery)
-		p.WriteInt32(ad.projectileID)
-
-		for _, info := range ad.attackInfo {
-			p.WriteInt32(info.spawnID)
-			p.WriteByte(info.hitAction)
-
-			if ad.isMesoExplosion {
-				p.WriteByte(byte(len(info.damages)))
-			}
-
-			for _, dmg := range info.damages {
-				p.WriteInt32(dmg)
-			}
-		}
-
-		return p
-	}
-
 	inst.sendExcept(packetSkillRanged(*plr, data), conn)
 
 	for _, attack := range data.attackInfo {
@@ -2101,43 +2027,6 @@ func (server Server) playerMagicSkill(conn mnet.Client, reader mpacket.Reader) {
 	}
 
 	// if Player in party extract
-
-	packetSkillMagic := func(char Player, ad attackData) mpacket.Packet {
-		p := mpacket.CreateWithOpcode(opcode.SendChannelPlayerUseMagicSkill)
-		p.WriteInt32(char.ID)
-		p.WriteByte(ad.targets*0x10 + ad.hits)
-		p.WriteByte(ad.skillLevel)
-
-		if ad.skillLevel != 0 {
-			p.WriteInt32(ad.skillID)
-		}
-
-		if ad.facesLeft {
-			p.WriteByte(ad.action | (1 << 7))
-		} else {
-			p.WriteByte(ad.action | 0)
-		}
-
-		p.WriteByte(ad.attackType)
-
-		p.WriteByte(char.skills[ad.skillID].Mastery)
-		p.WriteInt32(ad.projectileID)
-
-		for _, info := range ad.attackInfo {
-			p.WriteInt32(info.spawnID)
-			p.WriteByte(info.hitAction)
-
-			if ad.isMesoExplosion {
-				p.WriteByte(byte(len(info.damages)))
-			}
-
-			for _, dmg := range info.damages {
-				p.WriteInt32(dmg)
-			}
-		}
-
-		return p
-	}
 
 	inst.sendExcept(packetSkillMagic(*plr, data), conn)
 

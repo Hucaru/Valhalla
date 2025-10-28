@@ -2941,3 +2941,114 @@ func packetPlayerChairUpdate() mpacket.Packet {
 	p.WriteInt32(0)
 	return p
 }
+
+func packetSkillMelee(char Player, ad attackData) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelPlayerUseMeleeSkill)
+	p.WriteInt32(char.ID)
+	p.WriteByte(ad.targets*0x10 + ad.hits)
+	p.WriteByte(ad.skillLevel)
+
+	if ad.skillLevel != 0 {
+		p.WriteInt32(ad.skillID)
+	}
+
+	if ad.facesLeft {
+		p.WriteByte(ad.action | (1 << 7))
+	} else {
+		p.WriteByte(ad.action)
+	}
+
+	p.WriteByte(ad.attackType)
+
+	p.WriteByte(char.skills[ad.skillID].Mastery)
+	p.WriteInt32(ad.projectileID)
+
+	for _, info := range ad.attackInfo {
+		p.WriteInt32(info.spawnID)
+		p.WriteByte(info.hitAction)
+
+		if ad.isMesoExplosion {
+			p.WriteByte(byte(len(info.damages)))
+		}
+
+		for _, dmg := range info.damages {
+			p.WriteInt32(dmg)
+		}
+	}
+
+	return p
+}
+
+func packetSkillRanged(char Player, ad attackData) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelPlayerUseRangedSkill)
+	p.WriteInt32(char.ID)
+	p.WriteByte(ad.targets*0x10 + ad.hits)
+	p.WriteByte(ad.skillLevel)
+
+	if ad.skillLevel != 0 {
+		p.WriteInt32(ad.skillID)
+	}
+
+	if ad.facesLeft {
+		p.WriteByte(ad.action | (1 << 7))
+	} else {
+		p.WriteByte(ad.action | 0)
+	}
+
+	p.WriteByte(ad.attackType)
+
+	p.WriteByte(char.skills[ad.skillID].Mastery)
+	p.WriteInt32(ad.projectileID)
+
+	for _, info := range ad.attackInfo {
+		p.WriteInt32(info.spawnID)
+		p.WriteByte(info.hitAction)
+
+		if ad.isMesoExplosion {
+			p.WriteByte(byte(len(info.damages)))
+		}
+
+		for _, dmg := range info.damages {
+			p.WriteInt32(dmg)
+		}
+	}
+
+	return p
+}
+
+func packetSkillMagic(char Player, ad attackData) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelPlayerUseMagicSkill)
+	p.WriteInt32(char.ID)
+	p.WriteByte(ad.targets*0x10 + ad.hits)
+	p.WriteByte(ad.skillLevel)
+
+	if ad.skillLevel != 0 {
+		p.WriteInt32(ad.skillID)
+	}
+
+	if ad.facesLeft {
+		p.WriteByte(ad.action | (1 << 7))
+	} else {
+		p.WriteByte(ad.action | 0)
+	}
+
+	p.WriteByte(ad.attackType)
+
+	p.WriteByte(char.skills[ad.skillID].Mastery)
+	p.WriteInt32(ad.projectileID)
+
+	for _, info := range ad.attackInfo {
+		p.WriteInt32(info.spawnID)
+		p.WriteByte(info.hitAction)
+
+		if ad.isMesoExplosion {
+			p.WriteByte(byte(len(info.damages)))
+		}
+
+		for _, dmg := range info.damages {
+			p.WriteInt32(dmg)
+		}
+	}
+
+	return p
+}
