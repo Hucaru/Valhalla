@@ -984,7 +984,7 @@ func (server *Server) gmCommand(conn mnet.Client, msg string) {
 			return
 		}
 
-		err = server.warpPlayer(plr, dstField, portal)
+		err = server.warpPlayer(plr, dstField, portal, true)
 
 		if err != nil {
 			conn.Send(packetMessageRedText(err.Error()))
@@ -1020,7 +1020,7 @@ func (server *Server) gmCommand(conn mnet.Client, msg string) {
 			return
 		}
 
-		err = server.warpPlayer(plr, dstField, person.inst.portals[portalID])
+		err = server.warpPlayer(plr, dstField, person.inst.portals[portalID], true)
 
 		if err != nil {
 			conn.Send(packetMessageRedText(err.Error()))

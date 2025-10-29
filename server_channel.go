@@ -99,8 +99,10 @@ func (cs *channelServer) run() {
 }
 
 func (cs *channelServer) shutdown() {
+	log.Println("Flushing players")
 	cs.gameState.CheckpointAll()
 
+	log.Println("Stopping saver")
 	channel.StopSaver()
 
 	cs.cancel()

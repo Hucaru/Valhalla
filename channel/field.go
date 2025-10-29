@@ -484,7 +484,7 @@ func (f *field) changePlayerInstance(player *Player, id int) error {
 	}
 
 	if f.validInstance(id) {
-		err := f.instances[player.inst.id].removePlayer(player)
+		err := f.instances[player.inst.id].removePlayer(player, false)
 
 		if err != nil {
 			return err
@@ -614,7 +614,7 @@ func (inst *fieldInstance) addPlayer(plr *Player) error {
 	return nil
 }
 
-func (inst *fieldInstance) removePlayer(plr *Player) error {
+func (inst *fieldInstance) removePlayer(plr *Player, usedPortal bool) error {
 	index := -1
 
 	for i, v := range inst.players {
@@ -635,7 +635,7 @@ func (inst *fieldInstance) removePlayer(plr *Player) error {
 		plr.Send(packetMapPlayerLeft(v.ID))
 	}
 
-	inst.lifePool.removePlayer(plr)
+	inst.lifePool.removePlayer(plr, usedPortal)
 	inst.roomPool.removePlayer(plr)
 
 	return nil
