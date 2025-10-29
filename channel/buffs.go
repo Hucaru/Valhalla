@@ -993,11 +993,16 @@ func buildBuffMask(skillID int32) *Flag {
 }
 
 func (cb *CharacterBuffs) post(fn func()) {
-	if cb.plr != nil && cb.plr.inst != nil && cb.plr.inst.dispatch != nil {
-		cb.plr.inst.dispatch <- fn
+	if cb == nil || cb.plr == nil || cb.plr.inst == nil || cb.plr.inst.dispatch == nil {
 		return
 	}
-	fn()
+	select {
+	case cb.plr.inst.dispatch <- fn:
+		return
+	default:
+		fn()
+		return
+	}
 }
 
 func (cb *CharacterBuffs) scheduleExpiryLocked(skillID int32, after time.Duration) {
@@ -1008,7 +1013,7 @@ func (cb *CharacterBuffs) scheduleExpiryLocked(skillID int32, after time.Duratio
 	}
 
 	if after <= 0 {
-		cb.expireBuffNow(skillID)
+		cb.post(func() { cb.expireBuffNow(skillID) })
 		return
 	}
 

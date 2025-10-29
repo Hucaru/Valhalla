@@ -4003,10 +4003,8 @@ func (server *Server) playerSpecialSkill(conn mnet.Client, reader mpacket.Reader
 	}
 
 	// Apply MP cost/cooldown, if any (reuses the same flow as attack skills).
-	if err := plr.useSkill(skillID, skillLevel, 0); err != nil {
-		plr.Send(packetPlayerNoChange())
-		return
-	}
+	plr.useSkill(skillID, skillLevel, 0)
+	plr.Send(packetPlayerNoChange()) // catch all for things like GM teleport
 }
 
 func (server *Server) playerCancelBuff(conn mnet.Client, reader mpacket.Reader) {
