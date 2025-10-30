@@ -19,6 +19,7 @@ data:
     serverListenAddress = "0.0.0.0"
     serverListenPort = "8485"
     withPin = {{ .Values.login.withPin }}
+    autoRegister = {{ .Values.login.autoRegister }}
     packetQueueSize = {{ .Values.login.packetQueueSize }}
     latency = {{ .Values.login.latency }}
     jitter = {{ .Values.login.jitter }}

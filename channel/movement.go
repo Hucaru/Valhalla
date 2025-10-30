@@ -28,6 +28,7 @@ var movementType = struct {
 	flashJump        byte
 	assaulter        byte
 	falling          byte
+	chair            byte
 	equipMovement    byte
 	jumpdownMovement byte
 	normalMovement3  byte
@@ -41,6 +42,7 @@ var movementType = struct {
 	flashJump:        6,
 	assaulter:        7,
 	falling:          8,
+	chair:            9,
 	equipMovement:    10,
 	jumpdownMovement: 11,
 	normalMovement3:  17,
@@ -87,7 +89,8 @@ func parseMovement(reader mpacket.Reader) (movement, movementFrag) {
 		case movementType.immediate,
 			movementType.teleport,
 			movementType.assaulter,
-			9, 14:
+			movementType.chair,
+			14:
 			frag.x = reader.ReadInt16()
 			frag.y = reader.ReadInt16()
 			frag.foothold = reader.ReadInt16()
@@ -157,6 +160,8 @@ func generateMovementBytes(moveData movement) mpacket.Packet {
 		case movementType.immediate:
 			fallthrough
 		case movementType.teleport:
+			fallthrough
+		case movementType.chair:
 			fallthrough
 		case movementType.assaulter:
 			p.WriteInt16(frag.x)

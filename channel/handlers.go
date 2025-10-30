@@ -73,6 +73,8 @@ func (server *Server) HandleClientPacket(conn mnet.Client, reader mpacket.Reader
 		server.playerMovement(conn, reader)
 	case opcode.RecvChannelPlayerStand:
 		server.playerStand(conn, reader)
+	case opcode.RecvChannelChairHeal:
+		server.playerChairHeal(conn, reader)
 	case opcode.RecvChannelPlayerUseChair:
 		server.playerUseChair(conn, reader)
 	case opcode.RecvChannelMeleeSkill:
@@ -317,6 +319,22 @@ func (server *Server) playerConnect(conn mnet.Client, reader mpacket.Reader) {
 		newPlr.buffs.AuditAndExpireStaleBuffs()
 	}
 
+	// Check for quest mob kills
+	if len(newPlr.quests.inProgressList()) > 0 {
+		for _, q := range newPlr.quests.inProgressList() {
+			m := newPlr.quests.mobKills[q.id]
+			if m == nil {
+				continue
+			}
+			questData, err := nx.GetQuest(q.id)
+			if err != nil {
+				continue
+			}
+
+			newPlr.Send(packetQuestUpdateMobKills(q.id, newPlr.buildQuestKillString(questData)))
+		}
+	}
+
 	common.MetricsGauges["player_count"].With(prometheus.Labels{"channel": strconv.Itoa(int(server.id)), "world": server.worldName}).Inc()
 
 	server.world.Send(internal.PacketChannelPopUpdate(server.id, int16(len(server.players))))
@@ -507,16 +525,62 @@ func (server Server) playerPassiveRegen(conn mnet.Client, reader mpacket.Reader)
 }
 
 func (server Server) playerUseChair(conn mnet.Client, reader mpacket.Reader) {
-	fmt.Println("use chair:", reader)
-	// chairID := reader.ReadInt32()
+	plr, err := server.players.getFromConn(conn)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+
+	chairID := reader.ReadInt32()
+	plr.chairID = chairID
+
+	plr.inst.sendExcept(packetPlayerShowChair(plr.ID, chairID), plr.Conn)
+	plr.Send(packetPlayerChairUpdate())
 }
 
 func (server Server) playerStand(conn mnet.Client, reader mpacket.Reader) {
-	fmt.Println(reader)
-	if reader.ReadInt16() == -1 {
-
-	} else {
+	plr, err := server.players.getFromConn(conn)
+	if err != nil {
+		log.Println(err)
+		return
 	}
+
+	chairIndex := reader.ReadInt16()
+
+	plr.chairID = 0
+	plr.inst.sendExcept(packetPlayerShowChair(plr.ID, 0), plr.Conn)
+	plr.Send(packetPlayerChairResult(chairIndex))
+	plr.Send(packetPlayerChairUpdate())
+}
+
+func (server Server) playerChairHeal(conn mnet.Client, reader mpacket.Reader) {
+	plr, err := server.players.getFromConn(conn)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+
+	healAmount := reader.ReadInt16()
+
+	if plr.chairID == 0 {
+		return
+	}
+
+	chair, err := nx.GetItem(plr.chairID)
+	if err != nil {
+		return
+	}
+
+	if healAmount > int16(chair.RecoveryHP) {
+		return
+	}
+
+	if time.Since(plr.lastChairHeal) < 10*time.Second {
+		return
+	}
+
+	plr.giveHP(healAmount)
+	plr.lastChairHeal = time.Now()
 }
 
 func (server Server) playerAddSkillPoint(conn mnet.Client, reader mpacket.Reader) {
@@ -805,7 +869,7 @@ func (server Server) playerUsePortal(conn mnet.Client, reader mpacket.Reader) {
 				return
 			}
 
-			if err := server.warpPlayer(plr, dstFld, dstPortal); err != nil {
+			if err := server.warpPlayer(plr, dstFld, dstPortal, true); err != nil {
 				return
 			}
 
@@ -856,7 +920,7 @@ func (server Server) playerUsePortal(conn mnet.Client, reader mpacket.Reader) {
 			return
 		}
 
-		if err := server.warpPlayer(plr, dstFld, dstPortal); err != nil {
+		if err := server.warpPlayer(plr, dstFld, dstPortal, true); err != nil {
 			return
 		}
 	}
@@ -935,7 +999,7 @@ func (server Server) playerUseScriptedPortal(conn mnet.Client, reader mpacket.Re
 	ctrl.run()
 }
 
-func (server Server) warpPlayer(plr *Player, dstField *field, dstPortal portal) error {
+func (server Server) warpPlayer(plr *Player, dstField *field, dstPortal portal, usedPortal bool) error {
 	srcField, ok := server.fields[plr.mapID]
 	if !ok {
 		return fmt.Errorf("Error in map ID %d", plr.mapID)
@@ -955,7 +1019,7 @@ func (server Server) warpPlayer(plr *Player, dstField *field, dstPortal portal) 
 
 	server.removeSummonsFromField(plr)
 
-	if err = srcInst.removePlayer(plr); err != nil {
+	if err = srcInst.removePlayer(plr, usedPortal); err != nil {
 		return err
 	}
 
@@ -1166,7 +1230,7 @@ func (server *Server) playerUseReturnScroll(conn mnet.Client, reader mpacket.Rea
 		return
 	}
 
-	_ = server.warpPlayer(plr, dstField, portal)
+	_ = server.warpPlayer(plr, dstField, portal, true)
 }
 
 func (server *Server) playerUseScroll(conn mnet.Client, reader mpacket.Reader) {
@@ -1823,7 +1887,16 @@ func (server Server) mobDamagePlayer(conn mnet.Client, reader mpacket.Reader, mo
 		inst.send(packetPlayerReceivedDmg(plr.ID, mobAttack, damage, reducedDamage, spawnID, mobID, healSkillID, stance, reflectAction, reflected, reflectX, reflectY))
 	}
 	if mobSkillID != 0 && mobSkillLevel != 0 {
-		// new skill
+		// Apply mob skill debuff to the player
+		levels, err := nx.GetMobSkill(mobSkillID)
+		if err == nil && int(mobSkillLevel) > 0 && int(mobSkillLevel) <= len(levels) {
+			skillData := levels[mobSkillLevel-1]
+			durationSec := int16(0)
+			if skillData.Time > 0 {
+				durationSec = int16(skillData.Time) // Time is already in seconds
+			}
+			plr.addMobDebuff(mobSkillID, mobSkillLevel, durationSec)
+		}
 	}
 
 }
@@ -1871,43 +1944,6 @@ func (server Server) playerMeleeSkill(conn mnet.Client, reader mpacket.Reader) {
 		return
 	}
 
-	packetSkillMelee := func(char Player, ad attackData) mpacket.Packet {
-		p := mpacket.CreateWithOpcode(opcode.SendChannelPlayerUseMeleeSkill)
-		p.WriteInt32(char.ID)
-		p.WriteByte(ad.targets*0x10 + ad.hits)
-		p.WriteByte(ad.skillLevel)
-
-		if ad.skillLevel != 0 {
-			p.WriteInt32(ad.skillID)
-		}
-
-		if ad.facesLeft {
-			p.WriteByte(ad.action | (1 << 7))
-		} else {
-			p.WriteByte(ad.action)
-		}
-
-		p.WriteByte(ad.attackType)
-
-		p.WriteByte(char.skills[ad.skillID].Mastery)
-		p.WriteInt32(ad.projectileID)
-
-		for _, info := range ad.attackInfo {
-			p.WriteInt32(info.spawnID)
-			p.WriteByte(info.hitAction)
-
-			if ad.isMesoExplosion {
-				p.WriteByte(byte(len(info.damages)))
-			}
-
-			for _, dmg := range info.damages {
-				p.WriteInt32(dmg)
-			}
-		}
-
-		return p
-	}
-
 	inst.sendExcept(packetSkillMelee(*plr, data), conn)
 
 	for _, attack := range data.attackInfo {
@@ -1950,43 +1986,6 @@ func (server Server) playerRangedSkill(conn mnet.Client, reader mpacket.Reader) 
 
 	// if Player in party extract
 
-	packetSkillRanged := func(char Player, ad attackData) mpacket.Packet {
-		p := mpacket.CreateWithOpcode(opcode.SendChannelPlayerUseRangedSkill)
-		p.WriteInt32(char.ID)
-		p.WriteByte(ad.targets*0x10 + ad.hits)
-		p.WriteByte(ad.skillLevel)
-
-		if ad.skillLevel != 0 {
-			p.WriteInt32(ad.skillID)
-		}
-
-		if ad.facesLeft {
-			p.WriteByte(ad.action | (1 << 7))
-		} else {
-			p.WriteByte(ad.action | 0)
-		}
-
-		p.WriteByte(ad.attackType)
-
-		p.WriteByte(char.skills[ad.skillID].Mastery)
-		p.WriteInt32(ad.projectileID)
-
-		for _, info := range ad.attackInfo {
-			p.WriteInt32(info.spawnID)
-			p.WriteByte(info.hitAction)
-
-			if ad.isMesoExplosion {
-				p.WriteByte(byte(len(info.damages)))
-			}
-
-			for _, dmg := range info.damages {
-				p.WriteInt32(dmg)
-			}
-		}
-
-		return p
-	}
-
 	inst.sendExcept(packetSkillRanged(*plr, data), conn)
 
 	for _, attack := range data.attackInfo {
@@ -2028,43 +2027,6 @@ func (server Server) playerMagicSkill(conn mnet.Client, reader mpacket.Reader) {
 	}
 
 	// if Player in party extract
-
-	packetSkillMagic := func(char Player, ad attackData) mpacket.Packet {
-		p := mpacket.CreateWithOpcode(opcode.SendChannelPlayerUseMagicSkill)
-		p.WriteInt32(char.ID)
-		p.WriteByte(ad.targets*0x10 + ad.hits)
-		p.WriteByte(ad.skillLevel)
-
-		if ad.skillLevel != 0 {
-			p.WriteInt32(ad.skillID)
-		}
-
-		if ad.facesLeft {
-			p.WriteByte(ad.action | (1 << 7))
-		} else {
-			p.WriteByte(ad.action | 0)
-		}
-
-		p.WriteByte(ad.attackType)
-
-		p.WriteByte(char.skills[ad.skillID].Mastery)
-		p.WriteInt32(ad.projectileID)
-
-		for _, info := range ad.attackInfo {
-			p.WriteInt32(info.spawnID)
-			p.WriteByte(info.hitAction)
-
-			if ad.isMesoExplosion {
-				p.WriteByte(byte(len(info.damages)))
-			}
-
-			for _, dmg := range info.damages {
-				p.WriteInt32(dmg)
-			}
-		}
-
-		return p
-	}
 
 	inst.sendExcept(packetSkillMagic(*plr, data), conn)
 
@@ -4061,10 +4023,8 @@ func (server *Server) playerSpecialSkill(conn mnet.Client, reader mpacket.Reader
 	}
 
 	// Apply MP cost/cooldown, if any (reuses the same flow as attack skills).
-	if err := plr.useSkill(skillID, skillLevel, 0); err != nil {
-		plr.Send(packetPlayerNoChange())
-		return
-	}
+	plr.useSkill(skillID, skillLevel, 0)
+	plr.Send(packetPlayerNoChange()) // catch all for things like GM teleport
 }
 
 func (server *Server) playerCancelBuff(conn mnet.Client, reader mpacket.Reader) {
@@ -4863,6 +4823,10 @@ func (server *Server) playerPetLoot(conn mnet.Client, reader mpacket.Reader) {
 		log.Printf("Player: %s pet tried to pickup an item from far away", plr.Name)
 		plr.Send(packetDropNotAvailable())
 		plr.Send(packetInventoryDontTake())
+		return
+	}
+
+	if !plr.petCanTakeDrop(drop) {
 		return
 	}
 

@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Hucaru/Valhalla/constant"
 	"github.com/Hucaru/Valhalla/internal"
 	"github.com/Hucaru/Valhalla/mnet"
 	"github.com/dop251/goja"
@@ -191,7 +192,7 @@ func (tracker *npcChatStateTracker) popState() {
 	tracker.lastPos--
 }
 
-type warpFn func(plr *Player, dstField *field, dstPortal portal) error
+type warpFn func(plr *Player, dstField *field, dstPortal portal, usedPortal bool) error
 
 type npcChatPlayerController struct {
 	plr       *Player
@@ -214,7 +215,7 @@ func (ctrl *npcChatPlayerController) Warp(id int32) {
 			return
 		}
 
-		_ = ctrl.warpFunc(ctrl.plr, field, portal)
+		_ = ctrl.warpFunc(ctrl.plr, field, portal, true)
 	}
 }
 
@@ -232,7 +233,7 @@ func (ctrl *npcChatPlayerController) WarpFromName(id int32, name string) {
 			return
 		}
 
-		_ = ctrl.warpFunc(ctrl.plr, field, portal)
+		_ = ctrl.warpFunc(ctrl.plr, field, portal, true)
 	}
 }
 
@@ -1050,7 +1051,7 @@ func (controller eventScriptController) WarpPlayer(p *Player, mapID int32) bool 
 			return false
 		}
 
-		err = controller.warpFunc(p, field, portal)
+		err = controller.warpFunc(p, field, portal, true)
 
 		return err == nil
 	}
@@ -1133,7 +1134,7 @@ func (f *fieldWrapper) SpawnMonster(inst int, mobID int32, x, y int16, hasAgro, 
 		return
 	}
 
-	_ = i.lifePool.spawnMobFromID(mobID, newPos(x, y, 0), hasAgro, items, mesos, 0)
+	i.lifePool.spawnMobFromID(mobID, newPos(x, y, 0), hasAgro, items, mesos, constant.MobSummonTypeInstant, 0)
 }
 
 func (f *fieldWrapper) Clear(id int, mobs, items bool) {
@@ -1184,7 +1185,7 @@ func (f *fieldWrapper) WarpPlayersToPortal(mapID int32, portalID byte) {
 
 		for _, i := range f.instances {
 			for _, p := range i.players {
-				err = f.controller.warpFunc(p, field, portal)
+				err = f.controller.warpFunc(p, field, portal, true)
 
 				if err != nil {
 					return

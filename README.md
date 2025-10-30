@@ -17,6 +17,7 @@ General:
 
 Login server:
 - [x] Login user
+- [x] Auto-register (optional feature to automatically create accounts on first login attempt)
 - [x] Show EULA on first login
 - [X] Pin
 - [x] Display world ribbons
@@ -79,7 +80,7 @@ Channel server:
 - [x] Mob visible
 - [x] Mob movement
 - [x] Mob attack
-- [ ] Mob skills that cause stat changes or summon other mobs (not on death)
+- [x] Mob skills that cause stat changes or summon other mobs (not on death)
 - [x] Mob death
 - [x] Mob respawn
 - [x] Mob spawns mob(s) on death
@@ -187,6 +188,31 @@ The equivalent environment variables would be:
 VALHALLA_LOGIN_CLIENTLISTENADDRESS=0.0.0.0
 VALHALLA_LOGIN_CLIENTLISTENPORT=8484
 ```
+
+### Auto-Register Feature
+
+The login server supports an optional auto-registration feature that automatically creates new accounts when users attempt to login with credentials that don't exist in the database. This is useful for development environments or private servers where you want to allow easy access without manual account creation.
+
+To enable auto-registration, set `autoRegister = true` in your `config_login.toml`:
+
+```toml
+[login]
+autoRegister = true
+```
+
+Or via environment variable:
+
+```bash
+VALHALLA_LOGIN_AUTOREGISTER=true
+```
+
+When enabled:
+- Users attempting to login with non-existent credentials will have accounts automatically created
+- New accounts are created with default values: gender=0, dob=1111111, eula=1, adminLevel=0, PIN="1111"
+- The password provided during the first login attempt is hashed and stored
+- The default PIN is "1111" and can be changed by the user later if `withPin = true`
+
+**Note:** For production environments, it's recommended to keep this disabled (`autoRegister = false`) for security reasons.
 
 ## NPC chat display info (use this when scripting NPCs)
 

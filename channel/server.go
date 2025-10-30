@@ -280,7 +280,7 @@ func (server *Server) ClientDisconnected(conn mnet.Client) {
 
 	if field, ok := server.fields[plr.mapID]; ok {
 		if inst, ierr := field.getInstance(plr.inst.id); ierr == nil {
-			if remErr := inst.removePlayer(plr); remErr != nil {
+			if remErr := inst.removePlayer(plr, true); remErr != nil {
 				log.Println(remErr)
 			}
 		}

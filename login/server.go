@@ -10,16 +10,18 @@ import (
 
 // Server state
 type Server struct {
-	migrating map[mnet.Client]bool
+	migrating    map[mnet.Client]bool
 	// db        *sql.DB
-	worlds  []internal.World
-	withPin bool
+	worlds       []internal.World
+	withPin      bool
+	autoRegister bool
 }
 
 // Initialise the server
-func (server *Server) Initialise(dbuser, dbpassword, dbaddress, dbport, dbdatabase string, withpin bool) {
+func (server *Server) Initialise(dbuser, dbpassword, dbaddress, dbport, dbdatabase string, withpin bool, autoRegister bool) {
 	server.migrating = make(map[mnet.Client]bool)
 	server.withPin = withpin
+	server.autoRegister = autoRegister
 
 	err := common.ConnectToDB(dbuser, dbpassword, dbaddress, dbport, dbdatabase)
 

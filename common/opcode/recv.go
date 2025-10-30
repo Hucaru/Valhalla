@@ -32,6 +32,7 @@ const (
 	RecvChannelNpcStorage          byte = 0x2A
 	RecvChannelInvMoveItem         byte = 0x2D
 	RecvChannelInvUseItem          byte = 0x2E
+	RecvChannelChairHeal           byte = 0x30
 	RecvChannelNearestTown         byte = 0x34
 	RecvChannelUseScroll           byte = 0x35
 	RecvChannelAddStatPoint        byte = 0x36

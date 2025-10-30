@@ -182,6 +182,8 @@ type Player struct {
 
 	// write-behind persistence
 	dirty DirtyBits
+
+	lastChairHeal time.Time
 }
 
 // Helper: mark dirty and schedule debounced save.
@@ -823,15 +825,14 @@ func (d *Player) takeItem(id int32, slot int16, amount int16, invID byte) (Item,
 	}
 
 	item.amount -= amount
-	if item.amount == 0 {
-		// Delete item
+	if item.amount == 0 && !item.isRechargeable() {
 		d.removeItem(item)
 	} else {
-		// Update item with new stack size
 		d.updateItemStack(item)
 	}
 
 	return item, nil
+
 }
 
 func (d Player) updateItemStack(item Item) {
@@ -1169,7 +1170,7 @@ func (d *Player) consumeItemsByID(itemID int32, reqCount int32) bool {
 			if it.ID != itemID || it.amount <= 0 {
 				continue
 			}
-			take := int16(it.amount)
+			take := it.amount
 			if int32(take) > remaining {
 				take = int16(remaining)
 			}
@@ -1220,6 +1221,7 @@ func (d Player) displayBytes() []byte {
 	pkt.WriteByte(0xFF)
 	pkt.WriteByte(0xFF)
 	pkt.WriteInt32(cashWeapon)
+	pkt.WriteInt32(0) // Pet acc
 
 	return pkt
 }
@@ -1508,8 +1510,7 @@ func LoadPlayerFromID(id int32, conn mnet.Client) Player {
 	c.quests.mobKills = loadQuestMobKillsFromDB(c.ID)
 
 	// Initialize the per-Player buff manager so handlers can call plr.addBuff(...)
-	c.buffs = NewCharacterBuffs(&c)
-	c.buffs.plr.inst = c.inst
+	NewCharacterBuffs(&c)
 
 	c.storageInventory = new(storage)
 
@@ -1565,21 +1566,19 @@ func getBuddyList(playerID int32, buddySize byte) []buddy {
 	return buddies
 }
 
-// Convenience helper used by handlers to apply a skill buff.
-// Keeps your call sites (“plr.addBuff(...)”) simple.
 func (d *Player) addBuff(skillID int32, level byte, delay int16) {
-	if d == nil {
-		return
-	}
 	if d.buffs == nil {
-		d.buffs = NewCharacterBuffs(d)
+		NewCharacterBuffs(d)
 	}
-	d.buffs.plr.inst = d.inst
 	d.buffs.AddBuff(d.ID, skillID, level, false, delay)
 }
 
 func (d *Player) addForeignBuff(charId, skillID int32, level byte, delay int16) {
 	d.buffs.AddBuff(charId, skillID, level, true, delay)
+}
+
+func (d *Player) addMobDebuff(skillID, level byte, durationSec int16) {
+	d.buffs.AddMobDebuff(skillID, level, durationSec)
 }
 
 func (d *Player) removeAllCooldowns() {
@@ -1599,7 +1598,6 @@ func (d *Player) saveBuffSnapshot() {
 	}
 
 	// Ensure we don't snapshot already-stale buffs
-	d.buffs.plr.inst = d.inst
 	d.buffs.AuditAndExpireStaleBuffs()
 
 	snaps := d.buffs.Snapshot()
@@ -1700,9 +1698,8 @@ func (d *Player) loadAndApplyBuffSnapshot() {
 
 	if len(snaps) > 0 {
 		if d.buffs == nil {
-			d.buffs = NewCharacterBuffs(d)
+			NewCharacterBuffs(d)
 		}
-		d.buffs.plr.inst = d.inst
 		d.buffs.RestoreFromSnapshot(snaps)
 	}
 }
@@ -1926,10 +1923,10 @@ func (d *Player) onMobKilled(mobID int32) {
 
 		// Init maps
 		if d.quests.mobKills == nil {
-			d.quests.mobKills = make(map[int16]map[int32]int32, 16)
+			d.quests.mobKills = make(map[int16]map[int32]int32)
 		}
 		if d.quests.mobKills[qid] == nil {
-			d.quests.mobKills[qid] = make(map[int32]int32, 4)
+			d.quests.mobKills[qid] = make(map[int32]int32)
 		}
 
 		cur := d.quests.mobKills[qid][mobID]
@@ -2063,6 +2060,37 @@ func (p *Player) broadcastRemoveSummon(summonSkillID int32, reason byte) {
 func (p *Player) updatePet() {
 	p.MarkDirty(DirtyPet, time.Millisecond*300)
 	p.inst.send(packetPlayerPetUpdate(p.pet.sn))
+}
+
+func (p *Player) petCanTakeDrop(drop fieldDrop) bool {
+	if p.pet == nil {
+		return false
+	}
+
+	if drop.mesos > 0 {
+		if p.hasEquipped(constant.ItemMesoMagnet) {
+			return true
+		}
+		return false
+	} else {
+		if p.hasEquipped(constant.ItemItemPouch) {
+			return true
+		}
+		return false
+	}
+}
+
+func (p *Player) hasEquipped(itemID int32) bool {
+	if p == nil || itemID <= 0 {
+		return false
+	}
+	for i := range p.equip {
+		it := p.equip[i]
+		if it.slotID < 0 && it.amount > 0 && it.ID == itemID {
+			return true
+		}
+	}
+	return false
 }
 
 func packetPlayerReceivedDmg(charID int32, attack int8, initalAmmount, reducedAmmount, spawnID, mobID, healSkillID int32,
@@ -2498,9 +2526,9 @@ func packetInventoryChangeEquip(chr Player) mpacket.Packet {
 	p.WriteInt32(chr.ID)
 	p.WriteByte(1)
 	p.WriteBytes(chr.displayBytes())
-
-	// Pet ID (spawned pet Item ID).
 	p.WriteInt32(0)
+	p.WriteInt32(0)
+	p.WriteInt32(chr.chairID)
 
 	// 15 x long(0) placeholders
 	for i := 0; i < 15; i++ {
@@ -2896,5 +2924,139 @@ func packetPlayerGiveForeignBuff(charID int32, mask []byte, values []byte, delay
 
 	// Delay (usually 0)
 	p.WriteInt16(delay)
+	return p
+}
+
+func packetPlayerShowChair(plrID, chairID int32) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelPlayerSit)
+	p.WriteInt32(plrID)
+	p.WriteInt32(chairID)
+	return p
+}
+
+func packetPlayerChairResult(chairID int16) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelPlayerSitResult)
+	p.WriteBool(chairID != -1)
+	if chairID != -1 {
+		p.WriteInt16(chairID)
+	}
+	return p
+}
+
+func packetPlayerChairUpdate() mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelStatChange)
+	p.WriteInt16(1)
+	p.WriteInt32(0)
+	return p
+}
+
+func packetSkillMelee(char Player, ad attackData) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelPlayerUseMeleeSkill)
+	p.WriteInt32(char.ID)
+	p.WriteByte(ad.targets*0x10 + ad.hits)
+	p.WriteByte(ad.skillLevel)
+
+	if ad.skillLevel != 0 {
+		p.WriteInt32(ad.skillID)
+	}
+
+	if ad.facesLeft {
+		p.WriteByte(ad.action | (1 << 7))
+	} else {
+		p.WriteByte(ad.action)
+	}
+
+	p.WriteByte(ad.attackType)
+
+	p.WriteByte(char.skills[ad.skillID].Mastery)
+	p.WriteInt32(ad.projectileID)
+
+	for _, info := range ad.attackInfo {
+		p.WriteInt32(info.spawnID)
+		p.WriteByte(info.hitAction)
+
+		if ad.isMesoExplosion {
+			p.WriteByte(byte(len(info.damages)))
+		}
+
+		for _, dmg := range info.damages {
+			p.WriteInt32(dmg)
+		}
+	}
+
+	return p
+}
+
+func packetSkillRanged(char Player, ad attackData) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelPlayerUseRangedSkill)
+	p.WriteInt32(char.ID)
+	p.WriteByte(ad.targets*0x10 + ad.hits)
+	p.WriteByte(ad.skillLevel)
+
+	if ad.skillLevel != 0 {
+		p.WriteInt32(ad.skillID)
+	}
+
+	if ad.facesLeft {
+		p.WriteByte(ad.action | (1 << 7))
+	} else {
+		p.WriteByte(ad.action | 0)
+	}
+
+	p.WriteByte(ad.attackType)
+
+	p.WriteByte(char.skills[ad.skillID].Mastery)
+	p.WriteInt32(ad.projectileID)
+
+	for _, info := range ad.attackInfo {
+		p.WriteInt32(info.spawnID)
+		p.WriteByte(info.hitAction)
+
+		if ad.isMesoExplosion {
+			p.WriteByte(byte(len(info.damages)))
+		}
+
+		for _, dmg := range info.damages {
+			p.WriteInt32(dmg)
+		}
+	}
+
+	return p
+}
+
+func packetSkillMagic(char Player, ad attackData) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelPlayerUseMagicSkill)
+	p.WriteInt32(char.ID)
+	p.WriteByte(ad.targets*0x10 + ad.hits)
+	p.WriteByte(ad.skillLevel)
+
+	if ad.skillLevel != 0 {
+		p.WriteInt32(ad.skillID)
+	}
+
+	if ad.facesLeft {
+		p.WriteByte(ad.action | (1 << 7))
+	} else {
+		p.WriteByte(ad.action | 0)
+	}
+
+	p.WriteByte(ad.attackType)
+
+	p.WriteByte(char.skills[ad.skillID].Mastery)
+	p.WriteInt32(ad.projectileID)
+
+	for _, info := range ad.attackInfo {
+		p.WriteInt32(info.spawnID)
+		p.WriteByte(info.hitAction)
+
+		if ad.isMesoExplosion {
+			p.WriteByte(byte(len(info.damages)))
+		}
+
+		for _, dmg := range info.damages {
+			p.WriteInt32(dmg)
+		}
+	}
+
 	return p
 }

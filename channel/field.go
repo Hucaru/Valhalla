@@ -484,7 +484,7 @@ func (f *field) changePlayerInstance(player *Player, id int) error {
 	}
 
 	if f.validInstance(id) {
-		err := f.instances[player.inst.id].removePlayer(player)
+		err := f.instances[player.inst.id].removePlayer(player, false)
 
 		if err != nil {
 			return err
@@ -614,7 +614,7 @@ func (inst *fieldInstance) addPlayer(plr *Player) error {
 	return nil
 }
 
-func (inst *fieldInstance) removePlayer(plr *Player) error {
+func (inst *fieldInstance) removePlayer(plr *Player, usedPortal bool) error {
 	index := -1
 
 	for i, v := range inst.players {
@@ -635,7 +635,7 @@ func (inst *fieldInstance) removePlayer(plr *Player) error {
 		plr.Send(packetMapPlayerLeft(v.ID))
 	}
 
-	inst.lifePool.removePlayer(plr)
+	inst.lifePool.removePlayer(plr, usedPortal)
 	inst.roomPool.removePlayer(plr)
 
 	return nil
@@ -812,10 +812,9 @@ func packetMapPlayerEnter(plr *Player) mpacket.Packet {
 
 	p.WriteBytes(plr.displayBytes())
 
-	p.WriteInt32(0)           // ?
-	p.WriteInt32(0)           // ?
-	p.WriteInt32(0)           // ?
-	p.WriteInt32(plr.chairID) // 0 means no chair in use, stance needs to be changed to match
+	p.WriteInt32(0) // Active Item ID
+	p.WriteInt32(0) // Choco count(what is choco lol)
+	p.WriteInt32(plr.chairID)
 
 	p.WriteInt16(plr.pos.x)
 	p.WriteInt16(plr.pos.y)
