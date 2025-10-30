@@ -72,6 +72,7 @@ const (
 	SendChannelPlayerResetForeignBuff byte = 0x72
 	SendChannelPlayerSitResult        byte = 0x78
 	SendChannelPlayerEffect           byte = 0x79
+	SendChannelSkillCooldown          byte = 0x82
 	SendChannelShowMob                byte = 0x86
 	SendChannelRemoveMob              byte = 0x87
 	SendChannelControlMob             byte = 0x88
