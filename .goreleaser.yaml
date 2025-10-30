@@ -1,0 +1,98 @@
+# GoReleaser configuration for Valhalla
+version: 2
+
+before:
+  hooks:
+    # Ensure dependencies are downloaded
+    - go mod download
+    - go mod verify
+
+builds:
+  - id: valhalla
+    main: .
+    binary: Valhalla
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    # Optimize builds
+    ldflags:
+      - -s -w
+    # Skip unsupported combinations
+    ignore:
+      - goos: windows
+        goarch: arm64
+
+archives:
+  - id: valhalla-archive
+    # Use tar.gz for Unix, zip for Windows
+    format_overrides:
+      - goos: windows
+    name_template: >-
+      {{ .ProjectName }}_
+      {{- .Version }}_
+      {{- title .Os }}_
+      {{- if eq .Arch "amd64" }}x86_64
+      {{- else if eq .Arch "386" }}i386
+      {{- else }}{{ .Arch }}{{ end }}
+      {{- if .Arm }}v{{ .Arm }}{{ end }}
+    # Include JSON data files in the archive
+    files:
+      - drops.json
+      - reactors.json
+      - reactor_drops.json
+      - LICENSE
+      - README.md
+      - config_*.toml
+
+checksum:
+  name_template: 'checksums.txt'
+
+snapshot:
+  version_template: "{{ incpatch .Version }}-next"
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - '^docs:'
+      - '^test:'
+      - '^chore:'
+      - '^ci:'
+      - 'typo'
+      - 'Merge pull request'
+      - 'Merge branch'
+
+release:
+  github:
+    owner: Hucaru
+    name: Valhalla
+  draft: false
+  prerelease: auto
+  mode: replace
+  header: |
+    ## Valhalla {{ .Tag }} Release
+    
+    This release includes pre-built binaries for multiple platforms and architectures.
+    
+    ### What's included
+    - Valhalla server binary for your platform
+    - Required JSON data files (drops.json, reactors.json, reactor_drops.json)
+    - Sample configuration files (config_*.toml)
+    - LICENSE and README
+    
+    ### How to use
+    1. Download the appropriate archive for your platform
+    2. Extract the archive
+    3. Configure your server using the config files
+    4. Run the Valhalla binary with appropriate flags (see README.md)
+    
+    Example:
+    ```bash
+    ./Valhalla -type login -config config_login.toml
+    ```
