@@ -150,6 +150,28 @@ See screenshots section for an example Grafana dashboard
     - [OpenMG](https://github.com/sewil/OpenMG)
 - [NX](https://nxformat.github.io/) file format (see acknowledgements at link)
 
+## Getting Started
+
+### Pre-built Binaries
+
+Download pre-built binaries for your platform from the [releases page](https://github.com/Hucaru/Valhalla/releases). Each release includes:
+- Valhalla server binary for your platform
+- Required JSON data files (drops.json, reactors.json, reactor_drops.json)
+- Sample configuration files (config_*.toml)
+- LICENSE and README
+
+Simply extract the archive and run the binary with appropriate flags.
+
+New releases are automatically created on every push to the `master` branch using semantic versioning. The version is automatically bumped based on commit messages following [Conventional Commits](https://www.conventionalcommits.org/).
+
+### Building from Source
+
+If you prefer to build from source, you'll need Go 1.25 or later installed. Clone the repository and run:
+
+```bash
+go build -v .
+```
+
 ## How to Run
 
 All instances are run through the main executable by passing a **type** and an optional **config** file.
