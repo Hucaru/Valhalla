@@ -30,9 +30,11 @@ builds:
 
 archives:
   - id: valhalla-archive
-    # Use tar.gz for Unix, zip for Windows
+    formats: [tar.gz]
+    # Use zip for Windows archives
     format_overrides:
       - goos: windows
+        formats: [zip]
     name_template: >-
       {{ .ProjectName }}_
       {{- .Version }}_
