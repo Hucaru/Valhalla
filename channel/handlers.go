@@ -1025,20 +1025,9 @@ func (server Server) warpPlayer(plr *Player, dstField *field, dstPortal portal, 
 
 	plr.setMapID(dstField.id)
 	plr.pos = dstPortal.pos
-	var spawnIdx byte
 
-	dPortal, err := dstInst.getPortalFromName(dstPortal.name)
-	if err != nil {
-		spawnPortal, idxErr := dstInst.calculateNearestSpawnPortalID(dstPortal.pos)
-		if idxErr != nil {
-			return idxErr
-		}
-		spawnIdx = spawnPortal
-	} else {
-		spawnIdx = dPortal.id
-	}
+	plr.Send(packetMapChange(dstField.id, int32(server.id), dstPortal.id, plr.hp))
 
-	plr.Send(packetMapChange(dstField.id, int32(server.id), spawnIdx, plr.hp))
 	if err = dstInst.addPlayer(plr); err != nil {
 		return err
 	}
