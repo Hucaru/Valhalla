@@ -162,6 +162,8 @@ Download pre-built binaries for your platform from the [releases page](https://g
 
 Simply extract the archive and run the binary with appropriate flags.
 
+New releases are automatically created on every push to the `master` branch using semantic versioning. The version is automatically bumped based on commit messages following [Conventional Commits](https://www.conventionalcommits.org/).
+
 ### Building from Source
 
 If you prefer to build from source, you'll need Go 1.25 or later installed. Clone the repository and run:
