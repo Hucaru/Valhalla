@@ -3931,10 +3931,9 @@ func (server *Server) playerSpecialSkill(conn mnet.Client, reader mpacket.Reader
 			go func(sid int32, cooldownTime int16, inst *fieldInstance) {
 				time.Sleep(time.Duration(cooldownTime) * time.Second)
 				// Use dispatch pattern for thread safety
-				if inst != nil && inst.dispatch != nil {
+				if inst != nil && inst.dispatch != nil && plr != nil {
 					inst.dispatch <- func() {
 						plr.Send(packetPlayerSkillCooldown(sid, 0))
-						log.Printf("packetPlayerSkillCooldown: skillID=%d, time=0", sid)
 					}
 				}
 			}(skillID, skillData.CooldownTime, plr.inst)
