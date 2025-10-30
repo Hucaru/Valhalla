@@ -275,6 +275,10 @@ var (
 )
 
 const (
+	//Beginner Skills - 0
+	Recovery   Skill = 1001
+	NimbleFeet Skill = 1002
+
 	//Swordsman Skills - 100
 	ImprovedMaxHpIncrease Skill = 1000001
 	Endure                Skill = 1000002
