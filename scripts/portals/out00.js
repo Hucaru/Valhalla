@@ -4,7 +4,7 @@
 
     var prev = (plr.previousMap && plr.previousMap()) || 0;
     if (prev && prev > 0 && prev !== FM_ID) {
-        plr.warpFromName(prev, "st00");
+        plr.warpFromName(prev, "market00");
         return;
     }
 
