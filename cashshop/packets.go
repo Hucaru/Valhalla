@@ -10,7 +10,7 @@ import (
 )
 
 func (server *Server) playerCashShopPurchase(conn mnet.Client, reader mpacket.Reader) {
-	plr, err := server.players.getFromConn(conn)
+	plr, err := server.players.GetFromConn(conn)
 	if err != nil {
 		return
 	}

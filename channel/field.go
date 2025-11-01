@@ -720,12 +720,8 @@ func (inst fieldInstance) calculateNearestSpawnPortalID(pos pos) (byte, error) {
 }
 
 func (inst fieldInstance) getPortalFromName(name string) (portal, error) {
-	for i, p := range inst.portals {
+	for _, p := range inst.portals {
 		if p.name == name {
-			// NOTE: portal.id does not match it's index in the portal array for the field.
-			// I suspect the client uses the given byte as an index instead of iterating
-			// through the portal list to find the portal with the same id.
-			p.id = byte(i)
 			return p, nil
 		}
 	}

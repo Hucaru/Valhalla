@@ -204,7 +204,7 @@ func scheduleSave(p *Player, delay time.Duration) {
 	}
 }
 
-func FlushNow(p *Player) {
+func flushNow(p *Player) {
 	if saverInst == nil || p == nil || p.ID == 0 {
 		return
 	}

@@ -53,11 +53,12 @@ func (server Server) handleWorldConnection(conn mnet.Server, reader mpacket.Read
 func (server *Server) handleChannelConnectionInfo(conn mnet.Server, reader mpacket.Reader) {
 	total := reader.ReadByte()
 
-	for i := byte(0); i < total; i++ {
+	for i := range total {
 		server.channels[i].IP = reader.ReadBytes(4)
 		server.channels[i].Port = reader.ReadInt16()
 	}
 }
+
 func (server *Server) handlePlayerConnect(conn mnet.Client, reader mpacket.Reader) {
 	charID := reader.ReadInt32()
 
@@ -102,7 +103,7 @@ func (server *Server) handlePlayerConnect(conn mnet.Client, reader mpacket.Reade
 
 	plr := channel.LoadPlayerFromID(charID, conn)
 
-	server.players = append(server.players, &plr)
+	server.players.Add(&plr)
 
 	server.world.Send(internal.PacketChannelPlayerConnected(plr.ID, plr.Name, server.id, false, 0, 0))
 
@@ -116,12 +117,12 @@ func (server *Server) handlePlayerDisconnect(conn mnet.Server, reader mpacket.Re
 	name := reader.ReadString(reader.ReadInt16())
 	_ = reader.ReadInt32()
 
-	plr, err := server.players.getFromID(playerID)
+	plr, err := server.players.GetFromID(playerID)
 	if err != nil {
 		log.Println(err)
 		return
 	}
-	err = server.players.removeFromConn(plr.Conn)
+	err = server.players.RemoveFromConn(plr.Conn)
 	if err != nil {
 		return
 	}
@@ -134,14 +135,14 @@ func (server *Server) handlePlayerDisconnect(conn mnet.Server, reader mpacket.Re
 }
 
 func (server *Server) leaveCashShopToChannel(conn mnet.Client, reader mpacket.Reader) {
-	plr, err := server.players.getFromConn(conn)
+	plr, err := server.players.GetFromConn(conn)
 	if err != nil || plr == nil {
 		return
 	}
 
 	var prevChanID int8
 	if err := common.DB.QueryRow("SELECT previousChannelID FROM characters WHERE ID=?", plr.ID).Scan(&prevChanID); err != nil {
-		log.Println("cashshop: failed to fetch previousChannelID:", err)
+		log.Println("Failed to fetch previousChannelID:", err)
 	}
 
 	targetChan := plr.ChannelID
@@ -150,7 +151,7 @@ func (server *Server) leaveCashShopToChannel(conn mnet.Client, reader mpacket.Re
 	}
 
 	if _, err := common.DB.Exec("UPDATE characters SET migrationID=?, inCashShop=0 WHERE ID=?", targetChan, plr.ID); err != nil {
-		log.Println("cashshop: failed to set migrationID:", err)
+		log.Println("Failed to set migrationID:", err)
 		return
 	}
 
@@ -163,9 +164,9 @@ func (server *Server) leaveCashShopToChannel(conn mnet.Client, reader mpacket.Re
 	}
 
 	if len(ip) != 4 || port == 0 {
-		log.Printf("cashshop: target channel %d missing IP/port, searching for fallback...", targetChan)
+		log.Printf("Target channel %d missing IP/port, searching for fallback...", targetChan)
 
-		log.Println("cashshop: sent request to world for updated channel information")
+		log.Println("Sent request to world for updated channel information")
 		server.world.Send(internal.PacketCashShopRequestChannelInfo())
 
 		found := false
@@ -175,13 +176,13 @@ func (server *Server) leaveCashShopToChannel(conn mnet.Client, reader mpacket.Re
 				ip = ch.IP
 				port = ch.Port
 				found = true
-				log.Printf("cashshop: using fallback channel %d", targetChan)
+				log.Printf("Using fallback channel %d", targetChan)
 				break
 			}
 		}
 
 		if !found {
-			log.Println("cashshop: no valid fallback channels available")
+			log.Println("No valid fallback channels available")
 			return
 		}
 	}

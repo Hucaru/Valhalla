@@ -263,6 +263,10 @@ func getMapPortals(node *gonx.Node, nodes []gonx.Node, textLookup []string) []Po
 			}
 		}
 
+		// NOTE: portal.ID does not match it's index in the portal array for the field.
+		// I suspect the client uses the given byte as an index instead of iterating
+		// through the portal list to find the portal with the same id.
+		portal.ID = byte(i)
 		portals[i] = portal
 	}
 
