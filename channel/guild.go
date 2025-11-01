@@ -28,7 +28,7 @@ type guild struct {
 
 	points int32
 
-	players *players
+	players *Players
 
 	playerID []int32
 	names    []string
@@ -38,7 +38,7 @@ type guild struct {
 	ranks    []byte
 }
 
-func loadGuildFromDb(guildID int32, players *players) (*guild, error) {
+func loadGuildFromDb(guildID int32, players *Players) (*guild, error) {
 	loadedGuild := &guild{}
 
 	row, err := common.DB.Query("SELECT ID, guildRank, Name, job, level, channelID FROM characters WHERE guildID=?", guildID)
@@ -93,7 +93,7 @@ func loadGuildFromDb(guildID int32, players *players) (*guild, error) {
 	return loadedGuild, nil
 }
 
-func createGuildContract(guildName string, worldID int32, players *players, master *Player) *guild {
+func createGuildContract(guildName string, worldID int32, players *Players, master *Player) *guild {
 	newGuild := &guild{
 		worldID:  worldID,
 		name:     guildName,
@@ -182,7 +182,7 @@ func (g *guild) signContract(playerID int32) bool {
 				continue
 			}
 
-			plr, err := g.players.getFromID(id)
+			plr, err := g.players.GetFromID(id)
 
 			if err != nil {
 				continue
@@ -192,7 +192,7 @@ func (g *guild) signContract(playerID int32) bool {
 			g.updateAvatar(plr)
 		}
 
-		plr, err := g.players.getFromID(g.playerID[0])
+		plr, err := g.players.GetFromID(g.playerID[0])
 
 		if err != nil {
 			return false
@@ -208,7 +208,7 @@ func (g *guild) signContract(playerID int32) bool {
 
 func (g *guild) broadcast(p mpacket.Packet) {
 	for _, v := range g.playerID {
-		plr, err := g.players.getFromID(v)
+		plr, err := g.players.GetFromID(v)
 
 		if err != nil {
 			continue
@@ -220,7 +220,7 @@ func (g *guild) broadcast(p mpacket.Packet) {
 
 func (g *guild) broadcastExcept(p mpacket.Packet, pass *Player) {
 	for _, v := range g.playerID {
-		plr, err := g.players.getFromID(v)
+		plr, err := g.players.GetFromID(v)
 
 		if err != nil || plr == pass {
 			continue
@@ -246,7 +246,7 @@ func (g *guild) updateEmblem(logoBg, logo int16, logoBgColour, logoColour byte) 
 	g.logoColour = logoColour
 
 	for _, v := range g.playerID {
-		plr, err := g.players.getFromID(v)
+		plr, err := g.players.GetFromID(v)
 
 		if err != nil {
 			continue
@@ -283,7 +283,7 @@ func (g *guild) updateRank(playerID int32, rank byte) {
 }
 
 func (g *guild) addPlayer(playerID int32, name string, jobID, level int32, online bool, rank byte) {
-	plr, err := g.players.getFromID(playerID)
+	plr, err := g.players.GetFromID(playerID)
 
 	if int(g.capacity) == len(g.online) {
 		if err == nil {
@@ -326,7 +326,7 @@ func (g *guild) removePlayer(playerID int32, expelled bool, name string) {
 			g.online = slices.Delete(g.online, i, i+1)
 			g.ranks = slices.Delete(g.ranks, i, i+1)
 
-			if plr, err := g.players.getFromID(id); err == nil {
+			if plr, err := g.players.GetFromID(id); err == nil {
 				plr.guild = nil
 				plr.Send(packetGuildInfo(nil))
 				g.updateAvatar(plr)
@@ -369,7 +369,7 @@ func (g guild) canUnload() bool {
 
 func (g guild) disband() {
 	for _, v := range g.playerID {
-		plr, err := g.players.getFromID(v)
+		plr, err := g.players.GetFromID(v)
 
 		if err != nil {
 			continue

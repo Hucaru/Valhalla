@@ -95,6 +95,84 @@ func getSkillsFromCharID(id int32) []playerSkill {
 
 type updatePartyInfoFunc func(partyID, playerID, job, level, mapID int32, name string)
 
+type Players struct {
+	conn map[mnet.Client]*Player
+	id   map[int32]*Player
+	name map[string]*Player
+}
+
+func NewPlayers() Players {
+	return Players{
+		conn: make(map[mnet.Client]*Player),
+		id:   make(map[int32]*Player),
+		name: make(map[string]*Player),
+	}
+}
+
+func (p *Players) Add(plr *Player) {
+	p.conn[plr.Conn] = plr
+	p.id[plr.ID] = plr
+	p.name[plr.Name] = plr
+}
+
+func (p Players) count() int {
+	return len(p.conn)
+}
+
+func (p Players) observe(f func(*Player)) {
+	for _, plr := range p.conn {
+		f(plr)
+	}
+}
+
+func (p Players) GetFromConn(conn mnet.Client) (*Player, error) {
+	if v, ok := p.conn[conn]; ok {
+		return v, nil
+	}
+
+	return nil, fmt.Errorf("Player not found for connection")
+}
+
+func (p Players) GetFromID(id int32) (*Player, error) {
+	if v, ok := p.id[id]; ok {
+		return v, nil
+	}
+
+	return nil, fmt.Errorf("Player not found for ID: %d", id)
+}
+
+func (p Players) GetFromName(name string) (*Player, error) {
+	if v, ok := p.name[name]; ok {
+		return v, nil
+	}
+
+	return nil, fmt.Errorf("Player not found for Name: %s", name)
+}
+
+func (p *Players) RemoveFromConn(conn mnet.Client) error {
+	if plr, ok := p.conn[conn]; ok {
+		delete(p.id, plr.ID)
+		delete(p.name, plr.Name)
+		delete(p.conn, conn)
+
+		return nil
+	}
+
+	return fmt.Errorf("Player not found for removal")
+}
+
+func (p Players) broadcast(packet mpacket.Packet) {
+	for conn := range p.conn {
+		conn.Send(packet)
+	}
+}
+
+func (p Players) Flush() {
+	for _, plr := range p.conn {
+		flushNow(plr)
+	}
+}
+
 type Player struct {
 	Conn mnet.Client
 	inst *fieldInstance
@@ -198,7 +276,7 @@ func (d *Player) clearDirty(bits DirtyBits) {
 }
 
 func (d *Player) FlushNow() {
-	FlushNow(d)
+	flushNow(d)
 }
 
 // SeedRNGDeterministic seeds the per-Player RNG using stable identifiers so
@@ -1234,7 +1312,7 @@ func (d Player) Logout() {
 		}
 	}
 
-	FlushNow(&d)
+	flushNow(&d)
 
 	if err := d.save(); err != nil {
 		log.Printf("Player(%d) logout save failed: %v", d.ID, err)

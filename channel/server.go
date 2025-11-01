@@ -2,7 +2,6 @@ package channel
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"strconv"
 	"time"
@@ -18,54 +17,6 @@ import (
 	"github.com/Hucaru/Valhalla/mpacket"
 	"github.com/Hucaru/Valhalla/nx"
 )
-
-type players []*Player
-
-func (p players) getFromConn(conn mnet.Client) (*Player, error) {
-	for _, v := range p {
-		if v.Conn == conn {
-			return v, nil
-		}
-	}
-	return nil, fmt.Errorf("Player not found for connection")
-}
-
-func (p players) getFromName(name string) (*Player, error) {
-	for _, v := range p {
-		if v.Name == name {
-			return v, nil
-		}
-	}
-	return nil, fmt.Errorf("Player not found for Name: %s", name)
-}
-
-func (p players) getFromID(id int32) (*Player, error) {
-	for _, v := range p {
-		if v.ID == id {
-			return v, nil
-		}
-	}
-	return nil, fmt.Errorf("Player not found for ID: %d", id)
-}
-
-// RemoveFromConn removes the Player based on the connection
-func (p *players) removeFromConn(conn mnet.Client) error {
-	i := -1
-	for j, v := range *p {
-		if v.Conn == conn {
-			i = j
-			break
-		}
-	}
-
-	if i == -1 {
-		return fmt.Errorf("Player not found for removal")
-	}
-
-	(*p)[i] = (*p)[len(*p)-1]
-	*p = (*p)[:len(*p)-1]
-	return nil
-}
 
 type rates struct {
 	exp   float32
@@ -83,7 +34,7 @@ type Server struct {
 	port              int16
 	maxPop            int16
 	migrating         []mnet.Client
-	players           players
+	players           Players
 	channels          [20]internal.Channel
 	cashShop          internal.CashShop
 	fields            map[int32]*field
@@ -165,6 +116,7 @@ func (server *Server) Initialise(work chan func(), dbuser, dbpassword, dbaddress
 
 	server.loadScripts()
 
+	server.players = NewPlayers()
 	server.parties = make(map[int32]*party)
 	server.guilds = make(map[int32]*guild)
 }
@@ -229,20 +181,16 @@ func (server *Server) loadScripts() {
 
 // SendCountdownToPlayers - Send a countdown to players that appears as a clock
 func (server *Server) SendCountdownToPlayers(t int32) {
-	for _, p := range server.players {
-		if t == 0 {
-			p.Send(packetHideCountdown())
-		} else {
-			p.Send(packetShowCountdown(t))
-		}
+	if t == 0 {
+		server.players.broadcast(packetHideCountdown())
+	} else {
+		server.players.broadcast(packetShowCountdown(t))
 	}
 }
 
 // SendLostWorldConnectionMessage - Send message to players alerting them of whatever they do it won't be saved
 func (server *Server) SendLostWorldConnectionMessage() {
-	for _, p := range server.players {
-		p.Send(packetMessageNotice("Cannot connect to world server, any action from the point until the countdown disappears won't be processed"))
-	}
+	server.players.broadcast(packetMessageNotice("Cannot connect to world server, any action from the point until the countdown disappears won't be processed"))
 }
 
 // RegisterWithWorld server
@@ -265,7 +213,7 @@ func (server *Server) registerWithWorld() {
 
 // ClientDisconnected from server
 func (server *Server) ClientDisconnected(conn mnet.Client) {
-	plr, err := server.players.getFromConn(conn)
+	plr, err := server.players.GetFromConn(conn)
 	if err != nil {
 		return
 	}
@@ -290,7 +238,7 @@ func (server *Server) ClientDisconnected(conn mnet.Client) {
 
 	delete(server.npcChat, conn)
 
-	if remPlrErr := server.players.removeFromConn(conn); remPlrErr != nil {
+	if remPlrErr := server.players.RemoveFromConn(conn); remPlrErr != nil {
 		log.Println(remPlrErr)
 	}
 
@@ -319,15 +267,6 @@ func (server *Server) ClientDisconnected(conn mnet.Client) {
 	}
 }
 
-func (server *Server) flushPlayers() {
-	for _, p := range server.players {
-		if p == nil {
-			continue
-		}
-		FlushNow(p)
-	}
-}
-
 // CheckpointAll now uses the saver to flush debounced/coalesced deltas for every Player.
 func (server *Server) CheckpointAll() {
 	if server.dispatch == nil {
@@ -335,7 +274,7 @@ func (server *Server) CheckpointAll() {
 	}
 	done := make(chan struct{})
 	server.dispatch <- func() {
-		server.flushPlayers()
+		server.players.Flush()
 		close(done)
 	}
 	<-done
@@ -357,14 +296,14 @@ func (server *Server) StartAutosave(ctx context.Context) {
 		}
 		time.AfterFunc(interval, func() {
 			server.dispatch <- func() {
-				server.flushPlayers()
+				server.players.Flush()
 				scheduleNext()
 			}
 		})
 	}
 
 	server.dispatch <- func() {
-		server.flushPlayers()
+		server.players.Flush()
 		scheduleNext()
 	}
 }

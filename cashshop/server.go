@@ -2,7 +2,6 @@ package cashshop
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"time"
 
@@ -14,45 +13,6 @@ import (
 	"github.com/Hucaru/Valhalla/mpacket"
 )
 
-type players []*channel.Player
-
-func (p players) getFromConn(conn mnet.Client) (*channel.Player, error) {
-	for _, v := range p {
-		if v.Conn == conn {
-			return v, nil
-		}
-	}
-	return nil, fmt.Errorf("player not found for connection")
-}
-
-func (p players) getFromID(id int32) (*channel.Player, error) {
-	for _, v := range p {
-		if v.ID == id {
-			return v, nil
-		}
-	}
-	return nil, fmt.Errorf("Player not found for ID: %d", id)
-}
-
-// RemoveFromConn removes the player based on the connection
-func (p *players) removeFromConn(conn mnet.Client) error {
-	i := -1
-	for j, v := range *p {
-		if v.Conn == conn {
-			i = j
-			break
-		}
-	}
-
-	if i == -1 {
-		return fmt.Errorf("player not found for removal")
-	}
-
-	(*p)[i] = (*p)[len(*p)-1]
-	*p = (*p)[:len(*p)-1]
-	return nil
-}
-
 // Server state
 type Server struct {
 	id        byte
@@ -62,7 +22,7 @@ type Server struct {
 	ip        []byte
 	port      int16
 	migrating []mnet.Client
-	players   players
+	players   channel.Players
 	channels  [20]internal.Channel
 }
 
@@ -70,6 +30,8 @@ type Server struct {
 func (server *Server) Initialise(work chan func(), dbuser, dbpassword, dbaddress, dbport, dbdatabase string) {
 	server.dispatch = work
 	server.id = 50
+	server.players = channel.NewPlayers()
+
 	if err := common.ConnectToDB(dbuser, dbpassword, dbaddress, dbport, dbdatabase); err != nil {
 		log.Fatal(err)
 	}
@@ -79,7 +41,6 @@ func (server *Server) Initialise(work chan func(), dbuser, dbpassword, dbaddress
 
 	common.StartMetrics()
 	log.Println("Started serving metrics on :" + common.MetricsPort)
-
 }
 
 // RegisterWithWorld server
@@ -100,14 +61,14 @@ func (server *Server) registerWithWorld() {
 
 // ClientDisconnected from server
 func (server *Server) ClientDisconnected(conn mnet.Client) {
-	plr, err := server.players.getFromConn(conn)
+	plr, err := server.players.GetFromConn(conn)
 	if err != nil {
 		return
 	}
 
 	plr.Logout()
 
-	if remPlrErr := server.players.removeFromConn(conn); remPlrErr != nil {
+	if remPlrErr := server.players.RemoveFromConn(conn); remPlrErr != nil {
 		log.Println(remPlrErr)
 	}
 
@@ -136,19 +97,10 @@ func (server *Server) CheckpointAll() {
 	}
 	done := make(chan struct{})
 	server.dispatch <- func() {
-		server.flushPlayers()
+		server.players.Flush()
 		close(done)
 	}
 	<-done
-}
-
-func (server *Server) flushPlayers() {
-	for _, p := range server.players {
-		if p == nil {
-			continue
-		}
-		channel.FlushNow(p)
-	}
 }
 
 // startAutosave periodically flushes deltas via the saver.
@@ -167,14 +119,14 @@ func (server *Server) StartAutosave(ctx context.Context) {
 		}
 		time.AfterFunc(interval, func() {
 			server.dispatch <- func() {
-				server.flushPlayers()
+				server.players.Flush()
 				scheduleNext()
 			}
 		})
 	}
 
 	server.dispatch <- func() {
-		server.flushPlayers()
+		server.players.Flush()
 		scheduleNext()
 	}
 }

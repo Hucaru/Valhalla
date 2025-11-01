@@ -163,7 +163,8 @@ func (server *Server) handleNewCashShop(conn mnet.Server, reader mpacket.Reader)
 
 	log.Println("Registered CashShop")
 
-	go server.sendCashShopInfo()
+	server.sendCashShopInfo()
+	server.sendChannelInfo() // Slightly waistfull as it updates all the channels as well
 }
 
 func (server *Server) sendCashShopInfo() {
