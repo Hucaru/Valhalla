@@ -926,42 +926,22 @@ func (server Server) playerUsePortal(conn mnet.Client, reader mpacket.Reader) {
 
 func (server Server) playerUseScriptedPortal(conn mnet.Client, reader mpacket.Reader) {
 	plr, err := server.players.GetFromConn(conn)
+
 	if err != nil {
 		return
 	}
 
 	nameLen := reader.ReadInt16()
+
 	if nameLen <= 0 {
 		plr.Send(packetPlayerNoChange())
 		return
 	}
+
 	portalName := reader.ReadString(nameLen)
 
-	curField, ok := server.fields[plr.mapID]
-	if !ok || curField == nil {
-		return
-	}
+	srcPortal, err := plr.inst.getPortalFromName(portalName)
 
-	instID := -1
-	if plr.inst != nil {
-		instID = plr.inst.id
-	}
-
-	srcInst, err := curField.getInstance(instID)
-	if err != nil {
-		if inst0, e2 := curField.getInstance(0); e2 == nil {
-			if _, has := inst0.getPlayerFromID(plr.ID); has != nil {
-				_ = inst0.addPlayer(plr)
-			}
-			plr.inst = inst0
-			srcInst = inst0
-			instID = 0
-		} else {
-			return
-		}
-	}
-
-	srcPortal, err := srcInst.getPortalFromName(portalName)
 	if err != nil {
 		plr.Send(packetPlayerNoChange())
 		return
@@ -976,25 +956,67 @@ func (server Server) playerUseScriptedPortal(conn mnet.Client, reader mpacket.Re
 		return
 	}
 
-	// Strictly script-driven
-	if server.portalScriptStore == nil {
-		plr.Send(packetPlayerNoChange())
-		return
+	warp := func(plr *Player, mapID int32, portalName string, checkActive bool, maxPlayers int) {
+		dstField, ok := server.fields[mapID]
+
+		if !ok {
+			plr.Send(packetPlayerNoChange())
+			return
+		}
+
+		inst, err := dstField.getInstance(plr.inst.id)
+
+		if err != nil {
+			log.Println(err)
+			plr.Send(packetPlayerNoChange())
+			return
+		}
+
+		if checkActive {
+			bossActive, ok := inst.properties["eventActive"].(bool)
+
+			if !ok {
+				bossActive = false
+			}
+
+			if bossActive {
+				plr.Send(packetMessageRedText("The fight is already active. Please try again later."))
+				plr.Send(packetPlayerNoChange())
+				return
+			}
+		}
+
+		if maxPlayers > 0 && len(inst.players) >= maxPlayers {
+			plr.Send(packetMessageRedText("The boss room is currently full."))
+			plr.Send(packetPlayerNoChange())
+			return
+		}
+
+		portal, err := inst.getPortalFromName(portalName)
+
+		if err != nil {
+			log.Println(err)
+			plr.Send(packetPlayerNoChange())
+			return
+		}
+
+		server.warpPlayer(plr, dstField, portal, true)
 	}
 
-	program, ok := server.portalScriptStore.scripts[portalName]
-	if !ok || program == nil {
-		plr.Send(packetPlayerNoChange())
-		return
+	switch portalName {
+	case constant.PortalFreeMarketEnter:
+		warp(plr, constant.MapFreeMarket, "out00", false, 0)
+	case constant.PortalFreeMarketLeave:
+		previousMap := plr.previousMap
+		warp(plr, previousMap, "market00", false, 0)
+		plr.previousMap = previousMap
+	case constant.PortalPapulatus:
+		warp(plr, constant.MapBossPapulatus, "st00", true, 0)
+	case constant.PortalPianus:
+		warp(plr, constant.MapBossPianus, "out00", false, 10)
+	case constant.PortalZakum:
+		warp(plr, constant.MapBossZakum, "st00", true, 20)
 	}
-
-	ctrl, cerr := createPortalScriptController(program, plr, server.fields, server.warpPlayer, conn)
-	if cerr != nil || ctrl == nil {
-		plr.Send(packetPlayerNoChange())
-		return
-	}
-
-	ctrl.run()
 }
 
 func (server Server) warpPlayer(plr *Player, dstField *field, dstPortal portal, usedPortal bool) error {

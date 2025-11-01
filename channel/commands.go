@@ -1547,6 +1547,12 @@ func convertMapNameToID(name string) int32 {
 		return 105090900
 	case "guild":
 		return 200000301
+	case "pap":
+		return constant.MapBossPapulatus
+	case "pianus":
+		return constant.MapBossPianus
+	case "zakum":
+		return constant.MapBossZakum
 	default:
 		return 180000000
 	}
