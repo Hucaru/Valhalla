@@ -219,24 +219,6 @@ func (ctrl *npcChatPlayerController) Warp(id int32) {
 	}
 }
 
-func (ctrl *npcChatPlayerController) WarpFromName(id int32, name string) {
-	if field, ok := ctrl.fields[id]; ok {
-		inst, err := field.getInstance(ctrl.plr.inst.id)
-
-		if err != nil {
-			return
-		}
-
-		portal, err := inst.getPortalFromName(name)
-
-		if err != nil {
-			return
-		}
-
-		_ = ctrl.warpFunc(ctrl.plr, field, portal, true)
-	}
-}
-
 func (ctrl *npcChatPlayerController) InstanceProperties() map[string]interface{} {
 	return ctrl.plr.inst.properties
 }

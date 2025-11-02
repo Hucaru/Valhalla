@@ -379,3 +379,18 @@ const (
 	MobSummonTypeJrBalrog int8 = 0
 	MobSummonTypePoof     int8 = 1
 )
+
+const (
+	MapFreeMarket    int32 = 910000000
+	MapBossPapulatus int32 = 220080001
+	MapBossPianus    int32 = 230040420
+	MapBossZakum     int32 = 280030000
+)
+
+const (
+	PortalFreeMarketEnter = "market00"
+	PortalFreeMarketLeave = "out00"
+	PortalPapulatus       = "in00"
+	PortalPianus          = "boss00"
+	PortalZakum           = "ps00"
+)
