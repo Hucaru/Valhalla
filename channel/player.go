@@ -1313,7 +1313,8 @@ func (d Player) Logout() {
 	}
 
 	flushNow(&d)
-
+	d.saveBuffSnapshot()
+	
 	if err := d.save(); err != nil {
 		log.Printf("Player(%d) logout save failed: %v", d.ID, err)
 	}
