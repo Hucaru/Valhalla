@@ -41,11 +41,9 @@ type Server struct {
 	header         string
 	npcChat        map[mnet.Client]*npcChatController
 	npcScriptStore *scriptStore
-	// eventCtrl        map[string]*eventScriptController
-	// eventScriptStore *scriptStore
-	parties map[int32]*party
-	guilds  map[int32]*guild
-	rates   rates
+	parties        map[int32]*party
+	guilds         map[int32]*guild
+	rates          rates
 }
 
 // Initialise the server
@@ -131,44 +129,6 @@ func (server *Server) loadScripts() {
 	elapsed := time.Since(start)
 	log.Println("Loaded npc scripts in", elapsed)
 	go server.npcScriptStore.monitor(func(name string, program *goja.Program) {})
-
-	// server.eventScriptStore = createScriptStore("scripts/event", server.dispatch) // make folder a config param
-	// start = time.Now()
-	// _ = server.eventScriptStore.loadScripts()
-	// elapsed = time.Since(start)
-	// log.Println("Loaded event scripts in", elapsed)
-
-	// go server.eventScriptStore.monitor(func(name string, program *goja.Program) {
-	// 	if controller, ok := server.eventCtrl[name]; ok && controller != nil {
-	// 		controller.Terminate()
-	// 	}
-
-	// 	if program == nil {
-	// 		delete(server.eventCtrl, name)
-	// 		return
-	// 	}
-
-	// 	controller, start, err := createNewEventScriptController(name, program, server.fields, server.dispatch, server.warpPlayer)
-	// 	if err != nil || controller == nil {
-	// 		return
-	// 	}
-
-	// 	server.eventCtrl[name] = controller
-	// 	if start {
-	// 		controller.init()
-	// 	}
-	// })
-
-	// for name, program := range server.eventScriptStore.scripts {
-	// 	controller, start, err := createNewEventScriptController(name, program, server.fields, server.dispatch, server.warpPlayer)
-	// 	if err != nil {
-	// 		continue
-	// 	}
-	// 	server.eventCtrl[name] = controller
-	// 	if start {
-	// 		controller.init()
-	// 	}
-	// }
 }
 
 // SendCountdownToPlayers - Send a countdown to players that appears as a clock
