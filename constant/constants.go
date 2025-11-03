@@ -381,10 +381,32 @@ const (
 )
 
 const (
+	MobCrimsonBalrog int32 = 8150000
+)
+
+const (
 	MapFreeMarket    int32 = 910000000
 	MapBossPapulatus int32 = 220080001
 	MapBossPianus    int32 = 230040420
 	MapBossZakum     int32 = 280030000
+
+	MapStationEllinia int32 = 101000300
+	MapStationOrbis   int32 = 200000100
+	MapStationLudi    int32 = 220000100
+
+	MapBoatElliniaDeparture   int32 = 101000301
+	MapBoatElliniaFlight      int32 = 200090010
+	MapBoatElliniaFlightCabin int32 = 200090011
+
+	MapBoatOrbisElliniaDeparture   int32 = 200000112
+	MapBoatOrbisElliniaFlight      int32 = 200090000
+	MapBoatOrbisElliniaFlightCabin int32 = 200090001
+
+	MapBoatOrbisLudiDeparture int32 = 200000122
+	MapBoatOrbisLudiFlight    int32 = 200090100
+
+	MapBoatLudiDeparture int32 = 220000111
+	MapBoatLudiFlight    int32 = 200090110
 )
 
 const (
