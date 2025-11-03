@@ -102,7 +102,12 @@ func scheduleBoats(server *Server) {
 }
 
 func boatsBoarding(server *Server, canBoard bool) {
-	platforms := [4]int32{101000300, 200000111, 200000121, 220000110} // Ellinia, Orbis (E), Orbis (L) , Ludi
+	platforms := [4]int32{
+		constant.MapStationEllinia,
+		constant.MapStationOrbisEllinaPlatform,
+		constant.MapStationOrbisLudiPlatform,
+		constant.MapStationLudiOrbisPlatform,
+	}
 
 	for _, mapID := range platforms {
 		field, ok := server.fields[mapID]

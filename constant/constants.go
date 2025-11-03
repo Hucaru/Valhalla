@@ -390,9 +390,12 @@ const (
 	MapBossPianus    int32 = 230040420
 	MapBossZakum     int32 = 280030000
 
-	MapStationEllinia int32 = 101000300
-	MapStationOrbis   int32 = 200000100
-	MapStationLudi    int32 = 220000100
+	MapStationEllinia             int32 = 101000300
+	MapStationOrbis               int32 = 200000100
+	MapStationOrbisEllinaPlatform int32 = 200000111
+	MapStationOrbisLudiPlatform   int32 = 200000121
+	MapStationLudi                int32 = 220000100
+	MapStationLudiOrbisPlatform   int32 = 220000110
 
 	MapBoatElliniaDeparture   int32 = 101000301
 	MapBoatElliniaFlight      int32 = 200090010
