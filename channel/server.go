@@ -121,8 +121,6 @@ func (server *Server) Initialise(work chan func(), dbuser, dbpassword, dbaddress
 
 func (server *Server) loadScripts() {
 	server.npcChat = make(map[mnet.Client]*npcChatController)
-	// server.eventCtrl = make(map[string]*eventScriptController)
-
 	server.npcScriptStore = createScriptStore("scripts/npc", server.dispatch) // make folder a config param
 	start := time.Now()
 	_ = server.npcScriptStore.loadScripts()
