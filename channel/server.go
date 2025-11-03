@@ -119,7 +119,6 @@ func (server *Server) Initialise(work chan func(), dbuser, dbpassword, dbaddress
 	server.guilds = make(map[int32]*guild)
 
 	go scheduleBoats(server)
-	go scheduleBossWatcher(server)
 }
 
 func (server *Server) loadScripts() {
