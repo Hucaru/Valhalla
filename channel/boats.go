@@ -76,7 +76,7 @@ func scheduleBoats(server *Server) {
 					invasion(server)
 				}
 
-				ticker := time.NewTicker(3 * time.Second)
+				ticker := time.NewTicker(5 * time.Second)
 				defer ticker.Stop()
 
 				for {
