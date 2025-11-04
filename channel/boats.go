@@ -199,7 +199,7 @@ func checkInvasion(server *Server, finish bool) {
 
 			if len(inst.lifePool.mobs) == 0 || finish {
 				inst.showBoats(false, 0x01)
-				inst.changeBgm("Bgm04/UponTheSky") // TODO: Find the correct bgm
+				inst.changeBgm("Bgm04/UponTheSky")
 			}
 		}
 	}
