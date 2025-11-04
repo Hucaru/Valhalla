@@ -305,7 +305,7 @@ type field struct {
 	fhHist    fhHistogram
 }
 
-func (f *field) createInstance(rates *rates) int {
+func (f *field) createInstance(rates *rates, server *Server) int {
 	id := len(f.instances)
 
 	portals := make([]portal, len(f.Data.Portals))
@@ -329,7 +329,7 @@ func (f *field) createInstance(rates *rates) int {
 	inst.dropPool = createNewDropPool(inst, rates)
 	inst.lifePool = creatNewLifePool(inst, f.Data.NPCs, f.Data.Mobs, f.mobCapacityMin, f.mobCapacityMax)
 	inst.lifePool.setDropPool(&inst.dropPool)
-	inst.reactorPool = createNewReactorPool(inst, f.Data.Reactors)
+	inst.reactorPool = createNewReactorPool(inst, f.Data.Reactors, server)
 
 	f.instances = append(f.instances, inst)
 

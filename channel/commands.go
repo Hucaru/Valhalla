@@ -164,7 +164,7 @@ func (server *Server) gmCommand(conn mnet.Client, msg string) {
 			return
 		}
 
-		id := field.createInstance(&server.rates)
+		id := field.createInstance(&server.rates, server)
 
 		conn.Send(packetMessageNotice("Created instance: " + strconv.Itoa(id)))
 	case "changeInstance":
@@ -1669,30 +1669,30 @@ func convertJobNameToID(name string) int16 {
 func covnertMobNameToID(name string) ([]int32, error) {
 	switch name {
 	case "balrog":
-		return []int32{8130100}, nil
+		return []int32{constant.MobBalrog}, nil
 	case "cbalrog":
-		return []int32{8150000}, nil
+		return []int32{constant.MobCrimsonBalrog}, nil
 	case "zakum":
 		return []int32{
-			8800003, //Zakum's Arm 1
-			8800004, //Zakum's Arm 2
-			8800005, //Zakum's Arm 3
-			8800006, //Zakum's Arm 4
-			8800007, //Zakum's Arm 5
-			8800008, //Zakum's Arm 6
-			8800009, //Zakum's Arm 7
-			8800010, //Zakum's Arm 8
-			8800000, //Zakum1's body
+			constant.MobZakumArm1,
+			constant.MobZakumArm2,
+			constant.MobZakumArm3,
+			constant.MobZakumArm4,
+			constant.MobZakumArm5,
+			constant.MobZakumArm6,
+			constant.MobZakumArm7,
+			constant.MobZakumArm8,
+			constant.MobZakum1Body,
 		}, nil
 	case "pap":
-		return []int32{8500001}, nil // clock - 8500002
+		return []int32{constant.MobPapalatus}, nil
 	case "pianus":
-		return []int32{8520000}, nil // or 8510000
+		return []int32{constant.MobPianus}, nil
 	case "mushmom":
-		return []int32{6130101}, nil
+		return []int32{constant.MobMushmom}, nil
 	case "zmushmom":
-		return []int32{6300005}, nil
+		return []int32{constant.MobZombieMushmom}, nil
 	}
 
-	return nil, fmt.Errorf("Unkown mob Name")
+	return nil, fmt.Errorf("unkown mob Name")
 }

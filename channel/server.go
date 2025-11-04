@@ -93,7 +93,7 @@ func (server *Server) Initialise(work chan func(), dbuser, dbpassword, dbaddress
 		}
 		server.fields[fieldID].formatFootholds()
 		server.fields[fieldID].calculateFieldLimits()
-		server.fields[fieldID].createInstance(&server.rates)
+		server.fields[fieldID].createInstance(&server.rates, server)
 	}
 
 	log.Println("Initialised game state")
