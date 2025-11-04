@@ -568,7 +568,10 @@ func (inst fieldInstance) String() string {
 
 func (inst *fieldInstance) changeBgm(path string) {
 	inst.bgm = path
-	packetBgmChange(path)
+
+	for _, plr := range inst.players {
+		plr.Send(packetBgmChange(path))
+	}
 }
 
 func (inst fieldInstance) findController() interface{} {

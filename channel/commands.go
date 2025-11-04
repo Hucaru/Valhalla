@@ -1361,6 +1361,35 @@ func (server *Server) gmCommand(conn mnet.Client, msg string) {
 
 			server.world.Send(internal.PacketGuildPointsUpdate(plr.guild.id, int32(points)))
 		}
+	case "changeBgm":
+		bgm := ""
+
+		if len(command) > 1 {
+			bgm = command[1]
+		}
+
+		plr, err := server.players.GetFromConn(conn)
+
+		if err != nil {
+			conn.Send(packetMessageRedText(err.Error()))
+			return
+		}
+
+		field, ok := server.fields[plr.mapID]
+
+		if !ok {
+			conn.Send(packetMessageRedText("Could not find field ID"))
+			return
+		}
+
+		inst, err := field.getInstance(plr.inst.id)
+
+		if err != nil {
+			conn.Send(packetMessageRedText(err.Error()))
+			return
+		}
+
+		inst.changeBgm(bgm)
 	case "testMob":
 		plr, err := server.players.GetFromConn(conn)
 

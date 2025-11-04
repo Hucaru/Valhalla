@@ -63,7 +63,8 @@ func scheduleBoats(server *Server) {
 			boatsBoarding(server, false)
 		}
 
-		if r.Float64() > 0.5 {
+		// Note: Not sure what the spawn rate was like on GMS just remember it being low
+		if r.Float64() < 0.3 {
 			go func(server *Server) {
 				wait(5 * time.Minute)
 
@@ -75,16 +76,14 @@ func scheduleBoats(server *Server) {
 					invasion(server)
 				}
 
-				ticker := time.NewTicker(1 * time.Second)
+				ticker := time.NewTicker(3 * time.Second)
 				defer ticker.Stop()
 
 				for {
 					select {
 					case <-ticker.C:
 						server.dispatch <- func() {
-							if checkInvasion(server, false) {
-								ticker.Stop()
-							}
+							checkInvasion(server, false)
 						}
 					case <-finishInvasion.C:
 						return
@@ -182,7 +181,7 @@ func invasion(server *Server) {
 	}
 }
 
-func checkInvasion(server *Server, finish bool) bool {
+func checkInvasion(server *Server, finish bool) {
 	ships := [2]int32{constant.MapBoatElliniaFlight, constant.MapBoatOrbisElliniaFlight}
 
 	for _, mapID := range ships {
@@ -201,10 +200,7 @@ func checkInvasion(server *Server, finish bool) bool {
 			if len(inst.lifePool.mobs) == 0 || finish {
 				inst.showBoats(false, 0x01)
 				inst.changeBgm("Bgm04/UponTheSky") // TODO: Find the correct bgm
-				return true
 			}
 		}
 	}
-
-	return false
 }
