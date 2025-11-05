@@ -3279,8 +3279,9 @@ func (server *Server) playerUseSack(conn mnet.Client, reader mpacket.Reader) {
 	}
 
 	if len(sack.spawnMobs) > 0 {
+		p := int32(plr.randIntn(100))
 		for mobID, prob := range sack.spawnMobs {
-			if prob >= int32(plr.randIntn(100)) {
+			if prob >= p {
 				summonType := constant.MobSummonTypePoof
 
 				switch mobID {
