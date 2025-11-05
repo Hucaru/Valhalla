@@ -1694,5 +1694,5 @@ func covnertMobNameToID(name string) ([]int32, error) {
 		return []int32{constant.MobZombieMushmom}, nil
 	}
 
-	return nil, fmt.Errorf("unkown mob Name")
+	return nil, fmt.Errorf("unknown mob Name")
 }

@@ -1164,7 +1164,7 @@ func (pool *reactorPool) playerShowReactors(plr *Player) {
 	}
 }
 
-func (pool *reactorPool) Reset(send bool) {
+func (pool *reactorPool) reset(send bool) {
 	for _, r := range pool.reactors {
 		r.state = 0
 		r.frameDelay = 0

@@ -44,10 +44,10 @@ func manageSummonedBoss(inst *fieldInstance, mobID int32, server *Server) {
 		case <-timeout.C:
 			var returnMap int32
 
-			switch mobID {
-			case constant.MobPapalatusBall:
+			switch inst.fieldID {
+			case constant.MapBossPapulatus:
 				returnMap = constant.MapBossPapulatusReturn
-			case constant.MobZakum1Body:
+			case constant.MapBossZakum:
 				returnMap = constant.MapBossZakumReturn
 			}
 
@@ -78,6 +78,7 @@ func manageSummonedBoss(inst *fieldInstance, mobID int32, server *Server) {
 				}
 
 				inst.lifePool.eraseMobs()
+				inst.reactorPool.reset(false)
 				inst.properties["eventActive"] = false
 			}
 			return
