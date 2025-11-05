@@ -32,12 +32,17 @@ func manageSummonedBoss(inst *fieldInstance, mobID int32, server *Server) {
 			}
 
 			inst.dispatch <- func() {
-				for _, mob := range inst.lifePool.mobs {
-					if mob.boss {
-						return
+				if len(inst.players) > 0 {
+					for _, mob := range inst.lifePool.mobs {
+						if mob.boss {
+							return
+						}
 					}
 				}
 
+				inst.lifePool.eraseMobs()
+				inst.dropPool.eraseDrops()
+				inst.reactorPool.reset(false)
 				inst.properties["eventActive"] = false
 				finished.Store(true)
 			}
@@ -78,6 +83,7 @@ func manageSummonedBoss(inst *fieldInstance, mobID int32, server *Server) {
 				}
 
 				inst.lifePool.eraseMobs()
+				inst.dropPool.eraseDrops()
 				inst.reactorPool.reset(false)
 				inst.properties["eventActive"] = false
 			}
