@@ -381,10 +381,56 @@ const (
 )
 
 const (
-	MapFreeMarket    int32 = 910000000
-	MapBossPapulatus int32 = 220080001
-	MapBossPianus    int32 = 230040420
-	MapBossZakum     int32 = 280030000
+	MobBalrog         int32 = 8130100
+	MobCrimsonBalrog  int32 = 8150000
+	MobPapalatusBall  int32 = 8500000
+	MobPapalatus      int32 = 8500001
+	MobPapalatusClock int32 = 8500002
+	MobPianus         int32 = 8520000
+	MobPianusAlt      int32 = 8510000
+	MobMushmom        int32 = 6130101
+	MobZombieMushmom  int32 = 6300005
+	MobZakumArm1      int32 = 8800003
+	MobZakumArm2      int32 = 8800004
+	MobZakumArm3      int32 = 8800005
+	MobZakumArm4      int32 = 8800006
+	MobZakumArm5      int32 = 8800007
+	MobZakumArm6      int32 = 8800008
+	MobZakumArm7      int32 = 8800009
+	MobZakumArm8      int32 = 8800010
+	MobZakum1Body     int32 = 8800000
+	MobZakum2Body     int32 = 8800001
+	MobZakum3Body     int32 = 8800002
+)
+
+const (
+	MapFreeMarket          int32 = 910000000
+	MapBossPapulatus       int32 = 220080001
+	MapBossPapulatusReturn int32 = 220080000
+	MapBossPianus          int32 = 230040420
+	MapBossZakum           int32 = 280030000
+	MapBossZakumReturn     int32 = 211042300
+
+	MapStationEllinia             int32 = 101000300
+	MapStationOrbis               int32 = 200000100
+	MapStationOrbisEllinaPlatform int32 = 200000111
+	MapStationOrbisLudiPlatform   int32 = 200000121
+	MapStationLudi                int32 = 220000100
+	MapStationLudiOrbisPlatform   int32 = 220000110
+
+	MapBoatElliniaDeparture   int32 = 101000301
+	MapBoatElliniaFlight      int32 = 200090010
+	MapBoatElliniaFlightCabin int32 = 200090011
+
+	MapBoatOrbisElliniaDeparture   int32 = 200000112
+	MapBoatOrbisElliniaFlight      int32 = 200090000
+	MapBoatOrbisElliniaFlightCabin int32 = 200090001
+
+	MapBoatOrbisLudiDeparture int32 = 200000122
+	MapBoatOrbisLudiFlight    int32 = 200090100
+
+	MapBoatLudiDeparture int32 = 220000111
+	MapBoatLudiFlight    int32 = 200090110
 )
 
 const (

@@ -1092,12 +1092,14 @@ type reactorPool struct {
 	instance *fieldInstance
 	reactors map[int32]*fieldReactor
 	nextID   int32
+	server   *Server
 }
 
-func createNewReactorPool(inst *fieldInstance, data []nx.Reactor) reactorPool {
+func createNewReactorPool(inst *fieldInstance, data []nx.Reactor, server *Server) reactorPool {
 	pool := reactorPool{
 		instance: inst,
 		reactors: make(map[int32]*fieldReactor),
+		server:   server,
 	}
 
 	for _, r := range data {
@@ -1162,7 +1164,7 @@ func (pool *reactorPool) playerShowReactors(plr *Player) {
 	}
 }
 
-func (pool *reactorPool) Reset(send bool) {
+func (pool *reactorPool) reset(send bool) {
 	for _, r := range pool.reactors {
 		r.state = 0
 		r.frameDelay = 0
@@ -1261,7 +1263,7 @@ func (pool *reactorPool) changeState(r *fieldReactor, next byte, frameDelay int1
 	r.state = next
 	r.frameDelay = frameDelay
 	pool.instance.send(packetMapReactorChangeState(r.spawnID, r.state, r.pos.x, r.pos.y, r.frameDelay, r.faceLeft, cause))
-	pool.processStateSideEffects(r, server, plr)
+	pool.processStateSideEffects(r, plr)
 }
 
 func (pool *reactorPool) leaveAndMaybeRespawn(r *fieldReactor, _ int) {
@@ -1426,7 +1428,7 @@ func pickRndMap(warp *reactorWarpInfo) (reactorWarpTarget, error) {
 	return warp.targets[rnd.Intn(n)], nil
 }
 
-func (pool *reactorPool) processStateSideEffects(r *fieldReactor, server *Server, plr *Player) {
+func (pool *reactorPool) processStateSideEffects(r *fieldReactor, plr *Player) {
 	entries := entriesForReactor(r)
 	if len(entries) == 0 {
 		return
@@ -1457,8 +1459,8 @@ func (pool *reactorPool) processStateSideEffects(r *fieldReactor, server *Server
 			}
 
 			for _, player := range players {
-				err := server.warpPlayer(player,
-					server.fields[mapToWarpTo.mapID],
+				err := pool.server.warpPlayer(player,
+					pool.server.fields[mapToWarpTo.mapID],
 					portal{name: mapToWarpTo.portal},
 					true)
 				if err != nil {
@@ -1475,6 +1477,10 @@ func (pool *reactorPool) processStateSideEffects(r *fieldReactor, server *Server
 			spawnPos := pool.instance.calculateFinalDropPos(r.pos)
 			for i := 0; i < count; i++ {
 				pool.instance.lifePool.spawnMobFromID(int32(mobID), spawnPos, false, true, true, constant.MobSummonTypeInstant, 0)
+
+				if summonRequiresBossHandler(int32(mobID)) {
+					go manageSummonedBoss(pool.instance, int32(mobID), pool.server)
+				}
 			}
 		case constant.ReactorDrop:
 			reactorID := strconv.Itoa(int(r.info.ID))

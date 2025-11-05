@@ -1314,7 +1314,7 @@ func (d Player) Logout() {
 
 	flushNow(&d)
 	d.saveBuffSnapshot()
-	
+
 	if err := d.save(); err != nil {
 		log.Printf("Player(%d) logout save failed: %v", d.ID, err)
 	}
@@ -2705,7 +2705,7 @@ func packetPlayerAvatarSummaryWindow(charID int32, plr Player) mpacket.Packet {
 }
 
 func packetShowCountdown(time int32) mpacket.Packet {
-	p := mpacket.CreateWithOpcode(opcode.SendChannelCountdown)
+	p := mpacket.CreateWithOpcode(opcode.SendChannelTimer)
 	p.WriteByte(2)
 	p.WriteInt32(time)
 
@@ -2713,7 +2713,7 @@ func packetShowCountdown(time int32) mpacket.Packet {
 }
 
 func packetHideCountdown() mpacket.Packet {
-	p := mpacket.CreateWithOpcode(opcode.SendChannelCountdown)
+	p := mpacket.CreateWithOpcode(opcode.SendChannelTimer)
 	p.WriteByte(0)
 	p.WriteInt32(0)
 

@@ -419,6 +419,20 @@ func (item *Item) getItem(node *gonx.Node, nodes []gonx.Node, textLookup []strin
 		case "iconD":
 		case "iconRawD":
 		case "iconReward":
+		case "hpR":
+		case "mpR":
+		case "thaw":
+		case "0":
+		case "1":
+		case "2":
+		case "3":
+		case "4":
+		case "5":
+		case "6":
+		case "7":
+		case "8":
+		case "inc":
+		case "morph":
 		default:
 			// Consider gating this log behind a verbosity flag to reduce noise in production.
 			log.Println("Unsupported NX item option:", optionName, "->", option.Data)

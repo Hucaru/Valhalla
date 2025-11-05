@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/Hucaru/Valhalla/common/opcode"
+	"github.com/Hucaru/Valhalla/constant"
 	"github.com/Hucaru/Valhalla/mnet"
 	"github.com/Hucaru/Valhalla/mpacket"
 	"github.com/Hucaru/Valhalla/nx"
@@ -305,7 +306,7 @@ type field struct {
 	fhHist    fhHistogram
 }
 
-func (f *field) createInstance(rates *rates) int {
+func (f *field) createInstance(rates *rates, server *Server) int {
 	id := len(f.instances)
 
 	portals := make([]portal, len(f.Data.Portals))
@@ -329,7 +330,7 @@ func (f *field) createInstance(rates *rates) int {
 	inst.dropPool = createNewDropPool(inst, rates)
 	inst.lifePool = creatNewLifePool(inst, f.Data.NPCs, f.Data.Mobs, f.mobCapacityMin, f.mobCapacityMax)
 	inst.lifePool.setDropPool(&inst.dropPool)
-	inst.reactorPool = createNewReactorPool(inst, f.Data.Reactors)
+	inst.reactorPool = createNewReactorPool(inst, f.Data.Reactors, server)
 
 	f.instances = append(f.instances, inst)
 
@@ -568,7 +569,10 @@ func (inst fieldInstance) String() string {
 
 func (inst *fieldInstance) changeBgm(path string) {
 	inst.bgm = path
-	packetBgmChange(path)
+
+	for _, plr := range inst.players {
+		plr.Send(packetBgmChange(path))
+	}
 }
 
 func (inst fieldInstance) findController() interface{} {
@@ -609,6 +613,16 @@ func (inst *fieldInstance) addPlayer(plr *Player) error {
 
 	if len(inst.bgm) > 0 {
 		plr.Send(packetBgmChange(inst.bgm))
+	}
+
+	switch inst.fieldID {
+	case constant.MapStationEllinia:
+		fallthrough
+	case constant.MapStationOrbis:
+		fallthrough
+	case constant.MapStationLudi:
+		now := time.Now()
+		plr.Send(packetShowClock(int8(now.Hour()), int8(now.Minute()), int8(now.Second())))
 	}
 
 	return nil
@@ -963,5 +977,15 @@ func packetMapReactorLeaveField(spawnID int32, state byte, x int16, y int16) mpa
 	p.WriteByte(state)    // current state
 	p.WriteInt16(x)
 	p.WriteInt16(y)
+	return p
+}
+
+func packetShowClock(hour, min, sec int8) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelTimer)
+	p.WriteByte(1)
+	p.WriteInt8(hour)
+	p.WriteInt8(min)
+	p.WriteInt8(sec)
+
 	return p
 }
