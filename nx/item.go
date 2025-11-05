@@ -60,6 +60,7 @@ type Item struct {
 	ChatBalloon                                                    int64
 	MoveTo                                                         int32
 	Interact                                                       map[byte]PetReaction
+	SpawnMobs                                                      map[int32]int32
 }
 type PetReaction struct {
 	Inc      byte
@@ -126,12 +127,17 @@ func extractItems(nodes []gonx.Node, textLookup []string) map[int32]Item {
 		iterateChildren(node, nodes, textLookup, func(groupNode gonx.Node, groupName string) {
 			iterateChildren(&groupNode, nodes, textLookup, func(itemNode gonx.Node, name string) {
 				var itm Item
+				itm.SpawnMobs = make(map[int32]int32)
+
 				infoPath := consumeBase + "/" + groupName + "/" + name + "/info"
 				if !findAndExtract(infoPath, nodes, textLookup, &itm) {
 					log.Println("Invalid node search:", infoPath)
 					// continue, spec might still exist but info generally holds core data
 				}
 				specPath := consumeBase + "/" + groupName + "/" + name + "/spec"
+				_ = findAndExtract(specPath, nodes, textLookup, &itm)
+
+				specPath = consumeBase + "/" + groupName + "/" + name + "/mob"
 				_ = findAndExtract(specPath, nodes, textLookup, &itm)
 
 				if !addItemByName(name, &itm, items) {
@@ -235,7 +241,6 @@ func addItemByName(name string, item *Item, out map[int32]Item) bool {
 }
 
 func (item *Item) getItem(node *gonx.Node, nodes []gonx.Node, textLookup []string) {
-
 	for i := uint32(0); i < uint32(node.ChildCount); i++ {
 		option := nodes[node.ChildID+i]
 		optionName := textLookup[option.NameID]
@@ -423,14 +428,58 @@ func (item *Item) getItem(node *gonx.Node, nodes []gonx.Node, textLookup []strin
 		case "mpR":
 		case "thaw":
 		case "0":
+			fallthrough
 		case "1":
+			fallthrough
 		case "2":
+			fallthrough
 		case "3":
+			fallthrough
 		case "4":
+			fallthrough
 		case "5":
+			fallthrough
 		case "6":
+			fallthrough
 		case "7":
+			fallthrough
 		case "8":
+			fallthrough
+		case "9":
+			fallthrough
+		case "10":
+			fallthrough
+		case "11":
+			fallthrough
+		case "12":
+			fallthrough
+		case "13":
+			fallthrough
+		case "14":
+			fallthrough
+		case "15":
+			iterateChildren(node, nodes, textLookup, func(child gonx.Node, idx string) {
+				var id int32
+				var prob int32
+
+				for j := uint32(0); j < uint32(child.ChildCount); j++ {
+					option := nodes[child.ChildID+j]
+					key := textLookup[option.NameID]
+
+					switch key {
+					case "id":
+						id = gonx.DataToInt32(option.Data)
+					case "prob":
+						prob = gonx.DataToInt32(option.Data)
+					default:
+						log.Println("Unsupported NX item child option:", key, "->", option.Data)
+					}
+				}
+
+				if id > 0 && prob > 0 {
+					item.SpawnMobs[id] = prob
+				}
+			})
 		case "inc":
 		case "morph":
 		default:
