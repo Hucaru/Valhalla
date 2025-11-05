@@ -1088,23 +1088,7 @@ func (d *Player) moveItem(start, end, amount int16, invID byte) error {
 			return fmt.Errorf("unable to take Item")
 		}
 
-		if len(dropItem.spawnMobs) > 0 {
-			d.inst.dropPool.createDrop(dropSpawnDisappears, dropSpawnDisappears, 0, d.pos, true, d.ID, 0, dropItem)
-
-			for mobID, prob := range item.spawnMobs {
-				if prob >= int32(d.randIntn(100)) {
-					summonType := constant.MobSummonTypePoof
-
-					switch mobID {
-					case constant.MobBalrog:
-						summonType = constant.MobSummonTypeJrBalrog
-					}
-					d.inst.lifePool.spawnMobFromID(mobID, d.pos, false, true, true, summonType, d.ID)
-				}
-			}
-		} else {
-			d.inst.dropPool.createDrop(dropSpawnNormal, dropFreeForAll, 0, d.pos, true, d.ID, 0, dropItem)
-		}
+		d.inst.dropPool.createDrop(dropSpawnNormal, dropFreeForAll, 0, d.pos, true, d.ID, 0, dropItem)
 
 		return nil
 	}

@@ -170,6 +170,8 @@ func (server *Server) HandleClientPacket(conn mnet.Client, reader mpacket.Reader
 		server.playerPetInteraction(conn, reader)
 	case opcode.RecvChannelPetLoot:
 		server.playerPetLoot(conn, reader)
+	case opcode.RecvChannelUseSack:
+		server.playerUseSack(conn, reader)
 	default:
 		unknownPacketsTotal.Inc()
 		// Let's send a no change to make sure characters aren't stuck on unknown packets
@@ -3259,43 +3261,36 @@ func (server *Server) guildManagement(conn mnet.Client, reader mpacket.Reader) {
 	}
 }
 
-func (server *Server) guildInviteResult(conn mnet.Server, reader mpacket.Reader) {
-	op := reader.ReadByte()
+func (server *Server) playerUseSack(conn mnet.Client, reader mpacket.Reader) {
+	slot := reader.ReadInt16()
+	itemID := reader.ReadInt32()
 
-	switch op {
-	case 0x36: // client sends this when it receives Player is dealing with another invitation
-		inviter := reader.ReadString(reader.ReadInt16())
-		invitee := reader.ReadString(reader.ReadInt16())
-		_, _ = inviter, invitee
-	case constant.GuildRejectInvite: // reject
-		inviterName := reader.ReadString(reader.ReadInt16())
-		inviteeName := reader.ReadString(reader.ReadInt16())
+	plr, err := server.players.GetFromConn(conn)
 
-		var guildID, playerID int32
+	if err != nil {
+		return
+	}
 
-		query := "SELECT guildID FROM characters WHERE Name=?"
-		err := common.DB.QueryRow(query, inviterName).Scan(&guildID)
+	sack, err := plr.takeItem(itemID, slot, 1, 2)
 
-		if err != nil {
-			log.Fatal(err)
+	if err != nil {
+		log.Println("Could not find sack")
+		return
+	}
+
+	if len(sack.spawnMobs) > 0 {
+		for mobID, prob := range sack.spawnMobs {
+			if prob >= int32(plr.randIntn(100)) {
+				summonType := constant.MobSummonTypePoof
+
+				switch mobID {
+				case constant.MobBalrog:
+					summonType = constant.MobSummonTypeJrBalrog
+				}
+
+				plr.inst.lifePool.spawnMobFromID(mobID, plr.pos, false, true, true, summonType, plr.ID)
+			}
 		}
-
-		query = "SELECT ID FROM characters WHERE Name=?"
-		err = common.DB.QueryRow(query, inviteeName).Scan(&playerID)
-
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		query = "DELETE FROM guild_invites WHERE playerID=? AND guildID=?"
-
-		if _, err = common.DB.Exec(query, playerID, guildID); err != nil {
-			log.Fatal(err)
-		}
-
-		server.world.Send(internal.PacketGuildInviteReject(inviterName, inviteeName))
-	default:
-		log.Println("Unknown guild invite operation", op, reader)
 	}
 
 }
