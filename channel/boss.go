@@ -32,14 +32,13 @@ func manageSummonedBoss(inst *fieldInstance, mobID int32, server *Server) {
 			}
 
 			inst.dispatch <- func() {
-				for _, mob := range inst.lifePool.mobs {
-					if mob.boss {
-						return
-					}
+				if len(inst.players) <= 0 {
+					inst.lifePool.eraseMobs()
+					inst.dropPool.eraseDrops()
+					inst.reactorPool.reset(false)
+					inst.properties["eventActive"] = false
+					finished.Store(true)
 				}
-
-				inst.properties["eventActive"] = false
-				finished.Store(true)
 			}
 		case <-timeout.C:
 			var returnMap int32
@@ -78,6 +77,7 @@ func manageSummonedBoss(inst *fieldInstance, mobID int32, server *Server) {
 				}
 
 				inst.lifePool.eraseMobs()
+				inst.dropPool.eraseDrops()
 				inst.reactorPool.reset(false)
 				inst.properties["eventActive"] = false
 			}
