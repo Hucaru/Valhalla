@@ -833,13 +833,17 @@ func (server Server) playerUsePortal(conn mnet.Client, reader mpacket.Reader) {
 				return p, nil
 			}
 		}
-		for _, p := range dstInst.portals {
+		for i, p := range dstInst.portals {
 			if p.destFieldID == backToMapID && p.destName == srcName {
+				// Set portal ID to its index in the array, as the client uses this as an array index
+				p.id = byte(i)
 				return p, nil
 			}
 		}
-		for _, p := range dstInst.portals {
+		for i, p := range dstInst.portals {
 			if p.destFieldID == backToMapID {
+				// Set portal ID to its index in the array, as the client uses this as an array index
+				p.id = byte(i)
 				return p, nil
 			}
 		}
