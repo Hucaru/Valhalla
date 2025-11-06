@@ -36,12 +36,6 @@ func (server *Server) playerCashShopPurchase(conn mnet.Client, reader mpacket.Re
 			return
 		}
 
-		// block super megaphones
-		if commodity.ItemID >= 5390000 && commodity.ItemID <= 5390002 {
-			plr.Send(packetCashShopUpdateAmounts(plrNX, plrMaplePoints))
-			return
-		}
-
 		// Determine quantity
 		count := int16(1)
 		if commodity.Count > 0 {

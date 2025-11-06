@@ -1338,20 +1338,16 @@ func (server *Server) playerUseCash(conn mnet.Client, reader mpacket.Reader) {
 
 	switch itemID {
 	case constant.ItemSafetyCharm:
-		// Safety charm prevents exp loss on death - set flag
 		plr.hasSafetyCharm = true
 		used = true
 
 	case constant.ItemAPReset:
-		// Read stat up and stat down from packet
 		statUp := reader.ReadInt32()
 		statDown := reader.ReadInt32()
-		
-		// Validate stats are valid
+
 		if (statUp == constant.StrID || statUp == constant.DexID || statUp == constant.IntID || statUp == constant.LukID) &&
 			(statDown == constant.StrID || statDown == constant.DexID || statDown == constant.IntID || statDown == constant.LukID) &&
 			statUp != statDown {
-			// Basic validation: ensure we have points to take from statDown
 			canReset := false
 			switch statDown {
 			case constant.StrID:
@@ -1365,7 +1361,6 @@ func (server *Server) playerUseCash(conn mnet.Client, reader mpacket.Reader) {
 			}
 
 			if canReset {
-				// Remove 1 from stat down
 				switch statDown {
 				case constant.StrID:
 					plr.setStr(plr.str - 1)
@@ -1377,7 +1372,6 @@ func (server *Server) playerUseCash(conn mnet.Client, reader mpacket.Reader) {
 					plr.setLuk(plr.luk - 1)
 				}
 
-				// Add 1 to stat up
 				switch statUp {
 				case constant.StrID:
 					plr.setStr(plr.str + 1)
@@ -1394,175 +1388,127 @@ func (server *Server) playerUseCash(conn mnet.Client, reader mpacket.Reader) {
 		}
 
 	case constant.ItemSPResetFirstJob, constant.ItemSPResetSecondJob, constant.ItemSPResetThirdJob:
-		// Read skill up and skill down from packet
 		skillUp := reader.ReadInt32()
 		skillDown := reader.ReadInt32()
-		
-		// Get the skills and validate they exist
+
 		skillUpData, okUp := plr.skills[skillUp]
 		skillDownData, okDown := plr.skills[skillDown]
-		
+
 		if okUp && okDown && skillDownData.Level > 0 {
-			// Remove 1 level from skill down
 			skillDownData.Level--
 			if skillDownData.Level == 0 {
 				delete(plr.skills, skillDown)
 			} else {
 				plr.updateSkill(skillDownData)
 			}
-			
-			// Add 1 level to skill up
+
 			skillUpData.Level++
 			plr.updateSkill(skillUpData)
-			
+
 			used = true
 		}
 
 	case constant.ItemVIPTeleportRock, constant.ItemRegTeleportRock:
-		// Read teleport mode and data
 		mode := reader.ReadByte()
-		
+
 		if mode == 0x01 {
-			// Teleport to player - read player name
 			targetName := reader.ReadString(reader.ReadInt16())
-			
-			// Find target player on this channel
+
 			targetPlr, err := server.players.GetFromName(targetName)
 			if err != nil {
-				// Player not found on this channel
-				plr.Send(packetPlayerNoChange())
+				plr.Send(packetMessageRedText(fmt.Sprintf("Player %s not found in current channel.", targetName)))
 				return
 			}
-			
-			// Get target player's map
+
 			targetField, ok := server.fields[targetPlr.mapID]
 			if !ok {
 				plr.Send(packetPlayerNoChange())
 				return
 			}
-			
-			// Get a portal from the target map
+
 			targetInst, err := targetField.getInstance(targetPlr.inst.id)
 			if err != nil {
 				plr.Send(packetPlayerNoChange())
 				return
 			}
-			
+
 			portal, err := targetInst.getRandomSpawnPortal()
 			if err != nil {
 				plr.Send(packetPlayerNoChange())
 				return
 			}
-			
-			// Warp to the target player's map
+
 			if err := server.warpPlayer(plr, targetField, portal, false); err != nil {
 				log.Println("Teleport rock warp error:", err)
 				plr.Send(packetPlayerNoChange())
 				return
 			}
-			
+
 			used = true
 		} else {
-			// Teleport to saved map - read map ID
 			mapID := reader.ReadInt32()
-			
-			// Get the destination map
+
 			targetField, ok := server.fields[mapID]
 			if !ok {
 				plr.Send(packetPlayerNoChange())
 				return
 			}
-			
-			// Get a portal from the target map
+
 			targetInst, err := targetField.getInstance(0)
 			if err != nil {
 				plr.Send(packetPlayerNoChange())
 				return
 			}
-			
+
 			portal, err := targetInst.getRandomSpawnPortal()
 			if err != nil {
 				plr.Send(packetPlayerNoChange())
 				return
 			}
-			
-			// Warp to the saved map
+
 			if err := server.warpPlayer(plr, targetField, portal, false); err != nil {
 				log.Println("Teleport rock warp error:", err)
 				plr.Send(packetPlayerNoChange())
 				return
 			}
-			
+
 			used = true
 		}
 
 	case constant.ItemPetNameTag:
-		// Read new pet name from packet
 		newName := reader.ReadString(reader.ReadInt16())
-		
-		// Check if player has a spawned pet
+
 		if plr.pet != nil && plr.pet.spawned {
-			// Update pet name
 			plr.pet.name = newName
-			
-			// Mark dirty for database persistence
+
 			plr.MarkDirty(DirtyPet, time.Millisecond*300)
-			
-			// Broadcast name change to field
+
 			if plr.inst != nil {
 				plr.inst.send(packetPetNameChange(plr.ID, newName))
 			}
-			
+
 			used = true
 		}
 
 	case constant.ItemWaterOfLife:
-		// Water of Life revives dead pet
-		// Implementation would require pet revival logic
 		log.Printf("Water of Life not fully implemented")
 
 	case constant.ItemMegaphone, constant.ItemSuperMegaphone:
-		// Read message from packet
 		msg := reader.ReadString(reader.ReadInt16())
-		
+
 		if itemID == constant.ItemMegaphone {
-			// Regular megaphone - broadcast to current channel
 			server.players.broadcast(packetMessageBroadcastChannel(plr.Name, msg, server.id, false))
 			used = true
 		} else {
-			// Super megaphone - broadcast to all channels via world server
 			whisper := reader.ReadBool()
-			// Note: whisper flag determines if ears appear on the megaphone message
-			// For now, we send it to world server for proper handling
-			p := mpacket.CreateInternal(opcode.ChannelPlayerChatEvent)
-			p.WriteByte(internal.OpChatMegaphone) // megaphone broadcast
-			p.WriteString(plr.Name)
-			p.WriteString(msg)
-			p.WriteBool(whisper)
-			server.world.Send(p)
+			server.world.Send(internal.PacketChatMegaphone(plr.Name, msg, whisper))
 			used = true
 		}
 
-	case constant.ItemHeartSMegaphone, constant.ItemSkullSMegaphone:
-		// Read message from packet
-		msg := reader.ReadString(reader.ReadInt16())
-		whisper := reader.ReadBool()
-		
-		// Broadcast to all channels via world server with icon
-		p := mpacket.CreateInternal(opcode.ChannelPlayerChatEvent)
-		p.WriteByte(internal.OpChatMegaphone) // megaphone broadcast
-		p.WriteString(plr.Name)
-		p.WriteString(msg)
-		p.WriteBool(whisper)
-		server.world.Send(p)
-		used = true
-
 	case constant.ItemWeatherCandy, constant.ItemWeatherFlower, constant.ItemWeatherFireworks, constant.ItemWeatherSoap, constant.ItemWeatherSnow, constant.ItemWeatherSnowFlakes,
-		constant.ItemWeatherPresents, constant.ItemWeatherLeaves, constant.ItemWeatherChocolate:
-		// Read message from packet
+		constant.ItemWeatherPresents, constant.ItemWeatherLeaves, constant.ItemWeatherChocolate, constant.ItemWeatherFlowers:
 		msg := reader.ReadString(reader.ReadInt16())
-		
-		// Create weather effect on current map that persists for 30 seconds
+
 		if plr.inst != nil {
 			if plr.inst.startWeatherEffect(itemID, msg) {
 				used = true
@@ -1581,9 +1527,10 @@ func (server *Server) playerUseCash(conn mnet.Client, reader mpacket.Reader) {
 			log.Println(err)
 			return
 		}
-	} else {
-		plr.Send(packetPlayerNoChange())
 	}
+
+	plr.Send(packetPlayerNoChange())
+
 }
 
 func (server Server) playerPickupItem(conn mnet.Client, reader mpacket.Reader) {
