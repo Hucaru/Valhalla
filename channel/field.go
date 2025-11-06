@@ -695,47 +695,62 @@ func (inst fieldInstance) sendExcept(p mpacket.Packet, exception mnet.Client) {
 }
 
 func (inst fieldInstance) getRandomSpawnPortal() (portal, error) {
-	portals := []portal{}
+	var spawnPortals []struct {
+		portal portal
+		index  int
+	}
 
-	for _, p := range inst.portals {
+	for i, p := range inst.portals {
 		if p.name == "sp" {
-			portals = append(portals, p)
+			spawnPortals = append(spawnPortals, struct {
+				portal portal
+				index  int
+			}{p, i})
 		}
 	}
 
-	if len(portals) == 0 {
+	if len(spawnPortals) == 0 {
 		return portal{}, fmt.Errorf("No spawn portals in map")
 	}
 
-	return portals[rand.Intn(len(portals))], nil
+	selected := spawnPortals[rand.Intn(len(spawnPortals))]
+	// Set portal ID to its index in the array, as the client uses this as an array index
+	selected.portal.id = byte(selected.index)
+	return selected.portal, nil
 }
 
 func (inst fieldInstance) calculateNearestSpawnPortalID(pos pos) (byte, error) {
-	var portal portal
+	var nearestPortal portal
+	var nearestIndex int
 	found := true
 	err := fmt.Errorf("Portal not found")
 
-	for _, p := range inst.portals {
+	for i, p := range inst.portals {
 		if p.name == "sp" && found {
-			portal = p
+			nearestPortal = p
+			nearestIndex = i
 			found = false
 			err = nil
 		} else if p.name == "sp" {
-			delta1 := portal.pos.calcDistanceSquare(pos)
+			delta1 := nearestPortal.pos.calcDistanceSquare(pos)
 			delta2 := p.pos.calcDistanceSquare(pos)
 
 			if delta2 < delta1 {
-				portal = p
+				nearestPortal = p
+				nearestIndex = i
 			}
 		}
 	}
 
-	return portal.id, err
+	// Return the index in the array, as the client uses this as an array index
+	return byte(nearestIndex), err
 }
 
 func (inst fieldInstance) getPortalFromName(name string) (portal, error) {
-	for _, p := range inst.portals {
+	for i, p := range inst.portals {
 		if p.name == name {
+			// Set portal ID to its index in the array, as the client uses this as an array index
+			p.id = byte(i)
 			return p, nil
 		}
 	}
@@ -744,8 +759,10 @@ func (inst fieldInstance) getPortalFromName(name string) (portal, error) {
 }
 
 func (inst fieldInstance) getPortalFromID(id byte) (portal, error) {
-	for _, p := range inst.portals {
+	for i, p := range inst.portals {
 		if p.id == id {
+			// Set portal ID to its index in the array, as the client uses this as an array index
+			p.id = byte(i)
 			return p, nil
 		}
 	}
