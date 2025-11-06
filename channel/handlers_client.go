@@ -368,13 +368,7 @@ func (server *Server) playerChangeChannel(conn mnet.Client, reader mpacket.Reade
 				log.Println(err)
 				return
 			}
-			packetChangeChannel := func(ip []byte, port int16) mpacket.Packet {
-				p := mpacket.CreateWithOpcode(opcode.SendChannelChange)
-				p.WriteBool(true)
-				p.WriteBytes(ip)
-				p.WriteInt16(port)
-				return p
-			}
+
 			conn.Send(packetChangeChannel(server.channels[id].IP, server.channels[id].Port))
 		}
 	}
@@ -436,14 +430,6 @@ func (server Server) playerEmote(conn mnet.Client, reader mpacket.Reader) {
 
 	if err != nil {
 		return
-	}
-
-	packetPlayerEmoticon := func(charID int32, emotion int32) mpacket.Packet {
-		p := mpacket.CreateWithOpcode(opcode.SendChannelPlayerEmoticon)
-		p.WriteInt32(charID)
-		p.WriteInt32(emotion)
-
-		return p
 	}
 
 	inst.sendExcept(packetPlayerEmoticon(plr.ID, emote), plr.Conn)
