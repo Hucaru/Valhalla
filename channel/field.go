@@ -767,7 +767,7 @@ func (inst fieldInstance) getPortalFromID(id byte) (portal, error) {
 		}
 	}
 
-	return portal{}, fmt.Errorf("No portal with that Name")
+	return portal{}, fmt.Errorf("No portal with that ID")
 }
 
 func (inst *fieldInstance) startFieldTimer() {
