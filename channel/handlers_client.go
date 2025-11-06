@@ -1396,6 +1396,11 @@ func (server *Server) playerUseCash(conn mnet.Client, reader mpacket.Reader) {
 		skillUpData, okUp := plr.skills[skillUp]
 		skillDownData, okDown := plr.skills[skillDown]
 
+		if plr.skills[skillUp].Mastery < skillUpData.Level+1 {
+			plr.Send(packetPlayerNoChange())
+			return
+		}
+
 		if okUp && okDown && skillDownData.Level > 0 {
 			skillDownData.Level--
 			if skillDownData.Level == 0 {
@@ -1413,7 +1418,7 @@ func (server *Server) playerUseCash(conn mnet.Client, reader mpacket.Reader) {
 	case constant.ItemVIPTeleportRock, constant.ItemRegTeleportRock:
 		mode := reader.ReadByte()
 
-		if mode == 0x01 {
+		if mode == constant.TeleportToName {
 			targetName := reader.ReadString(reader.ReadInt16())
 
 			targetPlr, err := server.players.GetFromName(targetName)
@@ -1500,13 +1505,11 @@ func (server *Server) playerUseCash(conn mnet.Client, reader mpacket.Reader) {
 
 		if itemID == constant.ItemMegaphone {
 			server.players.broadcast(packetMessageBroadcastChannel(plr.Name, msg, server.id, false))
-			used = true
 		} else {
 			whisper := reader.ReadBool()
 			server.world.Send(internal.PacketChatMegaphone(plr.Name, msg, whisper))
-			used = true
 		}
-
+		used = true
 	case constant.ItemWeatherCandy, constant.ItemWeatherFlower, constant.ItemWeatherFireworks, constant.ItemWeatherSoap, constant.ItemWeatherSnow, constant.ItemWeatherSnowFlakes,
 		constant.ItemWeatherPresents, constant.ItemWeatherLeaves, constant.ItemWeatherChocolate, constant.ItemWeatherFlowers:
 		msg := reader.ReadString(reader.ReadInt16())
@@ -1524,8 +1527,7 @@ func (server *Server) playerUseCash(conn mnet.Client, reader mpacket.Reader) {
 	}
 
 	if used {
-		_, err = plr.takeItem(itemID, slot, 1, 5)
-		if err != nil {
+		if _, err = plr.takeItem(itemID, slot, 1, 5); err != nil {
 			log.Println(err)
 			return
 		}
