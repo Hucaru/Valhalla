@@ -86,6 +86,8 @@ type Item struct {
 	twoHanded  bool
 	pet        bool
 	petData    *pet
+
+	spawnMobs map[int32]int32
 }
 
 const neverExpire int64 = 150842304000000000
@@ -179,6 +181,7 @@ func loadInventoryFromDb(charID int32) ([]Item, []Item, []Item, []Item, []Item) 
 				}
 			}
 			item.buffTime = nxInfo.Time
+			item.spawnMobs = nxInfo.SpawnMobs
 		}
 
 		item.calculateWeaponType()
@@ -275,6 +278,7 @@ func createBiasItemFromID(id int32, amount int16, bias int8, average bool) (Item
 	newItem.reqLevel = nxInfo.ReqLevel
 	newItem.upgradeSlots = nxInfo.Tuc
 	newItem.pet = nxInfo.Pet
+	newItem.spawnMobs = nxInfo.SpawnMobs
 
 	if amount < 1 {
 		amount = 1

@@ -997,6 +997,47 @@ func (server Server) handleGuildEvent(conn mnet.Server, reader mpacket.Reader) {
 	}
 }
 
+func (server *Server) guildInviteResult(conn mnet.Server, reader mpacket.Reader) {
+	op := reader.ReadByte()
+
+	switch op {
+	case 0x36: // client sends this when it receives Player is dealing with another invitation
+		inviter := reader.ReadString(reader.ReadInt16())
+		invitee := reader.ReadString(reader.ReadInt16())
+		_, _ = inviter, invitee
+	case constant.GuildRejectInvite: // reject
+		inviterName := reader.ReadString(reader.ReadInt16())
+		inviteeName := reader.ReadString(reader.ReadInt16())
+
+		var guildID, playerID int32
+
+		query := "SELECT guildID FROM characters WHERE Name=?"
+		err := common.DB.QueryRow(query, inviterName).Scan(&guildID)
+
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		query = "SELECT ID FROM characters WHERE Name=?"
+		err = common.DB.QueryRow(query, inviteeName).Scan(&playerID)
+
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		query = "DELETE FROM guild_invites WHERE playerID=? AND guildID=?"
+
+		if _, err = common.DB.Exec(query, playerID, guildID); err != nil {
+			log.Fatal(err)
+		}
+
+		server.world.Send(internal.PacketGuildInviteReject(inviterName, inviteeName))
+	default:
+		log.Println("Unknown guild invite operation", op, reader)
+	}
+
+}
+
 func (server *Server) playerQuestOperation(conn mnet.Client, reader mpacket.Reader) {
 	plr, err := server.players.GetFromConn(conn)
 	if err != nil {

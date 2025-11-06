@@ -34,6 +34,7 @@ const (
 	RecvChannelInvUseItem          byte = 0x2E
 	RecvChannelChairHeal           byte = 0x30
 	RecvChannelInvUseCashItem      byte = 0x33
+	RecvChannelUseSack             byte = 0x31
 	RecvChannelNearestTown         byte = 0x34
 	RecvChannelUseScroll           byte = 0x35
 	RecvChannelAddStatPoint        byte = 0x36
