@@ -332,6 +332,17 @@ const (
 )
 
 const (
+	// Broadcast message types
+	BroadcastNotice        byte = 0x00 // Blue text no highlight
+	BroadcastPopupBox      byte = 0x01 // Pop-up text window
+	BroadcastMegaphone     byte = 0x02 // Blue text with highlight
+	BroadcastSuperMegaphone byte = 0x03 // Red text with bright pink highlight
+	BroadcastHeader        byte = 0x04 // Scrolling header
+	BroadcastRedText       byte = 0x05 // Red text with no highlight
+	BroadcastBlue          byte = 0x06 // Blue text without [Notice]
+)
+
+const (
 	ItemMesoMagnet        = 1812000
 	ItemItemPouch         = 1812001
 	ItemRegTeleportRock   = 5040000

@@ -262,6 +262,9 @@ type Player struct {
 	dirty DirtyBits
 
 	lastChairHeal time.Time
+	
+	// Safety charm flag - prevents exp loss on death
+	hasSafetyCharm bool
 }
 
 // Helper: mark dirty and schedule debounced save.

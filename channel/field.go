@@ -552,6 +552,11 @@ type fieldInstance struct {
 
 	bgm string
 
+	// Weather effect state
+	weatherID      int32
+	weatherMessage string
+	weatherTimer   *time.Timer
+
 	fhHist fhHistogram
 }
 
@@ -572,6 +577,41 @@ func (inst *fieldInstance) changeBgm(path string) {
 
 	for _, plr := range inst.players {
 		plr.Send(packetBgmChange(path))
+	}
+}
+
+func (inst *fieldInstance) startWeatherEffect(itemID int32, msg string) bool {
+	// If weather is already active, don't start a new one
+	if inst.weatherID != 0 {
+		return false
+	}
+
+	inst.weatherID = itemID
+	inst.weatherMessage = msg
+
+	// Send weather effect to all players in the instance
+	inst.send(packetBlowWeather(itemID, msg))
+
+	// Set up timer to stop weather effect after 30 seconds
+	inst.weatherTimer = time.AfterFunc(30*time.Second, func() {
+		inst.dispatch <- func() {
+			inst.stopWeatherEffect()
+		}
+	})
+
+	return true
+}
+
+func (inst *fieldInstance) stopWeatherEffect() {
+	inst.weatherID = 0
+	inst.weatherMessage = ""
+
+	// Send weather stop packet (itemID 0 means stop)
+	inst.send(packetBlowWeather(0, ""))
+
+	if inst.weatherTimer != nil {
+		inst.weatherTimer.Stop()
+		inst.weatherTimer = nil
 	}
 }
 
@@ -598,6 +638,11 @@ func (inst *fieldInstance) addPlayer(plr *Player) error {
 
 	if inst.showBoat {
 		displayBoat(plr, inst.showBoat, inst.boatType)
+	}
+
+	// Send weather effect if active
+	if inst.weatherID != 0 {
+		plr.Send(packetBlowWeather(inst.weatherID, inst.weatherMessage))
 	}
 
 	inst.players = append(inst.players, plr)
@@ -933,6 +978,14 @@ func packetEnvironmentChange(setting int32, value string) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelMapEffect)
 	p.WriteInt32(setting)
 	p.WriteString(value)
+	return p
+}
+
+func packetBlowWeather(itemID int32, msg string) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelBlowWeather)
+	p.WriteBool(false) // isAdmin flag
+	p.WriteInt32(itemID)
+	p.WriteString(msg)
 	return p
 }
 
