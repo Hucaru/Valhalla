@@ -332,8 +332,31 @@ const (
 )
 
 const (
-	ItemMesoMagnet = 1812000
-	ItemItemPouch  = 1812001
+	ItemMesoMagnet        = 1812000
+	ItemItemPouch         = 1812001
+	ItemRegTeleportRock   = 5040000
+	ItemVIPTeleportRock   = 5041000
+	ItemAPReset           = 5050000
+	ItemSPResetFirstJob   = 5050001
+	ItemSPResetSecondJob  = 5050002
+	ItemSPResetThirdJob   = 5050003
+	ItemMegaphone         = 5071000
+	ItemSuperMegaphone    = 5072000
+	ItemHeartSMegaphone   = 5073000
+	ItemSkullSMegaphone   = 5074000
+	ItemWeatherSnow       = 5120000
+	ItemWeatherFlowers    = 5120001
+	ItemWeatherSoap       = 5120002
+	ItemWeatherSnowFlakes = 5120003
+	ItemWeatherPresents   = 5120004
+	ItemWeatherChocolate  = 5120005
+	ItemWeatherFlower     = 5120006
+	ItemWeatherCandy      = 5120007
+	ItemWeatherLeaves     = 5120008
+	ItemWeatherFireworks  = 5120009
+	ItemSafetyCharm       = 5130000
+	ItemPetNameTag        = 5170000
+	ItemWaterOfLife       = 5180000
 )
 
 // Login result codes

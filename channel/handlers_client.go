@@ -72,6 +72,8 @@ func (server *Server) HandleClientPacket(conn mnet.Client, reader mpacket.Reader
 		server.playerStand(conn, reader)
 	case opcode.RecvChannelChairHeal:
 		server.playerChairHeal(conn, reader)
+	case opcode.RecvChannelInvUseCashItem:
+		server.playerUseCash(conn, reader)
 	case opcode.RecvChannelPlayerUseChair:
 		server.playerUseChair(conn, reader)
 	case opcode.RecvChannelMeleeSkill:
@@ -1320,6 +1322,40 @@ func (server *Server) playerUseScroll(conn mnet.Client, reader mpacket.Reader) {
 			plr.Send(packetInventoryAddItem(*equip, true))
 			plr.Send(packetUseScroll(plr.ID, false, false, false))
 		}
+	}
+}
+
+func (server *Server) playerUseCash(conn mnet.Client, reader mpacket.Reader) {
+	plr, err := server.players.GetFromConn(conn)
+	if err != nil {
+		return
+	}
+
+	slot := reader.ReadInt16()
+	itemID := reader.ReadInt32()
+
+	switch itemID {
+	case constant.ItemSafetyCharm:
+	case constant.ItemAPReset:
+	case constant.ItemSPResetFirstJob, constant.ItemSPResetSecondJob, constant.ItemSPResetThirdJob:
+	case constant.ItemVIPTeleportRock, constant.ItemRegTeleportRock:
+	case constant.ItemPetNameTag:
+	case constant.ItemWaterOfLife:
+	case constant.ItemMegaphone, constant.ItemSuperMegaphone:
+	case constant.ItemHeartSMegaphone, constant.ItemSkullSMegaphone:
+	case constant.ItemWeatherCandy, constant.ItemWeatherFlower, constant.ItemWeatherFireworks, constant.ItemWeatherSoap, constant.ItemWeatherSnow, constant.ItemWeatherSnowFlakes,
+		constant.ItemWeatherPresents, constant.ItemWeatherLeaves, constant.ItemWeatherChocolate:
+
+	default:
+		log.Printf("Unhandled Cash Item Use: %d", itemID)
+		plr.Send(packetPlayerNoChange())
+		return
+	}
+
+	_, err = plr.takeItem(itemID, slot, 1, 5)
+	if err != nil {
+		log.Println(err)
+		return
 	}
 }
 
