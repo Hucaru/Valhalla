@@ -730,7 +730,7 @@ func (d *Player) GiveItem(newItem Item) (error, Item) { // TODO: Refactor
 	}
 
 	switch newItem.invID {
-	case 1: // Equip
+	case constant.InventoryEquip: // Equip
 		slotID, err := findFirstEmptySlot(d.equip, d.equipSlotSize)
 		if err != nil {
 			return err, Item{}
@@ -741,7 +741,7 @@ func (d *Player) GiveItem(newItem Item) (error, Item) { // TODO: Refactor
 		d.equip = append(d.equip, newItem)
 		d.Send(packetInventoryAddItem(newItem, true))
 
-	case 2: // Use
+	case constant.InventoryUse: // Use
 		if isRechargeable(newItem.ID) {
 			slotID, err := findFirstEmptySlot(d.use, d.useSlotSize)
 			if err != nil {
@@ -806,7 +806,7 @@ func (d *Player) GiveItem(newItem Item) (error, Item) { // TODO: Refactor
 			}
 		}
 
-	case 3: // Set-up
+	case constant.InventorySetup: // Set-up
 		slotID, err := findFirstEmptySlot(d.setUp, d.setupSlotSize)
 		if err != nil {
 			return err, Item{}
@@ -816,7 +816,7 @@ func (d *Player) GiveItem(newItem Item) (error, Item) { // TODO: Refactor
 		d.setUp = append(d.setUp, newItem)
 		d.Send(packetInventoryAddItem(newItem, true))
 
-	case 4: // Etc
+	case constant.InventoryEtc: // Etc
 		size := newItem.amount
 		for size > 0 {
 			var value int16 = 200
@@ -868,7 +868,7 @@ func (d *Player) GiveItem(newItem Item) (error, Item) { // TODO: Refactor
 			}
 		}
 
-	case 5: // Cash
+	case constant.InventoryCash: // Cash
 		slotID, err := findFirstEmptySlot(d.cash, d.cashSlotSize)
 		if err != nil {
 			return err, Item{}
@@ -936,30 +936,30 @@ func (d *Player) updateItem(new Item) {
 
 func (d *Player) updateItemInventory(invID byte, inventory []Item) {
 	switch invID {
-	case 1:
+	case constant.InventoryEquip:
 		d.equip = inventory
-	case 2:
+	case constant.InventoryUse:
 		d.use = inventory
-	case 3:
+	case constant.InventorySetup:
 		d.setUp = inventory
-	case 4:
+	case constant.InventoryEtc:
 		d.etc = inventory
-	case 5:
+	case constant.InventoryCash:
 		d.cash = inventory
 	}
 }
 
 func (d *Player) findItemInventory(item Item) []Item {
 	switch item.invID {
-	case 1:
+	case constant.InventoryEquip:
 		return d.equip
-	case 2:
+	case constant.InventoryUse:
 		return d.use
-	case 3:
+	case constant.InventorySetup:
 		return d.setUp
-	case 4:
+	case constant.InventoryEtc:
 		return d.etc
-	case 5:
+	case constant.InventoryCash:
 		return d.cash
 	}
 
@@ -970,15 +970,15 @@ func (d Player) getItem(invID byte, slotID int16) (Item, error) {
 	var items []Item
 
 	switch invID {
-	case 1:
+	case constant.InventoryEquip:
 		items = d.equip
-	case 2:
+	case constant.InventoryUse:
 		items = d.use
-	case 3:
+	case constant.InventorySetup:
 		items = d.setUp
-	case 4:
+	case constant.InventoryEtc:
 		items = d.etc
-	case 5:
+	case constant.InventoryCash:
 		items = d.cash
 	}
 
@@ -1005,7 +1005,7 @@ func (d *Player) swapItems(item1, item2 Item, start, end int16) {
 
 func (d *Player) removeItem(item Item) {
 	switch item.invID {
-	case 1:
+	case constant.InventoryEquip:
 		for i, v := range d.equip {
 			if v.dbID == item.dbID {
 				d.equip[i] = d.equip[len(d.equip)-1]
@@ -1013,7 +1013,7 @@ func (d *Player) removeItem(item Item) {
 				break
 			}
 		}
-	case 2:
+	case constant.InventoryUse:
 		for i, v := range d.use {
 			if v.dbID == item.dbID {
 				d.use[i] = d.use[len(d.use)-1]
@@ -1021,7 +1021,7 @@ func (d *Player) removeItem(item Item) {
 				break
 			}
 		}
-	case 3:
+	case constant.InventorySetup:
 		for i, v := range d.setUp {
 			if v.dbID == item.dbID {
 				d.setUp[i] = d.setUp[len(d.setUp)-1]
@@ -1029,7 +1029,7 @@ func (d *Player) removeItem(item Item) {
 				break
 			}
 		}
-	case 4:
+	case constant.InventoryEtc:
 		for i, v := range d.etc {
 			if v.dbID == item.dbID {
 				d.etc[i] = d.etc[len(d.etc)-1]
@@ -1037,7 +1037,7 @@ func (d *Player) removeItem(item Item) {
 				break
 			}
 		}
-	case 5:
+	case constant.InventoryCash:
 		for i, v := range d.cash {
 			if v.dbID == item.dbID {
 				d.cash[i] = d.cash[len(d.cash)-1]
@@ -1392,27 +1392,27 @@ func (d *Player) setInventorySlotSizes(equip, use, setup, etc, cash byte) {
 
 func (d *Player) IncreaseSlotSize(invID, amount byte) error {
 	switch invID {
-	case 1:
+	case constant.InventoryEquip:
 		if d.equipSlotSize+amount > 255 {
 			return fmt.Errorf("cannot increase equip slot size beyond %d", 255)
 		}
 		d.equipSlotSize += amount
-	case 2:
+	case constant.InventoryUse:
 		if d.useSlotSize+amount > 255 {
 			return fmt.Errorf("cannot increase use slot size beyond %d", 255)
 		}
 		d.useSlotSize += amount
-	case 3:
+	case constant.InventorySetup:
 		if d.setupSlotSize+amount > 255 {
 			return fmt.Errorf("cannot increase setup slot size beyond %d", 255)
 		}
 		d.setupSlotSize += amount
-	case 4:
+	case constant.InventoryEtc:
 		if d.etcSlotSize+amount > 255 {
 			return fmt.Errorf("cannot increase etc slot size beyond %d", 255)
 		}
 		d.etcSlotSize += amount
-	case 5:
+	case constant.InventoryCash:
 		if d.cashSlotSize+amount > 255 {
 			return fmt.Errorf("cannot increase cash slot size beyond %d", 255)
 		}
@@ -2986,19 +2986,19 @@ func (p *Player) canReceiveItems(items []Item) bool {
 	for invType, needed := range invCounts {
 		var cur, max byte
 		switch invType {
-		case 1:
+		case constant.InventoryEquip:
 			cur = byte(len(p.equip))
 			max = p.equipSlotSize
-		case 2:
+		case constant.InventoryUse:
 			cur = byte(len(p.use))
 			max = p.useSlotSize
-		case 3:
+		case constant.InventorySetup:
 			cur = byte(len(p.setUp))
 			max = p.setupSlotSize
-		case 4:
+		case constant.InventoryEtc:
 			cur = byte(len(p.etc))
 			max = p.etcSlotSize
-		case 5:
+		case constant.InventoryCash:
 			cur = byte(len(p.cash))
 			max = p.cashSlotSize
 		default:
@@ -3013,20 +3013,21 @@ func (p *Player) canReceiveItems(items []Item) bool {
 
 func (d *Player) GetSlotSize(invID byte) int16 {
 	switch invID {
-	case 1:
+	case constant.InventoryEquip:
 		return int16(d.equipSlotSize)
-	case 2:
+	case constant.InventoryUse:
 		return int16(d.useSlotSize)
-	case 3:
+	case constant.InventorySetup:
 		return int16(d.setupSlotSize)
-	case 4:
+	case constant.InventoryEtc:
 		return int16(d.etcSlotSize)
-	case 5:
+	case constant.InventoryCash:
 		return int16(d.cashSlotSize)
 	}
 
-	return 0
+	return 24 // Base Slot size
 }
+
 func packetPlayerPetUpdate(sn int32) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelStatChange)
 	p.WriteBool(false)

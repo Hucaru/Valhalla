@@ -506,3 +506,11 @@ const (
 	CashShopErrorUnavailableDuringBeta              byte = 101
 	CashShopErrorInvalidDateOfBirth                 byte = 102
 )
+
+const (
+	InventoryEquip = 1
+	InventoryUse   = 2
+	InventorySetup = 3
+	InventoryEtc   = 4
+	InventoryCash  = 5
+)

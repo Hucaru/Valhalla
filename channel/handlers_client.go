@@ -1076,15 +1076,15 @@ func (server Server) playerMoveInventoryItem(conn mnet.Client, reader mpacket.Re
 	var maxInvSize byte
 
 	switch inv {
-	case 1:
+	case constant.InventoryEquip:
 		maxInvSize = plr.equipSlotSize
-	case 2:
+	case constant.InventoryUse:
 		maxInvSize = plr.useSlotSize
-	case 3:
+	case constant.InventorySetup:
 		maxInvSize = plr.setupSlotSize
-	case 4:
+	case constant.InventoryEtc:
 		maxInvSize = plr.etcSlotSize
-	case 5:
+	case constant.InventoryCash:
 		maxInvSize = plr.cashSlotSize
 	}
 
