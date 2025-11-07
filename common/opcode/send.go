@@ -38,6 +38,8 @@ const (
 	SendChannelBubblessChat           byte = 0x3D
 	SendChannelWhisper                byte = 0x3E
 	SendChannelMapEffect              byte = 0x40
+	SendChannelBlowWeather            byte = 0x41
+	SendChannelPlayJukebox            byte = 0x42
 	SendChannelEmployee               byte = 0x43
 	SendChannelQuizQAndA              byte = 0x44
 	SendChannelTimer                  byte = 0x46

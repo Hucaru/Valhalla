@@ -66,7 +66,7 @@ Channel server:
 - [x] Player skill logic (haste etc)
 - [x] Player inventory (needs a re-write)
 - [x] Player use item (scrolls, potions etc
-- [ ] Player use cash item (super megaphones, etc)
+- [x] Player use cash item (super megaphones, etc)
 - [x] Player drop item(s)
 - [x] Player pets
 - [x] NPC visible

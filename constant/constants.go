@@ -332,8 +332,42 @@ const (
 )
 
 const (
-	ItemMesoMagnet = 1812000
-	ItemItemPouch  = 1812001
+	// Broadcast message types
+	BroadcastNotice         byte = 0x00 // Blue text no highlight
+	BroadcastPopupBox       byte = 0x01 // Pop-up text window
+	BroadcastMegaphone      byte = 0x02 // Blue text with highlight
+	BroadcastSuperMegaphone byte = 0x03 // Red text with bright pink highlight
+	BroadcastHeader         byte = 0x04 // Scrolling header
+	BroadcastRedText        byte = 0x05 // Red text with no highlight
+	BroadcastBlue           byte = 0x06 // Blue text without [Notice]
+)
+
+const (
+	ItemMesoMagnet        = 1812000
+	ItemItemPouch         = 1812001
+	ItemRegTeleportRock   = 5040000
+	ItemVIPTeleportRock   = 5041000
+	ItemAPReset           = 5050000
+	ItemSPResetFirstJob   = 5050001
+	ItemSPResetSecondJob  = 5050002
+	ItemSPResetThirdJob   = 5050003
+	ItemMegaphone         = 5071000
+	ItemSuperMegaphone    = 5072000
+	ItemHeartSMegaphone   = 5073000
+	ItemSkullSMegaphone   = 5074000
+	ItemWeatherSnow       = 5120000
+	ItemWeatherFlowers    = 5120001
+	ItemWeatherSoap       = 5120002
+	ItemWeatherSnowFlakes = 5120003
+	ItemWeatherPresents   = 5120004
+	ItemWeatherChocolate  = 5120005
+	ItemWeatherFlower     = 5120006
+	ItemWeatherCandy      = 5120007
+	ItemWeatherLeaves     = 5120008
+	ItemWeatherFireworks  = 5120009
+	ItemSafetyCharm       = 5130000
+	ItemPetNameTag        = 5170000
+	ItemWaterOfLife       = 5180000
 )
 
 // Login result codes
@@ -439,4 +473,47 @@ const (
 	PortalPapulatus       = "in00"
 	PortalPianus          = "boss00"
 	PortalZakum           = "ps00"
+)
+
+const (
+	TeleportToName = 0x01
+)
+
+const (
+	CashShopNX          byte = 0x00
+	CashShopMaplePoints byte = 0x01
+
+	CashShopErrorUnknown                            byte = 0x00
+	CashShopErrorUnknownDC1                         byte = 80
+	CashShopErrorTimeRanOutTryAgain                 byte = 81
+	CashShopErrorUnknownDC2                         byte = 82
+	CashShopErrorNotEnoughCash                      byte = 83
+	CashShopErrorCantGiftUnder14                    byte = 84
+	CashShopErrorExceededGiftPriceLimit             byte = 85
+	CashShopErrorExceededNumberOfCashItems          byte = 86
+	CashShopErrorCheckNameOrGenderRestrictions      byte = 87
+	CashShopErrorCheckCouponNumber                  byte = 88
+	CashShopErrorRegisterCouponAtWebsite            byte = 91
+	CashShopErrorGenderRestrictionCoupon            byte = 92
+	CashShopErrorCouponOnlyForRegularItemsNoGifting byte = 93
+	CashShopErrorCheckFullInventory                 byte = 94
+	CashShopErrorPremiumInternetCafeOnly            byte = 95
+	CashShopErrorIneligibleRecipientNameOrGender    byte = 96
+	CashShopErrorItemsNotAvailableAtThisHour        byte = 97
+	CashShopErrorOutOfStock                         byte = 98
+	CashShopErrorExceededSpendingLimit              byte = 99
+	CashShopErrorNotEnoughMesos                     byte = 100
+	CashShopErrorUnavailableDuringBeta              byte = 101
+	CashShopErrorInvalidDateOfBirth                 byte = 102
+)
+
+const (
+	InventoryEquip = 1
+	InventoryUse   = 2
+	InventorySetup = 3
+	InventoryEtc   = 4
+	InventoryCash  = 5
+
+	InventoryBaseSlotSize = 24
+	InventoryMaxSlotSize  = 255
 )

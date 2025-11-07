@@ -494,3 +494,13 @@ func PacketCashShopRequestChannelInfo() mpacket.Packet {
 	p := mpacket.CreateInternal(opcode.CashShopRequestChannelInfo)
 	return p
 }
+
+func PacketChatMegaphone(chrName, msg string, whisper bool) mpacket.Packet {
+	p := mpacket.CreateInternal(opcode.ChannelPlayerChatEvent)
+	p.WriteByte(OpChatMegaphone)
+	p.WriteString(chrName)
+	p.WriteString(msg)
+	p.WriteBool(whisper)
+
+	return p
+}

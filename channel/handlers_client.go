@@ -72,6 +72,8 @@ func (server *Server) HandleClientPacket(conn mnet.Client, reader mpacket.Reader
 		server.playerStand(conn, reader)
 	case opcode.RecvChannelChairHeal:
 		server.playerChairHeal(conn, reader)
+	case opcode.RecvChannelInvUseCashItem:
+		server.playerUseCash(conn, reader)
 	case opcode.RecvChannelPlayerUseChair:
 		server.playerUseChair(conn, reader)
 	case opcode.RecvChannelMeleeSkill:
@@ -1074,15 +1076,15 @@ func (server Server) playerMoveInventoryItem(conn mnet.Client, reader mpacket.Re
 	var maxInvSize byte
 
 	switch inv {
-	case 1:
+	case constant.InventoryEquip:
 		maxInvSize = plr.equipSlotSize
-	case 2:
+	case constant.InventoryUse:
 		maxInvSize = plr.useSlotSize
-	case 3:
+	case constant.InventorySetup:
 		maxInvSize = plr.setupSlotSize
-	case 4:
+	case constant.InventoryEtc:
 		maxInvSize = plr.etcSlotSize
-	case 5:
+	case constant.InventoryCash:
 		maxInvSize = plr.cashSlotSize
 	}
 
@@ -1309,6 +1311,216 @@ func (server *Server) playerUseScroll(conn mnet.Client, reader mpacket.Reader) {
 			plr.Send(packetUseScroll(plr.ID, false, false, false))
 		}
 	}
+}
+
+func (server *Server) playerUseCash(conn mnet.Client, reader mpacket.Reader) {
+	plr, err := server.players.GetFromConn(conn)
+	if err != nil {
+		return
+	}
+
+	slot := reader.ReadInt16()
+	itemID := reader.ReadInt32()
+
+	used := false
+
+	switch itemID {
+	case constant.ItemSafetyCharm:
+		plr.hasSafetyCharm = true
+		used = true
+
+	case constant.ItemAPReset:
+		statUp := reader.ReadInt32()
+		statDown := reader.ReadInt32()
+
+		if (statUp == constant.StrID || statUp == constant.DexID || statUp == constant.IntID || statUp == constant.LukID) &&
+			(statDown == constant.StrID || statDown == constant.DexID || statDown == constant.IntID || statDown == constant.LukID) &&
+			statUp != statDown {
+			canReset := false
+			switch statDown {
+			case constant.StrID:
+				canReset = plr.str > 4
+			case constant.DexID:
+				canReset = plr.dex > 4
+			case constant.IntID:
+				canReset = plr.intt > 4
+			case constant.LukID:
+				canReset = plr.luk > 4
+			}
+
+			if canReset {
+				switch statDown {
+				case constant.StrID:
+					plr.setStr(plr.str - 1)
+				case constant.DexID:
+					plr.setDex(plr.dex - 1)
+				case constant.IntID:
+					plr.setInt(plr.intt - 1)
+				case constant.LukID:
+					plr.setLuk(plr.luk - 1)
+				}
+
+				switch statUp {
+				case constant.StrID:
+					plr.setStr(plr.str + 1)
+				case constant.DexID:
+					plr.setDex(plr.dex + 1)
+				case constant.IntID:
+					plr.setInt(plr.intt + 1)
+				case constant.LukID:
+					plr.setLuk(plr.luk + 1)
+				}
+
+				used = true
+			}
+		}
+
+	case constant.ItemSPResetFirstJob, constant.ItemSPResetSecondJob, constant.ItemSPResetThirdJob:
+		skillUp := reader.ReadInt32()
+		skillDown := reader.ReadInt32()
+
+		skillUpData, okUp := plr.skills[skillUp]
+		skillDownData, okDown := plr.skills[skillDown]
+
+		if plr.skills[skillUp].Mastery < skillUpData.Level+1 {
+			plr.Send(packetPlayerNoChange())
+			return
+		}
+
+		if okUp && okDown && skillDownData.Level > 0 {
+			skillDownData.Level--
+			if skillDownData.Level == 0 {
+				delete(plr.skills, skillDown)
+			} else {
+				plr.updateSkill(skillDownData)
+			}
+
+			skillUpData.Level++
+			plr.updateSkill(skillUpData)
+
+			used = true
+		}
+
+	case constant.ItemVIPTeleportRock, constant.ItemRegTeleportRock:
+		mode := reader.ReadByte()
+
+		if mode == constant.TeleportToName {
+			targetName := reader.ReadString(reader.ReadInt16())
+
+			targetPlr, err := server.players.GetFromName(targetName)
+			if err != nil {
+				plr.Send(packetMessageRedText(fmt.Sprintf("Player %s not found in current channel.", targetName)))
+				return
+			}
+
+			targetField, ok := server.fields[targetPlr.mapID]
+			if !ok {
+				plr.Send(packetPlayerNoChange())
+				return
+			}
+
+			targetInst, err := targetField.getInstance(targetPlr.inst.id)
+			if err != nil {
+				plr.Send(packetPlayerNoChange())
+				return
+			}
+
+			portal, err := targetInst.getRandomSpawnPortal()
+			if err != nil {
+				plr.Send(packetPlayerNoChange())
+				return
+			}
+
+			if err := server.warpPlayer(plr, targetField, portal, false); err != nil {
+				log.Println("Teleport rock warp error:", err)
+				plr.Send(packetPlayerNoChange())
+				return
+			}
+
+			used = true
+		} else {
+			mapID := reader.ReadInt32()
+
+			targetField, ok := server.fields[mapID]
+			if !ok {
+				plr.Send(packetPlayerNoChange())
+				return
+			}
+
+			targetInst, err := targetField.getInstance(0)
+			if err != nil {
+				plr.Send(packetPlayerNoChange())
+				return
+			}
+
+			portal, err := targetInst.getRandomSpawnPortal()
+			if err != nil {
+				plr.Send(packetPlayerNoChange())
+				return
+			}
+
+			if err := server.warpPlayer(plr, targetField, portal, false); err != nil {
+				log.Println("Teleport rock warp error:", err)
+				plr.Send(packetPlayerNoChange())
+				return
+			}
+
+			used = true
+		}
+
+	case constant.ItemPetNameTag:
+		newName := reader.ReadString(reader.ReadInt16())
+
+		if plr.pet != nil && plr.pet.spawned {
+			plr.pet.name = newName
+
+			plr.MarkDirty(DirtyPet, time.Millisecond*300)
+
+			if plr.inst != nil {
+				plr.inst.send(packetPetNameChange(plr.ID, newName))
+			}
+
+			used = true
+		}
+
+	case constant.ItemWaterOfLife:
+		log.Printf("Water of Life not fully implemented")
+
+	case constant.ItemMegaphone, constant.ItemSuperMegaphone:
+		msg := reader.ReadString(reader.ReadInt16())
+
+		if itemID == constant.ItemMegaphone {
+			server.players.broadcast(packetMessageBroadcastChannel(plr.Name, msg, server.id, false))
+		} else {
+			whisper := reader.ReadBool()
+			server.world.Send(internal.PacketChatMegaphone(plr.Name, msg, whisper))
+		}
+		used = true
+	case constant.ItemWeatherCandy, constant.ItemWeatherFlower, constant.ItemWeatherFireworks, constant.ItemWeatherSoap, constant.ItemWeatherSnow, constant.ItemWeatherSnowFlakes,
+		constant.ItemWeatherPresents, constant.ItemWeatherLeaves, constant.ItemWeatherChocolate, constant.ItemWeatherFlowers:
+		msg := reader.ReadString(reader.ReadInt16())
+
+		if plr.inst != nil {
+			if plr.inst.startWeatherEffect(itemID, msg) {
+				used = true
+			}
+		}
+
+	default:
+		log.Printf("Unhandled Cash Item Use: %d", itemID)
+		plr.Send(packetPlayerNoChange())
+		return
+	}
+
+	if used {
+		if _, err = plr.takeItem(itemID, slot, 1, 5); err != nil {
+			log.Println(err)
+			return
+		}
+	}
+
+	plr.Send(packetPlayerNoChange())
+
 }
 
 func (server Server) playerPickupItem(conn mnet.Client, reader mpacket.Reader) {

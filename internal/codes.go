@@ -1,10 +1,11 @@
 package internal
 
 const (
-	OpChatWhispher = 0x00
-	OpChatBuddy    = 0x01
-	OpChatParty    = 0x02
-	OpChatGuild    = 0x03
+	OpChatWhispher  = 0x00
+	OpChatBuddy     = 0x01
+	OpChatParty     = 0x02
+	OpChatGuild     = 0x03
+	OpChatMegaphone = 0x04
 
 	OpPartyCreate     = 0x01
 	OpPartyLeaveExpel = 0x02

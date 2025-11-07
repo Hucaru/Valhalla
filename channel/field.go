@@ -552,6 +552,11 @@ type fieldInstance struct {
 
 	bgm string
 
+	// Weather effect state
+	weatherID      int32
+	weatherMessage string
+	weatherTimer   time.Time
+
 	fhHist fhHistogram
 }
 
@@ -572,6 +577,34 @@ func (inst *fieldInstance) changeBgm(path string) {
 
 	for _, plr := range inst.players {
 		plr.Send(packetBgmChange(path))
+	}
+}
+
+func (inst *fieldInstance) startWeatherEffect(itemID int32, msg string) bool {
+	inst.weatherID = itemID
+	inst.weatherMessage = msg
+
+	// Send weather effect to all players in the instance
+	inst.send(packetBlowWeather(itemID, msg))
+
+	// Set up timer to stop weather effect after 30 seconds
+	inst.weatherTimer = time.Now().Add(time.Second * 30)
+
+	return true
+}
+
+func (inst *fieldInstance) stopWeatherEffect(t time.Time) {
+	if inst.weatherID == 0 || inst.weatherTimer.IsZero() {
+		return
+	}
+
+	if t.After(inst.weatherTimer) {
+		inst.weatherID = 0
+		inst.weatherMessage = ""
+		inst.weatherTimer = time.Time{}
+
+		// Send weather stop packet (itemID 0 means stop)
+		inst.send(packetBlowWeather(0, ""))
 	}
 }
 
@@ -598,6 +631,11 @@ func (inst *fieldInstance) addPlayer(plr *Player) error {
 
 	if inst.showBoat {
 		displayBoat(plr, inst.showBoat, inst.boatType)
+	}
+
+	// Send weather effect if active
+	if inst.weatherID != 0 {
+		plr.Send(packetBlowWeather(inst.weatherID, inst.weatherMessage))
 	}
 
 	inst.players = append(inst.players, plr)
@@ -773,6 +811,7 @@ func (inst *fieldInstance) stopFieldTimer() {
 func (inst *fieldInstance) fieldUpdate(t time.Time) {
 	inst.lifePool.update(t)
 	inst.dropPool.update(t)
+	inst.stopWeatherEffect(t)
 
 	if inst.lifePool.canPause() && inst.dropPool.canPause() {
 		inst.stopFieldTimer()
@@ -933,6 +972,14 @@ func packetEnvironmentChange(setting int32, value string) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelMapEffect)
 	p.WriteInt32(setting)
 	p.WriteString(value)
+	return p
+}
+
+func packetBlowWeather(itemID int32, msg string) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelBlowWeather)
+	p.WriteBool(false) // isAdmin flag
+	p.WriteInt32(itemID)
+	p.WriteString(msg)
 	return p
 }
 
