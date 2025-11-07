@@ -311,6 +311,39 @@ func PacketChangeMesosRate(rate float32) mpacket.Packet {
 	return PacketRateOperation(3, rate)
 }
 
+func PacketUpdateLoginInfo(ribbon byte, message string) mpacket.Packet {
+	p := mpacket.CreateInternal(opcode.UpdateLoginInfo)
+	p.WriteByte(ribbon)
+	p.WriteString(message)
+	return p
+}
+
+func PacketSyncParties(parties map[int32]*Party) mpacket.Packet {
+	p := mpacket.CreateInternal(opcode.SyncParties)
+	p.WriteInt32(int32(len(parties)))
+	for _, party := range parties {
+		p.WriteInt32(party.ID)
+		for i := 0; i < constant.MaxPartySize; i++ {
+			p.WriteInt32(party.PlayerID[i])
+			p.WriteInt32(party.ChannelID[i])
+			p.WriteInt32(party.MapID[i])
+			p.WriteInt32(party.Job[i])
+			p.WriteInt32(party.Level[i])
+			p.WriteString(party.Name[i])
+		}
+	}
+	return p
+}
+
+func PacketSyncGuilds(guildIDs []int32) mpacket.Packet {
+	p := mpacket.CreateInternal(opcode.SyncGuilds)
+	p.WriteInt32(int32(len(guildIDs)))
+	for _, guildID := range guildIDs {
+		p.WriteInt32(guildID)
+	}
+	return p
+}
+
 func PacketWorldMessengerSelfEnter(recipientID int32, slot byte) mpacket.Packet {
 	p := mpacket.CreateInternal(opcode.ChannelPlayerMessengerEvent)
 	p.WriteByte(0x00)

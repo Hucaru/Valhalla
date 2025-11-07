@@ -2461,10 +2461,12 @@ func (server *Server) npcChatStart(conn mnet.Client, reader mpacket.Reader) {
 	}
 
 	server.npcChat[conn] = controller
+	server.updateNPCInteractionMetric(1)
 
 	// Run the script. If it returns true, chat flow ended.
 	if ended := controller.run(); ended {
 		delete(server.npcChat, conn)
+		server.updateNPCInteractionMetric(-1)
 	}
 }
 
@@ -2544,8 +2546,10 @@ func (server *Server) npcChatContinue(conn mnet.Client, reader mpacket.Reader) {
 
 	if terminate {
 		delete(server.npcChat, conn)
+		server.updateNPCInteractionMetric(-1)
 	} else if controller.run() {
 		delete(server.npcChat, conn)
+		server.updateNPCInteractionMetric(-1)
 	}
 }
 
@@ -2751,7 +2755,10 @@ func (server *Server) npcShop(conn mnet.Client, reader mpacket.Reader) {
 		plr.Send(packetNpcShopResult(shopRechargeSuccess))
 
 	case 3: // Close
-		delete(server.npcChat, conn)
+		if _, ok := server.npcChat[conn]; ok {
+			delete(server.npcChat, conn)
+			server.updateNPCInteractionMetric(-1)
+		}
 	}
 }
 

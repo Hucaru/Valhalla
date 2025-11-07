@@ -107,6 +107,46 @@ func (server *Server) Initialise(work chan func(), dbuser, dbpassword, dbaddress
 		prometheus.MustRegister(common.MetricsGauges["player_count"])
 	}
 
+	if _, ok := common.MetricsCounters["monster_kills_total"]; !ok {
+		common.MetricsCounters["monster_kills_total"] = prometheus.NewCounterVec(prometheus.CounterOpts{
+			Name: "monster_kills_total",
+			Help: "Total number of monsters killed",
+		}, []string{"channel", "world"})
+		prometheus.MustRegister(common.MetricsCounters["monster_kills_total"])
+	}
+
+	if _, ok := common.MetricsGauges["ongoing_trades"]; !ok {
+		common.MetricsGauges["ongoing_trades"] = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+			Name: "ongoing_trades",
+			Help: "Number of ongoing trades",
+		}, []string{"channel", "world"})
+		prometheus.MustRegister(common.MetricsGauges["ongoing_trades"])
+	}
+
+	if _, ok := common.MetricsGauges["ongoing_minigames"]; !ok {
+		common.MetricsGauges["ongoing_minigames"] = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+			Name: "ongoing_minigames",
+			Help: "Number of ongoing minigames",
+		}, []string{"channel", "world"})
+		prometheus.MustRegister(common.MetricsGauges["ongoing_minigames"])
+	}
+
+	if _, ok := common.MetricsGauges["ongoing_npc_interactions"]; !ok {
+		common.MetricsGauges["ongoing_npc_interactions"] = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+			Name: "ongoing_npc_interactions",
+			Help: "Number of ongoing NPC script interactions",
+		}, []string{"channel", "world"})
+		prometheus.MustRegister(common.MetricsGauges["ongoing_npc_interactions"])
+	}
+
+	if _, ok := common.MetricsGauges["party_count"]; !ok {
+		common.MetricsGauges["party_count"] = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+			Name: "party_count",
+			Help: "Number of active parties",
+		}, []string{"channel", "world"})
+		prometheus.MustRegister(common.MetricsGauges["party_count"])
+	}
+
 	common.StartMetrics()
 	log.Println("Started serving metrics on :" + common.MetricsPort)
 
@@ -186,7 +226,10 @@ func (server *Server) ClientDisconnected(conn mnet.Client) {
 
 	plr.Logout()
 
-	delete(server.npcChat, conn)
+	if _, ok := server.npcChat[conn]; ok {
+		delete(server.npcChat, conn)
+		server.updateNPCInteractionMetric(-1)
+	}
 
 	if remPlrErr := server.players.RemoveFromConn(conn); remPlrErr != nil {
 		log.Println(remPlrErr)
@@ -256,4 +299,54 @@ func (server *Server) StartAutosave(ctx context.Context) {
 		server.players.Flush()
 		scheduleNext()
 	}
+}
+
+func (server *Server) updatePartyMetric() {
+	if server.worldName == "" {
+		return
+	}
+	common.MetricsGauges["party_count"].With(prometheus.Labels{
+		"channel": strconv.Itoa(int(server.id)),
+		"world":   server.worldName,
+	}).Set(float64(len(server.parties)))
+}
+
+func (server *Server) updateMobKillMetric() {
+	if server.worldName == "" {
+		return
+	}
+	common.MetricsCounters["monster_kills_total"].With(prometheus.Labels{
+		"channel": strconv.Itoa(int(server.id)),
+		"world":   server.worldName,
+	}).Inc()
+}
+
+func (server *Server) updateTradeMetric(delta int) {
+	if server.worldName == "" {
+		return
+	}
+	common.MetricsGauges["ongoing_trades"].With(prometheus.Labels{
+		"channel": strconv.Itoa(int(server.id)),
+		"world":   server.worldName,
+	}).Add(float64(delta))
+}
+
+func (server *Server) updateMinigameMetric(delta int) {
+	if server.worldName == "" {
+		return
+	}
+	common.MetricsGauges["ongoing_minigames"].With(prometheus.Labels{
+		"channel": strconv.Itoa(int(server.id)),
+		"world":   server.worldName,
+	}).Add(float64(delta))
+}
+
+func (server *Server) updateNPCInteractionMetric(delta int) {
+	if server.worldName == "" {
+		return
+	}
+	common.MetricsGauges["ongoing_npc_interactions"].With(prometheus.Labels{
+		"channel": strconv.Itoa(int(server.id)),
+		"world":   server.worldName,
+	}).Add(float64(delta))
 }

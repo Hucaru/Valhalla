@@ -24,4 +24,7 @@ const (
 	CashShopInfo                byte = 0x13
 	CashShopRequestChannelInfo  byte = 0x14
 	ChannelPlayerMessengerEvent byte = 0x15
+	UpdateLoginInfo             byte = 0x16
+	SyncParties                 byte = 0x17
+	SyncGuilds                  byte = 0x18
 )

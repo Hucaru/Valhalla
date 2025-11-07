@@ -56,6 +56,26 @@ func (server *Server) gmCommand(conn mnet.Client, msg string) {
 		}
 
 		server.world.Send(mFunc(float32(r)))
+	case "setWorldMessage":
+		if len(command) < 2 {
+			conn.Send(packetMessageRedText("Command structure is /setWorldMessage <ribbon_number> [message]"))
+			return
+		}
+
+		ribbon, err := strconv.Atoi(command[1])
+		if err != nil || ribbon < 0 {
+			conn.Send(packetMessageRedText("Invalid ribbon number"))
+			return
+		}
+
+		message := ""
+		if len(command) >= 3 {
+			message = strings.Join(command[2:], " ")
+		}
+
+		server.world.Send(internal.PacketUpdateLoginInfo(byte(ribbon), message))
+		conn.Send(packetMessageNotice(fmt.Sprintf("Login info updated: Ribbon=%d, Message=%s", ribbon, message)))
+
 	case "showRates":
 		conn.Send(packetMessageNotice(fmt.Sprintf("Exp: x%.2f, Drop: x%.2f, Mesos: x%.2f", server.rates.exp, server.rates.drop, server.rates.mesos)))
 
@@ -1323,9 +1343,11 @@ func (server *Server) gmCommand(conn mnet.Client, msg string) {
 		}
 
 		server.npcChat[conn] = controller
+		server.updateNPCInteractionMetric(1)
 
 		if controller.run() {
 			delete(server.npcChat, conn)
+			server.updateNPCInteractionMetric(-1)
 		}
 	case "guildDisband":
 		plr, err := server.players.GetFromConn(conn)

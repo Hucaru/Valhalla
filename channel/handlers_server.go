@@ -43,6 +43,12 @@ func (server *Server) HandleServerPacket(conn mnet.Server, reader mpacket.Reader
 		server.handleCashShopInfo(conn, reader)
 	case opcode.ChannelPlayerMessengerEvent:
 		server.handleMessengerEvent(conn, reader)
+	case opcode.LoginDeleteCharacter:
+		server.handleCharacterDeleted(conn, reader)
+	case opcode.SyncParties:
+		server.handleSyncParties(conn, reader)
+	case opcode.SyncGuilds:
+		server.handleSyncGuilds(conn, reader)
 
 	default:
 		log.Println("UNKNOWN SERVER PACKET:", reader)
@@ -252,6 +258,7 @@ func (server *Server) handlePartyEvent(conn mnet.Server, reader mpacket.Reader) 
 		newParty := &party{serverChannelID: int32(server.id)}
 		newParty.addPlayer(plr, 0, &reader)
 		server.parties[newParty.ID] = newParty
+		server.updatePartyMetric()
 	case internal.OpPartyLeaveExpel:
 		partyID := reader.ReadInt32()
 		destroy := reader.ReadBool()
@@ -264,6 +271,7 @@ func (server *Server) handlePartyEvent(conn mnet.Server, reader mpacket.Reader) 
 
 		if destroy {
 			delete(server.parties, partyID)
+			server.updatePartyMetric()
 		}
 
 	case internal.OpPartyAccept:
@@ -1605,4 +1613,97 @@ func (server *Server) playerPetLoot(conn mnet.Client, reader mpacket.Reader) {
 	}
 
 	plr.inst.dropPool.playerAttemptPickup(drop, plr, 5)
+}
+
+func (server *Server) handleCharacterDeleted(conn mnet.Server, reader mpacket.Reader) {
+	charID := reader.ReadInt32()
+
+	// Remove from any party
+	for _, party := range server.parties {
+		for i, plr := range party.players {
+			if plr != nil && plr.ID == charID {
+				// Remove from party
+				party.players[i] = nil
+				party.broadcast(packetPartyLeave(party.ID, charID, true, false, party.Name[i], party))
+				break
+			}
+		}
+	}
+
+	// Remove from any guild
+	for _, guild := range server.guilds {
+		for i, playerID := range guild.playerID {
+			if playerID == charID {
+				guild.removePlayer(charID, false, guild.names[i])
+				break
+			}
+		}
+	}
+}
+
+func (server *Server) handleSyncParties(conn mnet.Server, reader mpacket.Reader) {
+	count := reader.ReadInt32()
+	log.Printf("Syncing %d parties from world server", count)
+
+	for i := int32(0); i < count; i++ {
+		partyID := reader.ReadInt32()
+
+		// Create or get existing party
+		p, exists := server.parties[partyID]
+		if !exists {
+			p = &party{
+				serverChannelID: int32(server.id),
+			}
+			server.parties[partyID] = p
+		}
+
+		p.ID = partyID
+
+		// Read party data
+		for j := 0; j < constant.MaxPartySize; j++ {
+			p.PlayerID[j] = reader.ReadInt32()
+			p.ChannelID[j] = reader.ReadInt32()
+			p.MapID[j] = reader.ReadInt32()
+			p.Job[j] = reader.ReadInt32()
+			p.Level[j] = reader.ReadInt32()
+			p.Name[j] = reader.ReadString(reader.ReadInt16())
+
+			// If player is on this channel, link them
+			if p.ChannelID[j] == int32(server.id) && p.PlayerID[j] > 0 {
+				if plr, err := server.players.GetFromID(p.PlayerID[j]); err == nil {
+					p.players[j] = plr
+					plr.party = p
+				}
+			}
+		}
+	}
+
+	log.Printf("Party sync completed: %d parties loaded", count)
+}
+
+func (server *Server) handleSyncGuilds(conn mnet.Server, reader mpacket.Reader) {
+	count := reader.ReadInt32()
+	log.Printf("Syncing %d guilds from world server", count)
+
+	for i := int32(0); i < count; i++ {
+		guildID := reader.ReadInt32()
+
+		// Load guild if not already loaded
+		if _, exists := server.guilds[guildID]; !exists {
+			if guild, err := loadGuildFromDb(guildID, &server.players); err == nil {
+				server.guilds[guildID] = guild
+
+				// Link players to guild
+				server.players.observe(func(plr *Player) {
+					if plr.guild != nil && plr.guild.id == guildID {
+						plr.guild = guild
+					}
+				})
+			} else {
+				log.Printf("Failed to load guild %d: %v", guildID, err)
+			}
+		}
+	}
+
+	log.Printf("Guild sync completed: %d guilds loaded", count)
 }

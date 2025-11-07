@@ -38,12 +38,16 @@ func (server *Server) HandleServerPacket(conn mnet.Server, reader mpacket.Reader
 		server.handleGuildEvent(conn, reader)
 	case opcode.ChangeRate:
 		server.handleChangeRate(conn, reader)
+	case opcode.UpdateLoginInfo:
+		server.handleUpdateLoginInfo(conn, reader)
 	case opcode.CashShopNew:
 		server.handleNewCashShop(conn, reader)
 	case opcode.CashShopRequestChannelInfo:
 		server.sendChannelInfo()
 	case opcode.ChannelPlayerMessengerEvent:
 		server.handleMessengerEvent(conn, reader)
+	case opcode.LoginDeleteCharacter:
+		server.handleCharacterDeleted(conn, reader)
 	default:
 		log.Println("UNKNOWN SERVER PACKET:", reader)
 	}
@@ -120,6 +124,10 @@ func (server *Server) handleNewChannel(conn mnet.Server, reader mpacket.Reader) 
 
 	log.Println("Registered channel", len(server.Info.Channels)-1)
 	server.sendChannelInfo()
+
+	// Sync parties and guilds to new channel
+	server.syncPartiesToChannel(conn)
+	server.syncGuildsToChannel(conn)
 }
 
 func (server Server) sendChannelInfo() {
@@ -380,6 +388,14 @@ func (server *Server) handleChangeRate(conn mnet.Server, reader mpacket.Reader) 
 	p.Append(reader.GetBuffer()[1:])
 
 	server.channelBroadcast(p)
+}
+
+func (server *Server) handleUpdateLoginInfo(conn mnet.Server, reader mpacket.Reader) {
+	server.Info.Ribbon = reader.ReadByte()
+	server.Info.Message = reader.ReadString(reader.ReadInt16())
+
+	log.Printf("GM updated login info: Ribbon=%d, Message=%s", server.Info.Ribbon, server.Info.Message)
+	server.login.Send(server.Info.GenerateInfoPacket())
 }
 
 func (server *Server) handleGuildEvent(conn mnet.Server, reader mpacket.Reader) {
@@ -751,5 +767,106 @@ func (server *Server) handleMessengerEvent(conn mnet.Server, reader mpacket.Read
 
 	default:
 		log.Println("Unknown messenger op (channel->world):", mode)
+	}
+}
+
+func (server *Server) handleCharacterDeleted(conn mnet.Server, reader mpacket.Reader) {
+	charID := reader.ReadInt32()
+	log.Printf("Character %d was deleted, propagating to channels", charID)
+
+	// Check if character is in any party and remove them
+	for partyID, party := range server.parties {
+		for i, playerID := range party.PlayerID {
+			if playerID == charID {
+				isLeader := i == 0
+
+				if isLeader {
+					// Find highest level member to promote to leader
+					highestLevelIndex := -1
+					highestLevel := int32(-1)
+
+					for j := 1; j < constant.MaxPartySize; j++ {
+						if party.PlayerID[j] != 0 && party.Level[j] > highestLevel {
+							highestLevel = party.Level[j]
+							highestLevelIndex = j
+						}
+					}
+
+					if highestLevelIndex != -1 {
+						// Promote highest level member to leader (slot 0)
+						party.PlayerID[0] = party.PlayerID[highestLevelIndex]
+						party.ChannelID[0] = party.ChannelID[highestLevelIndex]
+						party.Name[0] = party.Name[highestLevelIndex]
+						party.MapID[0] = party.MapID[highestLevelIndex]
+						party.Job[0] = party.Job[highestLevelIndex]
+						party.Level[0] = party.Level[highestLevelIndex]
+
+						// Clear the old slot
+						party.PlayerID[highestLevelIndex] = 0
+						party.ChannelID[highestLevelIndex] = 0
+						party.Name[highestLevelIndex] = ""
+						party.MapID[highestLevelIndex] = 0
+						party.Job[highestLevelIndex] = 0
+						party.Level[highestLevelIndex] = 0
+
+						// Broadcast party update with new leader
+						server.channelBroadcast(internal.PacketWorldPartyLeave(partyID, false, false, int32(i), party))
+					} else {
+						// No other members, destroy party
+						server.channelBroadcast(internal.PacketWorldPartyLeave(partyID, true, false, int32(i), party))
+						server.reusablePartyIDs = append(server.reusablePartyIDs, partyID)
+						delete(server.parties, partyID)
+					}
+				} else {
+					// Not leader, just remove from party
+					party.ChannelID[i] = 0
+					party.PlayerID[i] = 0
+					party.Name[i] = ""
+					party.MapID[i] = 0
+					party.Job[i] = 0
+					party.Level[i] = 0
+
+					server.channelBroadcast(internal.PacketWorldPartyLeave(partyID, false, false, int32(i), party))
+				}
+				break
+			}
+		}
+	}
+
+	// Forward deletion to all channels for guild cleanup
+	server.forwardPacketToChannels(conn, reader)
+}
+
+func (server *Server) syncPartiesToChannel(conn mnet.Server) {
+	if len(server.parties) == 0 {
+		return
+	}
+
+	log.Printf("Syncing %d parties to channel", len(server.parties))
+	conn.Send(internal.PacketSyncParties(server.parties))
+}
+
+func (server *Server) syncGuildsToChannel(conn mnet.Server) {
+	// Collect active guild IDs from the database
+	rows, err := common.DB.Query("SELECT DISTINCT guildID FROM characters WHERE guildID IS NOT NULL AND guildID > 0")
+	if err != nil {
+		log.Println("Error querying guilds for sync:", err)
+		return
+	}
+	defer rows.Close()
+
+	var guildIDs []int32
+	for rows.Next() {
+		var guildID int32
+		if err := rows.Scan(&guildID); err != nil {
+			log.Println("Error scanning guild ID:", err)
+			continue
+		}
+		guildIDs = append(guildIDs, guildID)
+	}
+
+	if len(guildIDs) > 0 {
+		log.Printf("Syncing %d guilds to channel", len(guildIDs))
+		conn.Send(internal.PacketSyncGuilds(guildIDs))
 	}
 }

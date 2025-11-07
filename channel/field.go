@@ -324,6 +324,7 @@ func (f *field) createInstance(rates *rates, server *Server) int {
 		timeLimit:   f.Data.TimeLimit,
 		properties:  make(map[string]interface{}),
 		fhHist:      f.fhHist,
+		server:      server,
 	}
 
 	inst.roomPool = createNewRoomPool(inst)
@@ -558,6 +559,8 @@ type fieldInstance struct {
 	weatherTimer   time.Time
 
 	fhHist fhHistogram
+
+	server *Server // reference to server for metrics
 }
 
 func (inst fieldInstance) String() string {
