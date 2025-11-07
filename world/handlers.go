@@ -395,7 +395,6 @@ func (server *Server) handleUpdateLoginInfo(conn mnet.Server, reader mpacket.Rea
 	server.Info.Message = reader.ReadString(reader.ReadInt16())
 
 	log.Printf("GM updated login info: Ribbon=%d, Message=%s", server.Info.Ribbon, server.Info.Message)
-	server.login.Send(server.Info.GenerateInfoPacket())
 }
 
 func (server *Server) handleGuildEvent(conn mnet.Server, reader mpacket.Reader) {
