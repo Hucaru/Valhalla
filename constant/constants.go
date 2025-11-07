@@ -478,3 +478,31 @@ const (
 const (
 	TeleportToName = 0x01
 )
+
+const (
+	CashShopNX          byte = 0x00
+	CashShopMaplePoints byte = 0x01
+
+	CashShopErrorUnknown                            byte = 0x00
+	CashShopErrorUnknownDC1                         byte = 80
+	CashShopErrorTimeRanOutTryAgain                 byte = 81
+	CashShopErrorUnknownDC2                         byte = 82
+	CashShopErrorNotEnoughCash                      byte = 83
+	CashShopErrorCantGiftUnder14                    byte = 84
+	CashShopErrorExceededGiftPriceLimit             byte = 85
+	CashShopErrorExceededNumberOfCashItems          byte = 86
+	CashShopErrorCheckNameOrGenderRestrictions      byte = 87
+	CashShopErrorCheckCouponNumber                  byte = 88
+	CashShopErrorRegisterCouponAtWebsite            byte = 91
+	CashShopErrorGenderRestrictionCoupon            byte = 92
+	CashShopErrorCouponOnlyForRegularItemsNoGifting byte = 93
+	CashShopErrorCheckFullInventory                 byte = 94
+	CashShopErrorPremiumInternetCafeOnly            byte = 95
+	CashShopErrorIneligibleRecipientNameOrGender    byte = 96
+	CashShopErrorItemsNotAvailableAtThisHour        byte = 97
+	CashShopErrorOutOfStock                         byte = 98
+	CashShopErrorExceededSpendingLimit              byte = 99
+	CashShopErrorNotEnoughMesos                     byte = 100
+	CashShopErrorUnavailableDuringBeta              byte = 101
+	CashShopErrorInvalidDateOfBirth                 byte = 102
+)

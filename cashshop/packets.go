@@ -4,6 +4,8 @@ import (
 	"log"
 
 	"github.com/Hucaru/Valhalla/channel"
+	"github.com/Hucaru/Valhalla/common/opcode"
+	"github.com/Hucaru/Valhalla/constant"
 	"github.com/Hucaru/Valhalla/mnet"
 	"github.com/Hucaru/Valhalla/mpacket"
 	"github.com/Hucaru/Valhalla/nx"
@@ -20,8 +22,8 @@ func (server *Server) playerCashShopPurchase(conn mnet.Client, reader mpacket.Re
 
 	sub := reader.ReadByte()
 	switch sub {
-	case 0x02: // buy item
-		currencySel := reader.ReadByte() // 0x00 = NX, 0x01 = Maple Points
+	case opcode.RecvCashShopBuyItem:
+		currencySel := reader.ReadByte()
 		sn := reader.ReadInt32()
 
 		commodity, ok := nx.GetCommodity(sn)
@@ -45,14 +47,14 @@ func (server *Server) playerCashShopPurchase(conn mnet.Client, reader mpacket.Re
 		// Check funds
 		price := commodity.Price
 		switch currencySel {
-		case 0x00:
+		case constant.CashShopNX:
 			if plrNX < price {
-				plr.Send(packetCashShopUpdateAmounts(plrNX, plrMaplePoints))
+				plr.Send(packetCashShopError(opcode.SendCashShopBuyFailed, constant.CashShopErrorNotEnoughCash))
 				return
 			}
-		case 0x01:
+		case constant.CashShopMaplePoints:
 			if plrMaplePoints < price {
-				plr.Send(packetCashShopUpdateAmounts(plrNX, plrMaplePoints))
+				plr.Send(packetCashShopError(opcode.SendCashShopBuyFailed, constant.CashShopErrorNotEnoughCash))
 				return
 			}
 		default:
@@ -72,18 +74,59 @@ func (server *Server) playerCashShopPurchase(conn mnet.Client, reader mpacket.Re
 		}
 
 		switch currencySel {
-		case 0x00:
+		case constant.CashShopNX:
 			plrNX -= price
 			plr.SetNX(plrNX)
-		case 0x01:
+		case constant.CashShopMaplePoints:
 			plrMaplePoints -= price
 			plr.SetMaplePoints(plrMaplePoints)
+		default:
+			log.Println("Unknown currency type: ", currencySel)
+			return
 		}
 
 		plr.Send(packetCashShopUpdateAmounts(plrNX, plrMaplePoints))
 
+	case opcode.RecvCashShopGiftItem:
+	case opcode.RecvCashShopUpdateWishlist:
+	case opcode.RecvCashShopIncreaseSlots:
+		currencySel := reader.ReadByte()
+		invType := reader.ReadByte()
+
+		price := int32(4000)
+
+		switch currencySel {
+		case constant.CashShopNX:
+			if plrNX < price {
+				plr.Send(packetCashShopError(opcode.SendCashShopIncSlotCountFailed, constant.CashShopErrorNotEnoughCash))
+				return
+			}
+			if err := plr.IncreaseSlotSize(invType, 4); err != nil {
+				plr.Send(packetCashShopError(opcode.SendCashShopIncSlotCountFailed, constant.CashShopErrorUnknown))
+				return
+			}
+			plrNX -= price
+			plr.SetNX(plrNX)
+		case constant.CashShopMaplePoints:
+			if plrMaplePoints < price {
+				plr.Send(packetCashShopError(opcode.SendCashShopIncSlotCountFailed, constant.CashShopErrorNotEnoughCash))
+				return
+			}
+			if err := plr.IncreaseSlotSize(invType, 4); err != nil {
+				plr.Send(packetCashShopError(opcode.SendCashShopIncSlotCountFailed, constant.CashShopErrorUnknown))
+				return
+			}
+			plrMaplePoints -= price
+			plr.SetMaplePoints(plrMaplePoints)
+		default:
+			log.Println("Unknown currency type: ", currencySel)
+			return
+		}
+
+		plr.Send(packetCashShopIncreaseInv(invType, plr.GetSlotSize(invType)))
+		plr.Send(packetCashShopUpdateAmounts(plrNX, plrMaplePoints))
 	default:
-		log.Println("Unknown Cash Shop Packet: ", reader)
+		log.Println("Unknown Cash Shop Packet(", sub, "): ", reader)
 	}
 
 }

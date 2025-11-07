@@ -262,7 +262,7 @@ type Player struct {
 	dirty DirtyBits
 
 	lastChairHeal time.Time
-	
+
 	// Safety charm flag - prevents exp loss on death
 	hasSafetyCharm bool
 }
@@ -1388,6 +1388,39 @@ func (d *Player) setInventorySlotSizes(equip, use, setup, etc, cash byte) {
 	d.etcSlotSize = etc
 	d.cashSlotSize = cash
 	d.MarkDirty(DirtyInvSlotSizes, 2*time.Second)
+}
+
+func (d *Player) IncreaseSlotSize(invID, amount byte) error {
+	switch invID {
+	case 1:
+		if d.equipSlotSize+amount > 255 {
+			return fmt.Errorf("cannot increase equip slot size beyond %d", 255)
+		}
+		d.equipSlotSize += amount
+	case 2:
+		if d.useSlotSize+amount > 255 {
+			return fmt.Errorf("cannot increase use slot size beyond %d", 255)
+		}
+		d.useSlotSize += amount
+	case 3:
+		if d.setupSlotSize+amount > 255 {
+			return fmt.Errorf("cannot increase setup slot size beyond %d", 255)
+		}
+		d.setupSlotSize += amount
+	case 4:
+		if d.etcSlotSize+amount > 255 {
+			return fmt.Errorf("cannot increase etc slot size beyond %d", 255)
+		}
+		d.etcSlotSize += amount
+	case 5:
+		if d.cashSlotSize+amount > 255 {
+			return fmt.Errorf("cannot increase cash slot size beyond %d", 255)
+		}
+		d.cashSlotSize += amount
+	}
+
+	d.MarkDirty(DirtyInvSlotSizes, 2*time.Second)
+	return nil
 }
 
 func (d *Player) setBuddyListSize(size byte) {
@@ -2978,6 +3011,22 @@ func (p *Player) canReceiveItems(items []Item) bool {
 	return true
 }
 
+func (d *Player) GetSlotSize(invID byte) int16 {
+	switch invID {
+	case 1:
+		return int16(d.equipSlotSize)
+	case 2:
+		return int16(d.useSlotSize)
+	case 3:
+		return int16(d.setupSlotSize)
+	case 4:
+		return int16(d.etcSlotSize)
+	case 5:
+		return int16(d.cashSlotSize)
+	}
+
+	return 0
+}
 func packetPlayerPetUpdate(sn int32) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelStatChange)
 	p.WriteBool(false)

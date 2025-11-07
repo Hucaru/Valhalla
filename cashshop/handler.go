@@ -24,7 +24,7 @@ func (server *Server) HandleClientPacket(conn mnet.Client, reader mpacket.Reader
 		server.leaveCashShopToChannel(conn, reader)
 
 	default:
-		log.Println("UNKNOWN CASHSHOP PACKET:", reader)
+		log.Println("UNKNOWN CASHSHOP PACKET (", op, "):", reader)
 	}
 }
 
