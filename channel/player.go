@@ -1372,7 +1372,12 @@ func (d *Player) damagePlayer(damage int16) {
 	if newHP <= 0 {
 		newHP = 0
 		if d.level >= 10 && !d.hasSafetyCharm {
-			loss := d.exp / 100
+			percent := int32(10 - int(d.luk)/10)
+			if percent < 5 {
+				percent = 5
+			}
+
+			loss := (d.exp / 100) * percent
 			if loss < 1 && d.exp > 0 {
 				loss = 1
 			}
@@ -1404,28 +1409,28 @@ func (d *Player) setInventorySlotSizes(equip, use, setup, etc, cash byte) {
 func (d *Player) IncreaseSlotSize(invID, amount byte) error {
 	switch invID {
 	case constant.InventoryEquip:
-		if d.equipSlotSize+amount > 255 {
-			return fmt.Errorf("cannot increase equip slot size beyond %d", 255)
+		if d.equipSlotSize+amount > constant.InventoryMaxSlotSize {
+			return fmt.Errorf("cannot increase equip slot size beyond %d", constant.InventoryMaxSlotSize)
 		}
 		d.equipSlotSize += amount
 	case constant.InventoryUse:
-		if d.useSlotSize+amount > 255 {
-			return fmt.Errorf("cannot increase use slot size beyond %d", 255)
+		if d.useSlotSize+amount > constant.InventoryMaxSlotSize {
+			return fmt.Errorf("cannot increase use slot size beyond %d", constant.InventoryMaxSlotSize)
 		}
 		d.useSlotSize += amount
 	case constant.InventorySetup:
-		if d.setupSlotSize+amount > 255 {
-			return fmt.Errorf("cannot increase setup slot size beyond %d", 255)
+		if d.setupSlotSize+amount > constant.InventoryMaxSlotSize {
+			return fmt.Errorf("cannot increase setup slot size beyond %d", constant.InventoryMaxSlotSize)
 		}
 		d.setupSlotSize += amount
 	case constant.InventoryEtc:
-		if d.etcSlotSize+amount > 255 {
-			return fmt.Errorf("cannot increase etc slot size beyond %d", 255)
+		if d.etcSlotSize+amount > constant.InventoryMaxSlotSize {
+			return fmt.Errorf("cannot increase etc slot size beyond %d", constant.InventoryMaxSlotSize)
 		}
 		d.etcSlotSize += amount
 	case constant.InventoryCash:
-		if d.cashSlotSize+amount > 255 {
-			return fmt.Errorf("cannot increase cash slot size beyond %d", 255)
+		if d.cashSlotSize+amount > constant.InventoryMaxSlotSize {
+			return fmt.Errorf("cannot increase cash slot size beyond %d", constant.InventoryMaxSlotSize)
 		}
 		d.cashSlotSize += amount
 	}
@@ -3036,7 +3041,7 @@ func (d *Player) GetSlotSize(invID byte) int16 {
 		return int16(d.cashSlotSize)
 	}
 
-	return 24 // Base Slot size
+	return constant.InventoryBaseSlotSize
 }
 
 func packetPlayerPetUpdate(sn int32) mpacket.Packet {

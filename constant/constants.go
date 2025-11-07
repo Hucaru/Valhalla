@@ -513,4 +513,7 @@ const (
 	InventorySetup = 3
 	InventoryEtc   = 4
 	InventoryCash  = 5
+
+	InventoryBaseSlotSize = 24
+	InventoryMaxSlotSize  = 255
 )
