@@ -555,7 +555,7 @@ type fieldInstance struct {
 	// Weather effect state
 	weatherID      int32
 	weatherMessage string
-	weatherTimer   *time.Timer
+	weatherTimer   time.Time
 
 	fhHist fhHistogram
 }
@@ -581,11 +581,6 @@ func (inst *fieldInstance) changeBgm(path string) {
 }
 
 func (inst *fieldInstance) startWeatherEffect(itemID int32, msg string) bool {
-	// If weather is already active, don't start a new one
-	if inst.weatherID != 0 {
-		return false
-	}
-
 	inst.weatherID = itemID
 	inst.weatherMessage = msg
 
@@ -593,25 +588,23 @@ func (inst *fieldInstance) startWeatherEffect(itemID int32, msg string) bool {
 	inst.send(packetBlowWeather(itemID, msg))
 
 	// Set up timer to stop weather effect after 30 seconds
-	inst.weatherTimer = time.AfterFunc(30*time.Second, func() {
-		inst.dispatch <- func() {
-			inst.stopWeatherEffect()
-		}
-	})
+	inst.weatherTimer = time.Now().Add(time.Second * 30)
 
 	return true
 }
 
-func (inst *fieldInstance) stopWeatherEffect() {
-	inst.weatherID = 0
-	inst.weatherMessage = ""
+func (inst *fieldInstance) stopWeatherEffect(t time.Time) {
+	if inst.weatherID == 0 || inst.weatherTimer.IsZero() {
+		return
+	}
 
-	// Send weather stop packet (itemID 0 means stop)
-	inst.send(packetBlowWeather(0, ""))
+	if t.After(inst.weatherTimer) {
+		inst.weatherID = 0
+		inst.weatherMessage = ""
+		inst.weatherTimer = time.Time{}
 
-	if inst.weatherTimer != nil {
-		inst.weatherTimer.Stop()
-		inst.weatherTimer = nil
+		// Send weather stop packet (itemID 0 means stop)
+		inst.send(packetBlowWeather(0, ""))
 	}
 }
 
@@ -818,6 +811,7 @@ func (inst *fieldInstance) stopFieldTimer() {
 func (inst *fieldInstance) fieldUpdate(t time.Time) {
 	inst.lifePool.update(t)
 	inst.dropPool.update(t)
+	inst.stopWeatherEffect(t)
 
 	if inst.lifePool.canPause() && inst.dropPool.canPause() {
 		inst.stopFieldTimer()
