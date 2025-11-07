@@ -1369,8 +1369,19 @@ func (d *Player) damagePlayer(damage int16) {
 	}
 
 	newHP := d.hp - damage
-	if newHP < 0 {
+	if newHP <= 0 {
 		newHP = 0
+		if d.level >= 10 && !d.hasSafetyCharm {
+			loss := d.exp / 100
+			if loss < 1 && d.exp > 0 {
+				loss = 1
+			}
+			newExp := d.exp - loss
+			if newExp < 0 {
+				newExp = 0
+			}
+			d.setEXP(newExp)
+		}
 	}
 
 	d.setHP(newHP)
