@@ -44,10 +44,10 @@ World server:
 - [x] Broadcast guild events
 - [x] Forward whisphers
 - [x] Allow gm command to actiavate exp/drop changes accross all channels
-- [ ] Allow gm commands to update information displayed at login
-- [ ] Propagate character deletion to channels
-- [ ] Party sync when channel or world server are restarted
-- [ ] Guild sync when channel or world server are restarted
+- [x] Allow gm commands to update information displayed at login
+- [x] Propagate character deletion to channels
+- [x] Party sync when channel or world server are restarted
+- [x] Guild sync when channel or world server are restarted
 
 Cashshop server:
 - [x] List items
@@ -111,8 +111,8 @@ Channel server:
 - [ ] Kerning PQ
 - [ ] Ludi PQ
 - [x] Balrog boat invasion
-- [ ] Deleted character removes from guild
-- [ ] Deleted character removes from party
+- [x] Deleted character removes from guild
+- [x] Deleted character removes from party
 - [x] Trade
 - [x] Communication Window
 - [x] Quests
@@ -123,11 +123,11 @@ Metrics:
 - [x] Channel population
 - [x] Server thread count (OS and Go)
 - [x] Server memory usage (heap and stack)
-- [ ] Monster kill rate
-- [ ] Ongoing trades
-- [ ] Ongoing minigames
-- [ ] Ongoing npc script interactions
-- [ ] Number of parties
+- [x] Monster kill rate
+- [x] Ongoing trades
+- [x] Ongoing minigames
+- [x] Ongoing npc script interactions
+- [x] Number of parties
 
 See screenshots section for an example Grafana dashboard
 
