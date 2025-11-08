@@ -254,7 +254,8 @@ func (server *Server) handlePartyEvent(conn mnet.Server, reader mpacket.Reader) 
 		}
 
 		newParty := &party{serverChannelID: int32(server.id)}
-		newParty.addPlayer(plr, 0, &reader)
+		newParty.SerialisePacket(&reader)
+		newParty.addPlayer(plr, 0)
 		server.parties[newParty.ID] = newParty
 		server.updatePartyMetric()
 	case internal.OpPartyLeaveExpel:
@@ -264,7 +265,8 @@ func (server *Server) handlePartyEvent(conn mnet.Server, reader mpacket.Reader) 
 		index := reader.ReadInt32()
 
 		if party, ok := server.parties[partyID]; ok {
-			party.removePlayer(index, kicked, &reader)
+			party.SerialisePacket(&reader)
+			party.removePlayer(index, kicked)
 		}
 
 		if destroy {
@@ -279,7 +281,8 @@ func (server *Server) handlePartyEvent(conn mnet.Server, reader mpacket.Reader) 
 
 		if party, ok := server.parties[partyID]; ok {
 			plr, _ := server.players.GetFromID(playerID)
-			party.addPlayer(plr, index, &reader)
+			party.SerialisePacket(&reader)
+			party.addPlayer(plr, index)
 		}
 	case internal.OpPartyInfoUpdate:
 		partyID := reader.ReadInt32()
@@ -287,11 +290,12 @@ func (server *Server) handlePartyEvent(conn mnet.Server, reader mpacket.Reader) 
 		index := reader.ReadInt32()
 		onlineStatus := reader.ReadBool()
 		if party, ok := server.parties[partyID]; ok {
+			party.SerialisePacket(&reader)
 			if onlineStatus {
 				plr, _ := server.players.GetFromID(playerID)
-				party.updateOnlineStatus(index, plr, &reader)
+				party.updateOnlineStatus(index, plr)
 			} else {
-				party.updateInfo(index, &reader)
+				party.updateInfo(index)
 			}
 		}
 	default:
@@ -1618,11 +1622,9 @@ func (server *Server) handleCharacterDeleted(conn mnet.Server, reader mpacket.Re
 
 	// Remove from any party
 	for _, party := range server.parties {
-		for i, plr := range party.players {
-			if plr != nil && plr.ID == charID {
-				// Remove from party
-				party.players[i] = nil
-				party.broadcast(packetPartyLeave(party.ID, charID, true, false, party.Name[i], party))
+		for i, plrID := range party.PlayerID {
+			if plrID == charID {
+				party.removePlayer(int32(i), true)
 				break
 			}
 		}

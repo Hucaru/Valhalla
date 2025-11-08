@@ -37,21 +37,18 @@ func (d *party) addExistingPlayer(plr *Player) bool {
 	return false
 }
 
-func (d *party) addPlayer(plr *Player, index int32, reader *mpacket.Reader) {
+func (d *party) addPlayer(plr *Player, index int32) {
 	if plr != nil {
 		d.players[index] = plr
 		plr.party = d
 	}
 
-	d.SerialisePacket(reader)
 	d.broadcast(packetPartyPlayerJoin(d.ID, d.Name[index], d))
 }
 
-func (d *party) removePlayer(index int32, kick bool, reader *mpacket.Reader) {
+func (d *party) removePlayer(index int32, kick bool) {
 	playerID := d.PlayerID[index]
 	name := d.Name[index]
-
-	d.SerialisePacket(reader)
 
 	if index == 0 {
 		d.broadcast(packetPartyLeave(d.ID, playerID, false, kick, "", d))
@@ -83,8 +80,7 @@ func (d party) full() bool {
 	return true
 }
 
-func (d *party) updateOnlineStatus(index int32, plr *Player, reader *mpacket.Reader) {
-	d.SerialisePacket(reader)
+func (d *party) updateOnlineStatus(index int32, plr *Player) {
 	d.players[index] = plr
 
 	if plr != nil {
@@ -94,9 +90,8 @@ func (d *party) updateOnlineStatus(index int32, plr *Player, reader *mpacket.Rea
 	d.broadcast(packetPartyUpdate(d.ID, d))
 }
 
-func (d *party) updateInfo(index int32, reader *mpacket.Reader) {
+func (d *party) updateInfo(index int32) {
 	mapID := d.MapID[index]
-	d.SerialisePacket(reader)
 
 	if mapID != d.MapID[index] {
 		d.broadcast(packetPartyUpdate(d.ID, d))
