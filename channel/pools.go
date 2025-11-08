@@ -367,6 +367,11 @@ func (pool *lifePool) mobDamaged(poolID int32, damager *Player, dmg ...int32) {
 					damager.onMobKilled(v.id)
 				}
 
+				// Update mob kill metric
+				if pool.instance != nil && pool.instance.server != nil {
+					pool.instance.server.updateMobKillMetric(damager.ID)
+				}
+
 				for _, id := range v.revives {
 					spawnID, err := pool.nextMobID()
 
@@ -775,12 +780,32 @@ func (pool *roomPool) addRoom(r roomer) error {
 
 	pool.updateGameBox(r)
 
+	// Update metrics
+	if pool.instance != nil && pool.instance.server != nil {
+		switch r.(type) {
+		case *tradeRoom:
+			pool.instance.server.updateTradeMetric(1)
+		case gameRoomer:
+			pool.instance.server.updateMinigameMetric(1)
+		}
+	}
+
 	return nil
 }
 
 func (pool *roomPool) removeRoom(id int32) error {
 	if _, ok := pool.rooms[id]; !ok {
 		return fmt.Errorf("Could not delete room as ID was not found")
+	}
+
+	// Update metrics before removing
+	if pool.instance != nil && pool.instance.server != nil {
+		switch pool.rooms[id].(type) {
+		case *tradeRoom:
+			pool.instance.server.updateTradeMetric(-1)
+		case gameRoomer:
+			pool.instance.server.updateMinigameMetric(-1)
+		}
 	}
 
 	if _, valid := pool.rooms[id].(gameRoomer); valid {

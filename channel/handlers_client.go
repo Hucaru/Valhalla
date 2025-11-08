@@ -946,7 +946,7 @@ func (server Server) playerUseScriptedPortal(conn mnet.Client, reader mpacket.Re
 		return
 	}
 
-	warp := func(plr *Player, mapID int32, portalName string, checkActive bool, maxPlayers int) {
+	warp := func(plr *Player, mapID int32, portalName string, checkActive bool, maxPlayers int, minLevel byte) {
 		dstField, ok := server.fields[mapID]
 
 		if !ok {
@@ -982,6 +982,12 @@ func (server Server) playerUseScriptedPortal(conn mnet.Client, reader mpacket.Re
 			return
 		}
 
+		if plr.level < minLevel {
+			plr.Send(packetMessageRedText(fmt.Sprintf("You must be level %d or higher to enter.", minLevel)))
+			plr.Send(packetPlayerNoChange())
+			return
+		}
+
 		portal, err := inst.getPortalFromName(portalName)
 
 		if err != nil {
@@ -995,17 +1001,17 @@ func (server Server) playerUseScriptedPortal(conn mnet.Client, reader mpacket.Re
 
 	switch portalName {
 	case constant.PortalFreeMarketEnter:
-		warp(plr, constant.MapFreeMarket, "out00", false, 0)
+		warp(plr, constant.MapFreeMarket, "out00", false, 0, 10)
 	case constant.PortalFreeMarketLeave:
 		previousMap := plr.previousMap
-		warp(plr, previousMap, "market00", false, 0)
+		warp(plr, previousMap, "market00", false, 0, 0)
 		plr.previousMap = previousMap
 	case constant.PortalPapulatus:
-		warp(plr, constant.MapBossPapulatus, "st00", true, 0)
+		warp(plr, constant.MapBossPapulatus, "st00", true, 0, 120)
 	case constant.PortalPianus:
-		warp(plr, constant.MapBossPianus, "out00", false, 10)
+		warp(plr, constant.MapBossPianus, "out00", false, 10, 0)
 	case constant.PortalZakum:
-		warp(plr, constant.MapBossZakum, "st00", true, 20)
+		warp(plr, constant.MapBossZakum, "st00", true, 20, 50)
 	}
 }
 
@@ -2461,10 +2467,12 @@ func (server *Server) npcChatStart(conn mnet.Client, reader mpacket.Reader) {
 	}
 
 	server.npcChat[conn] = controller
+	server.updateNPCInteractionMetric(1)
 
 	// Run the script. If it returns true, chat flow ended.
 	if ended := controller.run(); ended {
 		delete(server.npcChat, conn)
+		server.updateNPCInteractionMetric(-1)
 	}
 }
 
@@ -2544,8 +2552,10 @@ func (server *Server) npcChatContinue(conn mnet.Client, reader mpacket.Reader) {
 
 	if terminate {
 		delete(server.npcChat, conn)
+		server.updateNPCInteractionMetric(-1)
 	} else if controller.run() {
 		delete(server.npcChat, conn)
+		server.updateNPCInteractionMetric(-1)
 	}
 }
 
@@ -2751,7 +2761,10 @@ func (server *Server) npcShop(conn mnet.Client, reader mpacket.Reader) {
 		plr.Send(packetNpcShopResult(shopRechargeSuccess))
 
 	case 3: // Close
-		delete(server.npcChat, conn)
+		if _, ok := server.npcChat[conn]; ok {
+			delete(server.npcChat, conn)
+			server.updateNPCInteractionMetric(-1)
+		}
 	}
 }
 

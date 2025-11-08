@@ -563,7 +563,7 @@ func (server *Server) handleWorldInfo(conn mnet.Server, reader mpacket.Reader) {
 		server.worlds[i].SerialisePacket(reader)
 
 		if v.Name == "" {
-			log.Println("Registerd new world", server.worlds[i].Name)
+			log.Println("Registered new world", server.worlds[i].Name)
 		} else {
 			log.Println("Updated world info for", v.Name)
 		}

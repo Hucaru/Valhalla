@@ -43,6 +43,10 @@ func (server *Server) HandleServerPacket(conn mnet.Server, reader mpacket.Reader
 		server.handleCashShopInfo(conn, reader)
 	case opcode.ChannelPlayerMessengerEvent:
 		server.handleMessengerEvent(conn, reader)
+	case opcode.LoginDeleteCharacter:
+		server.handleCharacterDeleted(conn, reader)
+	case opcode.SyncParties:
+		server.handleSyncParties(conn, reader)
 
 	default:
 		log.Println("UNKNOWN SERVER PACKET:", reader)
@@ -250,8 +254,10 @@ func (server *Server) handlePartyEvent(conn mnet.Server, reader mpacket.Reader) 
 		}
 
 		newParty := &party{serverChannelID: int32(server.id)}
-		newParty.addPlayer(plr, 0, &reader)
+		newParty.SerialisePacket(&reader)
+		newParty.addPlayer(plr, 0)
 		server.parties[newParty.ID] = newParty
+		server.updatePartyMetric()
 	case internal.OpPartyLeaveExpel:
 		partyID := reader.ReadInt32()
 		destroy := reader.ReadBool()
@@ -259,11 +265,13 @@ func (server *Server) handlePartyEvent(conn mnet.Server, reader mpacket.Reader) 
 		index := reader.ReadInt32()
 
 		if party, ok := server.parties[partyID]; ok {
-			party.removePlayer(index, kicked, &reader)
+			party.SerialisePacket(&reader)
+			party.removePlayer(index, kicked)
 		}
 
 		if destroy {
 			delete(server.parties, partyID)
+			server.updatePartyMetric()
 		}
 
 	case internal.OpPartyAccept:
@@ -273,7 +281,8 @@ func (server *Server) handlePartyEvent(conn mnet.Server, reader mpacket.Reader) 
 
 		if party, ok := server.parties[partyID]; ok {
 			plr, _ := server.players.GetFromID(playerID)
-			party.addPlayer(plr, index, &reader)
+			party.SerialisePacket(&reader)
+			party.addPlayer(plr, index)
 		}
 	case internal.OpPartyInfoUpdate:
 		partyID := reader.ReadInt32()
@@ -281,11 +290,12 @@ func (server *Server) handlePartyEvent(conn mnet.Server, reader mpacket.Reader) 
 		index := reader.ReadInt32()
 		onlineStatus := reader.ReadBool()
 		if party, ok := server.parties[partyID]; ok {
+			party.SerialisePacket(&reader)
 			if onlineStatus {
 				plr, _ := server.players.GetFromID(playerID)
-				party.updateOnlineStatus(index, plr, &reader)
+				party.updateOnlineStatus(index, plr)
 			} else {
-				party.updateInfo(index, &reader)
+				party.updateInfo(index)
 			}
 		}
 	default:
@@ -1605,4 +1615,68 @@ func (server *Server) playerPetLoot(conn mnet.Client, reader mpacket.Reader) {
 	}
 
 	plr.inst.dropPool.playerAttemptPickup(drop, plr, 5)
+}
+
+func (server *Server) handleCharacterDeleted(conn mnet.Server, reader mpacket.Reader) {
+	charID := reader.ReadInt32()
+
+	// Remove from any party
+	for _, party := range server.parties {
+		for i, plrID := range party.PlayerID {
+			if plrID == charID {
+				party.removePlayer(int32(i), true)
+				break
+			}
+		}
+	}
+
+	// Remove from any guild
+	for _, guild := range server.guilds {
+		for i, playerID := range guild.playerID {
+			if playerID == charID {
+				guild.removePlayer(charID, false, guild.names[i])
+				break
+			}
+		}
+	}
+}
+
+func (server *Server) handleSyncParties(conn mnet.Server, reader mpacket.Reader) {
+	count := reader.ReadInt32()
+	log.Printf("Syncing %d parties from world server", count)
+
+	for i := int32(0); i < count; i++ {
+		partyID := reader.ReadInt32()
+
+		// Create or get existing party
+		p, exists := server.parties[partyID]
+		if !exists {
+			p = &party{
+				serverChannelID: int32(server.id),
+			}
+			server.parties[partyID] = p
+		}
+
+		p.ID = partyID
+
+		// Read party data
+		for j := 0; j < constant.MaxPartySize; j++ {
+			p.PlayerID[j] = reader.ReadInt32()
+			p.ChannelID[j] = reader.ReadInt32()
+			p.MapID[j] = reader.ReadInt32()
+			p.Job[j] = reader.ReadInt32()
+			p.Level[j] = reader.ReadInt32()
+			p.Name[j] = reader.ReadString(reader.ReadInt16())
+
+			// If player is on this channel, link them
+			if p.ChannelID[j] == int32(server.id) && p.PlayerID[j] > 0 {
+				if plr, err := server.players.GetFromID(p.PlayerID[j]); err == nil {
+					p.players[j] = plr
+					plr.party = p
+				}
+			}
+		}
+	}
+
+	log.Printf("Party sync completed: %d parties loaded", count)
 }
