@@ -335,15 +335,6 @@ func PacketSyncParties(parties map[int32]*Party) mpacket.Packet {
 	return p
 }
 
-func PacketSyncGuilds(guildIDs []int32) mpacket.Packet {
-	p := mpacket.CreateInternal(opcode.SyncGuilds)
-	p.WriteInt32(int32(len(guildIDs)))
-	for _, guildID := range guildIDs {
-		p.WriteInt32(guildID)
-	}
-	return p
-}
-
 func PacketWorldMessengerSelfEnter(recipientID int32, slot byte) mpacket.Packet {
 	p := mpacket.CreateInternal(opcode.ChannelPlayerMessengerEvent)
 	p.WriteByte(0x00)

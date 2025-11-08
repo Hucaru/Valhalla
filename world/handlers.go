@@ -124,10 +124,7 @@ func (server *Server) handleNewChannel(conn mnet.Server, reader mpacket.Reader) 
 
 	log.Println("Registered channel", len(server.Info.Channels)-1)
 	server.sendChannelInfo()
-
-	// Sync parties and guilds to new channel
 	server.syncPartiesToChannel(conn)
-	server.syncGuildsToChannel(conn)
 }
 
 func (server Server) sendChannelInfo() {
@@ -395,6 +392,7 @@ func (server *Server) handleUpdateLoginInfo(conn mnet.Server, reader mpacket.Rea
 	server.Info.Message = reader.ReadString(reader.ReadInt16())
 
 	log.Printf("GM updated login info: Ribbon=%d, Message=%s", server.Info.Ribbon, server.Info.Message)
+	server.login.Send(server.Info.GenerateInfoPacket())
 }
 
 func (server *Server) handleGuildEvent(conn mnet.Server, reader mpacket.Reader) {
@@ -843,29 +841,4 @@ func (server *Server) syncPartiesToChannel(conn mnet.Server) {
 
 	log.Printf("Syncing %d parties to channel", len(server.parties))
 	conn.Send(internal.PacketSyncParties(server.parties))
-}
-
-func (server *Server) syncGuildsToChannel(conn mnet.Server) {
-	// Collect active guild IDs from the database
-	rows, err := common.DB.Query("SELECT DISTINCT guildID FROM characters WHERE guildID IS NOT NULL AND guildID > 0")
-	if err != nil {
-		log.Println("Error querying guilds for sync:", err)
-		return
-	}
-	defer rows.Close()
-
-	var guildIDs []int32
-	for rows.Next() {
-		var guildID int32
-		if err := rows.Scan(&guildID); err != nil {
-			log.Println("Error scanning guild ID:", err)
-			continue
-		}
-		guildIDs = append(guildIDs, guildID)
-	}
-
-	if len(guildIDs) > 0 {
-		log.Printf("Syncing %d guilds to channel", len(guildIDs))
-		conn.Send(internal.PacketSyncGuilds(guildIDs))
-	}
 }

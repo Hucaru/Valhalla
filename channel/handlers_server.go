@@ -47,8 +47,6 @@ func (server *Server) HandleServerPacket(conn mnet.Server, reader mpacket.Reader
 		server.handleCharacterDeleted(conn, reader)
 	case opcode.SyncParties:
 		server.handleSyncParties(conn, reader)
-	case opcode.SyncGuilds:
-		server.handleSyncGuilds(conn, reader)
 
 	default:
 		log.Println("UNKNOWN SERVER PACKET:", reader)
@@ -1679,31 +1677,4 @@ func (server *Server) handleSyncParties(conn mnet.Server, reader mpacket.Reader)
 	}
 
 	log.Printf("Party sync completed: %d parties loaded", count)
-}
-
-func (server *Server) handleSyncGuilds(conn mnet.Server, reader mpacket.Reader) {
-	count := reader.ReadInt32()
-	log.Printf("Syncing %d guilds from world server", count)
-
-	for i := int32(0); i < count; i++ {
-		guildID := reader.ReadInt32()
-
-		// Load guild if not already loaded
-		if _, exists := server.guilds[guildID]; !exists {
-			if guild, err := loadGuildFromDb(guildID, &server.players); err == nil {
-				server.guilds[guildID] = guild
-
-				// Link players to guild
-				server.players.observe(func(plr *Player) {
-					if plr.guild != nil && plr.guild.id == guildID {
-						plr.guild = guild
-					}
-				})
-			} else {
-				log.Printf("Failed to load guild %d: %v", guildID, err)
-			}
-		}
-	}
-
-	log.Printf("Guild sync completed: %d guilds loaded", count)
 }
