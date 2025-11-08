@@ -111,7 +111,7 @@ func (server *Server) Initialise(work chan func(), dbuser, dbpassword, dbaddress
 		common.MetricsCounters["monster_kills_total"] = prometheus.NewCounterVec(prometheus.CounterOpts{
 			Name: "monster_kills_total",
 			Help: "Total number of monsters killed",
-		}, []string{"channel", "world"})
+		}, []string{"channel", "world", "character_id"})
 		prometheus.MustRegister(common.MetricsCounters["monster_kills_total"])
 	}
 
@@ -311,13 +311,14 @@ func (server *Server) updatePartyMetric() {
 	}).Set(float64(len(server.parties)))
 }
 
-func (server *Server) updateMobKillMetric() {
+func (server *Server) updateMobKillMetric(charID int32) {
 	if server.worldName == "" {
 		return
 	}
 	common.MetricsCounters["monster_kills_total"].With(prometheus.Labels{
-		"channel": strconv.Itoa(int(server.id)),
-		"world":   server.worldName,
+		"channel":      strconv.Itoa(int(server.id)),
+		"world":        server.worldName,
+		"character_id": strconv.Itoa(int(charID)),
 	}).Inc()
 }
 
