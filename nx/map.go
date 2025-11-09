@@ -54,7 +54,7 @@ type Foothold struct {
 // Map data from nx
 type Map struct {
 	Town         bool
-	ForcedReturn int64
+	ForcedReturn int32
 	ReturnMap    int32
 	MobRate      float64
 
@@ -154,7 +154,7 @@ func getMapInfo(node *gonx.Node, nodes []gonx.Node, textLookup []string) Map {
 		case "mobRate":
 			m.MobRate = gonx.DataToFloat64(option.Data)
 		case "forcedReturn":
-			m.ForcedReturn = gonx.DataToInt64(option.Data)
+			m.ForcedReturn = gonx.DataToInt32(option.Data)
 		case "personalShop":
 			m.PersonalShop = gonx.DataToInt64(option.Data)
 		case "entrustedShop":

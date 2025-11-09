@@ -64,6 +64,8 @@ const (
 	SendChannelPlayerUseMeleeSkill    byte = 0x66
 	SendChannelPlayerUseRangedSkill   byte = 0x67
 	SendChannelPlayerUseMagicSkill    byte = 0x68
+	SendChannelPlayerPrepareSkill     byte = 0x69
+	SendChannelPlayerStopSkill        byte = 0x6A
 	SendChannelPlayerTakeDmg          byte = 0x6B
 	SendChannelPlayerEmoticon         byte = 0x6C
 	SendChannelPlayerActiveEffect     byte = 0x6D
