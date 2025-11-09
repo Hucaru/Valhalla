@@ -1050,6 +1050,10 @@ func (server Server) warpPlayer(plr *Player, dstField *field, dstPortal portal, 
 		plr.setMapID(dstField.id)
 	}
 
+	if plr.party != nil {
+		plr.UpdatePartyInfo(plr.party.ID, plr.ID, int32(plr.job), int32(plr.level), dstField.id, plr.Name)
+	}
+
 	plr.pos = dstPortal.pos
 
 	plr.Send(packetMapChange(dstField.id, int32(server.id), dstPortal.id, plr.hp))

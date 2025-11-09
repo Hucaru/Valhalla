@@ -666,10 +666,6 @@ func (d *Player) setMapID(id int32) {
 
 	d.mapID = id
 
-	if d.party != nil {
-		d.UpdatePartyInfo(d.party.ID, d.ID, int32(d.job), int32(d.level), d.mapID, d.Name)
-	}
-
 	// write-behind for mapID/pos (mapPos updated on save())
 	d.MarkDirty(DirtyMap, 500*time.Millisecond)
 	d.MarkDirty(DirtyPrevMap, 500*time.Millisecond)
