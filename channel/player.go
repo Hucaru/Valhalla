@@ -1320,16 +1320,6 @@ func (d Player) Logout() {
 		}
 	}
 
-	currentMap, err := nx.GetMap(d.mapID)
-	if err != nil {
-		log.Println(err)
-	}
-
-	if currentMap.ForcedReturn != 999999999 {
-		d.mapID = currentMap.ForcedReturn
-		d.MarkDirty(DirtyMap, time.Millisecond*100)
-	}
-
 	flushNow(&d)
 	d.saveBuffSnapshot()
 

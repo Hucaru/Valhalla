@@ -1039,7 +1039,17 @@ func (server Server) warpPlayer(plr *Player, dstField *field, dstPortal portal, 
 		return err
 	}
 
-	plr.setMapID(dstField.id)
+	dstMap, err := nx.GetMap(dstField.id)
+	if err != nil {
+		log.Println(err)
+	}
+
+	if dstMap.ForcedReturn != 999999999 {
+		plr.setMapID(dstMap.ForcedReturn)
+	} else {
+		plr.setMapID(dstField.id)
+	}
+
 	plr.pos = dstPortal.pos
 
 	plr.Send(packetMapChange(dstField.id, int32(server.id), dstPortal.id, plr.hp))
