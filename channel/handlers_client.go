@@ -2237,7 +2237,6 @@ func (server Server) playerMagicSkill(conn mnet.Client, reader mpacket.Reader) {
 
 	err = plr.useSkill(data.skillID, data.skillLevel, data.projectileID)
 	if err != nil {
-		// Send packet to stop?
 		return
 	}
 

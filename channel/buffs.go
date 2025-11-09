@@ -184,6 +184,19 @@ func (cb *CharacterBuffs) HasGMHide() bool {
 	return ok
 }
 
+func (cb *CharacterBuffs) hasMobDebuff(skillID byte) bool {
+	if cb == nil {
+		return false
+	}
+	for src := range cb.activeSkillLevels {
+		base := src & 0xFFFF
+		if base == int32(skillID) {
+			return true
+		}
+	}
+	return false
+}
+
 func (cb *CharacterBuffs) AddBuff(charId, skillID int32, level byte, foreign bool, delay int16) {
 	if cb.plr == nil {
 		return
