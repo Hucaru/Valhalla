@@ -236,6 +236,16 @@ func (server *Server) playerConnect(conn mnet.Client, reader mpacket.Reader) {
 
 	server.players.Add(&plr)
 
+	currentMap, err := nx.GetMap(plr.mapID)
+	if err != nil {
+		log.Println(err)
+	}
+
+	if currentMap.ForcedReturn != 999999999 {
+		plr.mapID = currentMap.ForcedReturn
+		plr.MarkDirty(DirtyMap, time.Millisecond*300)
+	}
+
 	conn.Send(packetPlayerEnterGame(plr, int32(server.id)))
 	conn.Send(packetMessageScrollingHeader(server.header))
 
@@ -1039,16 +1049,7 @@ func (server Server) warpPlayer(plr *Player, dstField *field, dstPortal portal, 
 		return err
 	}
 
-	dstMap, err := nx.GetMap(dstField.id)
-	if err != nil {
-		log.Println(err)
-	}
-
-	if dstMap.ForcedReturn != 999999999 {
-		plr.setMapID(dstMap.ForcedReturn)
-	} else {
-		plr.setMapID(dstField.id)
-	}
+	plr.setMapID(dstField.id)
 
 	if plr.party != nil {
 		plr.UpdatePartyInfo(plr.party.ID, plr.ID, int32(plr.job), int32(plr.level), dstField.id, plr.Name)
