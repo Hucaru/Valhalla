@@ -154,28 +154,7 @@ kubectl port-forward -n valhalla svc/channel-server-1 8685:8685
 kubectl port-forward -n valhalla svc/channel-server-2 8686:8686
 ```
 
-#### Option B: LoadBalancer (Cloud)
-
-Edit `helm/values.yaml`:
-```yaml
-services:
-  login:
-    type: LoadBalancer
-  channels:
-    type: LoadBalancer
-```
-
-Upgrade:
-```bash
-helm upgrade valhalla ./helm -n valhalla
-```
-
-Get external IPs:
-```bash
-kubectl get svc -n valhalla
-```
-
-#### Option C: Ingress-Nginx (Recommended for Production)
+#### Option B: Ingress-Nginx (Recommended for Production)
 
 See [Exposing via Ingress](#exposing-services-with-ingress-nginx) below.
 
