@@ -69,6 +69,8 @@ type Item struct {
 	reqLuk       int16
 	hp           int16
 	mp           int16
+	hpr          int16
+	mpr          int16
 	watk         int16
 	matk         int16
 	wdef         int16
@@ -524,11 +526,35 @@ func (v Item) use(plr *Player) {
 		plr.noChange()
 		return
 	}
-	if v.hp > 0 {
+
+	// Let's use NX data as source of truth for useable items
+	nxData, err := nx.GetItem(v.ID)
+	if err != nil {
+		log.Println("could not load item from nx: ", v.ID)
+		return
+	}
+
+	if nxData.HP > 0 {
 		plr.giveHP(v.hp)
 	}
-	if v.mp > 0 {
+	if nxData.MP > 0 {
 		plr.giveMP(v.mp)
+	}
+
+	if nxData.HPR > 0 {
+		hpAmt := int(math.Floor(float64(plr.maxHP) * float64(nxData.HPR) / 100.0))
+		if hpAmt < 1 {
+			hpAmt = 1
+		}
+		plr.giveHP(int16(hpAmt))
+	}
+
+	if nxData.MPR > 0 {
+		mpAmt := int(math.Floor(float64(plr.maxMP) * float64(nxData.MPR) / 100.0))
+		if mpAmt < 1 {
+			mpAmt = 1
+		}
+		plr.giveMP(int16(mpAmt))
 	}
 
 	if plr.buffs == nil {
@@ -536,7 +562,7 @@ func (v Item) use(plr *Player) {
 	}
 
 	plr.buffs.plr.inst = plr.inst
-	plr.buffs.AddItemBuff(v)
+	plr.buffs.AddItemBuff(nxData, v.ID)
 }
 
 // applyScrollEffects mutates the equip with the scroll increments from NX.

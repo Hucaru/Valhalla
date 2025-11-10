@@ -25,7 +25,7 @@ type Item struct {
 	Speed, Jump, PAD, PDD, MAD, MDD, ACC, EVA                      int16
 	Poison, Darkness, Weakness, Curse, Seal                        int16
 	Attack, IncJump, IncSpeed, RecoveryHP                          float64
-	HP, MP                                                         int16
+	HP, MP, HPR, MPR                                               int16
 	Time                                                           int16
 	AttackSpeed                                                    int16
 	Price                                                          int32
@@ -425,7 +425,9 @@ func (item *Item) getItem(node *gonx.Node, nodes []gonx.Node, textLookup []strin
 		case "iconRawD":
 		case "iconReward":
 		case "hpR":
+			item.HPR = gonx.DataToInt16(option.Data)
 		case "mpR":
+			item.MPR = gonx.DataToInt16(option.Data)
 		case "thaw":
 		case "0":
 			fallthrough
