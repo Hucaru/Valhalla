@@ -59,11 +59,8 @@ Use your cloud provider's tools:
 
 For Kubernetes, you need to make Data.nx available to pods. You have two options:
 
-#### Option A: ConfigMap (For Small Files < 1MB)
-
-```bash
-kubectl create configmap data-nx --from-file=Data.nx=./Data.nx -n valhalla
-```
+#### Option A: Prebake into Docker image
+This is easiest option, simply build your Docker images with the Data.nx file inside it. 
 
 #### Option B: Persistent Volume (Recommended)
 
