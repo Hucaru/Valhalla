@@ -131,16 +131,6 @@ Metrics:
 
 See screenshots section for an example Grafana dashboard
 
-## TODOs
-
-- Profile the channel server and do the following:
-    - Reduce branches in frequent paths
-    - Determine which pieces of data if any provide any benefit in being converted SOAs
-- Implement AES crypt (ontop of the shanda) and determine how to enable it in the client
-- Move player save database operations into relevant systems
-- Player inventory needs a re-write
-- Investigate party reject invite packet from client (it looks like garbage)
-
 ## Acknowledgements
 
 - Sunnyboy for providing a [list](http://forum.ragezone.com/f921/library-idbs-versions-named-addresses-987815/) of idbs for which this project would not have started
@@ -313,7 +303,7 @@ tcp:
   8685: valhalla/channel-server-1:8685
   8684: valhalla/channel-server-2:8684
   8683: valhalla/channel-server-3:8683
-... etc 
+... etc
 ```
 **You will need to add all the channels you intend on having, and the port decreases by 1 for each additional channel**
 
