@@ -315,16 +315,18 @@ func (f *field) createInstance(rates *rates, server *Server) int {
 	}
 
 	inst := &fieldInstance{
-		id:          id,
-		fieldID:     f.id,
-		portals:     portals,
-		dispatch:    f.Dispatch,
-		town:        f.Data.Town,
-		returnMapID: f.Data.ReturnMap,
-		timeLimit:   f.Data.TimeLimit,
-		properties:  make(map[string]interface{}),
-		fhHist:      f.fhHist,
-		server:      server,
+		id:              id,
+		fieldID:         f.id,
+		portals:         portals,
+		dispatch:        f.Dispatch,
+		town:            f.Data.Town,
+		returnMapID:     f.Data.ReturnMap,
+		timeLimit:       f.Data.TimeLimit,
+		properties:      make(map[string]interface{}),
+		mysticDoors:     make(map[int32]*mysticDoorInfo),
+		pendingDoorSync: make(map[int32]bool),
+		fhHist:          f.fhHist,
+		server:          server,
 	}
 
 	inst.roomPool = createNewRoomPool(inst)
@@ -539,6 +541,10 @@ type fieldInstance struct {
 	portals []portal
 	players []*Player
 
+	// Mystic doors in this instance (key: player ID)
+	mysticDoors     map[int32]*mysticDoorInfo
+	pendingDoorSync map[int32]bool
+
 	idCounter int32
 	town      bool
 
@@ -561,6 +567,17 @@ type fieldInstance struct {
 	fhHist fhHistogram
 
 	server *Server // reference to server for metrics
+}
+
+type mysticDoorInfo struct {
+	ownerID     int32
+	spawnID     int32
+	portalIndex int
+	pos         pos
+	srcPos      pos
+	destMapID   int32
+	townPortal  bool
+	expiresAt   time.Time
 }
 
 func (inst fieldInstance) String() string {
@@ -656,6 +673,8 @@ func (inst *fieldInstance) addPlayer(plr *Player) error {
 		plr.Send(packetBgmChange(inst.bgm))
 	}
 
+	inst.showMysticDoorsTo(plr)
+
 	switch inst.fieldID {
 	case constant.MapStationEllinia:
 		fallthrough
@@ -667,6 +686,71 @@ func (inst *fieldInstance) addPlayer(plr *Player) error {
 	}
 
 	return nil
+}
+
+// showMysticDoorsTo shows all mystic doors in this instance to a player
+func (inst *fieldInstance) showMysticDoorsTo(plr *Player) {
+	for ownerID, doorInfo := range inst.mysticDoors {
+		if doorInfo.townPortal {
+			plr.Send(packetMapSpawnMysticDoor(doorInfo.spawnID, doorInfo.pos, false))
+			plr.Send(packetMapPortal(doorInfo.destMapID, inst.fieldID, doorInfo.srcPos))
+		} else {
+			plr.Send(packetMapSpawnMysticDoor(doorInfo.spawnID, doorInfo.pos, true))
+			plr.Send(packetMapPortal(inst.fieldID, doorInfo.destMapID, doorInfo.pos))
+		}
+
+		if plr.party != nil {
+			isParty := false
+			ownerIdx := byte(0)
+			for i, pid := range plr.party.PlayerID {
+				if pid == ownerID {
+					isParty = true
+					ownerIdx = byte(i)
+					break
+				}
+			}
+			if isParty {
+				if doorInfo.townPortal {
+					plr.Send(packetMapPortalParty(ownerIdx, doorInfo.destMapID, inst.fieldID, doorInfo.srcPos))
+				} else {
+					plr.Send(packetMapPortalParty(ownerIdx, inst.fieldID, doorInfo.destMapID, doorInfo.pos))
+				}
+			}
+		}
+	}
+}
+
+func (inst *fieldInstance) requestDoorPartySync(plr *Player) {
+	if plr == nil {
+		return
+	}
+	inst.pendingDoorSync[plr.ID] = true
+}
+
+// sendPartyDoorBindings sends only the party-door
+func (inst *fieldInstance) sendPartyDoorBindings(viewer *Player) {
+	if viewer == nil || viewer.party == nil {
+		return
+	}
+
+	indexOf := func(ownerID int32) (byte, bool) {
+		for i, pid := range viewer.party.PlayerID {
+			if pid == ownerID {
+				return byte(i), true
+			}
+		}
+		return 0, false
+	}
+
+	for ownerID, door := range inst.mysticDoors {
+		if idx, ok := indexOf(ownerID); ok {
+			if door.townPortal {
+				viewer.Send(packetMapPortalParty(idx, door.destMapID, inst.fieldID, door.srcPos))
+			} else {
+				viewer.Send(packetMapPortalParty(idx, inst.fieldID, door.destMapID, door.pos))
+			}
+		}
+	}
 }
 
 func (inst *fieldInstance) removePlayer(plr *Player, usedPortal bool) error {
@@ -794,6 +878,51 @@ func (inst fieldInstance) getPortalFromID(id byte) (portal, error) {
 	return portal{}, fmt.Errorf("No portal with that Name")
 }
 
+func (inst *fieldInstance) getNextPortalID() byte {
+	used := make(map[byte]bool, len(inst.portals))
+	for i := range inst.portals {
+		used[inst.portals[i].id] = true
+	}
+	for id := 0; id <= 255; id++ {
+		b := byte(id)
+		if !used[b] {
+			return b
+		}
+	}
+	// Fallback: if somehow all are used, reuse 255 (unlikely in practice)
+	return 255
+}
+
+// addPortal adds a new portal to the instance and returns its index
+func (inst *fieldInstance) addPortal(p portal) int {
+	inst.portals = append(inst.portals, p)
+	return len(inst.portals) - 1
+}
+
+// findAvailableTownPortal finds an unused "tp" portal in the instance
+// Returns the portal index and the portal, or -1 and error if none available
+func (inst *fieldInstance) findAvailableTownPortal() (int, *portal, error) {
+	usedIndices := make(map[int]bool)
+	for _, doorInfo := range inst.mysticDoors {
+		usedIndices[doorInfo.portalIndex] = true
+	}
+
+	for i := range inst.portals {
+		if inst.portals[i].name == "tp" && !usedIndices[i] {
+			return i, &inst.portals[i], nil
+		}
+	}
+
+	return -1, &portal{}, fmt.Errorf("No available town portals")
+}
+
+// removePortalAtIndex removes a portal at the specified index
+func (inst *fieldInstance) removePortalAtIndex(index int) {
+	if index >= 0 && index < len(inst.portals) {
+		inst.portals = append(inst.portals[:index], inst.portals[index+1:]...)
+	}
+}
+
 func (inst *fieldInstance) startFieldTimer() {
 	inst.runUpdate = true
 	inst.fieldTimer = time.NewTicker(time.Millisecond * 1000) // Is this correct time?
@@ -815,6 +944,37 @@ func (inst *fieldInstance) fieldUpdate(t time.Time) {
 	inst.lifePool.update(t)
 	inst.dropPool.update(t)
 	inst.stopWeatherEffect(t)
+
+	if len(inst.mysticDoors) > 0 {
+		var toExpire []int32
+		for ownerID, door := range inst.mysticDoors {
+			if door != nil && !door.townPortal && !door.expiresAt.IsZero() && t.After(door.expiresAt) {
+				toExpire = append(toExpire, ownerID)
+			}
+		}
+		for _, ownerID := range toExpire {
+			door := inst.mysticDoors[ownerID]
+			if door != nil {
+				mysticDoorExpired(ownerID, inst.fieldID, door.destMapID, inst.server)
+			}
+		}
+	}
+
+	if len(inst.pendingDoorSync) > 0 {
+		for pid := range inst.pendingDoorSync {
+			var viewer *Player
+			for _, p := range inst.players {
+				if p != nil && p.ID == pid {
+					viewer = p
+					break
+				}
+			}
+			if viewer != nil {
+				inst.sendPartyDoorBindings(viewer)
+			}
+			delete(inst.pendingDoorSync, pid)
+		}
+	}
 
 	if inst.lifePool.canPause() && inst.dropPool.canPause() {
 		inst.stopFieldTimer()
@@ -916,16 +1076,6 @@ func packetMapSpawnMysticDoor(spawnID int32, pos pos, instant bool) mpacket.Pack
 	return p
 }
 
-func packetMapSpawnTownMysticDoor(dstMap int32, destPos pos) mpacket.Packet {
-	p := mpacket.CreateWithOpcode(opcode.SendChannelTownPortal)
-	p.WriteInt32(dstMap)
-	p.WriteInt32(dstMap)
-	p.WriteInt16(destPos.x)
-	p.WriteInt16(destPos.y)
-
-	return p
-}
-
 func packetMapRemoveMysticDoor(spawnID int32, instant bool) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelRemoveDoor)
 	p.WriteBool(instant)
@@ -986,14 +1136,45 @@ func packetBlowWeather(itemID int32, msg string) mpacket.Packet {
 	return p
 }
 
-func packetMapPortal(srcMap, dstmap int32, pos pos) mpacket.Packet {
-	p := mpacket.CreateWithOpcode(0x2d)
-	p.WriteByte(26)
-	p.WriteByte(0) // ?
+func packetMapPortal(srcMap, dstMap int32, pos pos) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelTownPortal)
+	p.WriteInt32(dstMap)
 	p.WriteInt32(srcMap)
-	p.WriteInt32(dstmap)
 	p.WriteInt16(pos.x)
 	p.WriteInt16(pos.y)
+
+	return p
+}
+
+// packetMapPortalParty creates a party-specific portal packet (only party members can use)
+func packetMapPortalParty(ownerIdx byte, srcMap, dstMap int32, pos pos) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelPartyInfo)
+	p.WriteByte(0x1C)
+	p.WriteByte(ownerIdx)
+	p.WriteInt32(dstMap)
+	p.WriteInt32(srcMap)
+	p.WriteInt16(pos.x)
+	p.WriteInt16(pos.y)
+	return p
+}
+
+// packetMapRemovePortalParty clears the party-door for a specific owner index
+func packetMapRemovePortalParty(ownerIdx byte) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelPartyInfo)
+	p.WriteByte(0x1C)
+	p.WriteByte(ownerIdx)
+	p.WriteInt32(constant.InvalidMap)
+	p.WriteInt32(constant.InvalidMap)
+	p.WriteInt16(0)
+	p.WriteInt16(0)
+	return p
+}
+
+// packetMapRemovePortal removes a portal (town portal/mystic door)
+func packetMapRemovePortal() mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelTownPortal)
+	p.WriteInt32(constant.InvalidMap)
+	p.WriteInt32(constant.InvalidMap)
 
 	return p
 }

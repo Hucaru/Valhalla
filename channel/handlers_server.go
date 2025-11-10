@@ -283,7 +283,15 @@ func (server *Server) handlePartyEvent(conn mnet.Server, reader mpacket.Reader) 
 			plr, _ := server.players.GetFromID(playerID)
 			party.SerialisePacket(&reader)
 			party.addPlayer(plr, index)
+
+			if plr != nil && plr.inst != nil {
+				inst := plr.inst
+				inst.dispatch <- func() {
+					inst.requestDoorPartySync(plr)
+				}
+			}
 		}
+
 	case internal.OpPartyInfoUpdate:
 		partyID := reader.ReadInt32()
 		playerID := reader.ReadInt32()
@@ -698,6 +706,9 @@ func (server *Server) playerSpecialSkill(conn mnet.Client, reader mpacket.Reader
 		skill.ShadowWeb,
 		skill.Doom:
 		readMobListAndDelay()
+
+	case skill.MysticDoor:
+		createMysticDoor(plr, skillID, skillLevel)
 
 	// Summons and puppet:
 	case skill.SummonDragon,
