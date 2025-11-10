@@ -142,177 +142,73 @@ See screenshots section for an example Grafana dashboard
 
 ## Getting Started
 
-### Pre-built Binaries
+Valhalla supports multiple deployment methods. Choose the one that best fits your needs:
 
-Download pre-built binaries for your platform from the [releases page](https://github.com/Hucaru/Valhalla/releases). Each release includes:
-- Valhalla server binary for your platform
-- Required JSON data files (drops.json, reactors.json, reactor_drops.json)
-- Sample configuration files (config_*.toml)
-- LICENSE and README
+📚 **[Installation Guide](docs/Installation.md)** - Start here! Covers Data.wz conversion and client setup
 
-Simply extract the archive and run the binary with appropriate flags.
+### Quick Links by Deployment Method
 
-New releases are automatically created on every push to the `master` branch using semantic versioning. The version is automatically bumped based on commit messages following [Conventional Commits](https://www.conventionalcommits.org/).
+- 🖥️ **[Local Setup](docs/Local.md)** - Run directly on your machine (best for quick testing)
+- 🐳 **[Docker Setup](docs/Docker.md)** - Run using Docker Compose (recommended for most users)
+- ☸️ **[Kubernetes Setup](docs/Kubernetes.md)** - Deploy to a Kubernetes cluster (for production)
+- 🔨 **[Building from Source](docs/Building.md)** - Build for development work
 
-### Building from Source
+### Configuration
 
-If you prefer to build from source, you'll need Go 1.25 or later installed. Clone the repository and run:
+⚙️ **[Configuration Guide](docs/Configuration.md)** - Complete reference for all configuration options
 
-```bash
-go build -v .
-```
+All server types support both TOML configuration files and environment variables. See the Configuration Guide for details on:
+- Command line flags (`-type`, `-config`, `-metrics-port`)
+- Database settings
+- Server-specific options (login, world, channel, cashshop)
+- Network configuration
+- Performance tuning
 
-## How to Run
+## Advanced Topics
 
-All instances are run through the main executable by passing a **type** and an optional **config** file.
+### NPC Scripting
 
-### Windows
+NPCs are scripted in JavaScript powered by [goja](https://github.com/dop251/goja). For detailed NPC chat formatting codes and scripting information, see the scripts directory and existing NPC implementations.
 
-```bash
-Valhalla.exe -type login -config config_login.toml
-````
+For NPC chat display formatting reference, see the [NPC Chat Formatting](#npc-chat-formatting) section below.
 
-### Linux
+### Production Deployments
 
-```bash
-Valhalla -type login -config config_login.toml
-```
+- **[Kubernetes](docs/Kubernetes.md)** - Production-ready deployment with Helm, ingress, scaling, and monitoring
+- **[Docker](docs/Docker.md)** - Containerized deployment with Docker Compose
 
-## Configuration
+## NPC Chat Formatting
 
-Each server type can be configured either via its corresponding `config_<type>.toml` file or through environment variables.
+When scripting NPCs in JavaScript, use these formatting codes:
 
-For containerized setups, the TOML files used are the ones inside the `docker` directory.
+- `#b` - Blue text
+- `#c[itemid]#` - Shows how many [itemid] the player has in inventory
+- `#d` - Purple text
+- `#e` - Bold text
+- `#f[imagelocation]#` - Shows an image from .wz files
+- `#g` - Green text
+- `#h #` - Shows the player's name
+- `#i[itemid]#` - Shows a picture of the item
+- `#k` - Black text
+- `#l` - Selection close
+- `#m[mapid]#` - Shows the name of the map
+- `#n` - Normal text (removes bold)
+- `#o[mobid]#` - Shows the name of the mob
+- `#p[npcid]#` - Shows the name of the NPC
+- `#q[skillid]#` - Shows the name of the skill
+- `#r` - Red text
+- `#s[skillid]#` - Shows the image of the skill
+- `#t[itemid]#` - Shows the name of the item
+- `#v[itemid]#` - Shows a picture of the item
+- `#x` - Returns "0%" (usage varies)
+- `#z[itemid]#` - Shows the name of the item
+- `#B[%]#` - Shows a progress bar
+- `#F[imagelocation]#` - Shows an image from .wz files
+- `#L[number]#` - Selection open
+- `\r\n` - Moves down a line
+- `\r` - Return carriage
+- `\n` - New line
+- `\t` - Tab (4 spaces)
+- `\b` - Backwards
 
-Environment variable names follow the same structure as the TOML keys, but with prefixes added.
-
-For example, in TOML:
-
-```toml
-[login]
-clientListenAddress = "0.0.0.0"
-clientListenPort = "8484"
-```
-
-The equivalent environment variables would be:
-
-```bash
-VALHALLA_LOGIN_CLIENTLISTENADDRESS=0.0.0.0
-VALHALLA_LOGIN_CLIENTLISTENPORT=8484
-```
-
-### Auto-Register Feature
-
-The login server supports an optional auto-registration feature that automatically creates new accounts when users attempt to login with credentials that don't exist in the database. This is useful for development environments or private servers where you want to allow easy access without manual account creation.
-
-To enable auto-registration, set `autoRegister = true` in your `config_login.toml`:
-
-```toml
-[login]
-autoRegister = true
-```
-
-Or via environment variable:
-
-```bash
-VALHALLA_LOGIN_AUTOREGISTER=true
-```
-
-When enabled:
-- Users attempting to login with non-existent credentials will have accounts automatically created
-- New accounts are created with default values: gender=0, dob=1111111, eula=1, adminLevel=0, PIN="1111"
-- The password provided during the first login attempt is hashed and stored
-- The default PIN is "1111" and can be changed by the user later if `withPin = true`
-
-**Note:** For production environments, it's recommended to keep this disabled (`autoRegister = false`) for security reasons.
-
-## NPC chat display info (use this when scripting NPCs)
-
-NPCs are scripted in javscript powered by [goja](https://github.com/dop251/goja)
-
-Taken from [here](http://forum.ragezone.com/f428/add-learning-npcs-start-finish-643364/)
-
-- #b - Blue text.
-- #c[itemid]# - Shows how many [itemid] the player has in their inventory.
-- #d - Purple text.
-- #e - Bold text.
-- #f[imagelocation]# - Shows an image inside the .wz files.
-- #g - Green text.
-- #h # - Shows the name of the player.
-- #i[itemid]# - Shows a picture of the item.
-- #k - Black text.
-- #l - Selection close.
-- #m[mapid]# - Shows the name of the map.
-- #n - Normal text (removes bold).
-- #o[mobid]# - Shows the name of the mob.
-- #p[npcid]# - Shows the name of the NPC.
-- #q[skillid]# - Shows the name of the skill.
-- #r - Red text.
-- #s[skillid]# - Shows the image of the skill.
-- #t[itemid]# - Shows the name of the item.
-- #v[itemid]# - Shows a picture of the item.
-- #x - Returns "0%" (need more information on this).
-- #z[itemid]# - Shows the name of the item.
-- #B[%]# - Shows a 'progress' bar.
-- #F[imagelocation]# - Shows an image inside the .wz files.
-- #L[number]# Selection open.
-- \r\n - Moves down a line.
-- \r - Return Carriage
-- \n - New Line
-- \t - Tab (4 spaces)
-- \b - Backwards
-
-## Screenshots
-
-![Bosses](img/bosses.PNG?raw=true "Bosses")
-
-![Metrics](img/metrics.PNG?raw=true "Metrics")
-
-## Kubernetes deployment (optional)
-
-This repository now includes Kubernetes manifests that mirror docker-compose services.
-
-Prerequisites:
-- A Kubernetes cluster (minikube, kind, K3s, or cloud)
-- kubectl configured to point to the cluster
-- A container registry or a way to load local images into your cluster
-
-Build and load the image:
-- Build the image from the Dockerfile: `docker build -t valhalla:latest -f Dockerfile .`
-- If using kind: `kind load docker-image valhalla:latest`
-- If using minikube: `minikube image load valhalla:latest`
-- Otherwise, push `valhalla:latest` to a registry your cluster can pull from and update the image in your helm values.
-
-Deploy:
-- `helm install valhalla ./helm`
-
-Service discovery changes (compared to docker-compose):
-- K8s services use hyphens. Configs inside the pods are adjusted accordingly:
-  - login-server, world-server, db
-
-All ports are via ClusterIP, and can be exposed via Ingress-Nginx.
-
-### Exposing Kubernetes Services
-You will need to use the `ingress-nginx` deployment to expose your service.
-
-The following values should be used to deploy the helm chart:
-```
-tcp:
-  8484: valhalla/login-server:8484
-  8600: valhalla/cashShop-server:8600
-  8685: valhalla/channel-server-1:8685
-  8684: valhalla/channel-server-2:8684
-  8683: valhalla/channel-server-3:8683
-... etc
-```
-**You will need to add all the channels you intend on having, and the port decreases by 1 for each additional channel**
-
-1. Deploy Ingress-Nginx via Helm
-    - `helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx`
-    - `helm install -n ingress-nginx ingress-nginx ingress-nginx/ingress-nginx --create-namespace -f values.yaml`
-1. Update Maplestory client to use ingress-nginx external IP
-    - `kubectl get svc -n ingress-nginx`
-1. Update Valhalla config to use ingress-nginx external IP
-    - `channel.clientConnectionAddress: "<loadbalancer-ip"`
-1. Upgrade/Restart Helm chart
-    - `helm upgrade -n valhalla valhalla ./helm -f values.yaml`
+Reference from [RageZone forums](http://forum.ragezone.com/f428/add-learning-npcs-start-finish-643364/)
