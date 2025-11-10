@@ -424,12 +424,8 @@ func buildItemBuffTriplesWireOrder(meta nx.Item, maskBytes []byte, durationSec i
 }
 
 // durationSec is the client-visible remaining time in seconds. Source ID is encoded as -Item.ID.
-func (cb *CharacterBuffs) AddItemBuff(it Item) {
+func (cb *CharacterBuffs) AddItemBuff(meta nx.Item, sourceID int32) {
 	var durationSec int16 = 0
-	meta, err := nx.GetItem(it.ID)
-	if err != nil {
-		return
-	}
 
 	// Handle debuff curing first
 	cb.cureDebuffs(meta)
@@ -474,7 +470,6 @@ func (cb *CharacterBuffs) AddItemBuff(it Item) {
 
 	// Build mask and per-stat triples in the same (LSB-first) wire order as skills.
 	maskBytes := buildMaskBytes64(bits)
-	sourceID := -it.ID
 	values := buildItemBuffTriplesWireOrder(meta, maskBytes, durationSec, sourceID)
 
 	// Send to self and others (items don't need extra combo/charges byte).

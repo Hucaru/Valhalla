@@ -509,8 +509,19 @@ func (d *Player) giveLuk(amount int16) {
 }
 
 func (d *Player) giveHP(amount int16) {
-	newHP := int(d.hp) + int(amount)
-	d.setHP(int16(newHP))
+	target := int(d.hp) + int(amount)
+
+	maxAllowed := int(d.maxHP)
+	if maxAllowed > int(constant.MaxHpValue) {
+		maxAllowed = int(constant.MaxHpValue)
+	}
+	if target < 0 {
+		target = 0
+	} else if target > maxAllowed {
+		target = maxAllowed
+	}
+
+	d.setHP(int16(target))
 }
 
 func (d *Player) setHP(amount int16) {
@@ -538,8 +549,19 @@ func (d *Player) setMaxHP(amount int16) {
 }
 
 func (d *Player) giveMP(amount int16) {
-	newMP := int(d.mp) + int(amount)
-	d.setMP(int16(newMP))
+	target := int(d.mp) + int(amount)
+
+	maxAllowed := int(d.maxMP)
+	if maxAllowed > int(constant.MaxMpValue) {
+		maxAllowed = int(constant.MaxMpValue)
+	}
+	if target < 0 {
+		target = 0
+	} else if target > maxAllowed {
+		target = maxAllowed
+	}
+
+	d.setMP(int16(target))
 }
 
 func (d *Player) setMP(amount int16) {
