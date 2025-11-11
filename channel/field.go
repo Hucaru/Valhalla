@@ -700,20 +700,15 @@ func (inst *fieldInstance) showMysticDoorsTo(plr *Player) {
 		}
 
 		if plr.party != nil {
-			isParty := false
-			ownerIdx := byte(0)
 			for i, pid := range plr.party.PlayerID {
 				if pid == ownerID {
-					isParty = true
-					ownerIdx = byte(i)
+					ownerIdx := byte(i)
+					if doorInfo.townPortal {
+						plr.Send(packetMapPortalParty(ownerIdx, doorInfo.destMapID, inst.fieldID, doorInfo.srcPos))
+					} else {
+						plr.Send(packetMapPortalParty(ownerIdx, inst.fieldID, doorInfo.destMapID, doorInfo.pos))
+					}
 					break
-				}
-			}
-			if isParty {
-				if doorInfo.townPortal {
-					plr.Send(packetMapPortalParty(ownerIdx, doorInfo.destMapID, inst.fieldID, doorInfo.srcPos))
-				} else {
-					plr.Send(packetMapPortalParty(ownerIdx, inst.fieldID, doorInfo.destMapID, doorInfo.pos))
 				}
 			}
 		}
