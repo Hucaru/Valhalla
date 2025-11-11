@@ -955,7 +955,7 @@ func (inst *fieldInstance) fieldUpdate(t time.Time) {
 		for _, ownerID := range toExpire {
 			door := inst.mysticDoors[ownerID]
 			if door != nil {
-				mysticDoorExpired(ownerID, inst.fieldID, door.destMapID, inst.server)
+				removeMysticDoorByIDs(inst.server, ownerID, inst.fieldID, door.destMapID)
 			}
 		}
 	}

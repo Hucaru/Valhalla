@@ -50,7 +50,7 @@ func createSourceDoor(plr *Player, doorPos pos, expiresAt time.Time) {
 		pos:         doorPos,
 		name:        "tp",
 		destFieldID: plr.inst.returnMapID,
-		destName:    "sp",
+		destName:    "tp",
 		temporary:   true,
 	}
 	plr.doorPortalIndex = plr.inst.addPortal(sourcePortal)
@@ -157,24 +157,7 @@ func removeMysticDoor(plr *Player) {
 	if plr.doorMapID != 0 {
 		if doorField, ok := plr.inst.server.fields[plr.doorMapID]; ok {
 			if doorInst, err := doorField.getInstance(plr.inst.id); err == nil {
-				doorInst.send(packetMapRemoveMysticDoor(plr.doorSpawnID, true))
-				doorInst.removePortalAtIndex(plr.doorPortalIndex)
-
-				removePkt := packetMapRemovePortal()
-				for _, p := range doorInst.players {
-					if p == nil {
-						continue
-					}
-					authorized := (p.ID == plr.ID)
-					if !authorized && plr.party != nil && p.party != nil && p.party.ID == plr.party.ID {
-						authorized = true
-					}
-					if authorized {
-						p.Send(removePkt)
-					}
-				}
-
-				delete(doorInst.mysticDoors, plr.ID)
+				removeDoorFromInstance(doorInst, plr.doorSpawnID, plr.doorPortalIndex, plr.ID)
 			}
 		}
 	}
@@ -182,25 +165,12 @@ func removeMysticDoor(plr *Player) {
 	if plr.townDoorMapID != 0 {
 		if townField, ok := plr.inst.server.fields[plr.townDoorMapID]; ok {
 			if townInst, err := townField.getInstance(0); err == nil {
-				townInst.send(packetMapRemoveMysticDoor(plr.townDoorSpawnID, true))
-				removePkt := packetMapRemovePortal()
-				for _, p := range townInst.players {
-					if p == nil {
-						continue
-					}
-					authorized := (p.ID == plr.ID)
-					if !authorized && plr.party != nil && p.party != nil && p.party.ID == plr.party.ID {
-						authorized = true
-					}
-					if authorized {
-						p.Send(removePkt)
-					}
-				}
-				delete(townInst.mysticDoors, plr.ID)
+				removeDoorFromInstance(townInst, plr.townDoorSpawnID, -1, plr.ID)
 			}
 		}
 	}
 
+	// Reset player-side door state
 	plr.doorMapID = 0
 	plr.doorSpawnID = 0
 	plr.doorPortalIndex = 0
@@ -209,54 +179,47 @@ func removeMysticDoor(plr *Player) {
 	plr.townPortalIndex = 0
 }
 
-// mysticDoorExpired handles door expiration
-func mysticDoorExpired(playerID, sourceMapID, townMapID int32, server *Server) {
-	var plr *Player
+// removeDoorFromInstance removes the door object and optional portal from an instance and broadcasts removal
+func removeDoorFromInstance(inst *fieldInstance, spawnID int32, portalIndex int, ownerID int32) {
+	inst.send(packetMapRemoveMysticDoor(spawnID, true))
 
+	if portalIndex >= 0 {
+		inst.removePortalAtIndex(portalIndex)
+	}
+
+	removePkt := packetMapRemovePortal()
+	inst.send(removePkt)
+
+	delete(inst.mysticDoors, ownerID)
+
+	for _, p := range inst.players {
+		if p != nil && p.ID == ownerID {
+			p.doorMapID = 0
+			p.doorSpawnID = 0
+			p.doorPortalIndex = 0
+			p.townDoorMapID = 0
+			p.townDoorSpawnID = 0
+			p.townPortalIndex = 0
+			break
+		}
+	}
+}
+
+// removeMysticDoorByIDs removes a player's door by IDs
+func removeMysticDoorByIDs(server *Server, ownerID, sourceMapID, townMapID int32) {
 	if sourceField, ok := server.fields[sourceMapID]; ok {
 		if sourceInst, err := sourceField.getInstance(0); err == nil {
-			for _, p := range sourceInst.players {
-				if p.ID == playerID {
-					plr = p
-					break
-				}
+			if doorInfo, exists := sourceInst.mysticDoors[ownerID]; exists {
+				removeDoorFromInstance(sourceInst, doorInfo.spawnID, doorInfo.portalIndex, ownerID)
 			}
 		}
 	}
 
-	if plr == nil && townMapID > 0 {
+	if townMapID > 0 {
 		if townField, ok := server.fields[townMapID]; ok {
 			if townInst, err := townField.getInstance(0); err == nil {
-				for _, p := range townInst.players {
-					if p.ID == playerID {
-						plr = p
-						break
-					}
-				}
-			}
-		}
-	}
-
-	if plr != nil {
-		removeMysticDoor(plr)
-	} else {
-		if sourceField, ok := server.fields[sourceMapID]; ok {
-			if sourceInst, err := sourceField.getInstance(0); err == nil {
-				if doorInfo, exists := sourceInst.mysticDoors[playerID]; exists {
-					sourceInst.send(packetMapRemoveMysticDoor(playerID, true))
-					sourceInst.removePortalAtIndex(doorInfo.portalIndex)
-					delete(sourceInst.mysticDoors, playerID)
-				}
-			}
-		}
-
-		if townMapID > 0 {
-			if townField, ok := server.fields[townMapID]; ok {
-				if townInst, err := townField.getInstance(0); err == nil {
-					if _, exists := townInst.mysticDoors[playerID]; exists {
-						townInst.send(packetMapRemoveMysticDoor(playerID, true))
-						delete(townInst.mysticDoors, playerID)
-					}
+				if doorInfo, exists := townInst.mysticDoors[ownerID]; exists {
+					removeDoorFromInstance(townInst, doorInfo.spawnID, -1, ownerID)
 				}
 			}
 		}
