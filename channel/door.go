@@ -3,6 +3,7 @@ package channel
 import (
 	"time"
 
+	"github.com/Hucaru/Valhalla/constant"
 	"github.com/Hucaru/Valhalla/nx"
 )
 
@@ -38,8 +39,7 @@ func createMysticDoor(plr *Player, skillID int32, skillLevel byte) {
 }
 
 func createSourceDoor(plr *Player, doorPos pos, expiresAt time.Time) {
-	doorSpawnID := plr.inst.idCounter
-	plr.inst.idCounter++
+	doorSpawnID := plr.inst.nextID()
 
 	plr.doorMapID = plr.mapID
 	plr.doorSpawnID = doorSpawnID
@@ -50,7 +50,7 @@ func createSourceDoor(plr *Player, doorPos pos, expiresAt time.Time) {
 		pos:         doorPos,
 		name:        "tp",
 		destFieldID: plr.inst.returnMapID,
-		destName:    "tp",
+		destName:    plr.Name,
 		temporary:   true,
 	}
 	plr.doorPortalIndex = plr.inst.addPortal(sourcePortal)
@@ -70,24 +70,28 @@ func createSourceDoor(plr *Player, doorPos pos, expiresAt time.Time) {
 	plr.inst.send(packetMapPortal(plr.mapID, plr.inst.returnMapID, doorPos))
 
 	if plr.party != nil {
-		for _, viewer := range plr.inst.players {
-			if viewer == nil || viewer.party == nil || viewer.party.ID != plr.party.ID {
+		for index, viewer := range plr.party.players {
+			if viewer == nil {
 				continue
 			}
-			ownerIdx := byte(0)
-			for i, pid := range viewer.party.PlayerID {
-				if pid == plr.ID {
-					ownerIdx = byte(i)
-					break
-				}
-			}
-			viewer.Send(packetMapPortalParty(ownerIdx, plr.mapID, plr.inst.returnMapID, doorPos))
+
+			viewer.Send(packetMapPortalParty(byte(index), plr.mapID, plr.inst.returnMapID, doorPos))
 		}
 	}
 }
 
 // createTownDoor creates the door in the town map
 func createTownDoor(plr *Player, townInst *fieldInstance, doorPos pos, expiresAt time.Time) {
+	if existing, ok := townInst.mysticDoors[plr.ID]; ok && existing != nil {
+		if existing.portalIndex >= 0 && existing.portalIndex < len(townInst.portals) {
+			townInst.portals[existing.portalIndex].destFieldID = constant.InvalidMap
+			townInst.portals[existing.portalIndex].destName = ""
+			townInst.portals[existing.portalIndex].name = "tp"
+			townInst.portals[existing.portalIndex].temporary = false
+		}
+		removeDoorFromInstance(townInst, existing.spawnID, -1, plr.ID)
+	}
+
 	townPortalIdx, townPortal, err := townInst.findAvailableTownPortal()
 	if err != nil {
 		return
@@ -101,7 +105,8 @@ func createTownDoor(plr *Player, townInst *fieldInstance, doorPos pos, expiresAt
 	plr.townPortalIndex = townPortalIdx
 
 	townInst.portals[townPortalIdx].destFieldID = plr.mapID
-	townInst.portals[townPortalIdx].destName = "sp"
+	townInst.portals[townPortalIdx].destName = "tp"
+	townInst.portals[townPortalIdx].name = plr.Name
 	townInst.portals[townPortalIdx].temporary = true
 
 	townInst.mysticDoors[plr.ID] = &mysticDoorInfo{
@@ -165,6 +170,12 @@ func removeMysticDoor(plr *Player) {
 	if plr.townDoorMapID != 0 {
 		if townField, ok := plr.inst.server.fields[plr.townDoorMapID]; ok {
 			if townInst, err := townField.getInstance(0); err == nil {
+				if plr.townPortalIndex >= 0 && plr.townPortalIndex < len(townInst.portals) {
+					townInst.portals[plr.townPortalIndex].destFieldID = constant.InvalidMap
+					townInst.portals[plr.townPortalIndex].destName = ""
+					townInst.portals[plr.townPortalIndex].name = "tp"
+					townInst.portals[plr.townPortalIndex].temporary = false
+				}
 				removeDoorFromInstance(townInst, plr.townDoorSpawnID, -1, plr.ID)
 			}
 		}
@@ -181,7 +192,7 @@ func removeMysticDoor(plr *Player) {
 
 // removeDoorFromInstance removes the door object and optional portal from an instance and broadcasts removal
 func removeDoorFromInstance(inst *fieldInstance, spawnID int32, portalIndex int, ownerID int32) {
-	inst.send(packetMapRemoveMysticDoor(spawnID, true))
+	inst.send(packetMapRemoveMysticDoor(spawnID, false))
 
 	if portalIndex >= 0 {
 		inst.removePortalAtIndex(portalIndex)
@@ -219,6 +230,12 @@ func removeMysticDoorByIDs(server *Server, ownerID, sourceMapID, townMapID int32
 		if townField, ok := server.fields[townMapID]; ok {
 			if townInst, err := townField.getInstance(0); err == nil {
 				if doorInfo, exists := townInst.mysticDoors[ownerID]; exists {
+					if doorInfo.portalIndex >= 0 && doorInfo.portalIndex < len(townInst.portals) {
+						townInst.portals[doorInfo.portalIndex].destFieldID = constant.InvalidMap
+						townInst.portals[doorInfo.portalIndex].destName = ""
+						townInst.portals[doorInfo.portalIndex].name = "tp"
+						townInst.portals[doorInfo.portalIndex].temporary = false
+					}
 					removeDoorFromInstance(townInst, doorInfo.spawnID, -1, ownerID)
 				}
 			}

@@ -216,6 +216,10 @@ func (server *Server) ClientDisconnected(conn mnet.Client) {
 		}).Dec()
 	}()
 
+	if plr != nil && (plr.doorMapID != 0 || plr.townDoorMapID != 0) {
+		removeMysticDoor(plr)
+	}
+
 	if field, ok := server.fields[plr.mapID]; ok {
 		if inst, ierr := field.getInstance(plr.inst.id); ierr == nil {
 			if remErr := inst.removePlayer(plr, true); remErr != nil {
