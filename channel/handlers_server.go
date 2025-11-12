@@ -285,10 +285,7 @@ func (server *Server) handlePartyEvent(conn mnet.Server, reader mpacket.Reader) 
 			party.addPlayer(plr, index)
 
 			if plr != nil && plr.inst != nil {
-				inst := plr.inst
-				inst.dispatch <- func() {
-					inst.requestDoorPartySync(plr)
-				}
+				plr.inst.requestDoorPartySync(plr)
 			}
 		}
 
