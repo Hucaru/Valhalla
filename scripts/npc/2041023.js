@@ -1,1 +1,0 @@
-npc.sendOk("My name is Flo, guardian of the Path of Time. Would you like to see my magic?");

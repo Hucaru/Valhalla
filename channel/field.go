@@ -309,23 +309,9 @@ type field struct {
 func (f *field) createInstance(rates *rates, server *Server) int {
 	id := len(f.instances)
 
-	var portals [256]portal
-	for i := 0; i < len(portals); i++ {
-		portals[i] = portal{
-			id:          byte(i),
-			destFieldID: constant.InvalidMap,
-		}
-	}
-	for _, p := range f.Data.Portals {
-		if int(p.ID) >= 0 && int(p.ID) < len(portals) {
-			portals[p.ID] = createPortalFromData(p)
-		}
-	}
-
 	inst := &fieldInstance{
 		id:              id,
 		fieldID:         f.id,
-		portals:         portals,
 		dispatch:        f.Dispatch,
 		town:            f.Data.Town,
 		returnMapID:     f.Data.ReturnMap,
@@ -335,6 +321,18 @@ func (f *field) createInstance(rates *rates, server *Server) int {
 		pendingDoorSync: make(map[int32]bool),
 		fhHist:          f.fhHist,
 		server:          server,
+	}
+
+	for i := 0; i < len(inst.portals); i++ {
+		inst.portals[i] = portal{
+			id:          byte(i),
+			destFieldID: constant.InvalidMap,
+		}
+	}
+	for _, p := range f.Data.Portals {
+		if int(p.ID) >= 0 && int(p.ID) < len(inst.portals) {
+			inst.portals[p.ID] = createPortalFromData(p)
+		}
 	}
 
 	inst.roomPool = createNewRoomPool(inst)
@@ -892,13 +890,12 @@ func (inst fieldInstance) getPortalFromName(name string) (portal, error) {
 }
 
 func (inst fieldInstance) getPortalFromID(id byte) (portal, error) {
-	if int(id) >= 0 && int(id) < len(inst.portals) {
-		p := inst.portals[id]
-		if p.name != "" || p.destFieldID != constant.InvalidMap {
-			return p, nil
-		}
+	p := inst.portals[id]
+	if p.destFieldID != constant.InvalidMap {
+		return p, nil
 	}
-	return portal{}, fmt.Errorf("No portal with that Name")
+
+	return portal{}, fmt.Errorf("No portal with that ID")
 }
 
 func (inst *fieldInstance) getNextPortalID() byte {
@@ -945,12 +942,7 @@ func (inst *fieldInstance) findAvailableTownPortal() (int, *portal, error) {
 
 // removePortalAtIndex removes a portal at the specified index
 func (inst *fieldInstance) removePortalAtIndex(index int) {
-	if index >= 0 && index < len(inst.portals) {
-		inst.portals[index] = portal{
-			id:          byte(index),
-			destFieldID: constant.InvalidMap,
-		}
-	}
+	inst.portals[index].destFieldID = constant.InvalidMap
 }
 
 func (inst *fieldInstance) startFieldTimer() {
