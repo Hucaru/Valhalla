@@ -232,18 +232,19 @@ type chiefbandit struct {
 
 type gm struct {
 	JobID           int
-	Bless           Skill
-	Haste           Skill
-	HealPlusDispell Skill
-	Hide            Skill
-	HolySymbol      Skill
-	Resurrection    Skill
+	GMSelfHaste     Skill
 	SuperDragonRoar Skill
-	Teleport        Skill
+	GMTeleport      Skill
+}
 
-	ItemExplosion Skill
-	ShadowPartner Skill
-	JumpDown      Skill
+type supergm struct {
+	JobID               int
+	SuperGMHealDispell  Skill
+	SuperGMHaste        Skill
+	SuperGMHolySymbol   Skill
+	SuperGMBless        Skill
+	SuperGMHide         Skill
+	SuperGMResurrection Skill
 }
 
 var (
@@ -272,6 +273,7 @@ var (
 	Bandit       bandit
 	ChiefBandit  chiefbandit
 	GM           gm
+	SuperGM      supergm
 )
 
 const (
@@ -460,18 +462,17 @@ const (
 	Pickpocket    Skill = 4211003
 
 	//GM Skills - 500
-	GMBless         Skill = 5001003
-	GMHaste         Skill = 5001001
-	HealPlusDispell Skill = 5001000
-	Hide            Skill = 5001004
-	GMHolySymbol    Skill = 5001002
-	Resurrection    Skill = 5001005
-	SuperDragonRoar Skill = 5001006
-	Teleport        Skill = 5001007
+	GMSelfHaste     Skill = 5001000
+	SuperDragonRoar Skill = 5001001
+	GMTeleport      Skill = 5001002
 
-	ItemExplosion   Skill = 5001008
-	GMShadowPartner Skill = 5001009
-	JumpDown        Skill = 50010010
+	//SuperGM SKills - 510
+	SuperGMHealDispell  Skill = 5101000
+	SuperGMHaste        Skill = 5101001
+	SuperGMHolySymbol   Skill = 5101002
+	SuperGMBless        Skill = 5101003
+	SuperGMHide         Skill = 5101004
+	SuperGMResurrection Skill = 5101005
 )
 
 const (
@@ -737,19 +738,19 @@ func init() {
 	}
 
 	GM = gm{
-		JobID:           SuperGmJobID,
-		Bless:           GMBless,
-		Haste:           GMHaste,
-		HealPlusDispell: HealPlusDispell,
-		Hide:            Hide,
-		HolySymbol:      GMHolySymbol,
-		Resurrection:    Resurrection,
+		JobID:           GmJobID,
+		GMSelfHaste:     GMSelfHaste,
 		SuperDragonRoar: SuperDragonRoar,
-		Teleport:        Teleport,
-
-		ItemExplosion: ItemExplosion,
-		ShadowPartner: GMShadowPartner,
-		JumpDown:      JumpDown,
+		GMTeleport:      GMTeleport,
 	}
 
+	SuperGM = supergm{
+		JobID:               SuperGmJobID,
+		SuperGMHealDispell:  SuperGMHealDispell,
+		SuperGMHaste:        SuperGMHaste,
+		SuperGMHolySymbol:   SuperGMHolySymbol,
+		SuperGMBless:        SuperGMBless,
+		SuperGMHide:         SuperGMHide,
+		SuperGMResurrection: SuperGMResurrection,
+	}
 }

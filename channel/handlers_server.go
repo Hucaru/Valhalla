@@ -637,7 +637,7 @@ func (server *Server) playerSpecialSkill(conn mnet.Client, reader mpacket.Reader
 
 	switch skill.Skill(skillID) {
 	// Party buffs handled earlier remain unchanged...
-	case skill.Haste, skill.BanditHaste, skill.Bless, skill.IronWill, skill.Rage, skill.GMHaste, skill.GMBless, skill.GMHolySymbol,
+	case skill.Haste, skill.BanditHaste, skill.Bless, skill.IronWill, skill.Rage,
 		skill.Meditation, skill.ILMeditation, skill.MesoUp, skill.HolySymbol, skill.HyperBody, skill.NimbleBody:
 		plr.addBuff(skillID, skillLevel, delay)
 		plr.inst.send(packetPlayerSkillAnimation(plr.ID, false, skillID, skillLevel))
@@ -655,7 +655,16 @@ func (server *Server) playerSpecialSkill(conn mnet.Client, reader mpacket.Reader
 				member.inst.send(packetPlayerSkillAnimation(member.ID, true, skillID, skillLevel))
 			}
 		}
+	case skill.SuperGMHaste, skill.SuperGMBless, skill.SuperGMHolySymbol:
+		plr.addBuff(skillID, skillLevel, delay)
+		plr.inst.send(packetPlayerSkillAnimation(plr.ID, false, skillID, skillLevel))
 
+		// Apply buff to the entire map
+		for _, member := range plr.inst.players {
+			member.addForeignBuff(member.ID, skillID, skillLevel, delay)
+			member.Send(packetPlayerEffectSkill(true, skillID, skillLevel))
+			member.inst.send(packetPlayerSkillAnimation(member.ID, true, skillID, skillLevel))
+		}
 	// Nimble feet and recovery beginner skills with cooldown
 	case skill.NimbleFeet, skill.Recovery:
 		plr.addBuff(skillID, skillLevel, delay)
@@ -680,7 +689,7 @@ func (server *Server) playerSpecialSkill(conn mnet.Client, reader mpacket.Reader
 		skill.MagicGuard,
 		skill.Invincible,
 		skill.SoulArrow, skill.CBSoulArrow,
-		skill.ShadowPartner, skill.GMShadowPartner,
+		skill.ShadowPartner,
 		skill.MesoGuard,
 		// Attack speed boosters (self)
 		skill.SwordBooster, skill.AxeBooster, skill.PageSwordBooster, skill.BwBooster,
@@ -689,7 +698,7 @@ func (server *Server) playerSpecialSkill(conn mnet.Client, reader mpacket.Reader
 		skill.ClawBooster, skill.DaggerBooster,
 		skill.SpellBooster, skill.ILSpellBooster,
 		// GM Hide (mapped to invincible bit)
-		skill.Hide:
+		skill.SuperGMHide:
 		plr.addBuff(skillID, skillLevel, delay)
 		plr.inst.send(packetPlayerSkillAnimation(plr.ID, true, skillID, skillLevel))
 

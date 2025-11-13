@@ -142,11 +142,11 @@ func LoadBuffs() {
 	AddSkillBuff(int32(skill.ILSpellBooster), BuffBooster)
 
 	// GM skills
-	AddSkillBuff(int32(skill.GMShadowPartner), BuffShadowPartner)
-	AddSkillBuff(int32(skill.GMBless), BuffWeaponAttack, BuffWeaponDefense, BuffMagicAttack, BuffMagicDefense, BuffAccuracy, BuffAvoidability)
-	AddSkillBuff(int32(skill.GMHaste), BuffSpeed, BuffJump)
-	AddSkillBuff(int32(skill.GMHolySymbol), BuffHolySymbol)
-	AddSkillBuff(int32(skill.Hide), BuffInvincible)
+	AddSkillBuff(int32(skill.SuperGMBless), BuffWeaponAttack, BuffWeaponDefense, BuffMagicAttack, BuffMagicDefense, BuffAccuracy, BuffAvoidability)
+	AddSkillBuff(int32(skill.SuperGMHaste), BuffSpeed, BuffJump)
+	AddSkillBuff(int32(skill.GMSelfHaste), BuffSpeed, BuffJump)
+	AddSkillBuff(int32(skill.SuperGMHolySymbol), BuffHolySymbol)
+	AddSkillBuff(int32(skill.SuperGMHide), BuffInvincible)
 
 	AddSkillBuff(int32(skill.SilverHawk), BuffComboAttack)
 	AddSkillBuff(int32(skill.GoldenEagle), BuffComboAttack)
@@ -180,7 +180,7 @@ func NewCharacterBuffs(p *Player) {
 }
 
 func (cb *CharacterBuffs) HasGMHide() bool {
-	_, ok := cb.activeSkillLevels[int32(skill.Hide)]
+	_, ok := cb.activeSkillLevels[int32(skill.SuperGMHide)]
 	return ok
 }
 
