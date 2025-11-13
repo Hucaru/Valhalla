@@ -539,6 +539,41 @@ func (cb *CharacterBuffs) cureDebuffs(meta nx.Item) {
 	}
 }
 
+func (cb *CharacterBuffs) cureAllDebuffs() {
+	if cb.plr == nil {
+		return
+	}
+
+	// Check which debuffs this item can cure
+	var debuffsToCure []int
+
+	debuffsToCure = append(debuffsToCure, BuffPoison)
+	debuffsToCure = append(debuffsToCure, BuffWeakness)
+	debuffsToCure = append(debuffsToCure, BuffCurse)
+	debuffsToCure = append(debuffsToCure, BuffDarkness)
+	debuffsToCure = append(debuffsToCure, BuffSeal)
+
+	// Find and remove active debuffs that match
+	for skillID := range cb.activeSkillLevels {
+		// Check if this is a mob debuff (rValue format: skillID | (level << 16))
+		baseSkillID := skillID & 0xFFFF
+		if baseSkillID >= 100 && baseSkillID <= 200 {
+			// This is a mob debuff, check if we should cure it
+			bits, ok := skillBuffBits[skillID]
+			if ok {
+				for _, bit := range bits {
+					for _, cureBit := range debuffsToCure {
+						if bit == cureBit {
+							cb.expireBuffNow(skillID)
+							break
+						}
+					}
+				}
+			}
+		}
+	}
+}
+
 func (cb *CharacterBuffs) AddItemBuffFromCC(itemID int32, expiresAtMs int64) {
 	meta, err := nx.GetItem(itemID)
 	if err != nil {

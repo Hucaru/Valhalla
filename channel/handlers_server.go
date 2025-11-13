@@ -665,6 +665,77 @@ func (server *Server) playerSpecialSkill(conn mnet.Client, reader mpacket.Reader
 			member.Send(packetPlayerEffectSkill(true, skillID, skillLevel))
 			member.inst.send(packetPlayerSkillAnimation(member.ID, true, skillID, skillLevel))
 		}
+	case skill.SuperGMResurrection:
+		plr.inst.send(packetPlayerSkillAnimation(plr.ID, false, skillID, skillLevel))
+
+		for _, member := range plr.inst.players {
+			if member.hp == 0 {
+				member.Send(packetPlayerEffectSkill(true, skillID, skillLevel))
+				member.inst.send(packetPlayerSkillAnimation(member.ID, true, skillID, skillLevel))
+				member.setHP(member.maxHP)
+			}
+		}
+
+	case skill.SuperGMHealDispell:
+		plr.inst.send(packetPlayerSkillAnimation(plr.ID, false, skillID, skillLevel))
+
+		for _, member := range plr.inst.players {
+			member.Send(packetPlayerEffectSkill(true, skillID, skillLevel))
+			member.inst.send(packetPlayerSkillAnimation(member.ID, true, skillID, skillLevel))
+			member.setHP(member.maxHP)
+			member.setMP(member.maxMP)
+			member.buffs.cureAllDebuffs()
+		}
+
+	case skill.Dispel:
+		plr.inst.send(packetPlayerSkillAnimation(plr.ID, false, skillID, skillLevel))
+
+		if plr.party != nil {
+			affected := getAffectedPartyMembers(plr.party, plr, partyMask)
+			for _, member := range affected {
+				if member == nil {
+					continue
+				}
+
+				member.Send(packetPlayerEffectSkill(true, skillID, skillLevel))
+				member.inst.send(packetPlayerSkillAnimation(member.ID, true, skillID, skillLevel))
+				member.buffs.cureAllDebuffs()
+			}
+		}
+
+	case skill.Resurrection:
+		plr.inst.send(packetPlayerSkillAnimation(plr.ID, false, skillID, skillLevel))
+
+		if plr.party != nil {
+			affected := getAffectedPartyMembers(plr.party, plr, partyMask)
+			for _, member := range affected {
+				if member == nil {
+					continue
+				}
+
+				if member.hp == 0 {
+					member.Send(packetPlayerEffectSkill(true, skillID, skillLevel))
+					member.inst.send(packetPlayerSkillAnimation(member.ID, true, skillID, skillLevel))
+					member.setHP(member.maxHP)
+				}
+			}
+		}
+
+	case skill.Heal:
+		plr.inst.send(packetPlayerSkillAnimation(plr.ID, false, skillID, skillLevel))
+
+		for _, member := range plr.party.players {
+			if member.mapID != plr.mapID {
+				continue
+			}
+
+			if member.hp == 0 {
+				member.Send(packetPlayerEffectSkill(true, skillID, skillLevel))
+				member.inst.send(packetPlayerSkillAnimation(member.ID, true, skillID, skillLevel))
+				member.setHP(member.maxHP)
+			}
+		}
+
 	// Nimble feet and recovery beginner skills with cooldown
 	case skill.NimbleFeet, skill.Recovery:
 		plr.addBuff(skillID, skillLevel, delay)
@@ -772,6 +843,21 @@ func (server *Server) playerSpecialSkill(conn mnet.Client, reader mpacket.Reader
 	// Apply MP cost/cooldown, if any (reuses the same flow as attack skills).
 	plr.useSkill(skillID, skillLevel, 0)
 	plr.Send(packetPlayerNoChange()) // catch all for things like GM teleport
+}
+
+func (server *Server) playerStopSkill(conn mnet.Client, reader mpacket.Reader) {
+	skillID := reader.ReadInt32()
+
+	plr, err := server.players.GetFromConn(conn)
+	if err != nil || plr.buffs == nil {
+		return
+	}
+
+	cb := plr.buffs
+
+	cb.expireBuffNow(skillID)
+	cb.plr.inst = plr.inst
+	cb.AuditAndExpireStaleBuffs()
 }
 
 func (server *Server) playerCancelBuff(conn mnet.Client, reader mpacket.Reader) {

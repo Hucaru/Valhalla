@@ -140,6 +140,7 @@ type priest struct {
 	HolySymbol          Skill
 	MysticDoor          Skill
 	SummonDragon        Skill
+	Resurrection        Skill
 }
 
 type archer struct {
@@ -392,6 +393,7 @@ const (
 	HolySymbol                Skill = 2311003
 	MysticDoor                Skill = 2311002
 	SummonDragon              Skill = 2311006
+	Resurrection              Skill = 2311004
 
 	//Archer Skills - 300
 	BlessingOfAmazon Skill = 3000000
@@ -647,6 +649,7 @@ func init() {
 		HolySymbol:          HolySymbol,
 		MysticDoor:          MysticDoor,
 		SummonDragon:        SummonDragon,
+		Resurrection:        Resurrection,
 	}
 
 	Archer = archer{
