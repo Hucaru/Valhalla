@@ -445,6 +445,9 @@ const (
 	MapBossZakum           int32 = 280030000
 	MapBossZakumReturn     int32 = 211042300
 
+	// Invalid map ID used for portal removal
+	InvalidMap int32 = 999999999
+
 	MapStationEllinia             int32 = 101000300
 	MapStationOrbis               int32 = 200000100
 	MapStationOrbisEllinaPlatform int32 = 200000111

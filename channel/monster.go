@@ -188,11 +188,6 @@ func (m *monster) giveDamage(damager *Player, dmg ...int32) {
 	m.lastTimeAttacked = time.Now().Unix()
 }
 
-func (m *monster) kill(inst fieldInstance, plr *Player) {
-	inst.lifePool.removeMob(m.spawnID, 0x0)
-	plr.giveEXP(m.exp, true, false)
-}
-
 func (m monster) displayBytes() []byte {
 	p := mpacket.NewPacket()
 

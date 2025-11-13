@@ -283,7 +283,12 @@ func (server *Server) handlePartyEvent(conn mnet.Server, reader mpacket.Reader) 
 			plr, _ := server.players.GetFromID(playerID)
 			party.SerialisePacket(&reader)
 			party.addPlayer(plr, index)
+
+			if plr != nil && plr.inst != nil {
+				plr.inst.requestDoorPartySync(plr)
+			}
 		}
+
 	case internal.OpPartyInfoUpdate:
 		partyID := reader.ReadInt32()
 		playerID := reader.ReadInt32()
@@ -632,7 +637,7 @@ func (server *Server) playerSpecialSkill(conn mnet.Client, reader mpacket.Reader
 
 	switch skill.Skill(skillID) {
 	// Party buffs handled earlier remain unchanged...
-	case skill.Haste, skill.BanditHaste, skill.Bless, skill.IronWill, skill.Rage, skill.GMHaste, skill.GMBless, skill.GMHolySymbol,
+	case skill.Haste, skill.BanditHaste, skill.Bless, skill.IronWill, skill.Rage,
 		skill.Meditation, skill.ILMeditation, skill.MesoUp, skill.HolySymbol, skill.HyperBody, skill.NimbleBody:
 		plr.addBuff(skillID, skillLevel, delay)
 		plr.inst.send(packetPlayerSkillAnimation(plr.ID, false, skillID, skillLevel))
@@ -648,6 +653,80 @@ func (server *Server) playerSpecialSkill(conn mnet.Client, reader mpacket.Reader
 				member.addForeignBuff(member.ID, skillID, skillLevel, delay)
 				member.Send(packetPlayerEffectSkill(true, skillID, skillLevel))
 				member.inst.send(packetPlayerSkillAnimation(member.ID, true, skillID, skillLevel))
+			}
+		}
+	case skill.SuperGMHaste, skill.SuperGMBless, skill.SuperGMHolySymbol:
+		plr.addBuff(skillID, skillLevel, delay)
+		plr.inst.send(packetPlayerSkillAnimation(plr.ID, false, skillID, skillLevel))
+
+		// Apply buff to the entire map
+		for _, member := range plr.inst.players {
+			if member.ID == plr.ID {
+				continue
+			}
+			member.addForeignBuff(member.ID, skillID, skillLevel, delay)
+			member.Send(packetPlayerEffectSkill(true, skillID, skillLevel))
+			member.inst.send(packetPlayerSkillAnimation(member.ID, true, skillID, skillLevel))
+		}
+	case skill.SuperGMResurrection:
+		plr.inst.send(packetPlayerSkillAnimation(plr.ID, false, skillID, skillLevel))
+
+		for _, member := range plr.inst.players {
+			if member.ID == plr.ID {
+				continue
+			}
+			if member.hp == 0 {
+				member.Send(packetPlayerEffectSkill(true, skillID, skillLevel))
+				member.inst.send(packetPlayerSkillAnimation(member.ID, true, skillID, skillLevel))
+				member.setHP(member.maxHP)
+			}
+		}
+
+	case skill.SuperGMHealDispell:
+		plr.inst.send(packetPlayerSkillAnimation(plr.ID, false, skillID, skillLevel))
+
+		for _, member := range plr.inst.players {
+			if member.ID == plr.ID {
+				continue
+			}
+			member.Send(packetPlayerEffectSkill(true, skillID, skillLevel))
+			member.inst.send(packetPlayerSkillAnimation(member.ID, true, skillID, skillLevel))
+			member.setHP(member.maxHP)
+			member.setMP(member.maxMP)
+			member.buffs.cureAllDebuffs()
+		}
+
+	case skill.Dispel:
+		plr.inst.send(packetPlayerSkillAnimation(plr.ID, false, skillID, skillLevel))
+
+		if plr.party != nil {
+			affected := getAffectedPartyMembers(plr.party, plr, partyMask)
+			for _, member := range affected {
+				if member == nil {
+					continue
+				}
+
+				member.Send(packetPlayerEffectSkill(true, skillID, skillLevel))
+				member.inst.send(packetPlayerSkillAnimation(member.ID, true, skillID, skillLevel))
+				member.buffs.cureAllDebuffs()
+			}
+		}
+
+	case skill.Resurrection:
+		plr.inst.send(packetPlayerSkillAnimation(plr.ID, false, skillID, skillLevel))
+
+		if plr.party != nil {
+			affected := getAffectedPartyMembers(plr.party, plr, partyMask)
+			for _, member := range affected {
+				if member == nil {
+					continue
+				}
+
+				if member.hp == 0 {
+					member.Send(packetPlayerEffectSkill(true, skillID, skillLevel))
+					member.inst.send(packetPlayerSkillAnimation(member.ID, true, skillID, skillLevel))
+					member.setHP(member.maxHP)
+				}
 			}
 		}
 
@@ -675,7 +754,7 @@ func (server *Server) playerSpecialSkill(conn mnet.Client, reader mpacket.Reader
 		skill.MagicGuard,
 		skill.Invincible,
 		skill.SoulArrow, skill.CBSoulArrow,
-		skill.ShadowPartner, skill.GMShadowPartner,
+		skill.ShadowPartner,
 		skill.MesoGuard,
 		// Attack speed boosters (self)
 		skill.SwordBooster, skill.AxeBooster, skill.PageSwordBooster, skill.BwBooster,
@@ -684,7 +763,7 @@ func (server *Server) playerSpecialSkill(conn mnet.Client, reader mpacket.Reader
 		skill.ClawBooster, skill.DaggerBooster,
 		skill.SpellBooster, skill.ILSpellBooster,
 		// GM Hide (mapped to invincible bit)
-		skill.Hide:
+		skill.SuperGMHide:
 		plr.addBuff(skillID, skillLevel, delay)
 		plr.inst.send(packetPlayerSkillAnimation(plr.ID, true, skillID, skillLevel))
 
@@ -698,6 +777,9 @@ func (server *Server) playerSpecialSkill(conn mnet.Client, reader mpacket.Reader
 		skill.ShadowWeb,
 		skill.Doom:
 		readMobListAndDelay()
+
+	case skill.MysticDoor:
+		createMysticDoor(plr, skillID, skillLevel)
 
 	// Summons and puppet:
 	case skill.SummonDragon,
@@ -755,6 +837,21 @@ func (server *Server) playerSpecialSkill(conn mnet.Client, reader mpacket.Reader
 	// Apply MP cost/cooldown, if any (reuses the same flow as attack skills).
 	plr.useSkill(skillID, skillLevel, 0)
 	plr.Send(packetPlayerNoChange()) // catch all for things like GM teleport
+}
+
+func (server *Server) playerStopSkill(conn mnet.Client, reader mpacket.Reader) {
+	skillID := reader.ReadInt32()
+
+	plr, err := server.players.GetFromConn(conn)
+	if err != nil || plr.buffs == nil {
+		return
+	}
+
+	cb := plr.buffs
+
+	cb.expireBuffNow(skillID)
+	cb.plr.inst = plr.inst
+	cb.AuditAndExpireStaleBuffs()
 }
 
 func (server *Server) playerCancelBuff(conn mnet.Client, reader mpacket.Reader) {

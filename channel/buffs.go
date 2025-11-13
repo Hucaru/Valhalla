@@ -142,11 +142,11 @@ func LoadBuffs() {
 	AddSkillBuff(int32(skill.ILSpellBooster), BuffBooster)
 
 	// GM skills
-	AddSkillBuff(int32(skill.GMShadowPartner), BuffShadowPartner)
-	AddSkillBuff(int32(skill.GMBless), BuffWeaponAttack, BuffWeaponDefense, BuffMagicAttack, BuffMagicDefense, BuffAccuracy, BuffAvoidability)
-	AddSkillBuff(int32(skill.GMHaste), BuffSpeed, BuffJump)
-	AddSkillBuff(int32(skill.GMHolySymbol), BuffHolySymbol)
-	AddSkillBuff(int32(skill.Hide), BuffInvincible)
+	AddSkillBuff(int32(skill.SuperGMBless), BuffWeaponAttack, BuffWeaponDefense, BuffMagicAttack, BuffMagicDefense, BuffAccuracy, BuffAvoidability)
+	AddSkillBuff(int32(skill.SuperGMHaste), BuffSpeed, BuffJump)
+	AddSkillBuff(int32(skill.GMSelfHaste), BuffSpeed, BuffJump)
+	AddSkillBuff(int32(skill.SuperGMHolySymbol), BuffHolySymbol)
+	AddSkillBuff(int32(skill.SuperGMHide), BuffInvincible)
 
 	AddSkillBuff(int32(skill.SilverHawk), BuffComboAttack)
 	AddSkillBuff(int32(skill.GoldenEagle), BuffComboAttack)
@@ -180,8 +180,45 @@ func NewCharacterBuffs(p *Player) {
 }
 
 func (cb *CharacterBuffs) HasGMHide() bool {
-	_, ok := cb.activeSkillLevels[int32(skill.Hide)]
+	_, ok := cb.activeSkillLevels[int32(skill.SuperGMHide)]
 	return ok
+}
+
+func (cb *CharacterBuffs) HasHolySymbol(memberCount int) (bool, int) {
+	multiplier := 0
+	skillLevel, regHS := cb.activeSkillLevels[int32(skill.HolySymbol)]
+	if regHS {
+		skillData, err := nx.GetPlayerSkill(int32(skill.HolySymbol))
+		if err != nil || skillLevel == 0 || int(skillLevel) > len(skillData) {
+			return false, 0
+		}
+		multiplier += int(skillData[skillLevel-1].X)
+	}
+
+	skillLevel, gmHS := cb.activeSkillLevels[int32(skill.SuperGMHolySymbol)]
+	if gmHS {
+		skillData, err := nx.GetPlayerSkill(int32(skill.SuperGMHolySymbol))
+		if err != nil || skillLevel == 0 || int(skillLevel) > len(skillData) {
+			return regHS, multiplier
+		}
+		multiplier += int(skillData[skillLevel-1].X)
+	}
+
+	if regHS || gmHS {
+		if memberCount < 2 {
+			if multiplier < 10 {
+				return true, multiplier
+			}
+			return true, 10
+		} else {
+			if multiplier < 50 {
+				return true, multiplier
+			}
+			return true, 50
+		}
+	}
+
+	return false, multiplier
 }
 
 func (cb *CharacterBuffs) hasMobDebuff(skillID byte) bool {
@@ -517,6 +554,41 @@ func (cb *CharacterBuffs) cureDebuffs(meta nx.Item) {
 	if len(debuffsToCure) == 0 {
 		return
 	}
+
+	// Find and remove active debuffs that match
+	for skillID := range cb.activeSkillLevels {
+		// Check if this is a mob debuff (rValue format: skillID | (level << 16))
+		baseSkillID := skillID & 0xFFFF
+		if baseSkillID >= 100 && baseSkillID <= 200 {
+			// This is a mob debuff, check if we should cure it
+			bits, ok := skillBuffBits[skillID]
+			if ok {
+				for _, bit := range bits {
+					for _, cureBit := range debuffsToCure {
+						if bit == cureBit {
+							cb.expireBuffNow(skillID)
+							break
+						}
+					}
+				}
+			}
+		}
+	}
+}
+
+func (cb *CharacterBuffs) cureAllDebuffs() {
+	if cb.plr == nil {
+		return
+	}
+
+	// Check which debuffs this item can cure
+	var debuffsToCure []int
+
+	debuffsToCure = append(debuffsToCure, BuffPoison)
+	debuffsToCure = append(debuffsToCure, BuffWeakness)
+	debuffsToCure = append(debuffsToCure, BuffCurse)
+	debuffsToCure = append(debuffsToCure, BuffDarkness)
+	debuffsToCure = append(debuffsToCure, BuffSeal)
 
 	// Find and remove active debuffs that match
 	for skillID := range cb.activeSkillLevels {
