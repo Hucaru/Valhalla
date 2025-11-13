@@ -46,7 +46,7 @@ func (d *party) addPlayer(plr *Player, index int32) {
 	d.broadcast(packetPartyPlayerJoin(d.ID, d.Name[index], d))
 }
 
-func (d *party) getPlayerID(plrID int32) byte {
+func (d *party) getPlayerIndex(plrID int32) byte {
 	for i, pid := range d.PlayerID {
 		if pid == plrID {
 			return byte(i)

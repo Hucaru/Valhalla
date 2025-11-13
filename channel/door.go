@@ -99,7 +99,7 @@ func createTownDoor(plr *Player, townInst *fieldInstance, doorPos pos, expiresAt
 	}
 
 	if plr.party != nil {
-		ownerIdx := plr.party.getPlayerID(plr.ID)
+		ownerIdx := plr.party.getPlayerIndex(plr.ID)
 		for _, viewer := range townInst.players {
 			if viewer == nil || viewer.party == nil || viewer.party.ID != plr.party.ID {
 				continue
