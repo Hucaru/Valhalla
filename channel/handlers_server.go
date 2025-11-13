@@ -730,21 +730,6 @@ func (server *Server) playerSpecialSkill(conn mnet.Client, reader mpacket.Reader
 			}
 		}
 
-	case skill.Heal:
-		plr.inst.send(packetPlayerSkillAnimation(plr.ID, false, skillID, skillLevel))
-
-		for _, member := range plr.party.players {
-			if member.mapID != plr.mapID {
-				continue
-			}
-
-			if member.hp == 0 {
-				member.Send(packetPlayerEffectSkill(true, skillID, skillLevel))
-				member.inst.send(packetPlayerSkillAnimation(member.ID, true, skillID, skillLevel))
-				member.setHP(member.maxHP)
-			}
-		}
-
 	// Nimble feet and recovery beginner skills with cooldown
 	case skill.NimbleFeet, skill.Recovery:
 		plr.addBuff(skillID, skillLevel, delay)

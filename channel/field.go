@@ -309,9 +309,17 @@ type field struct {
 func (f *field) createInstance(rates *rates, server *Server) int {
 	id := len(f.instances)
 
-	portals := make([]portal, len(f.Data.Portals))
-	for i, p := range f.Data.Portals {
-		portals[i] = createPortalFromData(p)
+	var portals [256]portal
+	for i := 0; i < len(portals); i++ {
+		portals[i] = portal{
+			id:          byte(i),
+			destFieldID: constant.InvalidMap,
+		}
+	}
+	for _, p := range f.Data.Portals {
+		if int(p.ID) >= 0 && int(p.ID) < len(portals) {
+			portals[p.ID] = createPortalFromData(p)
+		}
 	}
 
 	inst := &fieldInstance{
@@ -545,7 +553,7 @@ type fieldInstance struct {
 	roomPool    roomPool
 	reactorPool reactorPool
 
-	portals []portal
+	portals [256]portal
 	players []*Player
 
 	// Mystic doors in this instance (key: player ID)
@@ -884,46 +892,38 @@ func (inst fieldInstance) getPortalFromName(name string) (portal, error) {
 }
 
 func (inst fieldInstance) getPortalFromID(id byte) (portal, error) {
-	for _, p := range inst.portals {
-		if p.id == id {
+	if int(id) >= 0 && int(id) < len(inst.portals) {
+		p := inst.portals[id]
+		if p.name != "" || p.destFieldID != constant.InvalidMap {
 			return p, nil
 		}
 	}
-
 	return portal{}, fmt.Errorf("No portal with that Name")
 }
 
 func (inst *fieldInstance) getNextPortalID() byte {
-	used := make(map[byte]bool, len(inst.portals))
-	for i := range inst.portals {
-		used[inst.portals[i].id] = true
-	}
-	for id := 0; id <= 255; id++ {
-		b := byte(id)
-		if !used[b] {
-			return b
+	for i := 0; i < len(inst.portals); i++ {
+		if inst.portals[i].name == "" && inst.portals[i].destFieldID == constant.InvalidMap {
+			return byte(i)
 		}
 	}
-	// Fallback: if somehow all are used, reuse 255 (unlikely in practice)
+
 	return 255
 }
 
-// addPortal adds a new portal to the instance and returns its index
-func (inst *fieldInstance) addPortal(p portal) int {
-	inst.portals = append(inst.portals, p)
-	return len(inst.portals) - 1
-}
-
 func (inst *fieldInstance) createNewPortal(pos pos, name string, destFieldID int32, destName string, temp bool) int {
-	newPortal := portal{
-		id:          inst.getNextPortalID(),
+	id := inst.getNextPortalID()
+
+	inst.portals[id] = portal{
+		id:          id,
 		name:        name,
 		pos:         pos,
 		destFieldID: destFieldID,
 		destName:    destName,
 		temporary:   temp,
 	}
-	return inst.addPortal(newPortal)
+
+	return int(id)
 }
 
 // findAvailableTownPortal finds an unused "tp" portal in the instance
@@ -946,7 +946,10 @@ func (inst *fieldInstance) findAvailableTownPortal() (int, *portal, error) {
 // removePortalAtIndex removes a portal at the specified index
 func (inst *fieldInstance) removePortalAtIndex(index int) {
 	if index >= 0 && index < len(inst.portals) {
-		inst.portals = append(inst.portals[:index], inst.portals[index+1:]...)
+		inst.portals[index] = portal{
+			id:          byte(index),
+			destFieldID: constant.InvalidMap,
+		}
 	}
 }
 
