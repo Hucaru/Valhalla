@@ -661,6 +661,9 @@ func (server *Server) playerSpecialSkill(conn mnet.Client, reader mpacket.Reader
 
 		// Apply buff to the entire map
 		for _, member := range plr.inst.players {
+			if member.ID == plr.ID {
+				continue
+			}
 			member.addForeignBuff(member.ID, skillID, skillLevel, delay)
 			member.Send(packetPlayerEffectSkill(true, skillID, skillLevel))
 			member.inst.send(packetPlayerSkillAnimation(member.ID, true, skillID, skillLevel))
@@ -669,6 +672,9 @@ func (server *Server) playerSpecialSkill(conn mnet.Client, reader mpacket.Reader
 		plr.inst.send(packetPlayerSkillAnimation(plr.ID, false, skillID, skillLevel))
 
 		for _, member := range plr.inst.players {
+			if member.ID == plr.ID {
+				continue
+			}
 			if member.hp == 0 {
 				member.Send(packetPlayerEffectSkill(true, skillID, skillLevel))
 				member.inst.send(packetPlayerSkillAnimation(member.ID, true, skillID, skillLevel))
@@ -680,6 +686,9 @@ func (server *Server) playerSpecialSkill(conn mnet.Client, reader mpacket.Reader
 		plr.inst.send(packetPlayerSkillAnimation(plr.ID, false, skillID, skillLevel))
 
 		for _, member := range plr.inst.players {
+			if member.ID == plr.ID {
+				continue
+			}
 			member.Send(packetPlayerEffectSkill(true, skillID, skillLevel))
 			member.inst.send(packetPlayerSkillAnimation(member.ID, true, skillID, skillLevel))
 			member.setHP(member.maxHP)
