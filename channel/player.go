@@ -1870,6 +1870,15 @@ func (d *Player) loadAndApplyBuffSnapshot() {
 	}
 }
 
+func (d *Player) resetDoorInfo() {
+	d.doorMapID = 0
+	d.doorSpawnID = 0
+	d.doorPortalIndex = 0
+	d.townDoorMapID = 0
+	d.townDoorSpawnID = 0
+	d.townPortalIndex = 0
+}
+
 // countItem returns total count across USE/SETUP/ETC for an Item ID.
 func (d *Player) countItem(itemID int32) int32 {
 	var total int32

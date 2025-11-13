@@ -46,6 +46,15 @@ func (d *party) addPlayer(plr *Player, index int32) {
 	d.broadcast(packetPartyPlayerJoin(d.ID, d.Name[index], d))
 }
 
+func (d *party) getPlayerID(plrID int32) byte {
+	for i, pid := range d.PlayerID {
+		if pid == plrID {
+			return byte(i)
+		}
+	}
+	return 0
+}
+
 func (d *party) removePlayer(index int32, kick bool) {
 	playerID := d.PlayerID[index]
 	name := d.Name[index]

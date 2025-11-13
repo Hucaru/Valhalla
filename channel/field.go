@@ -527,6 +527,13 @@ func createPortalFromData(p nx.Portal) portal {
 		temporary:   false}
 }
 
+func (p *portal) resetTownPortal() {
+	p.destFieldID = constant.InvalidMap
+	p.destName = ""
+	p.name = "tp"
+	p.temporary = false
+}
+
 type fieldInstance struct {
 	id          int
 	fieldID     int32
@@ -578,6 +585,19 @@ type mysticDoorInfo struct {
 	destMapID   int32
 	townPortal  bool
 	expiresAt   time.Time
+}
+
+func newMysticDoor(ownerID, spawnID int32, portalIndex int, doorPos, srcPos pos, destMapID int32, townPortal bool, expiresAt time.Time) *mysticDoorInfo {
+	return &mysticDoorInfo{
+		ownerID:     ownerID,
+		spawnID:     spawnID,
+		portalIndex: portalIndex,
+		pos:         doorPos,
+		srcPos:      srcPos,
+		destMapID:   destMapID,
+		townPortal:  townPortal,
+		expiresAt:   expiresAt,
+	}
 }
 
 func (inst fieldInstance) String() string {
@@ -892,6 +912,18 @@ func (inst *fieldInstance) getNextPortalID() byte {
 func (inst *fieldInstance) addPortal(p portal) int {
 	inst.portals = append(inst.portals, p)
 	return len(inst.portals) - 1
+}
+
+func (inst *fieldInstance) createNewPortal(pos pos, name string, destFieldID int32, destName string, temp bool) int {
+	newPortal := portal{
+		id:          inst.getNextPortalID(),
+		name:        name,
+		pos:         pos,
+		destFieldID: destFieldID,
+		destName:    destName,
+		temporary:   temp,
+	}
+	return inst.addPortal(newPortal)
 }
 
 // findAvailableTownPortal finds an unused "tp" portal in the instance
