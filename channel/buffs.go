@@ -184,6 +184,43 @@ func (cb *CharacterBuffs) HasGMHide() bool {
 	return ok
 }
 
+func (cb *CharacterBuffs) HasHolySymbol(memberCount int) (bool, int) {
+	multiplier := 0
+	skillLevel, regHS := cb.activeSkillLevels[int32(skill.HolySymbol)]
+	if regHS {
+		skillData, err := nx.GetPlayerSkill(int32(skill.HolySymbol))
+		if err != nil || skillLevel == 0 || int(skillLevel) > len(skillData) {
+			return false, 0
+		}
+		multiplier += int(skillData[skillLevel-1].X)
+	}
+
+	skillLevel, gmHS := cb.activeSkillLevels[int32(skill.SuperGMHolySymbol)]
+	if gmHS {
+		skillData, err := nx.GetPlayerSkill(int32(skill.SuperGMHolySymbol))
+		if err != nil || skillLevel == 0 || int(skillLevel) > len(skillData) {
+			return regHS, multiplier
+		}
+		multiplier += int(skillData[skillLevel-1].X)
+	}
+
+	if regHS || gmHS {
+		if memberCount < 2 {
+			if multiplier < 10 {
+				return true, multiplier
+			}
+			return true, 10
+		} else {
+			if multiplier < 50 {
+				return true, multiplier
+			}
+			return true, 50
+		}
+	}
+
+	return false, multiplier
+}
+
 func (cb *CharacterBuffs) hasMobDebuff(skillID byte) bool {
 	if cb == nil {
 		return false
