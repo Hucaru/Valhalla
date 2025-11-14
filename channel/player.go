@@ -255,6 +255,14 @@ type Player struct {
 	summons *summonState
 	pet     *pet
 
+	// Mystic Door tracking
+	doorMapID       int32
+	doorSpawnID     int32
+	doorPortalIndex int
+	townDoorMapID   int32
+	townDoorSpawnID int32
+	townPortalIndex int
+
 	// Per-Player RNG for deterministic randomness
 	rng *rand.Rand
 
@@ -1862,6 +1870,15 @@ func (d *Player) loadAndApplyBuffSnapshot() {
 		}
 		d.buffs.RestoreFromSnapshot(snaps)
 	}
+}
+
+func (d *Player) resetDoorInfo() {
+	d.doorMapID = 0
+	d.doorSpawnID = 0
+	d.doorPortalIndex = 0
+	d.townDoorMapID = 0
+	d.townDoorSpawnID = 0
+	d.townPortalIndex = 0
 }
 
 // countItem returns total count across USE/SETUP/ETC for an Item ID.

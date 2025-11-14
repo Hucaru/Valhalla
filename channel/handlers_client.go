@@ -123,6 +123,8 @@ func (server *Server) HandleClientPacket(conn mnet.Client, reader mpacket.Reader
 		server.playerAddSkillPoint(conn, reader)
 	case opcode.RecvChannelSpecialSkill:
 		server.playerSpecialSkill(conn, reader)
+	case opcode.RecvChannelRequestBuffCancel:
+		server.playerStopSkill(conn, reader)
 	case opcode.RecvChannelCharacterInfo:
 		server.playerRequestAvatarInfoWindow(conn, reader)
 	case opcode.RecvChannelLieDetectorResult:
@@ -241,7 +243,7 @@ func (server *Server) playerConnect(conn mnet.Client, reader mpacket.Reader) {
 		log.Println(err)
 	}
 
-	if currentMap.ForcedReturn != 999999999 && conn.GetAdminLevel() == 0 {
+	if currentMap.ForcedReturn != constant.InvalidMap && conn.GetAdminLevel() == 0 {
 		plr.mapID = currentMap.ForcedReturn
 		plr.MarkDirty(DirtyMap, time.Millisecond*300)
 	}
@@ -448,8 +450,115 @@ func (server Server) playerEmote(conn mnet.Client, reader mpacket.Reader) {
 }
 
 func (server Server) playerUseMysticDoor(conn mnet.Client, reader mpacket.Reader) {
-	// doorID := reader.ReadInt32()
-	// fromTown := reader.ReadBool()
+	plr, err := server.players.GetFromConn(conn)
+	if err != nil {
+		return
+	}
+
+	if plr.inst == nil {
+		plr.Send(packetPlayerNoChange())
+		return
+	}
+
+	var (
+		nearestDoor *mysticDoorInfo
+		ownerID     int32
+		minDist     int32 = 1<<30 - 1
+	)
+	for oid, door := range plr.inst.mysticDoors {
+		dx := int32(plr.pos.x) - int32(door.pos.x)
+		dy := int32(plr.pos.y) - int32(door.pos.y)
+		dist := dx*dx + dy*dy
+		if dist < minDist {
+			minDist = dist
+			nearestDoor = door
+			ownerID = oid
+		}
+	}
+
+	if nearestDoor == nil {
+		plr.Send(packetPlayerNoChange())
+		return
+	}
+
+	authorized := plr.ID == ownerID
+	if !authorized && plr.party != nil {
+		for _, pid := range plr.party.PlayerID {
+			if pid == ownerID {
+				authorized = true
+				break
+			}
+		}
+	}
+	if !authorized {
+		plr.Send(packetPlayerNoChange())
+		return
+	}
+
+	if nearestDoor.townPortal {
+		// Town -> Source
+		destMapID := nearestDoor.destMapID
+		destField, ok := server.fields[destMapID]
+		if !ok {
+			plr.Send(packetPlayerNoChange())
+			return
+		}
+
+		var (
+			dstInst       *fieldInstance
+			destPortalIdx int
+		)
+		for instID := 0; instID < len(destField.instances); instID++ {
+			if inst, err := destField.getInstance(instID); err == nil {
+				if doorData, exists := inst.mysticDoors[ownerID]; exists && !doorData.townPortal {
+					dstInst = inst
+					destPortalIdx = doorData.portalIndex
+					break
+				}
+			}
+		}
+		if dstInst == nil {
+			plr.Send(packetPlayerNoChange())
+			return
+		}
+		if destPortalIdx < 0 || destPortalIdx >= len(dstInst.portals) {
+			plr.Send(packetPlayerNoChange())
+			return
+		}
+		dstPortal := dstInst.portals[destPortalIdx]
+		if err := server.warpPlayer(plr, destField, dstPortal, true); err != nil {
+			plr.Send(packetPlayerNoChange())
+			return
+		}
+	} else {
+		destMapID := nearestDoor.destMapID
+		destField, ok := server.fields[destMapID]
+		if !ok {
+			plr.Send(packetPlayerNoChange())
+			return
+		}
+
+		dstInst, err2 := destField.getInstance(0)
+		if err2 != nil {
+			plr.Send(packetPlayerNoChange())
+			return
+		}
+		townDoor, ok := dstInst.mysticDoors[ownerID]
+		if !ok || !townDoor.townPortal {
+			plr.Send(packetPlayerNoChange())
+			return
+		}
+		destPortalIdx := townDoor.portalIndex
+		if destPortalIdx < 0 || destPortalIdx >= len(dstInst.portals) {
+			plr.Send(packetPlayerNoChange())
+			return
+		}
+		dstPortal := dstInst.portals[destPortalIdx]
+		if err := server.warpPlayer(plr, destField, dstPortal, true); err != nil {
+			plr.Send(packetPlayerNoChange())
+			return
+		}
+	}
 }
 
 func (server Server) playerAddStatPoint(conn mnet.Client, reader mpacket.Reader) {

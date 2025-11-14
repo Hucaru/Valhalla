@@ -447,6 +447,9 @@ const (
 	MapKerningPQ           int32 = 103000800
 	MapLudiPQ              int32 = 922010100
 
+	// Invalid map ID used for portal removal
+	InvalidMap int32 = 999999999
+
 	MapStationEllinia             int32 = 101000300
 	MapStationOrbis               int32 = 200000100
 	MapStationOrbisEllinaPlatform int32 = 200000111

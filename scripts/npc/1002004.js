@@ -1,4 +1,4 @@
-npc.sendNext("Hi there! This cab is for VIP customers only. Instead of just taking you to different towns like the regular cabs, we offer a much better service worthy of VIP class. It's a bit pricey, but... for only 10,000 mesos, we'll take you safely to #bAnt Tunnel#k.")
+npc.sendBackNext("Hi there! This cab is for VIP customers only. Instead of just taking you to different towns like the regular cabs, we offer a much better service worthy of VIP class. It's a bit pricey, but... for only 10,000 mesos, we'll take you safely to #bAnt Tunnel#k.", false, true)
 
 var cost = 10000
 var discountText = "10,000 mesos"
@@ -12,7 +12,7 @@ if (npc.sendYesNo("Ant Tunnel is located deep inside in the dungeon that's at th
     if (plr.mesos() < cost) {
         npc.sendOk("It looks like you don't have enough mesos. Sorry but you won't be able to use this without it.")
     } else {
-        plr.takeMesos(cost)
+        plr.giveMesos(-cost)
         plr.warp(105070001)
     }
 } else {

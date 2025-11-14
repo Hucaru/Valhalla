@@ -340,14 +340,16 @@ func (pool *lifePool) mobDamaged(poolID int32, damager *Player, dmg ...int32) {
 							continue
 						}
 
-						var partyExp int32
+						var partyExp, selfExp int32
 
 						if dmg == v.maxHP {
 							plr.giveEXP(v.exp, true, false)
 							partyExp = int32(float64(v.exp) * 0.25)
+							selfExp = v.exp
 						} else if float64(dmg)/float64(v.maxHP) > 0.60 {
 							plr.giveEXP(v.exp, true, false)
 							partyExp = int32(float64(v.exp) * 0.25)
+							selfExp = v.exp
 						} else {
 							newExp := int32(float64(v.exp) * 0.25)
 
@@ -357,11 +359,23 @@ func (pool *lifePool) mobDamaged(poolID int32, damager *Player, dmg ...int32) {
 
 							plr.giveEXP(newExp, true, false)
 							partyExp = int32(float64(newExp) * 0.25)
+							selfExp = newExp
 						}
 
+						memberCount := 0
 						if plr.party != nil {
 							plr.party.giveExp(plr.ID, partyExp, true)
+							memberCount = len(plr.party.players)
 						}
+
+						if ok, bonus := plr.buffs.HasHolySymbol(memberCount); ok && bonus > 0 && selfExp > 0 {
+							extra := (selfExp * int32(bonus)) / 100
+							if extra < 1 {
+								extra = 1
+							}
+							plr.giveEXP(extra, true, false)
+						}
+
 					}
 
 					damager.onMobKilled(v.id)
