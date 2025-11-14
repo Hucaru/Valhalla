@@ -792,7 +792,7 @@ func (server *Server) playerSpecialSkill(conn mnet.Client, reader mpacket.Reader
 		case skill.Slow, skill.ILSlow:
 			statMask = skill.MobStat.Speed
 		case skill.Seal, skill.ILSeal:
-			statMask = skill.MobStat.SealSkill
+			statMask = skill.MobStat.Seal
 		case skill.ShadowWeb:
 			statMask = skill.MobStat.Web
 		case skill.Doom:
@@ -801,7 +801,7 @@ func (server *Server) playerSpecialSkill(conn mnet.Client, reader mpacket.Reader
 
 		if plr.inst != nil {
 			for _, mobID := range mobIDs {
-				plr.inst.lifePool.applyMobDebuff(mobID, skillID, skillLevel, statMask, plr.inst)
+				plr.inst.lifePool.applyMobBuff(mobID, skillID, skillLevel, statMask, plr.inst)
 			}
 		}
 

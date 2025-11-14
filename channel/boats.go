@@ -133,16 +133,13 @@ func boatsMovePlayers(server *Server, warps map[int32]int32) {
 		}
 
 		dstField, ok := server.fields[dst]
-
 		if !ok {
 			log.Println("Could not not take off for", dst)
 			continue
 		}
 
-		portal, err := dstField.instances[0].getPortalFromID(1)
-
+		portal, err := dstField.instances[0].getPortalFromID(0, true)
 		if err != nil {
-			log.Println(err)
 			continue
 		}
 
