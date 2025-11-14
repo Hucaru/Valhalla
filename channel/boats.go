@@ -139,7 +139,7 @@ func boatsMovePlayers(server *Server, warps map[int32]int32) {
 			continue
 		}
 
-		portal, err := dstField.instances[0].getPortalFromID(0)
+		portal, err := dstField.instances[0].getPortalFromID(1)
 
 		if err != nil {
 			log.Println(err)

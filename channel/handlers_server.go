@@ -627,16 +627,7 @@ func (server *Server) playerSpecialSkill(conn mnet.Client, reader mpacket.Reader
 	partyMask := reader.ReadByte() // party flags
 	delay := reader.ReadInt16()    // delay
 
-	readMobListAndDelay := func() {
-		count := int(reader.ReadByte())
-		for i := 0; i < count; i++ {
-			_ = reader.ReadInt32() // mob spawn ID
-		}
-		_ = reader.ReadInt16() // delay
-	}
-
 	switch skill.Skill(skillID) {
-	// Party buffs handled earlier remain unchanged...
 	case skill.Haste, skill.BanditHaste, skill.Bless, skill.IronWill, skill.Rage,
 		skill.Meditation, skill.ILMeditation, skill.MesoUp, skill.HolySymbol, skill.HyperBody, skill.NimbleBody:
 		plr.addBuff(skillID, skillLevel, delay)
@@ -749,14 +740,12 @@ func (server *Server) playerSpecialSkill(conn mnet.Client, reader mpacket.Reader
 			}(skillID, skillData.CooldownTime, plr.inst)
 		}
 
-	// Self toggles and non-party buffs (boolean/ratio-type): apply to self
 	case skill.DarkSight,
 		skill.MagicGuard,
 		skill.Invincible,
 		skill.SoulArrow, skill.CBSoulArrow,
 		skill.ShadowPartner,
 		skill.MesoGuard,
-		// Attack speed boosters (self)
 		skill.SwordBooster, skill.AxeBooster, skill.PageSwordBooster, skill.BwBooster,
 		skill.SpearBooster, skill.PolearmBooster,
 		skill.BowBooster, skill.CrossbowBooster,
@@ -767,7 +756,6 @@ func (server *Server) playerSpecialSkill(conn mnet.Client, reader mpacket.Reader
 		plr.addBuff(skillID, skillLevel, delay)
 		plr.inst.send(packetPlayerSkillAnimation(plr.ID, true, skillID, skillLevel))
 
-	// Debuffs on mobs: [mobCount][mobIDs...][delay]
 	case skill.Threaten,
 		skill.Slow, skill.ILSlow,
 		skill.MagicCrash,
@@ -776,7 +764,46 @@ func (server *Server) playerSpecialSkill(conn mnet.Client, reader mpacket.Reader
 		skill.ILSeal, skill.Seal,
 		skill.ShadowWeb,
 		skill.Doom:
-		readMobListAndDelay()
+
+		_ = reader.ReadInt16() // padding
+
+		mobIDs := make([]int32, 0)
+		restBytes := reader.GetRestAsBytes()
+		for i := 0; i+4 <= len(restBytes); i += 4 {
+			mobID := int32(restBytes[i]) | int32(restBytes[i+1])<<8 | int32(restBytes[i+2])<<16 | int32(restBytes[i+3])<<24
+			if mobID == 0 || mobID < 0 {
+				break
+			}
+			mobIDs = append(mobIDs, mobID)
+		}
+
+		plr.inst.send(packetPlayerSkillAnimation(plr.ID, false, skillID, skillLevel))
+
+		var statMask int32
+		switch skill.Skill(skillID) {
+		case skill.Threaten:
+			statMask = skill.MobStat.PhysicalDefense | skill.MobStat.MagicDefense
+		case skill.ArmorCrash:
+			statMask = skill.MobStat.PhysicalDefense
+		case skill.PowerCrash:
+			statMask = skill.MobStat.PhysicalDamage
+		case skill.MagicCrash:
+			statMask = skill.MobStat.MagicDefense
+		case skill.Slow, skill.ILSlow:
+			statMask = skill.MobStat.Speed
+		case skill.Seal, skill.ILSeal:
+			statMask = skill.MobStat.SealSkill
+		case skill.ShadowWeb:
+			statMask = skill.MobStat.Web
+		case skill.Doom:
+			statMask = skill.MobStat.Doom
+		}
+
+		if plr.inst != nil {
+			for _, mobID := range mobIDs {
+				plr.inst.lifePool.applyMobDebuff(mobID, skillID, skillLevel, statMask, plr.inst)
+			}
+		}
 
 	case skill.MysticDoor:
 		createMysticDoor(plr, skillID, skillLevel)

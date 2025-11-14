@@ -626,8 +626,17 @@ func (pool *lifePool) spawnReviveMob(m *monster, cont *Player) {
 }
 
 func (pool *lifePool) removeMob(poolID int32, deathType byte) {
-	if _, ok := pool.mobs[poolID]; !ok {
+	if mob, ok := pool.mobs[poolID]; !ok {
 		return
+	} else {
+		// Clean up any active debuff timers
+		if mob.debuffExpireTimers != nil {
+			for _, timer := range mob.debuffExpireTimers {
+				if timer != nil {
+					timer.Stop()
+				}
+			}
+		}
 	}
 
 	delete(pool.mobs, poolID)
@@ -743,6 +752,16 @@ func (pool *lifePool) getMobFromID(mobID int32) (monster, error) {
 	}
 
 	return monster{}, fmt.Errorf("Could not find mob with ID %d", mobID)
+}
+
+// applyMobDebuff applies a debuff to a mob with the given spawn ID
+func (pool *lifePool) applyMobDebuff(spawnID int32, skillID int32, skillLevel byte, statMask int32, inst *fieldInstance) {
+	for _, mob := range pool.mobs {
+		if mob.spawnID == spawnID {
+			mob.applyDebuff(skillID, skillLevel, statMask, inst)
+			return
+		}
+	}
 }
 
 type roomPool struct {
