@@ -241,7 +241,7 @@ func (server *Server) playerConnect(conn mnet.Client, reader mpacket.Reader) {
 		log.Println(err)
 	}
 
-	if currentMap.ForcedReturn != 999999999 {
+	if currentMap.ForcedReturn != 999999999 && conn.GetAdminLevel() == 0 {
 		plr.mapID = currentMap.ForcedReturn
 		plr.MarkDirty(DirtyMap, time.Millisecond*300)
 	}
@@ -759,13 +759,6 @@ func (server *Server) playerEnterCashShop(conn mnet.Client, reader mpacket.Reade
 			return
 		}
 
-		packetChangeChannel := func(ip []byte, port int16) mpacket.Packet {
-			p := mpacket.CreateWithOpcode(opcode.SendChannelChange)
-			p.WriteBool(true)
-			p.WriteBytes(ip)
-			p.WriteInt16(port)
-			return p
-		}
 		conn.Send(packetChangeChannel(server.cashShop.IP, server.cashShop.Port))
 	} else {
 		conn.Send(packetCannotEnterCashShop())

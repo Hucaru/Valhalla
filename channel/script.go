@@ -9,6 +9,7 @@ import (
 
 	"github.com/Hucaru/Valhalla/internal"
 	"github.com/Hucaru/Valhalla/mnet"
+	"github.com/Hucaru/Valhalla/nx"
 	"github.com/dop251/goja"
 	"github.com/fsnotify/fsnotify"
 )
@@ -217,10 +218,6 @@ func (ctrl *npcChatPlayerController) Warp(id int32) {
 	}
 }
 
-func (ctrl *npcChatPlayerController) InstanceProperties() map[string]interface{} {
-	return ctrl.plr.inst.properties
-}
-
 func (ctrl *npcChatPlayerController) PlayerCount(mapID int32) int {
 	f, ok := ctrl.fields[mapID]
 	if !ok {
@@ -305,7 +302,11 @@ func (ctrl *npcChatPlayerController) InParty() bool {
 }
 
 func (ctrl *npcChatPlayerController) IsPartyLeader() bool {
-	return ctrl.plr.party.players[0] == ctrl.plr
+	if ctrl.InParty() {
+		return ctrl.plr.party.players[0] == ctrl.plr
+	}
+
+	return false
 }
 
 func (ctrl *npcChatPlayerController) PartyMembersOnMapCount() int {
@@ -544,6 +545,48 @@ func (ctrl *npcChatPlayerController) Position() map[string]int16 {
 	}
 }
 
+func (ctrl *npcChatPlayerController) Name() string {
+	return ctrl.plr.Name
+}
+
+type npcChatMapWrapper struct {
+	inst *fieldInstance
+}
+
+func (ctrl *npcChatMapWrapper) PlaySound(path string) {
+	ctrl.inst.send(packetPlaySound(path))
+}
+
+func (ctrl *npcChatMapWrapper) ShowEffect(path string) {
+	ctrl.inst.send(packetShowScreenEffect(path))
+}
+
+func (ctrl *npcChatMapWrapper) PortalEffect(path string) {
+	ctrl.inst.send(packetPortalEffectt(2, path))
+}
+
+func (ctrl *npcChatMapWrapper) Properties() map[string]interface{} {
+	return ctrl.inst.properties
+}
+
+func (ctrl *npcChatMapWrapper) PlayersInArea(id int) int {
+	areas := nx.GetMaps()[ctrl.inst.fieldID].Areas
+	count := 0
+
+	for _, plr := range ctrl.inst.players {
+		if areas[id].Inside(plr.pos.x, plr.pos.y) {
+			count++
+		}
+
+	}
+
+	return count
+}
+
+func (ctrl *npcChatMapWrapper) MobCount() int {
+	return ctrl.inst.lifePool.mobCount()
+}
+
 type npcChatController struct {
 	npcID int32
 	conn  mnet.Client
@@ -573,9 +616,14 @@ func createNpcChatController(npcID int32, conn mnet.Client, program *goja.Progra
 		worldConn: worldConn,
 	}
 
+	mapWrapper := &npcChatMapWrapper{
+		inst: plr.inst,
+	}
+
 	ctrl.vm.SetFieldNameMapper(goja.UncapFieldNameMapper())
 	_ = ctrl.vm.Set("npc", ctrl)
 	_ = ctrl.vm.Set("plr", plrCtrl)
+	_ = ctrl.vm.Set("map", mapWrapper)
 
 	return ctrl, nil
 }
@@ -584,8 +632,8 @@ func (ctrl *npcChatController) Id() int32 {
 	return ctrl.npcID
 }
 
-// Send simple next packet to Player
-func (ctrl *npcChatController) Send(text string) int {
+// SendNext simple next packet to Player
+func (ctrl *npcChatController) SendNext(text string) int {
 	if ctrl.stateTracker.performInterrupt() {
 		ctrl.conn.Send(packetNpcChatBackNext(ctrl.npcID, text, true, false))
 		ctrl.vm.Interrupt("Send")
@@ -598,9 +646,17 @@ func (ctrl *npcChatController) Send(text string) int {
 }
 
 // SendBackNext packet to Player
-func (ctrl *npcChatController) SendBackNext(msg string, back, next bool) {
+func (ctrl *npcChatController) SendBackNext(msg string) {
 	if ctrl.stateTracker.performInterrupt() {
-		ctrl.conn.Send(packetNpcChatBackNext(ctrl.npcID, msg, next, back))
+		ctrl.conn.Send(packetNpcChatBackNext(ctrl.npcID, msg, true, true))
+		ctrl.vm.Interrupt("SendBackNext")
+	}
+}
+
+// SendBackNext packet to Player
+func (ctrl *npcChatController) SendBack(msg string) {
+	if ctrl.stateTracker.performInterrupt() {
+		ctrl.conn.Send(packetNpcChatBackNext(ctrl.npcID, msg, false, true))
 		ctrl.vm.Interrupt("SendBackNext")
 	}
 }
@@ -911,43 +967,32 @@ func (ctrl *npcChatController) run() bool {
 	return false
 }
 
-type playerWrapper struct {
-	*Player
-	server *Server
-}
+// type playerWrapper struct {
+// 	*Player
+// 	server *Server
+// }
 
-func (p *playerWrapper) Mesos() int32 {
-	return p.mesos
-}
+// func (p *playerWrapper) Mesos() int32 {
+// 	return p.mesos
+// }
 
-func (p *playerWrapper) GiveMesos(amount int32) {
-	p.giveMesos(amount)
-}
+// func (p *playerWrapper) GiveMesos(amount int32) {
+// 	p.giveMesos(amount)
+// }
 
-func (p *playerWrapper) Job() int16 {
-	return p.job
-}
+// func (p *playerWrapper) Job() int16 {
+// 	return p.job
+// }
 
-func (p *playerWrapper) Level() int16 {
-	return int16(p.level)
-}
+// func (p *playerWrapper) Level() int16 {
+// 	return int16(p.level)
+// }
 
-func (p *playerWrapper) GiveJob(id int16) {
-	p.setJob(id)
-}
+// func (p *playerWrapper) GiveJob(id int16) {
+// 	p.setJob(id)
+// }
 
-func (p *playerWrapper) GainItem(id int32, amount int16) {
-	item, _ := createAverageItemFromID(id, amount)
-	p.GiveItem(item)
-}
-
-type portalScriptController struct {
-	vm      *goja.Runtime
-	program *goja.Program
-}
-
-type portalHost struct {
-	plr    *Player
-	fields map[int32]*field
-	conn   mnet.Client
-}
+// func (p *playerWrapper) GainItem(id int32, amount int16) {
+// 	item, _ := createAverageItemFromID(id, amount)
+// 	p.GiveItem(item)
+// }

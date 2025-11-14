@@ -265,6 +265,8 @@ type Player struct {
 
 	// Safety charm flag - prevents exp loss on death
 	hasSafetyCharm bool
+
+	eventID int32
 }
 
 // Helper: mark dirty and schedule debounced save.

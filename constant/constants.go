@@ -444,6 +444,8 @@ const (
 	MapBossPianus          int32 = 230040420
 	MapBossZakum           int32 = 280030000
 	MapBossZakumReturn     int32 = 211042300
+	MapKerningPQ           int32 = 103000800
+	MapLudiPQ              int32 = 922010100
 
 	MapStationEllinia             int32 = 101000300
 	MapStationOrbis               int32 = 200000100

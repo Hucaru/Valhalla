@@ -1570,8 +1570,85 @@ func (server *Server) gmCommand(conn mnet.Client, msg string) {
 			conn.Send(packetMessageRedText(err.Error()))
 			return
 		}
-		conn.Send(packetMessageRedText(fmt.Sprintf("%d", player.mapID)))
 
+		conn.Send(packetMessageRedText(fmt.Sprintf("%d", player.mapID)))
+	case "wrong":
+		player, err := server.players.GetFromConn(conn)
+
+		if err != nil {
+			conn.Send(packetMessageRedText(err.Error()))
+			return
+		}
+
+		player.inst.send(packetShowScreenEffect("quest/party/wrong_kor"))
+		player.inst.send(packetPlaySound("Party1/Failed"))
+	case "clear":
+		player, err := server.players.GetFromConn(conn)
+
+		if err != nil {
+			conn.Send(packetMessageRedText(err.Error()))
+			return
+		}
+
+		player.inst.send(packetShowScreenEffect("quest/party/clear"))
+		player.inst.send(packetPlaySound("Party1/Clear"))
+	case "gate":
+		player, err := server.players.GetFromConn(conn)
+
+		if err != nil {
+			conn.Send(packetMessageRedText(err.Error()))
+			return
+		}
+
+		player.inst.send(packetPortalEffectt(2, "gate"))
+	case "eventStart":
+		if len(command) != 4 {
+			conn.Send(packetMessageRedText("Usage is <duration e.g. 10s> <return mapID> <instance id>"))
+			return
+		}
+
+		duration, err := time.ParseDuration(command[1])
+
+		if err != nil {
+			conn.Send(packetMessageRedText(err.Error()))
+			return
+		}
+
+		returnMapID, err := strconv.Atoi(command[2])
+
+		if err != nil {
+			conn.Send(packetMessageRedText(err.Error()))
+			return
+		}
+
+		instanceID, err := strconv.Atoi(command[3])
+
+		if err != nil {
+			conn.Send(packetMessageRedText(err.Error()))
+			return
+		}
+
+		player, err := server.players.GetFromConn(conn)
+
+		if err != nil {
+			conn.Send(packetMessageRedText(err.Error()))
+			return
+		}
+
+		event := createEvent(player.ID, duration, int32(returnMapID), instanceID, []int32{player.ID})
+		server.events[player.ID] = event
+		event.start(server)
+	case "clearInstProps":
+		player, err := server.players.GetFromConn(conn)
+
+		if err != nil {
+			conn.Send(packetMessageRedText(err.Error()))
+			return
+		}
+
+		for i := range player.inst.properties {
+			delete(player.inst.properties, i)
+		}
 	default:
 		conn.Send(packetMessageRedText("Unknown gm command " + command[0]))
 	}
@@ -1621,6 +1698,10 @@ func convertMapNameToID(name string) int32 {
 		return constant.MapBossPianus
 	case "zakum":
 		return constant.MapBossZakum
+	case "kerningpq":
+		return constant.MapKerningPQ
+	case "ludipq":
+		return constant.MapLudiPQ
 	default:
 		return 180000000
 	}

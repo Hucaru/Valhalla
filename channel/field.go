@@ -959,7 +959,23 @@ func packetMapShowMovingObject(docked bool) mpacket.Packet {
 	return p
 }
 
-func packetShowEffect(path string) mpacket.Packet {
+func packetShowSummonEffect(id byte, x, y int32) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelMapEffect)
+	p.WriteByte(id)
+	p.WriteInt32(x)
+	p.WriteInt32(y)
+	return p
+}
+
+func packetPortalEffectt(portalType byte, path string) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelMapEffect)
+	p.WriteByte(2)
+	p.WriteByte(portalType)
+	p.WriteString(path)
+	return p
+}
+
+func packetShowScreenEffect(path string) mpacket.Packet {
 	return packetEnvironmentChange(3, path)
 }
 
@@ -967,13 +983,25 @@ func packetPlaySound(path string) mpacket.Packet {
 	return packetEnvironmentChange(4, path)
 }
 
+func packetMapShowBossHP(mobID, hp, maxHP int32, colourFg, colourBg byte) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelMapEffect)
+	p.WriteByte(5)
+	p.WriteInt32(mobID)
+	p.WriteInt32(hp)
+	p.WriteInt32(maxHP)
+	p.WriteByte(colourFg)
+	p.WriteByte(colourBg)
+
+	return p
+}
+
 func packetBgmChange(path string) mpacket.Packet {
 	return packetEnvironmentChange(6, path)
 }
 
-func packetEnvironmentChange(setting int32, value string) mpacket.Packet {
+func packetEnvironmentChange(setting byte, value string) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelMapEffect)
-	p.WriteInt32(setting)
+	p.WriteByte(setting)
 	p.WriteString(value)
 	return p
 }

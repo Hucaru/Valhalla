@@ -316,8 +316,8 @@ func updateParty(p *mpacket.Packet, party *party) {
 	}
 
 	for i := 0; i < paddAmount; i++ {
-		p.WriteInt32(-1)
-		p.WriteInt32(-1)
+		p.WriteInt32(0)
+		p.WriteInt32(0)
 		p.WriteInt64(0) // int64?
 	}
 }
