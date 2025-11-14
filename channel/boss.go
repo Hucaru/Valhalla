@@ -59,16 +59,13 @@ func manageSummonedBoss(inst *fieldInstance, mobID int32, server *Server) {
 				}
 
 				dest, err := field.getInstance(0)
-
 				if err != nil {
 					log.Println(err)
 					return
 				}
 
-				portal, err := dest.getPortalFromID(0)
-
+				portal, err := dest.getPortalFromID(0, true)
 				if err != nil {
-					log.Println(err)
 					return
 				}
 

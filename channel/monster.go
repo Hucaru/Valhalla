@@ -54,6 +54,9 @@ type monster struct {
 	skillLevel byte
 	statBuff   int32
 
+	buffs            map[int32]*mobBuff
+	buffExpireTimers map[int32]*time.Timer
+
 	dmgTaken map[*Player]int32
 
 	dropsItems bool
@@ -72,27 +75,29 @@ type monster struct {
 
 func createMonsterFromData(spawnID int32, life nx.Life, m nx.Mob, dropsItems, dropsMesos bool) monster {
 	return monster{
-		id:            life.ID,
-		spawnID:       spawnID,
-		pos:           newPos(life.X, life.Y, life.Foothold),
-		faceLeft:      life.FaceLeft,
-		hp:            m.HP,
-		mp:            m.MP,
-		maxHP:         m.MaxHP,
-		maxMP:         m.MaxMP,
-		exp:           int32(m.Exp),
-		revives:       m.Revives,
-		summonType:    constant.MobSummonTypeRegen,
-		boss:          m.Boss > 0,
-		hpBgColour:    byte(m.HPTagBGColor),
-		hpFgColour:    byte(m.HPTagColor),
-		spawnInterval: life.MobTime,
-		dmgTaken:      make(map[*Player]int32),
-		skills:        nx.GetMobSkills(life.ID),
-		skillTimes:    make(map[byte]int64),
-		poison:        false,
-		lastHeal:      time.Now().Unix(),
-		lastSkillTime: 0,
+		id:               life.ID,
+		spawnID:          spawnID,
+		pos:              newPos(life.X, life.Y, life.Foothold),
+		faceLeft:         life.FaceLeft,
+		hp:               m.HP,
+		mp:               m.MP,
+		maxHP:            m.MaxHP,
+		maxMP:            m.MaxMP,
+		exp:              int32(m.Exp),
+		revives:          m.Revives,
+		summonType:       constant.MobSummonTypeRegen,
+		boss:             m.Boss > 0,
+		hpBgColour:       byte(m.HPTagBGColor),
+		hpFgColour:       byte(m.HPTagColor),
+		spawnInterval:    life.MobTime,
+		dmgTaken:         make(map[*Player]int32),
+		skills:           nx.GetMobSkills(life.ID),
+		skillTimes:       make(map[byte]int64),
+		buffs:            make(map[int32]*mobBuff),
+		buffExpireTimers: make(map[int32]*time.Timer),
+		poison:           false,
+		lastHeal:         time.Now().Unix(),
+		lastSkillTime:    0,
 	}
 }
 
@@ -230,7 +235,54 @@ func (m monster) displayBytes() []byte {
 		p.WriteInt32(m.summonOption) // when -3 used to link mob to a death using spawnID
 	}
 
-	p.WriteInt32(0) // encode mob status
+	p.WriteUint32(uint32(m.statBuff))
+
+	nowMs := time.Now().UnixMilli()
+	for bit := 0; bit < 32; bit++ {
+		if (m.statBuff & (1 << uint(bit))) != 0 {
+			var (
+				value         int16
+				sourceSkillID int32
+				durationUnits int16
+			)
+
+			singleBitMask := int32(1 << uint(bit))
+			buff, ok := m.buffs[singleBitMask]
+			if !ok {
+				for mask, b := range m.buffs {
+					if (mask & singleBitMask) != 0 {
+						buff = b
+						ok = true
+						break
+					}
+				}
+			}
+
+			if ok && buff != nil {
+				value = buff.value
+				sourceSkillID = buff.skillID
+
+				if buff.expiresAt > 0 {
+					remainMs := buff.expiresAt - nowMs
+					if remainMs < 0 {
+						remainMs = 0
+					}
+					durationUnits = int16(remainMs / 500)
+				} else {
+					durationUnits = buff.duration * 2
+				}
+			} else {
+				value = 0
+				sourceSkillID = 0
+				durationUnits = 0
+			}
+
+			p.WriteInt16(value)
+			p.WriteInt32(sourceSkillID)
+			p.WriteInt16(durationUnits)
+		}
+	}
+
 	return p
 }
 
@@ -374,6 +426,121 @@ func (m monster) calculateHeal() (hp int32, mp int32) {
 	return hp, mp
 }
 
+type mobBuff struct {
+	skillID   int32
+	value     int16
+	duration  int16
+	expiresAt int64
+}
+
+// applyBuff applies a buff to the mob from a player skill
+func (m *monster) applyBuff(skillID int32, skillLevel byte, statMask int32, inst *fieldInstance) {
+	if m.buffs == nil {
+		m.buffs = make(map[int32]*mobBuff)
+	}
+	if m.buffExpireTimers == nil {
+		m.buffExpireTimers = make(map[int32]*time.Timer)
+	}
+
+	skillData, err := nx.GetPlayerSkill(skillID)
+	if err != nil || skillLevel == 0 || int(skillLevel) > len(skillData) {
+		return
+	}
+
+	si := skillData[skillLevel-1]
+
+	var value int16
+	switch skill.Skill(skillID) {
+	case skill.Threaten, skill.ArmorCrash, skill.PowerCrash, skill.MagicCrash:
+		value = int16(si.X)
+	case skill.Slow, skill.ILSlow:
+		value = int16(si.X)
+	case skill.Seal, skill.ILSeal:
+		value = 1
+	case skill.ShadowWeb:
+		value = int16(si.X)
+	case skill.Doom:
+		value = int16(si.X)
+	default:
+		value = 1
+	}
+
+	if value == 0 {
+		value = 1
+	}
+
+	duration := int16(si.Time)
+	if duration <= 0 {
+		duration = 30
+	}
+
+	expiresAt := time.Now().Add(time.Duration(duration) * time.Second).UnixMilli()
+
+	m.buffs[statMask] = &mobBuff{
+		skillID:   skillID,
+		value:     value,
+		duration:  duration,
+		expiresAt: expiresAt,
+	}
+
+	m.statBuff |= statMask
+
+	if timer, ok := m.buffExpireTimers[statMask]; ok && timer != nil {
+		timer.Stop()
+	}
+
+	if inst != nil && inst.dispatch != nil {
+		m.buffExpireTimers[statMask] = time.AfterFunc(time.Duration(duration)*time.Second, func() {
+			inst.dispatch <- func() {
+				m.removeDebuff(statMask, inst)
+			}
+		})
+	}
+
+	inst.send(packetMobStatSet(m.spawnID, statMask, value, skillID, duration, 0))
+}
+
+// removeDebuff removes a debuff from the mob
+func (m *monster) removeDebuff(statMask int32, inst *fieldInstance) {
+	if m.buffs == nil {
+		return
+	}
+
+	delete(m.buffs, statMask)
+
+	m.statBuff &^= statMask
+
+	if timer, ok := m.buffExpireTimers[statMask]; ok && timer != nil {
+		timer.Stop()
+		delete(m.buffExpireTimers, statMask)
+	}
+
+	if inst != nil {
+		inst.send(packetMobStatReset(m.spawnID, statMask))
+	}
+}
+
+func packetMobStatSet(spawnID int32, statMask int32, value int16, skillID int32, duration int16, delay int16) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelMobStatSet)
+	p.WriteInt32(spawnID)
+	p.WriteUint32(uint32(statMask))
+
+	durationUnits := duration * 2
+
+	for bit := 0; bit < 32; bit++ {
+		if (statMask & (1 << uint(bit))) != 0 {
+			p.WriteInt16(value)
+			p.WriteInt32(skillID)
+			p.WriteInt16(durationUnits)
+		}
+	}
+
+	p.WriteInt16(delay)
+	p.WriteBool(true)
+	p.WriteByte(0)
+	return p
+}
+
 func packetMobControl(m monster, chase bool) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelControlMob)
 	if chase {
@@ -412,6 +579,15 @@ func packetMobShowHpChange(spawnID int32, dmg int32) mpacket.Packet {
 	p.WriteInt32(spawnID)
 	p.WriteByte(0)
 	p.WriteInt32(dmg)
+
+	return p
+}
+
+func packetMobStatReset(spawnID int32, statMask int32) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelMobStatReset)
+	p.WriteInt32(spawnID)
+	p.WriteInt32(statMask)
+	p.WriteByte(1)
 
 	return p
 }

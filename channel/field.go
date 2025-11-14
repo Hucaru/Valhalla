@@ -889,9 +889,13 @@ func (inst fieldInstance) getPortalFromName(name string) (portal, error) {
 	return portal{}, fmt.Errorf("No portal with that Name")
 }
 
-func (inst fieldInstance) getPortalFromID(id byte) (portal, error) {
+func (inst fieldInstance) getPortalFromID(id byte, allowInvalid bool) (portal, error) {
 	p := inst.portals[id]
-	if p.destFieldID != constant.InvalidMap {
+	// If allowInvalid is true, we return the portal even if it's invalid (i.e., destFieldID is InvalidMap)
+	// This is primarily for warped maps such as boss maps, or boats
+	if allowInvalid && p.destFieldID == constant.InvalidMap {
+		return p, nil
+	} else if p.destFieldID != constant.InvalidMap {
 		return p, nil
 	}
 

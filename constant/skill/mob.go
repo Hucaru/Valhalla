@@ -131,7 +131,7 @@ func init() {
 	MobStat.MagicGuardUp = 0x8000
 	MobStat.Doom = 0x10000
 	MobStat.Web = 0x20000
-	MobStat.PhysicalImmune = 0x4000
+	MobStat.PhysicalImmune = 0x40000
 	MobStat.MagicImmune = 0x80000
 	MobStat.HardSkin = 0x200000
 	MobStat.Ambush = 0x400000

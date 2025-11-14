@@ -82,7 +82,11 @@ const (
 	SendChannelControlMob             byte = 0x88
 	SendChannelMoveMob                byte = 0x8A
 	SendChannelControlMobAck          byte = 0x8B
+	SendChannelMobStatSet             byte = 0x8D
+	SendChannelMobStatReset           byte = 0x8E
+	SendChannelMobAffected            byte = 0x90
 	SendChannelMobDamage              byte = 0x91
+	SendChannelMobSpecialEffectBySkill byte = 0x92
 	SendChannelNpcShow                byte = 0x97
 	SendChannelNpcRemove              byte = 0x98
 	SendChannelNpcControl             byte = 0x99
