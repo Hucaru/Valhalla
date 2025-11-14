@@ -465,6 +465,10 @@ func (m *monster) applyBuff(skillID int32, skillLevel byte, statMask int32, inst
 		value = 1
 	}
 
+	if value == 0 {
+		value = 1
+	}
+
 	duration := int16(si.Time)
 	if duration <= 0 {
 		duration = 30
@@ -523,36 +527,8 @@ func packetMobStatSet(spawnID int32, statMask int32, value int16, skillID int32,
 
 	durationUnits := duration * 2
 
-	orderedFlags := []int32{
-		skill.MobStat.PhysicalDamage,
-		skill.MobStat.PhysicalDefense,
-		skill.MobStat.MagicDamage,
-		skill.MobStat.MagicDefense,
-		skill.MobStat.Accurrency,
-		skill.MobStat.Evasion,
-		skill.MobStat.Speed,
-		skill.MobStat.Stun,
-		skill.MobStat.Freeze,
-		skill.MobStat.Poison,
-		skill.MobStat.Seal,
-		skill.MobStat.Darkness,
-		skill.MobStat.PowerUp,
-		skill.MobStat.MagicUp,
-		skill.MobStat.PowerGuardUp,
-		skill.MobStat.MagicGuardUp,
-		skill.MobStat.PhysicalImmune,
-		skill.MobStat.MagicImmune,
-		skill.MobStat.Doom,
-		skill.MobStat.Web,
-		skill.MobStat.HardSkin,
-		skill.MobStat.Ambush,
-		skill.MobStat.Venom,
-		skill.MobStat.Blind,
-		skill.MobStat.SealSkill,
-	}
-
-	for _, flag := range orderedFlags {
-		if (statMask & flag) != 0 {
+	for bit := 0; bit < 32; bit++ {
+		if (statMask & (1 << uint(bit))) != 0 {
 			p.WriteInt16(value)
 			p.WriteInt32(skillID)
 			p.WriteInt16(durationUnits)
