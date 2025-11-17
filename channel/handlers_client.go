@@ -240,16 +240,6 @@ func (server *Server) playerConnect(conn mnet.Client, reader mpacket.Reader) {
 
 	server.players.Add(&plr)
 
-	currentMap, err := nx.GetMap(plr.mapID)
-	if err != nil {
-		log.Println(err)
-	}
-
-	if currentMap.ForcedReturn != constant.InvalidMap {
-		plr.mapID = currentMap.ForcedReturn
-		plr.MarkDirty(DirtyMap, time.Millisecond*300)
-	}
-
 	conn.Send(packetPlayerEnterGame(plr, int32(server.id)))
 	conn.Send(packetMessageScrollingHeader(server.header))
 
@@ -4075,47 +4065,8 @@ func (server *Server) playerSpecialSkill(conn mnet.Client, reader mpacket.Reader
 	case skill.SummonDragon,
 		skill.SilverHawk, skill.GoldenEagle,
 		skill.Puppet, skill.SniperPuppet:
-		isPuppet := (skill.Skill(skillID) == skill.Puppet || skill.Skill(skillID) == skill.SniperPuppet)
-
-		spawn := plr.pos
-
-		if isPuppet {
-			desiredX := plr.pos.x
-			if (plr.stance & 0x01) == 0 {
-				desiredX += 200 // facing right
-			} else {
-				desiredX -= 200 // facing left
-			}
-			if fld, ok := server.fields[plr.mapID]; ok {
-				if inst, err := fld.getInstance(plr.inst.id); err == nil {
-					snapped := inst.fhHist.getFinalPosition(newPos(desiredX, plr.pos.y, 0))
-					spawn = snapped
-				}
-			}
-		}
-
-		summ := &summon{
-			OwnerID:    plr.ID,
-			SkillID:    skillID,
-			Level:      skillLevel,
-			Pos:        spawn,
-			Stance:     0,
-			Foothold:   spawn.foothold,
-			IsPuppet:   isPuppet,
-			SummonType: 0,
-		}
-
-		if isPuppet {
-			if data, err := nx.GetPlayerSkill(skillID); err == nil {
-				idx := int(skillLevel) - 1
-				if idx >= 0 && idx < len(data) {
-					summ.HP = int(data[idx].X)
-				}
-			}
-		}
 
 		plr.addBuff(skillID, skillLevel, delay)
-		plr.addSummon(summ)
 		plr.inst.send(packetPlayerSkillAnimation(plr.ID, false, skillID, skillLevel))
 
 	default:

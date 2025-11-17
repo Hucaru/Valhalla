@@ -262,51 +262,6 @@ func (cb *CharacterBuffs) AddBuff(charId, skillID int32, level byte, foreign boo
 	}
 
 	cb.AddBuffFromCC(charId, skillID, expiresAtMs, level, foreign, delay)
-
-	if !foreign {
-		switch skill.Skill(skillID) {
-		case skill.HyperBody:
-			if cb.plr != nil {
-				cb.hyperbodyOriginalMaxHP = cb.plr.maxHP
-				cb.hyperbodyOriginalMaxMP = cb.plr.maxMP
-
-				increase := int16(skillInfo[level-1].X)
-				hpIncrease := (cb.plr.maxHP * increase) / 100
-				mpIncrease := (cb.plr.maxMP * increase) / 100
-
-				cb.plr.maxHP = cb.plr.maxHP + hpIncrease
-				cb.plr.maxMP = cb.plr.maxMP + mpIncrease
-
-				cb.plr.giveHP(hpIncrease)
-				cb.plr.giveMP(mpIncrease)
-
-				cb.plr.Send(packetPlayerStatChange(true, constant.MaxHpID, int32(cb.plr.maxHP)))
-				cb.plr.Send(packetPlayerStatChange(true, constant.MaxMpID, int32(cb.plr.maxMP)))
-				cb.plr.Send(packetPlayerStatChange(true, constant.HpID, int32(cb.plr.hp)))
-				cb.plr.Send(packetPlayerStatChange(true, constant.MpID, int32(cb.plr.mp)))
-			}
-		case skill.SilverHawk, skill.GoldenEagle, skill.SummonDragon:
-			if cb.plr != nil && cb.plr.getSummon(skillID) == nil {
-				spawn := cb.plr.pos
-				if cb.plr.inst != nil {
-					if snapped := cb.plr.inst.fhHist.getFinalPosition(newPos(spawn.x, spawn.y, 0)); snapped.foothold != 0 {
-						spawn = snapped
-					}
-				}
-				su := &summon{
-					OwnerID:    cb.plr.ID,
-					SkillID:    skillID,
-					Level:      level,
-					Pos:        spawn,
-					Stance:     0,
-					Foothold:   spawn.foothold,
-					IsPuppet:   false,
-					SummonType: 0,
-				}
-				cb.plr.addSummon(su)
-			}
-		}
-	}
 }
 
 func buildMaskBytes64(bits []int) []byte {
@@ -875,12 +830,17 @@ func (cb *CharacterBuffs) AddBuffFromCC(charId, skillID int32, expiresAtMs int64
 	d := time.Until(time.UnixMilli(expiresAtMs))
 	cb.scheduleExpiryLocked(skillID, d)
 
-	// Start Recovery skill ticker if this is the Recovery skill
-	if skillID == int32(skill.Recovery) {
+	switch skill.Skill(skillID) {
+	case skill.Recovery:
 		cb.startRecoveryTicker(level)
+
+	case skill.HyperBody:
+		baseHP, baseMP := cb.plr.maxHP, cb.plr.maxMP
+		cb.plr.Send(packetPlayerStatChange(true, constant.MaxHpID, int32(baseHP)))
+		cb.plr.Send(packetPlayerStatChange(true, constant.MaxMpID, int32(baseMP)))
+
 	}
 
-	// If this is a non-puppet summon skill applied to self (e.g., on CC/login restore), spawn the summon entity now.
 	if !foreign {
 		switch skill.Skill(skillID) {
 		case skill.SilverHawk, skill.GoldenEagle, skill.SummonDragon:
@@ -1153,24 +1113,23 @@ func (cb *CharacterBuffs) expireBuffNow(skillID int32) {
 	}
 
 	if skillID == int32(skill.HyperBody) {
-		if cb.plr != nil && cb.hyperbodyOriginalMaxHP > 0 && cb.hyperbodyOriginalMaxMP > 0 {
-			cb.plr.maxHP = cb.hyperbodyOriginalMaxHP
-			cb.plr.maxMP = cb.hyperbodyOriginalMaxMP
+		if cb.plr != nil {
+			baseEffHP := cb.plr.maxHP
+			baseEffMP := cb.plr.maxMP
 
-			if cb.plr.hp > cb.plr.maxHP {
-				cb.plr.setHP(cb.plr.maxHP)
+			if cb.plr.hp > baseEffHP {
+				cb.plr.setHP(baseEffHP)
+			} else {
+				cb.plr.setHP(cb.plr.hp)
 			}
-			if cb.plr.mp > cb.plr.maxMP {
-				cb.plr.setMP(cb.plr.maxMP)
+			if cb.plr.mp > baseEffMP {
+				cb.plr.setMP(baseEffMP)
+			} else {
+				cb.plr.setMP(cb.plr.mp)
 			}
 
 			cb.plr.Send(packetPlayerStatChange(true, constant.MaxHpID, int32(cb.plr.maxHP)))
 			cb.plr.Send(packetPlayerStatChange(true, constant.MaxMpID, int32(cb.plr.maxMP)))
-			cb.plr.Send(packetPlayerStatChange(true, constant.HpID, int32(cb.plr.hp)))
-			cb.plr.Send(packetPlayerStatChange(true, constant.MpID, int32(cb.plr.mp)))
-
-			cb.hyperbodyOriginalMaxHP = 0
-			cb.hyperbodyOriginalMaxMP = 0
 		}
 	}
 

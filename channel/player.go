@@ -518,11 +518,7 @@ func (d *Player) giveLuk(amount int16) {
 
 func (d *Player) giveHP(amount int16) {
 	target := int(d.hp) + int(amount)
-
-	maxAllowed := int(d.maxHP)
-	if maxAllowed > int(constant.MaxHpValue) {
-		maxAllowed = int(constant.MaxHpValue)
-	}
+	maxAllowed := int(d.effectiveMaxHP())
 	if target < 0 {
 		target = 0
 	} else if target > maxAllowed {
@@ -536,11 +532,12 @@ func (d *Player) setHP(amount int16) {
 	if amount < 0 {
 		amount = 0
 	}
+	effMax := d.effectiveMaxHP()
 	if amount > constant.MaxHpValue {
 		amount = constant.MaxHpValue
 	}
-	if amount > d.maxHP {
-		amount = d.maxHP
+	if amount > effMax {
+		amount = effMax
 	}
 	d.hp = amount
 	d.Send(packetPlayerStatChange(true, constant.HpID, int32(amount)))
@@ -558,17 +555,12 @@ func (d *Player) setMaxHP(amount int16) {
 
 func (d *Player) giveMP(amount int16) {
 	target := int(d.mp) + int(amount)
-
-	maxAllowed := int(d.maxMP)
-	if maxAllowed > int(constant.MaxMpValue) {
-		maxAllowed = int(constant.MaxMpValue)
-	}
+	maxAllowed := int(d.effectiveMaxMP())
 	if target < 0 {
 		target = 0
 	} else if target > maxAllowed {
 		target = maxAllowed
 	}
-
 	d.setMP(int16(target))
 }
 
@@ -576,11 +568,12 @@ func (d *Player) setMP(amount int16) {
 	if amount < 0 {
 		amount = 0
 	}
+	effMax := d.effectiveMaxMP()
 	if amount > constant.MaxMpValue {
 		amount = constant.MaxMpValue
 	}
-	if amount > d.maxMP {
-		amount = d.maxMP
+	if amount > effMax {
+		amount = effMax
 	}
 	d.mp = amount
 	d.Send(packetPlayerStatChange(true, constant.MpID, int32(amount)))
@@ -594,6 +587,54 @@ func (d *Player) setMaxMP(amount int16) {
 	d.maxMP = amount
 	d.Send(packetPlayerStatChange(true, constant.MaxMpID, int32(amount)))
 	d.MarkDirty(DirtyMaxMP, 500*time.Millisecond)
+}
+
+func (d *Player) effectiveMaxHP() int16 {
+	base32 := int32(d.maxHP)
+	hpPct, _ := d.hyperBodyPercents()
+	res := base32
+	if hpPct > 0 {
+		res += (base32 * int32(hpPct)) / 100
+	}
+	if res > int32(constant.MaxHpValue) {
+		res = int32(constant.MaxHpValue)
+	}
+	if res < 0 {
+		res = 0
+	}
+	return int16(res)
+}
+
+func (d *Player) effectiveMaxMP() int16 {
+	base32 := int32(d.maxMP)
+	_, mpPct := d.hyperBodyPercents()
+	res := base32
+	if mpPct > 0 {
+		res += (base32 * int32(mpPct)) / 100
+	}
+	if res > int32(constant.MaxMpValue) {
+		res = int32(constant.MaxMpValue)
+	}
+	if res < 0 {
+		res = 0
+	}
+	return int16(res)
+}
+
+func (d *Player) hyperBodyPercents() (int16, int16) {
+	if d == nil || d.buffs == nil {
+		return 0, 0
+	}
+	lvl, ok := d.buffs.activeSkillLevels[int32(skill.HyperBody)]
+	if !ok || lvl == 0 {
+		return 0, 0
+	}
+	data, err := nx.GetPlayerSkill(int32(skill.HyperBody))
+	if err != nil || int(lvl) < 1 || int(lvl) > len(data) {
+		return 0, 0
+	}
+	sl := data[lvl-1]
+	return int16(sl.X), int16(sl.Y)
 }
 
 func (d *Player) setFame(amount int16) {
@@ -1375,6 +1416,13 @@ func (d Player) save() error {
 	if err != nil {
 		return err
 	}
+
+	if nxMap, nxErr := nx.GetMap(d.mapID); nxErr == nil && len(nxMap.Portals) > 0 {
+		if int(mapPos) < 0 || int(mapPos) >= len(nxMap.Portals) {
+			mapPos = 0
+		}
+	}
+
 	d.mapPos = mapPos
 
 	_, err = common.DB.Exec(query,
@@ -1658,10 +1706,25 @@ func LoadPlayerFromID(id int32, conn mnet.Client) Player {
 	}
 
 	nxMap, err := nx.GetMap(c.mapID)
-
 	if err != nil {
 		log.Println(err)
 		return c
+	}
+
+	if nxMap.ForcedReturn != constant.InvalidMap {
+		c.mapID = nxMap.ForcedReturn
+		c.MarkDirty(DirtyMap, time.Millisecond*300)
+		if m2, e2 := nx.GetMap(c.mapID); e2 == nil {
+			nxMap = m2
+		}
+	}
+
+	if int(c.mapPos) < 0 || int(c.mapPos) >= len(nxMap.Portals) {
+		c.mapPos = 0
+
+		if _, healErr := common.DB.Exec("UPDATE characters SET mapPos=? WHERE ID=?", c.mapPos, c.ID); healErr != nil {
+			log.Printf("LoadPlayerFromID: failed to heal mapPos in DB for char %d: %v", c.ID, healErr)
+		}
 	}
 
 	c.pos.x = nxMap.Portals[c.mapPos].X
