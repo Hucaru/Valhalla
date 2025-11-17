@@ -2353,8 +2353,14 @@ func (server Server) playerMeleeSkill(conn mnet.Client, reader mpacket.Reader) {
 
 	inst.sendExcept(packetSkillMelee(*plr, data), conn)
 
-	for _, attack := range data.attackInfo {
-		inst.lifePool.mobDamaged(attack.spawnID, plr, attack.damages...)
+	if data.isMesoExplosion {
+		for _, attack := range data.attackInfo {
+			server.handleMesoExplosion(plr, inst, attack)
+		}
+	} else {
+		for _, attack := range data.attackInfo {
+			inst.lifePool.mobDamaged(attack.spawnID, plr, attack.damages...)
+		}
 	}
 }
 
@@ -2432,7 +2438,17 @@ func (server Server) playerMagicSkill(conn mnet.Client, reader mpacket.Reader) {
 		return
 	}
 
-	// if Player in party extract
+	if skill.Skill(data.skillID) == skill.PoisonMyst {
+		skillData, err := nx.GetPlayerSkill(data.skillID)
+		if err == nil && int(data.skillLevel) > 0 && int(data.skillLevel) <= len(skillData) {
+			duration := skillData[data.skillLevel-1].Time
+			magicAttack := int16(skillData[data.skillLevel-1].Mad)
+			mist := inst.mistPool.createMist(plr.ID, data.skillID, data.skillLevel, plr.pos, duration, true, magicAttack)
+			if mist != nil {
+				server.startPoisonMistTicker(inst, mist)
+			}
+		}
+	}
 
 	inst.sendExcept(packetSkillMagic(*plr, data), conn)
 
@@ -2441,7 +2457,59 @@ func (server Server) playerMagicSkill(conn mnet.Client, reader mpacket.Reader) {
 	}
 }
 
-// Following logic lifted from WvsGlobal
+func (server *Server) handleMesoExplosion(plr *Player, inst *fieldInstance, attack attackInfo) {
+	if inst == nil {
+		log.Println("MesoExplosion: inst is nil")
+		return
+	}
+
+	const maxRange int32 = 200
+	var mesosToExplode []int32
+
+	facesLeft := attack.facesLeft
+
+	for dropID, drop := range inst.dropPool.drops {
+		if drop.mesos <= 0 {
+			continue
+		}
+
+		dx := int32(drop.finalPos.x - plr.pos.x)
+		dy := int32(drop.finalPos.y - plr.pos.y)
+
+		inFront := false
+		absDx := dx
+		if facesLeft && dx <= 0 {
+			inFront = true
+			absDx = -dx
+		} else if !facesLeft && dx >= 0 {
+			inFront = true
+			absDx = dx
+		}
+
+		if !inFront {
+			continue
+		}
+
+		if absDx > maxRange || dy > maxRange || dy < -maxRange {
+			continue
+		}
+
+		distSq := absDx*absDx + dy*dy
+
+		if distSq <= maxRange*maxRange {
+			mesosToExplode = append(mesosToExplode, dropID)
+		}
+	}
+
+	for _, dropID := range mesosToExplode {
+		inst.dropPool.removeDrop(4, dropID)
+	}
+
+	if attack.spawnID != 0 && len(attack.damages) > 0 && len(mesosToExplode) > 0 {
+		inst.lifePool.mobDamaged(attack.spawnID, plr, attack.damages...)
+	}
+}
+
 const (
 	attackMelee = iota
 	attackRanged
@@ -2455,6 +2523,7 @@ type attackInfo struct {
 	facesLeft                                              bool
 	hitPosition, previousMobPosition                       pos
 	hitDelay                                               int16
+	hitCount                                               byte // For meso explosion, hit count per target
 	damages                                                []int32
 }
 
@@ -2471,15 +2540,20 @@ type attackData struct {
 func getAttackInfo(reader mpacket.Reader, player Player, attackType int) (attackData, bool) {
 	data := attackData{}
 
+	// Dead players can't attack
 	if player.hp == 0 {
 		return data, false
 	}
-	if false && (reader.Time-player.lastAttackPacketTime < 350) {
+
+	// Fast-attack guard (basic): reject if packets come in too fast
+	// Note: this is a simple server-side check; tune threshold as needed.
+	if reader.Time-player.lastAttackPacketTime < 350 {
 		return data, false
 	}
 	player.lastAttackPacketTime = reader.Time
 
 	if attackType != attackSummon {
+		// Common header for melee/ranged/magic
 		tByte := reader.ReadByte()
 		skillID := reader.ReadInt32()
 		if _, ok := player.skills[skillID]; !ok && skillID != 0 {
@@ -2489,8 +2563,12 @@ func getAttackInfo(reader mpacket.Reader, player Player, attackType int) (attack
 		if data.skillID != 0 {
 			data.skillLevel = player.skills[skillID].Level
 		}
+
+		data.isMesoExplosion = (skill.Skill(data.skillID) == skill.MesoExplosion)
+
 		data.targets = tByte / 0x10
 		data.hits = tByte % 0x10
+
 		data.option = reader.ReadByte()
 
 		tmp := reader.ReadByte()
@@ -2498,64 +2576,95 @@ func getAttackInfo(reader mpacket.Reader, player Player, attackType int) (attack
 		data.facesLeft = (tmp >> 7) == 1
 		data.attackType = reader.ReadByte()
 
-		reader.Skip(4) // checksum
-
+		// Ranged specifics (align with reference)
 		if attackType == attackRanged {
+			// [starSlot int16][unknown int16][shootRange byte]
 			projectileSlot := reader.ReadInt16()
+			_ = reader.ReadInt16() // unknown/padding short
+
+			// Resolve projectile ID if slot present
 			if projectileSlot != 0 {
 				data.projectileID = -1
 				for _, item := range player.use {
 					if item.slotID == projectileSlot {
 						data.projectileID = item.ID
+						break
 					}
 				}
+				// If slot specified but not found in inventory, reject as invalid
+				if data.projectileID == -1 {
+					return data, false
+				}
+			} else {
+				// No projectile slot given: only allowed if Soul Arrow buff is active
+				hasSoulArrow := false
+				if player.buffs != nil {
+					if _, ok := player.buffs.activeSkillLevels[int32(skill.SoulArrow)]; ok {
+						hasSoulArrow = true
+					}
+					if _, ok := player.buffs.activeSkillLevels[int32(skill.CBSoulArrow)]; ok {
+						hasSoulArrow = true
+					}
+				}
+				if !hasSoulArrow {
+					// Client attempted to fire without ammo and without Soul Arrow
+					return data, false
+				}
+				data.projectileID = -1
 			}
-			reader.ReadByte()
-			reader.ReadByte()
-			reader.ReadByte()
+
+			// Shoot range (not used in server calc, but must be consumed)
+			_ = reader.ReadByte()
 		}
 
+		// Parse per-target blocks
 		data.attackInfo = make([]attackInfo, data.targets)
 		for i := byte(0); i < data.targets; i++ {
-			attack := attackInfo{}
-			attack.spawnID = reader.ReadInt32()
-			attack.hitAction = reader.ReadByte()
+			ai := attackInfo{}
+			ai.spawnID = reader.ReadInt32()
+			ai.hitAction = reader.ReadByte()
 
 			tmp := reader.ReadByte()
-			attack.foreAction = tmp & 0x7F
-			attack.facesLeft = (tmp >> 7) == 1
-			attack.frameIndex = reader.ReadByte()
+			ai.foreAction = tmp & 0x7F
+			ai.facesLeft = (tmp >> 7) == 1
+			ai.frameIndex = reader.ReadByte()
 
 			if !data.isMesoExplosion {
-				attack.calcDamageStatIndex = reader.ReadByte()
+				ai.calcDamageStatIndex = reader.ReadByte()
 			}
 
-			attack.hitPosition.x = reader.ReadInt16()
-			attack.hitPosition.y = reader.ReadInt16()
+			ai.hitPosition.x = reader.ReadInt16()
+			ai.hitPosition.y = reader.ReadInt16()
 
-			attack.previousMobPosition.x = reader.ReadInt16()
-			attack.previousMobPosition.y = reader.ReadInt16()
+			ai.previousMobPosition.x = reader.ReadInt16()
+			ai.previousMobPosition.y = reader.ReadInt16()
 
+			// For Meso Explosion, client sends per-target hit count here
 			if data.isMesoExplosion {
-				data.hits = reader.ReadByte()
+				ai.hitCount = reader.ReadByte()
 			} else {
-				attack.hitDelay = reader.ReadInt16()
+				ai.hitDelay = reader.ReadInt16()
+				ai.hitCount = data.hits
 			}
 
-			attack.damages = make([]int32, data.hits)
-			for j := byte(0); j < data.hits; j++ {
+			ai.damages = make([]int32, ai.hitCount)
+			for j := byte(0); j < ai.hitCount; j++ {
 				dmg := reader.ReadInt32()
 				data.totalDamage += dmg
-				attack.damages[j] = dmg
+				ai.damages[j] = dmg
 			}
-			data.attackInfo[i] = attack
+
+			data.attackInfo[i] = ai
 		}
 
+		// Player position at attack time
 		data.playerPos.x = reader.ReadInt16()
 		data.playerPos.y = reader.ReadInt16()
+
 		return data, true
 	}
 
+	// Summon attack parsing (server-specific layout)
 	data.summonType = reader.ReadInt32()
 	stance := reader.ReadByte()
 	extra := reader.ReadByte()

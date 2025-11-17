@@ -337,6 +337,7 @@ func (f *field) createInstance(rates *rates, server *Server) int {
 
 	inst.roomPool = createNewRoomPool(inst)
 	inst.dropPool = createNewDropPool(inst, rates)
+	inst.mistPool = createNewMistPool(inst)
 	inst.lifePool = creatNewLifePool(inst, f.Data.NPCs, f.Data.Mobs, f.mobCapacityMin, f.mobCapacityMax)
 	inst.lifePool.setDropPool(&inst.dropPool)
 	inst.reactorPool = createNewReactorPool(inst, f.Data.Reactors, server)
@@ -550,6 +551,7 @@ type fieldInstance struct {
 	dropPool    dropPool
 	roomPool    roomPool
 	reactorPool reactorPool
+	mistPool    mistPool
 
 	portals [256]portal
 	players []*Player
@@ -672,6 +674,7 @@ func (inst *fieldInstance) addPlayer(plr *Player) error {
 
 	inst.lifePool.addPlayer(plr)
 	inst.dropPool.playerShowDrops(plr)
+	inst.mistPool.playerShowMists(plr)
 	inst.roomPool.playerShowRooms(plr)
 	inst.reactorPool.playerShowReactors(plr)
 

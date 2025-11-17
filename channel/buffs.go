@@ -160,13 +160,15 @@ func init() {
 }
 
 type CharacterBuffs struct {
-	plr               *Player
-	comboCount        byte
-	activeSkillLevels map[int32]byte // skillID -> level
-	expireTimers      map[int32]*time.Timer
-	itemMasks         map[int32][]byte // sourceID (-itemId) -> mask
-	expireAt          map[int32]int64  // sourceID -> unix ms expiry
-	recoveryTicker    *time.Ticker     // 5-second ticker for Recovery skill
+	plr                    *Player
+	comboCount             byte
+	activeSkillLevels      map[int32]byte // skillID -> level
+	expireTimers           map[int32]*time.Timer
+	itemMasks              map[int32][]byte // sourceID (-itemId) -> mask
+	expireAt               map[int32]int64  // sourceID -> unix ms expiry
+	recoveryTicker         *time.Ticker     // 5-second ticker for Recovery skill
+	hyperbodyOriginalMaxHP int16            // Store original maxHP before Hyperbody
+	hyperbodyOriginalMaxMP int16            // Store original maxMP before Hyperbody
 }
 
 func NewCharacterBuffs(p *Player) {
@@ -263,6 +265,26 @@ func (cb *CharacterBuffs) AddBuff(charId, skillID int32, level byte, foreign boo
 
 	if !foreign {
 		switch skill.Skill(skillID) {
+		case skill.HyperBody:
+			if cb.plr != nil {
+				cb.hyperbodyOriginalMaxHP = cb.plr.maxHP
+				cb.hyperbodyOriginalMaxMP = cb.plr.maxMP
+
+				increase := int16(skillInfo[level-1].X)
+				hpIncrease := (cb.plr.maxHP * increase) / 100
+				mpIncrease := (cb.plr.maxMP * increase) / 100
+
+				cb.plr.maxHP = cb.plr.maxHP + hpIncrease
+				cb.plr.maxMP = cb.plr.maxMP + mpIncrease
+
+				cb.plr.giveHP(hpIncrease)
+				cb.plr.giveMP(mpIncrease)
+
+				cb.plr.Send(packetPlayerStatChange(true, constant.MaxHpID, int32(cb.plr.maxHP)))
+				cb.plr.Send(packetPlayerStatChange(true, constant.MaxMpID, int32(cb.plr.maxMP)))
+				cb.plr.Send(packetPlayerStatChange(true, constant.HpID, int32(cb.plr.hp)))
+				cb.plr.Send(packetPlayerStatChange(true, constant.MpID, int32(cb.plr.mp)))
+			}
 		case skill.SilverHawk, skill.GoldenEagle, skill.SummonDragon:
 			if cb.plr != nil && cb.plr.getSummon(skillID) == nil {
 				spawn := cb.plr.pos
@@ -1128,6 +1150,28 @@ func (cb *CharacterBuffs) expireBuffNow(skillID int32) {
 	// Stop Recovery skill ticker if this is the Recovery skill
 	if skillID == int32(skill.Recovery) {
 		cb.stopRecoveryTicker()
+	}
+
+	if skillID == int32(skill.HyperBody) {
+		if cb.plr != nil && cb.hyperbodyOriginalMaxHP > 0 && cb.hyperbodyOriginalMaxMP > 0 {
+			cb.plr.maxHP = cb.hyperbodyOriginalMaxHP
+			cb.plr.maxMP = cb.hyperbodyOriginalMaxMP
+
+			if cb.plr.hp > cb.plr.maxHP {
+				cb.plr.setHP(cb.plr.maxHP)
+			}
+			if cb.plr.mp > cb.plr.maxMP {
+				cb.plr.setMP(cb.plr.maxMP)
+			}
+
+			cb.plr.Send(packetPlayerStatChange(true, constant.MaxHpID, int32(cb.plr.maxHP)))
+			cb.plr.Send(packetPlayerStatChange(true, constant.MaxMpID, int32(cb.plr.maxMP)))
+			cb.plr.Send(packetPlayerStatChange(true, constant.HpID, int32(cb.plr.hp)))
+			cb.plr.Send(packetPlayerStatChange(true, constant.MpID, int32(cb.plr.mp)))
+
+			cb.hyperbodyOriginalMaxHP = 0
+			cb.hyperbodyOriginalMaxMP = 0
+		}
 	}
 
 	// Item-source (negative) or skill-source (positive)

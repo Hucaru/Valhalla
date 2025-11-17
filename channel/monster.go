@@ -461,6 +461,23 @@ func (m *monster) applyBuff(skillID int32, skillLevel byte, statMask int32, inst
 		value = int16(si.X)
 	case skill.Doom:
 		value = int16(si.X)
+	case skill.PoisonMyst:
+		divisor := 70 - int32(skillLevel)
+		if divisor <= 0 {
+			divisor = 1
+		}
+		poisonDamage := m.maxHP / divisor
+		magicAttack := int32(si.X)
+
+		if magicAttack > poisonDamage {
+			value = int16(magicAttack)
+		} else {
+			value = int16(poisonDamage)
+		}
+
+		if value <= 0 {
+			value = 1
+		}
 	default:
 		value = 1
 	}
