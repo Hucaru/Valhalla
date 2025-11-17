@@ -160,15 +160,13 @@ func init() {
 }
 
 type CharacterBuffs struct {
-	plr                    *Player
-	comboCount             byte
-	activeSkillLevels      map[int32]byte // skillID -> level
-	expireTimers           map[int32]*time.Timer
-	itemMasks              map[int32][]byte // sourceID (-itemId) -> mask
-	expireAt               map[int32]int64  // sourceID -> unix ms expiry
-	recoveryTicker         *time.Ticker     // 5-second ticker for Recovery skill
-	hyperbodyOriginalMaxHP int16            // Store original maxHP before Hyperbody
-	hyperbodyOriginalMaxMP int16            // Store original maxMP before Hyperbody
+	plr               *Player
+	comboCount        byte
+	activeSkillLevels map[int32]byte // skillID -> level
+	expireTimers      map[int32]*time.Timer
+	itemMasks         map[int32][]byte // sourceID (-itemId) -> mask
+	expireAt          map[int32]int64  // sourceID -> unix ms expiry
+	recoveryTicker    *time.Ticker     // 5-second ticker for Recovery skill
 }
 
 func NewCharacterBuffs(p *Player) {
