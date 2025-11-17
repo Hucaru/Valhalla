@@ -972,6 +972,7 @@ func (inst *fieldInstance) stopFieldTimer() {
 func (inst *fieldInstance) fieldUpdate(t time.Time) {
 	inst.lifePool.update(t)
 	inst.dropPool.update(t)
+	inst.mistPool.update(t)
 	inst.stopWeatherEffect(t)
 
 	if len(inst.mysticDoors) > 0 {

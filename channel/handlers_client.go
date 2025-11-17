@@ -2431,10 +2431,7 @@ func (server Server) playerMagicSkill(conn mnet.Client, reader mpacket.Reader) {
 		if err == nil && int(data.skillLevel) > 0 && int(data.skillLevel) <= len(skillData) {
 			duration := skillData[data.skillLevel-1].Time
 			magicAttack := int16(skillData[data.skillLevel-1].Mad)
-			mist := inst.mistPool.createMist(plr.ID, data.skillID, data.skillLevel, plr.pos, duration, true, magicAttack)
-			if mist != nil {
-				server.startPoisonMistTicker(inst, mist)
-			}
+			inst.mistPool.createMist(plr.ID, data.skillID, data.skillLevel, plr.pos, duration, true, magicAttack)
 		}
 	}
 

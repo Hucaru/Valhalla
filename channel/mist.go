@@ -34,6 +34,7 @@ type mistPool struct {
 	instance *fieldInstance
 	poolID   int32
 	mists    map[int32]*fieldMist
+	lastTick time.Time
 }
 
 func createNewMistPool(inst *fieldInstance) mistPool {
@@ -90,15 +91,6 @@ func (pool *mistPool) createMist(ownerID, skillID int32, skillLevel byte, pos po
 	pool.mists[mistID] = mist
 	pool.instance.send(packetMistSpawn(mist))
 
-	if duration > 0 {
-		go func() {
-			time.Sleep(time.Duration(duration) * time.Second)
-			pool.instance.dispatch <- func() {
-				pool.removeMist(mistID)
-			}
-		}()
-	}
-
 	return mist
 }
 
@@ -144,57 +136,55 @@ func packetMistRemove(mistID int32, isPoisonMist bool) mpacket.Packet {
 	return p
 }
 
-// startPoisonMistTicker applies poison buff to mobs entering the mist area
-func (server *Server) startPoisonMistTicker(inst *fieldInstance, mist *fieldMist) {
-	if !mist.isPoisonMist || inst == nil {
+func (pool *mistPool) update(t time.Time) {
+	if pool == nil || pool.instance == nil {
 		return
 	}
 
-	ticker := time.NewTicker(1 * time.Second)
+	for id, mist := range pool.mists {
+		if mist == nil || mist.duration <= 0 {
+			continue
+		}
+		if t.After(mist.createdAt.Add(time.Duration(mist.duration) * time.Second)) {
+			pool.removeMist(id)
+		}
+	}
 
-	go func() {
-		defer ticker.Stop()
+	if pool.lastTick.IsZero() || t.Sub(pool.lastTick) >= time.Second {
+		pool.lastTick = t
 
-		endTime := mist.createdAt.Add(time.Duration(mist.duration) * time.Second)
-
-		for range ticker.C {
-			if time.Now().After(endTime) {
-				return
+		for _, mist := range pool.mists {
+			if mist == nil || !mist.isPoisonMist {
+				continue
 			}
 
-			if _, exists := inst.mistPool.mists[mist.ID]; !exists {
-				return
+			remain := mist.createdAt.Add(time.Duration(mist.duration) * time.Second).Sub(t)
+			remainSec := int16(remain / time.Second)
+			if remainSec < 1 {
+				remainSec = 1
 			}
 
-			inst.dispatch <- func() {
-				now := time.Now()
-				remain := endTime.Sub(now)
-				remainSec := int16(remain / time.Second)
-				if remainSec < 1 {
-					remainSec = 1
+			for _, mob := range pool.instance.lifePool.mobs {
+				if mob == nil || mob.hp <= 0 {
+					continue
+				}
+				if !mist.isInMist(mob.pos) {
+					continue
 				}
 
-				for _, mob := range inst.lifePool.mobs {
-					if mob == nil || mob.hp <= 0 {
-						continue
-					}
-					if mist.isInMist(mob.pos) {
-						if (mob.statBuff & skill.MobStat.Poison) == 0 {
-							mob.applyBuff(mist.skillID, mist.skillLevel, skill.MobStat.Poison, inst)
-						}
+				if (mob.statBuff & skill.MobStat.Poison) == 0 {
+					mob.applyBuff(mist.skillID, mist.skillLevel, skill.MobStat.Poison, pool.instance)
+				}
 
-						if mob.buffs != nil {
-							if b, ok := mob.buffs[skill.MobStat.Poison]; ok && b != nil {
-								b.ownerID = mist.ownerID
-								b.duration = remainSec
-								b.expiresAt = now.Add(time.Duration(remainSec) * time.Second).UnixMilli()
-
-								inst.send(packetMobStatSet(mob.spawnID, skill.MobStat.Poison, b.value, b.skillID, b.duration, 0))
-							}
-						}
+				if mob.buffs != nil {
+					if b, ok := mob.buffs[skill.MobStat.Poison]; ok && b != nil {
+						b.ownerID = mist.ownerID
+						b.duration = remainSec
+						b.expiresAt = t.Add(time.Duration(remainSec) * time.Second).UnixMilli()
+						pool.instance.send(packetMobStatSet(mob.spawnID, skill.MobStat.Poison, b.value, b.skillID, b.duration, 0))
 					}
 				}
 			}
 		}
-	}()
+	}
 }
