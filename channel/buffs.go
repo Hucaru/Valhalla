@@ -1013,19 +1013,6 @@ func (cb *CharacterBuffs) RestoreFromSnapshot(snaps []BuffSnapshot) {
 	}
 }
 
-// buildBuffMask builds a Flag (CFlag) with all relevant bits for the given skill set.
-func buildBuffMask(skillID int32) *Flag {
-	bits, ok := skillBuffBits[skillID]
-	if !ok || len(bits) == 0 {
-		return nil
-	}
-	uMask := NewFlag()
-	for _, bit := range bits {
-		uMask.SetBitNumber(bit, 1)
-	}
-	return uMask
-}
-
 func (cb *CharacterBuffs) post(fn func()) {
 	if cb == nil || cb.plr == nil {
 		return
@@ -1070,33 +1057,32 @@ func (cb *CharacterBuffs) expireBuffNow(skillID int32) {
 	}
 	delete(cb.expireAt, skillID)
 
-	// Stop Recovery skill ticker if this is the Recovery skill
-	if skillID == int32(skill.Recovery) {
+	switch skill.Skill(skillID) {
+	case skill.Recovery:
 		cb.stopRecoveryTicker()
-	}
 
-	if skillID == int32(skill.HyperBody) {
-		if cb.plr != nil {
-			baseEffHP := cb.plr.maxHP
-			baseEffMP := cb.plr.maxMP
+	case skill.HyperBody:
+		baseEffHP := cb.plr.maxHP
+		baseEffMP := cb.plr.maxMP
 
-			if cb.plr.hp > baseEffHP {
-				cb.plr.setHP(baseEffHP)
-			} else {
-				cb.plr.setHP(cb.plr.hp)
-			}
-			if cb.plr.mp > baseEffMP {
-				cb.plr.setMP(baseEffMP)
-			} else {
-				cb.plr.setMP(cb.plr.mp)
-			}
-
-			cb.plr.Send(packetPlayerStatChange(true, constant.MaxHpID, int32(cb.plr.maxHP)))
-			cb.plr.Send(packetPlayerStatChange(true, constant.MaxMpID, int32(cb.plr.maxMP)))
+		if cb.plr.hp > baseEffHP {
+			cb.plr.setHP(baseEffHP)
+		} else {
+			cb.plr.setHP(cb.plr.hp)
 		}
+		if cb.plr.mp > baseEffMP {
+			cb.plr.setMP(baseEffMP)
+		} else {
+			cb.plr.setMP(cb.plr.mp)
+		}
+
+		cb.plr.Send(packetPlayerStatChange(true, constant.MaxHpID, int32(cb.plr.maxHP)))
+		cb.plr.Send(packetPlayerStatChange(true, constant.MaxMpID, int32(cb.plr.maxMP)))
+	case skill.SummonDragon, skill.SilverHawk, skill.GoldenEagle, skill.Puppet, skill.SniperPuppet:
+		cb.plr.removeActiveSummonForSkill(skillID, constant.SummonRemoveReasonCancel)
+
 	}
 
-	// Item-source (negative) or skill-source (positive)
 	bits, ok := skillBuffBits[skillID]
 	if !ok || len(bits) == 0 {
 		if skillID < 0 {
@@ -1108,9 +1094,8 @@ func (cb *CharacterBuffs) expireBuffNow(skillID int32) {
 				delete(cb.itemMasks, skillID)
 			}
 		}
-		cb.despawnSummonIfMatches(skillID)
-		return
 	}
+
 	maskBytes := buildMaskBytes64(bits)
 
 	cb.plr.Send(packetPlayerCancelBuff(maskBytes))
@@ -1120,28 +1105,9 @@ func (cb *CharacterBuffs) expireBuffNow(skillID int32) {
 
 	delete(cb.activeSkillLevels, skillID)
 
-	// Clean up mob debuff from skillBuffBits (rValue format: skillID | (level << 16))
-	// Only clean up if it looks like a mob debuff (skill ID 100-200 range)
 	baseSkillID := skillID & 0xFFFF
 	if baseSkillID >= 100 && baseSkillID <= 200 {
 		delete(skillBuffBits, skillID)
-	}
-
-	cb.despawnSummonIfMatches(skillID)
-}
-
-func (cb *CharacterBuffs) despawnSummonIfMatches(skillID int32) {
-	p := cb.plr
-	if p == nil || p.summons == nil {
-		return
-	}
-	if p.summons.puppet != nil && p.summons.puppet.SkillID == skillID {
-		p.removeSummon(true, constant.SummonRemoveReasonKeepBuff)
-		return
-	}
-	if p.summons.summon != nil && p.summons.summon.SkillID == skillID {
-		p.removeSummon(false, constant.SummonRemoveReasonKeepBuff)
-		return
 	}
 }
 

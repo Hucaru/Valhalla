@@ -878,10 +878,10 @@ func (server *Server) removeSummonsFromField(player *Player) {
 		if field, ok := server.fields[player.mapID]; ok && field != nil {
 			if inst, e := field.getInstance(player.inst.id); e == nil && inst != nil {
 				if player.summons.puppet != nil {
-					inst.send(packetRemoveSummon(player.ID, player.summons.puppet.SkillID, 0x01))
+					inst.send(packetRemoveSummon(player.ID, player.summons.puppet.SkillID, constant.SummonRemoveReasonCancel))
 				}
 				if player.summons.summon != nil {
-					inst.send(packetRemoveSummon(player.ID, player.summons.summon.SkillID, 0x01))
+					inst.send(packetRemoveSummon(player.ID, player.summons.summon.SkillID, constant.SummonRemoveReasonCancel))
 				}
 			}
 		}
@@ -1164,13 +1164,22 @@ func (server Server) warpPlayer(plr *Player, dstField *field, dstPortal portal, 
 		return err
 	}
 
-	if keptSummon != nil {
+	if keptSummon != nil && plr.shouldKeepSummonOnTransfer(keptSummon) {
 		snapped := dstInst.fhHist.getFinalPosition(newPos(plr.pos.x, plr.pos.y, 0))
 		keptSummon.Pos = snapped
 		keptSummon.Foothold = snapped.foothold
 		keptSummon.Stance = 0
-
 		plr.addSummon(keptSummon)
+	} else {
+		// Buff is gone or summon missing, do not keep it.
+		if plr.summons != nil {
+			if plr.summons.summon == keptSummon {
+				plr.summons.summon = nil
+			}
+			if plr.summons.puppet == keptSummon {
+				plr.summons.puppet = nil
+			}
+		}
 	}
 
 	if plr.petCashID != 0 && plr.pet.spawned {
@@ -4104,8 +4113,8 @@ func (server *Server) playerSpecialSkill(conn mnet.Client, reader mpacket.Reader
 			}
 		}
 
-		plr.addBuff(skillID, skillLevel, delay)
 		plr.addSummon(summ)
+		plr.addBuff(skillID, skillLevel, delay)
 		plr.inst.send(packetPlayerSkillAnimation(plr.ID, false, skillID, skillLevel))
 
 	default:
@@ -4218,7 +4227,7 @@ func (server *Server) playerSummonDamage(conn mnet.Client, reader mpacket.Reader
 	}
 
 	if summ.HP-int(damage) < 0 {
-		plr.removeSummon(true, 0x02)
+		plr.buffs.expireBuffNow(summ.SkillID)
 	} else {
 		summ.HP -= int(damage)
 	}
