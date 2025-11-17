@@ -1144,6 +1144,11 @@ func (server Server) warpPlayer(plr *Player, dstField *field, dstPortal portal, 
 		}
 	}
 
+	var keptSummon *summon
+	if plr.summons != nil && plr.summons.summon != nil {
+		keptSummon = plr.summons.summon
+	}
+
 	server.removeSummonsFromField(plr)
 
 	if err = srcInst.removePlayer(plr, usedPortal); err != nil {
@@ -1151,7 +1156,6 @@ func (server Server) warpPlayer(plr *Player, dstField *field, dstPortal portal, 
 	}
 
 	plr.setMapID(dstField.id)
-
 	plr.pos = dstPortal.pos
 
 	plr.Send(packetMapChange(dstField.id, int32(server.id), dstPortal.id, plr.hp))
@@ -1160,14 +1164,13 @@ func (server Server) warpPlayer(plr *Player, dstField *field, dstPortal portal, 
 		return err
 	}
 
-	// Re-show non-puppet summon on destination if still present in state
-	if plr.summons != nil && plr.summons.summon != nil {
+	if keptSummon != nil {
 		snapped := dstInst.fhHist.getFinalPosition(newPos(plr.pos.x, plr.pos.y, 0))
-		plr.summons.summon.Pos = snapped
-		plr.summons.summon.Foothold = snapped.foothold
-		plr.summons.summon.Stance = 0
+		keptSummon.Pos = snapped
+		keptSummon.Foothold = snapped.foothold
+		keptSummon.Stance = 0
 
-		dstInst.send(packetShowSummon(plr.ID, plr.summons.summon))
+		plr.addSummon(keptSummon)
 	}
 
 	if plr.petCashID != 0 && plr.pet.spawned {
@@ -4058,12 +4061,51 @@ func (server *Server) playerSpecialSkill(conn mnet.Client, reader mpacket.Reader
 	case skill.MysticDoor:
 		createMysticDoor(plr, skillID, skillLevel)
 
-	// Summons and puppet:
 	case skill.SummonDragon,
 		skill.SilverHawk, skill.GoldenEagle,
 		skill.Puppet, skill.SniperPuppet:
 
+		isPuppet := (skill.Skill(skillID) == skill.Puppet || skill.Skill(skillID) == skill.SniperPuppet)
+
+		spawn := plr.pos
+
+		if isPuppet {
+			desiredX := plr.pos.x
+			if (plr.stance & 0x01) == 0 {
+				desiredX += 200 // facing right
+			} else {
+				desiredX -= 200 // facing left
+			}
+			if fld, ok := server.fields[plr.mapID]; ok {
+				if inst, err := fld.getInstance(plr.inst.id); err == nil {
+					snapped := inst.fhHist.getFinalPosition(newPos(desiredX, plr.pos.y, 0))
+					spawn = snapped
+				}
+			}
+		}
+
+		summ := &summon{
+			OwnerID:    plr.ID,
+			SkillID:    skillID,
+			Level:      skillLevel,
+			Pos:        spawn,
+			Stance:     0,
+			Foothold:   spawn.foothold,
+			IsPuppet:   isPuppet,
+			SummonType: 0,
+		}
+
+		if isPuppet {
+			if data, err := nx.GetPlayerSkill(skillID); err == nil {
+				idx := int(skillLevel) - 1
+				if idx >= 0 && idx < len(data) {
+					summ.HP = int(data[idx].X)
+				}
+			}
+		}
+
 		plr.addBuff(skillID, skillLevel, delay)
+		plr.addSummon(summ)
 		plr.inst.send(packetPlayerSkillAnimation(plr.ID, false, skillID, skillLevel))
 
 	default:

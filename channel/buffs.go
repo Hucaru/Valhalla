@@ -837,24 +837,6 @@ func (cb *CharacterBuffs) AddBuffFromCC(charId, skillID int32, expiresAtMs int64
 		cb.plr.Send(packetPlayerStatChange(true, constant.MaxHpID, int32(baseHP)))
 		cb.plr.Send(packetPlayerStatChange(true, constant.MaxMpID, int32(baseMP)))
 
-	case skill.SilverHawk, skill.GoldenEagle, skill.SummonDragon:
-		spawn := cb.plr.pos
-		if cb.plr.inst != nil {
-			if snapped := cb.plr.inst.fhHist.getFinalPosition(newPos(spawn.x, spawn.y, 0)); snapped.foothold != 0 {
-				spawn = snapped
-			}
-		}
-		su := &summon{
-			OwnerID:    cb.plr.ID,
-			SkillID:    skillID,
-			Level:      level,
-			Pos:        spawn,
-			Stance:     0,
-			Foothold:   spawn.foothold,
-			IsPuppet:   false,
-			SummonType: 0,
-		}
-		cb.plr.addSummon(su)
 	}
 }
 
