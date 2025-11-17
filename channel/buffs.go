@@ -961,20 +961,6 @@ func (cb *CharacterBuffs) buildForeignBuffMaskAndValues(skillID int32, level byt
 	return mask, out
 }
 
-// ClearBuff removes a specific buff from Player and DB.
-func (cb *CharacterBuffs) ClearBuff(skillID int32, _ uint32) {
-	mask := buildBuffMask(skillID)
-	if mask != nil && !mask.IsZero() && cb.plr.inst != nil {
-		cb.plr.inst.send(packetPlayerCancelForeignBuff(cb.plr.ID, mask.ToByteArray(false)))
-	}
-	delete(cb.activeSkillLevels, skillID)
-	delete(cb.expireAt, skillID)
-	if t, ok := cb.expireTimers[skillID]; ok && t != nil {
-		t.Stop()
-		delete(cb.expireTimers, skillID)
-	}
-}
-
 // dispelAllBuffs removes all active buffs from the player
 func (cb *CharacterBuffs) dispelAllBuffs() {
 	for skillID := range cb.activeSkillLevels {
@@ -1059,16 +1045,20 @@ func buildBuffMask(skillID int32) *Flag {
 }
 
 func (cb *CharacterBuffs) post(fn func()) {
-	if cb == nil || cb.plr == nil || cb.plr.inst == nil || cb.plr.inst.dispatch == nil {
+	if cb == nil || cb.plr == nil {
 		return
 	}
-	select {
-	case cb.plr.inst.dispatch <- fn:
-		return
-	default:
-		fn()
-		return
+
+	if cb.plr.inst != nil && cb.plr.inst.dispatch != nil {
+		select {
+		case cb.plr.inst.dispatch <- fn:
+			return
+		default:
+			fn()
+			return
+		}
 	}
+	fn()
 }
 
 func (cb *CharacterBuffs) scheduleExpiryLocked(skillID int32, after time.Duration) {
