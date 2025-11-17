@@ -2565,7 +2565,7 @@ func getAttackInfo(reader mpacket.Reader, player Player, attackType int) (attack
 		if attackType == attackRanged {
 			projectileSlot := reader.ReadInt16()
 			_ = reader.ReadInt16()
-			shootRange := reader.ReadByte()
+			_ := reader.ReadByte()
 
 			if projectileSlot != 0 {
 				data.projectileID = -1
