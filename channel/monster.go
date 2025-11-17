@@ -71,6 +71,7 @@ type monster struct {
 	lastStatusUpdate int64
 	lastHeal         int64
 	lastTimeAttacked int64
+	lastPoisonTick   int64
 }
 
 func createMonsterFromData(spawnID int32, life nx.Life, m nx.Mob, dropsItems, dropsMesos bool) monster {
@@ -299,7 +300,7 @@ func (m monster) String() string {
 	return sid + "(" + mid + ") " + hp + "/" + mhp + " " + mp + "/" + mmp + " (" + m.pos.String() + ")"
 }
 
-func (m *monster) update(t time.Time) {
+func (m *monster) update(inst *fieldInstance, t time.Time) {
 	checkTime := t.Unix()
 	m.lastStatusUpdate = checkTime
 
@@ -307,15 +308,38 @@ func (m *monster) update(t time.Time) {
 		return
 	}
 
-	if m.poison {
-		// Handle poison (TODO: scale by poison level)
-		m.hp -= 10
-		if m.hp < 0 {
-			m.hp = 0
+	if (m.statBuff&skill.MobStat.Poison) != 0 && m.buffs != nil {
+		if buff, ok := m.buffs[skill.MobStat.Poison]; ok && buff != nil {
+			if checkTime-m.lastPoisonTick >= 1 {
+				m.lastPoisonTick = checkTime
+
+				dmg := int32(buff.value)
+				if dmg < 1 {
+					dmg = 1
+				}
+
+				if inst != nil {
+					var owner *Player
+					for _, p := range inst.players {
+						if p != nil && p.ID == buff.ownerID {
+							owner = p
+							break
+						}
+					}
+
+					if owner != nil {
+						if m.dmgTaken == nil {
+							m.dmgTaken = make(map[*Player]int32)
+						}
+						m.dmgTaken[owner] += dmg
+					}
+
+					inst.lifePool.mobDamaged(m.spawnID, nil, dmg)
+				}
+			}
 		}
 	}
 
-	// Periodic regen
 	if (checkTime - m.lastHeal) > 30 {
 		regenhp, regenmp := m.calculateHeal()
 		m.healMob(regenhp, regenmp)
@@ -427,6 +451,7 @@ func (m monster) calculateHeal() (hp int32, mp int32) {
 }
 
 type mobBuff struct {
+	ownerID   int32
 	skillID   int32
 	value     int16
 	duration  int16
@@ -474,7 +499,6 @@ func (m *monster) applyBuff(skillID int32, skillLevel byte, statMask int32, inst
 		} else {
 			value = int16(poisonDamage)
 		}
-
 	default:
 		value = 1
 	}
@@ -495,6 +519,7 @@ func (m *monster) applyBuff(skillID int32, skillLevel byte, statMask int32, inst
 		value:     value,
 		duration:  duration,
 		expiresAt: expiresAt,
+		ownerID:   0, // will be set by caller that knows the applier (e.g., mist)
 	}
 
 	m.statBuff |= statMask

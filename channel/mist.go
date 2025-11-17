@@ -10,7 +10,7 @@ import (
 	"github.com/Hucaru/Valhalla/mpacket"
 )
 
-// fieldMist represents a poison mist or other area effect on the field
+// fieldMist represents a poison mist on the field
 type fieldMist struct {
 	ID           int32
 	ownerID      int32
@@ -88,13 +88,7 @@ func (pool *mistPool) createMist(ownerID, skillID int32, skillLevel byte, pos po
 	}
 
 	pool.mists[mistID] = mist
-
-	log.Printf("Mist: Created mist ID=%d, owner=%d, skill=%d, level=%d, pos=(%d,%d), box=(%d,%d,%d,%d), duration=%d",
-		mistID, ownerID, skillID, skillLevel, pos.x, pos.y,
-		mist.box.x1, mist.box.y1, mist.box.x2, mist.box.y2, duration)
-
 	pool.instance.send(packetMistSpawn(mist))
-	log.Printf("Mist: Sent spawn packet to all players")
 
 	if duration > 0 {
 		go func() {
@@ -173,13 +167,31 @@ func (server *Server) startPoisonMistTicker(inst *fieldInstance, mist *fieldMist
 			}
 
 			inst.dispatch <- func() {
-				for spawnID, mob := range inst.lifePool.mobs {
-					if mob != nil && mob.hp > 0 && mist.isInMist(mob.pos) {
-						if (mob.statBuff & skill.MobStat.Poison) != 0 {
-							continue
+				now := time.Now()
+				remain := endTime.Sub(now)
+				remainSec := int16(remain / time.Second)
+				if remainSec < 1 {
+					remainSec = 1
+				}
+
+				for _, mob := range inst.lifePool.mobs {
+					if mob == nil || mob.hp <= 0 {
+						continue
+					}
+					if mist.isInMist(mob.pos) {
+						if (mob.statBuff & skill.MobStat.Poison) == 0 {
+							mob.applyBuff(mist.skillID, mist.skillLevel, skill.MobStat.Poison, inst)
 						}
 
-						inst.lifePool.applyMobBuff(spawnID, mist.skillID, mist.skillLevel, skill.MobStat.Poison, inst)
+						if mob.buffs != nil {
+							if b, ok := mob.buffs[skill.MobStat.Poison]; ok && b != nil {
+								b.ownerID = mist.ownerID
+								b.duration = remainSec
+								b.expiresAt = now.Add(time.Duration(remainSec) * time.Second).UnixMilli()
+
+								inst.send(packetMobStatSet(mob.spawnID, skill.MobStat.Poison, b.value, b.skillID, b.duration, 0))
+							}
+						}
 					}
 				}
 			}
