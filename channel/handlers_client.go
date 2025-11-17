@@ -2354,9 +2354,7 @@ func (server Server) playerMeleeSkill(conn mnet.Client, reader mpacket.Reader) {
 	inst.sendExcept(packetSkillMelee(*plr, data), conn)
 
 	if data.isMesoExplosion {
-		for _, attack := range data.attackInfo {
-			server.handleMesoExplosion(plr, inst, attack)
-		}
+		server.handleMesoExplosion(plr, inst, data)
 	} else {
 		for _, attack := range data.attackInfo {
 			inst.lifePool.mobDamaged(attack.spawnID, plr, attack.damages...)
@@ -2457,56 +2455,41 @@ func (server Server) playerMagicSkill(conn mnet.Client, reader mpacket.Reader) {
 	}
 }
 
-func (server *Server) handleMesoExplosion(plr *Player, inst *fieldInstance, attack attackInfo) {
-	if inst == nil {
-		log.Println("MesoExplosion: inst is nil")
-		return
-	}
+func (server *Server) handleMesoExplosion(plr *Player, inst *fieldInstance, data attackData) {
+	allDropIDs := make(map[int32]struct{}, 16)
+	hadMappedDrop := make([]bool, len(data.attackInfo))
 
-	const maxRange int32 = 200
-	var mesosToExplode []int32
-
-	facesLeft := attack.facesLeft
-
-	for dropID, drop := range inst.dropPool.drops {
-		if drop.mesos <= 0 {
+	for _, at := range data.attackInfo {
+		if len(at.mesoDropIDs) == 0 {
 			continue
 		}
-
-		dx := int32(drop.finalPos.x - plr.pos.x)
-		dy := int32(drop.finalPos.y - plr.pos.y)
-
-		inFront := false
-		absDx := dx
-		if facesLeft && dx <= 0 {
-			inFront = true
-			absDx = -dx
-		} else if !facesLeft && dx >= 0 {
-			inFront = true
-			absDx = dx
-		}
-
-		if !inFront {
-			continue
-		}
-
-		if absDx > maxRange || dy > maxRange || dy < -maxRange {
-			continue
-		}
-
-		distSq := absDx*absDx + dy*dy
-
-		if distSq <= maxRange*maxRange {
-			mesosToExplode = append(mesosToExplode, dropID)
+		for _, did := range at.mesoDropIDs {
+			allDropIDs[did] = struct{}{}
 		}
 	}
 
-	for _, dropID := range mesosToExplode {
-		inst.dropPool.removeDrop(4, dropID)
+	existing := make(map[int32]struct{}, len(allDropIDs))
+	for did := range allDropIDs {
+		if drop, ok := inst.dropPool.drops[did]; ok && drop.mesos > 0 {
+			existing[did] = struct{}{}
+		}
 	}
 
-	if attack.spawnID != 0 && len(attack.damages) > 0 && len(mesosToExplode) > 0 {
-		inst.lifePool.mobDamaged(attack.spawnID, plr, attack.damages...)
+	for tIdx, at := range data.attackInfo {
+		found := false
+		for _, did := range at.mesoDropIDs {
+			if _, ok := existing[did]; ok {
+				found = true
+				break
+			}
+		}
+		hadMappedDrop[tIdx] = found
+	}
+
+	removed := 0
+	for did := range existing {
+		inst.dropPool.removeDrop(4, did)
+		removed++
 	}
 }
 
@@ -2523,8 +2506,9 @@ type attackInfo struct {
 	facesLeft                                              bool
 	hitPosition, previousMobPosition                       pos
 	hitDelay                                               int16
-	hitCount                                               byte // For meso explosion, hit count per target
+	hitCount                                               byte
 	damages                                                []int32
+	mesoDropIDs                                            []int32
 }
 
 type attackData struct {
@@ -2532,6 +2516,7 @@ type attackData struct {
 	isMesoExplosion, facesLeft                     bool
 	option, action, attackType                     byte
 	targets, hits, skillLevel                      byte
+	mesoKillDelay                                  int16
 
 	attackInfo []attackInfo
 	playerPos  pos
@@ -2540,25 +2525,23 @@ type attackData struct {
 func getAttackInfo(reader mpacket.Reader, player Player, attackType int) (attackData, bool) {
 	data := attackData{}
 
-	// Dead players can't attack
 	if player.hp == 0 {
 		return data, false
 	}
 
-	// Fast-attack guard (basic): reject if packets come in too fast
-	// Note: this is a simple server-side check; tune threshold as needed.
 	if reader.Time-player.lastAttackPacketTime < 350 {
 		return data, false
 	}
 	player.lastAttackPacketTime = reader.Time
 
 	if attackType != attackSummon {
-		// Common header for melee/ranged/magic
 		tByte := reader.ReadByte()
 		skillID := reader.ReadInt32()
+
 		if _, ok := player.skills[skillID]; !ok && skillID != 0 {
 			return data, false
 		}
+
 		data.skillID = skillID
 		if data.skillID != 0 {
 			data.skillLevel = player.skills[skillID].Level
@@ -2576,13 +2559,14 @@ func getAttackInfo(reader mpacket.Reader, player Player, attackType int) (attack
 		data.facesLeft = (tmp >> 7) == 1
 		data.attackType = reader.ReadByte()
 
-		// Ranged specifics (align with reference)
-		if attackType == attackRanged {
-			// [starSlot int16][unknown int16][shootRange byte]
-			projectileSlot := reader.ReadInt16()
-			_ = reader.ReadInt16() // unknown/padding short
+		// The client sends a 4-byte field here (checksum/random). Keep alignment by consuming it.
+		_ = reader.ReadInt32()
 
-			// Resolve projectile ID if slot present
+		if attackType == attackRanged {
+			projectileSlot := reader.ReadInt16()
+			_ = reader.ReadInt16()
+			shootRange := reader.ReadByte()
+
 			if projectileSlot != 0 {
 				data.projectileID = -1
 				for _, item := range player.use {
@@ -2591,12 +2575,11 @@ func getAttackInfo(reader mpacket.Reader, player Player, attackType int) (attack
 						break
 					}
 				}
-				// If slot specified but not found in inventory, reject as invalid
 				if data.projectileID == -1 {
 					return data, false
 				}
 			} else {
-				// No projectile slot given: only allowed if Soul Arrow buff is active
+				// No projectile slot given: must have Soul Arrow active
 				hasSoulArrow := false
 				if player.buffs != nil {
 					if _, ok := player.buffs.activeSkillLevels[int32(skill.SoulArrow)]; ok {
@@ -2607,17 +2590,14 @@ func getAttackInfo(reader mpacket.Reader, player Player, attackType int) (attack
 					}
 				}
 				if !hasSoulArrow {
-					// Client attempted to fire without ammo and without Soul Arrow
 					return data, false
 				}
 				data.projectileID = -1
 			}
 
-			// Shoot range (not used in server calc, but must be consumed)
-			_ = reader.ReadByte()
 		}
 
-		// Parse per-target blocks
+		// Parse per-target blocks (supports Meso Explosion per-target hit count)
 		data.attackInfo = make([]attackInfo, data.targets)
 		for i := byte(0); i < data.targets; i++ {
 			ai := attackInfo{}
@@ -2629,9 +2609,7 @@ func getAttackInfo(reader mpacket.Reader, player Player, attackType int) (attack
 			ai.facesLeft = (tmp >> 7) == 1
 			ai.frameIndex = reader.ReadByte()
 
-			if !data.isMesoExplosion {
-				ai.calcDamageStatIndex = reader.ReadByte()
-			}
+			ai.calcDamageStatIndex = reader.ReadByte()
 
 			ai.hitPosition.x = reader.ReadInt16()
 			ai.hitPosition.y = reader.ReadInt16()
@@ -2639,12 +2617,20 @@ func getAttackInfo(reader mpacket.Reader, player Player, attackType int) (attack
 			ai.previousMobPosition.x = reader.ReadInt16()
 			ai.previousMobPosition.y = reader.ReadInt16()
 
-			// For Meso Explosion, client sends per-target hit count here
 			if data.isMesoExplosion {
 				ai.hitCount = reader.ReadByte()
+				ai.hitDelay = 0
 			} else {
 				ai.hitDelay = reader.ReadInt16()
 				ai.hitCount = data.hits
+			}
+
+			if data.isMesoExplosion && ai.hitCount == 0 {
+				rest := reader.GetRestAsBytes()
+				peek := 24
+				if len(rest) < peek {
+					peek = len(rest)
+				}
 			}
 
 			ai.damages = make([]int32, ai.hitCount)
@@ -2653,13 +2639,26 @@ func getAttackInfo(reader mpacket.Reader, player Player, attackType int) (attack
 				data.totalDamage += dmg
 				ai.damages[j] = dmg
 			}
-
 			data.attackInfo[i] = ai
 		}
 
-		// Player position at attack time
 		data.playerPos.x = reader.ReadInt16()
 		data.playerPos.y = reader.ReadInt16()
+
+		if data.isMesoExplosion {
+			count := int(reader.ReadByte())
+			for i := 0; i < count; i++ {
+				objID := reader.ReadInt32()
+				targetMask := reader.ReadByte()
+
+				for tIdx := 0; tIdx < int(data.targets); tIdx++ {
+					if (targetMask & (1 << uint(tIdx))) != 0 {
+						data.attackInfo[tIdx].mesoDropIDs = append(data.attackInfo[tIdx].mesoDropIDs, objID)
+					}
+				}
+			}
+			data.mesoKillDelay = reader.ReadInt16()
+		}
 
 		return data, true
 	}
@@ -2696,6 +2695,7 @@ func getAttackInfo(reader mpacket.Reader, player Player, attackType int) (attack
 	}}
 	data.targets = 1
 	data.totalDamage = dmg
+
 	return data, true
 }
 
