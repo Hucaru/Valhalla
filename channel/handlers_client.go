@@ -2491,6 +2491,16 @@ func (server *Server) handleMesoExplosion(plr *Player, inst *fieldInstance, data
 		inst.dropPool.removeDrop(4, did)
 		removed++
 	}
+
+	for tIdx, at := range data.attackInfo {
+		if at.spawnID == 0 || len(at.damages) == 0 {
+			continue
+		}
+
+		if hadMappedDrop[tIdx] {
+			inst.lifePool.mobDamaged(at.spawnID, plr, at.damages...)
+		}
+	}
 }
 
 const (
@@ -2565,7 +2575,7 @@ func getAttackInfo(reader mpacket.Reader, player Player, attackType int) (attack
 		if attackType == attackRanged {
 			projectileSlot := reader.ReadInt16()
 			_ = reader.ReadInt16()
-			_ := reader.ReadByte()
+			_ = reader.ReadByte()
 
 			if projectileSlot != 0 {
 				data.projectileID = -1
