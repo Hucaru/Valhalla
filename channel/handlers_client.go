@@ -2455,48 +2455,23 @@ func (server Server) playerMagicSkill(conn mnet.Client, reader mpacket.Reader) {
 }
 
 func (server *Server) handleMesoExplosion(plr *Player, inst *fieldInstance, data attackData) {
-	allDropIDs := make(map[int32]struct{}, 16)
-	hadMappedDrop := make([]bool, len(data.attackInfo))
+	removedSet := make(map[int32]struct{}, 16)
+	removed := 0
 
 	for _, at := range data.attackInfo {
-		if len(at.mesoDropIDs) == 0 {
-			continue
-		}
-		for _, did := range at.mesoDropIDs {
-			allDropIDs[did] = struct{}{}
-		}
-	}
-
-	existing := make(map[int32]struct{}, len(allDropIDs))
-	for did := range allDropIDs {
-		if drop, ok := inst.dropPool.drops[did]; ok && drop.mesos > 0 {
-			existing[did] = struct{}{}
-		}
-	}
-
-	for tIdx, at := range data.attackInfo {
 		found := false
 		for _, did := range at.mesoDropIDs {
-			if _, ok := existing[did]; ok {
+			if drop, ok := inst.dropPool.drops[did]; ok && drop.mesos > 0 {
+				if _, seen := removedSet[did]; !seen {
+					inst.dropPool.removeDrop(4, did)
+					removedSet[did] = struct{}{}
+					removed++
+				}
 				found = true
-				break
 			}
 		}
-		hadMappedDrop[tIdx] = found
-	}
 
-	removed := 0
-	for did := range existing {
-		inst.dropPool.removeDrop(4, did)
-		removed++
-	}
-
-	for tIdx, at := range data.attackInfo {
-		if at.spawnID == 0 || len(at.damages) == 0 {
-			continue
-		}
-
-		if hadMappedDrop[tIdx] {
+		if at.spawnID != 0 && len(at.damages) > 0 && found {
 			inst.lifePool.mobDamaged(at.spawnID, plr, at.damages...)
 		}
 	}
@@ -2568,8 +2543,7 @@ func getAttackInfo(reader mpacket.Reader, player Player, attackType int) (attack
 		data.facesLeft = (tmp >> 7) == 1
 		data.attackType = reader.ReadByte()
 
-		// The client sends a 4-byte field here (checksum/random). Keep alignment by consuming it.
-		_ = reader.ReadInt32()
+		reader.Skip(4)
 
 		if attackType == attackRanged {
 			projectileSlot := reader.ReadInt16()

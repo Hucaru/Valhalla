@@ -318,6 +318,14 @@ func (m *monster) update(inst *fieldInstance, t time.Time) {
 					dmg = 1
 				}
 
+				if m.hp <= 1 {
+					m.removeDebuff(skill.MobStat.Poison, inst)
+					return
+				}
+				if dmg >= m.hp {
+					dmg = m.hp - 1
+				}
+
 				if inst != nil {
 					var owner *Player
 					for _, p := range inst.players {
@@ -335,6 +343,10 @@ func (m *monster) update(inst *fieldInstance, t time.Time) {
 					}
 
 					inst.lifePool.mobDamaged(m.spawnID, nil, dmg)
+
+					if m.hp <= 1 {
+						m.removeDebuff(skill.MobStat.Poison, inst)
+					}
 				}
 			}
 		}

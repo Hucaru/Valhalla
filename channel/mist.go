@@ -2,7 +2,6 @@ package channel
 
 import (
 	"log"
-	"math"
 	"time"
 
 	"github.com/Hucaru/Valhalla/common/opcode"
@@ -45,19 +44,11 @@ func createNewMistPool(inst *fieldInstance) mistPool {
 }
 
 func (pool *mistPool) nextID() int32 {
-	for i := 0; i < 100; i++ {
-		pool.poolID++
-		if pool.poolID == math.MaxInt32-1 {
-			pool.poolID = math.MaxInt32 / 2
-		} else if pool.poolID == 0 {
-			pool.poolID = 1
-		}
-
-		if _, ok := pool.mists[pool.poolID]; !ok {
-			return pool.poolID
-		}
+	pool.poolID++
+	if pool.poolID == 0 {
+		pool.poolID = 1
 	}
-	return 0
+	return pool.poolID
 }
 
 // createMist spawns a new mist on the field
@@ -145,6 +136,7 @@ func (pool *mistPool) update(t time.Time) {
 		if mist == nil || mist.duration <= 0 {
 			continue
 		}
+
 		if t.After(mist.createdAt.Add(time.Duration(mist.duration) * time.Second)) {
 			pool.removeMist(id)
 		}
