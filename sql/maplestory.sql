@@ -81,6 +81,7 @@ CREATE TABLE `characters` (
   `miniGamePoints` int(11) NOT NULL DEFAULT '2000',
   `buddyListSize` tinyint(3) unsigned NOT NULL DEFAULT '20',
   `inCashShop` int(11) NOT NULL DEFAULT '0',
+  `teleportRocks` text NOT NULL,
   PRIMARY KEY (`id`),
   KEY `userID` (`accountID`),
   KEY `guildID` (`guildID`),

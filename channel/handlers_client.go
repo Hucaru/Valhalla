@@ -66,6 +66,8 @@ func (server *Server) HandleClientPacket(conn mnet.Client, reader mpacket.Reader
 		server.playerUsePortal(conn, reader)
 	case opcode.RecvChannelScriptedPortal:
 		server.playerUseScriptedPortal(conn, reader)
+	case opcode.RecvChannelTeleportRock:
+		server.playerTeleportRockOperation(conn, reader)
 	case opcode.RecvChannelEnterCashShop:
 		server.playerEnterCashShop(conn, reader)
 	case opcode.RecvChannelPlayerMovement:
@@ -1123,6 +1125,47 @@ func (server Server) playerUseScriptedPortal(conn mnet.Client, reader mpacket.Re
 		warp(plr, constant.MapBossPianus, "out00", false, 10, 0)
 	case constant.PortalZakum:
 		warp(plr, constant.MapBossZakum, "st00", true, 20, 50)
+	}
+}
+
+func (server Server) playerTeleportRockOperation(conn mnet.Client, reader mpacket.Reader) {
+	plr, err := server.players.GetFromConn(conn)
+	if err != nil {
+		return
+	}
+
+	// Packet structure:
+	// bool - add/delete map (true = add, false = delete)
+	// int32 - mapID
+	action := reader.ReadBool()
+	mapID := reader.ReadInt32()
+
+	if action {
+		// Add a map to teleport rocks
+		// Find first empty slot in the 15 slots (5 regular + 10 VIP)
+		added := false
+		for i := 0; i < len(plr.teleportRocks); i++ {
+			if plr.teleportRocks[i] == constant.InvalidMap {
+				plr.teleportRocks[i] = mapID
+				added = true
+				break
+			}
+		}
+
+		if added {
+			plr.MarkDirty(DirtyTeleportRocks, time.Millisecond*300)
+			plr.Send(packetTeleportRockUpdate(0x03, plr.teleportRocks))
+		}
+	} else {
+		// Delete a map from teleport rocks
+		for i := 0; i < len(plr.teleportRocks); i++ {
+			if plr.teleportRocks[i] == mapID {
+				plr.teleportRocks[i] = constant.InvalidMap
+				plr.MarkDirty(DirtyTeleportRocks, time.Millisecond*300)
+				plr.Send(packetTeleportRockUpdate(0x02, plr.teleportRocks))
+				break
+			}
+		}
 	}
 }
 

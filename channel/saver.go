@@ -36,6 +36,7 @@ const (
 	DirtyNX
 	DirtyMaplePoints
 	DirtyPet
+	DirtyTeleportRocks
 )
 
 // snapshot contains only columns we may persist.
@@ -72,6 +73,8 @@ type snapshot struct {
 	Skills map[int32]playerSkill
 
 	Pet *pet
+	
+	TeleportRocks []int32
 }
 
 type pendingSave struct {
@@ -160,6 +163,11 @@ func snapshotFromPlayer(p *Player) snapshot {
 
 	if p.dirty&DirtySkills != 0 {
 		s.Skills = copySkills(p.skills)
+	}
+	
+	if p.dirty&DirtyTeleportRocks != 0 {
+		s.TeleportRocks = make([]int32, len(p.teleportRocks))
+		copy(s.TeleportRocks, p.teleportRocks)
 	}
 
 	return s
@@ -411,6 +419,10 @@ func (s *saver) persist(job pendingSave) bool {
 	if job.bits&DirtyBuddySize != 0 {
 		cols = append(cols, "buddyListSize=?")
 		args = append(args, job.snap.BuddyListSize)
+	}
+	if job.bits&DirtyTeleportRocks != 0 {
+		cols = append(cols, "teleportRocks=?")
+		args = append(args, serializeTeleportRocks(job.snap.TeleportRocks))
 	}
 
 	if len(cols) > 0 {

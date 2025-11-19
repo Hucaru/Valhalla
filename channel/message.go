@@ -389,3 +389,21 @@ func packetMessengerAvatar(slot, gender, skin byte, face, hair, cashW, petAcc in
 	p.WriteInt32(petAcc)
 	return p
 }
+
+// packetTeleportRockUpdate sends the updated teleport rock list to the client
+// mode: 0x02 = delete, 0x03 = add
+func packetTeleportRockUpdate(mode byte, rocks []int32) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelMessage)
+	p.WriteByte(mode)
+	
+	// Send first 5 regular teleport rocks
+	for i := 0; i < 5; i++ {
+		if i < len(rocks) {
+			p.WriteInt32(rocks[i])
+		} else {
+			p.WriteInt32(constant.InvalidMap)
+		}
+	}
+	
+	return p
+}

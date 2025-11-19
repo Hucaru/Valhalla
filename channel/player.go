@@ -241,6 +241,8 @@ type Player struct {
 	buddyListSize byte
 	buddyList     []buddy
 
+	teleportRocks []int32 // 5 regular + 10 VIP teleport rocks
+
 	party *party
 	guild *guild
 
@@ -1678,15 +1680,16 @@ func LoadPlayerFromID(id int32, conn mnet.Client) Player {
 	filter := "ID,accountID,worldID,Name,gender,skin,hair,face,level,job,str,dex,intt," +
 		"luk,hp,maxHP,mp,maxMP,ap,sp, exp,fame,mapID,mapPos,previousMapID,mesos," +
 		"equipSlotSize,useSlotSize,setupSlotSize,etcSlotSize,cashSlotSize,miniGameWins," +
-		"miniGameDraw,miniGameLoss,miniGamePoints,buddyListSize"
+		"miniGameDraw,miniGameLoss,miniGamePoints,buddyListSize,teleportRocks"
 
+	var teleportRocksStr string
 	err := common.DB.QueryRow("SELECT "+filter+" FROM characters where ID=?", id).Scan(&c.ID,
 		&c.accountID, &c.worldID, &c.Name, &c.gender, &c.skin, &c.hair, &c.face,
 		&c.level, &c.job, &c.str, &c.dex, &c.intt, &c.luk, &c.hp, &c.maxHP, &c.mp,
 		&c.maxMP, &c.ap, &c.sp, &c.exp, &c.fame, &c.mapID, &c.mapPos,
 		&c.previousMap, &c.mesos, &c.equipSlotSize, &c.useSlotSize, &c.setupSlotSize,
 		&c.etcSlotSize, &c.cashSlotSize, &c.miniGameWins, &c.miniGameDraw, &c.miniGameLoss,
-		&c.miniGamePoints, &c.buddyListSize)
+		&c.miniGamePoints, &c.buddyListSize, &teleportRocksStr)
 
 	if err != nil {
 		log.Println(err)
@@ -1733,6 +1736,9 @@ func LoadPlayerFromID(id int32, conn mnet.Client) Player {
 	c.equip, c.use, c.setUp, c.etc, c.cash = loadInventoryFromDb(c.ID)
 
 	c.buddyList = getBuddyList(c.ID, c.buddyListSize)
+
+	// Initialize teleport rocks (5 regular + 10 VIP)
+	c.teleportRocks = parseTeleportRocks(teleportRocksStr)
 
 	c.quests = loadQuestsFromDB(c.ID)
 	c.quests.init()
@@ -1793,6 +1799,44 @@ func getBuddyList(playerID int32, buddySize byte) []buddy {
 	}
 
 	return buddies
+}
+
+// parseTeleportRocks parses the teleport rocks from the database string format
+// Format: comma-separated list of map IDs (5 regular + 10 VIP)
+func parseTeleportRocks(rocksStr string) []int32 {
+	rocks := make([]int32, 15) // 5 regular + 10 VIP
+	for i := range rocks {
+		rocks[i] = constant.InvalidMap
+	}
+	
+	if rocksStr == "" {
+		return rocks
+	}
+	
+	parts := strings.Split(rocksStr, ",")
+	for i, part := range parts {
+		if i >= 15 {
+			break
+		}
+		if part == "" {
+			continue
+		}
+		var mapID int32
+		if _, err := fmt.Sscanf(part, "%d", &mapID); err == nil {
+			rocks[i] = mapID
+		}
+	}
+	
+	return rocks
+}
+
+// serializeTeleportRocks converts teleport rocks to database string format
+func serializeTeleportRocks(rocks []int32) string {
+	parts := make([]string, len(rocks))
+	for i, mapID := range rocks {
+		parts[i] = fmt.Sprintf("%d", mapID)
+	}
+	return strings.Join(parts, ",")
 }
 
 func (d *Player) addBuff(skillID int32, level byte, delay int16) {
@@ -2677,20 +2721,39 @@ func packetPlayerEnterGame(plr Player, channelID int32) mpacket.Packet {
 	writeActiveQuests(&p, plr.quests.inProgressList())
 	writeCompletedQuests(&p, plr.quests.completedList())
 
-	p.WriteInt32(0)
-	p.WriteInt32(0)
-	p.WriteInt32(0)
-	p.WriteInt32(0)
-	p.WriteInt32(0)
-	p.WriteInt32(0)
-	p.WriteInt32(0)
-	p.WriteInt32(0)
-	p.WriteInt32(0)
-	p.WriteInt32(0)
-	p.WriteInt32(0)
-	p.WriteInt32(0)
-	p.WriteInt32(0)
-	p.WriteInt32(0)
+	p.WriteInt16(0) // MiniGames
+	/*
+	   - uint16 count
+	   - repeat count times:
+	       - int32 a
+	       - int32 b
+	       - int32 c
+	       - int32 d
+	       - int32 e
+	*/
+	p.WriteInt16(0) // Rings
+	/*
+	   - uint16 count
+	   - repeat count times:
+	       - decode ring object
+	*/
+
+	// Teleport rocks (5 normal, 10 VIP) INT32 = Saved MapID
+	for i := 0; i < 5; i++ {
+		if i < len(plr.teleportRocks) {
+			p.WriteInt32(plr.teleportRocks[i])
+		} else {
+			p.WriteInt32(constant.InvalidMap) // Reg Tele rocks
+		}
+	}
+	for i := 5; i < 15; i++ {
+		if i < len(plr.teleportRocks) {
+			p.WriteInt32(plr.teleportRocks[i])
+		} else {
+			p.WriteInt32(constant.InvalidMap) // VIP Tele rocks
+		}
+	}
+
 	p.WriteInt64(time.Now().Unix())
 
 	return p
