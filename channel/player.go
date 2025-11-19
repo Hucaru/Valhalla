@@ -241,7 +241,8 @@ type Player struct {
 	buddyListSize byte
 	buddyList     []buddy
 
-	teleportRocks []int32 // 5 regular + 10 VIP teleport rocks
+	regTeleportRocks []int32 // 5 regular teleport rocks
+	vipTeleportRocks []int32 // 10 VIP teleport rocks
 
 	party *party
 	guild *guild
@@ -1680,16 +1681,16 @@ func LoadPlayerFromID(id int32, conn mnet.Client) Player {
 	filter := "ID,accountID,worldID,Name,gender,skin,hair,face,level,job,str,dex,intt," +
 		"luk,hp,maxHP,mp,maxMP,ap,sp, exp,fame,mapID,mapPos,previousMapID,mesos," +
 		"equipSlotSize,useSlotSize,setupSlotSize,etcSlotSize,cashSlotSize,miniGameWins," +
-		"miniGameDraw,miniGameLoss,miniGamePoints,buddyListSize,teleportRocks"
+		"miniGameDraw,miniGameLoss,miniGamePoints,buddyListSize,regTeleportRocks,vipTeleportRocks"
 
-	var teleportRocksStr string
+	var regTeleportRocksStr, vipTeleportRocksStr string
 	err := common.DB.QueryRow("SELECT "+filter+" FROM characters where ID=?", id).Scan(&c.ID,
 		&c.accountID, &c.worldID, &c.Name, &c.gender, &c.skin, &c.hair, &c.face,
 		&c.level, &c.job, &c.str, &c.dex, &c.intt, &c.luk, &c.hp, &c.maxHP, &c.mp,
 		&c.maxMP, &c.ap, &c.sp, &c.exp, &c.fame, &c.mapID, &c.mapPos,
 		&c.previousMap, &c.mesos, &c.equipSlotSize, &c.useSlotSize, &c.setupSlotSize,
 		&c.etcSlotSize, &c.cashSlotSize, &c.miniGameWins, &c.miniGameDraw, &c.miniGameLoss,
-		&c.miniGamePoints, &c.buddyListSize, &teleportRocksStr)
+		&c.miniGamePoints, &c.buddyListSize, &regTeleportRocksStr, &vipTeleportRocksStr)
 
 	if err != nil {
 		log.Println(err)
@@ -1737,8 +1738,9 @@ func LoadPlayerFromID(id int32, conn mnet.Client) Player {
 
 	c.buddyList = getBuddyList(c.ID, c.buddyListSize)
 
-	// Initialize teleport rocks (5 regular + 10 VIP)
-	c.teleportRocks = parseTeleportRocks(teleportRocksStr)
+	// Initialize teleport rocks (5 regular, 10 VIP)
+	c.regTeleportRocks = parseTeleportRocks(regTeleportRocksStr, 5)
+	c.vipTeleportRocks = parseTeleportRocks(vipTeleportRocksStr, 10)
 
 	c.quests = loadQuestsFromDB(c.ID)
 	c.quests.init()
@@ -1802,9 +1804,9 @@ func getBuddyList(playerID int32, buddySize byte) []buddy {
 }
 
 // parseTeleportRocks parses the teleport rocks from the database string format
-// Format: comma-separated list of map IDs (5 regular + 10 VIP)
-func parseTeleportRocks(rocksStr string) []int32 {
-	rocks := make([]int32, 15) // 5 regular + 10 VIP
+// Format: comma-separated list of map IDs
+func parseTeleportRocks(rocksStr string, size int) []int32 {
+	rocks := make([]int32, size)
 	for i := range rocks {
 		rocks[i] = constant.InvalidMap
 	}
@@ -1815,7 +1817,7 @@ func parseTeleportRocks(rocksStr string) []int32 {
 	
 	parts := strings.Split(rocksStr, ",")
 	for i, part := range parts {
-		if i >= 15 {
+		if i >= size {
 			break
 		}
 		if part == "" {
@@ -2740,15 +2742,15 @@ func packetPlayerEnterGame(plr Player, channelID int32) mpacket.Packet {
 
 	// Teleport rocks (5 normal, 10 VIP) INT32 = Saved MapID
 	for i := 0; i < 5; i++ {
-		if i < len(plr.teleportRocks) {
-			p.WriteInt32(plr.teleportRocks[i])
+		if i < len(plr.regTeleportRocks) {
+			p.WriteInt32(plr.regTeleportRocks[i])
 		} else {
 			p.WriteInt32(constant.InvalidMap) // Reg Tele rocks
 		}
 	}
-	for i := 5; i < 15; i++ {
-		if i < len(plr.teleportRocks) {
-			p.WriteInt32(plr.teleportRocks[i])
+	for i := 0; i < 10; i++ {
+		if i < len(plr.vipTeleportRocks) {
+			p.WriteInt32(plr.vipTeleportRocks[i])
 		} else {
 			p.WriteInt32(constant.InvalidMap) // VIP Tele rocks
 		}

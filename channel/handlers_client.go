@@ -1136,17 +1136,37 @@ func (server Server) playerTeleportRockOperation(conn mnet.Client, reader mpacke
 
 	// Packet structure:
 	// bool - add/delete map (true = add, false = delete)
-	// int32 - mapID
+	// byte - VIP flag (0x01 = VIP, 0x00 = regular)
+	// int32 - mapID (only for delete, for add use current map)
 	action := reader.ReadBool()
-	mapID := reader.ReadInt32()
+	isVIP := reader.ReadByte() == 0x01
+
+	var mapID int32
+	if action {
+		// Add: use player's current map location
+		mapID = plr.mapID
+	} else {
+		// Delete: read mapID from packet
+		mapID = reader.ReadInt32()
+	}
 
 	if action {
 		// Add a map to teleport rocks
-		// Find first empty slot in the 15 slots (5 regular + 10 VIP)
+		var rocks *[]int32
+		var maxSlots int
+		if isVIP {
+			rocks = &plr.vipTeleportRocks
+			maxSlots = 10
+		} else {
+			rocks = &plr.regTeleportRocks
+			maxSlots = 5
+		}
+
+		// Find first empty slot
 		added := false
-		for i := 0; i < len(plr.teleportRocks); i++ {
-			if plr.teleportRocks[i] == constant.InvalidMap {
-				plr.teleportRocks[i] = mapID
+		for i := 0; i < maxSlots && i < len(*rocks); i++ {
+			if (*rocks)[i] == constant.InvalidMap {
+				(*rocks)[i] = mapID
 				added = true
 				break
 			}
@@ -1154,15 +1174,30 @@ func (server Server) playerTeleportRockOperation(conn mnet.Client, reader mpacke
 
 		if added {
 			plr.MarkDirty(DirtyTeleportRocks, time.Millisecond*300)
-			plr.Send(packetTeleportRockUpdate(0x03, plr.teleportRocks))
+			if isVIP {
+				plr.Send(packetTeleportRockUpdate(0x03, plr.vipTeleportRocks, true))
+			} else {
+				plr.Send(packetTeleportRockUpdate(0x03, plr.regTeleportRocks, false))
+			}
 		}
 	} else {
 		// Delete a map from teleport rocks
-		for i := 0; i < len(plr.teleportRocks); i++ {
-			if plr.teleportRocks[i] == mapID {
-				plr.teleportRocks[i] = constant.InvalidMap
+		var rocks *[]int32
+		if isVIP {
+			rocks = &plr.vipTeleportRocks
+		} else {
+			rocks = &plr.regTeleportRocks
+		}
+
+		for i := 0; i < len(*rocks); i++ {
+			if (*rocks)[i] == mapID {
+				(*rocks)[i] = constant.InvalidMap
 				plr.MarkDirty(DirtyTeleportRocks, time.Millisecond*300)
-				plr.Send(packetTeleportRockUpdate(0x02, plr.teleportRocks))
+				if isVIP {
+					plr.Send(packetTeleportRockUpdate(0x02, plr.vipTeleportRocks, true))
+				} else {
+					plr.Send(packetTeleportRockUpdate(0x02, plr.regTeleportRocks, false))
+				}
 				break
 			}
 		}

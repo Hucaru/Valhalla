@@ -74,7 +74,8 @@ type snapshot struct {
 
 	Pet *pet
 	
-	TeleportRocks []int32
+	RegTeleportRocks []int32
+	VipTeleportRocks []int32
 }
 
 type pendingSave struct {
@@ -166,8 +167,10 @@ func snapshotFromPlayer(p *Player) snapshot {
 	}
 	
 	if p.dirty&DirtyTeleportRocks != 0 {
-		s.TeleportRocks = make([]int32, len(p.teleportRocks))
-		copy(s.TeleportRocks, p.teleportRocks)
+		s.RegTeleportRocks = make([]int32, len(p.regTeleportRocks))
+		copy(s.RegTeleportRocks, p.regTeleportRocks)
+		s.VipTeleportRocks = make([]int32, len(p.vipTeleportRocks))
+		copy(s.VipTeleportRocks, p.vipTeleportRocks)
 	}
 
 	return s
@@ -421,8 +424,8 @@ func (s *saver) persist(job pendingSave) bool {
 		args = append(args, job.snap.BuddyListSize)
 	}
 	if job.bits&DirtyTeleportRocks != 0 {
-		cols = append(cols, "teleportRocks=?")
-		args = append(args, serializeTeleportRocks(job.snap.TeleportRocks))
+		cols = append(cols, "regTeleportRocks=?, vipTeleportRocks=?")
+		args = append(args, serializeTeleportRocks(job.snap.RegTeleportRocks), serializeTeleportRocks(job.snap.VipTeleportRocks))
 	}
 
 	if len(cols) > 0 {
