@@ -1738,9 +1738,9 @@ func LoadPlayerFromID(id int32, conn mnet.Client) Player {
 
 	c.buddyList = getBuddyList(c.ID, c.buddyListSize)
 
-	// Initialize teleport rocks (5 regular, 10 VIP)
-	c.regTeleportRocks = parseTeleportRocks(regTeleportRocksStr, 5)
-	c.vipTeleportRocks = parseTeleportRocks(vipTeleportRocksStr, 10)
+	// Initialize teleport rocks
+	c.regTeleportRocks = parseTeleportRocks(regTeleportRocksStr, constant.TeleportRockRegSlots)
+	c.vipTeleportRocks = parseTeleportRocks(vipTeleportRocksStr, constant.TeleportRockVIPSlots)
 
 	c.quests = loadQuestsFromDB(c.ID)
 	c.quests.init()
@@ -2740,19 +2740,19 @@ func packetPlayerEnterGame(plr Player, channelID int32) mpacket.Packet {
 	       - decode ring object
 	*/
 
-	// Teleport rocks (5 normal, 10 VIP) INT32 = Saved MapID
-	for i := 0; i < 5; i++ {
+	// Teleport rocks (regular + VIP) INT32 = Saved MapID
+	for i := 0; i < constant.TeleportRockRegSlots; i++ {
 		if i < len(plr.regTeleportRocks) {
 			p.WriteInt32(plr.regTeleportRocks[i])
 		} else {
-			p.WriteInt32(constant.InvalidMap) // Reg Tele rocks
+			p.WriteInt32(constant.InvalidMap)
 		}
 	}
-	for i := 0; i < 10; i++ {
+	for i := 0; i < constant.TeleportRockVIPSlots; i++ {
 		if i < len(plr.vipTeleportRocks) {
 			p.WriteInt32(plr.vipTeleportRocks[i])
 		} else {
-			p.WriteInt32(constant.InvalidMap) // VIP Tele rocks
+			p.WriteInt32(constant.InvalidMap)
 		}
 	}
 

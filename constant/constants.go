@@ -370,6 +370,16 @@ const (
 	ItemWaterOfLife       = 5180000
 )
 
+// Teleport rock constants
+const (
+	TeleportRockRegSlots      = 5    // Regular teleport rocks have 5 slots
+	TeleportRockVIPSlots      = 10   // VIP teleport rocks have 10 slots
+	TeleportRockVIPFlag  byte = 0x01 // VIP flag in packet
+	TeleportRockRegFlag  byte = 0x00 // Regular flag in packet
+	TeleportRockModeAdd  byte = 0x03 // Server response mode for add
+	TeleportRockModeDel  byte = 0x02 // Server response mode for delete
+)
+
 // Login result codes
 const (
 	LoginResultSuccess           byte = 0x00

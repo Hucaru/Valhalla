@@ -1136,10 +1136,10 @@ func (server Server) playerTeleportRockOperation(conn mnet.Client, reader mpacke
 
 	// Packet structure:
 	// bool - add/delete map (true = add, false = delete)
-	// byte - VIP flag (0x01 = VIP, 0x00 = regular)
+	// byte - VIP flag (constant.TeleportRockVIPFlag = VIP, constant.TeleportRockRegFlag = regular)
 	// int32 - mapID (only for delete, for add use current map)
 	action := reader.ReadBool()
-	isVIP := reader.ReadByte() == 0x01
+	isVIP := reader.ReadByte() == constant.TeleportRockVIPFlag
 
 	var mapID int32
 	if action {
@@ -1156,10 +1156,10 @@ func (server Server) playerTeleportRockOperation(conn mnet.Client, reader mpacke
 		var maxSlots int
 		if isVIP {
 			rocks = &plr.vipTeleportRocks
-			maxSlots = 10
+			maxSlots = constant.TeleportRockVIPSlots
 		} else {
 			rocks = &plr.regTeleportRocks
-			maxSlots = 5
+			maxSlots = constant.TeleportRockRegSlots
 		}
 
 		// Find first empty slot
@@ -1175,9 +1175,9 @@ func (server Server) playerTeleportRockOperation(conn mnet.Client, reader mpacke
 		if added {
 			plr.MarkDirty(DirtyTeleportRocks, time.Millisecond*300)
 			if isVIP {
-				plr.Send(packetTeleportRockUpdate(0x03, plr.vipTeleportRocks, true))
+				plr.Send(packetTeleportRockUpdate(constant.TeleportRockModeAdd, plr.vipTeleportRocks, true))
 			} else {
-				plr.Send(packetTeleportRockUpdate(0x03, plr.regTeleportRocks, false))
+				plr.Send(packetTeleportRockUpdate(constant.TeleportRockModeAdd, plr.regTeleportRocks, false))
 			}
 		}
 	} else {
@@ -1194,9 +1194,9 @@ func (server Server) playerTeleportRockOperation(conn mnet.Client, reader mpacke
 				(*rocks)[i] = constant.InvalidMap
 				plr.MarkDirty(DirtyTeleportRocks, time.Millisecond*300)
 				if isVIP {
-					plr.Send(packetTeleportRockUpdate(0x02, plr.vipTeleportRocks, true))
+					plr.Send(packetTeleportRockUpdate(constant.TeleportRockModeDel, plr.vipTeleportRocks, true))
 				} else {
-					plr.Send(packetTeleportRockUpdate(0x02, plr.regTeleportRocks, false))
+					plr.Send(packetTeleportRockUpdate(constant.TeleportRockModeDel, plr.regTeleportRocks, false))
 				}
 				break
 			}
