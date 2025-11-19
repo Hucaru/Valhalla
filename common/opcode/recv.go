@@ -48,6 +48,7 @@ const (
 	RecvChannelPetSpawn            byte = 0x40
 	RecvChannelCancelBuff          byte = 0x41 // This is received by the client when the buff needs to be cancelled
 	RecvChannelScriptedPortal      byte = 0x42
+	RecvChannelTeleportRock        byte = 0x43
 	RecvChannelLieDetectorResult   byte = 0x45
 	RecvChannelQuestOperation      byte = 0x47
 	RecvChannelAcknowledgeBuff     byte = 0x48
