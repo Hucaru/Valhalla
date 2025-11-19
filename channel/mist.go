@@ -180,3 +180,14 @@ func (pool *mistPool) update(t time.Time) {
 		}
 	}
 }
+
+func (pool *mistPool) removeMistsByOwner(ownerID int32) {
+	if pool == nil {
+		return
+	}
+	for id, mist := range pool.mists {
+		if mist != nil && mist.ownerID == ownerID {
+			pool.removeMist(id)
+		}
+	}
+}

@@ -502,6 +502,7 @@ func (f *field) changePlayerInstance(player *Player, id int) error {
 		}
 
 		f.instances[player.inst.id].dropPool.HideDrops(player)
+		f.instances[player.inst.id].mistPool.removeMistsByOwner(player.ID)
 
 		player.inst = f.instances[id]
 		err = f.instances[id].addPlayer(player)
