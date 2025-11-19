@@ -3,11 +3,11 @@
 
 -- Add the regTeleportRocks column (5 slots)
 ALTER TABLE `characters` 
-ADD COLUMN `regTeleportRocks` text NOT NULL DEFAULT '';
+ADD COLUMN `regTeleportRocks` text NOT NULL;
 
 -- Add the vipTeleportRocks column (10 slots)
 ALTER TABLE `characters` 
-ADD COLUMN `vipTeleportRocks` text NOT NULL DEFAULT '';
+ADD COLUMN `vipTeleportRocks` text NOT NULL;
 
 -- Initialize empty regular teleport rocks for all existing characters (5 slots)
 UPDATE `characters` 
