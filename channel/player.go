@@ -1,6 +1,7 @@
 package channel
 
 import (
+	"database/sql"
 	"errors"
 	"fmt"
 	"log"
@@ -1683,7 +1684,7 @@ func LoadPlayerFromID(id int32, conn mnet.Client) Player {
 		"equipSlotSize,useSlotSize,setupSlotSize,etcSlotSize,cashSlotSize,miniGameWins," +
 		"miniGameDraw,miniGameLoss,miniGamePoints,buddyListSize,regTeleportRocks,vipTeleportRocks"
 
-	var regTeleportRocksStr, vipTeleportRocksStr string
+	var regTeleportRocksStr, vipTeleportRocksStr sql.NullString
 	err := common.DB.QueryRow("SELECT "+filter+" FROM characters where ID=?", id).Scan(&c.ID,
 		&c.accountID, &c.worldID, &c.Name, &c.gender, &c.skin, &c.hair, &c.face,
 		&c.level, &c.job, &c.str, &c.dex, &c.intt, &c.luk, &c.hp, &c.maxHP, &c.mp,
@@ -1738,9 +1739,17 @@ func LoadPlayerFromID(id int32, conn mnet.Client) Player {
 
 	c.buddyList = getBuddyList(c.ID, c.buddyListSize)
 
-	// Initialize teleport rocks
-	c.regTeleportRocks = parseTeleportRocks(regTeleportRocksStr, constant.TeleportRockRegSlots)
-	c.vipTeleportRocks = parseTeleportRocks(vipTeleportRocksStr, constant.TeleportRockVIPSlots)
+	// Initialize teleport rocks - handle NULL values from database
+	regRocksStr := ""
+	if regTeleportRocksStr.Valid {
+		regRocksStr = regTeleportRocksStr.String
+	}
+	vipRocksStr := ""
+	if vipTeleportRocksStr.Valid {
+		vipRocksStr = vipTeleportRocksStr.String
+	}
+	c.regTeleportRocks = parseTeleportRocks(regRocksStr, constant.TeleportRockRegSlots)
+	c.vipTeleportRocks = parseTeleportRocks(vipRocksStr, constant.TeleportRockVIPSlots)
 
 	c.quests = loadQuestsFromDB(c.ID)
 	c.quests.init()
