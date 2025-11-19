@@ -260,31 +260,6 @@ func (cb *CharacterBuffs) AddBuff(charId, skillID int32, level byte, foreign boo
 	}
 
 	cb.AddBuffFromCC(charId, skillID, expiresAtMs, level, foreign, delay)
-
-	if !foreign {
-		switch skill.Skill(skillID) {
-		case skill.SilverHawk, skill.GoldenEagle, skill.SummonDragon:
-			if cb.plr != nil && cb.plr.getSummon(skillID) == nil {
-				spawn := cb.plr.pos
-				if cb.plr.inst != nil {
-					if snapped := cb.plr.inst.fhHist.getFinalPosition(newPos(spawn.x, spawn.y, 0)); snapped.foothold != 0 {
-						spawn = snapped
-					}
-				}
-				su := &summon{
-					OwnerID:    cb.plr.ID,
-					SkillID:    skillID,
-					Level:      level,
-					Pos:        spawn,
-					Stance:     0,
-					Foothold:   spawn.foothold,
-					IsPuppet:   false,
-					SummonType: 0,
-				}
-				cb.plr.addSummon(su)
-			}
-		}
-	}
 }
 
 func buildMaskBytes64(bits []int) []byte {
@@ -853,35 +828,15 @@ func (cb *CharacterBuffs) AddBuffFromCC(charId, skillID int32, expiresAtMs int64
 	d := time.Until(time.UnixMilli(expiresAtMs))
 	cb.scheduleExpiryLocked(skillID, d)
 
-	// Start Recovery skill ticker if this is the Recovery skill
-	if skillID == int32(skill.Recovery) {
+	switch skill.Skill(skillID) {
+	case skill.Recovery:
 		cb.startRecoveryTicker(level)
-	}
 
-	// If this is a non-puppet summon skill applied to self (e.g., on CC/login restore), spawn the summon entity now.
-	if !foreign {
-		switch skill.Skill(skillID) {
-		case skill.SilverHawk, skill.GoldenEagle, skill.SummonDragon:
-			if cb.plr != nil {
-				spawn := cb.plr.pos
-				if cb.plr.inst != nil {
-					if snapped := cb.plr.inst.fhHist.getFinalPosition(newPos(spawn.x, spawn.y, 0)); snapped.foothold != 0 {
-						spawn = snapped
-					}
-				}
-				su := &summon{
-					OwnerID:    cb.plr.ID,
-					SkillID:    skillID,
-					Level:      level,
-					Pos:        spawn,
-					Stance:     0,
-					Foothold:   spawn.foothold,
-					IsPuppet:   false,
-					SummonType: 0,
-				}
-				cb.plr.addSummon(su)
-			}
-		}
+	case skill.HyperBody:
+		baseHP, baseMP := cb.plr.maxHP, cb.plr.maxMP
+		cb.plr.Send(packetPlayerStatChange(true, constant.MaxHpID, int32(baseHP)))
+		cb.plr.Send(packetPlayerStatChange(true, constant.MaxMpID, int32(baseMP)))
+
 	}
 }
 
@@ -988,20 +943,6 @@ func (cb *CharacterBuffs) buildForeignBuffMaskAndValues(skillID int32, level byt
 	return mask, out
 }
 
-// ClearBuff removes a specific buff from Player and DB.
-func (cb *CharacterBuffs) ClearBuff(skillID int32, _ uint32) {
-	mask := buildBuffMask(skillID)
-	if mask != nil && !mask.IsZero() && cb.plr.inst != nil {
-		cb.plr.inst.send(packetPlayerCancelForeignBuff(cb.plr.ID, mask.ToByteArray(false)))
-	}
-	delete(cb.activeSkillLevels, skillID)
-	delete(cb.expireAt, skillID)
-	if t, ok := cb.expireTimers[skillID]; ok && t != nil {
-		t.Stop()
-		delete(cb.expireTimers, skillID)
-	}
-}
-
 // dispelAllBuffs removes all active buffs from the player
 func (cb *CharacterBuffs) dispelAllBuffs() {
 	for skillID := range cb.activeSkillLevels {
@@ -1072,30 +1013,21 @@ func (cb *CharacterBuffs) RestoreFromSnapshot(snaps []BuffSnapshot) {
 	}
 }
 
-// buildBuffMask builds a Flag (CFlag) with all relevant bits for the given skill set.
-func buildBuffMask(skillID int32) *Flag {
-	bits, ok := skillBuffBits[skillID]
-	if !ok || len(bits) == 0 {
-		return nil
-	}
-	uMask := NewFlag()
-	for _, bit := range bits {
-		uMask.SetBitNumber(bit, 1)
-	}
-	return uMask
-}
-
 func (cb *CharacterBuffs) post(fn func()) {
-	if cb == nil || cb.plr == nil || cb.plr.inst == nil || cb.plr.inst.dispatch == nil {
+	if cb == nil || cb.plr == nil {
 		return
 	}
-	select {
-	case cb.plr.inst.dispatch <- fn:
-		return
-	default:
-		fn()
-		return
+
+	if cb.plr.inst != nil && cb.plr.inst.dispatch != nil {
+		select {
+		case cb.plr.inst.dispatch <- fn:
+			return
+		default:
+			fn()
+			return
+		}
 	}
+	fn()
 }
 
 func (cb *CharacterBuffs) scheduleExpiryLocked(skillID int32, after time.Duration) {
@@ -1125,12 +1057,32 @@ func (cb *CharacterBuffs) expireBuffNow(skillID int32) {
 	}
 	delete(cb.expireAt, skillID)
 
-	// Stop Recovery skill ticker if this is the Recovery skill
-	if skillID == int32(skill.Recovery) {
+	switch skill.Skill(skillID) {
+	case skill.Recovery:
 		cb.stopRecoveryTicker()
+
+	case skill.HyperBody:
+		baseEffHP := cb.plr.maxHP
+		baseEffMP := cb.plr.maxMP
+
+		if cb.plr.hp > baseEffHP {
+			cb.plr.setHP(baseEffHP)
+		} else {
+			cb.plr.setHP(cb.plr.hp)
+		}
+		if cb.plr.mp > baseEffMP {
+			cb.plr.setMP(baseEffMP)
+		} else {
+			cb.plr.setMP(cb.plr.mp)
+		}
+
+		cb.plr.Send(packetPlayerStatChange(true, constant.MaxHpID, int32(cb.plr.maxHP)))
+		cb.plr.Send(packetPlayerStatChange(true, constant.MaxMpID, int32(cb.plr.maxMP)))
+	case skill.SummonDragon, skill.SilverHawk, skill.GoldenEagle, skill.Puppet, skill.SniperPuppet:
+		cb.plr.removeActiveSummonForSkill(skillID, constant.SummonRemoveReasonCancel)
+
 	}
 
-	// Item-source (negative) or skill-source (positive)
 	bits, ok := skillBuffBits[skillID]
 	if !ok || len(bits) == 0 {
 		if skillID < 0 {
@@ -1142,9 +1094,8 @@ func (cb *CharacterBuffs) expireBuffNow(skillID int32) {
 				delete(cb.itemMasks, skillID)
 			}
 		}
-		cb.despawnSummonIfMatches(skillID)
-		return
 	}
+
 	maskBytes := buildMaskBytes64(bits)
 
 	cb.plr.Send(packetPlayerCancelBuff(maskBytes))
@@ -1154,28 +1105,9 @@ func (cb *CharacterBuffs) expireBuffNow(skillID int32) {
 
 	delete(cb.activeSkillLevels, skillID)
 
-	// Clean up mob debuff from skillBuffBits (rValue format: skillID | (level << 16))
-	// Only clean up if it looks like a mob debuff (skill ID 100-200 range)
 	baseSkillID := skillID & 0xFFFF
 	if baseSkillID >= 100 && baseSkillID <= 200 {
 		delete(skillBuffBits, skillID)
-	}
-
-	cb.despawnSummonIfMatches(skillID)
-}
-
-func (cb *CharacterBuffs) despawnSummonIfMatches(skillID int32) {
-	p := cb.plr
-	if p == nil || p.summons == nil {
-		return
-	}
-	if p.summons.puppet != nil && p.summons.puppet.SkillID == skillID {
-		p.removeSummon(true, constant.SummonRemoveReasonKeepBuff)
-		return
-	}
-	if p.summons.summon != nil && p.summons.summon.SkillID == skillID {
-		p.removeSummon(false, constant.SummonRemoveReasonKeepBuff)
-		return
 	}
 }
 

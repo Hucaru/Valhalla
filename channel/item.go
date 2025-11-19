@@ -535,14 +535,15 @@ func (v Item) use(plr *Player) {
 	}
 
 	if nxData.HP > 0 {
-		plr.giveHP(v.hp)
+		plr.giveHP(nxData.HP)
 	}
 	if nxData.MP > 0 {
-		plr.giveMP(v.mp)
+		plr.giveMP(nxData.MP)
 	}
 
 	if nxData.HPR > 0 {
-		hpAmt := int(math.Floor(float64(plr.maxHP) * float64(nxData.HPR) / 100.0))
+		base := int(plr.effectiveMaxHP())
+		hpAmt := int(math.Floor(float64(base) * float64(nxData.HPR) / 100.0))
 		if hpAmt < 1 {
 			hpAmt = 1
 		}
@@ -550,7 +551,8 @@ func (v Item) use(plr *Player) {
 	}
 
 	if nxData.MPR > 0 {
-		mpAmt := int(math.Floor(float64(plr.maxMP) * float64(nxData.MPR) / 100.0))
+		base := int(plr.effectiveMaxMP())
+		mpAmt := int(math.Floor(float64(base) * float64(nxData.MPR) / 100.0))
 		if mpAmt < 1 {
 			mpAmt = 1
 		}

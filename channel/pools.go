@@ -321,9 +321,9 @@ func (pool *lifePool) performSkill(mob *monster, skillID, skillLevel byte, skill
 func (pool *lifePool) mobDamaged(poolID int32, damager *Player, dmg ...int32) {
 	for i, v := range pool.mobs {
 		if v.spawnID == poolID {
-			pool.mobs[i].removeController()
 
 			if damager != nil {
+				pool.mobs[i].removeController()
 				pool.mobs[i].setController(damager, true)
 				pool.activeMobCtrl[damager] = true
 				pool.mobs[i].giveDamage(damager, dmg...)
@@ -334,99 +334,94 @@ func (pool *lifePool) mobDamaged(poolID int32, damager *Player, dmg ...int32) {
 			pool.showMobBossHPBar(v, nil)
 
 			if pool.mobs[i].hp < 1 {
-				if damager != nil {
-					for plr, dmg := range pool.mobs[i].dmgTaken {
-						if damager.mapID != plr.mapID {
-							continue
+				killer := damager
+				if killer == nil {
+					var topPlr *Player
+					var topDmg int32
+					for plr, dealt := range pool.mobs[i].dmgTaken {
+						if dealt > topDmg {
+							topDmg = dealt
+							topPlr = plr
 						}
-
-						var partyExp, selfExp int32
-
-						if dmg == v.maxHP {
-							plr.giveEXP(v.exp, true, false)
-							partyExp = int32(float64(v.exp) * 0.25)
-							selfExp = v.exp
-						} else if float64(dmg)/float64(v.maxHP) > 0.60 {
-							plr.giveEXP(v.exp, true, false)
-							partyExp = int32(float64(v.exp) * 0.25)
-							selfExp = v.exp
-						} else {
-							newExp := int32(float64(v.exp) * 0.25)
-
-							if newExp == 0 {
-								newExp = 1
-							}
-
-							plr.giveEXP(newExp, true, false)
-							partyExp = int32(float64(newExp) * 0.25)
-							selfExp = newExp
-						}
-
-						memberCount := 0
-						if plr.party != nil {
-							plr.party.giveExp(plr.ID, partyExp, true)
-							memberCount = len(plr.party.players)
-						}
-
-						if ok, bonus := plr.buffs.HasHolySymbol(memberCount); ok && bonus > 0 && selfExp > 0 {
-							extra := (selfExp * int32(bonus)) / 100
-							if extra < 1 {
-								extra = 1
-							}
-							plr.giveEXP(extra, true, false)
-						}
-
 					}
-
-					damager.onMobKilled(v.id)
+					killer = topPlr
 				}
 
-				// Update mob kill metric
-				if pool.instance != nil && pool.instance.server != nil {
-					pool.instance.server.updateMobKillMetric(damager.ID)
+				for plr, dealt := range pool.mobs[i].dmgTaken {
+					if killer == nil || plr == nil || killer.mapID != plr.mapID {
+						continue
+					}
+
+					var partyExp, selfExp int32
+					if dealt == v.maxHP || float64(dealt)/float64(v.maxHP) > 0.60 {
+						plr.giveEXP(v.exp, true, false)
+						partyExp = int32(float64(v.exp) * 0.25)
+						selfExp = v.exp
+					} else {
+						newExp := int32(float64(v.exp) * 0.25)
+						if newExp == 0 {
+							newExp = 1
+						}
+						plr.giveEXP(newExp, true, false)
+						partyExp = int32(float64(newExp) * 0.25)
+						selfExp = newExp
+					}
+
+					memberCount := 0
+					if plr.party != nil {
+						plr.party.giveExp(plr.ID, partyExp, true)
+						memberCount = len(plr.party.players)
+					}
+
+					if ok, bonus := plr.buffs.HasHolySymbol(memberCount); ok && bonus > 0 && selfExp > 0 {
+						extra := (selfExp * int32(bonus)) / 100
+						if extra < 1 {
+							extra = 1
+						}
+						plr.giveEXP(extra, true, false)
+					}
+				}
+
+				if killer != nil {
+					killer.onMobKilled(v.id)
+					if pool.instance != nil && pool.instance.server != nil {
+						pool.instance.server.updateMobKillMetric(killer.ID)
+					}
 				}
 
 				for _, id := range v.revives {
 					spawnID, err := pool.nextMobID()
-
 					if err != nil {
 						continue
 					}
-
 					newMob, err := createMonsterFromID(spawnID, int32(id), v.pos, nil, true, true, 0)
-
 					if err != nil {
 						log.Println(err)
 						continue
 					}
-
 					newMob.faceLeft = v.faceLeft
 					newMob.summonType = constant.MobSummonTypeRevive
 					newMob.summonOption = v.spawnID
-					pool.spawnReviveMob(&newMob, damager)
+					pool.spawnReviveMob(&newMob, killer)
 				}
 
 				pool.removeMob(v.spawnID, 0x1)
 
-				if damager != nil {
+				if killer != nil {
 					if dropEntry, ok := dropTable[v.id]; ok {
 						var mesos int32
 						drops := make([]Item, 0, len(dropEntry))
-
 						for _, entry := range dropEntry {
 							if entry.IsMesos {
 								mesos = randRangeInclusive(pool.rNumber, entry.Min, entry.Max)
 								continue
 							}
-
-							if entry.QuestID != 0 && !damager.allowsQuestDrop(entry.QuestID) {
+							if entry.QuestID != 0 && !killer.allowsQuestDrop(entry.QuestID) {
 								continue
 							}
-
 							if !rollDrop(pool.rNumber, entry.Chance, pool.dropPool.rates.drop) {
 								continue
 							}
-
 							var amount int16 = 1
 							minAmt := entry.Min
 							maxAmt := entry.Max
@@ -440,7 +435,6 @@ func (pool *lifePool) mobDamaged(poolID int32, damager *Player, dmg ...int32) {
 									amount = int16(val)
 								}
 							}
-
 							newItem, err := CreateItemFromID(entry.ItemID, amount)
 							if err != nil {
 								log.Println("Failed to create drop for mobID:", v.id, "with error:", err)
@@ -448,8 +442,7 @@ func (pool *lifePool) mobDamaged(poolID int32, damager *Player, dmg ...int32) {
 							}
 							drops = append(drops, newItem)
 						}
-
-						pool.dropPool.createDrop(dropSpawnNormal, dropFreeForAll, int32(damager.rates.mesos*float32(mesos)), v.pos, true, 0, 0, drops...)
+						pool.dropPool.createDrop(dropSpawnNormal, dropFreeForAll, int32(killer.rates.mesos*float32(mesos)), v.pos, true, 0, 0, drops...)
 					}
 				}
 
@@ -657,7 +650,7 @@ func (pool lifePool) showMobBossHPBar(mob *monster, plr *Player) {
 
 func (pool *lifePool) update(t time.Time) {
 	for i := range pool.mobs {
-		pool.mobs[i].update(t)
+		pool.mobs[i].update(pool.instance, t)
 	}
 
 	pool.attemptMobSpawn(false)
