@@ -397,10 +397,20 @@ func packetTeleportRockUpdate(mode byte, rocks []int32, isVIP bool) mpacket.Pack
 	p := mpacket.CreateWithOpcode(opcode.SendChannelMapTransferResult)
 	p.WriteByte(mode)
 	
-	// Send first 5 slots of the rock list
-	// For regular rocks, this is all constant.TeleportRockRegSlots slots
-	// For VIP rocks, send first 5 of the constant.TeleportRockVIPSlots slots
-	for i := 0; i < constant.TeleportRockRegSlots; i++ {
+	// Write VIP flag (0 = regular, 1 = VIP)
+	if isVIP {
+		p.WriteByte(constant.TeleportRockVIPFlag)
+	} else {
+		p.WriteByte(constant.TeleportRockRegFlag)
+	}
+	
+	// Send map IDs - 5 slots for regular, 10 slots for VIP
+	numSlots := constant.TeleportRockRegSlots
+	if isVIP {
+		numSlots = constant.TeleportRockVIPSlots
+	}
+	
+	for i := 0; i < numSlots; i++ {
 		if i < len(rocks) {
 			p.WriteInt32(rocks[i])
 		} else {
