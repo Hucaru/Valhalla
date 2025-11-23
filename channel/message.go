@@ -390,24 +390,16 @@ func packetMessengerAvatar(slot, gender, skin byte, face, hair, cashW, petAcc in
 	return p
 }
 
-// packetTeleportRockUpdate sends the updated teleport rock list to the client
-// mode: constant.TeleportRockModeDel = delete, constant.TeleportRockModeAdd = add
-// isVIP: true for VIP rocks, false for regular rocks
 func packetTeleportRockUpdate(mode byte, rocks []int32, isVIP bool) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelMapTransferResult)
 	p.WriteByte(mode)
 	
-	// Write VIP flag (0 = regular, 1 = VIP)
-	if isVIP {
-		p.WriteByte(constant.TeleportRockVIPFlag)
-	} else {
-		p.WriteByte(constant.TeleportRockRegFlag)
-	}
-	
-	// Send map IDs - 5 slots for regular, 10 slots for VIP
 	numSlots := constant.TeleportRockRegSlots
 	if isVIP {
+		p.WriteByte(constant.TeleportRockVIPFlag)
 		numSlots = constant.TeleportRockVIPSlots
+	} else {
+		p.WriteByte(constant.TeleportRockRegFlag)
 	}
 	
 	for i := 0; i < numSlots; i++ {

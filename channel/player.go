@@ -1812,8 +1812,6 @@ func getBuddyList(playerID int32, buddySize byte) []buddy {
 	return buddies
 }
 
-// parseTeleportRocks parses the teleport rocks from the database string format
-// Format: comma-separated list of map IDs
 func parseTeleportRocks(rocksStr string, size int) []int32 {
 	rocks := make([]int32, size)
 	for i := range rocks {
@@ -1841,7 +1839,6 @@ func parseTeleportRocks(rocksStr string, size int) []int32 {
 	return rocks
 }
 
-// serializeTeleportRocks converts teleport rocks to database string format
 func serializeTeleportRocks(rocks []int32) string {
 	parts := make([]string, len(rocks))
 	for i, mapID := range rocks {

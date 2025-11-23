@@ -1134,24 +1134,17 @@ func (server Server) playerTeleportRockOperation(conn mnet.Client, reader mpacke
 		return
 	}
 
-	// Packet structure:
-	// bool - add/delete map (true = add, false = delete)
-	// byte - VIP flag (constant.TeleportRockVIPFlag = VIP, constant.TeleportRockRegFlag = regular)
-	// int32 - mapID (only for delete, for add use current map)
-	action := reader.ReadBool()
+	add := reader.ReadBool()
 	isVIP := reader.ReadByte() == constant.TeleportRockVIPFlag
 
 	var mapID int32
-	if action {
-		// Add: use player's current map location
+	if add {
 		mapID = plr.mapID
 	} else {
-		// Delete: read mapID from packet
 		mapID = reader.ReadInt32()
 	}
 
-	if action {
-		// Add a map to teleport rocks
+	if add {
 		var rocks *[]int32
 		var maxSlots int
 		if isVIP {
@@ -1162,7 +1155,6 @@ func (server Server) playerTeleportRockOperation(conn mnet.Client, reader mpacke
 			maxSlots = constant.TeleportRockRegSlots
 		}
 
-		// Find first empty slot
 		added := false
 		for i := 0; i < maxSlots && i < len(*rocks); i++ {
 			if (*rocks)[i] == constant.InvalidMap {
@@ -1181,7 +1173,6 @@ func (server Server) playerTeleportRockOperation(conn mnet.Client, reader mpacke
 			}
 		}
 	} else {
-		// Delete a map from teleport rocks
 		var rocks *[]int32
 		if isVIP {
 			rocks = &plr.vipTeleportRocks
