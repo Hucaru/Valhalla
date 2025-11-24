@@ -1,6 +1,7 @@
 package channel
 
 import (
+	"database/sql"
 	"errors"
 	"fmt"
 	"log"
@@ -240,6 +241,9 @@ type Player struct {
 
 	buddyListSize byte
 	buddyList     []buddy
+
+	regTeleportRocks []int32 // 5 regular teleport rocks
+	vipTeleportRocks []int32 // 10 VIP teleport rocks
 
 	party *party
 	guild *guild
@@ -1678,15 +1682,16 @@ func LoadPlayerFromID(id int32, conn mnet.Client) Player {
 	filter := "ID,accountID,worldID,Name,gender,skin,hair,face,level,job,str,dex,intt," +
 		"luk,hp,maxHP,mp,maxMP,ap,sp, exp,fame,mapID,mapPos,previousMapID,mesos," +
 		"equipSlotSize,useSlotSize,setupSlotSize,etcSlotSize,cashSlotSize,miniGameWins," +
-		"miniGameDraw,miniGameLoss,miniGamePoints,buddyListSize"
+		"miniGameDraw,miniGameLoss,miniGamePoints,buddyListSize,regTeleportRocks,vipTeleportRocks"
 
+	var regTeleportRocksStr, vipTeleportRocksStr sql.NullString
 	err := common.DB.QueryRow("SELECT "+filter+" FROM characters where ID=?", id).Scan(&c.ID,
 		&c.accountID, &c.worldID, &c.Name, &c.gender, &c.skin, &c.hair, &c.face,
 		&c.level, &c.job, &c.str, &c.dex, &c.intt, &c.luk, &c.hp, &c.maxHP, &c.mp,
 		&c.maxMP, &c.ap, &c.sp, &c.exp, &c.fame, &c.mapID, &c.mapPos,
 		&c.previousMap, &c.mesos, &c.equipSlotSize, &c.useSlotSize, &c.setupSlotSize,
 		&c.etcSlotSize, &c.cashSlotSize, &c.miniGameWins, &c.miniGameDraw, &c.miniGameLoss,
-		&c.miniGamePoints, &c.buddyListSize)
+		&c.miniGamePoints, &c.buddyListSize, &regTeleportRocksStr, &vipTeleportRocksStr)
 
 	if err != nil {
 		log.Println(err)
@@ -1733,6 +1738,18 @@ func LoadPlayerFromID(id int32, conn mnet.Client) Player {
 	c.equip, c.use, c.setUp, c.etc, c.cash = loadInventoryFromDb(c.ID)
 
 	c.buddyList = getBuddyList(c.ID, c.buddyListSize)
+
+	// Initialize teleport rocks - handle NULL values from database
+	regRocksStr := ""
+	if regTeleportRocksStr.Valid {
+		regRocksStr = regTeleportRocksStr.String
+	}
+	vipRocksStr := ""
+	if vipTeleportRocksStr.Valid {
+		vipRocksStr = vipTeleportRocksStr.String
+	}
+	c.regTeleportRocks = parseTeleportRocks(regRocksStr, constant.TeleportRockRegSlots)
+	c.vipTeleportRocks = parseTeleportRocks(vipRocksStr, constant.TeleportRockVIPSlots)
 
 	c.quests = loadQuestsFromDB(c.ID)
 	c.quests.init()
@@ -1793,6 +1810,41 @@ func getBuddyList(playerID int32, buddySize byte) []buddy {
 	}
 
 	return buddies
+}
+
+func parseTeleportRocks(rocksStr string, size int) []int32 {
+	rocks := make([]int32, size)
+	for i := range rocks {
+		rocks[i] = constant.InvalidMap
+	}
+	
+	if rocksStr == "" {
+		return rocks
+	}
+	
+	parts := strings.Split(rocksStr, ",")
+	for i, part := range parts {
+		if i >= size {
+			break
+		}
+		if part == "" {
+			continue
+		}
+		var mapID int32
+		if _, err := fmt.Sscanf(part, "%d", &mapID); err == nil {
+			rocks[i] = mapID
+		}
+	}
+	
+	return rocks
+}
+
+func serializeTeleportRocks(rocks []int32) string {
+	parts := make([]string, len(rocks))
+	for i, mapID := range rocks {
+		parts[i] = fmt.Sprintf("%d", mapID)
+	}
+	return strings.Join(parts, ",")
 }
 
 func (d *Player) addBuff(skillID int32, level byte, delay int16) {
@@ -2677,20 +2729,39 @@ func packetPlayerEnterGame(plr Player, channelID int32) mpacket.Packet {
 	writeActiveQuests(&p, plr.quests.inProgressList())
 	writeCompletedQuests(&p, plr.quests.completedList())
 
-	p.WriteInt32(0)
-	p.WriteInt32(0)
-	p.WriteInt32(0)
-	p.WriteInt32(0)
-	p.WriteInt32(0)
-	p.WriteInt32(0)
-	p.WriteInt32(0)
-	p.WriteInt32(0)
-	p.WriteInt32(0)
-	p.WriteInt32(0)
-	p.WriteInt32(0)
-	p.WriteInt32(0)
-	p.WriteInt32(0)
-	p.WriteInt32(0)
+	p.WriteInt16(0) // MiniGames
+	/*
+	   - uint16 count
+	   - repeat count times:
+	       - int32 a
+	       - int32 b
+	       - int32 c
+	       - int32 d
+	       - int32 e
+	*/
+	p.WriteInt16(0) // Rings
+	/*
+	   - uint16 count
+	   - repeat count times:
+	       - decode ring object
+	*/
+
+	// Teleport rocks (regular + VIP) INT32 = Saved MapID
+	for i := 0; i < constant.TeleportRockRegSlots; i++ {
+		if i < len(plr.regTeleportRocks) {
+			p.WriteInt32(plr.regTeleportRocks[i])
+		} else {
+			p.WriteInt32(constant.InvalidMap)
+		}
+	}
+	for i := 0; i < constant.TeleportRockVIPSlots; i++ {
+		if i < len(plr.vipTeleportRocks) {
+			p.WriteInt32(plr.vipTeleportRocks[i])
+		} else {
+			p.WriteInt32(constant.InvalidMap)
+		}
+	}
+
 	p.WriteInt64(time.Now().Unix())
 
 	return p

@@ -66,6 +66,8 @@ func (server *Server) HandleClientPacket(conn mnet.Client, reader mpacket.Reader
 		server.playerUsePortal(conn, reader)
 	case opcode.RecvChannelScriptedPortal:
 		server.playerUseScriptedPortal(conn, reader)
+	case opcode.RecvChannelTeleportRock:
+		server.playerTeleportRockOperation(conn, reader)
 	case opcode.RecvChannelEnterCashShop:
 		server.playerEnterCashShop(conn, reader)
 	case opcode.RecvChannelPlayerMovement:
@@ -1123,6 +1125,73 @@ func (server Server) playerUseScriptedPortal(conn mnet.Client, reader mpacket.Re
 		warp(plr, constant.MapBossPianus, "out00", false, 10, 0)
 	case constant.PortalZakum:
 		warp(plr, constant.MapBossZakum, "st00", true, 20, 50)
+	}
+}
+
+func (server Server) playerTeleportRockOperation(conn mnet.Client, reader mpacket.Reader) {
+	plr, err := server.players.GetFromConn(conn)
+	if err != nil {
+		return
+	}
+
+	add := reader.ReadBool()
+	isVIP := reader.ReadByte() == constant.TeleportRockVIPFlag
+
+	var mapID int32
+	if add {
+		mapID = plr.mapID
+	} else {
+		mapID = reader.ReadInt32()
+	}
+
+	if add {
+		var rocks *[]int32
+		var maxSlots int
+		if isVIP {
+			rocks = &plr.vipTeleportRocks
+			maxSlots = constant.TeleportRockVIPSlots
+		} else {
+			rocks = &plr.regTeleportRocks
+			maxSlots = constant.TeleportRockRegSlots
+		}
+
+		added := false
+		for i := 0; i < maxSlots && i < len(*rocks); i++ {
+			if (*rocks)[i] == constant.InvalidMap {
+				(*rocks)[i] = mapID
+				added = true
+				break
+			}
+		}
+
+		if added {
+			plr.MarkDirty(DirtyTeleportRocks, time.Millisecond*300)
+			if isVIP {
+				plr.Send(packetTeleportRockUpdate(constant.TeleportRockModeAdd, plr.vipTeleportRocks, true))
+			} else {
+				plr.Send(packetTeleportRockUpdate(constant.TeleportRockModeAdd, plr.regTeleportRocks, false))
+			}
+		}
+	} else {
+		var rocks *[]int32
+		if isVIP {
+			rocks = &plr.vipTeleportRocks
+		} else {
+			rocks = &plr.regTeleportRocks
+		}
+
+		for i := 0; i < len(*rocks); i++ {
+			if (*rocks)[i] == mapID {
+				(*rocks)[i] = constant.InvalidMap
+				plr.MarkDirty(DirtyTeleportRocks, time.Millisecond*300)
+				if isVIP {
+					plr.Send(packetTeleportRockUpdate(constant.TeleportRockModeDel, plr.vipTeleportRocks, true))
+				} else {
+					plr.Send(packetTeleportRockUpdate(constant.TeleportRockModeDel, plr.regTeleportRocks, false))
+				}
+				break
+			}
+		}
 	}
 }
 
