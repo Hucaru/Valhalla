@@ -56,7 +56,7 @@ See [Building.md](Building.md) for instructions on building from source.
    exit;
    ```
    
-   Import the schema:
+   Import the schema(from the SQL directory):
    ```bash
    mysql -u root -p maplestory < maplestory.sql
    ```
@@ -184,22 +184,24 @@ Valhalla.exe -type channel -config config_channel_1.toml
 ./Valhalla -type channel -config config_channel_1.toml
 ```
 
+#### Additional Channels/CashShop 
+By default Prometheus uses port 9000 for metrics. When running locally it is not able to bind to the same port so you will need to specify alternative metrics ports when running then binary `-metrics-port 9xxx`. It's easiest to increment 1 for every channel: 9001, 9002, 9003, etc. 
 **Terminal 4 (Optional) - Additional Channels:**
 ```bash
 # For channel 2
-./Valhalla -type channel -config config_channel_2.toml
+./Valhalla -type channel -config config_channel_2.toml -metrics-port 9001
 
 # For channel 3
-./Valhalla -type channel -config config_channel_3.toml
+./Valhalla -type channel -config config_channel_3.toml -metrics-port 9002
 ```
 
 **Terminal 5 (Optional) - Cash Shop Server:**
 ```bash
 # Windows
-Valhalla.exe -type cashshop -config config_cashshop.toml
+Valhalla.exe -type cashshop -config config_cashshop.toml -metrics-port 9100
 
 # Linux/macOS
-./Valhalla -type cashshop -config config_cashshop.toml
+./Valhalla -type cashshop -config config_cashshop.toml -metrics-port 9100
 ```
 
 ### Step 6: Connect with Client
