@@ -185,7 +185,7 @@ Valhalla.exe -type channel -config config_channel_1.toml
 ```
 
 #### Additional Channels/CashShop 
-By default Prometheus uses port 9000 for metrics. When running locally it is not able to bind to the same port so you will need to specify alternative metrics ports when running then binary `-metrics-port 9xxx`. It's easiest to increment 1 for every channel: 9001, 9002, 9003, etc. 
+By default Prometheus uses port 9000 for metrics. When running locally it is not able to bind to the same port so you will need to specify alternative metrics ports when running the binary `-metrics-port 9xxx`. It's easiest to increment 1 for every channel: 9001, 9002, 9003, etc. 
 **Terminal 4 (Optional) - Additional Channels:**
 ```bash
 # For channel 2
