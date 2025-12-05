@@ -51,6 +51,7 @@ archives:
       - LICENSE
       - README.md
       - config_*.toml
+      - scripts/**/*
 
 checksum:
   name_template: 'checksums.txt'
@@ -86,6 +87,7 @@ release:
     - Valhalla server binary for your platform
     - Required JSON data files (drops.json, reactors.json, reactor_drops.json)
     - Sample configuration files (config_*.toml)
+    - NPC scripts (scripts/)
     - LICENSE and README
     
     ### How to use

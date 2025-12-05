@@ -14,6 +14,7 @@ x-common-env: &common_env
     VALHALLA_LOGIN_SERVERLISTENADDRESS: "0.0.0.0"
     VALHALLA_LOGIN_SERVERLISTENPORT: "8485"
     VALHALLA_LOGIN_WITHPIN: "true"
+    VALHALLA_LOGIN_AUTOREGISTER: "false"
     VALHALLA_LOGIN_PACKETQUEUESIZE: "512"
     VALHALLA_LOGIN_LATENCY: "0"
     VALHALLA_LOGIN_JITTER: "0"
@@ -58,7 +59,6 @@ services:
         command: ["/app/Valhalla", "-type", "login"]
         restart: unless-stopped
         volumes:
-            - ./docker/docker_config_login.toml:/app/docker/docker_config_login.toml
             - ./Data.nx:/app/Data.nx
         ports:
             - 8484:8484
@@ -75,7 +75,6 @@ services:
         command: ["/app/Valhalla", "-type", "world"]
         restart: unless-stopped
         volumes:
-            - ./docker/docker_config_world.toml:/app/docker/docker_config_world.toml
             - ./Data.nx:/app/Data.nx
         ports:
             - 8584:8584
@@ -92,7 +91,6 @@ services:
         command: ["/app/Valhalla", "-type", "cashshop"]
         restart: unless-stopped
         volumes:
-            - ./docker/docker_config_cashshop.toml:/app/docker/docker_config_cashshop.toml
             - ./Data.nx:/app/Data.nx
         ports:
             - 8600:8600
@@ -109,7 +107,6 @@ services:
         command: ["/app/Valhalla", "-type", "channel"]
         restart: unless-stopped
         volumes:
-            - ./docker/docker_config_channel_1.toml:/app/docker/docker_config_channel.toml
             - ./Data.nx:/app/Data.nx
         ports:
             - 8685:8685
@@ -127,7 +124,6 @@ services:
         command: ["/app/Valhalla", "-type", "channel"]
         restart: unless-stopped
         volumes:
-            - ./docker/docker_config_channel_2.toml:/app/docker/docker_config_channel.toml
             - ./Data.nx:/app/Data.nx
         ports:
             - 8686:8686
