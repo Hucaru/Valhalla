@@ -2101,21 +2101,16 @@ func (d *Player) applyQuestAct(act nx.ActBlock, npcID int32, questID int16) erro
 	}
 
 	hasRandomReward := false
+	totalWeight := int32(0)
 	for _, ai := range act.Items {
 		if ai.Prop > 0 && ai.Count > 0 {
 			hasRandomReward = true
+			totalWeight += ai.Prop
 			break
 		}
 	}
 
 	if hasRandomReward {
-		totalWeight := int32(0)
-		for _, ai := range act.Items {
-			if ai.Count > 0 && ai.Prop > 0 {
-				totalWeight += ai.Prop
-			}
-		}
-
 		if totalWeight > 0 {
 			roll := int32(d.randIntn(int(totalWeight)))
 
