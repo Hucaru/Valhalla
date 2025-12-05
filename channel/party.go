@@ -113,6 +113,18 @@ func (d *party) updateInfo(index int32) {
 	}
 }
 
+func (d *party) syncPlayersHP() {
+	for index := range d.players {
+		plr := d.players[index]
+
+		if plr == nil {
+			continue
+		}
+
+		d.broadcast(packetPlayerHpChange(plr.ID, int32(plr.hp), int32(plr.maxHP)))
+	}
+}
+
 func (d party) giveExp(playerID, amount int32, sameMap bool) {
 	var mapID int32 = 0
 

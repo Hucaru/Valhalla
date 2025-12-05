@@ -280,6 +280,7 @@ func (server *Server) handlePartyEvent(conn mnet.Server, reader mpacket.Reader) 
 			plr, _ := server.players.GetFromID(playerID)
 			party.SerialisePacket(&reader)
 			party.addPlayer(plr, index)
+			party.syncPlayersHP()
 
 			if plr != nil && plr.inst != nil {
 				plr.inst.requestDoorPartySync(plr)
