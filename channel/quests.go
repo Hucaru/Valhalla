@@ -5,6 +5,7 @@ import (
 
 	"github.com/Hucaru/Valhalla/common"
 	"github.com/Hucaru/Valhalla/common/opcode"
+	"github.com/Hucaru/Valhalla/constant"
 	"github.com/Hucaru/Valhalla/mpacket"
 )
 
@@ -229,6 +230,20 @@ func packetQuestUpdateMobKills(questID int16, killStr string) mpacket.Packet {
 	p.WriteString(killStr)
 	p.WriteInt32(0)
 	p.WriteInt32(0)
+	return p
+}
+
+func packetQuestActionResult(result byte, questID int16, npcID int32, nextQuests []int16) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelQuestActionResult)
+	p.WriteByte(result)
+	p.WriteInt16(questID)
+	if result == constant.QuestActionSuccess {
+		p.WriteInt32(npcID)
+		for _, nextQuestID := range nextQuests {
+			p.WriteInt16(nextQuestID)
+		}
+		p.WriteInt16(0) // End of next quests
+	}
 	return p
 }
 

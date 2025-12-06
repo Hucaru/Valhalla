@@ -1817,11 +1817,11 @@ func parseTeleportRocks(rocksStr string, size int) []int32 {
 	for i := range rocks {
 		rocks[i] = constant.InvalidMap
 	}
-	
+
 	if rocksStr == "" {
 		return rocks
 	}
-	
+
 	parts := strings.Split(rocksStr, ",")
 	for i, part := range parts {
 		if i >= size {
@@ -1835,7 +1835,7 @@ func parseTeleportRocks(rocksStr string, size int) []int32 {
 			rocks[i] = mapID
 		}
 	}
-	
+
 	return rocks
 }
 
@@ -2083,7 +2083,8 @@ func (d *Player) meetsQuestBlock(blk nx.CheckBlock) bool {
 }
 
 // applyQuestAct grants EXP/Mesos and applies Item +/- from NX Act block.
-func (d *Player) applyQuestAct(act nx.ActBlock) {
+// Returns error if inventory is full or other issues occur.
+func (d *Player) applyQuestAct(act nx.ActBlock, npcID int32, questID int16) error {
 	if act.Exp > 0 {
 		d.giveEXP(act.Exp, false, false)
 	}
@@ -2099,16 +2100,71 @@ func (d *Player) applyQuestAct(act nx.ActBlock) {
 		d.setFame(d.fame + int16(act.Pop))
 	}
 
+	hasRandomReward := false
+	totalWeight := int32(0)
 	for _, ai := range act.Items {
-		switch {
-		case ai.Count > 0:
+		if ai.Prop > 0 && ai.Count > 0 {
+			hasRandomReward = true
+			totalWeight += ai.Prop
+			break
+		}
+
+		if ai.Count > 0 && ai.Prop == 0 {
 			if it, err := CreateItemFromID(ai.ID, int16(ai.Count)); err == nil {
-				_, _ = d.GiveItem(it)
+				if giveErr, _ := d.GiveItem(it); giveErr != nil {
+					d.Send(packetQuestActionResult(constant.QuestActionInventoryFull, questID, npcID, nil))
+					return giveErr
+				}
 			}
-		case ai.Count < 0:
-			_ = d.removeItemsByID(ai.ID, -ai.Count)
+		}
+
+		if ai.Count > 0 {
+			if it, err := CreateItemFromID(ai.ID, int16(ai.Count)); err == nil {
+				if giveErr, _ := d.GiveItem(it); giveErr != nil {
+					d.Send(packetQuestActionResult(constant.QuestActionInventoryFull, questID, npcID, nil))
+					return giveErr
+				}
+			}
+		}
+
+		if ai.Count < 0 {
+			removed := d.removeItemsByID(ai.ID, -ai.Count)
+			if !removed {
+				d.Send(packetQuestActionResult(constant.QuestActionFailedRetrieveEquippedItem, questID, npcID, nil))
+				return fmt.Errorf("failed to remove required quest items ID=%d count=%d", ai.ID, -ai.Count)
+			}
 		}
 	}
+
+	if hasRandomReward {
+		roll := int32(d.randIntn(int(totalWeight)))
+
+		cumulative := int32(0)
+		var selectedItem *nx.ActItem
+		for i := range act.Items {
+			ai := &act.Items[i]
+			if ai.Count > 0 && ai.Prop > 0 {
+				cumulative += ai.Prop
+				if roll < cumulative {
+					selectedItem = ai
+					break
+				}
+			}
+		}
+
+		// Give the selected item
+		if selectedItem != nil {
+			if it, err := CreateItemFromID(selectedItem.ID, int16(selectedItem.Count)); err == nil {
+				if giveErr, _ := d.GiveItem(it); giveErr != nil {
+					d.Send(packetQuestActionResult(constant.QuestActionInventoryFull, questID, npcID, nil))
+					return giveErr
+				}
+			}
+		}
+
+	}
+
+	return nil
 }
 
 // tryStartQuest validates NX Start requirements, starts quest, applies Act(0).
@@ -2127,7 +2183,16 @@ func (d *Player) tryStartQuest(questID int16) bool {
 	upsertQuestRecord(d.ID, questID, "")
 	d.Send(packetQuestUpdate(questID, ""))
 
-	d.applyQuestAct(q.ActOnStart)
+	if err := d.applyQuestAct(q.ActOnStart, q.Start.NPC, questID); err != nil {
+		return false
+	}
+
+	var nextQuests []int16
+	if q.ActOnStart.NextQuest != 0 {
+		nextQuests = append(nextQuests, q.ActOnStart.NextQuest)
+	}
+	d.Send(packetQuestActionResult(constant.QuestActionSuccess, questID, q.Start.NPC, nextQuests))
+
 	return true
 }
 
@@ -2155,11 +2220,18 @@ func (d *Player) tryCompleteQuest(questID int16) bool {
 	d.Send(packetQuestUpdate(questID, ""))
 	d.Send(packetQuestComplete(questID))
 
-	d.applyQuestAct(q.ActOnComplete)
+	if err := d.applyQuestAct(q.ActOnComplete, q.Complete.NPC, questID); err != nil {
+		return false
+	}
 
+	var nextQuests []int16
 	if q.ActOnComplete.NextQuest != 0 {
+		nextQuests = append(nextQuests, q.ActOnComplete.NextQuest)
 		_ = d.tryStartQuest(q.ActOnComplete.NextQuest)
 	}
+
+	d.Send(packetQuestActionResult(constant.QuestActionSuccess, questID, q.Complete.NPC, nextQuests))
+
 	return true
 }
 
