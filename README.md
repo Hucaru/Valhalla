@@ -96,7 +96,7 @@ Channel server:
 - [x] Party accept/reject
 - [x] Party expel
 - [x] Party chat
-- [ ] Party HP bar
+- [X] Party HP bar
 - [x] Guild creation/disband
 - [x] Guild invite
 - [x] Guild join/leave
