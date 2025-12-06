@@ -10,6 +10,6 @@ worldAddress = "world_server"
 worldPort = "8584"
 listenAddress = "0.0.0.0"
 listenPort = "8685"
-ClientConnectionAddress = "127.0.0.1"
+clientConnectionAddress = "127.0.0.1"
 packetQueueSize = 512
 MaxPop = 250

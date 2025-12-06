@@ -389,3 +389,26 @@ func packetMessengerAvatar(slot, gender, skin byte, face, hair, cashW, petAcc in
 	p.WriteInt32(petAcc)
 	return p
 }
+
+func packetTeleportRockUpdate(mode byte, rocks []int32, isVIP bool) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelMapTransferResult)
+	p.WriteByte(mode)
+	
+	numSlots := constant.TeleportRockRegSlots
+	if isVIP {
+		p.WriteByte(constant.TeleportRockVIPFlag)
+		numSlots = constant.TeleportRockVIPSlots
+	} else {
+		p.WriteByte(constant.TeleportRockRegFlag)
+	}
+	
+	for i := 0; i < numSlots; i++ {
+		if i < len(rocks) {
+			p.WriteInt32(rocks[i])
+		} else {
+			p.WriteInt32(constant.InvalidMap)
+		}
+	}
+	
+	return p
+}

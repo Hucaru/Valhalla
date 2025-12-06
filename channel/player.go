@@ -1,6 +1,7 @@
 package channel
 
 import (
+	"database/sql"
 	"errors"
 	"fmt"
 	"log"
@@ -240,6 +241,9 @@ type Player struct {
 
 	buddyListSize byte
 	buddyList     []buddy
+
+	regTeleportRocks []int32 // 5 regular teleport rocks
+	vipTeleportRocks []int32 // 10 VIP teleport rocks
 
 	party *party
 	guild *guild
@@ -518,11 +522,7 @@ func (d *Player) giveLuk(amount int16) {
 
 func (d *Player) giveHP(amount int16) {
 	target := int(d.hp) + int(amount)
-
-	maxAllowed := int(d.maxHP)
-	if maxAllowed > int(constant.MaxHpValue) {
-		maxAllowed = int(constant.MaxHpValue)
-	}
+	maxAllowed := int(d.effectiveMaxHP())
 	if target < 0 {
 		target = 0
 	} else if target > maxAllowed {
@@ -540,11 +540,12 @@ func (d *Player) setHP(amount int16) {
 	if amount < 0 {
 		amount = 0
 	}
+	effMax := d.effectiveMaxHP()
 	if amount > constant.MaxHpValue {
 		amount = constant.MaxHpValue
 	}
-	if amount > d.maxHP {
-		amount = d.maxHP
+	if amount > effMax {
+		amount = effMax
 	}
 	d.hp = amount
 	d.Send(packetPlayerStatChange(true, constant.HpID, int32(amount)))
@@ -566,17 +567,12 @@ func (d *Player) setMaxHP(amount int16) {
 
 func (d *Player) giveMP(amount int16) {
 	target := int(d.mp) + int(amount)
-
-	maxAllowed := int(d.maxMP)
-	if maxAllowed > int(constant.MaxMpValue) {
-		maxAllowed = int(constant.MaxMpValue)
-	}
+	maxAllowed := int(d.effectiveMaxMP())
 	if target < 0 {
 		target = 0
 	} else if target > maxAllowed {
 		target = maxAllowed
 	}
-
 	d.setMP(int16(target))
 }
 
@@ -584,11 +580,12 @@ func (d *Player) setMP(amount int16) {
 	if amount < 0 {
 		amount = 0
 	}
+	effMax := d.effectiveMaxMP()
 	if amount > constant.MaxMpValue {
 		amount = constant.MaxMpValue
 	}
-	if amount > d.maxMP {
-		amount = d.maxMP
+	if amount > effMax {
+		amount = effMax
 	}
 	d.mp = amount
 	d.Send(packetPlayerStatChange(true, constant.MpID, int32(amount)))
@@ -602,6 +599,54 @@ func (d *Player) setMaxMP(amount int16) {
 	d.maxMP = amount
 	d.Send(packetPlayerStatChange(true, constant.MaxMpID, int32(amount)))
 	d.MarkDirty(DirtyMaxMP, 500*time.Millisecond)
+}
+
+func (d *Player) effectiveMaxHP() int16 {
+	base32 := int32(d.maxHP)
+	hpPct, _ := d.hyperBodyPercents()
+	res := base32
+	if hpPct > 0 {
+		res += (base32 * int32(hpPct)) / 100
+	}
+	if res > int32(constant.MaxHpValue) {
+		res = int32(constant.MaxHpValue)
+	}
+	if res < 0 {
+		res = 0
+	}
+	return int16(res)
+}
+
+func (d *Player) effectiveMaxMP() int16 {
+	base32 := int32(d.maxMP)
+	_, mpPct := d.hyperBodyPercents()
+	res := base32
+	if mpPct > 0 {
+		res += (base32 * int32(mpPct)) / 100
+	}
+	if res > int32(constant.MaxMpValue) {
+		res = int32(constant.MaxMpValue)
+	}
+	if res < 0 {
+		res = 0
+	}
+	return int16(res)
+}
+
+func (d *Player) hyperBodyPercents() (int16, int16) {
+	if d == nil || d.buffs == nil {
+		return 0, 0
+	}
+	lvl, ok := d.buffs.activeSkillLevels[int32(skill.HyperBody)]
+	if !ok || lvl == 0 {
+		return 0, 0
+	}
+	data, err := nx.GetPlayerSkill(int32(skill.HyperBody))
+	if err != nil || int(lvl) < 1 || int(lvl) > len(data) {
+		return 0, 0
+	}
+	sl := data[lvl-1]
+	return int16(sl.X), int16(sl.Y)
 }
 
 func (d *Player) setFame(amount int16) {
@@ -1383,6 +1428,13 @@ func (d Player) save() error {
 	if err != nil {
 		return err
 	}
+
+	if nxMap, nxErr := nx.GetMap(d.mapID); nxErr == nil && len(nxMap.Portals) > 0 {
+		if int(mapPos) < 0 || int(mapPos) >= len(nxMap.Portals) {
+			mapPos = 0
+		}
+	}
+
 	d.mapPos = mapPos
 
 	_, err = common.DB.Exec(query,
@@ -1638,15 +1690,16 @@ func LoadPlayerFromID(id int32, conn mnet.Client) Player {
 	filter := "ID,accountID,worldID,Name,gender,skin,hair,face,level,job,str,dex,intt," +
 		"luk,hp,maxHP,mp,maxMP,ap,sp, exp,fame,mapID,mapPos,previousMapID,mesos," +
 		"equipSlotSize,useSlotSize,setupSlotSize,etcSlotSize,cashSlotSize,miniGameWins," +
-		"miniGameDraw,miniGameLoss,miniGamePoints,buddyListSize"
+		"miniGameDraw,miniGameLoss,miniGamePoints,buddyListSize,regTeleportRocks,vipTeleportRocks"
 
+	var regTeleportRocksStr, vipTeleportRocksStr sql.NullString
 	err := common.DB.QueryRow("SELECT "+filter+" FROM characters where ID=?", id).Scan(&c.ID,
 		&c.accountID, &c.worldID, &c.Name, &c.gender, &c.skin, &c.hair, &c.face,
 		&c.level, &c.job, &c.str, &c.dex, &c.intt, &c.luk, &c.hp, &c.maxHP, &c.mp,
 		&c.maxMP, &c.ap, &c.sp, &c.exp, &c.fame, &c.mapID, &c.mapPos,
 		&c.previousMap, &c.mesos, &c.equipSlotSize, &c.useSlotSize, &c.setupSlotSize,
 		&c.etcSlotSize, &c.cashSlotSize, &c.miniGameWins, &c.miniGameDraw, &c.miniGameLoss,
-		&c.miniGamePoints, &c.buddyListSize)
+		&c.miniGamePoints, &c.buddyListSize, &regTeleportRocksStr, &vipTeleportRocksStr)
 
 	if err != nil {
 		log.Println(err)
@@ -1666,10 +1719,25 @@ func LoadPlayerFromID(id int32, conn mnet.Client) Player {
 	}
 
 	nxMap, err := nx.GetMap(c.mapID)
-
 	if err != nil {
 		log.Println(err)
 		return c
+	}
+
+	if nxMap.ForcedReturn != constant.InvalidMap {
+		c.mapID = nxMap.ForcedReturn
+		c.MarkDirty(DirtyMap, time.Millisecond*300)
+		if m2, e2 := nx.GetMap(c.mapID); e2 == nil {
+			nxMap = m2
+		}
+	}
+
+	if int(c.mapPos) < 0 || int(c.mapPos) >= len(nxMap.Portals) {
+		c.mapPos = 0
+
+		if _, healErr := common.DB.Exec("UPDATE characters SET mapPos=? WHERE ID=?", c.mapPos, c.ID); healErr != nil {
+			log.Printf("LoadPlayerFromID: failed to heal mapPos in DB for char %d: %v", c.ID, healErr)
+		}
 	}
 
 	c.pos.x = nxMap.Portals[c.mapPos].X
@@ -1678,6 +1746,18 @@ func LoadPlayerFromID(id int32, conn mnet.Client) Player {
 	c.equip, c.use, c.setUp, c.etc, c.cash = loadInventoryFromDb(c.ID)
 
 	c.buddyList = getBuddyList(c.ID, c.buddyListSize)
+
+	// Initialize teleport rocks - handle NULL values from database
+	regRocksStr := ""
+	if regTeleportRocksStr.Valid {
+		regRocksStr = regTeleportRocksStr.String
+	}
+	vipRocksStr := ""
+	if vipTeleportRocksStr.Valid {
+		vipRocksStr = vipTeleportRocksStr.String
+	}
+	c.regTeleportRocks = parseTeleportRocks(regRocksStr, constant.TeleportRockRegSlots)
+	c.vipTeleportRocks = parseTeleportRocks(vipRocksStr, constant.TeleportRockVIPSlots)
 
 	c.quests = loadQuestsFromDB(c.ID)
 	c.quests.init()
@@ -1738,6 +1818,41 @@ func getBuddyList(playerID int32, buddySize byte) []buddy {
 	}
 
 	return buddies
+}
+
+func parseTeleportRocks(rocksStr string, size int) []int32 {
+	rocks := make([]int32, size)
+	for i := range rocks {
+		rocks[i] = constant.InvalidMap
+	}
+	
+	if rocksStr == "" {
+		return rocks
+	}
+	
+	parts := strings.Split(rocksStr, ",")
+	for i, part := range parts {
+		if i >= size {
+			break
+		}
+		if part == "" {
+			continue
+		}
+		var mapID int32
+		if _, err := fmt.Sscanf(part, "%d", &mapID); err == nil {
+			rocks[i] = mapID
+		}
+	}
+	
+	return rocks
+}
+
+func serializeTeleportRocks(rocks []int32) string {
+	parts := make([]string, len(rocks))
+	for i, mapID := range rocks {
+		parts[i] = fmt.Sprintf("%d", mapID)
+	}
+	return strings.Join(parts, ",")
 }
 
 func (d *Player) addBuff(skillID int32, level byte, delay int16) {
@@ -2156,50 +2271,34 @@ func (p *Player) ensureSummonState() {
 
 func (p *Player) addSummon(su *summon) {
 	p.ensureSummonState()
+	if su == nil {
+		return
+	}
 
-	if su.IsPuppet {
+	switch skill.Skill(su.SkillID) {
+	case skill.Puppet, skill.SniperPuppet:
 		if p.summons.puppet != nil {
-			p.removeSummon(true, constant.SummonRemoveReasonReplaced)
+			p.broadcastRemoveSummon(p.summons.puppet.SkillID, constant.SummonRemoveReasonReplaced)
+			p.summons.puppet = nil
 		}
 		p.summons.puppet = su
-	} else {
+
+	case skill.SummonDragon, skill.SilverHawk, skill.GoldenEagle:
 		if p.summons.summon != nil {
-			p.removeSummon(false, constant.SummonRemoveReasonReplaced)
+			p.broadcastRemoveSummon(p.summons.summon.SkillID, constant.SummonRemoveReasonReplaced)
+			p.summons.summon = nil
+		}
+		p.summons.summon = su
+
+	default:
+		if p.summons.summon != nil {
+			p.broadcastRemoveSummon(p.summons.summon.SkillID, constant.SummonRemoveReasonReplaced)
+			p.summons.summon = nil
 		}
 		p.summons.summon = su
 	}
 
 	p.broadcastShowSummon(su)
-}
-
-func (p *Player) removeSummon(puppet bool, reason byte) {
-	p.ensureSummonState()
-
-	shouldCancelBuff := func(r byte) bool {
-		return r != constant.SummonRemoveReasonKeepBuff && r != constant.SummonRemoveReasonReplaced
-	}
-
-	if puppet {
-		if p.summons.puppet == nil {
-			return
-		}
-		su := p.summons.puppet
-		p.broadcastRemoveSummon(su.SkillID, reason)
-		if shouldCancelBuff(reason) && p.buffs != nil {
-			p.buffs.expireBuffNow(su.SkillID)
-		}
-		p.summons.puppet = nil
-	} else {
-		if p.summons.summon == nil {
-			return
-		}
-		su := p.summons.summon
-		p.broadcastRemoveSummon(su.SkillID, reason)
-		if shouldCancelBuff(reason) && p.buffs != nil {
-			p.buffs.expireBuffNow(su.SkillID)
-		}
-		p.summons.summon = nil
-	}
 }
 
 func (p *Player) getSummon(skillID int32) *summon {
@@ -2224,6 +2323,35 @@ func (p *Player) expireSummons() {
 	}
 }
 
+func (p *Player) removeActiveSummonForSkill(skillID int32, reason byte) {
+	if p == nil {
+		return
+	}
+	p.ensureSummonState()
+
+	p.broadcastRemoveSummon(skillID, reason)
+
+	switch skill.Skill(skillID) {
+	case skill.Puppet, skill.SniperPuppet:
+		p.summons.puppet = nil
+
+	case skill.SummonDragon, skill.SilverHawk, skill.GoldenEagle:
+		p.summons.summon = nil
+	}
+}
+
+func (p *Player) broadcastRemoveSummon(summonSkillID int32, reason byte) {
+	if p == nil {
+		return
+	}
+
+	p.Send(packetRemoveSummon(p.ID, summonSkillID, reason))
+
+	if p.inst != nil {
+		p.inst.send(packetRemoveSummon(p.ID, summonSkillID, reason))
+	}
+}
+
 func (p *Player) broadcastShowSummon(su *summon) {
 	if p == nil || p.inst == nil {
 		return
@@ -2232,12 +2360,16 @@ func (p *Player) broadcastShowSummon(su *summon) {
 	p.inst.send(packetShowSummon(p.ID, su))
 }
 
-func (p *Player) broadcastRemoveSummon(summonSkillID int32, reason byte) {
-	if p == nil || p.inst == nil {
-		return
-	}
+func (p *Player) shouldKeepSummonOnTransfer(su *summon) bool {
+	return su != nil && p.hasActiveBuff(su.SkillID)
+}
 
-	p.inst.send(packetRemoveSummon(p.ID, summonSkillID, reason))
+func (p *Player) hasActiveBuff(skillID int32) bool {
+	if p == nil || p.buffs == nil {
+		return false
+	}
+	lvl, ok := p.buffs.activeSkillLevels[skillID]
+	return ok && lvl > 0
 }
 
 func (p *Player) updatePet() {
@@ -2605,20 +2737,39 @@ func packetPlayerEnterGame(plr Player, channelID int32) mpacket.Packet {
 	writeActiveQuests(&p, plr.quests.inProgressList())
 	writeCompletedQuests(&p, plr.quests.completedList())
 
-	p.WriteInt32(0)
-	p.WriteInt32(0)
-	p.WriteInt32(0)
-	p.WriteInt32(0)
-	p.WriteInt32(0)
-	p.WriteInt32(0)
-	p.WriteInt32(0)
-	p.WriteInt32(0)
-	p.WriteInt32(0)
-	p.WriteInt32(0)
-	p.WriteInt32(0)
-	p.WriteInt32(0)
-	p.WriteInt32(0)
-	p.WriteInt32(0)
+	p.WriteInt16(0) // MiniGames
+	/*
+	   - uint16 count
+	   - repeat count times:
+	       - int32 a
+	       - int32 b
+	       - int32 c
+	       - int32 d
+	       - int32 e
+	*/
+	p.WriteInt16(0) // Rings
+	/*
+	   - uint16 count
+	   - repeat count times:
+	       - decode ring object
+	*/
+
+	// Teleport rocks (regular + VIP) INT32 = Saved MapID
+	for i := 0; i < constant.TeleportRockRegSlots; i++ {
+		if i < len(plr.regTeleportRocks) {
+			p.WriteInt32(plr.regTeleportRocks[i])
+		} else {
+			p.WriteInt32(constant.InvalidMap)
+		}
+	}
+	for i := 0; i < constant.TeleportRockVIPSlots; i++ {
+		if i < len(plr.vipTeleportRocks) {
+			p.WriteInt32(plr.vipTeleportRocks[i])
+		} else {
+			p.WriteInt32(constant.InvalidMap)
+		}
+	}
+
 	p.WriteInt64(time.Now().Unix())
 
 	return p
