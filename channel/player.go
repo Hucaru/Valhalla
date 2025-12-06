@@ -2108,63 +2108,60 @@ func (d *Player) applyQuestAct(act nx.ActBlock, npcID int32, questID int16) erro
 			totalWeight += ai.Prop
 			break
 		}
+
+		if ai.Count > 0 && ai.Prop == 0 {
+			if it, err := CreateItemFromID(ai.ID, int16(ai.Count)); err == nil {
+				if giveErr, _ := d.GiveItem(it); giveErr != nil {
+					d.Send(packetQuestActionResult(constant.QuestActionInventoryFull, questID, npcID, nil))
+					return giveErr
+				}
+			}
+		}
+
+		if ai.Count > 0 {
+			if it, err := CreateItemFromID(ai.ID, int16(ai.Count)); err == nil {
+				if giveErr, _ := d.GiveItem(it); giveErr != nil {
+					d.Send(packetQuestActionResult(constant.QuestActionInventoryFull, questID, npcID, nil))
+					return giveErr
+				}
+			}
+		}
+
+		if ai.Count < 0 {
+			removed := d.removeItemsByID(ai.ID, -ai.Count)
+			if !removed {
+				d.Send(packetQuestActionResult(constant.QuestActionFailedRetrieveEquippedItem, questID, npcID, nil))
+				return fmt.Errorf("failed to remove required quest items ID=%d count=%d", ai.ID, -ai.Count)
+			}
+		}
 	}
 
 	if hasRandomReward {
-		if totalWeight > 0 {
-			roll := int32(d.randIntn(int(totalWeight)))
+		roll := int32(d.randIntn(int(totalWeight)))
 
-			cumulative := int32(0)
-			var selectedItem *nx.ActItem
-			for i := range act.Items {
-				ai := &act.Items[i]
-				if ai.Count > 0 && ai.Prop > 0 {
-					cumulative += ai.Prop
-					if roll < cumulative {
-						selectedItem = ai
-						break
-					}
-				}
-			}
-
-			// Give the selected item
-			if selectedItem != nil {
-				if it, err := CreateItemFromID(selectedItem.ID, int16(selectedItem.Count)); err == nil {
-					if giveErr, _ := d.GiveItem(it); giveErr != nil {
-						d.Send(packetQuestActionResult(constant.QuestActionInventoryFull, questID, npcID, nil))
-						return giveErr
-					}
+		cumulative := int32(0)
+		var selectedItem *nx.ActItem
+		for i := range act.Items {
+			ai := &act.Items[i]
+			if ai.Count > 0 && ai.Prop > 0 {
+				cumulative += ai.Prop
+				if roll < cumulative {
+					selectedItem = ai
+					break
 				}
 			}
 		}
 
-		for _, ai := range act.Items {
-			if ai.Count > 0 && ai.Prop == 0 {
-				if it, err := CreateItemFromID(ai.ID, int16(ai.Count)); err == nil {
-					if giveErr, _ := d.GiveItem(it); giveErr != nil {
-						d.Send(packetQuestActionResult(constant.QuestActionInventoryFull, questID, npcID, nil))
-						return giveErr
-					}
+		// Give the selected item
+		if selectedItem != nil {
+			if it, err := CreateItemFromID(selectedItem.ID, int16(selectedItem.Count)); err == nil {
+				if giveErr, _ := d.GiveItem(it); giveErr != nil {
+					d.Send(packetQuestActionResult(constant.QuestActionInventoryFull, questID, npcID, nil))
+					return giveErr
 				}
 			}
 		}
-	} else {
-		for _, ai := range act.Items {
-			if ai.Count > 0 {
-				if it, err := CreateItemFromID(ai.ID, int16(ai.Count)); err == nil {
-					if giveErr, _ := d.GiveItem(it); giveErr != nil {
-						d.Send(packetQuestActionResult(constant.QuestActionInventoryFull, questID, npcID, nil))
-						return giveErr
-					}
-				}
-			}
-		}
-	}
 
-	for _, ai := range act.Items {
-		if ai.Count < 0 {
-			_ = d.removeItemsByID(ai.ID, -ai.Count)
-		}
 	}
 
 	return nil
