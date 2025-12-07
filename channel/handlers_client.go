@@ -52,7 +52,8 @@ func (server *Server) HandleClientPacket(conn mnet.Client, reader mpacket.Reader
 	// Panic guard per packet to avoid dropping the connection loop on handler bugs
 	defer func() {
 		if r := recover(); r != nil {
-			log.Printf("panic in HandleClientPacket op=%d: %v", op, r, string(debug.Stack()))
+			log.Printf("panic in HandleClientPacket op=%d: %v", op, r)
+			log.Println(string(debug.Stack()))
 		}
 	}()
 
