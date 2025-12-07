@@ -9,9 +9,10 @@ function start() {
     for (let i = 0; i < maps.length; i++) {
         var field = ctrl.getMap(maps[i]);
         field.removeDrops();
-        props = field.properties();
-        props["clear"] = false;
-        props["wrong"] = false;
+        field.clearProperties();
+        // props = field.properties();
+        // props["clear"] = false;
+        // props["wrong"] = false;
     }
 
     var players = ctrl.players();

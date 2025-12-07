@@ -653,6 +653,12 @@ func (ctrl *scriptMapWrapper) Properties() map[string]interface{} {
 	return ctrl.inst.properties
 }
 
+func (ctrl *scriptMapWrapper) ClearProperties() {
+	for k := range ctrl.inst.properties {
+		delete(ctrl.inst.properties, k)
+	}
+}
+
 func (ctrl *scriptMapWrapper) PlayersInArea(id int) int {
 	areas := nx.GetMaps()[ctrl.inst.fieldID].Areas
 	count := 0

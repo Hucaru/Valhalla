@@ -11,7 +11,17 @@ var props = map.properties();
 var coupon = 4001007;
 var pass = 4001008;
 
-var questions = [{"text": "Sample question", "answer": 1}];
+var questions = [
+    {"text": "What Level do you need to become a Magician?", "answer": 8},
+    {"text": "What Level do you need to become a Bowman?", "answer": 10},
+    {"text": "What Level do you need to become a Thief?", "answer": 10},
+    {"text": "What Level do you need to become a Warrior?", "answer": 10},
+    {"text": "How much EXP is required from lvl 1 to lvl 2?", "answer": 15},
+    {"text": "How much INT is required to become a Magician?", "answer": 20},
+    {"text": "How much DEX is required to become a Thief?", "answer": 25},
+    {"text": "How much DEX is required to become a Bowman?", "answer": 25},
+    {"text": "How much STR is required to become a Warrior?", "answer": 35},
+];
 var ropes = ["1110", "1101","1011","0111"];
 var cats = ["11100", "11010", "11001", "10110", "10101", "01110", "01101", "01011", "00111"];
 var boxes = ["111000", "110010", "110001", "101010", "101001", "100110", "100101", "100011", "010110", "010101", "010011", "001110", "001101", "001011", "000111"];
@@ -176,11 +186,14 @@ if (plr.isPartyLeader()) {
 } else {
     if (stagePart === 0) {
         if (props[plr.name()] === undefined) {
-            var index = 0;
-            npc.sendOk(questions[index].text);
+            var rand = Math.random();
+            var index = Math.floor(rand * questions.length);
             props[plr.name()] = questions[index];
-        } else if (props[plr.name()].answer <= plr.itemCount(coupon) && !props[plr.name()].finished) {
+        }
+        
+        if (props[plr.name()].answer <= plr.itemCount(coupon) && !props[plr.name()].finished) {
             npc.sendOk("That's correct! Please hand your pass to the party leader.");
+            plr.removeItemsByID(pass, plr.itemCount(coupon));
             plr.giveItem(pass, 1);
             props[plr.name()].finished = true
         } else if (props[plr.name()].finished) {
