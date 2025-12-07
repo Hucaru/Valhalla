@@ -168,19 +168,9 @@ if (plr.isPartyLeader()) {
             
             plr.partyGiveExp(1500);
             plr.removeItemsByID(pass, plr.itemCount(pass));
-
-            var sel = npc.sendMenu("Congratulations! All the stages have been cleared. If you are done, I can lead you outside.", "I want to leave now");
-            
-            if (sel === 0) {
-                // TODO: Give item reward
-                plr.warp(bonus);
-            }
         } else {
-            var sel = npc.sendMenu("Congratulations! All the stages have been cleared. If you are done, I can lead you outside.", "I want to leave now");
-            
-            if (sel === 0) {
-                plr.warp(bonus);
-            }
+            npc.sendNext("Incredible! You cleared");
+            plr.warp(bonus);
         }
     }
 } else {
@@ -208,12 +198,8 @@ if (plr.isPartyLeader()) {
         if (!props.clear) {
             npc.sendNext("Hello, welcome to the fifth and final stage. This time, you must defeat the boss, #rKing Slime#k and collect all the monster passes. Good luck!");
         } else {
-            var sel = npc.sendMenu("Congratulations! All the stages have been cleared. If you are done, I can lead you outside.", "I want to leave now");
-
-            if (sel === 0) {
-                // TODO: Give item reward
-                plr.warp(bonus);
-            }
+            npc.sendNext("Incredible! You cleared");
+            plr.warp(bonus);
         }
     }
 }
