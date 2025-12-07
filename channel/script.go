@@ -191,21 +191,21 @@ func (tracker *npcChatStateTracker) popState() {
 	tracker.lastPos--
 }
 
-type warpFn func(plr *Player, dstField *field, dstPortal portal, usedPortal bool) error
-
-type npcChatPlayerController struct {
-	plr       *Player
-	fields    map[int32]*field
-	warpFunc  warpFn
-	worldConn mnet.Server
+type scriptPlayerWrapper struct {
+	plr    *Player
+	server *Server
 }
 
-func (ctrl *npcChatPlayerController) Warp(id int32) {
-	if field, ok := ctrl.fields[id]; ok {
-		inst, err := field.getInstance(0)
+func (ctrl *scriptPlayerWrapper) Warp(id int32) {
+	if field, ok := ctrl.server.fields[id]; ok {
+		inst, err := field.getInstance(ctrl.plr.inst.id)
 
 		if err != nil {
-			return
+			inst, err = field.getInstance(0)
+
+			if err != nil {
+				return
+			}
 		}
 
 		portal, err := inst.getRandomSpawnPortal()
@@ -214,48 +214,23 @@ func (ctrl *npcChatPlayerController) Warp(id int32) {
 			return
 		}
 
-		_ = ctrl.warpFunc(ctrl.plr, field, portal, true)
+		ctrl.server.warpPlayer(ctrl.plr, field, portal, true)
 	}
 }
 
-func (ctrl *npcChatPlayerController) PlayerCount(mapID int32) int {
-	f, ok := ctrl.fields[mapID]
-	if !ok {
-		return 0
-	}
-	inst, err := f.getInstance(ctrl.plr.inst.id)
-	if err != nil {
-		return 0
-	}
-	return len(inst.players)
-}
-
-func (ctrl *npcChatPlayerController) EventActive(mapID int32) bool {
-	f, ok := ctrl.fields[mapID]
-	if !ok {
-		return false
-	}
-	inst, err := f.getInstance(ctrl.plr.inst.id)
-	if err != nil {
-		return false
-	}
-	active, _ := inst.properties["eventActive"].(bool)
-	return active
-}
-
-func (ctrl *npcChatPlayerController) SendMessage(msg string) {
+func (ctrl *scriptPlayerWrapper) SendMessage(msg string) {
 	ctrl.plr.Send(packetMessageRedText(msg))
 }
 
-func (ctrl *npcChatPlayerController) Mesos() int32 {
+func (ctrl *scriptPlayerWrapper) Mesos() int32 {
 	return ctrl.plr.mesos
 }
 
-func (ctrl *npcChatPlayerController) GiveMesos(amount int32) {
+func (ctrl *scriptPlayerWrapper) GiveMesos(amount int32) {
 	ctrl.plr.giveMesos(amount)
 }
 
-func (ctrl *npcChatPlayerController) GiveItem(id int32, amount int16) bool {
+func (ctrl *scriptPlayerWrapper) GiveItem(id int32, amount int16) bool {
 	item, err := CreateItemFromID(id, amount)
 
 	if err != nil {
@@ -269,23 +244,23 @@ func (ctrl *npcChatPlayerController) GiveItem(id int32, amount int16) bool {
 	return true
 }
 
-func (ctrl *npcChatPlayerController) Job() int16 {
+func (ctrl *scriptPlayerWrapper) Job() int16 {
 	return ctrl.plr.job
 }
 
-func (ctrl *npcChatPlayerController) SetJob(id int16) {
+func (ctrl *scriptPlayerWrapper) SetJob(id int16) {
 	ctrl.plr.setJob(id)
 }
 
-func (ctrl *npcChatPlayerController) Level() byte {
+func (ctrl *scriptPlayerWrapper) Level() byte {
 	return ctrl.plr.level
 }
 
-func (ctrl *npcChatPlayerController) InGuild() bool {
+func (ctrl *scriptPlayerWrapper) InGuild() bool {
 	return ctrl.plr.guild != nil
 }
 
-func (ctrl *npcChatPlayerController) GuildRank() byte {
+func (ctrl *scriptPlayerWrapper) GuildRank() byte {
 	if ctrl.plr.guild != nil {
 		for i, id := range ctrl.plr.guild.playerID {
 			if id == ctrl.plr.ID {
@@ -297,11 +272,11 @@ func (ctrl *npcChatPlayerController) GuildRank() byte {
 	return 0
 }
 
-func (ctrl *npcChatPlayerController) InParty() bool {
+func (ctrl *scriptPlayerWrapper) InParty() bool {
 	return ctrl.plr.party != nil
 }
 
-func (ctrl *npcChatPlayerController) IsPartyLeader() bool {
+func (ctrl *scriptPlayerWrapper) IsPartyLeader() bool {
 	if ctrl.InParty() {
 		return ctrl.plr.party.players[0] == ctrl.plr
 	}
@@ -309,7 +284,7 @@ func (ctrl *npcChatPlayerController) IsPartyLeader() bool {
 	return false
 }
 
-func (ctrl *npcChatPlayerController) PartyMembersOnMapCount() int {
+func (ctrl *scriptPlayerWrapper) PartyMembersOnMapCount() int {
 	if ctrl.plr.party == nil {
 		return 0
 	}
@@ -324,19 +299,31 @@ func (ctrl *npcChatPlayerController) PartyMembersOnMapCount() int {
 	return count
 }
 
-func (ctrl *npcChatPlayerController) DisbandGuild() {
+func (ctrl *scriptPlayerWrapper) PartyGiveExp(val int32) {
+	if ctrl.plr.party == nil {
+		return
+	}
+
+	for _, plr := range ctrl.plr.party.players {
+		if plr != nil {
+			plr.giveEXP(val, false, false)
+		}
+	}
+}
+
+func (ctrl *scriptPlayerWrapper) DisbandGuild() {
 	if ctrl.plr.guild == nil {
 		return
 	}
 
-	ctrl.worldConn.Send(internal.PacketGuildDisband(ctrl.plr.guild.id))
+	ctrl.server.world.Send(internal.PacketGuildDisband(ctrl.plr.guild.id))
 }
 
-func (ctrl *npcChatPlayerController) GetLevel() int {
+func (ctrl *scriptPlayerWrapper) GetLevel() int {
 	return int(ctrl.plr.level)
 }
 
-func (ctrl *npcChatPlayerController) GetQuestStatus(id int16) int {
+func (ctrl *scriptPlayerWrapper) GetQuestStatus(id int16) int {
 	// 2 = completed, 1 = in progress, 0 = not started
 	for _, q := range ctrl.plr.quests.completed {
 		if q.id == id {
@@ -351,22 +338,22 @@ func (ctrl *npcChatPlayerController) GetQuestStatus(id int16) int {
 	return 0
 }
 
-func (ctrl *npcChatPlayerController) CheckQuestStatus(id int16, status int) bool {
+func (ctrl *scriptPlayerWrapper) CheckQuestStatus(id int16, status int) bool {
 	return ctrl.GetQuestStatus(id) == status
 }
 
-func (ctrl *npcChatPlayerController) QuestData(id int16) string {
+func (ctrl *scriptPlayerWrapper) QuestData(id int16) string {
 	if q, ok := ctrl.plr.quests.inProgress[id]; ok {
 		return q.name
 	}
 	return ""
 }
 
-func (ctrl *npcChatPlayerController) CheckQuestData(id int16, data string) bool {
+func (ctrl *scriptPlayerWrapper) CheckQuestData(id int16, data string) bool {
 	return ctrl.QuestData(id) == data
 }
 
-func (ctrl *npcChatPlayerController) SetQuestData(id int16, data string) {
+func (ctrl *scriptPlayerWrapper) SetQuestData(id int16, data string) {
 	// Only allow setting data if quest is in-progress; if not, start it or ignore.
 	if _, ok := ctrl.plr.quests.inProgress[id]; !ok {
 		// You may choose to implicitly start; here we upsert and add in-memory if needed.
@@ -382,15 +369,15 @@ func (ctrl *npcChatPlayerController) SetQuestData(id int16, data string) {
 	ctrl.plr.Send(packetQuestUpdate(id, data))
 }
 
-func (ctrl *npcChatPlayerController) StartQuest(id int16) bool {
+func (ctrl *scriptPlayerWrapper) StartQuest(id int16) bool {
 	return ctrl.plr.tryStartQuest(id)
 }
 
-func (ctrl *npcChatPlayerController) CompleteQuest(id int16) bool {
+func (ctrl *scriptPlayerWrapper) CompleteQuest(id int16) bool {
 	return ctrl.plr.tryCompleteQuest(id)
 }
 
-func (ctrl *npcChatPlayerController) ForfeitQuest(id int16) {
+func (ctrl *scriptPlayerWrapper) ForfeitQuest(id int16) {
 	if !ctrl.plr.quests.hasInProgress(id) {
 		return
 	}
@@ -401,83 +388,83 @@ func (ctrl *npcChatPlayerController) ForfeitQuest(id int16) {
 	clearQuestMobKills(ctrl.plr.ID, id)
 }
 
-func (ctrl *npcChatPlayerController) TakeItem(id int32, slot int16, amount int16, invID byte) bool {
+func (ctrl *scriptPlayerWrapper) TakeItem(id int32, slot int16, amount int16, invID byte) bool {
 	_, err := ctrl.plr.takeItem(id, slot, amount, invID)
 	return err == nil
 }
 
-func (ctrl *npcChatPlayerController) RemoveItemsByID(id int32, count int32) bool {
+func (ctrl *scriptPlayerWrapper) RemoveItemsByID(id int32, count int32) bool {
 	return ctrl.plr.removeItemsByID(id, count)
 }
 
-func (ctrl *npcChatPlayerController) ItemCount(id int32) int32 {
+func (ctrl *scriptPlayerWrapper) ItemCount(id int32) int32 {
 	return ctrl.plr.countItem(id)
 }
 
-func (ctrl *npcChatPlayerController) TakeMesos(amount int32) {
+func (ctrl *scriptPlayerWrapper) TakeMesos(amount int32) {
 	ctrl.plr.takeMesos(amount)
 }
 
-func (ctrl *npcChatPlayerController) GetNX() int32 {
+func (ctrl *scriptPlayerWrapper) GetNX() int32 {
 	return ctrl.plr.GetNX()
 }
 
-func (ctrl *npcChatPlayerController) SetNX(nx int32) {
+func (ctrl *scriptPlayerWrapper) SetNX(nx int32) {
 	ctrl.plr.SetNX(nx)
 }
 
-func (ctrl *npcChatPlayerController) GetMaplePoints() int32 {
+func (ctrl *scriptPlayerWrapper) GetMaplePoints() int32 {
 	return ctrl.plr.GetMaplePoints()
 }
 
-func (ctrl *npcChatPlayerController) SetMaplePoints(points int32) {
+func (ctrl *scriptPlayerWrapper) SetMaplePoints(points int32) {
 	ctrl.plr.SetMaplePoints(points)
 }
 
-func (ctrl *npcChatPlayerController) SetFame(value int16) {
+func (ctrl *scriptPlayerWrapper) SetFame(value int16) {
 	ctrl.plr.setFame(value)
 }
 
-func (ctrl *npcChatPlayerController) GiveFame(delta int16) {
+func (ctrl *scriptPlayerWrapper) GiveFame(delta int16) {
 	ctrl.plr.setFame(ctrl.plr.fame + delta)
 }
 
-func (ctrl *npcChatPlayerController) GiveAP(amount int16) {
+func (ctrl *scriptPlayerWrapper) GiveAP(amount int16) {
 	ctrl.plr.giveAP(amount)
 }
 
-func (ctrl *npcChatPlayerController) GiveSP(amount int16) {
+func (ctrl *scriptPlayerWrapper) GiveSP(amount int16) {
 	ctrl.plr.giveSP(amount)
 }
 
-func (ctrl *npcChatPlayerController) GiveEXP(amount int32) {
+func (ctrl *scriptPlayerWrapper) GiveEXP(amount int32) {
 	ctrl.plr.giveEXP(amount, false, false)
 }
 
-func (ctrl *npcChatPlayerController) GiveHP(amount int16) {
+func (ctrl *scriptPlayerWrapper) GiveHP(amount int16) {
 	ctrl.plr.giveHP(amount)
 }
 
-func (ctrl *npcChatPlayerController) GiveMP(amount int16) {
+func (ctrl *scriptPlayerWrapper) GiveMP(amount int16) {
 	ctrl.plr.giveMP(amount)
 }
 
-func (ctrl *npcChatPlayerController) HealToFull() {
+func (ctrl *scriptPlayerWrapper) HealToFull() {
 	ctrl.plr.setHP(ctrl.plr.maxHP)
 	ctrl.plr.setMP(ctrl.plr.maxMP)
 }
 
-func (ctrl *npcChatPlayerController) Gender() byte {
+func (ctrl *scriptPlayerWrapper) Gender() byte {
 	return ctrl.plr.gender
 }
 
 // Hair returns the current hair ID
-func (ctrl *npcChatPlayerController) Hair() int32 {
+func (ctrl *scriptPlayerWrapper) Hair() int32 {
 	return ctrl.plr.hair
 }
 
 // SetHair updates the player's hair and refreshes the client appearance
-func (ctrl *npcChatPlayerController) SetHair(id int32) {
+func (ctrl *scriptPlayerWrapper) SetHair(id int32) {
 	if ctrl.plr.hair == id {
 		return
 	}
@@ -487,11 +474,11 @@ func (ctrl *npcChatPlayerController) SetHair(id int32) {
 	}
 }
 
-func (ctrl *npcChatPlayerController) Face() int32 {
+func (ctrl *scriptPlayerWrapper) Face() int32 {
 	return ctrl.plr.face
 }
 
-func (ctrl *npcChatPlayerController) SetFace(id int32) {
+func (ctrl *scriptPlayerWrapper) SetFace(id int32) {
 	if ctrl.plr.face == id {
 		return
 	}
@@ -502,12 +489,12 @@ func (ctrl *npcChatPlayerController) SetFace(id int32) {
 }
 
 // Skin returns the current skin tone (0..n)
-func (ctrl *npcChatPlayerController) Skin() byte {
+func (ctrl *scriptPlayerWrapper) Skin() byte {
 	return ctrl.plr.skin
 }
 
 // SetSkinColor updates the player's skin tone and refreshes the client appearance
-func (ctrl *npcChatPlayerController) SetSkinColor(skin byte) {
+func (ctrl *scriptPlayerWrapper) SetSkinColor(skin byte) {
 	if ctrl.plr.skin == skin {
 		return
 	}
@@ -522,7 +509,7 @@ type scriptQuestView struct {
 	Status int    `json:"status"` // 0,1,2 same as GetQuestStatus
 }
 
-func (ctrl *npcChatPlayerController) Quest(id int16) scriptQuestView {
+func (ctrl *scriptPlayerWrapper) Quest(id int16) scriptQuestView {
 	status := ctrl.GetQuestStatus(id) // already 0/1/2
 	return scriptQuestView{
 		Data:   ctrl.QuestData(id),
@@ -530,46 +517,126 @@ func (ctrl *npcChatPlayerController) Quest(id int16) scriptQuestView {
 	}
 }
 
-func (ctrl *npcChatPlayerController) PreviousMap() int32 {
+func (ctrl *scriptPlayerWrapper) PreviousMap() int32 {
 	return ctrl.plr.previousMap
 }
 
-func (ctrl *npcChatPlayerController) MapID() int32 {
+func (ctrl *scriptPlayerWrapper) MapID() int32 {
 	return ctrl.plr.mapID
 }
 
-func (ctrl *npcChatPlayerController) Position() map[string]int16 {
+func (ctrl *scriptPlayerWrapper) Position() map[string]int16 {
 	return map[string]int16{
 		"x": ctrl.plr.pos.x,
 		"y": ctrl.plr.pos.y,
 	}
 }
 
-func (ctrl *npcChatPlayerController) Name() string {
+func (ctrl *scriptPlayerWrapper) Name() string {
 	return ctrl.plr.Name
 }
 
-type npcChatMapWrapper struct {
-	inst *fieldInstance
+func (ctrl *scriptPlayerWrapper) InventoryExchange(itemSource int32, srcCount int32, itemExchangeFor int32, count int16) bool {
+	if !ctrl.plr.removeItemsByID(itemSource, srcCount) {
+		return false
+	}
+
+	item, err := CreateItemFromID(itemExchangeFor, count)
+	if err != nil {
+		return false
+	}
+	if err, _ = ctrl.plr.GiveItem(item); err != nil {
+		return false
+	}
+	return true
 }
 
-func (ctrl *npcChatMapWrapper) PlaySound(path string) {
+func (ctrl *scriptPlayerWrapper) ShowCountdown(seconds int32) {
+	ctrl.plr.Send(packetShowCountdown(seconds))
+}
+
+func (ctrl *scriptPlayerWrapper) PortalEffect(path string) {
+	ctrl.plr.Send(packetPortalEffectt(2, path))
+}
+
+func (ctrl *scriptPlayerWrapper) StartPartyQuest(name string, instID int) {
+	if ctrl.plr.party == nil {
+		return
+	}
+
+	program, ok := ctrl.server.eventScriptStore.scripts[name]
+
+	if !ok {
+		return
+	}
+
+	ids := []int32{}
+
+	if ctrl.plr.party != nil {
+		for i, id := range ctrl.plr.party.PlayerID {
+			if ctrl.plr.mapID == ctrl.plr.party.MapID[i] && ctrl.plr.party.players[i] != nil {
+				if ctrl.plr.inst.id == ctrl.plr.party.players[i].inst.id {
+					ids = append(ids, id)
+				}
+			}
+		}
+	} else {
+		ids = append(ids, ctrl.plr.ID)
+	}
+
+	event := createEvent(ctrl.plr.ID, instID, ids, ctrl.server, program)
+	ctrl.server.events[ctrl.plr.party.ID] = event
+	event.start(ctrl.server)
+}
+
+func (ctrl *scriptPlayerWrapper) LeavePartyQuest() {
+	if ctrl.plr.party == nil {
+		return
+	}
+
+	if event, ok := ctrl.server.events[ctrl.plr.party.ID]; ok {
+		event.playerLeaveEventCallback(scriptPlayerWrapper{plr: ctrl.plr, server: ctrl.server})
+	}
+}
+
+type scriptMapWrapper struct {
+	inst   *fieldInstance
+	server *Server
+}
+
+func (ctrl *scriptMapWrapper) PlayerCount(mapID int32, instID int) int {
+	f, ok := ctrl.server.fields[mapID]
+
+	if !ok {
+		return 0
+	}
+
+	inst, err := f.getInstance(instID)
+
+	if err != nil {
+		return 0
+	}
+
+	return len(inst.players)
+}
+
+func (ctrl *scriptMapWrapper) PlaySound(path string) {
 	ctrl.inst.send(packetPlaySound(path))
 }
 
-func (ctrl *npcChatMapWrapper) ShowEffect(path string) {
+func (ctrl *scriptMapWrapper) ShowEffect(path string) {
 	ctrl.inst.send(packetShowScreenEffect(path))
 }
 
-func (ctrl *npcChatMapWrapper) PortalEffect(path string) {
+func (ctrl *scriptMapWrapper) PortalEffect(path string) {
 	ctrl.inst.send(packetPortalEffectt(2, path))
 }
 
-func (ctrl *npcChatMapWrapper) Properties() map[string]interface{} {
+func (ctrl *scriptMapWrapper) Properties() map[string]interface{} {
 	return ctrl.inst.properties
 }
 
-func (ctrl *npcChatMapWrapper) PlayersInArea(id int) int {
+func (ctrl *scriptMapWrapper) PlayersInArea(id int) int {
 	areas := nx.GetMaps()[ctrl.inst.fieldID].Areas
 	count := 0
 
@@ -583,8 +650,33 @@ func (ctrl *npcChatMapWrapper) PlayersInArea(id int) int {
 	return count
 }
 
-func (ctrl *npcChatMapWrapper) MobCount() int {
+func (ctrl *scriptMapWrapper) MobCount() int {
 	return ctrl.inst.lifePool.mobCount()
+}
+
+func (ctrl *scriptMapWrapper) RemoveDrops() {
+	ctrl.inst.dropPool.clearDrops()
+}
+
+func (ctrl *scriptMapWrapper) GetMap(id int32, instID int) scriptMapWrapper {
+	if field, ok := ctrl.server.fields[id]; ok {
+		inst, err := field.getInstance(instID)
+
+		if err != nil {
+			instID = field.createInstance(&ctrl.server.rates, ctrl.server)
+			inst, err = field.getInstance(instID)
+
+			if err != nil {
+				return scriptMapWrapper{}
+			}
+
+			return scriptMapWrapper{inst: inst, server: ctrl.server}
+		}
+
+		return scriptMapWrapper{inst: inst, server: ctrl.server}
+	}
+
+	return scriptMapWrapper{}
 }
 
 type npcChatController struct {
@@ -601,7 +693,7 @@ type npcChatController struct {
 	selectionCalls int
 }
 
-func createNpcChatController(npcID int32, conn mnet.Client, program *goja.Program, plr *Player, fields map[int32]*field, warpFunc warpFn, worldConn mnet.Server) (*npcChatController, error) {
+func createNpcChatController(npcID int32, conn mnet.Client, program *goja.Program, plr *Player, server *Server) (*npcChatController, error) {
 	ctrl := &npcChatController{
 		npcID:   npcID,
 		conn:    conn,
@@ -609,15 +701,14 @@ func createNpcChatController(npcID int32, conn mnet.Client, program *goja.Progra
 		program: program,
 	}
 
-	plrCtrl := &npcChatPlayerController{
-		plr:       plr,
-		fields:    fields,
-		warpFunc:  warpFunc,
-		worldConn: worldConn,
+	plrCtrl := &scriptPlayerWrapper{
+		plr:    plr,
+		server: server,
 	}
 
-	mapWrapper := &npcChatMapWrapper{
-		inst: plr.inst,
+	mapWrapper := &scriptMapWrapper{
+		inst:   plr.inst,
+		server: server,
 	}
 
 	ctrl.vm.SetFieldNameMapper(goja.UncapFieldNameMapper())
@@ -879,21 +970,6 @@ func (ctrl *npcChatController) SendSlideMenu(text string) int {
 	return -1
 }
 
-func (ctrl *npcChatPlayerController) InventoryExchange(itemSource int32, srcCount int32, itemExchangeFor int32, count int16) bool {
-	if !ctrl.plr.removeItemsByID(itemSource, srcCount) {
-		return false
-	}
-
-	item, err := CreateItemFromID(itemExchangeFor, count)
-	if err != nil {
-		return false
-	}
-	if err, _ = ctrl.plr.GiveItem(item); err != nil {
-		return false
-	}
-	return true
-}
-
 func (ctrl *npcChatController) clearUserInput() {
 	// Reset counters but preserve the data
 	ctrl.stateTracker.selection = 0
@@ -966,33 +1042,3 @@ func (ctrl *npcChatController) run() bool {
 	}
 	return false
 }
-
-// type playerWrapper struct {
-// 	*Player
-// 	server *Server
-// }
-
-// func (p *playerWrapper) Mesos() int32 {
-// 	return p.mesos
-// }
-
-// func (p *playerWrapper) GiveMesos(amount int32) {
-// 	p.giveMesos(amount)
-// }
-
-// func (p *playerWrapper) Job() int16 {
-// 	return p.job
-// }
-
-// func (p *playerWrapper) Level() int16 {
-// 	return int16(p.level)
-// }
-
-// func (p *playerWrapper) GiveJob(id int16) {
-// 	p.setJob(id)
-// }
-
-// func (p *playerWrapper) GainItem(id int32, amount int16) {
-// 	item, _ := createAverageItemFromID(id, amount)
-// 	p.GiveItem(item)
-// }

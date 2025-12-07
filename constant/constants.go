@@ -522,3 +522,8 @@ const (
 	InventoryBaseSlotSize = 24
 	InventoryMaxSlotSize  = 255
 )
+
+const (
+	PortalDeath  int32 = 0
+	PortalNormal int32 = -1
+)

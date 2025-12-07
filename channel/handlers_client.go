@@ -6,6 +6,7 @@ import (
 	"log"
 	"math"
 	"math/rand"
+	"runtime/debug"
 	"strconv"
 	"strings"
 	"time"
@@ -49,7 +50,7 @@ func (server *Server) HandleClientPacket(conn mnet.Client, reader mpacket.Reader
 	// Panic guard per packet to avoid dropping the connection loop on handler bugs
 	defer func() {
 		if r := recover(); r != nil {
-			log.Printf("panic in HandleClientPacket op=%d: %v", op, r)
+			log.Printf("panic in HandleClientPacket op=%d: %v", op, r, string(debug.Stack()))
 		}
 	}()
 
@@ -891,7 +892,7 @@ func (server *Server) removeSummonsFromField(player *Player) {
 	}
 }
 
-func (server Server) playerUsePortal(conn mnet.Client, reader mpacket.Reader) {
+func (server *Server) playerUsePortal(conn mnet.Client, reader mpacket.Reader) {
 	plr, err := server.players.GetFromConn(conn)
 	if err != nil {
 		return
@@ -947,7 +948,7 @@ func (server Server) playerUsePortal(conn mnet.Client, reader mpacket.Reader) {
 	}
 
 	switch entryType {
-	case 0:
+	case constant.PortalDeath:
 		// Death revive to return map
 		if plr.hp == 0 {
 			dstFld, ok := server.fields[curField.Data.ReturnMap]
@@ -976,8 +977,7 @@ func (server Server) playerUsePortal(conn mnet.Client, reader mpacket.Reader) {
 			plr.setHP(50)
 			return
 		}
-
-	case -1:
+	case constant.PortalNormal:
 		nameLen := reader.ReadInt16()
 		if nameLen <= 0 {
 			conn.Send(packetPlayerNoChange())
@@ -1020,8 +1020,23 @@ func (server Server) playerUsePortal(conn mnet.Client, reader mpacket.Reader) {
 			return
 		}
 
+		if plr.event != nil {
+			ok = plr.event.beforePortalCallback(scriptPlayerWrapper{plr: plr, server: server},
+				scriptMapWrapper{inst: srcInst, server: server},
+				scriptMapWrapper{inst: dstInst, server: server})
+
+			if !ok {
+				plr.Send(packetPlayerNoChange())
+				return
+			}
+		}
+
 		if err := server.warpPlayer(plr, dstFld, dstPortal, true); err != nil {
 			return
+		}
+
+		if plr.event != nil {
+			plr.event.afterPortalCallback(scriptPlayerWrapper{plr: plr, server: server}, scriptMapWrapper{inst: dstInst, server: server})
 		}
 	}
 }
@@ -1127,7 +1142,7 @@ func (server Server) playerUseScriptedPortal(conn mnet.Client, reader mpacket.Re
 	}
 }
 
-func (server Server) warpPlayer(plr *Player, dstField *field, dstPortal portal, usedPortal bool) error {
+func (server *Server) warpPlayer(plr *Player, dstField *field, dstPortal portal, usedPortal bool) error {
 	srcField, ok := server.fields[plr.mapID]
 	if !ok {
 		return fmt.Errorf("Error in map ID %d", plr.mapID)
@@ -1924,6 +1939,11 @@ func (server *Server) playerPartyInfo(conn mnet.Client, reader mpacket.Reader) {
 
 		partyID := plr.party.ID
 
+		// Events can only occur on the same channel therefore we can handle here
+		if event, ok := server.events[partyID]; ok {
+			event.playerLeaveEventCallback(scriptPlayerWrapper{plr: plr, server: server})
+		}
+
 		server.world.Send(internal.PacketChannelPartyLeave(partyID, plr.ID, false))
 	case 3: // accept
 		partyID := reader.ReadInt32()
@@ -2563,10 +2583,10 @@ func (server *Server) npcChatStart(conn mnet.Client, reader mpacket.Reader) {
 	var controller *npcChatController
 
 	if program, ok := server.npcScriptStore.scripts[strconv.Itoa(int(npcData.id))]; ok {
-		controller, err = createNpcChatController(npcData.id, conn, program, plr, server.fields, server.warpPlayer, server.world)
+		controller, err = createNpcChatController(npcData.id, conn, program, plr, server)
 	} else {
 		if program, ok := server.npcScriptStore.scripts["default"]; ok {
-			controller, err = createNpcChatController(npcData.id, conn, program, plr, server.fields, server.warpPlayer, server.world)
+			controller, err = createNpcChatController(npcData.id, conn, program, plr, server)
 		}
 	}
 

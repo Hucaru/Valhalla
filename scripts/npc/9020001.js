@@ -1,6 +1,10 @@
 // Cloto
+
+// TODO: Flavour text and align with original text
+
 var mapId = plr.mapID();
 var stagePart = mapId % 10;
+var bonus = 103000805;
 
 var props = map.properties();
 
@@ -8,9 +12,11 @@ var coupon = 4001007;
 var pass = 4001008;
 
 var questions = [{"text": "Sample question", "answer": 1}];
+var ropes = ["1110", "1101","1011","0111"];
+var cats = ["11100", "11010", "11001", "10110", "10101", "01110", "01101", "01011", "00111"];
 var boxes = ["111000", "110010", "110001", "101010", "101001", "100110", "100101", "100011", "010110", "010101", "010011", "001110", "001101", "001011", "000111"];
 
-var bonus = 103000805
+var rewards = [];
 
 function clear() {
     map.playSound("Party1/Clear");
@@ -39,6 +45,7 @@ if (plr.isPartyLeader()) {
         } else if (props.stage === 2) {
             props.stage = 3;
             clear();
+            plr.partyGiveExp(10000);
             plr.removeItemsByID(pass, plr.itemCount(pass));
             npc.sendNext("Congratulations on clearing this stage! I will create a portal that will lead you to the next one. You're on a time limit, so please hurry! Good luck!");
         } else {
@@ -50,7 +57,7 @@ if (plr.isPartyLeader()) {
             npc.sendNext("Hi. Welcome to the 2nd stage. Next to me, you'll see a number of ropes. Out of these ropes, #b3 are connected to the portal that sends you to the next stage#k. All you need to do is have #b3 party members to find the answer ropes and hang on them#k. \r\nBUT, it doesn't count as an answer if you hang on to the rope too low; please bring yourself up enough to be counted as a correct answer. Also, only 3 members of your party are allowed on the ropes. Once they are hanging on, the leader of the party must #bdouble-click me to check and see if the answer's correct or not#k. Now, find the right ropes to hang on!");
 
             var rand = Math.random();
-            var combination = (rand < 0.2) ? "1110" : (rand < 0.4) ? "1101" : (rand < 0.7) ? "1011" : "0111";
+            var combination = ropes[Math.floor(rand * ropes.length)];
 
             props.stage = combination;
         } else if (props.clear) {
@@ -72,20 +79,19 @@ if (plr.isPartyLeader()) {
                 npc.sendNext("It looks like you haven't found the 3 ropes just yet. Please think of a different combination of ropes, Only 3 are allowed to hang on to ropes, and if you hang on to too low, it won't count as an answer; so please keep that in mind. Keep going!");
             } else if (pattern === correct) {
                 clear();
+                plr.partyGiveExp(10000);
                 npc.sendNext("Congratulations on clearing this stage! I will create a portal that will lead you to the next one. You're on a time limit, so please hurry! Good luck!");
             } else {
                 wrong();
                 npc.sendNext("That is not the correct combination. Keep trying!");
             }
         }
-    }
-
-    else if (stagePart === 2) {
+    } else if (stagePart === 2) {
         if (props.stage === undefined) {
             npc.sendNext("Hello, Welcome to the 3rd stage. Next to you you'll see barrels with kittens inside on top of the platforms. Out of these platform, #b3 of them lead to the portals for the next stage. 3 of the party members need to find the correct platform to step on and clear the stage. \r\nBUT, you need to stand firm right at the center of it, not standing on the edge, in order to be counted as a correct answer, so make sure to remember that. Also, only 3 members of your party are allowed on the platforms. Once the members are on them, the leader of the party must double-click me to check and see if the answer's right or not#k. Now, find the correct platforms~!");
 
             var rand = Math.random();
-            var combination = (rand < 0.2) ? "11001" : (rand < 0.4) ? "01110" : (rand < 0.6) ? "10101" : (rand < 0.8) ? "10110" : "10011";
+            var combination = cats[Math.floor(rand * cats.length)];
 
             props.stage = combination
         } else if (props.clear) {
@@ -102,19 +108,19 @@ if (plr.isPartyLeader()) {
                 pattern += count > 0 ? "1" : "0";
                 onPlatforms += count > 0 ? 1 : 0;
             }
+            
             if (onPlatforms !== 3) {
                 npc.sendNext("You haven't found the 3 correct platforms yet. Don't forget that you must have 1 person stand in the center of each of the 3 correct platforms to be counted as a correct answer. If necessary, you can place a Platform Puppet to stand in for a character on any platform. Good luck!");
             } else if (pattern === correct) {
                 clear();
+                plr.partyGiveExp(10000);
                 npc.sendNext("Congratulations on clearing this stage! I will create a portal that will lead you to the next one. You're on a time limit, so please hurry! Good luck!");
             } else {
                 wrong();
                 npc.sendNext("That is not the correct combination. Keep trying!");
             }
         }
-    }
-
-    else if (stagePart === 3) {
+    } else if (stagePart === 3) {
         if (props.stage === undefined) {
             npc.sendNext("Hello. Welcome to the 4th stage. <Insert instructions>. Good luck!");
 
@@ -127,7 +133,6 @@ if (plr.isPartyLeader()) {
         } else if (props.wrong) { // swallow interrupt retraversal
             props.wrong = false;
         } else {
-            var correct = props.stage;
             var onPlatforms = 0;
             var pattern = "";
 
@@ -138,17 +143,16 @@ if (plr.isPartyLeader()) {
             }
             if (onPlatforms !== 3) {
                 npc.sendNext("You haven't found the 3 correct platforms yet. Don't forget that you must have 1 person stand in the center of each of the 3 correct platforms to be counted as a correct answer. If necessary, you can place a Platform Puppet to stand in for a character on any platform. Good luck!");
-            } else if (pattern === correct) {
+            } else if (pattern === props.stage) {
                 clear();
+                plr.partyGiveExp(10000);
                 npc.sendNext("Congratulations on clearing this stage! I will create a portal that will lead you to the next one. You're on a time limit, so please hurry! Good luck!");
             } else {
                 wrong();
-                npc.sendNext("That is not the correct combination. Keep trying! " + pattern + " " + correct);
+                npc.sendNext("That is not the correct combination. Keep trying!");
             }
         }
-    }
-
-    else if (stagePart === 4) {
+    } else if (stagePart === 4) {
         if (plr.itemCount(pass) >= 10 && !props.clear) {
             props.stage = 2;
         }
@@ -161,11 +165,14 @@ if (plr.isPartyLeader()) {
         } else if (props.stage === 2) {
             props.stage = 3;
             clear();
+            
+            plr.partyGiveExp(10000);
             plr.removeItemsByID(pass, plr.itemCount(pass));
 
             var sel = npc.sendMenu("Congratulations! All the stages have been cleared. If you are done, I can lead you outside.", "I want to leave now");
             
             if (sel === 0) {
+                // TODO: Give item reward
                 plr.warp(bonus);
             }
         } else {
@@ -176,11 +183,9 @@ if (plr.isPartyLeader()) {
             }
         }
     }
-
 } else {
     if (stagePart === 0) {
         if (props[plr.name()] === undefined) {
-            // TODO: Flavour text and randomise the coupon count based on text
             var index = 0;
             npc.sendOk(questions[index].text);
             props[plr.name()] = questions[index];
@@ -193,27 +198,20 @@ if (plr.isPartyLeader()) {
         } else {
             npc.sendOk(props[plr.name()].text);
         }
-    }
-
-    else if (stagePart === 1) {
+    } else if (stagePart === 1) {
         npc.sendNext("Hi. Welcome to the 2nd stage. Next to me, you'll see a number of ropes. Out of these ropes, #b3 are connected to the portal that sends you to the next stage#k. All you need to do is have #b3 party members to find the answer ropes and hang on them#k. \r\nBUT, it doesn't count as an answer if you hang on to the rope too low; please bring yourself up enough to be counted as a correct answer. Also, only 3 members of your party are allowed on the ropes. Once they are hanging on, the leader of the party must #bdouble-click me to check and see if the answer's correct or not#k. Now, find the right ropes to hang on!");
-    }
-
-    else if (stagePart === 2) {
+    } else if (stagePart === 2) {
         npc.sendNext("Hello, Welcome to the 3rd stage. Next to you you'll see barrels with kittens inside on top of the platforms. Out of these platform, #b3 of them lead to the portals for the next stage. 3 of the party members need to find the correct platform to step on and clear the stage. \r\nBUT, you need to stand firm right at the center of it, not standing on the edge, in order to be counted as a correct answer, so make sure to remember that. Also, only 3 members of your party are allowed on the platforms. Once the members are on them, the leader of the party must double-click me to check and see if the answer's right or not#k. Now, find the correct platforms~!");
-    }
-
-    else if (stagePart === 3) {
-        npc.sendNext("Hello. Welcome to the 4th stage. Walk around the map and you'll be able to find some monsters. The monsters may be familiar to you, but they may be much stronger than you think, so please be careful. Good luck!");
-    }
-
-    else if (stagePart === 4) {
+    } else if (stagePart === 3) {
+        npc.sendNext("<instructions>");
+    } else if (stagePart === 4) {
         if (!props.clear) {
             npc.sendNext("Hello, welcome to the fifth and final stage. This time, you must defeat the boss, #rKing Slime#k and collect all the monster passes. Good luck!");
         } else {
             var sel = npc.sendMenu("Congratulations! All the stages have been cleared. If you are done, I can lead you outside.", "I want to leave now");
 
             if (sel === 0) {
+                // TODO: Give item reward
                 plr.warp(bonus);
             }
         }

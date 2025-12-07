@@ -1324,7 +1324,7 @@ func (server *Server) gmCommand(conn mnet.Client, msg string) {
 		var controller *npcChatController
 
 		if program, ok := server.npcScriptStore.scripts["2010007"]; ok {
-			controller, err = createNpcChatController(2010007, conn, program, plr, server.fields, server.warpPlayer, server.world)
+			controller, err = createNpcChatController(2010007, conn, program, plr, server)
 
 			if err != nil {
 				conn.Send(packetMessageRedText(err.Error()))
@@ -1602,26 +1602,19 @@ func (server *Server) gmCommand(conn mnet.Client, msg string) {
 
 		player.inst.send(packetPortalEffectt(2, "gate"))
 	case "eventStart":
-		if len(command) != 4 {
-			conn.Send(packetMessageRedText("Usage is <duration e.g. 10s> <return mapID> <instance id>"))
+		if len(command) != 3 {
+			conn.Send(packetMessageRedText("Usage is <name> <instance id>"))
 			return
 		}
 
-		duration, err := time.ParseDuration(command[1])
+		program, ok := server.eventScriptStore.scripts[command[1]]
 
-		if err != nil {
-			conn.Send(packetMessageRedText(err.Error()))
+		if !ok {
+			conn.Send(packetMessageRedText("Could not find event script: " + command[1]))
 			return
 		}
 
-		returnMapID, err := strconv.Atoi(command[2])
-
-		if err != nil {
-			conn.Send(packetMessageRedText(err.Error()))
-			return
-		}
-
-		instanceID, err := strconv.Atoi(command[3])
+		instanceID, err := strconv.Atoi(command[2])
 
 		if err != nil {
 			conn.Send(packetMessageRedText(err.Error()))
@@ -1635,7 +1628,21 @@ func (server *Server) gmCommand(conn mnet.Client, msg string) {
 			return
 		}
 
-		event := createEvent(player.ID, duration, int32(returnMapID), instanceID, []int32{player.ID})
+		ids := []int32{}
+
+		if player.party != nil {
+			for i, id := range player.party.PlayerID {
+				if player.mapID == player.party.MapID[i] && player.party.players[i] != nil {
+					if player.inst.id == player.party.players[i].inst.id {
+						ids = append(ids, id)
+					}
+				}
+			}
+		} else {
+			ids = append(ids, player.ID)
+		}
+
+		event := createEvent(player.ID, instanceID, ids, server, program)
 		server.events[player.ID] = event
 		event.start(server)
 	case "clearInstProps":
