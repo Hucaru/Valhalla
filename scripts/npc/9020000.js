@@ -5,8 +5,21 @@
 var maps = [103000800, 103000801, 103000802, 103000803, 103000804, 103000805]
 
 if (plr.isPartyLeader()) {
+    var plrs = plr.partyMembersOnMap()
+
+    var badLevel = false
+
+    for (let i = 0; i < plrs.length; i++) {
+        if (plrs[i].level() > 30 || plrs[i].level() < 21) {
+            badLevel = true
+            break
+        }
+    }
+
     if (plr.partyMembersOnMapCount() != 4) {
         npc.sendOk("You need to be a party of 4 on the same map")
+    } else if (badLevel) {
+        npc.sendOk("Someone in your party is not the correct level")
     } else {
         for (let instance = 0; instance < 1; instance++) {
             var count = 0;

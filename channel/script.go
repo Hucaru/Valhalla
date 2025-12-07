@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/Hucaru/Valhalla/constant"
 	"github.com/Hucaru/Valhalla/internal"
 	"github.com/Hucaru/Valhalla/mnet"
 	"github.com/Hucaru/Valhalla/nx"
@@ -285,7 +286,7 @@ func (ctrl *scriptPlayerWrapper) IsPartyLeader() bool {
 }
 
 func (ctrl *scriptPlayerWrapper) PartyMembersOnMapCount() int {
-	if ctrl.plr.party == nil {
+	if !ctrl.InParty() {
 		return 0
 	}
 
@@ -299,8 +300,24 @@ func (ctrl *scriptPlayerWrapper) PartyMembersOnMapCount() int {
 	return count
 }
 
+func (ctrl *scriptPlayerWrapper) PartyMembersOnMap() []scriptPlayerWrapper {
+	if !ctrl.InParty() {
+		return []scriptPlayerWrapper{}
+	}
+
+	members := make([]scriptPlayerWrapper, 0, constant.MaxPartySize)
+
+	for _, v := range ctrl.plr.party.players {
+		if v != nil {
+			members = append(members, scriptPlayerWrapper{plr: v, server: ctrl.server})
+		}
+	}
+
+	return members
+}
+
 func (ctrl *scriptPlayerWrapper) PartyGiveExp(val int32) {
-	if ctrl.plr.party == nil {
+	if !ctrl.InParty() {
 		return
 	}
 
