@@ -45,7 +45,7 @@ if (plr.isPartyLeader()) {
         } else if (props.stage === 2) {
             props.stage = 3;
             clear();
-            plr.partyGiveExp(10000);
+            plr.partyGiveExp(100);
             plr.removeItemsByID(pass, plr.itemCount(pass));
             npc.sendNext("Congratulations on clearing this stage! I will create a portal that will lead you to the next one. You're on a time limit, so please hurry! Good luck!");
         } else {
@@ -79,7 +79,7 @@ if (plr.isPartyLeader()) {
                 npc.sendNext("It looks like you haven't found the 3 ropes just yet. Please think of a different combination of ropes, Only 3 are allowed to hang on to ropes, and if you hang on to too low, it won't count as an answer; so please keep that in mind. Keep going!");
             } else if (pattern === correct) {
                 clear();
-                plr.partyGiveExp(10000);
+                plr.partyGiveExp(200);
                 npc.sendNext("Congratulations on clearing this stage! I will create a portal that will lead you to the next one. You're on a time limit, so please hurry! Good luck!");
             } else {
                 wrong();
@@ -113,7 +113,7 @@ if (plr.isPartyLeader()) {
                 npc.sendNext("You haven't found the 3 correct platforms yet. Don't forget that you must have 1 person stand in the center of each of the 3 correct platforms to be counted as a correct answer. If necessary, you can place a Platform Puppet to stand in for a character on any platform. Good luck!");
             } else if (pattern === correct) {
                 clear();
-                plr.partyGiveExp(10000);
+                plr.partyGiveExp(400);
                 npc.sendNext("Congratulations on clearing this stage! I will create a portal that will lead you to the next one. You're on a time limit, so please hurry! Good luck!");
             } else {
                 wrong();
@@ -145,7 +145,7 @@ if (plr.isPartyLeader()) {
                 npc.sendNext("You haven't found the 3 correct platforms yet. Don't forget that you must have 1 person stand in the center of each of the 3 correct platforms to be counted as a correct answer. If necessary, you can place a Platform Puppet to stand in for a character on any platform. Good luck!");
             } else if (pattern === props.stage) {
                 clear();
-                plr.partyGiveExp(10000);
+                plr.partyGiveExp(800);
                 npc.sendNext("Congratulations on clearing this stage! I will create a portal that will lead you to the next one. You're on a time limit, so please hurry! Good luck!");
             } else {
                 wrong();
@@ -166,7 +166,7 @@ if (plr.isPartyLeader()) {
             props.stage = 3;
             clear();
             
-            plr.partyGiveExp(10000);
+            plr.partyGiveExp(1500);
             plr.removeItemsByID(pass, plr.itemCount(pass));
 
             var sel = npc.sendMenu("Congratulations! All the stages have been cleared. If you are done, I can lead you outside.", "I want to leave now");
