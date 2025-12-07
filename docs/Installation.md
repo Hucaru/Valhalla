@@ -47,10 +47,10 @@ Available for:
 
 ```bash
 # Windows
-go-wztonx-converter.exe --server Data.wz
+wztonx-converter.exe -server Data.wz
 
 # Linux/macOS
-./go-wztonx-converter --server Data.wz
+./wztonx-converter -server Data.wz
 ```
 
 This will generate a `Data.nx` file in the same directory.
@@ -98,7 +98,7 @@ The server expects a database named `maplestory` (configurable).
 
 1. Download the SQL schema:
    ```bash
-   # In your Valhalla directory
+   # In your Valhalla SQL directory
    mysql -u root -p < maplestory.sql
    ```
 

@@ -337,6 +337,7 @@ func (f *field) createInstance(rates *rates, server *Server) int {
 
 	inst.roomPool = createNewRoomPool(inst)
 	inst.dropPool = createNewDropPool(inst, rates)
+	inst.mistPool = createNewMistPool(inst)
 	inst.lifePool = creatNewLifePool(inst, f.Data.NPCs, f.Data.Mobs, f.mobCapacityMin, f.mobCapacityMax)
 	inst.lifePool.setDropPool(&inst.dropPool)
 	inst.reactorPool = createNewReactorPool(inst, f.Data.Reactors, server)
@@ -501,6 +502,7 @@ func (f *field) changePlayerInstance(player *Player, id int) error {
 		}
 
 		f.instances[player.inst.id].dropPool.HideDrops(player)
+		f.instances[player.inst.id].mistPool.removeMistsByOwner(player.ID)
 
 		player.inst = f.instances[id]
 		err = f.instances[id].addPlayer(player)
@@ -550,6 +552,7 @@ type fieldInstance struct {
 	dropPool    dropPool
 	roomPool    roomPool
 	reactorPool reactorPool
+	mistPool    mistPool
 
 	portals [256]portal
 	players []*Player
@@ -672,6 +675,7 @@ func (inst *fieldInstance) addPlayer(plr *Player) error {
 
 	inst.lifePool.addPlayer(plr)
 	inst.dropPool.playerShowDrops(plr)
+	inst.mistPool.playerShowMists(plr)
 	inst.roomPool.playerShowRooms(plr)
 	inst.reactorPool.playerShowReactors(plr)
 
@@ -889,9 +893,13 @@ func (inst fieldInstance) getPortalFromName(name string) (portal, error) {
 	return portal{}, fmt.Errorf("No portal with that Name")
 }
 
-func (inst fieldInstance) getPortalFromID(id byte) (portal, error) {
+func (inst fieldInstance) getPortalFromID(id byte, allowInvalid bool) (portal, error) {
 	p := inst.portals[id]
-	if p.destFieldID != constant.InvalidMap {
+	// If allowInvalid is true, we return the portal even if it's invalid (i.e., destFieldID is InvalidMap)
+	// This is primarily for warped maps such as boss maps, or boats
+	if allowInvalid && p.destFieldID == constant.InvalidMap {
+		return p, nil
+	} else if p.destFieldID != constant.InvalidMap {
 		return p, nil
 	}
 
@@ -965,6 +973,7 @@ func (inst *fieldInstance) stopFieldTimer() {
 func (inst *fieldInstance) fieldUpdate(t time.Time) {
 	inst.lifePool.update(t)
 	inst.dropPool.update(t)
+	inst.mistPool.update(t)
 	inst.stopWeatherEffect(t)
 
 	if len(inst.mysticDoors) > 0 {

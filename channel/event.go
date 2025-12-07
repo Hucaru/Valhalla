@@ -83,6 +83,12 @@ func createEvent(id int32, instID int, players []int32, server *Server, program 
 func (e *event) start(server *Server) {
 	e.startCallback()
 
+	for _, id := range e.playerIDs {
+		if plr, err := e.server.players.GetFromID(id); err == nil {
+			plr.event = e
+		}
+	}
+
 	go func() {
 		timeout := time.NewTimer(e.duration)
 		defer timeout.Stop()
@@ -112,12 +118,6 @@ func (e *event) start(server *Server) {
 			return
 		}
 	}()
-
-	for _, id := range e.playerIDs {
-		if plr, err := e.server.players.GetFromID(id); err == nil {
-			plr.event = e
-		}
-	}
 }
 
 func (e *event) Log(msg string) {

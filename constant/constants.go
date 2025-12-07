@@ -107,6 +107,13 @@ const (
 	QuestCompleted = 0x02
 	QuestForfeit   = 0x03
 
+	QuestActionSuccess                    byte = 4
+	QuestActionUnknownError               byte = 5
+	QuestActionInventoryFull              byte = 6
+	QuestActionNotEnoughMesos             byte = 7
+	QuestActionFailedRetrieveEquippedItem byte = 8
+	QuestActionCannotCarryMoreThanOne     byte = 9
+
 	FameNotifySource  = 0x00
 	FameIncorrectUser = 0x01
 	FameUnderLevel    = 0x02
@@ -368,6 +375,16 @@ const (
 	ItemSafetyCharm       = 5130000
 	ItemPetNameTag        = 5170000
 	ItemWaterOfLife       = 5180000
+)
+
+// Teleport rock constants
+const (
+	TeleportRockRegSlots      = 5    // Regular teleport rocks have 5 slots
+	TeleportRockVIPSlots      = 10   // VIP teleport rocks have 10 slots
+	TeleportRockVIPFlag  byte = 0x01 // VIP flag in packet
+	TeleportRockRegFlag  byte = 0x00 // Regular flag in packet
+	TeleportRockModeAdd  byte = 0x03 // Server response mode for add
+	TeleportRockModeDel  byte = 0x02 // Server response mode for delete
 )
 
 // Login result codes
