@@ -10,9 +10,6 @@ function start() {
         var field = ctrl.getMap(maps[i]);
         field.removeDrops();
         field.clearProperties();
-        // props = field.properties();
-        // props["clear"] = false;
-        // props["wrong"] = false;
     }
 
     var players = ctrl.players();
