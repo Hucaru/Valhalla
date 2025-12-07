@@ -532,6 +532,10 @@ func (d *Player) giveHP(amount int16) {
 	}
 
 	d.setHP(int16(target))
+
+	if d.party != nil {
+		d.party.broadcast(packetPlayerHpChange(d.ID, int32(d.hp), int32(d.maxHP)))
+	}
 }
 
 func (d *Player) setHP(amount int16) {
@@ -548,6 +552,10 @@ func (d *Player) setHP(amount int16) {
 	d.hp = amount
 	d.Send(packetPlayerStatChange(true, constant.HpID, int32(amount)))
 	d.MarkDirty(DirtyHP, 500*time.Millisecond)
+
+	if d.party != nil {
+		d.party.broadcast(packetPlayerHpChange(d.ID, int32(d.hp), int32(d.maxHP)))
+	}
 }
 
 func (d *Player) setMaxHP(amount int16) {
@@ -596,9 +604,21 @@ func (d *Player) setMaxMP(amount int16) {
 }
 
 func (d *Player) effectiveMaxHP() int16 {
+
+	var itemsHP int32 = 0
+	for _, item := range d.equip {
+		if item.hp == 0 || item.slotID > 0 {
+			continue
+		}
+
+		itemsHP += int32(item.hp)
+	}
+
 	base32 := int32(d.maxHP)
 	hpPct, _ := d.hyperBodyPercents()
-	res := base32
+
+	res := base32 + itemsHP
+
 	if hpPct > 0 {
 		res += (base32 * int32(hpPct)) / 100
 	}
@@ -612,9 +632,18 @@ func (d *Player) effectiveMaxHP() int16 {
 }
 
 func (d *Player) effectiveMaxMP() int16 {
+
+	var itemsMP int32 = 0
+	for _, item := range d.equip {
+		if item.mp == 0 || item.slotID > 0 {
+			continue
+		}
+		itemsMP += int32(item.mp)
+	}
+
 	base32 := int32(d.maxMP)
 	_, mpPct := d.hyperBodyPercents()
-	res := base32
+	res := base32 + itemsMP
 	if mpPct > 0 {
 		res += (base32 * int32(mpPct)) / 100
 	}
@@ -3482,5 +3511,14 @@ func packetSkillStop(plrID, skillID int32) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelPlayerStopSkill)
 	p.WriteInt32(plrID)
 	p.WriteInt32(skillID)
+	return p
+}
+
+func packetPlayerHpChange(plrID, hp, maxHp int32) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.RecvChannelPlayerPickup)
+	p.WriteInt32(plrID)
+	p.WriteInt32(hp)
+	p.WriteInt32(maxHp)
+
 	return p
 }
