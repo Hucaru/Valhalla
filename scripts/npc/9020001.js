@@ -12,10 +12,10 @@ var coupon = 4001007;
 var pass = 4001008;
 
 var questions = [
-    {"text": "What Level do you need to become a Magician?", "answer": 8},
-    {"text": "What Level do you need to become a Bowman?", "answer": 10},
-    {"text": "What Level do you need to become a Thief?", "answer": 10},
-    {"text": "What Level do you need to become a Warrior?", "answer": 10},
+    {"text": "Here's the question. Collect the same number of coupons as the minimum level required to make the first job advancement as magician.", "answer": 8},
+    {"text": "Here's the question. Collect the same number of coupons as the minimum level required to make the first job advancement as bowman.", "answer": 10},
+    {"text": "Here's the question. Collect the same number of coupons as the minimum level required to make the first job advancement as thief.", "answer": 10},
+    {"text": "Here's the question. Collect the same number of coupons as the minimum level required to make the first job advancement as warrior.", "answer": 10},
     {"text": "How much EXP is required from lvl 1 to lvl 2?", "answer": 15},
     {"text": "How much INT is required to become a Magician?", "answer": 20},
     {"text": "How much DEX is required to become a Thief?", "answer": 25},
@@ -238,7 +238,7 @@ if (plr.isPartyLeader()) {
             plr.partyGiveExp(1500);
             plr.removeItemsByID(pass, plr.itemCount(pass));
         } else {
-            npc.sendNext("Incredible! You cleared");
+            npc.sendNext("Incredible! You cleared all the stages to get to this point. Here's a small prize for your job well done. Before you accept it, however, please make sure your use and etc. inventories have empty slots available.\r\n#bYou will not receive a prize if you have no free slots!");
             var rand = Math.random();
             var reward = rewards[Math.floor(rand * rewards.length)];
             plr.giveItem(reward.id, reward.amount);
@@ -252,8 +252,12 @@ if (plr.isPartyLeader()) {
             var index = Math.floor(rand * questions.length);
             props[plr.name()] = questions[index];
         }
-        
-        if (props[plr.name()].answer <= plr.itemCount(coupon) && !props[plr.name()].finished) {
+
+        if (props.question === undefined) {
+            npc.sendNext("Here, you need to collect #bcoupons #kby defeating the same number of Ligators as the answer to the questions asked individually.");
+            npc.sendBackNext(props[plr.name()].text);
+            props.question = true;
+        } else if (props[plr.name()].answer <= plr.itemCount(coupon) && !props[plr.name()].finished) {
             npc.sendOk("That's correct! Please hand your pass to the party leader.");
             plr.removeItemsByID(pass, plr.itemCount(coupon));
             plr.giveItem(pass, 1);
@@ -261,7 +265,7 @@ if (plr.isPartyLeader()) {
         } else if (props[plr.name()].finished) {
             npc.sendOk("You have finished this stage");
         } else {
-            npc.sendOk(props[plr.name()].text);
+            npc.sendNext("You do not have the correct number of coupons");        
         }
     } else if (stagePart === 1) {
         npc.sendNext("Hi. Welcome to the 2nd stage. Next to me, you'll see a number of ropes. Out of these ropes, #b3 are connected to the portal that sends you to the next stage#k. All you need to do is have #b3 party members to find the answer ropes and hang on them#k. \r\nBUT, it doesn't count as an answer if you hang on to the rope too low; please bring yourself up enough to be counted as a correct answer. Also, only 3 members of your party are allowed on the ropes. Once they are hanging on, the leader of the party must #bdouble-click me to check and see if the answer's correct or not#k. Now, find the right ropes to hang on!");
@@ -273,7 +277,7 @@ if (plr.isPartyLeader()) {
         if (!props.clear) {
             npc.sendNext("Hello, welcome to the fifth and final stage. This time, you must defeat the boss, #rKing Slime#k and collect all the monster passes. Good luck!");
         } else {
-            npc.sendNext("Incredible! You cleared");
+            npc.sendNext("Incredible! You cleared all the stages to get to this point. Here's a small prize for your job well done. Before you accept it, however, please make sure your use and etc. inventories have empty slots available.\r\n#bYou will not receive a prize if you have no free slots!");
             var rand = Math.random();
             var reward = rewards[Math.floor(rand * rewards.length)];
             plr.giveItem(reward.id, reward.amount);
