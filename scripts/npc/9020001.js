@@ -55,8 +55,8 @@ var rewards = [
     {"id": 2000006, "amount": 20},
     {"id": 2000004, "amount": 20},
     // Food
-    {"id": 2022003, "amount": 1},
-    {"id": 2022000, "amount": 1},
+    {"id": 2022003, "amount": 15},
+    {"id": 2022000, "amount": 15},
     // Materials
     {"id": 4003000, "amount": 30},
     // Ores
