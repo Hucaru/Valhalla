@@ -26,7 +26,66 @@ var ropes = ["1110", "1101","1011","0111"];
 var cats = ["11100", "11010", "11001", "10110", "10101", "01110", "01101", "01011", "00111"];
 var boxes = ["111000", "110010", "110001", "101010", "101001", "100110", "100101", "100011", "010110", "010101", "010011", "001110", "001101", "001011", "000111"];
 
-var rewards = [];
+var rewards = [
+    // Scrolls 10%
+    {"id": 2040505, "amount": 1},
+    {"id": 2040514, "amount": 1},
+    {"id": 2040502, "amount": 1},
+    {"id": 2040002, "amount": 1},
+    {"id": 2040602, "amount": 1},
+    {"id": 2040402, "amount": 1},
+    {"id": 2040802, "amount": 1},
+    // Earrings
+    {"id": 1032009, "amount": 1},
+    {"id": 1032004, "amount": 1},
+    {"id": 1032005, "amount": 1},
+    {"id": 1032006, "amount": 1},
+    {"id": 1032007, "amount": 1},
+    {"id": 1032010, "amount": 1},
+    {"id": 1032002, "amount": 1},
+    // Hats
+    {"id": 1002026, "amount": 1},
+    {"id": 1002090, "amount": 1},
+    {"id": 1002089, "amount": 1},
+    // Potions
+    {"id": 2000003, "amount": 100},
+    {"id": 2000001, "amount": 100},
+    {"id": 2000002, "amount": 100},
+    // Elixir
+    {"id": 2000006, "amount": 20},
+    {"id": 2000004, "amount": 20},
+    // Food
+    {"id": 2022003, "amount": 1},
+    {"id": 2022000, "amount": 1},
+    // Materials
+    {"id": 4003000, "amount": 30},
+    // Ores
+    // Amounts calculated by cross-referencing:
+    // https://osmlib.com
+    // https://wayback.hidden-street.net/guides/general_009.txt
+    // https://global.hidden-street.net/party-quest/kerning-city/rewards-prizes
+    // YouTube videos (some old videos ~17 years old seem to contradict hidden street)
+    {"id": 4010003, "amount": 8},
+    {"id": 4010000, "amount": 5},
+    {"id": 4010006, "amount": 5},
+    {"id": 4010002, "amount": 8},
+    {"id": 4010005, "amount": 5},
+    {"id": 4010004, "amount": 8},
+    {"id": 4010001, "amount": 8},
+    {"id": 4020001, "amount": 8},
+    {"id": 4020002, "amount": 5},
+    {"id": 4020008, "amount": 3},
+    {"id": 4020007, "amount": 3},
+    {"id": 4020003, "amount": 5},
+    {"id": 4020000, "amount": 5},
+    {"id": 4020004, "amount": 8},
+    {"id": 4020005, "amount": 8},
+    {"id": 4020006, "amount": 8},
+    // Throwing stars
+    {"id": 2070000, "amount": 5},
+    {"id": 2070001, "amount": 2},
+    {"id": 2070002, "amount": 1},
+];
 
 function clear() {
     map.playSound("Party1/Clear");
@@ -180,6 +239,9 @@ if (plr.isPartyLeader()) {
             plr.removeItemsByID(pass, plr.itemCount(pass));
         } else {
             npc.sendNext("Incredible! You cleared");
+            var rand = Math.random();
+            var reward = rewards[Math.floor(rand * rewards.length)];
+            plr.giveItem(reward.id, reward.amount);
             plr.warp(bonus);
         }
     }
@@ -212,6 +274,9 @@ if (plr.isPartyLeader()) {
             npc.sendNext("Hello, welcome to the fifth and final stage. This time, you must defeat the boss, #rKing Slime#k and collect all the monster passes. Good luck!");
         } else {
             npc.sendNext("Incredible! You cleared");
+            var rand = Math.random();
+            var reward = rewards[Math.floor(rand * rewards.length)];
+            plr.giveItem(reward.id, reward.amount);
             plr.warp(bonus);
         }
     }
