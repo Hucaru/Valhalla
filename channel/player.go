@@ -1880,6 +1880,8 @@ func (d *Player) addBuff(skillID int32, level byte, delay int16) {
 	if d.buffs == nil {
 		NewCharacterBuffs(d)
 	}
+	// Ensure the buff manager points to this exact Player instance (avoid stale copies).
+	d.buffs.plr = d
 	d.buffs.AddBuff(d.ID, skillID, level, false, delay)
 }
 
