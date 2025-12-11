@@ -715,6 +715,10 @@ func (inst *fieldInstance) addPlayer(plr *Player) error {
 		plr.Send(packetShowClock(int8(now.Hour()), int8(now.Minute()), int8(now.Second())))
 	}
 
+	if plr.party != nil {
+		plr.party.syncPlayersHP()
+	}
+
 	return nil
 }
 

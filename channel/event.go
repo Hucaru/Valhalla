@@ -133,7 +133,7 @@ func (e *event) PlayerCount() int {
 }
 
 func (e *event) Finished() {
-	e.finished <- struct{}{}
+	close(e.finished)
 }
 
 func (e *event) Players() []scriptPlayerWrapper {

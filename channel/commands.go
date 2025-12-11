@@ -1645,6 +1645,17 @@ func (server *Server) gmCommand(conn mnet.Client, msg string) {
 		event := createEvent(player.ID, instanceID, ids, server, program)
 		server.events[player.ID] = event
 		event.start(server)
+	case "events":
+		info := "There are currently " + strconv.Itoa(len(server.events)) + " events running"
+		conn.Send(packetMessageNotice(info))
+
+		for id, event := range server.events {
+			info := strconv.Itoa(int(id)) + " :"
+			for _, v := range event.playerIDs {
+				info += " " + strconv.Itoa(int(v))
+			}
+			conn.Send(packetMessageNotice(info))
+		}
 	case "clearInstProps":
 		player, err := server.players.GetFromConn(conn)
 
