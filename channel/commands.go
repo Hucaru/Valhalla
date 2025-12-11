@@ -1650,10 +1650,16 @@ func (server *Server) gmCommand(conn mnet.Client, msg string) {
 		conn.Send(packetMessageNotice(info))
 
 		for id, event := range server.events {
-			info := strconv.Itoa(int(id)) + " :"
+			info := "id: " + strconv.Itoa(int(id))
+			conn.Send(packetMessageNotice(info))
+
+			info = "player ids:"
 			for _, v := range event.playerIDs {
 				info += " " + strconv.Itoa(int(v))
 			}
+			conn.Send(packetMessageNotice(info))
+
+			info = "remaining time: " + time.Until(event.endTime).String()
 			conn.Send(packetMessageNotice(info))
 		}
 	case "clearInstProps":
