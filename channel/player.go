@@ -2129,13 +2129,11 @@ func (d *Player) applyQuestAct(act nx.ActBlock, npcID int32, questID int16) erro
 		d.setFame(d.fame + int16(act.Pop))
 	}
 
-	hasRandomReward := false
 	totalWeight := int32(0)
 	for _, ai := range act.Items {
 		if ai.Count > 0 {
 			if ai.Prop > 0 {
 				// Random reward candidate; accumulate weight but grant after rolling.
-				hasRandomReward = true
 				totalWeight += ai.Prop
 				continue
 			}
@@ -2159,8 +2157,9 @@ func (d *Player) applyQuestAct(act nx.ActBlock, npcID int32, questID int16) erro
 		}
 	}
 
-	if hasRandomReward && totalWeight > 0 {
-		roll := int32(d.randIntn(int(totalWeight)))
+	if totalWeight > 0 {
+		rng := rand.New(rand.NewSource(time.Now().UnixNano()))
+		roll := int32(rng.Int31n(totalWeight))
 
 		cumulative := int32(0)
 		var selectedItem *nx.ActItem
