@@ -3324,6 +3324,11 @@ func (p *Player) canReceiveItems(items []Item) bool {
 	return true
 }
 
+// CanReceiveItems reports whether the player has enough free slots for all given items.
+func (p *Player) CanReceiveItems(items []Item) bool {
+	return p.canReceiveItems(items)
+}
+
 func (d *Player) GetSlotSize(invID byte) int16 {
 	switch invID {
 	case constant.InventoryEquip:
