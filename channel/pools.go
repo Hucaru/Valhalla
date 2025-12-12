@@ -639,11 +639,11 @@ func (pool *lifePool) removeMob(poolID int32, deathType byte) {
 func (pool lifePool) showMobBossHPBar(mob *monster, plr *Player) {
 	if plr != nil {
 		if show, mobID, hp, maxHP, hpFgColour, hpBgColour := mob.hasHPBar(); show {
-			plr.Send(packetMobShowBossHP(mobID, hp, maxHP, hpFgColour, hpBgColour))
+			plr.Send(packetMapShowBossHP(mobID, hp, maxHP, hpFgColour, hpBgColour))
 		}
 	} else {
 		if show, mobID, hp, maxHP, hpFgColour, hpBgColour := mob.hasHPBar(); show {
-			pool.instance.send(packetMobShowBossHP(mobID, hp, maxHP, hpFgColour, hpBgColour))
+			pool.instance.send(packetMapShowBossHP(mobID, hp, maxHP, hpFgColour, hpBgColour))
 		}
 	}
 }
@@ -1607,18 +1607,6 @@ func packetMobRemove(spawnID int32, deathType byte) mpacket.Packet {
 	return p
 }
 
-func packetMobShowBossHP(mobID, hp, maxHP int32, colourFg, colourBg byte) mpacket.Packet {
-	p := mpacket.CreateWithOpcode(opcode.SendChannelMapEffect) // field effect
-	p.WriteByte(5)                                             // 1, tremble effect, 3 - mapEffect (string), 4 - mapSound (string), arbitary - environemnt change int32 followed by string
-	p.WriteInt32(mobID)
-	p.WriteInt32(hp)
-	p.WriteInt32(maxHP)
-	p.WriteByte(colourFg)
-	p.WriteByte(colourBg)
-
-	return p
-}
-
 func packetMapShowGameBox(displayBytes []byte) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelRoomBox)
 	p.WriteBytes(displayBytes)
@@ -1635,7 +1623,7 @@ func packetMapRemoveGameBox(charID int32) mpacket.Packet {
 }
 
 func packetShowDrop(spawnType byte, drop fieldDrop, allowPet bool) mpacket.Packet {
-	p := mpacket.CreateWithOpcode(opcode.SendChannelDrobEnterMap)
+	p := mpacket.CreateWithOpcode(opcode.SendChannelDropEnterMap)
 	p.WriteByte(spawnType) // 0 = disappears on land, 1 = normal drop, 2 = show drop, 3 = fade at top of drop
 	p.WriteInt32(drop.ID)
 
