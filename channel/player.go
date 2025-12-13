@@ -1,12 +1,14 @@
 package channel
 
 import (
+	"crypto/rand"
 	"database/sql"
+	"encoding/binary"
 	"errors"
 	"fmt"
 	"log"
 	"math"
-	"math/rand"
+	mathrand "math/rand"
 	"sort"
 	"strings"
 	"time"
@@ -268,7 +270,7 @@ type Player struct {
 	townPortalIndex int
 
 	// Per-Player RNG for deterministic randomness
-	rng *rand.Rand
+	rng *mathrand.Rand
 
 	// write-behind persistence
 	dirty DirtyBits
@@ -305,7 +307,7 @@ func (d *Player) SeedRNGDeterministic() {
 		(uint64(d.worldID) << 52)
 
 	seed := int64(seed64) // two's complement wrapping is fine for rand.Source
-	d.rng = rand.New(rand.NewSource(seed))
+	d.rng = mathrand.New(mathrand.NewSource(seed))
 }
 
 // ensureRNG guarantees d.rng is initialized. If a deterministic seed has not
@@ -2160,7 +2162,9 @@ func (d *Player) applyQuestAct(act nx.ActBlock, npcID int32, questID int16) erro
 	}
 
 	if totalWeight > 0 {
-		rng := rand.New(rand.NewSource(time.Now().UnixNano()))
+		var seed int64
+		binary.Read(rand.Reader, binary.BigEndian, &seed)
+		rng := mathrand.New(mathrand.NewSource(seed))
 		roll := int32(rng.Int31n(totalWeight))
 
 		cumulative := int32(0)
