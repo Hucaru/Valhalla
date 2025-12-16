@@ -219,6 +219,105 @@ func (server *Server) playerCashShopPurchase(conn mnet.Client, reader mpacket.Re
 
 		plr.Send(packetCashShopUpdateAmounts(plrNX, plrMaplePoints))
 
+	case opcode.RecvCashShopBuyPackage, opcode.RecvCashShopGiftPackage:
+		currencySel := reader.ReadByte()
+		pkgSN := reader.ReadInt32()
+
+		commodity, ok := nx.GetCommodity(pkgSN)
+		if !ok || commodity.Price <= 0 {
+			plr.Send(packetCashShopUpdateAmounts(plrNX, plrMaplePoints))
+			return
+		}
+
+		pkgMap := nx.GetPackages()
+		pkgItems, ok := pkgMap[pkgSN]
+		if !ok || len(pkgItems) == 0 {
+			// Fallbacks: some data sets key packages by ItemID or Commodity index instead of SN
+			if commodity.ItemID != 0 {
+				pkgItems, ok = pkgMap[commodity.ItemID]
+			}
+			if (!ok || len(pkgItems) == 0) && commodity.Index != 0 {
+				pkgItems, ok = pkgMap[commodity.Index]
+			}
+		}
+		if !ok || len(pkgItems) == 0 {
+			plr.Send(packetCashShopUpdateAmounts(plrNX, plrMaplePoints))
+			return
+		}
+
+		price := commodity.Price
+		switch currencySel {
+		case constant.CashShopNX:
+			if plrNX < price {
+				plr.Send(packetCashShopError(opcode.SendCashShopBuyFailed, constant.CashShopErrorNotEnoughCash))
+				return
+			}
+		case constant.CashShopMaplePoints:
+			if plrMaplePoints < price {
+				plr.Send(packetCashShopError(opcode.SendCashShopBuyFailed, constant.CashShopErrorNotEnoughCash))
+				return
+			}
+		default:
+			plr.Send(packetCashShopUpdateAmounts(plrNX, plrMaplePoints))
+			return
+		}
+
+		itemsToGive := make([]channel.Item, 0, len(pkgItems))
+		for _, entry := range pkgItems {
+			var itemID int32
+			count := int16(1)
+
+			if itCommodity, ok := nx.GetCommodity(entry); ok && itCommodity.ItemID != 0 {
+				itemID = itCommodity.ItemID
+				if itCommodity.Count > 0 {
+					count = int16(itCommodity.Count)
+				}
+			} else {
+				// CashPackage.img can list raw item IDs instead of SNs
+				itemID = entry
+				if snByItem, ok := nx.GetCommoditySNByItemID(itemID); ok {
+					if itCommodity, ok := nx.GetCommodity(snByItem); ok && itCommodity.Count > 0 {
+						count = int16(itCommodity.Count)
+					}
+				}
+			}
+
+			if itemID == 0 {
+				plr.Send(packetCashShopUpdateAmounts(plrNX, plrMaplePoints))
+				return
+			}
+
+			newItem, e := channel.CreateItemFromID(itemID, count)
+			if e != nil {
+				plr.Send(packetCashShopUpdateAmounts(plrNX, plrMaplePoints))
+				return
+			}
+			itemsToGive = append(itemsToGive, newItem)
+		}
+
+		if !plr.CanReceiveItems(itemsToGive) {
+			plr.Send(packetCashShopError(opcode.SendCashShopBuyFailed, constant.CashShopErrorCheckFullInventory))
+			return
+		}
+
+		for _, it := range itemsToGive {
+			if err, _ := plr.GiveItem(it); err != nil {
+				plr.Send(packetCashShopUpdateAmounts(plrNX, plrMaplePoints))
+				return
+			}
+		}
+
+		switch currencySel {
+		case constant.CashShopNX:
+			plrNX -= price
+			plr.SetNX(plrNX)
+		case constant.CashShopMaplePoints:
+			plrMaplePoints -= price
+			plr.SetMaplePoints(plrMaplePoints)
+		}
+
+		plr.Send(packetCashShopUpdateAmounts(plrNX, plrMaplePoints))
+
 	case opcode.RecvCashShopGiftItem:
 	case opcode.RecvCashShopUpdateWishlist:
 	case opcode.RecvCashShopIncreaseSlots:

@@ -1882,6 +1882,8 @@ func (d *Player) addBuff(skillID int32, level byte, delay int16) {
 	if d.buffs == nil {
 		NewCharacterBuffs(d)
 	}
+	// Ensure the buff manager points to this exact Player instance (avoid stale copies).
+	d.buffs.plr = d
 	d.buffs.AddBuff(d.ID, skillID, level, false, delay)
 }
 
@@ -3322,6 +3324,11 @@ func (p *Player) canReceiveItems(items []Item) bool {
 		}
 	}
 	return true
+}
+
+// CanReceiveItems reports whether the player has enough free slots for all given items.
+func (p *Player) CanReceiveItems(items []Item) bool {
+	return p.canReceiveItems(items)
 }
 
 func (d *Player) GetSlotSize(invID byte) int16 {
