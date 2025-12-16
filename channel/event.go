@@ -3,6 +3,7 @@ package channel
 import (
 	"log"
 	"slices"
+	"sync"
 	"time"
 
 	"github.com/dop251/goja"
@@ -25,9 +26,11 @@ type event struct {
 
 	program *goja.Program
 	vm      *goja.Runtime
+
+	closeFinish func()
 }
 
-func createEvent(id int32, instID int, players []int32, server *Server, program *goja.Program) *event {
+func createEvent(id int32, instID int, players []int32, server *Server, program *goja.Program) (*event, error) {
 	ctrl := &event{
 		id:         id,
 		finished:   make(chan struct{}),
@@ -38,49 +41,53 @@ func createEvent(id int32, instID int, players []int32, server *Server, program 
 		vm:         goja.New(),
 	}
 
+	ctrl.closeFinish = sync.OnceFunc(func() {
+		close(ctrl.finished)
+	})
+
 	ctrl.vm.SetFieldNameMapper(goja.UncapFieldNameMapper())
 	_ = ctrl.vm.Set("ctrl", ctrl)
 
 	_, err := ctrl.vm.RunProgram(ctrl.program)
 
 	if err != nil {
-		log.Println(err)
+		return nil, err
 	}
 
 	err = ctrl.vm.ExportTo(ctrl.vm.Get("start"), &ctrl.startCallback)
 
 	if err != nil {
-		log.Println(err)
+		return nil, err
 	}
 
 	err = ctrl.vm.ExportTo(ctrl.vm.Get("beforePortal"), &ctrl.beforePortalCallback)
 
 	if err != nil {
-		log.Println(err)
+		return nil, err
 	}
 
 	err = ctrl.vm.ExportTo(ctrl.vm.Get("afterPortal"), &ctrl.afterPortalCallback)
 
 	if err != nil {
-		log.Println(err)
+		return nil, err
 	}
 
 	err = ctrl.vm.ExportTo(ctrl.vm.Get("playerLeaveEvent"), &ctrl.playerLeaveEventCallback)
 
 	if err != nil {
-		log.Println(err)
+		return nil, err
 	}
 
 	err = ctrl.vm.ExportTo(ctrl.vm.Get("timeout"), &ctrl.timeoutCallback)
 
 	if err != nil {
-		log.Println(err)
+		return nil, err
 	}
 
-	return ctrl
+	return ctrl, nil
 }
 
-func (e *event) start(server *Server) {
+func (e *event) start() {
 	e.startCallback()
 
 	for _, id := range e.playerIDs {
@@ -95,25 +102,25 @@ func (e *event) start(server *Server) {
 
 		select {
 		case <-timeout.C:
-			server.dispatch <- func() {
+			e.server.dispatch <- func() {
 				for _, id := range e.playerIDs {
-					if plr, err := server.players.GetFromID(id); err == nil {
+					if plr, err := e.server.players.GetFromID(id); err == nil {
 						plr.event = nil
 						e.timeoutCallback(scriptPlayerWrapper{plr: plr, server: e.server})
 					}
 				}
 
-				delete(server.events, e.id)
+				delete(e.server.events, e.id)
 			}
 		case <-e.finished:
-			server.dispatch <- func() {
+			e.server.dispatch <- func() {
 				for _, id := range e.playerIDs {
-					if plr, err := server.players.GetFromID(id); err == nil {
+					if plr, err := e.server.players.GetFromID(id); err == nil {
 						plr.event = nil
 					}
 				}
 
-				delete(server.events, e.id)
+				delete(e.server.events, e.id)
 			}
 			return
 		}
@@ -133,7 +140,7 @@ func (e *event) PlayerCount() int {
 }
 
 func (e *event) Finished() {
-	close(e.finished)
+	e.closeFinish()
 }
 
 func (e *event) Players() []scriptPlayerWrapper {

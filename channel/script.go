@@ -601,9 +601,15 @@ func (ctrl *scriptPlayerWrapper) StartPartyQuest(name string, instID int) {
 		ids = append(ids, ctrl.plr.ID)
 	}
 
-	event := createEvent(ctrl.plr.ID, instID, ids, ctrl.server, program)
+	event, err := createEvent(ctrl.plr.ID, instID, ids, ctrl.server, program)
+
+	if err != nil {
+		log.Println(err)
+		return
+	}
+
 	ctrl.server.events[ctrl.plr.party.ID] = event
-	event.start(ctrl.server)
+	event.start()
 }
 
 func (ctrl *scriptPlayerWrapper) LeavePartyQuest() {

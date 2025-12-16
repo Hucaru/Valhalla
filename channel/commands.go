@@ -1642,9 +1642,15 @@ func (server *Server) gmCommand(conn mnet.Client, msg string) {
 			ids = append(ids, player.ID)
 		}
 
-		event := createEvent(player.ID, instanceID, ids, server, program)
+		event, err := createEvent(player.ID, instanceID, ids, server, program)
+
+		if err != nil {
+			conn.Send(packetMessageRedText(err.Error()))
+			return
+		}
+
 		server.events[player.ID] = event
-		event.start(server)
+		event.start()
 	case "events":
 		info := "There are currently " + strconv.Itoa(len(server.events)) + " events running"
 		conn.Send(packetMessageNotice(info))
