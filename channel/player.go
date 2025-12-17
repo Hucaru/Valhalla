@@ -888,8 +888,8 @@ func (d *Player) GiveItem(newItem Item) (error, Item) { // TODO: Refactor
 				if remaining <= canAdd {
 					// Full merge - all remaining items fit in this stack
 					d.use[index].amount += remaining
-					d.Send(packetInventoryAddItem(d.use[index], false))
 					d.use[index].save(d.ID)
+					d.Send(packetInventoryAddItem(d.use[index], false))
 					remaining = 0
 				} else {
 					// Partial merge - fill this stack to max and continue
@@ -964,8 +964,8 @@ func (d *Player) GiveItem(newItem Item) (error, Item) { // TODO: Refactor
 				if remaining <= canAdd {
 					// Full merge - all remaining items fit in this stack
 					d.etc[index].amount += remaining
-					d.Send(packetInventoryAddItem(d.etc[index], false))
 					d.etc[index].save(d.ID)
+					d.Send(packetInventoryAddItem(d.etc[index], false))
 					remaining = 0
 				} else {
 					// Partial merge - fill this stack to max and continue
