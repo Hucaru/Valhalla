@@ -102,6 +102,15 @@ type Players struct {
 	name map[string]*Player
 }
 
+// getItemSlotMax retrieves the actual slotMax for an item from NX data
+// Falls back to constant.MaxItemStack if not found
+func getItemSlotMax(itemID int32) int16 {
+	if nxInfo, err := nx.GetItem(itemID); err == nil && nxInfo.SlotMax > 0 {
+		return nxInfo.SlotMax
+	}
+	return constant.MaxItemStack
+}
+
 func NewPlayers() Players {
 	return Players{
 		conn: make(map[mnet.Client]*Player),
@@ -810,15 +819,6 @@ func (d *Player) GiveItem(newItem Item) (error, Item) { // TODO: Refactor
 		return base == 207
 	}
 
-	// getItemSlotMax retrieves the actual slotMax for an item from NX data
-	// Falls back to constant.MaxItemStack if not found
-	getItemSlotMax := func(itemID int32) int16 {
-		if nxInfo, err := nx.GetItem(itemID); err == nil && nxInfo.SlotMax > 0 {
-			return nxInfo.SlotMax
-		}
-		return constant.MaxItemStack
-	}
-
 	newItem.dbID = 0
 
 	findFirstEmptySlot := func(items []Item, size byte) (int16, error) {
@@ -1211,15 +1211,6 @@ func (d *Player) moveItem(start, end, amount int16, invID byte) error {
 	isRechargeable := func(itemID int32) bool {
 		base := itemID / 10000
 		return base == 207
-	}
-
-	// getItemSlotMax retrieves the actual slotMax for an item from NX data
-	// Falls back to constant.MaxItemStack if not found
-	getItemSlotMax := func(itemID int32) int16 {
-		if nxInfo, err := nx.GetItem(itemID); err == nil && nxInfo.SlotMax > 0 {
-			return nxInfo.SlotMax
-		}
-		return constant.MaxItemStack
 	}
 
 	if end == 0 { // drop item
