@@ -893,10 +893,9 @@ func (d *Player) GiveItem(newItem Item) (error, Item) { // TODO: Refactor
 					remaining = 0
 				} else {
 					// Partial merge - fill this stack to max and continue
-					addAmount := canAdd
 					d.use[index].amount = slotMax
 					d.use[index].save(d.ID)
-					remaining -= addAmount
+					remaining -= canAdd
 
 					// Create new slot for the remainder
 					slotID, err := findFirstEmptySlot(d.use, d.useSlotSize)
@@ -969,10 +968,9 @@ func (d *Player) GiveItem(newItem Item) (error, Item) { // TODO: Refactor
 					remaining = 0
 				} else {
 					// Partial merge - fill this stack to max and continue
-					addAmount := canAdd
 					d.etc[index].amount = slotMax
 					d.etc[index].save(d.ID)
-					remaining -= addAmount
+					remaining -= canAdd
 
 					// Create new slot for the remainder
 					slotID, err := findFirstEmptySlot(d.etc, d.etcSlotSize)
@@ -1215,6 +1213,15 @@ func (d *Player) moveItem(start, end, amount int16, invID byte) error {
 		return base == 207
 	}
 
+	// getItemSlotMax retrieves the actual slotMax for an item from NX data
+	// Falls back to constant.MaxItemStack if not found
+	getItemSlotMax := func(itemID int32) int16 {
+		if nxInfo, err := nx.GetItem(itemID); err == nil && nxInfo.SlotMax > 0 {
+			return nxInfo.SlotMax
+		}
+		return constant.MaxItemStack
+	}
+
 	if end == 0 { // drop item
 		item, err := d.getItem(invID, start)
 		if err != nil {
@@ -1286,10 +1293,11 @@ func (d *Player) moveItem(start, end, amount int16, invID byte) error {
 		d.Send(packetInventoryChangeItemSlot(invID, start, end))
 	} else { // destination occupied
 		if (item1.isStackable() && item2.isStackable()) && (item1.ID == item2.ID) {
-			if item1.amount == constant.MaxItemStack || item2.amount == constant.MaxItemStack { // swap
+			slotMax := getItemSlotMax(item1.ID)
+			if item1.amount == slotMax || item2.amount == slotMax { // swap
 				d.swapItems(item1, item2, start, end)
-			} else if item2.amount < constant.MaxItemStack { // try full merge
-				if item2.amount+item1.amount <= constant.MaxItemStack {
+			} else if item2.amount < slotMax { // try full merge
+				if item2.amount+item1.amount <= slotMax {
 					item2.amount = item2.amount + item1.amount
 					item2.save(d.ID)
 					d.updateItem(item2)
