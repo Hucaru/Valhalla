@@ -461,6 +461,8 @@ const (
 	MapBossPianus          int32 = 230040420
 	MapBossZakum           int32 = 280030000
 	MapBossZakumReturn     int32 = 211042300
+	MapKerningPQ           int32 = 103000800
+	MapLudiPQ              int32 = 922010100
 
 	// Invalid map ID used for portal removal
 	InvalidMap int32 = 999999999
@@ -536,4 +538,9 @@ const (
 
 	InventoryBaseSlotSize = 24
 	InventoryMaxSlotSize  = 255
+)
+
+const (
+	PortalDeath  int32 = 0
+	PortalNormal int32 = -1
 )

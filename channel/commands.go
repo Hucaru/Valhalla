@@ -1324,7 +1324,7 @@ func (server *Server) gmCommand(conn mnet.Client, msg string) {
 		var controller *npcChatController
 
 		if program, ok := server.npcScriptStore.scripts["2010007"]; ok {
-			controller, err = createNpcChatController(2010007, conn, program, plr, server.fields, server.warpPlayer, server.world)
+			controller, err = createNpcChatController(2010007, conn, program, plr, server)
 
 			if err != nil {
 				conn.Send(packetMessageRedText(err.Error()))
@@ -1570,8 +1570,115 @@ func (server *Server) gmCommand(conn mnet.Client, msg string) {
 			conn.Send(packetMessageRedText(err.Error()))
 			return
 		}
-		conn.Send(packetMessageRedText(fmt.Sprintf("%d", player.mapID)))
 
+		conn.Send(packetMessageRedText(fmt.Sprintf("%d", player.mapID)))
+	case "wrong":
+		player, err := server.players.GetFromConn(conn)
+
+		if err != nil {
+			conn.Send(packetMessageRedText(err.Error()))
+			return
+		}
+
+		player.inst.send(packetShowScreenEffect("quest/party/wrong_kor"))
+		player.inst.send(packetPlaySound("Party1/Failed"))
+	case "clear":
+		player, err := server.players.GetFromConn(conn)
+
+		if err != nil {
+			conn.Send(packetMessageRedText(err.Error()))
+			return
+		}
+
+		player.inst.send(packetShowScreenEffect("quest/party/clear"))
+		player.inst.send(packetPlaySound("Party1/Clear"))
+	case "gate":
+		player, err := server.players.GetFromConn(conn)
+
+		if err != nil {
+			conn.Send(packetMessageRedText(err.Error()))
+			return
+		}
+
+		player.inst.send(packetPortalEffectt(2, "gate"))
+	case "eventStart":
+		if len(command) != 3 {
+			conn.Send(packetMessageRedText("Usage is <name> <instance id>"))
+			return
+		}
+
+		program, ok := server.eventScriptStore.scripts[command[1]]
+
+		if !ok {
+			conn.Send(packetMessageRedText("Could not find event script: " + command[1]))
+			return
+		}
+
+		instanceID, err := strconv.Atoi(command[2])
+
+		if err != nil {
+			conn.Send(packetMessageRedText(err.Error()))
+			return
+		}
+
+		player, err := server.players.GetFromConn(conn)
+
+		if err != nil {
+			conn.Send(packetMessageRedText(err.Error()))
+			return
+		}
+
+		ids := []int32{}
+
+		if player.party != nil {
+			for i, id := range player.party.PlayerID {
+				if player.mapID == player.party.MapID[i] && player.party.players[i] != nil {
+					if player.inst.id == player.party.players[i].inst.id {
+						ids = append(ids, id)
+					}
+				}
+			}
+		} else {
+			ids = append(ids, player.ID)
+		}
+
+		event, err := createEvent(player.ID, instanceID, ids, server, program)
+
+		if err != nil {
+			conn.Send(packetMessageRedText(err.Error()))
+			return
+		}
+
+		server.events[player.ID] = event
+		event.start()
+	case "events":
+		info := "There are currently " + strconv.Itoa(len(server.events)) + " events running"
+		conn.Send(packetMessageNotice(info))
+
+		for id, event := range server.events {
+			info := "id: " + strconv.Itoa(int(id))
+			conn.Send(packetMessageNotice(info))
+
+			info = "player ids:"
+			for _, v := range event.playerIDs {
+				info += " " + strconv.Itoa(int(v))
+			}
+			conn.Send(packetMessageNotice(info))
+
+			info = "remaining time: " + time.Until(event.endTime).String()
+			conn.Send(packetMessageNotice(info))
+		}
+	case "clearInstProps":
+		player, err := server.players.GetFromConn(conn)
+
+		if err != nil {
+			conn.Send(packetMessageRedText(err.Error()))
+			return
+		}
+
+		for i := range player.inst.properties {
+			delete(player.inst.properties, i)
+		}
 	default:
 		conn.Send(packetMessageRedText("Unknown gm command " + command[0]))
 	}
@@ -1621,6 +1728,10 @@ func convertMapNameToID(name string) int32 {
 		return constant.MapBossPianus
 	case "zakum":
 		return constant.MapBossZakum
+	case "kerningpq":
+		return constant.MapKerningPQ
+	case "ludipq":
+		return constant.MapLudiPQ
 	default:
 		return 180000000
 	}

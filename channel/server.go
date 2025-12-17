@@ -26,24 +26,26 @@ type rates struct {
 
 // Server state
 type Server struct {
-	id             byte
-	worldName      string
-	dispatch       chan func()
-	world          mnet.Server
-	ip             []byte
-	port           int16
-	maxPop         int16
-	migrating      []mnet.Client
-	players        Players
-	channels       [20]internal.Channel
-	cashShop       internal.CashShop
-	fields         map[int32]*field
-	header         string
-	npcChat        map[mnet.Client]*npcChatController
-	npcScriptStore *scriptStore
-	parties        map[int32]*party
-	guilds         map[int32]*guild
-	rates          rates
+	id               byte
+	worldName        string
+	dispatch         chan func()
+	world            mnet.Server
+	ip               []byte
+	port             int16
+	maxPop           int16
+	migrating        []mnet.Client
+	players          Players
+	channels         [20]internal.Channel
+	cashShop         internal.CashShop
+	fields           map[int32]*field
+	header           string
+	npcChat          map[mnet.Client]*npcChatController
+	npcScriptStore   *scriptStore
+	eventScriptStore *scriptStore
+	parties          map[int32]*party
+	guilds           map[int32]*guild
+	events           map[int32]*event
+	rates            rates
 }
 
 // Initialise the server
@@ -155,6 +157,7 @@ func (server *Server) Initialise(work chan func(), dbuser, dbpassword, dbaddress
 	server.players = NewPlayers()
 	server.parties = make(map[int32]*party)
 	server.guilds = make(map[int32]*guild)
+	server.events = make(map[int32]*event)
 
 	go scheduleBoats(server)
 }
@@ -166,7 +169,16 @@ func (server *Server) loadScripts() {
 	_ = server.npcScriptStore.loadScripts()
 	elapsed := time.Since(start)
 	log.Println("Loaded npc scripts in", elapsed)
+
 	go server.npcScriptStore.monitor(func(name string, program *goja.Program) {})
+
+	server.eventScriptStore = createScriptStore("scripts/event", server.dispatch) // make folder a config param
+	start = time.Now()
+	_ = server.eventScriptStore.loadScripts()
+	elapsed = time.Since(start)
+	log.Println("Loaded event scripts in", elapsed)
+
+	go server.eventScriptStore.monitor(func(name string, program *goja.Program) {})
 }
 
 // SendCountdownToPlayers - Send a countdown to players that appears as a clock

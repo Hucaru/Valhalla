@@ -92,7 +92,7 @@ const (
 	SendChannelNpcRemove               byte = 0x98
 	SendChannelNpcControl              byte = 0x99
 	SendChannelNpcMovement             byte = 0x9B
-	SendChannelDrobEnterMap            byte = 0xA4
+	SendChannelDropEnterMap            byte = 0xA4
 	SendChannelDropExitMap             byte = 0xA5
 	SendChannelAffectedAreaCreate      byte = 0xAD
 	SendChannelAffectedAreaRemove      byte = 0xAE

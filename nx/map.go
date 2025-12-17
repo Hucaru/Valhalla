@@ -51,6 +51,19 @@ type Foothold struct {
 	Prev, Next     int
 }
 
+type Area struct {
+	ID             int
+	X1, Y1, X2, Y2 int16
+}
+
+func (area Area) Inside(x, y int16) bool {
+	if x >= area.X1 && x <= area.X2 && y >= area.Y1 && y <= area.Y2 {
+		return true
+	}
+
+	return false
+}
+
 // Map data from nx
 type Map struct {
 	Town         bool
@@ -68,6 +81,7 @@ type Map struct {
 	Portals   []Portal
 	Reactors  []Reactor
 	Footholds []Foothold
+	Areas     []Area
 
 	FieldLimit                                int64
 	VRRight, VRTop, VRLeft, VRBottom, VRLimit int64
@@ -104,6 +118,10 @@ func extractMaps(nodes []gonx.Node, textLookup []string) map[int32]Map {
 				if !valid {
 					log.Println("Invalid node search:", search)
 				}
+
+				gonx.FindNode(search+"/"+name+"/area", nodes, textLookup, func(node *gonx.Node) {
+					mapItem.Areas = getMapAreas(node, nodes, textLookup)
+				})
 
 				gonx.FindNode(search+"/"+name+"/life", nodes, textLookup, func(node *gonx.Node) {
 					mapItem.NPCs, mapItem.Mobs = getMapLifes(node, nodes, textLookup)
@@ -222,6 +240,45 @@ func getMapInfo(node *gonx.Node, nodes []gonx.Node, textLookup []string) Map {
 	}
 
 	return m
+}
+
+func getMapAreas(node *gonx.Node, nodes []gonx.Node, textLookup []string) []Area {
+	areas := make([]Area, node.ChildCount)
+
+	for i := uint32(0); i < uint32(node.ChildCount); i++ {
+		areaObj := nodes[node.ChildID+i]
+
+		areaNumber, err := strconv.Atoi(textLookup[areaObj.NameID])
+
+		if err != nil {
+			fmt.Println("Skiping area as ID is not a number")
+			continue
+		}
+
+		area := Area{ID: areaNumber}
+
+		for j := uint32(0); j < uint32(areaObj.ChildCount); j++ {
+			option := nodes[areaObj.ChildID+j]
+			optionName := textLookup[option.NameID]
+
+			switch optionName {
+			case "x1":
+				area.X1 = gonx.DataToInt16(option.Data)
+			case "y1":
+				area.Y1 = gonx.DataToInt16(option.Data)
+			case "x2":
+				area.X2 = gonx.DataToInt16(option.Data)
+			case "y2":
+				area.Y2 = gonx.DataToInt16(option.Data)
+			default:
+				fmt.Println("Unsupported NX portal option:", optionName, "->", option.Data)
+			}
+		}
+
+		areas[i] = area
+	}
+
+	return areas
 }
 
 func getMapPortals(node *gonx.Node, nodes []gonx.Node, textLookup []string) []Portal {
