@@ -9,8 +9,8 @@ var sel = npc.sendMenu(
 )
 
 if (sel === 0) { // What kind of event is it?
-    npc.sendBackNext("This event is to celebrate the school vacation! It sucks to be stuck in a room all day, right? So why don't you live vicariously through this exciting vacation event!? Check the event dates on the web site!", false, true)
-    npc.sendBackNext("You can obtain various items and mesos from winning in the event! All the event participants will receive trophies while the winners will receive special prizes! Good luck.", true, true)
+    npc.sendNext("This event is to celebrate the school vacation! It sucks to be stuck in a room all day, right? So why don't you live vicariously through this exciting vacation event!? Check the event dates on the web site!")
+    npc.sendBackNext("You can obtain various items and mesos from winning in the event! All the event participants will receive trophies while the winners will receive special prizes! Good luck.")
 } else if (sel === 1) { // Explain the event to me
     var gameSel = npc.sendMenu(
         "There are a lot of available events! Wouldn't it be helpful to know the game instructions in advance? Which game do you want to hear the instruction for?",

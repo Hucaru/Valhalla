@@ -12,6 +12,6 @@ if (plr.getQuestStatus(2052) !== 1 && plr.getQuestStatus(2053) !== 1 && plr.getQ
         }
         plr.warp(map);
     } else {
-        npc.sendBackNext("Once I took my hand off the statue it got quiet, as if nothing happened.", true, true);
+        npc.sendBackNext("Once I took my hand off the statue it got quiet, as if nothing happened.");
     }
 }

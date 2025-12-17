@@ -6,11 +6,11 @@ var map401 = 108000401;
 var map402 = 108000402;
 
 if (plr.job() == 400 && plr.level() >= 30 && plr.itemCount(HeroLetter) >= 1 && plr.itemCount(DarkMarble) == 0 && plr.itemCount(4031012) == 0) {
-    npc.sendBackNext("Hmmm...it is definitely the letter from #bDark Lord#k...so you came all the way here to take the test and make the 2nd job advancement as the Thief. Alright, I'll explain the test to you. Don't sweat it too much, it's not that complicated.", false, true)
+    npc.sendNext("Hmmm...it is definitely the letter from #bDark Lord#k...so you came all the way here to take the test and make the 2nd job advancement as the Thief. Alright, I'll explain the test to you. Don't sweat it too much, it's not that complicated.")
     
-    npc.sendBackNext("I'll send you to a hidden map. You'll see monsters you don't normally see. They look the same like the regular ones, but with a totally different attitude. They neither boost your experience level nor provide you with item.", true, true)
+    npc.sendBackNext("I'll send you to a hidden map. You'll see monsters you don't normally see. They look the same like the regular ones, but with a totally different attitude. They neither boost your experience level nor provide you with item.")
     
-    npc.sendBackNext("You'll be able to acquire a marble called #b#t4031013##k while knocking down those monsters. It is a special marble made out of their sinister, evil minds. Collect 30 of those, and then go talk to a colleague of mine in there. That's how you pass the test.", true, true)
+    npc.sendBackNext("You'll be able to acquire a marble called #b#t4031013##k while knocking down those monsters. It is a special marble made out of their sinister, evil minds. Collect 30 of those, and then go talk to a colleague of mine in there. That's how you pass the test.")
     
     if (npc.sendYesNo("Once you go inside, you can't leave until you take care of your mission. If you die, your experience level will decrease..so you better really buckle up and get ready...well, do you want to go for it now?")) {
         if (npc.getPlayerCount(map400) == 0) {
