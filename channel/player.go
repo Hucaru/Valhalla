@@ -1,12 +1,14 @@
 package channel
 
 import (
+	"crypto/rand"
 	"database/sql"
+	"encoding/binary"
 	"errors"
 	"fmt"
 	"log"
 	"math"
-	"math/rand"
+	mathrand "math/rand"
 	"sort"
 	"strings"
 	"time"
@@ -268,7 +270,7 @@ type Player struct {
 	townPortalIndex int
 
 	// Per-Player RNG for deterministic randomness
-	rng *rand.Rand
+	rng *mathrand.Rand
 
 	// write-behind persistence
 	dirty DirtyBits
@@ -307,7 +309,7 @@ func (d *Player) SeedRNGDeterministic() {
 		(uint64(d.worldID) << 52)
 
 	seed := int64(seed64) // two's complement wrapping is fine for rand.Source
-	d.rng = rand.New(rand.NewSource(seed))
+	d.rng = mathrand.New(mathrand.NewSource(seed))
 }
 
 // ensureRNG guarantees d.rng is initialized. If a deterministic seed has not
@@ -2133,31 +2135,23 @@ func (d *Player) applyQuestAct(act nx.ActBlock, npcID int32, questID int16) erro
 		d.setFame(d.fame + int16(act.Pop))
 	}
 
-	hasRandomReward := false
 	totalWeight := int32(0)
 	for _, ai := range act.Items {
-		if ai.Prop > 0 && ai.Count > 0 {
-			hasRandomReward = true
-			totalWeight += ai.Prop
-			break
-		}
-
-		if ai.Count > 0 && ai.Prop == 0 {
-			if it, err := CreateItemFromID(ai.ID, int16(ai.Count)); err == nil {
-				if giveErr, _ := d.GiveItem(it); giveErr != nil {
-					d.Send(packetQuestActionResult(constant.QuestActionInventoryFull, questID, npcID, nil))
-					return giveErr
-				}
-			}
-		}
-
 		if ai.Count > 0 {
+			if ai.Prop > 0 {
+				// Random reward candidate; accumulate weight but grant after rolling.
+				totalWeight += ai.Prop
+				continue
+			}
+
+			// Guaranteed reward (no weight specified).
 			if it, err := CreateItemFromID(ai.ID, int16(ai.Count)); err == nil {
 				if giveErr, _ := d.GiveItem(it); giveErr != nil {
 					d.Send(packetQuestActionResult(constant.QuestActionInventoryFull, questID, npcID, nil))
 					return giveErr
 				}
 			}
+			continue
 		}
 
 		if ai.Count < 0 {
@@ -2169,8 +2163,11 @@ func (d *Player) applyQuestAct(act nx.ActBlock, npcID int32, questID int16) erro
 		}
 	}
 
-	if hasRandomReward {
-		roll := int32(d.randIntn(int(totalWeight)))
+	if totalWeight > 0 {
+		var seed int64
+		binary.Read(rand.Reader, binary.BigEndian, &seed)
+		rng := mathrand.New(mathrand.NewSource(seed))
+		roll := int32(rng.Int31n(totalWeight))
 
 		cumulative := int32(0)
 		var selectedItem *nx.ActItem
