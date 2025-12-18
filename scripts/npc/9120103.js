@@ -19,9 +19,9 @@ if (town_choice === 0) {                     // ----- Plastic surgery -----
     if (plr.itemCount(5152056) > 0) {
         plr.takeItem(5152056, 0, 1, 1)          // remove one coupon
         plr.setFace(new_face)
-        npc.sendBackNext("Okay, the surgery's done. Here's a mirror--check it out. What a masterpiece, no? Haha! If you ever get tired of this look, please feel free to come visit me again.", false, true)
+        npc.sendNext("Okay, the surgery's done. Here's a mirror--check it out. What a masterpiece, no? Haha! If you ever get tired of this look, please feel free to come visit me again.")
     } else {
-        npc.sendBackNext("Hmm ... it looks like you don't have the coupon specifically for this place. Sorry to say this, but without the coupon, there's no plastic surgery for you...", false, true)
+        npc.sendNext("Hmm ... it looks like you don't have the coupon specifically for this place. Sorry to say this, but without the coupon, there's no plastic surgery for you...")
     }
 
 } else {                                     // ----- Cosmetic lenses -----
@@ -34,8 +34,8 @@ if (town_choice === 0) {                     // ----- Plastic surgery -----
     if (plr.itemCount(5152046) > 0) {
         plr.takeItem(5152046, 0, 1, 1)          // remove one coupon
         plr.setFace(new_face)
-        npc.sendBackNext("Here's the mirror. What do you think? I think they look tailor-made for you. I have to say, you look faaabulous. Please come again.", false, true)
+        npc.sendNext("Here's the mirror. What do you think? I think they look tailor-made for you. I have to say, you look faaabulous. Please come again.")
     } else {
-        npc.sendBackNext("I'm sorry, but I don't think you have our cosmetic lens coupon with you right now. Without the coupon, I'm afraid I can't do it for you..", false, true)
+        npc.sendNext("I'm sorry, but I don't think you have our cosmetic lens coupon with you right now. Without the coupon, I'm afraid I can't do it for you..")
     }
 }

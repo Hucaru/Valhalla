@@ -12,8 +12,8 @@ if (plr.job() === 0) {
         if (npc.sendYesNo("You definitely have the look of a Magician. You may not be there yet, but I can see the Magician in you. Do you want to become a #rMagician#k?")) {
             plr.setJob(200)
             plr.giveItem(1372000, 1)
-            npc.sendBackNext("Alright, you're a Magician from here on out, since I, Grendel the Really Old, allow you so. It isn't much, but I'll give you a little bit of what I have...", true, true)
-            npc.sendBackNext("You have just equipped yourself with much more magical power. Please keep training and make yourself much better... I'll be watching you from here and there...", true, true)
+            npc.sendBackNext("Alright, you're a Magician from here on out, since I, Grendel the Really Old, allow you so. It isn't much, but I'll give you a little bit of what I have...")
+            npc.sendBackNext("You have just equipped yourself with much more magical power. Please keep training and make yourself much better... I'll be watching you from here and there...")
             npc.sendOk("I also gave you a little bit of #bSP#k. Open the #bSkill Menu#k at the bottom-left to learn skills. Some skills require others first, so choose wisely.")
         } else {
             npc.sendOk("Come back once you have thought about it some more.")
@@ -24,7 +24,7 @@ if (plr.job() === 0) {
 
 } else if (plr.job() === 200) {
     if (plr.getLevel() >= 30) {
-        npc.sendBackNext("You got back here safely. Well done. I knew you'd pass your early trials very easily... now, I can make you much stronger.", false, true)
+        npc.sendNext("You got back here safely. Well done. I knew you'd pass your early trials very easily... now, I can make you much stronger.")
 
         var explain = npc.sendMenu(
             "When you are ready, choose your path.",
@@ -58,8 +58,8 @@ if (plr.job() === 0) {
 
             if (npc.sendYesNo("So you want to advance as the #b" + jobName + "#k? Once you decide, you can't go back. Are you sure?")) {
                 plr.setJob(jobId)
-                npc.sendBackNext("From here on out, you have become the #b" + jobName + "#k. Continue your studies, and I may one day make you even more powerful.", true, true)
-                npc.sendBackNext("Your #bUse#k and #bETC#k inventories have been expanded. Your Max MP has also increased. Go check it out!", true, true)
+                npc.sendBackNext("From here on out, you have become the #b" + jobName + "#k. Continue your studies, and I may one day make you even more powerful.")
+                npc.sendBackNext("Your #bUse#k and #bETC#k inventories have been expanded. Your Max MP has also increased. Go check it out!")
                 npc.sendOk("I have also given you a little bit of #bSP#k. Open the #bSkill Menu#k to enhance your 2nd job skills. Some skills require others first; remember that.")
                 picked = branch
             } else {

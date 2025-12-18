@@ -13,7 +13,7 @@ if (plr.checkQuestStatus(Quest_Roger_Apple, 1) && plr.itemCount(2010000) >= 1) {
     npc.sendOk("You haven't eaten the #bApple#k that I gave you yet. Talk to me once you have!")
 } else if (plr.checkQuestStatus(Quest_Roger_Apple, 1) && plr.itemCount(2010000) == 0) {
     npc.sendBackNext("Easy, right? You can set up a #bhotkey#k in the quickslots to the lower right of the screen to make it even easier. Oh, and your HP will automatically recover if you stand still, though it takes time.")
-    npc.sendBackNext("Alright! I suppose after all that learning, you should receive a reward. This gift is a must for your travel in Maple World, so thank me! Use this for emergencies!\r\n\r\n#e#rREWARD:#k\r\n#b3 Apples\r\n+10 EXP#k", true, true)
+    npc.sendBackNext("Alright! I suppose after all that learning, you should receive a reward. This gift is a must for your travel in Maple World, so thank me! Use this for emergencies!\r\n\r\n#e#rREWARD:#k\r\n#b3 Apples\r\n+10 EXP#k")
     plr.giveItem(2010000, 3)
     plr.giveEXP(10)
     plr.completeQuest(Quest_Roger_Apple)
@@ -21,7 +21,7 @@ if (plr.checkQuestStatus(Quest_Roger_Apple, 1) && plr.itemCount(2010000) >= 1) {
     npc.sendOk("Well, that's about all I can teach you. I know it's sad, but it is time to say goodbye. Take good care of yourself and do well, my friend!")
 } else if (plr.checkQuestStatus(Quest_Roger_Apple, 0)) {
     npc.sendBackNext("Hey there, what's up! The name's Roger, and I'm here to teach you new, wide-eyed Maplers lots of cool things to help you get started.")
-    npc.sendBackNext("You are asking who made me do this? No one! It's just all out of the overflowing kindness of my heart. Haha!", true, true)
+    npc.sendBackNext("You are asking who made me do this? No one! It's just all out of the overflowing kindness of my heart. Haha!")
     var ac = npc.sendYesNo("So... Let me just do this for fun! Abracadabra!")
     if (ac) {
         plr.startQuest(Quest_Roger_Apple)

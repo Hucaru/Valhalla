@@ -1,4 +1,4 @@
-npc.sendBackNext("Hi there! This cab is for VIP customers only. Instead of just taking you to different towns like the regular cabs, we offer a much better service worthy of VIP class. It's a bit pricey, but... for only 10,000 mesos, we'll take you safely to #bAnt Tunnel#k.", false, true)
+npc.sendNext("Hi there! This cab is for VIP customers only. Instead of just taking you to different towns like the regular cabs, we offer a much better service worthy of VIP class. It's a bit pricey, but... for only 10,000 mesos, we'll take you safely to #bAnt Tunnel#k.")
 
 var cost = 10000
 var discountText = "10,000 mesos"

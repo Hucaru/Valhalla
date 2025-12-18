@@ -5,7 +5,7 @@ var stage4 = +eim.stage4 || 0;
 if (isLeader && stage4) {
     // Reactor = action1 flow
     npc.sendNext("Wow, not a single #b#o9300010##k left! I'm impressed! I can open the portal to the next stage now.")
-    npc.sendBackNext("The portal that leads you to the next stage is now open.", true, true)
+    npc.sendBackNext("The portal that leads you to the next stage is now open.")
     eim.stage4 = "1";
     // Portal open visual handled engine-side
 } else {

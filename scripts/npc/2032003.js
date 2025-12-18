@@ -1,4 +1,4 @@
-npc.sendBackNext("How did you go through such a treacherous road to get here? Incredible! #bThe Breath of Lava#k is here. Please give this to my brother. You'll be meeting the one you've been looking for very soon.", false, true)
+npc.sendNext("How did you go through such a treacherous road to get here? Incredible! #bThe Breath of Lava#k is here. Please give this to my brother. You'll be meeting the one you've been looking for very soon.")
 
 var itemBreathOfLava = 4031062
 var returnMap = 211042300

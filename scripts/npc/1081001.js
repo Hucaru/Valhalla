@@ -1,4 +1,4 @@
-npc.sendBackNext("So you want to leave #b#m110000000##k? If you want, I can take you back to #bLith Harbor#k.", false, true)
+npc.sendNext("So you want to leave #b#m110000000##k? If you want, I can take you back to #bLith Harbor#k.")
 
 if (npc.sendYesNo("Are you sure you want to return to #b#m104000000##k?")) {
     plr.warp(104000000)

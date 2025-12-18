@@ -4,6 +4,6 @@ if (plr.getLevel() < 50) {
     npc.sendNext("I am not qualified to judge you. If you want to explore Zakum, you will need to find a master of your job class to be your guide.");
 } else {
     npc.sendNext("You should be able to stand against Zakum. Find #b#p2030008##k deep within the Dead Mine. I will allow it.");
-    npc.sendBackNext("Then I will send you to #bThe Door to Zakum#k, where #b#p2030008##k is.", true, true);
+    npc.sendBackNext("Then I will send you to #bThe Door to Zakum#k, where #b#p2030008##k is.");
     plr.warp(211042300);
 }
