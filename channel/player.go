@@ -1051,7 +1051,7 @@ func (d *Player) takeItem(id int32, slot int16, amount int16, invID byte) (Item,
 	}
 
 	item.amount -= amount
-	if item.amount == 0 {
+	if item.amount == 0 && !item.isRechargeable() {
 		d.removeItem(item)
 	} else {
 		d.updateItemStack(item)
@@ -1231,9 +1231,15 @@ func (d *Player) moveItem(start, end, amount int16, invID byte) error {
 		dropItem.amount = amount
 		dropItem.dbID = 0
 
-		_, err = d.takeItem(item.ID, item.slotID, amount, item.invID)
+		takenItem, err := d.takeItem(item.ID, item.slotID, amount, item.invID)
 		if err != nil {
 			return fmt.Errorf("unable to take Item")
+		}
+
+		// For rechargeable items that reach 0 amount, explicitly remove them
+		// to prevent duplication exploit (takeItem keeps them at 0 for skill usage)
+		if takenItem.isRechargeable() && takenItem.amount == 0 {
+			d.removeItem(takenItem)
 		}
 
 		d.inst.dropPool.createDrop(dropSpawnNormal, dropFreeForAll, 0, d.pos, true, d.ID, 0, dropItem)
