@@ -891,13 +891,13 @@ func (d *Player) GiveItem(newItem Item) (error, Item) { // TODO: Refactor
 					// Full merge - all remaining items fit in this stack
 					d.use[index].amount += remaining
 					d.use[index].save(d.ID)
-					d.Send(packetInventoryAddItem(d.use[index], false))
+					d.Send(packetInventoryAddItem(d.use[index], true))
 					remaining = 0
 				} else {
 					// Partial merge - fill this stack to max and continue
 					d.use[index].amount = slotMax
 					d.use[index].save(d.ID)
-					d.Send(packetInventoryAddItem(d.use[index], false))
+					d.Send(packetInventoryAddItem(d.use[index], true))
 					remaining -= canAdd
 
 					// Create new slot for the remainder
@@ -967,13 +967,13 @@ func (d *Player) GiveItem(newItem Item) (error, Item) { // TODO: Refactor
 					// Full merge - all remaining items fit in this stack
 					d.etc[index].amount += remaining
 					d.etc[index].save(d.ID)
-					d.Send(packetInventoryAddItem(d.etc[index], false))
+					d.Send(packetInventoryAddItem(d.etc[index], true))
 					remaining = 0
 				} else {
 					// Partial merge - fill this stack to max and continue
 					d.etc[index].amount = slotMax
 					d.etc[index].save(d.ID)
-					d.Send(packetInventoryAddItem(d.etc[index], false))
+					d.Send(packetInventoryAddItem(d.etc[index], true))
 					remaining -= canAdd
 
 					// Create new slot for the remainder
