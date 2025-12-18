@@ -1051,7 +1051,7 @@ func (d *Player) takeItem(id int32, slot int16, amount int16, invID byte) (Item,
 	}
 
 	item.amount -= amount
-	if item.amount == 0 && !item.isRechargeable() {
+	if item.amount == 0 {
 		d.removeItem(item)
 	} else {
 		d.updateItemStack(item)
