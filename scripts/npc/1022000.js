@@ -6,16 +6,13 @@
 // Beginner -> Warrior (Level 10+)
 if (plr.job() === 0) {
     if (plr.getLevel() >= 10) {
-        npc.sendBackNext(
-            "Do you wish to become a Warrior? It is an important and final choice. You will not be able to turn back.",
-            false, true
-        )
+        npc.sendNext("Do you wish to become a Warrior? It is an important and final choice. You will not be able to turn back.")
         if (npc.sendYesNo("You definitely have the look of a Warrior. You may not be there yet, but I can see the Warrior in you. Do you want to become a #rWarrior#k?")) {
             plr.setJob(100)
             // Starter sword
             plr.giveItem(1302000, 1)
-            npc.sendBackNext("Alright! You are a Warrior from here on out... Here's a little bit of my power to you... Haahhhh!", true, true)
-            npc.sendBackNext("I have added slots for your equipment and etc. inventory. You have also gotten much stronger. Train harder, and you may one day reach the very top. I'll be watching you from afar. Please work hard.", true, true)
+            npc.sendBackNext("Alright! You are a Warrior from here on out... Here's a little bit of my power to you... Haahhhh!")
+            npc.sendBackNext("I have added slots for your equipment and etc. inventory. You have also gotten much stronger. Train harder, and you may one day reach the very top. I'll be watching you from afar. Please work hard.")
             npc.sendOk("I also gave you a little bit of #bSP#k. Open the #bSkill Menu#k at the bottom-left to learn skills. Some skills require others first, so choose wisely.")
         } else {
             npc.sendOk("Come back once you have thought about it some more.")
@@ -27,7 +24,7 @@ if (plr.job() === 0) {
 // Warrior (1st job) -> 2nd job (Level 30+): Fighter / Page / Spearman
 } else if (plr.job() === 100) {
     if (plr.getLevel() >= 30) {
-        npc.sendBackNext("Whoa, you have definitely grown up! You don't look small and weak anymore... I can feel your presence as a Warrior!", false, true)
+        npc.sendNext("Whoa, you have definitely grown up! You don't look small and weak anymore... I can feel your presence as a Warrior!")
 
         var choice = npc.sendMenu(
             "When you are ready, choose your path.",
@@ -57,7 +54,7 @@ if (plr.job() === 0) {
 
             if (npc.sendYesNo("So you want to advance as a #b" + jobName + "#k? Once you decide, you can't go back. Are you sure?")) {
                 plr.setJob(jobId)
-                npc.sendBackNext("Alright! You are now a #b" + jobName + "#k! Keep training and hone your skills.", true, true)
+                npc.sendBackNext("Alright! You are now a #b" + jobName + "#k! Keep training and hone your skills.")
                 npc.sendOk("I have also given you a little bit of #bSP#k. Open the #bSkill Menu#k to enhance your 2nd job skills. Some skills require others first; remember that.")
                 branch = ready
             } else {

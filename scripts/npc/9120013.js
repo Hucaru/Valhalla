@@ -13,7 +13,7 @@ if (plr.getInventoryFree(4) < 1) {        // 4 == MapleInventoryType.ETC
     npc.sendOk("Please make sure you have at least 1 empty slot in your Etc tab.")
 }
 
-npc.sendBackNext("Did you get them all? Are you going to try to answer all of my questions?", false, true)
+npc.sendNext("Did you get them all? Are you going to try to answer all of my questions?")
 
 // Cost confirmation  
 if (plr.itemCount(2020001) < 300) {
@@ -39,7 +39,7 @@ if (sel3 !== 0) {
 }
 
 // Success  
-npc.sendBackNext("Wow, you answered all the questions correctly! I may not be the most fond of humans, but I HATE breaking a promise! So, as promised, here's the Orange Marble. You earned it!", true, true)
+npc.sendBackNext("Wow, you answered all the questions correctly! I may not be the most fond of humans, but I HATE breaking a promise! So, as promised, here's the Orange Marble. You earned it!")
 
 // Remove chickens & give marble  
 plr.removeItemsByID(2020001, 300)

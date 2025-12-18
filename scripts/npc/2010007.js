@@ -17,15 +17,15 @@ if (plr.inGuild() && plr.guildRank() == 1) {
             break
     }
 } else {
-    npc.sendBackNext("Hey...are you interested in GUILDS by any chance?", false, true)
+    npc.sendNext("Hey...are you interested in GUILDS by any chance?")
     npc.sendSelection("#b#L0#What's a Guild#l\r\n#L1#What do I do to form a guild?#l\r\n#L2#I want to start a guild#l")
     
     switch(npc.selection()) {
         case 0:
-            npc.sendBackNext("A guild is....", true, false)
+            npc.sendBack("A guild is....")
             break;
         case 1:
-            npc.sendBackNext("In order to form a guild you need to be in a party of 5 people and the party leader and have at least 5,000,000 mesos.", true, false)
+            npc.sendBack("In order to form a guild you need to be in a party of 5 people and the party leader and have at least 5,000,000 mesos.")
             break;
         case 2:
             if (npc.sendYesNo("Are you sure wish to form a guild?")) {

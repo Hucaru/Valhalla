@@ -17,5 +17,5 @@ if (npc.sendYesNo(
         plr.warp(193000000);
     }
 } else {
-    npc.sendBackNext("No problem. If you change your mind, I can grant access anytime for #b1,000,000 mesos#k.", false, true);
+    npc.sendNext("No problem. If you change your mind, I can grant access anytime for #b1,000,000 mesos#k.");
 }

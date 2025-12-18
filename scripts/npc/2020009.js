@@ -7,5 +7,5 @@ if (Math.floor(plr.job() / 100 % 10) != 2) {
 }
 
 npc.sendNext("You should be able to stand against Zakum. Find #b#p2030008##k deep within the Dead Mine. I will allow it.");
-npc.sendBackNext("Then I will send you to #bThe Door to Zakum#k, where #b#p2030008##k is.", true, true);
+npc.sendBackNext("Then I will send you to #bThe Door to Zakum#k, where #b#p2030008##k is.");
 plr.warp(211042300);

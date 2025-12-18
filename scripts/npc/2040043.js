@@ -21,8 +21,8 @@ if (!isLeader) {
 // Leader flow
 if (stageStatus === null || !problemActive) {
     // First time, create problem
-    npc.sendBackNext("In the fifth stage, you will find a number of platforms. Of these platforms, #b3 are connected to the portal that leads to the next stage. 3 members of your party must stand in the center of these 3 platforms#k. \r\nRemember, exactly 3 members must be on a platform. No more, no less. While they are on the platform, the party leader must #bdouble-click on me to check whether the members have chosen the right platform#k. Good luck!", false, true);
-    npc.sendBackNext("The #rthree numbers in the answer to my question are the key to opening the portal to the next stage. \r\n#r" + puzzle[num] + " = ?#k \r\nPlease find the correct answer.", true, true);    
+    npc.sendNext("In the fifth stage, you will find a number of platforms. Of these platforms, #b3 are connected to the portal that leads to the next stage. 3 members of your party must stand in the center of these 3 platforms#k. \r\nRemember, exactly 3 members must be on a platform. No more, no less. While they are on the platform, the party leader must #bdouble-click on me to check whether the members have chosen the right platform#k. Good luck!");
+    npc.sendBackNext("The #rthree numbers in the answer to my question are the key to opening the portal to the next stage. \r\n#r" + puzzle[num] + " = ?#k \r\nPlease find the correct answer.");    
 
     // set vars (only runs on first click)
     eim.setProperty("stage5", "0");

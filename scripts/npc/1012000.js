@@ -4,7 +4,7 @@ var towns = [104000000, 102000000, 101000000, 103000000]
 var prices_text = ["800", "1,000", "1,000", "1,200"]
 var prices_num = [800, 1000, 1000, 1200]
 
-npc.sendBackNext("How's it going? I drive the Regular Cab. If you want to go from town to town safely and fast, then ride our cab. We'll gladly take you to your destination with an affordable price", false, true)
+npc.sendNext("How's it going? I drive the Regular Cab. If you want to go from town to town safely and fast, then ride our cab. We'll gladly take you to your destination with an affordable price")
 
 var text = "Choose your destination, for fees will change from place to place.\r\n"
 
@@ -22,5 +22,5 @@ if (npc.sendYesNo("You don't have anything else to do here, huh? Do you really w
         plr.warp(towns[npc.selection()])
     }
 } else {
-    npc.sendBackNext("There's a lot to see in this town, too. Come back and find us when you need to go to a different town.", false, true)
+    npc.sendNext("There's a lot to see in this town, too. Come back and find us when you need to go to a different town.")
 }
