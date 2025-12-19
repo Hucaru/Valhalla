@@ -3123,6 +3123,12 @@ func (server *Server) npcShop(conn mnet.Client, reader mpacket.Reader) {
 		// Calculate base amount to fill
 		baseToFill := int(slotMax - it.amount)
 		
+		// Don't allow recharge if already at max (even with bonus)
+		if baseToFill <= 0 {
+			plr.Send(packetNpcShopResult(shopRechargeIncorrectRequest))
+			return
+		}
+		
 		// Apply recharge bonus from passive skills (extra stars)
 		bonus := plr.getRechargeBonus()
 		toFill := baseToFill + int(bonus)
