@@ -494,18 +494,17 @@ func (d *Player) getWeaponMasterySkillID() int32 {
 	return 0
 }
 
-// getMasteryLevel returns the mastery level for display in attack packets
-func (d *Player) getMasteryLevel() byte {
+// getMasteryDisplay returns the mastery display value for attack packets
+// Formula from reference: (skillLevel + 1) / 2
+func (d *Player) getMasteryDisplay() byte {
 	masterySkillID := d.getWeaponMasterySkillID()
 	if masterySkillID == 0 {
 		return 0
 	}
 	
 	if ps, ok := d.skills[masterySkillID]; ok {
-		// Convert skill level to mastery display value (skill level * 5 or similar)
-		// Based on the reference: Constants.getMasteryDisplay(skillLevel)
-		// Typically mastery is displayed as: level * 5 (e.g., level 10 = 50% mastery)
-		return ps.Level * 5
+		// Apply formula: (level + 1) / 2
+		return (ps.Level + 1) / 2
 	}
 	
 	return 0
@@ -3597,8 +3596,9 @@ func packetSkillMelee(char Player, ad attackData) mpacket.Packet {
 
 	p.WriteByte(ad.attackType)
 
-	// Use weapon mastery level instead of skill mastery
-	p.WriteByte(char.getMasteryLevel())
+	// Write mastery display value
+	mastery := char.getMasteryDisplay()
+	p.WriteByte(mastery)
 	p.WriteInt32(ad.projectileID)
 
 	for _, info := range ad.attackInfo {
@@ -3635,8 +3635,9 @@ func packetSkillRanged(char Player, ad attackData) mpacket.Packet {
 
 	p.WriteByte(ad.attackType)
 
-	// Use weapon mastery level instead of skill mastery
-	p.WriteByte(char.getMasteryLevel())
+	// Write mastery display value
+	mastery := char.getMasteryDisplay()
+	p.WriteByte(mastery)
 	p.WriteInt32(ad.projectileID)
 
 	for _, info := range ad.attackInfo {
@@ -3673,8 +3674,9 @@ func packetSkillMagic(char Player, ad attackData) mpacket.Packet {
 
 	p.WriteByte(ad.attackType)
 
-	// Use weapon mastery level instead of skill mastery
-	p.WriteByte(char.getMasteryLevel())
+	// Write mastery display value
+	mastery := char.getMasteryDisplay()
+	p.WriteByte(mastery)
 	p.WriteInt32(ad.projectileID)
 
 	for _, info := range ad.attackInfo {
