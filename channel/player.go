@@ -385,48 +385,48 @@ func (d *Player) getPassiveMPBonus() int16 {
 
 // getHPGainForJob returns the HP gain when manually allocating AP to MaxHP
 func (d *Player) getHPGainForJob() int16 {
-	mainClass := d.job / 100
+	mainClass := d.job / constant.JobClassDivisor
 	switch {
-	case d.job == 0 || mainClass == 0: // Beginner
-		return 8
+	case d.job == constant.BeginnerJobID || mainClass == 0: // Beginner
+		return constant.BeginnerApHpGain
 	case mainClass == 1: // Warrior
-		return 20
+		return constant.WarriorApHpGain
 	case mainClass == 2: // Magician
-		return 8
+		return constant.MagicianApHpGain
 	case mainClass == 3: // Bowman
-		return 16
+		return constant.BowmanApHpGain
 	case mainClass == 4: // Thief
-		return 16
+		return constant.ThiefApHpGain
 	default:
-		return 10
+		return constant.DefaultApHpGain
 	}
 }
 
 // getMPGainForJob returns the MP gain when manually allocating AP to MaxMP
 func (d *Player) getMPGainForJob() int16 {
-	mainClass := d.job / 100
-	baseMp := int16(10)
+	mainClass := d.job / constant.JobClassDivisor
+	baseMp := int16(constant.DefaultApMpGain)
 	
 	switch {
-	case d.job == 0 || mainClass == 0: // Beginner
-		baseMp = 6
+	case d.job == constant.BeginnerJobID || mainClass == 0: // Beginner
+		baseMp = constant.BeginnerApMpGain
 	case mainClass == 1: // Warrior
-		baseMp = 4
+		baseMp = constant.WarriorApMpGain
 	case mainClass == 2: // Magician
-		baseMp = 18
+		baseMp = constant.MagicianApMpGain
 	case mainClass == 3: // Bowman
-		baseMp = 10
+		baseMp = constant.BowmanApMpGain
 	case mainClass == 4: // Thief
-		baseMp = 10
+		baseMp = constant.ThiefApMpGain
 	}
 	
-	// Add INT bonus for MP (INT * multiplier / 200)
+	// Add INT bonus for MP (INT * multiplier / divisor)
 	// Magicians get more MP from INT
-	intMultiplier := int16(1)
+	intMultiplier := int16(constant.IntMpMultiplierNormal)
 	if mainClass == 2 {
-		intMultiplier = 2
+		intMultiplier = constant.IntMpMultiplierMagician
 	}
-	baseMp += (d.intt * intMultiplier) / 200
+	baseMp += (d.intt * intMultiplier) / int16(constant.IntMpDivisor)
 	
 	return baseMp
 }
@@ -436,7 +436,7 @@ func (d *Player) getWeaponMasterySkillID() int32 {
 	// Find equipped weapon
 	var weaponID int32 = 0
 	for _, item := range d.equip {
-		if item.slotID == -11 { // Weapon slot
+		if item.slotID == constant.WeaponSlot {
 			weaponID = item.ID
 			break
 		}
@@ -449,44 +449,40 @@ func (d *Player) getWeaponMasterySkillID() int32 {
 	weaponType := weaponID / 10000
 	
 	// Map weapon types to mastery skills based on job
-	// Weapon types in MapleStory: 130=1H Sword, 131=1H Axe, 132=1H BW, 133=Dagger
-	// 137=Wand, 138=Staff, 140=1H/2H Sword, 141=1H/2H Axe, 142=1H/2H BW
-	// 143=Spear, 144=Polearm, 145=Bow, 146=Crossbow, 147=Claw
-	
 	// Use exact job ID ranges to avoid ambiguity
 	switch {
-	case d.job >= 110 && d.job < 120: // Fighter
-		if weaponType == 130 || weaponType == 140 { // 1H/2H Sword
+	case d.job >= constant.FighterJobID && d.job < constant.PageJobID: // Fighter
+		if weaponType == constant.WeaponType1HSword || weaponType == constant.WeaponType2HSword {
 			return int32(skill.SwordMastery)
-		} else if weaponType == 131 || weaponType == 141 { // 1H/2H Axe
+		} else if weaponType == constant.WeaponType1HAxe || weaponType == constant.WeaponType2HAxe {
 			return int32(skill.AxeMastery)
 		}
-	case d.job >= 120 && d.job < 130: // Page / White Knight
-		if weaponType == 130 || weaponType == 140 { // 1H/2H Sword
+	case d.job >= constant.PageJobID && d.job < constant.SpearmanJobID: // Page / White Knight
+		if weaponType == constant.WeaponType1HSword || weaponType == constant.WeaponType2HSword {
 			return int32(skill.PageSwordMastery)
-		} else if weaponType == 132 || weaponType == 142 { // 1H/2H BW
+		} else if weaponType == constant.WeaponType1HBW || weaponType == constant.WeaponType2HBW {
 			return int32(skill.BwMastery)
 		}
-	case d.job >= 130 && d.job < 200: // Spearman / Dragon Knight
-		if weaponType == 143 { // Spear
+	case d.job >= constant.SpearmanJobID && d.job < constant.MagicianJobID: // Spearman / Dragon Knight
+		if weaponType == constant.WeaponTypeSpear {
 			return int32(skill.SpearMastery)
-		} else if weaponType == 144 { // Polearm
+		} else if weaponType == constant.WeaponTypePolearm {
 			return int32(skill.PolearmMastery)
 		}
-	case d.job >= 310 && d.job < 320: // Hunter / Ranger
-		if weaponType == 145 { // Bow
+	case d.job >= constant.HunterJobID && d.job < constant.CrossbowmanJobID: // Hunter / Ranger
+		if weaponType == constant.WeaponTypeBow {
 			return int32(skill.BowMastery)
 		}
-	case d.job >= 320 && d.job < 400: // Crossbowman / Sniper
-		if weaponType == 146 { // Crossbow
+	case d.job >= constant.CrossbowmanJobID && d.job < constant.ThiefJobID: // Crossbowman / Sniper
+		if weaponType == constant.WeaponTypeCrossbow {
 			return int32(skill.CrossbowMastery)
 		}
-	case d.job >= 410 && d.job < 420: // Assassin / Hermit
-		if weaponType == 147 { // Claw
+	case d.job >= constant.AssassinJobID && d.job < constant.BanditJobID: // Assassin / Hermit
+		if weaponType == constant.WeaponTypeClaw {
 			return int32(skill.ClawMastery)
 		}
-	case d.job >= 420 && d.job < 500: // Bandit / Chief Bandit
-		if weaponType == 133 { // Dagger
+	case d.job >= constant.BanditJobID && d.job < constant.GmJobID: // Bandit / Chief Bandit
+		if weaponType == constant.WeaponTypeDagger {
 			return int32(skill.DaggerMastery)
 		}
 	}
@@ -504,7 +500,7 @@ func (d *Player) getMasteryDisplay() byte {
 	
 	if ps, ok := d.skills[masterySkillID]; ok {
 		// Apply formula: (level + 1) / 2
-		return (ps.Level + 1) / 2
+		return (ps.Level + 1) / constant.MasteryDisplayDivisor
 	}
 	
 	return 0
@@ -512,12 +508,12 @@ func (d *Player) getMasteryDisplay() byte {
 
 // getRechargeBonus returns the bonus amount when recharging items
 func (d *Player) getRechargeBonus() int16 {
-	// Assassin (410) and Hermit (411) get bonus from Claw Mastery (level * 10)
-	jobFamily := d.job / 100
-	jobBranch := (d.job % 100) / 10
+	// Assassin and Hermit get bonus from Claw Mastery (level * multiplier)
+	jobFamily := d.job / constant.JobClassDivisor
+	jobBranch := (d.job % constant.JobClassDivisor) / constant.JobBranchDivisor
 	if jobFamily == 4 && jobBranch == 1 { // Assassin or Hermit (both are 41x)
 		if ps, ok := d.skills[int32(skill.ClawMastery)]; ok {
-			return int16(ps.Level * 10)
+			return int16(ps.Level * constant.ClawMasteryRechargeMultiplier)
 		}
 	}
 	
