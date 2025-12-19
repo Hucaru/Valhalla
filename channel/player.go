@@ -361,6 +361,165 @@ func (d *Player) levelUpGains() (int16, int16) {
 	}
 }
 
+// getPassiveHPBonus returns the HP bonus from Improved MaxHP Increase skill
+func (d *Player) getPassiveHPBonus() int16 {
+	if ps, ok := d.skills[int32(skill.ImprovedMaxHpIncrease)]; ok {
+		skillData, err := nx.GetPlayerSkill(int32(skill.ImprovedMaxHpIncrease))
+		if err == nil && ps.Level > 0 && int(ps.Level) <= len(skillData) {
+			return int16(skillData[ps.Level-1].X)
+		}
+	}
+	return 0
+}
+
+// getPassiveMPBonus returns the MP bonus from Improved MaxMP Increase skill
+func (d *Player) getPassiveMPBonus() int16 {
+	if ps, ok := d.skills[int32(skill.ImprovedMaxMpIncrease)]; ok {
+		skillData, err := nx.GetPlayerSkill(int32(skill.ImprovedMaxMpIncrease))
+		if err == nil && ps.Level > 0 && int(ps.Level) <= len(skillData) {
+			return int16(skillData[ps.Level-1].X)
+		}
+	}
+	return 0
+}
+
+// getHPGainForJob returns the HP gain when manually allocating AP to MaxHP
+func (d *Player) getHPGainForJob() int16 {
+	mainClass := d.job / 100
+	switch {
+	case d.job == 0 || mainClass == 0: // Beginner
+		return 8
+	case mainClass == 1: // Warrior
+		return 20
+	case mainClass == 2: // Magician
+		return 8
+	case mainClass == 3: // Bowman
+		return 16
+	case mainClass == 4: // Thief
+		return 16
+	default:
+		return 10
+	}
+}
+
+// getMPGainForJob returns the MP gain when manually allocating AP to MaxMP
+func (d *Player) getMPGainForJob() int16 {
+	mainClass := d.job / 100
+	baseMp := int16(10)
+	
+	switch {
+	case d.job == 0 || mainClass == 0: // Beginner
+		baseMp = 6
+	case mainClass == 1: // Warrior
+		baseMp = 4
+	case mainClass == 2: // Magician
+		baseMp = 18
+	case mainClass == 3: // Bowman
+		baseMp = 10
+	case mainClass == 4: // Thief
+		baseMp = 10
+	}
+	
+	// Add INT bonus for MP (INT * multiplier / 200)
+	// Magicians get more MP from INT
+	intMultiplier := int16(1)
+	if mainClass == 2 {
+		intMultiplier = 2
+	}
+	baseMp += (d.intt * intMultiplier) / 200
+	
+	return baseMp
+}
+
+// getWeaponMasterySkillID returns the mastery skill ID based on equipped weapon and job
+func (d *Player) getWeaponMasterySkillID() int32 {
+	// Find equipped weapon
+	var weaponID int32 = 0
+	for _, item := range d.equip {
+		if item.slotID == -11 { // Weapon slot
+			weaponID = item.ID
+			break
+		}
+	}
+	
+	if weaponID == 0 {
+		return 0
+	}
+	
+	weaponType := weaponID / 10000
+	
+	// Map weapon types to mastery skills based on job
+	switch d.job / 10 {
+	case 11: // Fighter
+		if weaponType == 143 || weaponType == 144 { // 2H Sword/Axe or 1H Sword/Axe
+			return int32(skill.SwordMastery)
+		} else if weaponType == 141 || weaponType == 142 {
+			return int32(skill.AxeMastery)
+		}
+	case 12: // Page
+		if weaponType == 143 || weaponType == 144 {
+			return int32(skill.PageSwordMastery)
+		} else if weaponType == 145 || weaponType == 146 {
+			return int32(skill.BwMastery)
+		}
+	case 13: // Spearman
+		if weaponType == 140 {
+			return int32(skill.SpearMastery)
+		} else if weaponType == 141 {
+			return int32(skill.PolearmMastery)
+		}
+	case 31: // Hunter
+		if weaponType == 145 {
+			return int32(skill.BowMastery)
+		}
+	case 32: // Crossbowman
+		if weaponType == 146 {
+			return int32(skill.CrossbowMastery)
+		}
+	case 41: // Assassin
+		if weaponType == 147 {
+			return int32(skill.ClawMastery)
+		}
+	case 42: // Bandit
+		if weaponType == 143 {
+			return int32(skill.DaggerMastery)
+		}
+	}
+	
+	return 0
+}
+
+// getMasteryLevel returns the mastery level for display in attack packets
+func (d *Player) getMasteryLevel() byte {
+	masterySkillID := d.getWeaponMasterySkillID()
+	if masterySkillID == 0 {
+		return 0
+	}
+	
+	if ps, ok := d.skills[masterySkillID]; ok {
+		// Convert skill level to mastery display value (skill level * 5 or similar)
+		// Based on the reference: Constants.getMasteryDisplay(skillLevel)
+		// Typically mastery is displayed as: level * 5 (e.g., level 10 = 50% mastery)
+		return ps.Level * 5
+	}
+	
+	return 0
+}
+
+// getRechargeBonus returns the bonus amount when recharging items
+func (d *Player) getRechargeBonus() int16 {
+	mainClass := d.job / 100
+	
+	// Assassin and Hermit get bonus from Claw Mastery
+	if mainClass == 4 && (d.job/10 == 41) { // Assassin/Hermit
+		if ps, ok := d.skills[int32(skill.ClawMastery)]; ok {
+			return int16(ps.Level * 10)
+		}
+	}
+	
+	return 0
+}
+
 // Send the Data a packet
 func (d *Player) Send(packet mpacket.Packet) {
 	if d == nil || d.Conn == nil {
@@ -389,6 +548,10 @@ func (d *Player) levelUp() {
 
 	// Use per-Player RNG and job-based helper for deterministic gains.
 	hpGain, mpGain := d.levelUpGains()
+
+	// Apply passive skill bonuses for levelup
+	hpGain += d.getPassiveHPBonus()
+	mpGain += d.getPassiveMPBonus()
 
 	newMaxHP := d.maxHP + hpGain
 	newMaxMP := d.maxMP + mpGain
@@ -578,6 +741,10 @@ func (d *Player) setMaxHP(amount int16) {
 	d.MarkDirty(DirtyMaxHP, 500*time.Millisecond)
 }
 
+func (d *Player) giveMaxHP(amount int16) {
+	d.setMaxHP(d.maxHP + amount)
+}
+
 func (d *Player) giveMP(amount int16) {
 	target := int(d.mp) + int(amount)
 	maxAllowed := int(d.effectiveMaxMP())
@@ -612,6 +779,10 @@ func (d *Player) setMaxMP(amount int16) {
 	d.maxMP = amount
 	d.Send(packetPlayerStatChange(true, constant.MaxMpID, int32(amount)))
 	d.MarkDirty(DirtyMaxMP, 500*time.Millisecond)
+}
+
+func (d *Player) giveMaxMP(amount int16) {
+	d.setMaxMP(d.maxMP + amount)
 }
 
 func (d *Player) effectiveMaxHP() int16 {
@@ -3421,7 +3592,8 @@ func packetSkillMelee(char Player, ad attackData) mpacket.Packet {
 
 	p.WriteByte(ad.attackType)
 
-	p.WriteByte(char.skills[ad.skillID].Mastery)
+	// Use weapon mastery level instead of skill mastery
+	p.WriteByte(char.getMasteryLevel())
 	p.WriteInt32(ad.projectileID)
 
 	for _, info := range ad.attackInfo {
@@ -3458,7 +3630,8 @@ func packetSkillRanged(char Player, ad attackData) mpacket.Packet {
 
 	p.WriteByte(ad.attackType)
 
-	p.WriteByte(char.skills[ad.skillID].Mastery)
+	// Use weapon mastery level instead of skill mastery
+	p.WriteByte(char.getMasteryLevel())
 	p.WriteInt32(ad.projectileID)
 
 	for _, info := range ad.attackInfo {
@@ -3495,7 +3668,8 @@ func packetSkillMagic(char Player, ad attackData) mpacket.Packet {
 
 	p.WriteByte(ad.attackType)
 
-	p.WriteByte(char.skills[ad.skillID].Mastery)
+	// Use weapon mastery level instead of skill mastery
+	p.WriteByte(char.getMasteryLevel())
 	p.WriteInt32(ad.projectileID)
 
 	for _, info := range ad.attackInfo {

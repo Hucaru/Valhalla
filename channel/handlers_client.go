@@ -579,6 +579,18 @@ func (server Server) playerAddStatPoint(conn mnet.Client, reader mpacket.Reader)
 		player.giveInt(1)
 	case constant.LukID:
 		player.giveLuk(1)
+	case constant.MaxHpID:
+		// Calculate HP gain based on job
+		hpGain := player.getHPGainForJob()
+		// Apply passive skill bonus
+		hpGain += player.getPassiveHPBonus()
+		player.giveMaxHP(hpGain)
+	case constant.MaxMpID:
+		// Calculate MP gain based on job and INT
+		mpGain := player.getMPGainForJob()
+		// Apply passive skill bonus
+		mpGain += player.getPassiveMPBonus()
+		player.giveMaxMP(mpGain)
 	default:
 		fmt.Println("unknown stat ID:", statID)
 	}
@@ -3109,6 +3121,14 @@ func (server *Server) npcShop(conn mnet.Client, reader mpacket.Reader) {
 		}
 
 		toFill := int(slotMax - it.amount)
+		
+		// Apply recharge bonus from passive skills
+		bonus := plr.getRechargeBonus()
+		if bonus > 0 && toFill > 0 {
+			// Add bonus to the amount being filled
+			toFill = int(math.Min(float64(toFill+int(bonus)), float64(slotMax-it.amount)))
+		}
+		
 		unitPrice := meta.UnitPrice
 		if unitPrice <= 0 {
 			plr.Send(packetNpcShopResult(shopRechargeIncorrectRequest))
@@ -3121,7 +3141,7 @@ func (server *Server) npcShop(conn mnet.Client, reader mpacket.Reader) {
 			return
 		}
 
-		it.amount = slotMax
+		it.amount = it.amount + int16(toFill)
 		plr.updateItemStack(*it)
 		plr.giveMesos(int32(-cost))
 		plr.Send(packetNpcShopResult(shopRechargeSuccess))
