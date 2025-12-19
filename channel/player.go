@@ -449,39 +449,42 @@ func (d *Player) getWeaponMasterySkillID() int32 {
 	weaponType := weaponID / 10000
 	
 	// Map weapon types to mastery skills based on job
+	// Weapon types in MapleStory: 130=1H Sword, 131=1H Axe, 132=1H BW, 133=Dagger
+	// 137=Wand, 138=Staff, 140=1H/2H Sword, 141=1H/2H Axe, 142=1H/2H BW
+	// 143=Spear, 144=Polearm, 145=Bow, 146=Crossbow, 147=Claw
 	switch d.job / 10 {
 	case 11: // Fighter
-		if weaponType == 143 || weaponType == 144 { // 2H Sword/Axe or 1H Sword/Axe
+		if weaponType == 130 || weaponType == 140 { // 1H/2H Sword
 			return int32(skill.SwordMastery)
-		} else if weaponType == 141 || weaponType == 142 {
+		} else if weaponType == 131 || weaponType == 141 { // 1H/2H Axe
 			return int32(skill.AxeMastery)
 		}
 	case 12: // Page
-		if weaponType == 143 || weaponType == 144 {
+		if weaponType == 130 || weaponType == 140 { // 1H/2H Sword
 			return int32(skill.PageSwordMastery)
-		} else if weaponType == 145 || weaponType == 146 {
+		} else if weaponType == 132 || weaponType == 142 { // 1H/2H BW
 			return int32(skill.BwMastery)
 		}
 	case 13: // Spearman
-		if weaponType == 140 {
+		if weaponType == 143 { // Spear
 			return int32(skill.SpearMastery)
-		} else if weaponType == 141 {
+		} else if weaponType == 144 { // Polearm
 			return int32(skill.PolearmMastery)
 		}
 	case 31: // Hunter
-		if weaponType == 145 {
+		if weaponType == 145 { // Bow
 			return int32(skill.BowMastery)
 		}
 	case 32: // Crossbowman
-		if weaponType == 146 {
+		if weaponType == 146 { // Crossbow
 			return int32(skill.CrossbowMastery)
 		}
 	case 41: // Assassin
-		if weaponType == 147 {
+		if weaponType == 147 { // Claw
 			return int32(skill.ClawMastery)
 		}
 	case 42: // Bandit
-		if weaponType == 143 {
+		if weaponType == 133 { // Dagger
 			return int32(skill.DaggerMastery)
 		}
 	}
@@ -508,10 +511,10 @@ func (d *Player) getMasteryLevel() byte {
 
 // getRechargeBonus returns the bonus amount when recharging items
 func (d *Player) getRechargeBonus() int16 {
-	mainClass := d.job / 100
-	
-	// Assassin and Hermit get bonus from Claw Mastery
-	if mainClass == 4 && (d.job/10 == 41) { // Assassin/Hermit
+	// Assassin (41x) and Hermit (42x) get bonus from Claw Mastery (level * 10)
+	jobFamily := d.job / 100
+	jobBranch := (d.job % 100) / 10
+	if jobFamily == 4 && (jobBranch == 1 || jobBranch == 2) { // Assassin or Hermit
 		if ps, ok := d.skills[int32(skill.ClawMastery)]; ok {
 			return int16(ps.Level * 10)
 		}

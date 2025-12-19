@@ -3120,13 +3120,18 @@ func (server *Server) npcShop(conn mnet.Client, reader mpacket.Reader) {
 			return
 		}
 
-		toFill := int(slotMax - it.amount)
+		// Calculate base amount to fill
+		baseToFill := int(slotMax - it.amount)
 		
-		// Apply recharge bonus from passive skills
+		// Apply recharge bonus from passive skills (extra stars)
 		bonus := plr.getRechargeBonus()
-		if bonus > 0 && toFill > 0 {
-			// Add bonus to the amount being filled
-			toFill = int(math.Min(float64(toFill+int(bonus)), float64(slotMax-it.amount)))
+		toFill := baseToFill + int(bonus)
+		
+		// Cap the new total amount at slot max
+		newAmount := int(it.amount) + toFill
+		if newAmount > int(slotMax) {
+			newAmount = int(slotMax)
+			toFill = newAmount - int(it.amount)
 		}
 		
 		unitPrice := meta.UnitPrice
@@ -3135,13 +3140,14 @@ func (server *Server) npcShop(conn mnet.Client, reader mpacket.Reader) {
 			return
 		}
 
-		cost := int(math.Ceil(unitPrice * float64(toFill)))
+		// Cost is based on base amount, not including bonus
+		cost := int(math.Ceil(unitPrice * float64(baseToFill)))
 		if cost < 0 || int(plr.mesos) < cost {
 			plr.Send(packetNpcShopResult(shopRechargeNoMoney))
 			return
 		}
 
-		it.amount = it.amount + int16(toFill)
+		it.amount = int16(newAmount)
 		plr.updateItemStack(*it)
 		plr.giveMesos(int32(-cost))
 		plr.Send(packetNpcShopResult(shopRechargeSuccess))
