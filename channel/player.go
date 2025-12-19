@@ -104,6 +104,15 @@ type Players struct {
 	name map[string]*Player
 }
 
+// getItemSlotMax retrieves the actual slotMax for an item from NX data
+// Falls back to constant.MaxItemStack if not found
+func getItemSlotMax(itemID int32) int16 {
+	if nxInfo, err := nx.GetItem(itemID); err == nil && nxInfo.SlotMax > 0 {
+		return nxInfo.SlotMax
+	}
+	return constant.MaxItemStack
+}
+
 func NewPlayers() Players {
 	return Players{
 		conn: make(map[mnet.Client]*Player),
@@ -805,6 +814,81 @@ func (d *Player) SetMaplePoints(points int32) {
 	d.MarkDirty(DirtyMaplePoints, 300*time.Millisecond)
 }
 
+// addStackableItemToInventory handles adding stackable items to a specific inventory type
+// It merges with existing stacks when possible and creates new slots as needed
+// Note: If inventory becomes full mid-operation, already-added items remain (potential partial reward issue)
+func (d *Player) addStackableItemToInventory(newItem Item, items *[]Item, slotSize byte, findSlotFunc func([]Item, byte) (int16, error)) error {
+	slotMax := getItemSlotMax(newItem.ID)
+	// Use a separate variable to track remaining items as we place them in slots
+	// We can't modify newItem.amount directly as it affects the item being saved
+	remaining := newItem.amount
+	
+	for remaining > 0 {
+		// First, try to find an existing stack to merge with
+		var index int = -1
+		for i, v := range *items {
+			if v.ID == newItem.ID && v.amount < slotMax {
+				index = i
+				break
+			}
+		}
+
+		if index != -1 {
+			// Merge with existing stack
+			canAdd := slotMax - (*items)[index].amount
+			if remaining <= canAdd {
+				// Full merge - all remaining items fit in this stack
+				(*items)[index].amount += remaining
+				(*items)[index].save(d.ID)
+				d.Send(packetInventoryAddItem((*items)[index], true))
+				remaining = 0
+			} else {
+				// Partial merge - fill this stack to max and continue
+				(*items)[index].amount = slotMax
+				(*items)[index].save(d.ID)
+				d.Send(packetInventoryAddItem((*items)[index], true))
+				remaining -= canAdd
+
+				// Create new slot for the remainder
+				slotID, err := findSlotFunc(*items, slotSize)
+				if err != nil {
+					return err
+				}
+				newSlotAmount := remaining
+				if newSlotAmount > slotMax {
+					newSlotAmount = slotMax
+				}
+				newSlotItem := newItem
+				newSlotItem.amount = newSlotAmount
+				newSlotItem.slotID = slotID
+				newSlotItem.save(d.ID)
+				*items = append(*items, newSlotItem)
+				d.Send(packetInventoryAddItem(newSlotItem, true))
+				remaining -= newSlotAmount
+			}
+		} else {
+			// No existing stack found, create new slot
+			slotID, err := findSlotFunc(*items, slotSize)
+			if err != nil {
+				return err
+			}
+			newSlotAmount := remaining
+			if newSlotAmount > slotMax {
+				newSlotAmount = slotMax
+			}
+			newSlotItem := newItem
+			newSlotItem.amount = newSlotAmount
+			newSlotItem.slotID = slotID
+			newSlotItem.save(d.ID)
+			*items = append(*items, newSlotItem)
+			d.Send(packetInventoryAddItem(newSlotItem, true))
+			remaining -= newSlotAmount
+		}
+	}
+	
+	return nil
+}
+
 // GiveItem grants the given item to a player and returns the item
 func (d *Player) GiveItem(newItem Item) (error, Item) { // TODO: Refactor
 	isRechargeable := func(itemID int32) bool {
@@ -862,56 +946,9 @@ func (d *Player) GiveItem(newItem Item) (error, Item) { // TODO: Refactor
 			return nil, newItem
 		}
 
-		// Non-rechargeable
-		size := newItem.amount
-		for size > 0 {
-			var value int16 = 200
-			value -= size
-			if value < 1 {
-				value = 200
-			} else {
-				value = size
-			}
-			size -= constant.MaxItemStack
-			newItem.amount = value
-
-			var slotID int16
-			var index int
-			for i, v := range d.use {
-				if v.ID == newItem.ID && v.amount < constant.MaxItemStack {
-					slotID = v.slotID
-					index = i
-					break
-				}
-			}
-
-			if slotID == 0 {
-				slotID, err := findFirstEmptySlot(d.use, d.useSlotSize)
-				if err != nil {
-					return err, Item{}
-				}
-				newItem.slotID = slotID
-				newItem.save(d.ID)
-				d.use = append(d.use, newItem)
-				d.Send(packetInventoryAddItem(newItem, true))
-			} else {
-				remainder := newItem.amount - (constant.MaxItemStack - d.use[index].amount)
-				if remainder > 0 { // partial merge -> place remainder to new slot
-					slotID, err := findFirstEmptySlot(d.use, d.useSlotSize)
-					if err != nil {
-						return err, Item{}
-					}
-					newItem.amount = value
-					newItem.slotID = slotID
-					newItem.save(d.ID)
-					d.use = append(d.use, newItem)
-					d.Send(packetInventoryAddItems([]Item{d.use[index], newItem}, []bool{false, true}))
-				} else { // full merge
-					d.use[index].amount = d.use[index].amount + newItem.amount
-					d.Send(packetInventoryAddItem(d.use[index], false))
-					d.use[index].save(d.ID)
-				}
-			}
+		// Non-rechargeable stackable items
+		if err := d.addStackableItemToInventory(newItem, &d.use, d.useSlotSize, findFirstEmptySlot); err != nil {
+			return err, Item{}
 		}
 
 	case constant.InventorySetup: // Set-up
@@ -925,55 +962,8 @@ func (d *Player) GiveItem(newItem Item) (error, Item) { // TODO: Refactor
 		d.Send(packetInventoryAddItem(newItem, true))
 
 	case constant.InventoryEtc: // Etc
-		size := newItem.amount
-		for size > 0 {
-			var value int16 = 200
-			value -= size
-			if value < 1 {
-				value = 200
-			} else {
-				value = size
-			}
-			size -= constant.MaxItemStack
-			newItem.amount = value
-
-			var slotID int16
-			var index int
-			for i, v := range d.etc {
-				if v.ID == newItem.ID && v.amount < constant.MaxItemStack {
-					slotID = v.slotID
-					index = i
-					break
-				}
-			}
-
-			if slotID == 0 {
-				slotID, err := findFirstEmptySlot(d.etc, d.etcSlotSize)
-				if err != nil {
-					return err, Item{}
-				}
-				newItem.slotID = slotID
-				newItem.save(d.ID)
-				d.etc = append(d.etc, newItem)
-				d.Send(packetInventoryAddItem(newItem, true))
-			} else {
-				remainder := newItem.amount - (constant.MaxItemStack - d.etc[index].amount)
-				if remainder > 0 {
-					slotID, err := findFirstEmptySlot(d.etc, d.etcSlotSize)
-					if err != nil {
-						return err, Item{}
-					}
-					newItem.amount = value
-					newItem.slotID = slotID
-					newItem.save(d.ID)
-					d.etc = append(d.etc, newItem)
-					d.Send(packetInventoryAddItems([]Item{d.etc[index], newItem}, []bool{false, true}))
-				} else {
-					d.etc[index].amount = d.etc[index].amount + newItem.amount
-					d.Send(packetInventoryAddItem(d.etc[index], false))
-					d.etc[index].save(d.ID)
-				}
-			}
+		if err := d.addStackableItemToInventory(newItem, &d.etc, d.etcSlotSize, findFirstEmptySlot); err != nil {
+			return err, Item{}
 		}
 
 	case constant.InventoryCash: // Cash
@@ -1194,9 +1184,21 @@ func (d *Player) moveItem(start, end, amount int16, invID byte) error {
 		dropItem.amount = amount
 		dropItem.dbID = 0
 
-		_, err = d.takeItem(item.ID, item.slotID, amount, item.invID)
-		if err != nil {
-			return fmt.Errorf("unable to take Item")
+		// Special case: rechargeable items with 0 amount can't use takeItem (it requires amount > 0)
+		// Just remove them directly
+		if item.isRechargeable() && item.amount == 0 {
+			d.removeItem(item)
+		} else {
+			takenItem, err := d.takeItem(item.ID, item.slotID, amount, item.invID)
+			if err != nil {
+				return fmt.Errorf("unable to take Item")
+			}
+
+			// For rechargeable items that reach 0 amount after takeItem, explicitly remove them
+			// to prevent duplication exploit (takeItem keeps them at 0 for skill usage)
+			if takenItem.isRechargeable() && takenItem.amount == 0 {
+				d.removeItem(takenItem)
+			}
 		}
 
 		d.inst.dropPool.createDrop(dropSpawnNormal, dropFreeForAll, 0, d.pos, true, d.ID, 0, dropItem)
@@ -1251,10 +1253,11 @@ func (d *Player) moveItem(start, end, amount int16, invID byte) error {
 		d.Send(packetInventoryChangeItemSlot(invID, start, end))
 	} else { // destination occupied
 		if (item1.isStackable() && item2.isStackable()) && (item1.ID == item2.ID) {
-			if item1.amount == constant.MaxItemStack || item2.amount == constant.MaxItemStack { // swap
+			slotMax := getItemSlotMax(item1.ID)
+			if item1.amount == slotMax || item2.amount == slotMax { // swap
 				d.swapItems(item1, item2, start, end)
-			} else if item2.amount < constant.MaxItemStack { // try full merge
-				if item2.amount+item1.amount <= constant.MaxItemStack {
+			} else if item2.amount < slotMax { // try full merge
+				if item2.amount+item1.amount <= slotMax {
 					item2.amount = item2.amount + item1.amount
 					item2.save(d.ID)
 					d.updateItem(item2)
