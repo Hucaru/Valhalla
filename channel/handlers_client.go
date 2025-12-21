@@ -4050,6 +4050,41 @@ func (server *Server) playerSpecialSkill(conn mnet.Client, reader mpacket.Reader
 			}
 		}
 
+	case skill.Heal:
+		plr.inst.send(packetPlayerSkillAnimation(plr.ID, false, skillID, skillLevel))
+
+		// Calculate heal amount based on skill level
+		healAmount := int16(0)
+		if skillData, err := nx.GetPlayerSkill(skillID); err == nil {
+			idx := int(skillLevel) - 1
+			if idx >= 0 && idx < len(skillData) {
+				healAmount = int16(skillData[idx].Hp)
+			}
+		}
+
+		if healAmount > 0 {
+			// Heal the caster
+			plr.giveHP(healAmount)
+			plr.Send(packetPlayerEffectSkill(false, skillID, skillLevel))
+
+			// Heal party members
+			if plr.party != nil {
+				affected := getAffectedPartyMembers(plr.party, plr, partyMask)
+				for _, member := range affected {
+					if member == nil {
+						continue
+					}
+
+					// Only heal alive party members
+					if member.hp > 0 {
+						member.giveHP(healAmount)
+						member.Send(packetPlayerEffectSkill(true, skillID, skillLevel))
+						member.inst.send(packetPlayerSkillAnimation(member.ID, true, skillID, skillLevel))
+					}
+				}
+			}
+		}
+
 	case skill.Resurrection:
 		plr.inst.send(packetPlayerSkillAnimation(plr.ID, false, skillID, skillLevel))
 
