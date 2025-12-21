@@ -579,6 +579,18 @@ func (server Server) playerAddStatPoint(conn mnet.Client, reader mpacket.Reader)
 		player.giveInt(1)
 	case constant.LukID:
 		player.giveLuk(1)
+	case constant.MaxHpID:
+		// Calculate HP gain based on job
+		hpGain := player.getHPGainForJob()
+		// Apply passive skill bonus
+		hpGain += player.getPassiveHPBonus()
+		player.giveMaxHP(hpGain)
+	case constant.MaxMpID:
+		// Calculate MP gain based on job and INT
+		mpGain := player.getMPGainForJob()
+		// Apply passive skill bonus
+		mpGain += player.getPassiveMPBonus()
+		player.giveMaxMP(mpGain)
 	default:
 		fmt.Println("unknown stat ID:", statID)
 	}
@@ -3108,20 +3120,36 @@ func (server *Server) npcShop(conn mnet.Client, reader mpacket.Reader) {
 			return
 		}
 
-		toFill := int(slotMax - it.amount)
+		// Calculate base amount to fill (to slotMax)
+		baseToFill := int(slotMax - it.amount)
+		
+		// Don't allow recharge if already at max
+		if baseToFill <= 0 {
+			plr.Send(packetNpcShopResult(shopRechargeIncorrectRequest))
+			return
+		}
+		
+		// Apply recharge bonus from passive skills
+		// The bonus allows exceeding slotMax (e.g., slotMax=600, bonus=200 -> final=800)
+		bonus := plr.getRechargeBonus()
+		
+		// Final amount is slotMax + bonus (not capped)
+		newAmount := int(slotMax) + int(bonus)
+		
 		unitPrice := meta.UnitPrice
 		if unitPrice <= 0 {
 			plr.Send(packetNpcShopResult(shopRechargeIncorrectRequest))
 			return
 		}
 
-		cost := int(math.Ceil(unitPrice * float64(toFill)))
+		// Cost is based on base amount to fill to slotMax, not including bonus
+		cost := int(math.Ceil(unitPrice * float64(baseToFill)))
 		if cost < 0 || int(plr.mesos) < cost {
 			plr.Send(packetNpcShopResult(shopRechargeNoMoney))
 			return
 		}
 
-		it.amount = slotMax
+		it.amount = int16(newAmount)
 		plr.updateItemStack(*it)
 		plr.giveMesos(int32(-cost))
 		plr.Send(packetNpcShopResult(shopRechargeSuccess))

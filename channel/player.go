@@ -361,6 +361,165 @@ func (d *Player) levelUpGains() (int16, int16) {
 	}
 }
 
+// getPassiveHPBonus returns the HP bonus from Improved MaxHP Increase skill
+func (d *Player) getPassiveHPBonus() int16 {
+	if ps, ok := d.skills[int32(skill.ImprovedMaxHpIncrease)]; ok {
+		skillData, err := nx.GetPlayerSkill(int32(skill.ImprovedMaxHpIncrease))
+		if err == nil && ps.Level > 0 && int(ps.Level) <= len(skillData) {
+			return int16(skillData[ps.Level-1].X)
+		}
+	}
+	return 0
+}
+
+// getPassiveMPBonus returns the MP bonus from Improved MaxMP Increase skill
+func (d *Player) getPassiveMPBonus() int16 {
+	if ps, ok := d.skills[int32(skill.ImprovedMaxMpIncrease)]; ok {
+		skillData, err := nx.GetPlayerSkill(int32(skill.ImprovedMaxMpIncrease))
+		if err == nil && ps.Level > 0 && int(ps.Level) <= len(skillData) {
+			return int16(skillData[ps.Level-1].X)
+		}
+	}
+	return 0
+}
+
+// getHPGainForJob returns the HP gain when manually allocating AP to MaxHP
+func (d *Player) getHPGainForJob() int16 {
+	mainClass := d.job / constant.JobClassDivisor
+	switch {
+	case d.job == constant.BeginnerJobID || mainClass == 0: // Beginner
+		return constant.BeginnerApHpGain
+	case mainClass == 1: // Warrior
+		return constant.WarriorApHpGain
+	case mainClass == 2: // Magician
+		return constant.MagicianApHpGain
+	case mainClass == 3: // Bowman
+		return constant.BowmanApHpGain
+	case mainClass == 4: // Thief
+		return constant.ThiefApHpGain
+	default:
+		return constant.DefaultApHpGain
+	}
+}
+
+// getMPGainForJob returns the MP gain when manually allocating AP to MaxMP
+func (d *Player) getMPGainForJob() int16 {
+	mainClass := d.job / constant.JobClassDivisor
+	baseMp := int16(constant.DefaultApMpGain)
+	
+	switch {
+	case d.job == constant.BeginnerJobID || mainClass == 0: // Beginner
+		baseMp = constant.BeginnerApMpGain
+	case mainClass == 1: // Warrior
+		baseMp = constant.WarriorApMpGain
+	case mainClass == 2: // Magician
+		baseMp = constant.MagicianApMpGain
+	case mainClass == 3: // Bowman
+		baseMp = constant.BowmanApMpGain
+	case mainClass == 4: // Thief
+		baseMp = constant.ThiefApMpGain
+	}
+	
+	// Add INT bonus for MP (INT * multiplier / divisor)
+	// Magicians get more MP from INT
+	intMultiplier := int16(constant.IntMpMultiplierNormal)
+	if mainClass == 2 {
+		intMultiplier = constant.IntMpMultiplierMagician
+	}
+	baseMp += (d.intt * intMultiplier) / int16(constant.IntMpDivisor)
+	
+	return baseMp
+}
+
+// getWeaponMasterySkillID returns the mastery skill ID based on equipped weapon and job
+func (d *Player) getWeaponMasterySkillID() int32 {
+	// Find equipped weapon
+	var weaponID int32 = 0
+	for _, item := range d.equip {
+		if item.slotID == constant.WeaponSlot {
+			weaponID = item.ID
+			break
+		}
+	}
+	
+	if weaponID == 0 {
+		return 0
+	}
+	
+	weaponType := weaponID / 10000
+	
+	// Map weapon types to mastery skills based on job
+	// Use exact job ID ranges to avoid ambiguity
+	switch {
+	case d.job >= constant.FighterJobID && d.job < constant.PageJobID: // Fighter
+		if weaponType == constant.WeaponType1HSword || weaponType == constant.WeaponType2HSword {
+			return int32(skill.SwordMastery)
+		} else if weaponType == constant.WeaponType1HAxe || weaponType == constant.WeaponType2HAxe {
+			return int32(skill.AxeMastery)
+		}
+	case d.job >= constant.PageJobID && d.job < constant.SpearmanJobID: // Page / White Knight
+		if weaponType == constant.WeaponType1HSword || weaponType == constant.WeaponType2HSword {
+			return int32(skill.PageSwordMastery)
+		} else if weaponType == constant.WeaponType1HBW || weaponType == constant.WeaponType2HBW {
+			return int32(skill.BwMastery)
+		}
+	case d.job >= constant.SpearmanJobID && d.job < constant.MagicianJobID: // Spearman / Dragon Knight
+		if weaponType == constant.WeaponTypeSpear {
+			return int32(skill.SpearMastery)
+		} else if weaponType == constant.WeaponTypePolearm {
+			return int32(skill.PolearmMastery)
+		}
+	case d.job >= constant.HunterJobID && d.job < constant.CrossbowmanJobID: // Hunter / Ranger
+		if weaponType == constant.WeaponTypeBow {
+			return int32(skill.BowMastery)
+		}
+	case d.job >= constant.CrossbowmanJobID && d.job < constant.ThiefJobID: // Crossbowman / Sniper
+		if weaponType == constant.WeaponTypeCrossbow {
+			return int32(skill.CrossbowMastery)
+		}
+	case d.job >= constant.AssassinJobID && d.job < constant.BanditJobID: // Assassin / Hermit
+		if weaponType == constant.WeaponTypeClaw {
+			return int32(skill.ClawMastery)
+		}
+	case d.job >= constant.BanditJobID && d.job < constant.GmJobID: // Bandit / Chief Bandit
+		if weaponType == constant.WeaponTypeDagger {
+			return int32(skill.DaggerMastery)
+		}
+	}
+	
+	return 0
+}
+
+// getMasteryDisplay returns the mastery display value for attack packets
+// Formula from reference: (skillLevel + 1) / 2
+func (d *Player) getMasteryDisplay() byte {
+	masterySkillID := d.getWeaponMasterySkillID()
+	if masterySkillID == 0 {
+		return 0
+	}
+	
+	if ps, ok := d.skills[masterySkillID]; ok {
+		// Apply formula: (level + 1) / 2
+		return (ps.Level + 1) / constant.MasteryDisplayDivisor
+	}
+	
+	return 0
+}
+
+// getRechargeBonus returns the bonus amount when recharging items
+func (d *Player) getRechargeBonus() int16 {
+	// Assassin and Hermit get bonus from Claw Mastery (level * multiplier)
+	jobFamily := d.job / constant.JobClassDivisor
+	jobBranch := (d.job % constant.JobClassDivisor) / constant.JobBranchDivisor
+	if jobFamily == 4 && jobBranch == 1 { // Assassin or Hermit (both are 41x)
+		if ps, ok := d.skills[int32(skill.ClawMastery)]; ok {
+			return int16(ps.Level * constant.ClawMasteryRechargeMultiplier)
+		}
+	}
+	
+	return 0
+}
+
 // Send the Data a packet
 func (d *Player) Send(packet mpacket.Packet) {
 	if d == nil || d.Conn == nil {
@@ -389,6 +548,10 @@ func (d *Player) levelUp() {
 
 	// Use per-Player RNG and job-based helper for deterministic gains.
 	hpGain, mpGain := d.levelUpGains()
+
+	// Apply passive skill bonuses for levelup
+	hpGain += d.getPassiveHPBonus()
+	mpGain += d.getPassiveMPBonus()
 
 	newMaxHP := d.maxHP + hpGain
 	newMaxMP := d.maxMP + mpGain
@@ -578,6 +741,10 @@ func (d *Player) setMaxHP(amount int16) {
 	d.MarkDirty(DirtyMaxHP, 500*time.Millisecond)
 }
 
+func (d *Player) giveMaxHP(amount int16) {
+	d.setMaxHP(d.maxHP + amount)
+}
+
 func (d *Player) giveMP(amount int16) {
 	target := int(d.mp) + int(amount)
 	maxAllowed := int(d.effectiveMaxMP())
@@ -612,6 +779,10 @@ func (d *Player) setMaxMP(amount int16) {
 	d.maxMP = amount
 	d.Send(packetPlayerStatChange(true, constant.MaxMpID, int32(amount)))
 	d.MarkDirty(DirtyMaxMP, 500*time.Millisecond)
+}
+
+func (d *Player) giveMaxMP(amount int16) {
+	d.setMaxMP(d.maxMP + amount)
 }
 
 func (d *Player) effectiveMaxHP() int16 {
@@ -3421,7 +3592,9 @@ func packetSkillMelee(char Player, ad attackData) mpacket.Packet {
 
 	p.WriteByte(ad.attackType)
 
-	p.WriteByte(char.skills[ad.skillID].Mastery)
+	// Write mastery display value
+	mastery := char.getMasteryDisplay()
+	p.WriteByte(mastery)
 	p.WriteInt32(ad.projectileID)
 
 	for _, info := range ad.attackInfo {
@@ -3458,7 +3631,9 @@ func packetSkillRanged(char Player, ad attackData) mpacket.Packet {
 
 	p.WriteByte(ad.attackType)
 
-	p.WriteByte(char.skills[ad.skillID].Mastery)
+	// Write mastery display value
+	mastery := char.getMasteryDisplay()
+	p.WriteByte(mastery)
 	p.WriteInt32(ad.projectileID)
 
 	for _, info := range ad.attackInfo {
@@ -3495,7 +3670,9 @@ func packetSkillMagic(char Player, ad attackData) mpacket.Packet {
 
 	p.WriteByte(ad.attackType)
 
-	p.WriteByte(char.skills[ad.skillID].Mastery)
+	// Write mastery display value
+	mastery := char.getMasteryDisplay()
+	p.WriteByte(mastery)
 	p.WriteInt32(ad.projectileID)
 
 	for _, info := range ad.attackInfo {

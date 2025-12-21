@@ -84,6 +84,54 @@ const (
 	GmJobID      = 500
 	SuperGmJobID = 510
 
+	// Weapon type constants (itemID / 10000)
+	WeaponType1HSword   = 130
+	WeaponType1HAxe     = 131
+	WeaponType1HBW      = 132
+	WeaponTypeDagger    = 133
+	WeaponTypeWand      = 137
+	WeaponTypeStaff     = 138
+	WeaponType2HSword   = 140
+	WeaponType2HAxe     = 141
+	WeaponType2HBW      = 142
+	WeaponTypeSpear     = 143
+	WeaponTypePolearm   = 144
+	WeaponTypeBow       = 145
+	WeaponTypeCrossbow  = 146
+	WeaponTypeClaw      = 147
+
+	// Equipment slot constants
+	WeaponSlot = -11
+
+	// Stat gain constants for manual AP allocation
+	BeginnerApHpGain = 8
+	BeginnerApMpGain = 6
+	WarriorApHpGain  = 20
+	WarriorApMpGain  = 4
+	MagicianApHpGain = 8
+	MagicianApMpGain = 18
+	BowmanApHpGain   = 16
+	BowmanApMpGain   = 10
+	ThiefApHpGain    = 16
+	ThiefApMpGain    = 10
+	DefaultApHpGain  = 10
+	DefaultApMpGain  = 10
+
+	// INT multipliers for MP calculation
+	IntMpMultiplierNormal   = 1
+	IntMpMultiplierMagician = 2
+	IntMpDivisor            = 200
+
+	// Job class divisors
+	JobClassDivisor  = 100
+	JobBranchDivisor = 10
+
+	// Mastery constants
+	MasteryDisplayDivisor = 2
+
+	// Recharge bonus constants
+	ClawMasteryRechargeMultiplier = 10
+
 	MaxHpValue = 32767
 	MaxMpValue = 32767
 
