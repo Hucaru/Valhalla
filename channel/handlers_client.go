@@ -4053,34 +4053,71 @@ func (server *Server) playerSpecialSkill(conn mnet.Client, reader mpacket.Reader
 	case skill.Heal:
 		plr.inst.send(packetPlayerSkillAnimation(plr.ID, false, skillID, skillLevel))
 
-		// Calculate heal amount based on skill level
-		healAmount := int16(0)
-		if skillData, err := nx.GetPlayerSkill(skillID); err == nil {
-			idx := int(skillLevel) - 1
-			if idx >= 0 && idx < len(skillData) {
-				healAmount = int16(skillData[idx].Hp)
+		// Get skill data for recovery rate percentage
+		skillData, err := nx.GetPlayerSkill(skillID)
+		if err != nil {
+			break
+		}
+		
+		idx := int(skillLevel) - 1
+		if idx < 0 || idx >= len(skillData) {
+			break
+		}
+
+		recoveryRate := float64(skillData[idx].Hp) / 100.0 // Convert percentage to decimal
+
+		// Count targets (caster + alive party members in range)
+		targets := []*Player{plr} // Include caster
+		if plr.party != nil {
+			affected := getAffectedPartyMembers(plr.party, plr, partyMask)
+			for _, member := range affected {
+				if member != nil && member.hp > 0 {
+					targets = append(targets, member)
+				}
 			}
 		}
 
-		if healAmount > 0 {
-			// Heal the caster
-			plr.giveHP(healAmount)
-			plr.Send(packetPlayerEffectSkill(false, skillID, skillLevel))
+		numTargets := len(targets)
+		if numTargets == 0 {
+			break
+		}
 
-			// Heal party members
-			if plr.party != nil {
-				affected := getAffectedPartyMembers(plr.party, plr, partyMask)
-				for _, member := range affected {
-					if member == nil {
-						continue
-					}
+		// Calculate target multiplier: 1.5 + 5/(number of targets)
+		targetMultiplier := 1.5 + (5.0 / float64(numTargets))
 
-					// Only heal alive party members
-					if member.hp > 0 {
-						member.giveHP(healAmount)
-						member.Send(packetPlayerEffectSkill(true, skillID, skillLevel))
-						member.inst.send(packetPlayerSkillAnimation(member.ID, true, skillID, skillLevel))
-					}
+		// Heal formula components from caster's stats
+		intStat := float64(plr.intt)
+		lukStat := float64(plr.luk)
+
+		// Calculate MIN and MAX heal amounts
+		// MAX = (INT * 1.2 + LUK) * Magic * Heal Level * Target Multiplier
+		// MIN = (INT * 0.3 + LUK) * Magic * Heal Level * Target Multiplier
+		maxHeal := int16((intStat*1.2 + lukStat) * recoveryRate * targetMultiplier)
+		minHeal := int16((intStat*0.3 + lukStat) * recoveryRate * targetMultiplier)
+
+		// Ensure min/max are valid
+		if minHeal < 1 {
+			minHeal = 1
+		}
+		if maxHeal < minHeal {
+			maxHeal = minHeal
+		}
+
+		// Apply healing to all targets with randomized amounts
+		for _, target := range targets {
+			// Generate random heal amount between min and max
+			healAmount := minHeal
+			if maxHeal > minHeal {
+				healAmount = minHeal + int16(plr.randIntn(int(maxHeal-minHeal+1)))
+			}
+
+			if healAmount > 0 {
+				target.giveHP(healAmount)
+				if target.ID == plr.ID {
+					target.Send(packetPlayerEffectSkill(false, skillID, skillLevel))
+				} else {
+					target.Send(packetPlayerEffectSkill(true, skillID, skillLevel))
+					target.inst.send(packetPlayerSkillAnimation(target.ID, true, skillID, skillLevel))
 				}
 			}
 		}
