@@ -4078,9 +4078,6 @@ func (server *Server) playerSpecialSkill(conn mnet.Client, reader mpacket.Reader
 		}
 
 		numTargets := len(targets)
-		if numTargets == 0 {
-			break
-		}
 
 		// Calculate target multiplier: 1.5 + 5/(number of targets)
 		targetMultiplier := 1.5 + (5.0 / float64(numTargets))
@@ -4090,8 +4087,8 @@ func (server *Server) playerSpecialSkill(conn mnet.Client, reader mpacket.Reader
 		lukStat := float64(plr.luk)
 
 		// Calculate MIN and MAX heal amounts
-		// MAX = (INT * 1.2 + LUK) * Magic * Heal Level * Target Multiplier
-		// MIN = (INT * 0.3 + LUK) * Magic * Heal Level * Target Multiplier
+		// MAX = (INT * 1.2 + LUK) * RecoveryRate * TargetMultiplier
+		// MIN = (INT * 0.3 + LUK) * RecoveryRate * TargetMultiplier
 		maxHeal := int16((intStat*1.2 + lukStat) * recoveryRate * targetMultiplier)
 		minHeal := int16((intStat*0.3 + lukStat) * recoveryRate * targetMultiplier)
 
