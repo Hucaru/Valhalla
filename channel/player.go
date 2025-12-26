@@ -406,7 +406,7 @@ func (d *Player) getHPGainForJob() int16 {
 func (d *Player) getMPGainForJob() int16 {
 	mainClass := d.job / constant.JobClassDivisor
 	baseMp := int16(constant.DefaultApMpGain)
-	
+
 	switch {
 	case d.job == constant.BeginnerJobID || mainClass == 0: // Beginner
 		baseMp = constant.BeginnerApMpGain
@@ -419,7 +419,7 @@ func (d *Player) getMPGainForJob() int16 {
 	case mainClass == 4: // Thief
 		baseMp = constant.ThiefApMpGain
 	}
-	
+
 	// Add INT bonus for MP (INT * multiplier / divisor)
 	// Magicians get more MP from INT
 	intMultiplier := int16(constant.IntMpMultiplierNormal)
@@ -427,7 +427,7 @@ func (d *Player) getMPGainForJob() int16 {
 		intMultiplier = constant.IntMpMultiplierMagician
 	}
 	baseMp += (d.intt * intMultiplier) / int16(constant.IntMpDivisor)
-	
+
 	return baseMp
 }
 
@@ -441,13 +441,13 @@ func (d *Player) getWeaponMasterySkillID() int32 {
 			break
 		}
 	}
-	
+
 	if weaponID == 0 {
 		return 0
 	}
-	
+
 	weaponType := weaponID / 10000
-	
+
 	// Map weapon types to mastery skills based on job
 	// Use exact job ID ranges to avoid ambiguity
 	switch {
@@ -486,7 +486,7 @@ func (d *Player) getWeaponMasterySkillID() int32 {
 			return int32(skill.DaggerMastery)
 		}
 	}
-	
+
 	return 0
 }
 
@@ -497,12 +497,12 @@ func (d *Player) getMasteryDisplay() byte {
 	if masterySkillID == 0 {
 		return 0
 	}
-	
+
 	if ps, ok := d.skills[masterySkillID]; ok {
 		// Apply formula: (level + 1) / 2
 		return (ps.Level + 1) / constant.MasteryDisplayDivisor
 	}
-	
+
 	return 0
 }
 
@@ -516,7 +516,7 @@ func (d *Player) getRechargeBonus() int16 {
 			return int16(ps.Level * constant.ClawMasteryRechargeMultiplier)
 		}
 	}
-	
+
 	return 0
 }
 
@@ -993,7 +993,7 @@ func (d *Player) addStackableItemToInventory(newItem Item, items *[]Item, slotSi
 	// Use a separate variable to track remaining items as we place them in slots
 	// We can't modify newItem.amount directly as it affects the item being saved
 	remaining := newItem.amount
-	
+
 	for remaining > 0 {
 		// First, try to find an existing stack to merge with
 		var index int = -1
@@ -1056,7 +1056,7 @@ func (d *Player) addStackableItemToInventory(newItem Item, items *[]Item, slotSi
 			remaining -= newSlotAmount
 		}
 	}
-	
+
 	return nil
 }
 
@@ -1154,6 +1154,7 @@ func (d *Player) GiveItem(newItem Item) (error, Item) { // TODO: Refactor
 	return nil, newItem
 }
 
+// TakeItem removes an item from the player's inventory
 func (d *Player) takeItem(id int32, slot int16, amount int16, invID byte) (Item, error) {
 	item, err := d.getItem(invID, slot)
 	if err != nil {
@@ -1176,7 +1177,38 @@ func (d *Player) takeItem(id int32, slot int16, amount int16, invID byte) (Item,
 
 	item.amount -= amount
 	if item.amount == 0 && !item.isRechargeable() {
-		d.removeItem(item)
+		d.removeItem(item, false)
+	} else {
+		d.updateItemStack(item)
+	}
+
+	return item, nil
+
+}
+
+func (d *Player) TakeItemFromStorage(id int32, slot int16, amount int16, invID byte) (Item, error) {
+	item, err := d.getItem(invID, slot)
+	if err != nil {
+		return item, fmt.Errorf("item not found at inv=%d slot=%d", invID, slot)
+	}
+
+	if item.ID != id {
+		return item, fmt.Errorf("Item.ID(%d) does not match ID(%d) provided", item.ID, id)
+	}
+	if item.invID != invID {
+		return item, fmt.Errorf("inventory ID mismatch: item.invID(%d) vs provided invID(%d)", item.invID, invID)
+	}
+	if amount <= 0 {
+		return item, fmt.Errorf("invalid amount requested: %d", amount)
+	}
+
+	if amount > item.amount {
+		return item, fmt.Errorf("insufficient quantity: have=%d requested=%d", item.amount, amount)
+	}
+
+	item.amount -= amount
+	if item.amount == 0 && !item.isRechargeable() {
+		d.removeItem(item, true)
 	} else {
 		d.updateItemStack(item)
 	}
@@ -1260,6 +1292,48 @@ func (d Player) getItem(invID byte, slotID int16) (Item, error) {
 	return Item{}, fmt.Errorf("Could not find Item")
 }
 
+// GetItem retrieves an item from the player's inventory (exported for use by other packages)
+func (d *Player) GetItem(invID byte, slotID int16) (Item, error) {
+	return d.getItem(invID, slotID)
+}
+
+// GetItemByCashID finds an item in the specified inventory by its cash shop ID
+func (d *Player) GetItemByCashID(invID byte, cashID int64) (Item, int16, error) {
+	switch invID {
+	case 1:
+		for i := range d.equip {
+			if d.equip[i].cashID == cashID {
+				return d.equip[i], d.equip[i].slotID, nil
+			}
+		}
+	case 2:
+		for i := range d.use {
+			if d.use[i].cashID == cashID {
+				return d.use[i], d.use[i].slotID, nil
+			}
+		}
+	case 3:
+		for i := range d.setUp {
+			if d.setUp[i].cashID == cashID {
+				return d.setUp[i], d.setUp[i].slotID, nil
+			}
+		}
+	case 4:
+		for i := range d.etc {
+			if d.etc[i].cashID == cashID {
+				return d.etc[i], d.etc[i].slotID, nil
+			}
+		}
+	case 5:
+		for i := range d.cash {
+			if d.cash[i].cashID == cashID {
+				return d.cash[i], d.cash[i].slotID, nil
+			}
+		}
+	}
+	return Item{}, 0, fmt.Errorf("item not found with cashID: %d", cashID)
+}
+
 func (d *Player) swapItems(item1, item2 Item, start, end int16) {
 	item1.slotID = end
 	item1.save(d.ID)
@@ -1272,7 +1346,7 @@ func (d *Player) swapItems(item1, item2 Item, start, end int16) {
 	d.Send(packetInventoryChangeItemSlot(item1.invID, start, end))
 }
 
-func (d *Player) removeItem(item Item) {
+func (d *Player) removeItem(item Item, fromStorage bool) {
 	switch item.invID {
 	case constant.InventoryEquip:
 		for i, v := range d.equip {
@@ -1321,7 +1395,10 @@ func (d *Player) removeItem(item Item) {
 		log.Println(err)
 		return
 	}
-	d.Send(packetInventoryRemoveItem(item))
+
+	if !fromStorage {
+		d.Send(packetInventoryRemoveItem(item))
+	}
 }
 
 func (d *Player) dropMesos(amount int32) error {
@@ -1358,7 +1435,7 @@ func (d *Player) moveItem(start, end, amount int16, invID byte) error {
 		// Special case: rechargeable items with 0 amount can't use takeItem (it requires amount > 0)
 		// Just remove them directly
 		if item.isRechargeable() && item.amount == 0 {
-			d.removeItem(item)
+			d.removeItem(item, false)
 		} else {
 			takenItem, err := d.takeItem(item.ID, item.slotID, amount, item.invID)
 			if err != nil {
@@ -1368,7 +1445,7 @@ func (d *Player) moveItem(start, end, amount int16, invID byte) error {
 			// For rechargeable items that reach 0 amount after takeItem, explicitly remove them
 			// to prevent duplication exploit (takeItem keeps them at 0 for skill usage)
 			if takenItem.isRechargeable() && takenItem.amount == 0 {
-				d.removeItem(takenItem)
+				d.removeItem(takenItem, false)
 			}
 		}
 
@@ -1434,7 +1511,7 @@ func (d *Player) moveItem(start, end, amount int16, invID byte) error {
 					d.updateItem(item2)
 					d.Send(packetInventoryAddItem(item2, false))
 
-					d.removeItem(item1)
+					d.removeItem(item1, false)
 				} else {
 					d.swapItems(item1, item2, start, end)
 				}
@@ -3051,7 +3128,7 @@ func packetInventoryAddItem(item Item, newItem bool) mpacket.Packet {
 	p.WriteByte(item.invID)
 
 	if newItem {
-		p.WriteBytes(item.shortBytes())
+		p.WriteBytes(item.ShortBytes())
 	} else {
 		p.WriteInt16(item.slotID)
 		p.WriteInt16(item.amount)
@@ -3088,7 +3165,7 @@ func packetInventoryAddItems(items []Item, newItem []bool) mpacket.Packet {
 		p.WriteByte(v.invID)
 
 		if newItem[i] {
-			p.WriteBytes(v.shortBytes())
+			p.WriteBytes(v.ShortBytes())
 		} else {
 			p.WriteInt16(v.slotID)
 			p.WriteInt16(v.amount)

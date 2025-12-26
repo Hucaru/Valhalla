@@ -119,9 +119,9 @@ func packetCashShopSendCSItemInventory(slotType byte, it channel.Item) mpacket.P
 func packetCashShopWishList(sns []int32, update bool) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelCSAction)
 	if update {
-		p.WriteByte(0x39)
+		p.WriteByte(opcode.SendCashShopUpdateWishDone)
 	} else {
-		p.WriteByte(0x33)
+		p.WriteByte(opcode.SendCashShopLoadWishDone)
 	}
 	count := 10
 	for i := 0; i < count; i++ {
@@ -131,6 +131,68 @@ func packetCashShopWishList(sns []int32, update bool) mpacket.Packet {
 		}
 		p.WriteInt32(v)
 	}
+	return p
+}
+
+func packetCashShopLoadLocker(storage *CashShopStorage, accountID, characterID int32) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelCSAction)
+	p.WriteByte(opcode.SendCashShopLoadLockerDone)
+
+	items := storage.getAllItems()
+
+	p.WriteInt16(int16(len(items)))
+	for _, csItem := range items {
+		p.WriteInt64(csItem.cashID)
+		p.WriteInt32(accountID)
+		p.WriteInt32(characterID)
+		p.WriteInt32(csItem.item.ID)
+		p.WriteInt32(csItem.sn)
+		p.WriteInt16(csItem.item.GetAmount())
+		p.WritePaddedString("", 13)
+		p.WriteInt64(csItem.item.GetExpireTime())
+		p.WriteInt64(0) // Padding
+	}
+
+	p.WriteInt16(0) // Gift count
+	p.WriteInt16(int16(storage.maxSlots))
+	return p
+}
+
+func packetCashShopMoveLtoSDone(item channel.Item, slot int16) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelCSAction)
+	p.WriteByte(opcode.SendCashShopMoveLtoSDone)
+	p.WriteBytes(item.ShortBytes())
+	return p
+}
+
+func packetCashShopMoveStoLDone(csItem CashShopItem, accountID int32) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelCSAction)
+	p.WriteByte(opcode.SendCashShopMoveStoLDone)
+	p.WriteInt64(csItem.cashID)
+	p.WriteInt32(accountID)
+	p.WriteInt32(0)
+	p.WriteInt32(csItem.item.ID)
+	p.WriteInt32(csItem.sn)
+	p.WriteInt16(csItem.item.GetAmount())
+	p.WritePaddedString("", 13) // GiftName
+	p.WriteInt64(csItem.item.GetExpireTime())
+	p.WriteInt64(0)
+	return p
+}
+
+func packetCashShopBuyDone(csItem CashShopItem, accountID, characterID int32) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelCSAction)
+	p.WriteByte(opcode.SendCashShopBuyDone)
+	// LockerItem.Encode structure
+	p.WriteInt64(csItem.cashID)
+	p.WriteInt32(accountID)
+	p.WriteInt32(characterID)
+	p.WriteInt32(csItem.item.ID)
+	p.WriteInt32(csItem.sn)
+	p.WriteInt16(csItem.item.GetAmount())
+	p.WritePaddedString("", 13) // GiftName
+	p.WriteInt64(csItem.item.GetExpireTime())
+	p.WriteInt64(0)
 	return p
 }
 

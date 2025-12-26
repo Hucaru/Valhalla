@@ -1,13 +1,15 @@
 package channel
 
 import (
+	"crypto/rand"
 	"database/sql"
+	"encoding/binary"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"log"
 	"math"
-	"math/rand"
+	mathrand "math/rand"
 	"os"
 	"time"
 
@@ -49,6 +51,8 @@ type Item struct {
 	dbID         int64
 	uuid         uuid.UUID
 	cash         bool
+	cashID       int64
+	cashSN       int32
 	invID        byte
 	slotID       int16
 	ID           int32
@@ -94,8 +98,23 @@ type Item struct {
 
 const neverExpire int64 = 150842304000000000
 
+// GenerateCashID generates a unique cash ID using crypto/rand
+func GenerateCashID() int64 {
+	var b [8]byte
+	if _, err := rand.Read(b[:]); err != nil {
+		log.Println("Warning: crypto/rand failed in GenerateCashID")
+		b[0] = 0
+		for i := 1; i < 8; i++ {
+			b[i] = byte(i * 17)
+		}
+	}
+
+	cashID := int64(binary.LittleEndian.Uint64(b[:]))
+	return cashID & 0x00FFFFFFFFFFFFFF
+}
+
 func loadInventoryFromDb(charID int32) ([]Item, []Item, []Item, []Item, []Item) {
-	filter := "ID,inventoryID,itemID,slotNumber,amount,flag,upgradeSlots,level,str,dex,intt,luk,hp,mp,watk,matk,wdef,mdef,accuracy,avoid,hands,speed,jump,expireTime,creatorName"
+	filter := "ID,inventoryID,itemID,slotNumber,amount,flag,upgradeSlots,level,str,dex,intt,luk,hp,mp,watk,matk,wdef,mdef,accuracy,avoid,hands,speed,jump,expireTime,creatorName,cashID,cashSN"
 	row, err := common.DB.Query("SELECT "+filter+" FROM items WHERE characterID=?", charID)
 
 	if err != nil {
@@ -113,6 +132,8 @@ func loadInventoryFromDb(charID int32) ([]Item, []Item, []Item, []Item, []Item) 
 	for row.Next() {
 
 		item := Item{uuid: uuid.New()}
+		var cashIDNullable sql.NullInt64
+		var cashSNNullable sql.NullInt32
 
 		err := row.Scan(&item.dbID,
 			&item.invID,
@@ -138,15 +159,35 @@ func loadInventoryFromDb(charID int32) ([]Item, []Item, []Item, []Item, []Item) 
 			&item.speed,
 			&item.jump,
 			&item.expireTime,
-			&item.creatorName)
+			&item.creatorName,
+			&cashIDNullable,
+			&cashSNNullable)
 
 		if err != nil {
 			log.Println(err)
 			continue
 		}
 
+		if cashIDNullable.Valid {
+			item.cashID = cashIDNullable.Int64
+		}
+		if cashSNNullable.Valid {
+			item.cashSN = cashSNNullable.Int32
+		}
+
 		if nxInfo, err := nx.GetItem(item.ID); err == nil {
 			item.cash = nxInfo.Cash
+
+			if item.cash && item.cashID == 0 {
+				item.cashID = GenerateCashID()
+			}
+
+			if item.cash && item.cashSN == 0 {
+				if sn, ok := nx.GetCommoditySNByItemID(item.ID); ok {
+					item.cashSN = sn
+				}
+			}
+
 			item.pet = nxInfo.Pet
 			if item.pet {
 				petRow := common.DB.QueryRow(`
@@ -242,9 +283,9 @@ func createBiasItemFromID(id int32, amount int16, bias int8, average bool) (Item
 			return int16(max)
 		}
 
-		rand.Seed(time.Now().Unix())
+		mathrand.Seed(time.Now().Unix())
 
-		return int16(rand.Intn(max-min) + min)
+		return int16(mathrand.Intn(max-min) + min)
 	}
 
 	newItem := Item{dbID: 0, uuid: uuid.New()}
@@ -362,6 +403,19 @@ func (v *Item) setSlots(slots int) {
 	v.upgradeSlots = byte(slots)
 }
 
+// SetCashID sets the cash shop storage ID for tracking items from cash shop
+func (v *Item) SetCashID(cashID int64) { v.cashID = cashID }
+
+// SetCashSN sets the commodity serial number for cash shop items
+func (v *Item) SetCashSN(sn int32) { v.cashSN = sn }
+
+// GetCashSN returns the commodity serial number
+func (v Item) GetCashSN() int32 { return v.cashSN }
+
+func (v Item) GetAmount() int16 { return v.amount }
+
+func (v Item) GetExpireTime() int64 { return v.expireTime }
+
 func (v Item) isRechargeable() bool {
 	return float64(v.ID/10000) == 207 // Taken from client
 }
@@ -374,14 +428,14 @@ func (v *Item) save(charID int32) (bool, error) {
 	if v.dbID == 0 {
 		props := `characterID,inventoryID,itemID,slotNumber,amount,flag,upgradeSlots,level,
 				str,dex,intt,luk,hp,mp,watk,matk,wdef,mdef,accuracy,avoid,hands,speed,jump,
-				expireTime,creatorName`
+				expireTime,creatorName,cashID,cashSN`
 
-		query := "INSERT into items (" + props + ") VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
+		query := "INSERT into items (" + props + ") VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
 
 		res, err := common.DB.Exec(query,
 			charID, v.invID, v.ID, v.slotID, v.amount, v.flag, v.upgradeSlots, v.scrollLevel,
 			v.str, v.dex, v.intt, v.luk, v.hp, v.mp, v.watk, v.matk, v.wdef, v.mdef, v.accuracy, v.avoid, v.hands, v.speed, v.jump,
-			v.expireTime, v.creatorName)
+			v.expireTime, v.creatorName, sql.NullInt64{Int64: v.cashID, Valid: v.cashID != 0}, sql.NullInt32{Int32: v.cashSN, Valid: v.cashSN != 0})
 
 		if err != nil {
 			return false, err
@@ -395,14 +449,14 @@ func (v *Item) save(charID int32) (bool, error) {
 	} else {
 		props := `slotNumber=?,amount=?,flag=?,upgradeSlots=?,level=?,
 			str=?,dex=?,intt=?,luk=?,hp=?,mp=?,watk=?,matk=?,wdef=?,mdef=?,accuracy=?,avoid=?,hands=?,speed=?,jump=?,
-			expireTime=?`
+			expireTime=?,cashID=?,cashSN=?`
 
 		query := "UPDATE items SET " + props + " WHERE ID=?"
 
 		_, err := common.DB.Exec(query,
 			v.slotID, v.amount, v.flag, v.upgradeSlots, v.scrollLevel,
 			v.str, v.dex, v.intt, v.luk, v.hp, v.mp, v.watk, v.matk, v.wdef, v.mdef, v.accuracy, v.avoid, v.hands, v.speed, v.jump,
-			v.expireTime, v.dbID)
+			v.expireTime, sql.NullInt64{Int64: v.cashID, Valid: v.cashID != 0}, sql.NullInt32{Int32: v.cashSN, Valid: v.cashSN != 0}, v.dbID)
 
 		if err != nil {
 			return false, err
@@ -417,6 +471,30 @@ func (v *Item) save(charID int32) (bool, error) {
 	}
 
 	return true, nil
+}
+
+func (v Item) SaveToCashShopStorage(tx *sql.Tx, accountID int32, slotNumber int16, cashID int64, sn int32) error {
+	if v.ID == 0 {
+		return nil
+	}
+
+	const ins = `
+		INSERT INTO account_cashshop_storage_items(
+			accountID, itemID, cashID, sn, slotNumber, amount, flag, upgradeSlots, level,
+			str, dex, intt, luk, hp, mp, watk, matk, wdef, mdef, accuracy, avoid, hands,
+			speed, jump, expireTime, creatorName
+		) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`
+	_, err := tx.Exec(
+		ins,
+		accountID, v.ID, cashID, sn, slotNumber, v.amount,
+		v.flag, v.upgradeSlots, v.scrollLevel,
+		v.str, v.dex, v.intt, v.luk,
+		v.hp, v.mp, v.watk, v.matk,
+		v.wdef, v.mdef, v.accuracy, v.avoid,
+		v.hands, v.speed, v.jump,
+		v.expireTime, v.creatorName,
+	)
+	return err
 }
 
 func (v Item) delete() error {
@@ -435,12 +513,12 @@ func (v Item) InventoryBytes() []byte {
 	return v.bytes(false, false)
 }
 
-func (v Item) storageBytes() []byte {
+func (v Item) StorageBytes() []byte {
 	return v.bytes(false, true)
 }
 
 // ShortBytes e.g. inventory operation, storage window
-func (v Item) shortBytes() []byte {
+func (v Item) ShortBytes() []byte {
 	return v.bytes(true, false)
 }
 
@@ -475,11 +553,8 @@ func (v Item) bytes(shortSlot, storage bool) []byte {
 
 	p.WriteBool(v.cash)
 	if v.cash {
-		if sn, ok := nx.GetCommoditySNByItemID(v.ID); ok {
-			p.WriteUint64(uint64(sn))
-		} else {
-			p.WriteUint64(uint64(v.ID))
-		}
+		// Write the unique cash ID (not the SN) for cash shop tracking
+		p.WriteUint64(uint64(v.cashID))
 	}
 
 	p.WriteInt64(v.expireTime)
@@ -590,6 +665,44 @@ func (v *Item) applyScrollEffects(scroll nx.Item) {
 
 func (v *Item) incrementScrollCount() {
 	v.scrollLevel++
+}
+
+// CreateItemFromDBValues creates an Item from database values, used for loading saved items
+// This preserves all stat modifications, scrolls, etc. from the database
+func CreateItemFromDBValues(itemID int32, slotID int16, amount int16, flag int16, upgradeSlots, scrollLevel byte,
+	str, dex, intt, luk, hp, mp, watk, matk, wdef, mdef, accuracy, avoid, hands, speed, jump int16,
+	expireTime int64, creatorName string) (Item, error) {
+
+	// Create base item to get metadata
+	item, err := CreateItemFromID(itemID, amount)
+	if err != nil {
+		return item, err
+	}
+
+	// Override with saved stat values
+	item.slotID = slotID
+	item.flag = flag
+	item.upgradeSlots = upgradeSlots
+	item.scrollLevel = scrollLevel
+	item.str = str
+	item.dex = dex
+	item.intt = intt
+	item.luk = luk
+	item.hp = hp
+	item.mp = mp
+	item.watk = watk
+	item.matk = matk
+	item.wdef = wdef
+	item.mdef = mdef
+	item.accuracy = accuracy
+	item.avoid = avoid
+	item.hands = hands
+	item.speed = speed
+	item.jump = jump
+	item.expireTime = expireTime
+	item.creatorName = creatorName
+
+	return item, nil
 }
 
 func getItemType(itemID int32) int32 {
