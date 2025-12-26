@@ -289,7 +289,7 @@ func encodeStorageBody(p *mpacket.Packet, slots byte, flags uint16, mesos int32,
 		}
 		p.WriteByte(byte(len(items)))
 		for i := range items {
-			p.WriteBytes(items[i].storageBytes())
+			p.WriteBytes(items[i].StorageBytes())
 		}
 	}
 }

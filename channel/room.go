@@ -1213,7 +1213,7 @@ func packetRoomTradePutItem(tradeSlot byte, user bool, item Item) mpacket.Packet
 	p.WriteByte(constant.MiniRoomTradePutItem)
 	p.WriteBool(user)
 	p.WriteByte(tradeSlot)
-	p.WriteBytes(item.storageBytes())
+	p.WriteBytes(item.StorageBytes())
 	return p
 }
 

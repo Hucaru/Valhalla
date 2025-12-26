@@ -1521,7 +1521,7 @@ func (server *Server) playerUseScroll(conn mnet.Client, reader mpacket.Reader) {
 		curseRoll := rand.Intn(100)
 		if curseRoll < int(scrollMeta.Cursed) {
 			// Destroy the equip
-			plr.removeItem(*equip)
+			plr.removeItem(*equip, false)
 			plr.Send(packetUseScroll(plr.ID, false, true, false))
 		} else {
 			// Normal fail (slot consumed): persist and Send full update too
@@ -3122,20 +3122,20 @@ func (server *Server) npcShop(conn mnet.Client, reader mpacket.Reader) {
 
 		// Calculate base amount to fill (to slotMax)
 		baseToFill := int(slotMax - it.amount)
-		
+
 		// Don't allow recharge if already at max
 		if baseToFill <= 0 {
 			plr.Send(packetNpcShopResult(shopRechargeIncorrectRequest))
 			return
 		}
-		
+
 		// Apply recharge bonus from passive skills
 		// The bonus allows exceeding slotMax (e.g., slotMax=600, bonus=200 -> final=800)
 		bonus := plr.getRechargeBonus()
-		
+
 		// Final amount is slotMax + bonus (not capped)
 		newAmount := int(slotMax) + int(bonus)
-		
+
 		unitPrice := meta.UnitPrice
 		if unitPrice <= 0 {
 			plr.Send(packetNpcShopResult(shopRechargeIncorrectRequest))
