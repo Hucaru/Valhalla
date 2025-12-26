@@ -406,6 +406,8 @@ func (v *Item) setSlots(slots int) {
 // SetCashID sets the cash shop storage ID for tracking items from cash shop
 func (v *Item) SetCashID(cashID int64) { v.cashID = cashID }
 
+func (v Item) GetCashID() int64 { return v.cashID }
+
 // SetCashSN sets the commodity serial number for cash shop items
 func (v *Item) SetCashSN(sn int32) { v.cashSN = sn }
 
@@ -473,8 +475,8 @@ func (v *Item) save(charID int32) (bool, error) {
 	return true, nil
 }
 
-func (v Item) SaveToCashShopStorage(tx *sql.Tx, accountID int32, slotNumber int16, cashID int64, sn int32) error {
-	if v.ID == 0 {
+func (v Item) SaveToCashShopStorage(tx *sql.Tx, accountID int32, slotNumber int16) error {
+	if v.ID == 0 || v.amount == 0 {
 		return nil
 	}
 
@@ -486,7 +488,7 @@ func (v Item) SaveToCashShopStorage(tx *sql.Tx, accountID int32, slotNumber int1
 		) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`
 	_, err := tx.Exec(
 		ins,
-		accountID, v.ID, cashID, sn, slotNumber, v.amount,
+		accountID, v.ID, v.cashID, v.cashSN, slotNumber, v.amount,
 		v.flag, v.upgradeSlots, v.scrollLevel,
 		v.str, v.dex, v.intt, v.luk,
 		v.hp, v.mp, v.watk, v.matk,

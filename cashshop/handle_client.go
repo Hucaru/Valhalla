@@ -405,12 +405,12 @@ func (server *Server) handleCashShopOperation(conn mnet.Client, reader mpacket.R
 		}
 
 		var foundIdx = -1
-		var foundItem *CashShopItem
+		var foundItem *channel.Item
 		for i := range storage.items {
-			if storage.items[i].item.ID == 0 {
+			if storage.items[i].ID == 0 {
 				continue
 			}
-			if storage.items[i].cashID == cashItemID {
+			if storage.items[i].GetCashID() == cashItemID {
 				foundIdx = i
 				foundItem = &storage.items[i]
 				break
@@ -428,13 +428,10 @@ func (server *Server) handleCashShopOperation(conn mnet.Client, reader mpacket.R
 			return
 		}
 
-		item := removedItem.item
-		item.SetCashID(cashItemID)
-		item.SetCashSN(removedItem.sn)
-
+		item := *removedItem
 		err, givenItem := plr.GiveItem(item)
 		if err != nil {
-			if _, restored := storage.addItem(item, removedItem.sn); !restored {
+			if _, restored := storage.addItem(item, item.GetCashSN()); !restored {
 				log.Println("CRITICAL: Restore to storage failed. Item may be lost. player:", plr.ID, "accountID:", conn.GetAccountID(), "itemID:", item.ID)
 			} else {
 				if saveErr := storage.save(); saveErr != nil {

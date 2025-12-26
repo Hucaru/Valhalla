@@ -9,23 +9,18 @@ import (
 	"github.com/Hucaru/Valhalla/common"
 )
 
+// Cash shop storage capacity bounds
 const (
 	cashShopStorageMinSlots byte = 50
 	cashShopStorageMaxSlots byte = 255
 )
 
+// CashShopStorage represents account-wide cash shop storage
 type CashShopStorage struct {
 	accountID      int32
 	maxSlots       byte
 	totalSlotsUsed byte
-	items          []CashShopItem
-}
-
-type CashShopItem struct {
-	cashID    int64
-	sn        int32
-	purchased int64
-	item      channel.Item
+	items          []channel.Item
 }
 
 func clampByte(v, min, max byte) byte {
@@ -43,13 +38,13 @@ func NewCashShopStorage(accountID int32) *CashShopStorage {
 	return &CashShopStorage{
 		accountID: accountID,
 		maxSlots:  cashShopStorageMinSlots,
-		items:     make([]CashShopItem, cashShopStorageMinSlots),
+		items:     make([]channel.Item, cashShopStorageMinSlots),
 	}
 }
 
 func (s *CashShopStorage) ensureCapacity() {
 	if s.items == nil || byte(len(s.items)) != s.maxSlots {
-		newArr := make([]CashShopItem, s.maxSlots)
+		newArr := make([]channel.Item, s.maxSlots)
 		if s.items != nil {
 			copy(newArr, s.items)
 		}
@@ -57,6 +52,7 @@ func (s *CashShopStorage) ensureCapacity() {
 	}
 }
 
+// Load items and header from DB into channel.Item
 func (s *CashShopStorage) load() error {
 	var slots sql.NullInt64
 	if err := common.DB.QueryRow(
@@ -102,9 +98,6 @@ func (s *CashShopStorage) load() error {
 	defer rows.Close()
 
 	for rows.Next() {
-		var csItem CashShopItem
-		var creatorName sql.NullString
-		var cashIDNullable sql.NullInt64
 		var slotNumber int16
 		var itemID int32
 		var amount int16
@@ -115,24 +108,22 @@ func (s *CashShopStorage) load() error {
 		var watk, matk, wdef, mdef int16
 		var accuracy, avoid, hands, speed, jump int16
 		var expireTime int64
+		var creatorName sql.NullString
+		var cashIDNullable sql.NullInt64
+		var sn int32
+		var _purchaseTS sql.NullInt64
 
 		if err := rows.Scan(
-			&itemID, &cashIDNullable, &csItem.sn, &slotNumber, &amount,
+			&itemID, &cashIDNullable, &sn, &slotNumber, &amount,
 			&flag, &upgradeSlots, &scrollLevel,
 			&str, &dex, &intt, &luk,
 			&hp, &mp, &watk, &matk,
 			&wdef, &mdef, &accuracy, &avoid,
 			&hands, &speed, &jump,
-			&expireTime, &creatorName, &csItem.purchased,
+			&expireTime, &creatorName, &_purchaseTS,
 		); err != nil {
 			log.Println("Error scanning cash shop storage item:", err)
 			continue
-		}
-
-		if cashIDNullable.Valid {
-			csItem.cashID = cashIDNullable.Int64
-		} else {
-			csItem.cashID = channel.GenerateCashID()
 		}
 
 		var creator string
@@ -140,7 +131,7 @@ func (s *CashShopStorage) load() error {
 			creator = creatorName.String
 		}
 
-		item, ierr := channel.CreateItemFromDBValues(
+		it, ierr := channel.CreateItemFromDBValues(
 			itemID, slotNumber, amount, flag, upgradeSlots, scrollLevel,
 			str, dex, intt, luk, hp, mp, watk, matk, wdef, mdef,
 			accuracy, avoid, hands, speed, jump, expireTime, creator,
@@ -150,13 +141,18 @@ func (s *CashShopStorage) load() error {
 			continue
 		}
 
-		csItem.item = item
+		if cashIDNullable.Valid {
+			it.SetCashID(cashIDNullable.Int64)
+		} else {
+			it.SetCashID(channel.GenerateCashID())
+		}
+		it.SetCashSN(sn)
 
 		if slotNumber <= 0 || slotNumber > int16(s.maxSlots) {
 			continue
 		}
 		idx := int(slotNumber - 1)
-		s.items[idx] = csItem
+		s.items[idx] = it
 		if itemID != 0 {
 			s.totalSlotsUsed++
 		}
@@ -197,7 +193,7 @@ func (s *CashShopStorage) save() (err error) {
 
 	for i := range s.items {
 		slotNumber := int16(i + 1)
-		if ierr := s.items[i].item.SaveToCashShopStorage(tx, s.accountID, slotNumber, s.items[i].cashID, s.items[i].sn); ierr != nil {
+		if ierr := s.items[i].SaveToCashShopStorage(tx, s.accountID, slotNumber); ierr != nil {
 			err = fmt.Errorf("failed inserting cash shop item (acct %d, slot %d): %w", s.accountID, slotNumber, ierr)
 			return
 		}
@@ -211,58 +207,58 @@ func (s *CashShopStorage) save() (err error) {
 	return nil
 }
 
+// addItem adds an item with a generated cashID and provided SN
 func (s *CashShopStorage) addItem(item channel.Item, sn int32) (int, bool) {
 	for i := 0; i < int(s.maxSlots); i++ {
-		if s.items[i].item.ID != 0 {
+		if s.items[i].ID != 0 {
 			continue
 		}
+		item.SetCashID(channel.GenerateCashID())
+		item.SetCashSN(sn)
+		s.items[i] = item
 		s.totalSlotsUsed++
-		s.items[i] = CashShopItem{
-			cashID: channel.GenerateCashID(),
-			sn:     sn,
-			item:   item,
-		}
 		return i, true
 	}
 	return -1, false
 }
 
+// addItemWithCashID adds an item with a specific cashID (used when returning from inventory)
 func (s *CashShopStorage) addItemWithCashID(item channel.Item, sn int32, cashID int64) (int, bool) {
 	for i := 0; i < int(s.maxSlots); i++ {
-		if s.items[i].item.ID != 0 {
+		if s.items[i].ID != 0 {
 			continue
 		}
+		item.SetCashID(cashID)
+		item.SetCashSN(sn)
+		s.items[i] = item
 		s.totalSlotsUsed++
-		s.items[i] = CashShopItem{
-			cashID: cashID,
-			sn:     sn,
-			item:   item,
-		}
 		return i, true
 	}
 	return -1, false
 }
 
-func (s *CashShopStorage) removeAt(idx int) (*CashShopItem, bool) {
+// removeAt removes by index and returns the item
+func (s *CashShopStorage) removeAt(idx int) (*channel.Item, bool) {
 	if idx < 0 || idx >= int(s.maxSlots) {
 		return nil, false
 	}
-	if s.items[idx].item.ID == 0 {
+	if s.items[idx].ID == 0 {
 		return nil, false
 	}
 
 	item := s.items[idx]
-	s.items[idx] = CashShopItem{}
+	s.items[idx] = channel.Item{}
 	if s.totalSlotsUsed > 0 {
 		s.totalSlotsUsed--
 	}
 	return &item, true
 }
 
-func (s *CashShopStorage) getAllItems() []CashShopItem {
-	out := make([]CashShopItem, 0, s.totalSlotsUsed)
+// getAllItems returns non-empty items
+func (s *CashShopStorage) getAllItems() []channel.Item {
+	out := make([]channel.Item, 0, s.totalSlotsUsed)
 	for i := range s.items {
-		if s.items[i].item.ID != 0 {
+		if s.items[i].ID != 0 {
 			out = append(out, s.items[i])
 		}
 	}
@@ -273,12 +269,12 @@ func (s *CashShopStorage) slotsAvailable() bool {
 	return s.totalSlotsUsed < s.maxSlots
 }
 
-func (s *CashShopStorage) getItemBySlot(slot int16) (*CashShopItem, bool) {
+func (s *CashShopStorage) getItemBySlot(slot int16) (*channel.Item, bool) {
 	if slot <= 0 || int(slot) > len(s.items) {
 		return nil, false
 	}
 	idx := int(slot - 1)
-	if s.items[idx].item.ID == 0 {
+	if s.items[idx].ID == 0 {
 		return nil, false
 	}
 	return &s.items[idx], true

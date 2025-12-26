@@ -142,14 +142,14 @@ func packetCashShopLoadLocker(storage *CashShopStorage, accountID, characterID i
 
 	p.WriteInt16(int16(len(items)))
 	for _, csItem := range items {
-		p.WriteInt64(csItem.cashID)
+		p.WriteInt64(csItem.GetCashID())
 		p.WriteInt32(accountID)
 		p.WriteInt32(characterID)
-		p.WriteInt32(csItem.item.ID)
-		p.WriteInt32(csItem.sn)
-		p.WriteInt16(csItem.item.GetAmount())
+		p.WriteInt32(csItem.ID)
+		p.WriteInt32(csItem.GetCashSN())
+		p.WriteInt16(csItem.GetAmount())
 		p.WritePaddedString("", 13)
-		p.WriteInt64(csItem.item.GetExpireTime())
+		p.WriteInt64(csItem.GetExpireTime())
 		p.WriteInt64(0) // Padding
 	}
 
@@ -165,33 +165,32 @@ func packetCashShopMoveLtoSDone(item channel.Item, slot int16) mpacket.Packet {
 	return p
 }
 
-func packetCashShopMoveStoLDone(csItem CashShopItem, accountID int32) mpacket.Packet {
+func packetCashShopMoveStoLDone(csItem channel.Item, accountID int32) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelCSAction)
 	p.WriteByte(opcode.SendCashShopMoveStoLDone)
-	p.WriteInt64(csItem.cashID)
+	p.WriteInt64(csItem.GetCashID())
 	p.WriteInt32(accountID)
 	p.WriteInt32(0)
-	p.WriteInt32(csItem.item.ID)
-	p.WriteInt32(csItem.sn)
-	p.WriteInt16(csItem.item.GetAmount())
+	p.WriteInt32(csItem.ID)
+	p.WriteInt32(csItem.GetCashSN())
+	p.WriteInt16(csItem.GetAmount())
 	p.WritePaddedString("", 13) // GiftName
-	p.WriteInt64(csItem.item.GetExpireTime())
+	p.WriteInt64(csItem.GetExpireTime())
 	p.WriteInt64(0)
 	return p
 }
 
-func packetCashShopBuyDone(csItem CashShopItem, accountID, characterID int32) mpacket.Packet {
+func packetCashShopBuyDone(csItem channel.Item, accountID, characterID int32) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelCSAction)
 	p.WriteByte(opcode.SendCashShopBuyDone)
-	// LockerItem.Encode structure
-	p.WriteInt64(csItem.cashID)
+	p.WriteInt64(csItem.GetCashID())
 	p.WriteInt32(accountID)
 	p.WriteInt32(characterID)
-	p.WriteInt32(csItem.item.ID)
-	p.WriteInt32(csItem.sn)
-	p.WriteInt16(csItem.item.GetAmount())
+	p.WriteInt32(csItem.ID)
+	p.WriteInt32(csItem.GetCashSN())
+	p.WriteInt16(csItem.GetAmount())
 	p.WritePaddedString("", 13) // GiftName
-	p.WriteInt64(csItem.item.GetExpireTime())
+	p.WriteInt64(csItem.GetExpireTime())
 	p.WriteInt64(0)
 	return p
 }
