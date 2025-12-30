@@ -4103,6 +4103,9 @@ func (server *Server) playerSpecialSkill(conn mnet.Client, reader mpacket.Reader
 		// Apply healing to all targets with randomized amounts
 		for _, target := range targets {
 			// Generate random heal amount between min and max
+			if target.hp <= 0 {
+				continue
+			}
 			healAmount := minHeal
 			if maxHeal > minHeal {
 				healAmount = minHeal + int16(plr.randIntn(int(maxHeal-minHeal+1)))
