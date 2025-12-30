@@ -4050,6 +4050,78 @@ func (server *Server) playerSpecialSkill(conn mnet.Client, reader mpacket.Reader
 			}
 		}
 
+	case skill.Heal:
+		plr.inst.send(packetPlayerSkillAnimation(plr.ID, false, skillID, skillLevel))
+
+		// Get skill data for recovery rate percentage
+		skillData, err := nx.GetPlayerSkill(skillID)
+		if err != nil {
+			break
+		}
+		
+		idx := int(skillLevel) - 1
+		if idx < 0 || idx >= len(skillData) {
+			break
+		}
+
+		recoveryRate := float64(skillData[idx].Hp) / 100.0 // Convert percentage to decimal
+
+		// Count targets (caster + alive party members in range)
+		targets := []*Player{plr} // Include caster
+		if plr.party != nil {
+			affected := getAffectedPartyMembers(plr.party, plr, partyMask)
+			for _, member := range affected {
+				if member != nil && member.hp > 0 {
+					targets = append(targets, member)
+				}
+			}
+		}
+
+		numTargets := len(targets)
+
+		// Calculate target multiplier: 1.5 + 5/(number of targets)
+		targetMultiplier := 1.5 + (5.0 / float64(numTargets))
+
+		// Heal formula components from caster's stats
+		intStat := float64(plr.intt)
+		lukStat := float64(plr.luk)
+
+		// Calculate MIN and MAX heal amounts
+		// MAX = (INT * 1.2 + LUK) * RecoveryRate * TargetMultiplier
+		// MIN = (INT * 0.3 + LUK) * RecoveryRate * TargetMultiplier
+		maxHeal := int16((intStat*1.2 + lukStat) * recoveryRate * targetMultiplier)
+		minHeal := int16((intStat*0.3 + lukStat) * recoveryRate * targetMultiplier)
+
+		// Ensure min/max are valid
+		if minHeal < 1 {
+			minHeal = 1
+		}
+		if maxHeal < minHeal {
+			maxHeal = minHeal
+		}
+
+		// Apply healing to all targets with randomized amounts
+		for _, target := range targets {
+			// Generate random heal amount between min and max
+			if target.hp <= 0 {
+				continue
+			}
+			healAmount := minHeal
+			if maxHeal > minHeal {
+				healAmount = minHeal + int16(plr.randIntn(int(maxHeal-minHeal+1)))
+			}
+
+			if healAmount > 0 {
+				target.giveHP(healAmount)
+				if target.ID == plr.ID {
+					target.Send(packetPlayerEffectSkill(false, skillID, skillLevel))
+				} else {
+					target.Send(packetPlayerEffectSkill(true, skillID, skillLevel))
+					target.inst.send(packetPlayerSkillAnimation(target.ID, true, skillID, skillLevel))
+				}
+			}
+		}
+
 	case skill.Resurrection:
 		plr.inst.send(packetPlayerSkillAnimation(plr.ID, false, skillID, skillLevel))
 
