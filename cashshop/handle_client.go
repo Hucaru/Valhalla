@@ -77,7 +77,7 @@ func (server *Server) handlePlayerConnect(conn mnet.Client, reader mpacket.Reade
 	server.players.Add(&plr)
 
 	// Load cash shop storage
-	storage, err := server.GetOrLoadStorage(accountID)
+	storage, err := server.GetOrLoadStorage(conn)
 	if err != nil {
 		log.Println("Failed to load cash shop storage for account", accountID, ":", err)
 	}
@@ -213,7 +213,7 @@ func (server *Server) handleCashShopOperation(conn mnet.Client, reader mpacket.R
 		}
 
 		// Get cash shop storage
-		storage, storageErr := server.GetOrLoadStorage(conn.GetAccountID())
+		storage, storageErr := server.GetOrLoadStorage(conn)
 		if storageErr != nil {
 			log.Println("Failed to get cash shop storage:", storageErr)
 			plr.Send(packetCashShopError(opcode.SendCashShopBuyFailed, constant.CashShopErrorUnknown))
@@ -398,7 +398,7 @@ func (server *Server) handleCashShopOperation(conn mnet.Client, reader mpacket.R
 		_ = reader.ReadByte()
 		targetSlot := reader.ReadInt16()
 
-		storage, storageErr := server.GetOrLoadStorage(conn.GetAccountID())
+		storage, storageErr := server.GetOrLoadStorage(conn)
 		if storageErr != nil {
 			plr.Send(packetCashShopError(opcode.SendCashShopMoveLtoSFailed, constant.CashShopErrorUnknown))
 			return
@@ -454,7 +454,7 @@ func (server *Server) handleCashShopOperation(conn mnet.Client, reader mpacket.R
 		cashItemID := reader.ReadInt64()
 		invType := reader.ReadByte()
 
-		storage, storageErr := server.GetOrLoadStorage(conn.GetAccountID())
+		storage, storageErr := server.GetOrLoadStorage(conn)
 		if storageErr != nil {
 			log.Println("Failed to get storage:", storageErr)
 			plr.Send(packetCashShopError(opcode.SendCashShopMoveStoLFailed, constant.CashShopErrorUnknown))
@@ -473,19 +473,13 @@ func (server *Server) handleCashShopOperation(conn mnet.Client, reader mpacket.R
 			return
 		}
 
-		sn := item.GetCashSN()
-		if sn == 0 {
-			plr.Send(packetCashShopError(opcode.SendCashShopMoveStoLFailed, constant.CashShopErrorUnknown))
-			return
-		}
-
-		takenItem, takeErr := plr.TakeItemFromStorage(item.ID, itemSlot, 1, invType)
+		takenItem, takeErr := plr.TakeItemForStorage(item.ID, itemSlot, 1, invType)
 		if takeErr != nil {
 			plr.Send(packetCashShopError(opcode.SendCashShopMoveStoLFailed, constant.CashShopErrorUnknown))
 			return
 		}
 
-		slotIdx, added := storage.addItemWithCashID(takenItem, sn, cashItemID)
+		slotIdx, added := storage.addItemWithCashID(takenItem, takenItem.GetCashSN(), takenItem.GetCashID())
 		if !added {
 			if err, _ := plr.GiveItem(takenItem); err != nil {
 				log.Println("CRITICAL: Failed to return item to player after add failure:", err)

@@ -1186,7 +1186,7 @@ func (d *Player) takeItem(id int32, slot int16, amount int16, invID byte) (Item,
 
 }
 
-func (d *Player) TakeItemFromStorage(id int32, slot int16, amount int16, invID byte) (Item, error) {
+func (d *Player) TakeItemForStorage(id int32, slot int16, amount int16, invID byte) (Item, error) {
 	item, err := d.getItem(invID, slot)
 	if err != nil {
 		return item, fmt.Errorf("item not found at inv=%d slot=%d", invID, slot)

@@ -192,6 +192,10 @@ func (s *CashShopStorage) save() (err error) {
 	}
 
 	for i := range s.items {
+		if s.items[i].ID == 0 {
+			continue
+		}
+
 		slotNumber := int16(i + 1)
 		if ierr := s.items[i].SaveToCashShopStorage(tx, s.accountID, slotNumber); ierr != nil {
 			err = fmt.Errorf("failed inserting cash shop item (acct %d, slot %d): %w", s.accountID, slotNumber, ierr)

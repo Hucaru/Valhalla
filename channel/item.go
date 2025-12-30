@@ -476,10 +476,6 @@ func (v *Item) save(charID int32) (bool, error) {
 }
 
 func (v Item) SaveToCashShopStorage(tx *sql.Tx, accountID int32, slotNumber int16) error {
-	if v.ID == 0 || v.amount == 0 {
-		return nil
-	}
-
 	const ins = `
 		INSERT INTO account_cashshop_storage_items(
 			accountID, itemID, cashID, sn, slotNumber, amount, flag, upgradeSlots, level,

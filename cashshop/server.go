@@ -3,7 +3,6 @@ package cashshop
 import (
 	"context"
 	"log"
-	"sync"
 	"time"
 
 	"github.com/Hucaru/Valhalla/channel"
@@ -25,10 +24,6 @@ type Server struct {
 	migrating []mnet.Client
 	players   channel.Players
 	channels  [20]internal.Channel
-
-	// Cash shop storage per account
-	storages   map[int32]*CashShopStorage
-	storageMux sync.RWMutex
 }
 
 // Initialise the server
@@ -36,7 +31,6 @@ func (server *Server) Initialise(work chan func(), dbuser, dbpassword, dbaddress
 	server.dispatch = work
 	server.id = 50
 	server.players = channel.NewPlayers()
-	server.storages = make(map[int32]*CashShopStorage)
 
 	if err := common.ConnectToDB(dbuser, dbpassword, dbaddress, dbport, dbdatabase); err != nil {
 		log.Fatal(err)
@@ -72,10 +66,14 @@ func (server *Server) ClientDisconnected(conn mnet.Client) {
 		return
 	}
 
-	// Save cash shop storage before logout
 	accountID := conn.GetAccountID()
-	if saveErr := server.SaveStorage(accountID); saveErr != nil {
-		log.Println("Failed to save cash shop storage for account", accountID, ":", saveErr)
+	if storage := conn.GetCashShopStorage(); storage != nil {
+		if cashStorage, ok := storage.(*CashShopStorage); ok {
+			log.Printf("Saving cash shop storage for account %d on disconnect\n", accountID)
+			if saveErr := cashStorage.save(); saveErr != nil {
+				log.Println("Failed to save cash shop storage for account", accountID, ":", saveErr)
+			}
+		}
 	}
 
 	plr.Logout()
@@ -101,8 +99,7 @@ func (server *Server) ClientDisconnected(conn mnet.Client) {
 
 	server.world.Send(internal.PacketChannelPlayerDisconnect(plr.ID, plr.Name, 0))
 
-	// Unload storage after disconnect
-	server.UnloadStorage(accountID)
+	conn.SetCashShopStorage(nil)
 }
 
 // CheckpointAll now uses the saver to flush debounced/coalesced deltas for every player.
@@ -147,49 +144,19 @@ func (server *Server) StartAutosave(ctx context.Context) {
 }
 
 // GetOrLoadStorage gets or loads cash shop storage for an account
-func (server *Server) GetOrLoadStorage(accountID int32) (*CashShopStorage, error) {
-	server.storageMux.RLock()
-	storage, exists := server.storages[accountID]
-	server.storageMux.RUnlock()
-
-	if exists {
-		return storage, nil
+func (server *Server) GetOrLoadStorage(conn mnet.Client) (*CashShopStorage, error) {
+	if storage := conn.GetCashShopStorage(); storage != nil {
+		if cashStorage, ok := storage.(*CashShopStorage); ok {
+			return cashStorage, nil
+		}
 	}
 
-	// Need to load storage
-	server.storageMux.Lock()
-	defer server.storageMux.Unlock()
-
-	// Check again in case another goroutine loaded it
-	if storage, exists := server.storages[accountID]; exists {
-		return storage, nil
-	}
-
-	storage = NewCashShopStorage(accountID)
+	accountID := conn.GetAccountID()
+	storage := NewCashShopStorage(accountID)
 	if err := storage.load(); err != nil {
 		return nil, err
 	}
 
-	server.storages[accountID] = storage
+	conn.SetCashShopStorage(storage)
 	return storage, nil
-}
-
-// SaveStorage saves cash shop storage for an account
-func (server *Server) SaveStorage(accountID int32) error {
-	server.storageMux.RLock()
-	storage, exists := server.storages[accountID]
-	server.storageMux.RUnlock()
-
-	if !exists {
-		return nil // Nothing to save
-	}
-
-	return storage.save()
-}
-
-// UnloadStorage unloads cash shop storage for an account
-func (server *Server) UnloadStorage(accountID int32) {
-	server.storageMux.Lock()
-	defer server.storageMux.Unlock()
-	delete(server.storages, accountID)
 }
