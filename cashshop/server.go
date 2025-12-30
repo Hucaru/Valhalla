@@ -66,6 +66,16 @@ func (server *Server) ClientDisconnected(conn mnet.Client) {
 		return
 	}
 
+	accountID := conn.GetAccountID()
+	if storage := conn.GetCashShopStorage(); storage != nil {
+		if cashStorage, ok := storage.(*CashShopStorage); ok {
+			log.Printf("Saving cash shop storage for account %d on disconnect\n", accountID)
+			if saveErr := cashStorage.save(); saveErr != nil {
+				log.Println("Failed to save cash shop storage for account", accountID, ":", saveErr)
+			}
+		}
+	}
+
 	plr.Logout()
 
 	if remPlrErr := server.players.RemoveFromConn(conn); remPlrErr != nil {
@@ -88,6 +98,8 @@ func (server *Server) ClientDisconnected(conn mnet.Client) {
 	}
 
 	server.world.Send(internal.PacketChannelPlayerDisconnect(plr.ID, plr.Name, 0))
+
+	conn.SetCashShopStorage(nil)
 }
 
 // CheckpointAll now uses the saver to flush debounced/coalesced deltas for every player.
@@ -129,4 +141,22 @@ func (server *Server) StartAutosave(ctx context.Context) {
 		server.players.Flush()
 		scheduleNext()
 	}
+}
+
+// GetOrLoadStorage gets or loads cash shop storage for an account
+func (server *Server) GetOrLoadStorage(conn mnet.Client) (*CashShopStorage, error) {
+	if storage := conn.GetCashShopStorage(); storage != nil {
+		if cashStorage, ok := storage.(*CashShopStorage); ok {
+			return cashStorage, nil
+		}
+	}
+
+	accountID := conn.GetAccountID()
+	storage := NewCashShopStorage(accountID)
+	if err := storage.load(); err != nil {
+		return nil, err
+	}
+
+	conn.SetCashShopStorage(storage)
+	return storage, nil
 }

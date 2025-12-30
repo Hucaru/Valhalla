@@ -23,6 +23,8 @@ type Client interface {
 	SetChannelID(byte)
 	GetAdminLevel() int
 	SetAdminLevel(int)
+	GetCashShopStorage() interface{}
+	SetCashShopStorage(interface{})
 }
 
 type client struct {
@@ -34,6 +36,7 @@ type client struct {
 	worldID    byte
 	channelID  byte
 	adminLevel int
+	csStorage  interface{}
 }
 
 func NewClient(conn net.Conn, eRecv chan *Event, queueSize int, keySend, keyRecv [4]byte, latency, jitter int) *client {
@@ -120,4 +123,12 @@ func (c *client) GetAdminLevel() int {
 
 func (c *client) SetAdminLevel(level int) {
 	c.adminLevel = level
+}
+
+func (c *client) GetCashShopStorage() interface{} {
+	return c.csStorage
+}
+
+func (c *client) SetCashShopStorage(storage interface{}) {
+	c.csStorage = storage
 }
