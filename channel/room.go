@@ -5,6 +5,7 @@ import (
 	"log"
 	"math"
 	"math/rand"
+	"sort"
 	"time"
 
 	"github.com/Hucaru/Valhalla/common/opcode"
@@ -27,6 +28,10 @@ type room struct {
 	ownerPlayerID int32
 	roomType      byte
 	players       []*Player
+}
+
+type boxDisplayer interface {
+	displayBytes() []byte
 }
 
 func (r room) id() int32 {
@@ -83,6 +88,14 @@ func (r room) sendExcept(p mpacket.Packet, plr *Player) {
 			continue
 		}
 		v.Send(p)
+	}
+}
+
+func (r *room) sendToOwner(p mpacket.Packet) {
+	for _, v := range r.players {
+		if v.ID == r.ownerPlayerID {
+			v.Send(p)
+		}
 	}
 }
 
@@ -926,6 +939,226 @@ func (r *tradeRoom) rollback() {
 	r.finalized = true
 }
 
+type shopItem struct {
+	item         Item
+	price        int32
+	slot         byte
+	bundles      int16
+	bundleAmount int16
+}
+
+type shopRoom struct {
+	room
+	name     string
+	private  bool
+	open     bool
+	items    map[byte]*shopItem
+	nextSlot byte
+	mesos    int32
+}
+
+func newShopRoom(id int32, name string, private bool) roomer {
+	r := room{roomID: id, roomType: constant.MiniRoomTypePlayerShop}
+	return &shopRoom{
+		room:     r,
+		name:     name,
+		private:  private,
+		items:    make(map[byte]*shopItem),
+		nextSlot: 0,
+		mesos:    0,
+	}
+}
+
+func (r *shopRoom) addPlayer(plr *Player) bool {
+	if !r.open && len(r.players) >= 1 {
+		plr.Send(packetRoomStoreMaintenance())
+		return false
+	}
+
+	if !r.room.addPlayer(plr) {
+		return false
+	}
+
+	if len(r.players) >= constant.ShopMaxPlayers {
+		return false
+	}
+
+	plr.Send(packetRoomShowWindow(r.roomType, 0, byte(constant.ShopMaxPlayers), byte(len(r.players)-1), r.name, r.players))
+
+	if len(r.players) > 1 {
+		r.sendExcept(packetRoomJoin(r.roomType, byte(len(r.players)-1), r.players[len(r.players)-1]), plr)
+		r.send(packetRoomShopRefresh(r))
+	}
+
+	return true
+}
+
+func (r *shopRoom) removePlayer(plr *Player) {
+	for i, v := range r.players {
+		if v.Conn == plr.Conn {
+			r.players = append(r.players[:i], r.players[i+1:]...)
+			plr.Send(packetRoomLeave(byte(i), constant.MiniRoomLeaveReason))
+
+			if i == constant.RoomOwnerSlot {
+				for j := range r.players {
+					r.players[j].Send(packetRoomLeave(byte(j+1), constant.MiniRoomClosed))
+				}
+				r.players = []*Player{}
+			} else {
+				r.send(packetRoomLeave(byte(i), constant.MiniRoomLeaveReason))
+			}
+			return
+		}
+	}
+}
+
+func (r *shopRoom) closeShop(reason byte) {
+	for i, plr := range r.players {
+		if plr == nil {
+			continue
+		}
+		plr.Send(packetRoomLeave(byte(i), reason))
+	}
+	r.players = []*Player{}
+}
+
+func (r *shopRoom) checkOpen() bool {
+	for _, plr := range r.players {
+		if plr.ID == r.ownerPlayerID {
+			if plr.Conn == nil {
+				r.closeShop(constant.MiniRoomClosed)
+				return false
+			}
+		}
+	}
+	return true
+}
+
+func (r *shopRoom) addItem(item Item, bundles, bundleAmount int16, price int32, slot byte) bool {
+	if _, exists := r.items[slot]; exists {
+		return false
+	}
+
+	r.items[slot] = &shopItem{
+		item:         item,
+		price:        price,
+		slot:         slot,
+		bundles:      bundles,
+		bundleAmount: bundleAmount,
+	}
+
+	if slot >= r.nextSlot {
+		r.nextSlot = slot + 1
+	}
+
+	return true
+}
+
+func (r *shopRoom) buyItem(slot byte, quantity int16, buyerID int32) (byte, bool) {
+	shopItem, exists := r.items[slot]
+	if !exists {
+		return constant.PlayerShopNotEnoughInStock, false
+	}
+
+	if shopItem.bundles < quantity {
+		return constant.PlayerShopNotEnoughInStock, false
+	}
+
+	totalCost := int64(shopItem.price) * int64(quantity)
+	realAmount := quantity * shopItem.bundleAmount
+
+	if totalCost > int64(math.MaxInt32) {
+		return constant.PlayerShopPriceTooHighForTrade, false
+	}
+
+	var buyer *Player
+	var owner *Player
+	for _, plr := range r.players {
+		if plr.ID == buyerID {
+			buyer = plr
+		}
+		if plr.ID == r.ownerID() {
+			owner = plr
+		}
+	}
+
+	if buyer == nil {
+		return constant.PlayerShopInventoryFull, false
+	}
+
+	if int64(buyer.mesos) < totalCost {
+		return constant.PlayerShopBuyerNotEnoughMoney, false
+	}
+
+	purchasedItem := shopItem.item
+	purchasedItem.amount = realAmount
+	purchasedItem.dbID = 0
+	purchasedItem.slotID = 0
+
+	if !buyer.canReceiveItems([]Item{purchasedItem}) {
+		return constant.PlayerShopInventoryFull, false
+	}
+
+	buyer.takeMesos(int32(totalCost))
+
+	err, _ := buyer.GiveItem(purchasedItem)
+	if err != nil {
+		buyer.giveMesos(int32(totalCost))
+		return constant.PlayerShopInventoryFull, false
+	}
+
+	shopItem.bundles -= quantity
+
+	if owner != nil {
+		_, err := owner.takeItem(shopItem.item.ID, shopItem.item.slotID, realAmount, shopItem.item.invID)
+		if err != nil {
+			log.Printf("Warning: Failed to remove sold item from owner inventory: %v", err)
+		}
+	}
+
+	if shopItem.bundles <= 0 {
+		delete(r.items, slot)
+	} else {
+		shopItem.item.amount = shopItem.bundles * shopItem.bundleAmount
+	}
+
+	if owner != nil {
+		owner.giveMesos(int32(totalCost))
+	} else {
+		r.mesos += int32(totalCost)
+	}
+
+	return 0, true
+}
+
+func (r *shopRoom) removeItem(slot byte) bool {
+	if _, exists := r.items[slot]; !exists {
+		return false
+	}
+
+	delete(r.items, slot)
+	return true
+}
+
+func (r *shopRoom) displayBytes() []byte {
+	p := mpacket.NewPacket()
+
+	if len(r.players) == 0 {
+		return p
+	}
+
+	p.WriteInt32(r.players[0].ID)
+	p.WriteByte(r.roomType)
+	p.WriteInt32(r.roomID)
+	p.WriteString(r.name)
+	p.WriteBool(r.private)
+	p.WriteByte(0)
+	p.WriteByte(byte(len(r.players)))
+	p.WriteByte(constant.ShopMaxPlayers)
+	p.WriteBool(r.open)
+
+	return p
+}
 func packetRoomShowWindow(roomType, boardType, maxPlayers, roomSlot byte, roomTitle string, players []*Player) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelRoom)
 	p.WriteByte(constant.RoomPacketShowWindow)
@@ -936,13 +1169,22 @@ func packetRoomShowWindow(roomType, boardType, maxPlayers, roomSlot byte, roomTi
 	for i, v := range players {
 		p.WriteByte(byte(i))
 		p.Append(v.displayBytes())
-		p.WriteInt32(0) // not sure what this is - memory card game seed? board settings?
+		if roomType != constant.MiniRoomTypeTrade && roomType != constant.MiniRoomTypePlayerShop {
+			p.WriteInt32(0) // games only - memory card game seed? board settings?
+		}
 		p.WriteString(v.Name)
 	}
 
-	p.WriteByte(0xFF)
+	p.WriteByte(constant.RoomPacketEndList)
 
 	if roomType == constant.MiniRoomTypeTrade {
+		return p
+	}
+
+	if roomType == constant.MiniRoomTypePlayerShop {
+		p.WriteString(roomTitle)
+		p.WriteByte(constant.RoomShopItemListUnknown)
+		p.WriteByte(0)
 		return p
 	}
 
@@ -955,7 +1197,7 @@ func packetRoomShowWindow(roomType, boardType, maxPlayers, roomSlot byte, roomTi
 		p.WriteInt32(v.miniGamePoints)
 	}
 
-	p.WriteByte(0xFF)
+	p.WriteByte(constant.RoomPacketEndList)
 	p.WriteString(roomTitle)
 	p.WriteByte(boardType)
 	p.WriteByte(0)
@@ -1229,6 +1471,53 @@ func packetRoomTradeAccept() mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelRoom)
 	p.WriteByte(constant.MiniRoomTradeAccept)
 
+	return p
+}
+
+func packetRoomShopRefresh(shop *shopRoom) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelRoom)
+	p.WriteByte(constant.RoomShopRefresh)
+	p.WriteByte(byte(len(shop.items)))
+
+	slots := make([]byte, 0, len(shop.items))
+	for slot := range shop.items {
+		slots = append(slots, slot)
+	}
+	sort.Slice(slots, func(i, j int) bool { return slots[i] < slots[j] })
+
+	for _, slot := range slots {
+		shopItem := shop.items[slot]
+		p.WriteInt16(shopItem.bundles)
+		p.WriteInt16(shopItem.bundleAmount)
+		p.WriteInt32(shopItem.price)
+		p.Append(shopItem.item.StorageBytes())
+	}
+
+	return p
+}
+
+func packetShopItemResult(msg byte) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelRoom)
+	p.WriteByte(constant.MiniRoomPlayerShopItemResult)
+	p.WriteByte(msg)
+
+	return p
+}
+
+func packetRoomShopSoldItem(slot byte, quantity int16, buyerName string) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelRoom)
+	p.WriteByte(constant.MiniRoomPlayerShopSoldItem)
+	p.WriteByte(slot)
+	p.WriteInt16(quantity)
+	p.WriteString(buyerName)
+	return p
+}
+
+func packetRoomShopRemoveItem(remaining byte, slot int16) mpacket.Packet {
+	p := mpacket.CreateWithOpcode(opcode.SendChannelRoom)
+	p.WriteByte(constant.RoomShopMoveItemToInv)
+	p.WriteByte(remaining)
+	p.WriteInt16(slot)
 	return p
 }
 
