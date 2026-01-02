@@ -881,6 +881,14 @@ func (pool *roomPool) removePlayer(plr *Player) {
 		if r.closed() {
 			_ = pool.removeRoom(v.id())
 		}
+	case *shopRoom:
+		v.removePlayer(plr)
+		if r.closed() {
+			_ = pool.removeRoom(v.id())
+		} else {
+			pool.updateGameBox(r)
+		}
+
 	case gameRoomer:
 		v.kickPlayer(plr, 0x0)
 		if r.closed() {

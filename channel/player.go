@@ -2020,6 +2020,7 @@ func LoadPlayerFromID(id int32, conn mnet.Client) Player {
 	c.pos.y = nxMap.Portals[c.mapPos].Y
 
 	c.equip, c.use, c.setUp, c.etc, c.cash = loadInventoryFromDb(c.ID)
+	c.restoreShopEscrowOnLogin()
 
 	c.buddyList = getBuddyList(c.ID, c.buddyListSize)
 

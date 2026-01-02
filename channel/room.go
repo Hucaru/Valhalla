@@ -940,6 +940,7 @@ func (r *tradeRoom) rollback() {
 }
 
 type shopItem struct {
+	escrowID     int64
 	item         Item
 	price        int32
 	slot         byte
@@ -995,7 +996,8 @@ func (r *shopRoom) addPlayer(plr *Player) bool {
 
 func (r *shopRoom) removePlayer(plr *Player) {
 	for i, v := range r.players {
-		if v.Conn == plr.Conn {
+		sameConn := (v.Conn != nil && plr.Conn != nil && v.Conn == plr.Conn)
+		if v.ID == plr.ID || sameConn {
 			r.players = append(r.players[:i], r.players[i+1:]...)
 			plr.Send(packetRoomLeave(byte(i), constant.MiniRoomLeaveReason))
 
@@ -1012,13 +1014,55 @@ func (r *shopRoom) removePlayer(plr *Player) {
 	}
 }
 
-func (r *shopRoom) closeShop(reason byte) {
+func (r *shopRoom) ownerPlayer() *Player {
+	for _, plr := range r.players {
+		if plr != nil && plr.ID == r.ownerPlayerID {
+			return plr
+		}
+	}
+	return nil
+}
+
+func (r *shopRoom) closeShop(reason byte, owner *Player) {
 	for i, plr := range r.players {
 		if plr == nil {
 			continue
 		}
 		plr.Send(packetRoomLeave(byte(i), reason))
 	}
+
+	if owner != nil {
+		for slot, si := range r.items {
+			if si == nil {
+				continue
+			}
+
+			remaining := si.bundles * si.bundleAmount
+			if remaining <= 0 {
+				_ = shopEscrowDelete(si.escrowID)
+				delete(r.items, slot)
+				continue
+			}
+
+			ret := si.item
+			ret.amount = remaining
+			ret.dbID = 0
+			ret.slotID = 0
+
+			if err, _ := owner.GiveItem(ret); err != nil {
+				owner.Send(packetMessageRedText("Not enough inventory space to retrieve all shop items. Make space and relog to restore remaining items."))
+				break
+			}
+
+			_ = shopEscrowDelete(si.escrowID)
+			delete(r.items, slot)
+		}
+
+		if m, err := shopEscrowMesosClaim(owner.ID); err == nil && m > 0 {
+			owner.giveMesos(m)
+		}
+	}
+
 	r.players = []*Player{}
 }
 
@@ -1026,7 +1070,7 @@ func (r *shopRoom) checkOpen() bool {
 	for _, plr := range r.players {
 		if plr.ID == r.ownerPlayerID {
 			if plr.Conn == nil {
-				r.closeShop(constant.MiniRoomClosed)
+				r.closeShop(constant.MiniRoomClosed, nil)
 				return false
 			}
 		}
@@ -1034,12 +1078,13 @@ func (r *shopRoom) checkOpen() bool {
 	return true
 }
 
-func (r *shopRoom) addItem(item Item, bundles, bundleAmount int16, price int32, slot byte) bool {
+func (r *shopRoom) addItem(escrowID int64, item Item, bundles, bundleAmount int16, price int32, slot byte) bool {
 	if _, exists := r.items[slot]; exists {
 		return false
 	}
 
 	r.items[slot] = &shopItem{
+		escrowID:     escrowID,
 		item:         item,
 		price:        price,
 		slot:         slot,
@@ -1059,14 +1104,12 @@ func (r *shopRoom) buyItem(slot byte, quantity int16, buyerID int32) (byte, bool
 	if !exists {
 		return constant.PlayerShopNotEnoughInStock, false
 	}
-
-	if shopItem.bundles < quantity {
+	if quantity <= 0 || shopItem.bundles < quantity {
 		return constant.PlayerShopNotEnoughInStock, false
 	}
 
 	totalCost := int64(shopItem.price) * int64(quantity)
 	realAmount := quantity * shopItem.bundleAmount
-
 	if totalCost > int64(math.MaxInt32) {
 		return constant.PlayerShopPriceTooHighForTrade, false
 	}
@@ -1085,7 +1128,6 @@ func (r *shopRoom) buyItem(slot byte, quantity int16, buyerID int32) (byte, bool
 	if buyer == nil {
 		return constant.PlayerShopInventoryFull, false
 	}
-
 	if int64(buyer.mesos) < totalCost {
 		return constant.PlayerShopBuyerNotEnoughMoney, false
 	}
@@ -1101,31 +1143,24 @@ func (r *shopRoom) buyItem(slot byte, quantity int16, buyerID int32) (byte, bool
 
 	buyer.takeMesos(int32(totalCost))
 
-	err, _ := buyer.GiveItem(purchasedItem)
-	if err != nil {
+	if err, _ := buyer.GiveItem(purchasedItem); err != nil {
 		buyer.giveMesos(int32(totalCost))
 		return constant.PlayerShopInventoryFull, false
 	}
 
 	shopItem.bundles -= quantity
-
-	if owner != nil {
-		_, err := owner.takeItem(shopItem.item.ID, shopItem.item.slotID, realAmount, shopItem.item.invID)
-		if err != nil {
-			log.Printf("Warning: Failed to remove sold item from owner inventory: %v", err)
-		}
-	}
-
 	if shopItem.bundles <= 0 {
+		_ = shopEscrowDelete(shopItem.escrowID)
 		delete(r.items, slot)
 	} else {
 		shopItem.item.amount = shopItem.bundles * shopItem.bundleAmount
+		_ = shopEscrowUpdateBundles(shopItem.escrowID, shopItem.bundles, shopItem.item.amount)
 	}
 
 	if owner != nil {
 		owner.giveMesos(int32(totalCost))
 	} else {
-		r.mesos += int32(totalCost)
+		_ = shopEscrowMesosAdd(r.ownerID(), int32(totalCost))
 	}
 
 	return 0, true

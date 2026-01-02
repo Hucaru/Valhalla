@@ -3377,17 +3377,24 @@ func (server Server) roomWindow(conn mnet.Client, reader mpacket.Reader) {
 				log.Println(err)
 			}
 		} else if shop, valid := r.(*shopRoom); valid {
+			if plr.ID == shop.ownerID() {
+				shop.closeShop(constant.MiniRoomClosed, plr)
+				if err := pool.removeRoom(shop.roomID); err != nil {
+					log.Println(err)
+				}
+				return
+			}
+
 			shop.removePlayer(plr)
 
 			if r.closed() {
-				shop.closeShop(constant.MiniRoomClosed)
-				err = pool.removeRoom(shop.roomID)
-
-				if err != nil {
+				shop.closeShop(constant.MiniRoomClosed, shop.ownerPlayer())
+				if err := pool.removeRoom(shop.roomID); err != nil {
 					log.Println(err)
 				}
 			}
 		}
+
 	case constant.MiniRoomTradePutItem:
 		invType := reader.ReadByte()
 		invSlot := reader.ReadInt16()
@@ -3649,17 +3656,16 @@ func (server Server) roomWindow(conn mnet.Client, reader mpacket.Reader) {
 		price := reader.ReadInt32()
 
 		r, err := pool.getPlayerRoom(plr.ID)
-
 		if err != nil {
 			return
 		}
-
 		shop, valid := r.(*shopRoom)
-		if !valid {
+		if !valid || shop.ownerID() != plr.ID {
 			return
 		}
 
-		if shop.ownerID() != plr.ID {
+		if err := shopEscrowAmountSanity(bundles, bundleAmount); err != nil {
+			plr.Send(packetPlayerNoChange())
 			return
 		}
 
@@ -3670,17 +3676,31 @@ func (server Server) roomWindow(conn mnet.Client, reader mpacket.Reader) {
 		}
 
 		totalAmount := bundles * bundleAmount
-		if item.amount < totalAmount || bundles <= 0 || bundleAmount <= 0 {
+		if totalAmount <= 0 || item.amount < totalAmount {
 			plr.Send(packetPlayerNoChange())
 			return
 		}
 
-		newItem := item
-		newItem.amount = totalAmount
+		escrowItem := item
+		escrowItem.amount = totalAmount
+		escrowItem.dbID = 0
+		escrowItem.slotID = 0
+
+		if _, err := plr.takeItem(item.ID, item.slotID, totalAmount, item.invID); err != nil {
+			plr.Send(packetPlayerNoChange())
+			return
+		}
 
 		shopSlot := shop.nextSlot
 
-		if shop.addItem(newItem, bundles, bundleAmount, price, shopSlot) {
+		escrowID, err := shopEscrowInsert(plr.ID, shopSlot, price, bundles, bundleAmount, escrowItem)
+		if err != nil {
+			_, _ = plr.GiveItem(escrowItem)
+			plr.Send(packetPlayerNoChange())
+			return
+		}
+
+		if shop.addItem(escrowID, escrowItem, bundles, bundleAmount, price, shopSlot) {
 			shop.send(packetRoomShopRefresh(shop))
 		}
 
@@ -3717,7 +3737,7 @@ func (server Server) roomWindow(conn mnet.Client, reader mpacket.Reader) {
 			shop.send(packetRoomShopRefresh(shop))
 
 			if len(shop.items) == 0 {
-				shop.closeShop(constant.MiniRoomClosed)
+				shop.closeShop(constant.MiniRoomClosed, shop.ownerPlayer())
 				if err := pool.removeRoom(shop.id()); err != nil {
 					log.Println(err)
 				}
@@ -3731,40 +3751,32 @@ func (server Server) roomWindow(conn mnet.Client, reader mpacket.Reader) {
 		shopSlot := reader.ReadByte()
 
 		r, err := pool.getPlayerRoom(plr.ID)
-
 		if err != nil {
 			return
 		}
-
 		shop, valid := r.(*shopRoom)
-		if !valid {
+		if !valid || shop.ownerID() != plr.ID {
 			return
 		}
 
-		if shop.ownerID() != plr.ID {
-			return
-		}
+		if si, exists := shop.items[shopSlot]; exists {
+			ret := si.item
+			ret.amount = si.bundles * si.bundleAmount
+			ret.dbID = 0
+			ret.slotID = 0
 
-		if shopItem, exists := shop.items[shopSlot]; exists {
-			remainingBundles := shopItem.bundles - 1
-			var remaining byte
-			if remainingBundles > 0 {
-				remaining = byte(remainingBundles)
-			} else {
-				remaining = 0
+			if ret.amount > 0 {
+				if err, _ := plr.GiveItem(ret); err != nil {
+					plr.Send(packetPlayerNoChange())
+					return
+				}
 			}
 
-			if remainingBundles <= 0 {
-				shop.removeItem(shopSlot)
-			} else {
-				shopItem.bundles = remainingBundles
-				shopItem.item.amount = remainingBundles * shopItem.bundleAmount
-			}
-
-			shop.send(packetRoomShopRemoveItem(remaining, int16(shopSlot)))
+			_ = shopEscrowDelete(si.escrowID)
+			shop.removeItem(shopSlot)
+			shop.send(packetRoomShopRemoveItem(0, int16(shopSlot)))
+			shop.send(packetRoomShopRefresh(shop))
 		}
-
-		plr.Send(packetPlayerNoChange())
 
 	default:
 		log.Println("Unknown room operation", operation)

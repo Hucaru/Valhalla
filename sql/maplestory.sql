@@ -332,4 +332,56 @@ CREATE TABLE IF NOT EXISTS  `pets` (
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 
 
--- 2025-08-19 16:51:40 UTC
+
+CREATE TABLE IF NOT EXISTS `player_shop_escrow_items` (
+    `id` BIGINT(20) NOT NULL AUTO_INCREMENT,
+    `ownerCharacterID` INT(11) NOT NULL,
+    `shopSlot` TINYINT(3) UNSIGNED NOT NULL,
+    `price` INT(11) NOT NULL DEFAULT 0,
+    `bundles` SMALLINT(6) NOT NULL DEFAULT 0,
+    `bundleAmount` SMALLINT(6) NOT NULL DEFAULT 0,
+    `itemID` INT(11) NOT NULL,
+    `inventoryID` TINYINT(3) UNSIGNED NOT NULL,
+    `amount` INT(11) NOT NULL DEFAULT 1,
+    `flag` TINYINT(4) NOT NULL DEFAULT 0,
+    `upgradeSlots` TINYINT(4) NOT NULL DEFAULT 0,
+    `level` TINYINT(4) NOT NULL DEFAULT 0,
+    `str` SMALLINT(6) NOT NULL DEFAULT 0,
+    `dex` SMALLINT(6) NOT NULL DEFAULT 0,
+    `intt` SMALLINT(6) NOT NULL DEFAULT 0,
+    `luk` SMALLINT(6) NOT NULL DEFAULT 0,
+    `hp` SMALLINT(6) NOT NULL DEFAULT 0,
+    `mp` SMALLINT(6) NOT NULL DEFAULT 0,
+    `watk` SMALLINT(6) NOT NULL DEFAULT 0,
+    `matk` SMALLINT(6) NOT NULL DEFAULT 0,
+    `wdef` SMALLINT(6) NOT NULL DEFAULT 0,
+    `mdef` SMALLINT(6) NOT NULL DEFAULT 0,
+    `accuracy` SMALLINT(6) NOT NULL DEFAULT 0,
+    `avoid` SMALLINT(6) NOT NULL DEFAULT 0,
+    `hands` SMALLINT(6) NOT NULL DEFAULT 0,
+    `speed` SMALLINT(6) NOT NULL DEFAULT 0,
+    `jump` SMALLINT(6) NOT NULL DEFAULT 0,
+    `expireTime` BIGINT(20) NOT NULL DEFAULT 0,
+    `creatorName` TINYTEXT NOT NULL,
+    `cashID` BIGINT(20) DEFAULT NULL,
+    `cashSN` INT(11) DEFAULT NULL,
+    `createdAt` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    PRIMARY KEY (`id`),
+    KEY `idx_ps_escrow_owner` (`ownerCharacterID`),
+    KEY `idx_ps_escrow_owner_slot` (`ownerCharacterID`, `shopSlot`),
+    CONSTRAINT `ps_escrow_items_fk_owner`
+    FOREIGN KEY (`ownerCharacterID`) REFERENCES `characters` (`id`)
+    ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+
+CREATE TABLE IF NOT EXISTS `player_shop_escrow_mesos` (
+    `ownerCharacterID` INT(11) NOT NULL,
+    `mesos` INT(11) UNSIGNED NOT NULL DEFAULT 0,
+    `updatedAt` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (`ownerCharacterID`),
+    CONSTRAINT `ps_escrow_mesos_fk_owner`
+    FOREIGN KEY (`ownerCharacterID`) REFERENCES `characters` (`id`)
+    ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+
