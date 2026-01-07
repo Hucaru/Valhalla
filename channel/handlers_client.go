@@ -3409,12 +3409,13 @@ func (server Server) roomWindow(conn mnet.Client, reader mpacket.Reader) {
 
 		if item.isRechargeable() {
 			amount = item.amount
-		}
-
-		_, err = plr.takeItem(item.ID, invSlot, amount, invType)
-		if err != nil {
-			plr.Send(packetPlayerNoChange())
-			return
+			plr.removeItem(item, false)
+		} else {
+			_, err = plr.takeItem(item.ID, invSlot, amount, invType)
+			if err != nil {
+				plr.Send(packetPlayerNoChange())
+				return
+			}
 		}
 
 		newItem := item
@@ -3675,6 +3676,14 @@ func (server Server) roomWindow(conn mnet.Client, reader mpacket.Reader) {
 			return
 		}
 
+		if item.isRechargeable() {
+			if item.amount <= 0 {
+				item.amount = 1
+			}
+			bundles = 1
+			bundleAmount = item.amount
+		}
+
 		totalAmount := bundles * bundleAmount
 		if totalAmount <= 0 || item.amount < totalAmount {
 			plr.Send(packetPlayerNoChange())
@@ -3686,9 +3695,13 @@ func (server Server) roomWindow(conn mnet.Client, reader mpacket.Reader) {
 		escrowItem.dbID = 0
 		escrowItem.slotID = 0
 
-		if _, err := plr.takeItem(item.ID, item.slotID, totalAmount, item.invID); err != nil {
-			plr.Send(packetPlayerNoChange())
-			return
+		if item.isRechargeable() {
+			plr.removeItem(item, false)
+		} else {
+			if _, err := plr.takeItem(item.ID, item.slotID, totalAmount, item.invID); err != nil {
+				plr.Send(packetPlayerNoChange())
+				return
+			}
 		}
 
 		shopSlot := shop.nextSlot
@@ -3705,7 +3718,6 @@ func (server Server) roomWindow(conn mnet.Client, reader mpacket.Reader) {
 		}
 
 		plr.Send(packetPlayerNoChange())
-
 	case constant.MiniRoomBuyShopItem:
 		shopSlot := reader.ReadByte()
 		quantity := reader.ReadInt16()

@@ -739,7 +739,7 @@ func (r *tradeRoom) addPlayer(plr *Player) bool {
 		return false
 	}
 
-	plr.Send(packetRoomShowWindow(r.roomType, 0x00, byte(constant.RoomMaxPlayers), byte(len(r.players)-1), "", r.players))
+	plr.Send(packetRoomShowWindow(r.roomType, constant.MiniRoomTypeTrade, byte(constant.RoomMaxPlayers), byte(len(r.players)-1), "", r.players))
 
 	if len(r.players) > 1 {
 		r.sendExcept(packetRoomJoin(r.roomType, byte(len(r.players)-1), r.players[len(r.players)-1]), plr)
@@ -984,7 +984,7 @@ func (r *shopRoom) addPlayer(plr *Player) bool {
 		return false
 	}
 
-	plr.Send(packetRoomShowWindow(r.roomType, 0, byte(constant.ShopMaxPlayers), byte(len(r.players)-1), r.name, r.players))
+	plr.Send(packetRoomShowWindow(r.roomType, constant.MiniRoomTypePlayerShop, byte(constant.ShopMaxPlayers), byte(len(r.players)-1), r.name, r.players))
 
 	if len(r.players) > 1 {
 		r.sendExcept(packetRoomJoin(r.roomType, byte(len(r.players)-1), r.players[len(r.players)-1]), plr)
@@ -1245,7 +1245,6 @@ func packetRoomJoin(roomType, roomSlot byte, plr *Player) mpacket.Packet {
 	p.WriteByte(constant.RoomPacketJoin)
 	p.WriteByte(roomSlot)
 	p.Append(plr.displayBytes())
-	p.WriteInt32(0) //?
 	p.WriteString(plr.Name)
 
 	if roomType == constant.MiniRoomTypeTrade || roomType == constant.MiniRoomTypePlayerShop {
