@@ -940,7 +940,6 @@ func (r *tradeRoom) rollback() {
 }
 
 type shopItem struct {
-	escrowID     int64
 	item         Item
 	price        int32
 	slot         byte
@@ -1037,29 +1036,10 @@ func (r *shopRoom) closeShop(reason byte, owner *Player) {
 				continue
 			}
 
-			remaining := si.bundles * si.bundleAmount
-			if remaining <= 0 {
-				_ = shopEscrowDelete(si.escrowID)
-				delete(r.items, slot)
-				continue
-			}
+			owner.setShopLockedByDBID(si.item.invID, si.item.dbID, false)
+			owner.Send(packetInventoryAddItem(si.item, true))
 
-			ret := si.item
-			ret.amount = remaining
-			ret.dbID = 0
-			ret.slotID = 0
-
-			if err, _ := owner.GiveItem(ret); err != nil {
-				owner.Send(packetMessageRedText("Not enough inventory space to retrieve all shop items. Make space and relog to restore remaining items."))
-				break
-			}
-
-			_ = shopEscrowDelete(si.escrowID)
 			delete(r.items, slot)
-		}
-
-		if m, err := shopEscrowMesosClaim(owner.ID); err == nil && m > 0 {
-			owner.giveMesos(m)
 		}
 	}
 
@@ -1078,14 +1058,46 @@ func (r *shopRoom) checkOpen() bool {
 	return true
 }
 
-func (r *shopRoom) addItem(escrowID int64, item Item, bundles, bundleAmount int16, price int32, slot byte) bool {
+func (r *shopRoom) addItem(item Item, bundles, bundleAmount int16, price int32, slot byte) bool {
 	if _, exists := r.items[slot]; exists {
 		return false
 	}
 
+	owner := r.ownerPlayer()
+	if owner == nil {
+		return false
+	}
+
+	if bundles <= 0 || bundleAmount <= 0 {
+		return false
+	}
+
+	cur, err := owner.getItem(item.invID, item.slotID)
+	if err != nil || cur.dbID != item.dbID || cur.ID != item.ID {
+		return false
+	}
+	if cur.shopLocked {
+		return false
+	}
+
+	need := bundles * bundleAmount
+	if need <= 0 || need > cur.amount {
+		return false
+	}
+
+	if cur.isRechargeable() {
+		if bundles != 1 || bundleAmount != cur.amount {
+			return false
+		}
+	}
+
+	if !owner.setShopLockedByDBID(cur.invID, cur.dbID, true) {
+		return false
+	}
+	owner.removeItemForStore(cur)
+
 	r.items[slot] = &shopItem{
-		escrowID:     escrowID,
-		item:         item,
+		item:         cur,
 		price:        price,
 		slot:         slot,
 		bundles:      bundles,
@@ -1100,19 +1112,19 @@ func (r *shopRoom) addItem(escrowID int64, item Item, bundles, bundleAmount int1
 }
 
 func (r *shopRoom) buyItem(slot byte, quantity int16, buyerID int32) (byte, bool) {
-	shopItem, exists := r.items[slot]
+	si, exists := r.items[slot]
 	if !exists {
 		return constant.PlayerShopNotEnoughInStock, false
 	}
-	if quantity <= 0 || shopItem.bundles < quantity {
+	if quantity <= 0 || si.bundles < quantity {
 		return constant.PlayerShopNotEnoughInStock, false
 	}
 
-	totalCost := int64(shopItem.price) * int64(quantity)
-	realAmount := quantity * shopItem.bundleAmount
+	totalCost := int64(si.price) * int64(quantity)
 	if totalCost > int64(math.MaxInt32) {
 		return constant.PlayerShopPriceTooHighForTrade, false
 	}
+	realAmount := quantity * si.bundleAmount
 
 	var buyer *Player
 	var owner *Player
@@ -1128,48 +1140,79 @@ func (r *shopRoom) buyItem(slot byte, quantity int16, buyerID int32) (byte, bool
 	if buyer == nil {
 		return constant.PlayerShopInventoryFull, false
 	}
+	if owner == nil {
+		return constant.PlayerShopNotEnoughInStock, false
+	}
 	if int64(buyer.mesos) < totalCost {
 		return constant.PlayerShopBuyerNotEnoughMoney, false
 	}
 
-	purchasedItem := shopItem.item
-	purchasedItem.amount = realAmount
-	purchasedItem.dbID = 0
-	purchasedItem.slotID = 0
+	cur, err := owner.getItem(si.item.invID, si.item.slotID)
+	if err != nil || cur.dbID != si.item.dbID || cur.ID != si.item.ID {
+		return constant.PlayerShopNotEnoughInStock, false
+	}
+	if !cur.shopLocked {
+		return constant.PlayerShopNotEnoughInStock, false
+	}
+	if cur.isRechargeable() {
+		if quantity != 1 || si.bundles != 1 || realAmount != cur.amount {
+			return constant.PlayerShopNotEnoughInStock, false
+		}
+	} else {
+		if realAmount > cur.amount {
+			return constant.PlayerShopNotEnoughInStock, false
+		}
+	}
 
-	if !buyer.canReceiveItems([]Item{purchasedItem}) {
+	purchased := cur
+	purchased.amount = realAmount
+	purchased.dbID = 0
+	purchased.slotID = 0
+
+	if !buyer.canReceiveItems([]Item{purchased}) {
 		return constant.PlayerShopInventoryFull, false
 	}
 
 	buyer.takeMesos(int32(totalCost))
+	owner.giveMesos(int32(totalCost))
 
-	if err, _ := buyer.GiveItem(purchasedItem); err != nil {
+	if err, _ := buyer.GiveItem(purchased); err != nil {
+		owner.takeMesos(int32(totalCost))
 		buyer.giveMesos(int32(totalCost))
 		return constant.PlayerShopInventoryFull, false
 	}
 
-	shopItem.bundles -= quantity
-	if shopItem.bundles <= 0 {
-		_ = shopEscrowDelete(shopItem.escrowID)
-		delete(r.items, slot)
-	} else {
-		shopItem.item.amount = shopItem.bundles * shopItem.bundleAmount
-		_ = shopEscrowUpdateBundles(shopItem.escrowID, shopItem.bundles, shopItem.item.amount)
+	if _, err := owner.takeItemForShopSale(cur.ID, cur.slotID, realAmount, cur.invID); err != nil {
+		log.Printf("shop buyItem: failed to take from owner after giving buyer: owner=%d item=%d err=%v", owner.ID, cur.ID, err)
+		return constant.PlayerShopNotEnoughInStock, false
 	}
 
-	if owner != nil {
-		owner.giveMesos(int32(totalCost))
+	si.bundles -= quantity
+	if si.bundles <= 0 {
+		owner.setShopLockedByDBID(si.item.invID, si.item.dbID, false)
+		delete(r.items, slot)
 	} else {
-		_ = shopEscrowMesosAdd(r.ownerID(), int32(totalCost))
+		if updated, err := owner.getItem(si.item.invID, si.item.slotID); err == nil && updated.dbID == si.item.dbID {
+			si.item = updated
+		}
 	}
 
 	return 0, true
 }
 
 func (r *shopRoom) removeItem(slot byte) bool {
-	if _, exists := r.items[slot]; !exists {
+	si, exists := r.items[slot]
+	if !exists {
 		return false
 	}
+
+	owner := r.ownerPlayer()
+	if owner == nil {
+		return false
+	}
+
+	owner.setShopLockedByDBID(si.item.invID, si.item.dbID, false)
+	owner.Send(packetInventoryAddItem(si.item, true))
 
 	delete(r.items, slot)
 	return true

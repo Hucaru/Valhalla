@@ -1401,6 +1401,106 @@ func (d *Player) removeItem(item Item, fromStorage bool) {
 	}
 }
 
+func (d *Player) setShopLockedByDBID(invID byte, dbID int64, locked bool) bool {
+	if d == nil || dbID == 0 {
+		return false
+	}
+
+	switch invID {
+	case constant.InventoryEquip:
+		for i := range d.equip {
+			if d.equip[i].dbID == dbID {
+				d.equip[i].shopLocked = locked
+				return true
+			}
+		}
+	case constant.InventoryUse:
+		for i := range d.use {
+			if d.use[i].dbID == dbID {
+				d.use[i].shopLocked = locked
+				return true
+			}
+		}
+	case constant.InventorySetup:
+		for i := range d.setUp {
+			if d.setUp[i].dbID == dbID {
+				d.setUp[i].shopLocked = locked
+				return true
+			}
+		}
+	case constant.InventoryEtc:
+		for i := range d.etc {
+			if d.etc[i].dbID == dbID {
+				d.etc[i].shopLocked = locked
+				return true
+			}
+		}
+	case constant.InventoryCash:
+		for i := range d.cash {
+			if d.cash[i].dbID == dbID {
+				d.cash[i].shopLocked = locked
+				return true
+			}
+		}
+	}
+
+	return false
+}
+
+func (d *Player) isShopLockedItem(item Item) bool {
+	if item.dbID == 0 {
+		return false
+	}
+
+	cur, err := d.getItem(item.invID, item.slotID)
+	if err != nil {
+		return false
+	}
+	if cur.dbID != item.dbID {
+		return false
+	}
+	return cur.shopLocked
+}
+
+func (d *Player) removeItemForStore(item Item) {
+	d.Send(packetInventoryRemoveItem(item))
+}
+
+func (d *Player) updateItemStackSilent(item Item) {
+	item.save(d.ID)
+	d.updateItem(item)
+}
+
+func (d *Player) takeItemForShopSale(id int32, slot int16, amount int16, invID byte) (Item, error) {
+	item, err := d.getItem(invID, slot)
+	if err != nil {
+		return item, fmt.Errorf("item not found at inv=%d slot=%d", invID, slot)
+	}
+
+	if item.ID != id {
+		return item, fmt.Errorf("Item.ID(%d) does not match ID(%d) provided", item.ID, id)
+	}
+	if item.invID != invID {
+		return item, fmt.Errorf("inventory ID mismatch: item.invID(%d) vs provided invID(%d)", item.invID, invID)
+	}
+	if amount <= 0 {
+		return item, fmt.Errorf("invalid amount requested: %d", amount)
+	}
+	if amount > item.amount {
+		return item, fmt.Errorf("insufficient quantity: have=%d requested=%d", item.amount, amount)
+	}
+
+	item.amount -= amount
+
+	if item.amount >= 1 && !item.isRechargeable() {
+		d.updateItemStackSilent(item)
+	} else {
+		d.removeItem(item, true)
+	}
+
+	return item, nil
+}
+
 func (d *Player) dropMesos(amount int32) error {
 	if d.mesos < amount {
 		return errors.New("not enough mesos")
@@ -1422,6 +1522,11 @@ func (d *Player) moveItem(start, end, amount int16, invID byte) error {
 		item, err := d.getItem(invID, start)
 		if err != nil {
 			return fmt.Errorf("Item to move doesn't exist")
+		}
+
+		if item.shopLocked {
+			d.Send(packetInventoryNoChange())
+			return nil
 		}
 
 		if isRechargeable(item.ID) {
@@ -1493,6 +1598,11 @@ func (d *Player) moveItem(start, end, amount int16, invID byte) error {
 		return fmt.Errorf("Item to move doesn't exist")
 	}
 
+	if item1.shopLocked {
+		d.Send(packetInventoryNoChange())
+		return nil
+	}
+
 	item2, err := d.getItem(invID, end)
 	if err != nil { // empty slot, simple move
 		item1.slotID = end
@@ -1500,6 +1610,10 @@ func (d *Player) moveItem(start, end, amount int16, invID byte) error {
 		d.updateItem(item1)
 		d.Send(packetInventoryChangeItemSlot(invID, start, end))
 	} else { // destination occupied
+		if item2.shopLocked {
+			d.Send(packetInventoryNoChange())
+			return nil
+		}
 		if (item1.isStackable() && item2.isStackable()) && (item1.ID == item2.ID) {
 			slotMax := getItemSlotMax(item1.ID)
 			if item1.amount == slotMax || item2.amount == slotMax { // swap
@@ -1613,6 +1727,9 @@ func (d *Player) consumeItemsByID(itemID int32, reqCount int32) bool {
 			}
 			it := items[i]
 			if it.ID != itemID || it.amount <= 0 {
+				continue
+			}
+			if it.shopLocked {
 				continue
 			}
 			take := it.amount
@@ -2020,7 +2137,6 @@ func LoadPlayerFromID(id int32, conn mnet.Client) Player {
 	c.pos.y = nxMap.Portals[c.mapPos].Y
 
 	c.equip, c.use, c.setUp, c.etc, c.cash = loadInventoryFromDb(c.ID)
-	c.restoreShopEscrowOnLogin()
 
 	c.buddyList = getBuddyList(c.ID, c.buddyListSize)
 

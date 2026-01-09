@@ -3665,55 +3665,13 @@ func (server Server) roomWindow(conn mnet.Client, reader mpacket.Reader) {
 			return
 		}
 
-		if err := shopEscrowAmountSanity(bundles, bundleAmount); err != nil {
-			plr.Send(packetPlayerNoChange())
-			return
-		}
-
 		item, err := plr.getItem(invType, invSlot)
 		if err != nil {
 			plr.Send(packetPlayerNoChange())
 			return
 		}
 
-		if item.isRechargeable() {
-			if item.amount <= 0 {
-				item.amount = 1
-			}
-			bundles = 1
-			bundleAmount = item.amount
-		}
-
-		totalAmount := bundles * bundleAmount
-		if totalAmount <= 0 || item.amount < totalAmount {
-			plr.Send(packetPlayerNoChange())
-			return
-		}
-
-		escrowItem := item
-		escrowItem.amount = totalAmount
-		escrowItem.dbID = 0
-		escrowItem.slotID = 0
-
-		if item.isRechargeable() {
-			plr.removeItem(item, false)
-		} else {
-			if _, err := plr.takeItem(item.ID, item.slotID, totalAmount, item.invID); err != nil {
-				plr.Send(packetPlayerNoChange())
-				return
-			}
-		}
-
-		shopSlot := shop.nextSlot
-
-		escrowID, err := shopEscrowInsert(plr.ID, shopSlot, price, bundles, bundleAmount, escrowItem)
-		if err != nil {
-			_, _ = plr.GiveItem(escrowItem)
-			plr.Send(packetPlayerNoChange())
-			return
-		}
-
-		if shop.addItem(escrowID, escrowItem, bundles, bundleAmount, price, shopSlot) {
+		if shop.addItem(item, bundles, bundleAmount, price, shop.nextSlot) {
 			shop.send(packetRoomShopRefresh(shop))
 		}
 
@@ -3771,20 +3729,7 @@ func (server Server) roomWindow(conn mnet.Client, reader mpacket.Reader) {
 			return
 		}
 
-		if si, exists := shop.items[shopSlot]; exists {
-			ret := si.item
-			ret.amount = si.bundles * si.bundleAmount
-			ret.dbID = 0
-			ret.slotID = 0
-
-			if ret.amount > 0 {
-				if err, _ := plr.GiveItem(ret); err != nil {
-					plr.Send(packetPlayerNoChange())
-					return
-				}
-			}
-
-			_ = shopEscrowDelete(si.escrowID)
+		if _, exists := shop.items[shopSlot]; exists {
 			shop.removeItem(shopSlot)
 			shop.send(packetRoomShopRemoveItem(0, int16(shopSlot)))
 			shop.send(packetRoomShopRefresh(shop))
