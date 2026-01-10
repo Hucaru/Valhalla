@@ -1106,7 +1106,6 @@ func (r *shopRoom) addItem(item Item, bundles, bundleAmount int16, price int32, 
 	}
 
 	r.normalizeShopSlots()
-
 	slot = r.nextSlot
 
 	if _, exists := r.items[slot]; exists {
@@ -1122,7 +1121,6 @@ func (r *shopRoom) addItem(item Item, bundles, bundleAmount int16, price int32, 
 	if err != nil || cur.dbID != item.dbID || cur.ID != item.ID {
 		return false
 	}
-
 	if cur.shopLocked {
 		return false
 	}
@@ -1135,6 +1133,18 @@ func (r *shopRoom) addItem(item Item, bundles, bundleAmount int16, price int32, 
 	need := bundles * bundleAmount
 	if need <= 0 || need > cur.amount {
 		return false
+	}
+
+	if !cur.isRechargeable() && cur.isStackable() && need < cur.amount {
+		split, splitErr := owner.splitStackToNewSlot(cur.invID, cur.slotID, need)
+		if splitErr != nil {
+			return false
+		}
+
+		cur = split
+		if cur.amount != need {
+			return false
+		}
 	}
 
 	if !owner.setItemLockedByDBID(cur.invID, cur.dbID, true) {
