@@ -3150,7 +3150,7 @@ func (server *Server) npcShop(conn mnet.Client, reader mpacket.Reader) {
 		}
 
 		it.amount = int16(newAmount)
-		plr.updateItemStack(*it)
+		plr.updateItemStack(*it, false)
 		plr.giveMesos(int32(-cost))
 		plr.Send(packetNpcShopResult(shopRechargeSuccess))
 

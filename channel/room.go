@@ -1036,7 +1036,7 @@ func (r *shopRoom) closeShop(reason byte, owner *Player) {
 				continue
 			}
 
-			owner.setShopLockedByDBID(si.item.invID, si.item.dbID, false)
+			owner.setItemLockedByDBID(si.item.invID, si.item.dbID, false)
 			owner.Send(packetInventoryAddItem(si.item, true))
 
 			delete(r.items, slot)
@@ -1058,13 +1058,59 @@ func (r *shopRoom) checkOpen() bool {
 	return true
 }
 
+func (r *shopRoom) normalizeShopSlots() {
+	if r == nil || len(r.items) == 0 {
+		r.nextSlot = 0
+		return
+	}
+
+	oldSlots := make([]byte, 0, len(r.items))
+	for s := range r.items {
+		oldSlots = append(oldSlots, s)
+	}
+	sort.Slice(oldSlots, func(i, j int) bool { return oldSlots[i] < oldSlots[j] })
+
+	already := true
+	for i, s := range oldSlots {
+		want := byte(i)
+		if s != want {
+			already = false
+			break
+		}
+	}
+	if already {
+		r.nextSlot = byte(len(oldSlots))
+		return
+	}
+
+	newItems := make(map[byte]*shopItem, len(r.items))
+	for i, oldSlot := range oldSlots {
+		si := r.items[oldSlot]
+		if si == nil {
+			continue
+		}
+		newSlot := byte(i)
+		si.slot = newSlot
+		newItems[newSlot] = si
+	}
+
+	r.items = newItems
+	r.nextSlot = byte(len(newItems))
+}
+
 func (r *shopRoom) addItem(item Item, bundles, bundleAmount int16, price int32, slot byte) bool {
-	if _, exists := r.items[slot]; exists {
+	owner := r.ownerPlayer()
+	if owner == nil {
+		log.Printf("shop:addItem reject: owner missing shopID=%d ownerID=%d", r.roomID, r.ownerPlayerID)
 		return false
 	}
 
-	owner := r.ownerPlayer()
-	if owner == nil {
+	r.normalizeShopSlots()
+
+	slot = r.nextSlot
+
+	if _, exists := r.items[slot]; exists {
+		log.Printf("shop:addItem reject: slot occupied shopID=%d ownerID=%d slot=%d itemID=%d", r.roomID, owner.ID, slot, item.ID)
 		return false
 	}
 
@@ -1076,8 +1122,14 @@ func (r *shopRoom) addItem(item Item, bundles, bundleAmount int16, price int32, 
 	if err != nil || cur.dbID != item.dbID || cur.ID != item.ID {
 		return false
 	}
+
 	if cur.shopLocked {
 		return false
+	}
+
+	if cur.isRechargeable() {
+		bundles = 1
+		bundleAmount = cur.amount
 	}
 
 	need := bundles * bundleAmount
@@ -1085,16 +1137,10 @@ func (r *shopRoom) addItem(item Item, bundles, bundleAmount int16, price int32, 
 		return false
 	}
 
-	if cur.isRechargeable() {
-		if bundles != 1 || bundleAmount != cur.amount {
-			return false
-		}
-	}
-
-	if !owner.setShopLockedByDBID(cur.invID, cur.dbID, true) {
+	if !owner.setItemLockedByDBID(cur.invID, cur.dbID, true) {
 		return false
 	}
-	owner.removeItemForStore(cur)
+	owner.Send(packetInventoryRemoveItem(cur))
 
 	r.items[slot] = &shopItem{
 		item:         cur,
@@ -1104,18 +1150,19 @@ func (r *shopRoom) addItem(item Item, bundles, bundleAmount int16, price int32, 
 		bundleAmount: bundleAmount,
 	}
 
-	if slot >= r.nextSlot {
-		r.nextSlot = slot + 1
-	}
+	r.nextSlot = slot + 1
 
 	return true
 }
 
 func (r *shopRoom) buyItem(slot byte, quantity int16, buyerID int32) (byte, bool) {
+	r.normalizeShopSlots()
+
 	si, exists := r.items[slot]
-	if !exists {
+	if !exists || si == nil {
 		return constant.PlayerShopNotEnoughInStock, false
 	}
+
 	if quantity <= 0 || si.bundles < quantity {
 		return constant.PlayerShopNotEnoughInStock, false
 	}
@@ -1140,9 +1187,11 @@ func (r *shopRoom) buyItem(slot byte, quantity int16, buyerID int32) (byte, bool
 	if buyer == nil {
 		return constant.PlayerShopInventoryFull, false
 	}
+
 	if owner == nil {
 		return constant.PlayerShopNotEnoughInStock, false
 	}
+
 	if int64(buyer.mesos) < totalCost {
 		return constant.PlayerShopBuyerNotEnoughMoney, false
 	}
@@ -1151,11 +1200,17 @@ func (r *shopRoom) buyItem(slot byte, quantity int16, buyerID int32) (byte, bool
 	if err != nil || cur.dbID != si.item.dbID || cur.ID != si.item.ID {
 		return constant.PlayerShopNotEnoughInStock, false
 	}
+
 	if !cur.shopLocked {
 		return constant.PlayerShopNotEnoughInStock, false
 	}
+
 	if cur.isRechargeable() {
-		if quantity != 1 || si.bundles != 1 || realAmount != cur.amount {
+		if quantity != 1 || si.bundles != 1 {
+			return constant.PlayerShopNotEnoughInStock, false
+		}
+		realAmount = cur.amount
+		if realAmount <= 0 {
 			return constant.PlayerShopNotEnoughInStock, false
 		}
 	} else {
@@ -1182,15 +1237,15 @@ func (r *shopRoom) buyItem(slot byte, quantity int16, buyerID int32) (byte, bool
 		return constant.PlayerShopInventoryFull, false
 	}
 
-	if _, err := owner.takeItemForShopSale(cur.ID, cur.slotID, realAmount, cur.invID); err != nil {
-		log.Printf("shop buyItem: failed to take from owner after giving buyer: owner=%d item=%d err=%v", owner.ID, cur.ID, err)
+	if _, err := owner.TakeItemSilent(cur.ID, cur.slotID, realAmount, cur.invID); err != nil {
 		return constant.PlayerShopNotEnoughInStock, false
 	}
 
 	si.bundles -= quantity
 	if si.bundles <= 0 {
-		owner.setShopLockedByDBID(si.item.invID, si.item.dbID, false)
+		owner.setItemLockedByDBID(si.item.invID, si.item.dbID, false)
 		delete(r.items, slot)
+		r.normalizeShopSlots()
 	} else {
 		if updated, err := owner.getItem(si.item.invID, si.item.slotID); err == nil && updated.dbID == si.item.dbID {
 			si.item = updated
@@ -1201,20 +1256,22 @@ func (r *shopRoom) buyItem(slot byte, quantity int16, buyerID int32) (byte, bool
 }
 
 func (r *shopRoom) removeItem(slot byte) bool {
-	si, exists := r.items[slot]
-	if !exists {
-		return false
-	}
-
 	owner := r.ownerPlayer()
 	if owner == nil {
 		return false
 	}
 
-	owner.setShopLockedByDBID(si.item.invID, si.item.dbID, false)
+	si, exists := r.items[slot]
+	if !exists || si == nil {
+		return false
+	}
+
+	owner.setItemLockedByDBID(si.item.invID, si.item.dbID, false)
 	owner.Send(packetInventoryAddItem(si.item, true))
 
 	delete(r.items, slot)
+	r.normalizeShopSlots()
+
 	return true
 }
 
@@ -1555,6 +1612,8 @@ func packetRoomShopRefresh(shop *shopRoom) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelRoom)
 	p.WriteByte(constant.RoomShopRefresh)
 	p.WriteByte(byte(len(shop.items)))
+
+	shop.normalizeShopSlots()
 
 	slots := make([]byte, 0, len(shop.items))
 	for slot := range shop.items {

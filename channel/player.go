@@ -1179,14 +1179,14 @@ func (d *Player) takeItem(id int32, slot int16, amount int16, invID byte) (Item,
 	if item.amount == 0 && !item.isRechargeable() {
 		d.removeItem(item, false)
 	} else {
-		d.updateItemStack(item)
+		d.updateItemStack(item, false)
 	}
 
 	return item, nil
 
 }
 
-func (d *Player) TakeItemForStorage(id int32, slot int16, amount int16, invID byte) (Item, error) {
+func (d *Player) TakeItemSilent(id int32, slot int16, amount int16, invID byte) (Item, error) {
 	item, err := d.getItem(invID, slot)
 	if err != nil {
 		return item, fmt.Errorf("item not found at inv=%d slot=%d", invID, slot)
@@ -1207,20 +1207,23 @@ func (d *Player) TakeItemForStorage(id int32, slot int16, amount int16, invID by
 	}
 
 	item.amount -= amount
-	if item.amount == 0 && !item.isRechargeable() {
+	if item.amount == 0 || item.isRechargeable() {
 		d.removeItem(item, true)
 	} else {
-		d.updateItemStack(item)
+		d.updateItemStack(item, true)
 	}
 
 	return item, nil
 
 }
 
-func (d Player) updateItemStack(item Item) {
+func (d Player) updateItemStack(item Item, silent bool) {
 	item.save(d.ID)
 	d.updateItem(item)
-	d.Send(packetInventoryModifyItemAmount(item))
+
+	if !silent {
+		d.Send(packetInventoryModifyItemAmount(item))
+	}
 }
 
 func (d *Player) updateItem(new Item) {
@@ -1401,7 +1404,7 @@ func (d *Player) removeItem(item Item, fromStorage bool) {
 	}
 }
 
-func (d *Player) setShopLockedByDBID(invID byte, dbID int64, locked bool) bool {
+func (d *Player) setItemLockedByDBID(invID byte, dbID int64, locked bool) bool {
 	if d == nil || dbID == 0 {
 		return false
 	}
@@ -1445,60 +1448,6 @@ func (d *Player) setShopLockedByDBID(invID byte, dbID int64, locked bool) bool {
 	}
 
 	return false
-}
-
-func (d *Player) isShopLockedItem(item Item) bool {
-	if item.dbID == 0 {
-		return false
-	}
-
-	cur, err := d.getItem(item.invID, item.slotID)
-	if err != nil {
-		return false
-	}
-	if cur.dbID != item.dbID {
-		return false
-	}
-	return cur.shopLocked
-}
-
-func (d *Player) removeItemForStore(item Item) {
-	d.Send(packetInventoryRemoveItem(item))
-}
-
-func (d *Player) updateItemStackSilent(item Item) {
-	item.save(d.ID)
-	d.updateItem(item)
-}
-
-func (d *Player) takeItemForShopSale(id int32, slot int16, amount int16, invID byte) (Item, error) {
-	item, err := d.getItem(invID, slot)
-	if err != nil {
-		return item, fmt.Errorf("item not found at inv=%d slot=%d", invID, slot)
-	}
-
-	if item.ID != id {
-		return item, fmt.Errorf("Item.ID(%d) does not match ID(%d) provided", item.ID, id)
-	}
-	if item.invID != invID {
-		return item, fmt.Errorf("inventory ID mismatch: item.invID(%d) vs provided invID(%d)", item.invID, invID)
-	}
-	if amount <= 0 {
-		return item, fmt.Errorf("invalid amount requested: %d", amount)
-	}
-	if amount > item.amount {
-		return item, fmt.Errorf("insufficient quantity: have=%d requested=%d", item.amount, amount)
-	}
-
-	item.amount -= amount
-
-	if item.amount >= 1 && !item.isRechargeable() {
-		d.updateItemStackSilent(item)
-	} else {
-		d.removeItem(item, true)
-	}
-
-	return item, nil
 }
 
 func (d *Player) dropMesos(amount int32) error {
