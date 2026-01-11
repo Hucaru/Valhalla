@@ -10,6 +10,8 @@ var docsRequired = 32
 var itemReturnScroll = 2030007    // Dead Mine Scroll
 var scrollReward = 5              // (Optional) no warp
 
+var questStage1 = 7000            // Quest ID for Stage 1 completion tracking
+
 var menu =
     "What would you like to do?\r\n" +
     "#L0#Leave this place.#l\r\n" +
@@ -45,7 +47,9 @@ if (sel == 0) {
                 plr.removeItemsByID(itemFireOre, 1) // rollback
                 npc.sendOk("An error occurred while taking the keys. Please try again.")
             } else {
-                npc.sendOk("Exchange complete. Returning you now.")
+                // Mark Stage 1 as completed
+                plr.setQuestData(questStage1, "end")
+                npc.sendOk("Exchange complete. You have completed Stage 1! Returning you now.")
                 plr.warp(mapReturn)
             }
         }

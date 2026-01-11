@@ -10,14 +10,30 @@ var itemEyeOfFire = 4001017
 var toothRequired = 30
 var eyeReward = 5
 
+// Quest IDs for tracking stage completion
+var questStage1 = 7000  // Stage 1: Party Quest
+var questStage2 = 7001  // Stage 2: Jump Quest
+var questStage3 = 7002  // Stage 3: Item Exchange
+
 if (plr.level() < minLevel) {
     npc.sendOk("You are not yet ready to face Zakum. Train a bit more and return when you are at least level " + minLevel + ".")
 } else {
+    // Check quest progress
+    var stage1Complete = plr.questData(questStage1) == "end"
+    var stage2Complete = plr.questData(questStage2) == "end"
+    var stage3Complete = plr.questData(questStage3) == "end"
+
+    var statusText = "\r\n\r\n#eQuest Progress:#n\r\n"
+    statusText += "Stage 1 (Party Quest): " + (stage1Complete ? "#g[COMPLETE]#k" : "#r[INCOMPLETE]#k") + "\r\n"
+    statusText += "Stage 2 (Jump Quest): " + (stage2Complete ? "#g[COMPLETE]#k" : "#r[INCOMPLETE]#k") + "\r\n"
+    statusText += "Stage 3 (Item Exchange): " + (stage3Complete ? "#g[COMPLETE]#k" : "#r[INCOMPLETE]#k") + "\r\n"
+
     var menuText =
         "The Door to Zakum lies ahead. How may I assist you?\r\n" +
         "#L0#Enter the Zakum Party Quest.#l\r\n" +
         "#L1#Enter the Zakum Jump Quest.#l\r\n" +
-        "#L2#Exchange quest items for #t" + itemEyeOfFire + "#.#l"
+        "#L2#Exchange quest items for #t" + itemEyeOfFire + "#.#l" +
+        statusText
 
     npc.sendSelection(menuText)
     var sel = npc.selection()
@@ -82,7 +98,9 @@ if (plr.level() < minLevel) {
                     plr.removeItemsByID(itemEyeOfFire, eyeReward)
                     npc.sendOk("An error occurred while taking the required items.\r\nPlease ensure the items are tradable and try again.")
                 } else {
-                    npc.sendOk("Here are your (" + eyeReward + ") #t" + itemEyeOfFire + "#.\r\nGood luck challenging Zakum.")
+                    // Mark Stage 3 as completed
+                    plr.setQuestData(questStage3, "end")
+                    npc.sendOk("Here are your (" + eyeReward + ") #t" + itemEyeOfFire + "#.\r\nYou have completed all three stages! Good luck challenging Zakum.")
                 }
             }
         } else {
