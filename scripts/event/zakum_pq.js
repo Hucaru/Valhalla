@@ -17,9 +17,9 @@ function start() {
     var players = ctrl.players();
     var time = ctrl.remainingTime();
 
-    for (let i = 0; i < players.length; i++) {
-        players[i].warp(maps[0]);
-        players[i].showCountdown(time);
+    for (const player of players) {
+        player.warp(maps[0]);
+        player.showCountdown(time);
     }
 }
 
@@ -51,10 +51,10 @@ function playerLeaveEvent(plr) {
     if (plr.isPartyLeader() || ctrl.playerCount() <= 0) {
         var players = ctrl.players();
 
-        for (let i = 0; i < players.length; i++) {
-            players[i].removeItemsByID(itemKeys, players[i].itemCount(itemKeys));
-            players[i].removeItemsByID(itemDocs, players[i].itemCount(itemDocs));
-            players[i].warp(exitMapID);
+        for (const player of players) {
+            player.removeItemsByID(itemKeys, player.itemCount(itemKeys));
+            player.removeItemsByID(itemDocs, player.itemCount(itemDocs));
+            player.warp(exitMapID);
         }
 
         ctrl.finished();
