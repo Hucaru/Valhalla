@@ -8,8 +8,8 @@ var itemDocs = 4001015;     // Documents collected during PQ
 function start() {
     ctrl.setDuration("30m");
 
-    for (let i = 0; i < maps.length; i++) {
-        var field = ctrl.getMap(maps[i]);
+    for (const mapId of maps) {
+        var field = ctrl.getMap(mapId);
         field.removeDrops();
         field.clearProperties();
     }
@@ -48,7 +48,7 @@ function playerLeaveEvent(plr) {
     plr.warp(exitMapID);
 
     // If party leader leaves or no players remain after removal, end the event
-    if (plr.isPartyLeader() || ctrl.playerCount() < 1) {
+    if (plr.isPartyLeader() || ctrl.playerCount() <= 0) {
         var players = ctrl.players();
 
         for (let i = 0; i < players.length; i++) {
