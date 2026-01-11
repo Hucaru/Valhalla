@@ -46,9 +46,7 @@ if (plr.level() < minLevel) {
             npc.sendOk("Only your party leader can request entry for the party.\r\nPlease ask your leader to speak with me.")
         } else {
             var partySize = plr.partyMembersOnMapCount()
-            if (partySize < 1) {
-                npc.sendOk("You need at least one party member on this map to enter the Party Quest.")
-            } else if (npc.sendYesNo("I can start the Zakum Party Quest for your party. You have " + partySize + " member(s) ready. Are you prepared?")) {
+            if (npc.sendYesNo("I can start the Zakum Party Quest for your party. You have " + partySize + " member(s) ready. Are you prepared?")) {
                 // Start the party quest event
                 plr.startPartyQuest("zakum_pq", 1)
             } else {

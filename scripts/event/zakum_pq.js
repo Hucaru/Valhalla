@@ -47,8 +47,8 @@ function playerLeaveEvent(plr) {
     ctrl.removePlayer(plr);
     plr.warp(exitMapID);
 
-    // If party leader leaves or not enough players, end the event
-    if (plr.isPartyLeader() || ctrl.playerCount() < 1) {
+    // If party leader leaves or only one player left (or fewer), end the event
+    if (plr.isPartyLeader() || ctrl.playerCount() <= 1) {
         var players = ctrl.players();
 
         for (let i = 0; i < players.length; i++) {
