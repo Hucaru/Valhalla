@@ -14,18 +14,19 @@ var eyeReward = 5
 var questStage1 = 7000  // Stage 1: Party Quest
 var questStage2 = 7001  // Stage 2: Jump Quest
 var questStage3 = 7002  // Stage 3: Item Exchange
+var questComplete = "end"  // Quest data value for completed stages
 
 if (plr.level() < minLevel) {
     npc.sendOk("You are not yet ready to face Zakum. Train a bit more and return when you are at least level " + minLevel + ".")
 } else {
-    // Check quest progress
+    // Check quest progress (questData returns "" if quest doesn't exist)
     var stage1Data = plr.questData(questStage1)
     var stage2Data = plr.questData(questStage2)
     var stage3Data = plr.questData(questStage3)
     
-    var stage1Complete = (stage1Data == "end")
-    var stage2Complete = (stage2Data == "end")
-    var stage3Complete = (stage3Data == "end")
+    var stage1Complete = (stage1Data === questComplete)
+    var stage2Complete = (stage2Data === questComplete)
+    var stage3Complete = (stage3Data === questComplete)
 
     var statusText = "\r\n\r\n#eQuest Progress:#n\r\n"
     statusText += "Stage 1 (Party Quest): " + (stage1Complete ? "#g[COMPLETE]#k" : "#r[INCOMPLETE]#k") + "\r\n"
@@ -101,7 +102,7 @@ if (plr.level() < minLevel) {
                     npc.sendOk("An error occurred while taking the required items.\r\nPlease ensure the items are tradable and try again.")
                 } else {
                     // Mark Stage 3 as completed
-                    plr.setQuestData(questStage3, "end")
+                    plr.setQuestData(questStage3, questComplete)
                     npc.sendOk("Here are your (" + eyeReward + ") #t" + itemEyeOfFire + "#.\r\nYou have completed all three stages! Good luck challenging Zakum.")
                 }
             }
