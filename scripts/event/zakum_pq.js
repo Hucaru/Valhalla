@@ -8,8 +8,8 @@ var itemDocs = 4001015;     // Documents collected during PQ
 function start() {
     ctrl.setDuration("30m");
 
-    for (const mapId of maps) {
-        var field = ctrl.getMap(mapId);
+    for (let i = 0; i < maps.length; i++) {
+        var field = ctrl.getMap(maps[i]);
         field.removeDrops();
         field.clearProperties();
     }
@@ -17,9 +17,9 @@ function start() {
     var players = ctrl.players();
     var time = ctrl.remainingTime();
 
-    for (const player of players) {
-        player.warp(maps[0]);
-        player.showCountdown(time);
+    for (let i = 0; i < players.length; i++) {
+        players[i].warp(maps[0]);
+        players[i].showCountdown(time);
     }
 }
 
@@ -51,10 +51,10 @@ function playerLeaveEvent(plr) {
     if (plr.isPartyLeader() || ctrl.playerCount() <= 0) {
         var players = ctrl.players();
 
-        for (const player of players) {
-            player.removeItemsByID(itemKeys, player.itemCount(itemKeys));
-            player.removeItemsByID(itemDocs, player.itemCount(itemDocs));
-            player.warp(exitMapID);
+        for (let i = 0; i < players.length; i++) {
+            players[i].removeItemsByID(itemKeys, players[i].itemCount(itemKeys));
+            players[i].removeItemsByID(itemDocs, players[i].itemCount(itemDocs));
+            players[i].warp(exitMapID);
         }
 
         ctrl.finished();
