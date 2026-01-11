@@ -40,6 +40,10 @@ function timeout(plr) {
 }
 
 function playerLeaveEvent(plr) {
+    // Check conditions before removing player
+    var isLeader = plr.isPartyLeader();
+    var remainingPlayers = ctrl.playerCount() - 1; // Account for player being removed
+    
     // Clean up items when player leaves
     plr.removeItemsByID(itemKeys, plr.itemCount(itemKeys));
     plr.removeItemsByID(itemDocs, plr.itemCount(itemDocs));
@@ -47,8 +51,8 @@ function playerLeaveEvent(plr) {
     ctrl.removePlayer(plr);
     plr.warp(exitMapID);
 
-    // If party leader leaves or only one player left (or fewer), end the event
-    if (plr.isPartyLeader() || ctrl.playerCount() <= 1) {
+    // If party leader leaves or one or fewer players remain, end the event
+    if (isLeader || remainingPlayers <= 0) {
         var players = ctrl.players();
 
         for (let i = 0; i < players.length; i++) {

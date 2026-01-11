@@ -19,9 +19,13 @@ if (plr.level() < minLevel) {
     npc.sendOk("You are not yet ready to face Zakum. Train a bit more and return when you are at least level " + minLevel + ".")
 } else {
     // Check quest progress
-    var stage1Complete = plr.questData(questStage1) == "end"
-    var stage2Complete = plr.questData(questStage2) == "end"
-    var stage3Complete = plr.questData(questStage3) == "end"
+    var stage1Data = plr.questData(questStage1)
+    var stage2Data = plr.questData(questStage2)
+    var stage3Data = plr.questData(questStage3)
+    
+    var stage1Complete = (stage1Data == "end")
+    var stage2Complete = (stage2Data == "end")
+    var stage3Complete = (stage3Data == "end")
 
     var statusText = "\r\n\r\n#eQuest Progress:#n\r\n"
     statusText += "Stage 1 (Party Quest): " + (stage1Complete ? "#g[COMPLETE]#k" : "#r[INCOMPLETE]#k") + "\r\n"
