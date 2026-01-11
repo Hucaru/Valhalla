@@ -1060,108 +1060,6 @@ func (d *Player) addStackableItemToInventory(newItem Item, items *[]Item, slotSi
 	return nil
 }
 
-func (d *Player) splitStackToNewSlot(invID byte, slotID int16, splitAmount int16) (Item, error) {
-	if d == nil {
-		return Item{}, fmt.Errorf("nil player")
-	}
-	if splitAmount <= 0 {
-		return Item{}, fmt.Errorf("invalid split amount: %d", splitAmount)
-	}
-
-	src, err := d.getItem(invID, slotID)
-	if err != nil {
-		return Item{}, err
-	}
-
-	if src.shopLocked {
-		return Item{}, fmt.Errorf("item is locked")
-	}
-	if !src.isStackable() {
-		return Item{}, fmt.Errorf("item is not stackable")
-	}
-	if src.isRechargeable() {
-		return Item{}, fmt.Errorf("cannot split rechargeable items")
-	}
-	if splitAmount >= src.amount {
-		return Item{}, fmt.Errorf("split amount must be less than current amount: split=%d cur=%d", splitAmount, src.amount)
-	}
-
-	slotMax := getItemSlotMax(src.ID)
-	if splitAmount > slotMax {
-		return Item{}, fmt.Errorf("split amount exceeds slot max: split=%d slotMax=%d", splitAmount, slotMax)
-	}
-
-	findFirstEmptySlot := func(items []Item, size byte) (int16, error) {
-		slotsUsed := make([]bool, size)
-		for _, v := range items {
-			if v.slotID > 0 {
-				slotsUsed[v.slotID-1] = true
-			}
-		}
-		slot := 0
-		for i, used := range slotsUsed {
-			if !used {
-				slot = i + 1
-				break
-			}
-		}
-		if slot == 0 {
-			slot = len(slotsUsed) + 1
-		}
-		if byte(slot) > size {
-			return 0, fmt.Errorf("no empty item slot left")
-		}
-		return int16(slot), nil
-	}
-
-	var items []Item
-	var size byte
-	switch invID {
-	case constant.InventoryEquip:
-		items, size = d.equip, d.equipSlotSize
-	case constant.InventoryUse:
-		items, size = d.use, d.useSlotSize
-	case constant.InventorySetup:
-		items, size = d.setUp, d.setupSlotSize
-	case constant.InventoryEtc:
-		items, size = d.etc, d.etcSlotSize
-	case constant.InventoryCash:
-		items, size = d.cash, d.cashSlotSize
-	default:
-		return Item{}, fmt.Errorf("unknown inventory ID: %d", invID)
-	}
-
-	newSlot, err := findFirstEmptySlot(items, size)
-	if err != nil {
-		return Item{}, err
-	}
-
-	src.amount -= splitAmount
-	d.updateItemStack(src, false)
-
-	newStack := src
-	newStack.amount = splitAmount
-	newStack.slotID = newSlot
-	newStack.dbID = 0
-	newStack.save(d.ID)
-
-	switch invID {
-	case constant.InventoryEquip:
-		d.equip = append(d.equip, newStack)
-	case constant.InventoryUse:
-		d.use = append(d.use, newStack)
-	case constant.InventorySetup:
-		d.setUp = append(d.setUp, newStack)
-	case constant.InventoryEtc:
-		d.etc = append(d.etc, newStack)
-	case constant.InventoryCash:
-		d.cash = append(d.cash, newStack)
-	}
-	d.Send(packetInventoryAddItem(newStack, true))
-
-	return newStack, nil
-}
-
 // GiveItem grants the given item to a player and returns the item
 func (d *Player) GiveItem(newItem Item) (error, Item) { // TODO: Refactor
 	isRechargeable := func(itemID int32) bool {
@@ -1506,52 +1404,6 @@ func (d *Player) removeItem(item Item, fromStorage bool) {
 	}
 }
 
-func (d *Player) setItemLockedByDBID(invID byte, dbID int64, locked bool) bool {
-	if d == nil || dbID == 0 {
-		return false
-	}
-
-	switch invID {
-	case constant.InventoryEquip:
-		for i := range d.equip {
-			if d.equip[i].dbID == dbID {
-				d.equip[i].shopLocked = locked
-				return true
-			}
-		}
-	case constant.InventoryUse:
-		for i := range d.use {
-			if d.use[i].dbID == dbID {
-				d.use[i].shopLocked = locked
-				return true
-			}
-		}
-	case constant.InventorySetup:
-		for i := range d.setUp {
-			if d.setUp[i].dbID == dbID {
-				d.setUp[i].shopLocked = locked
-				return true
-			}
-		}
-	case constant.InventoryEtc:
-		for i := range d.etc {
-			if d.etc[i].dbID == dbID {
-				d.etc[i].shopLocked = locked
-				return true
-			}
-		}
-	case constant.InventoryCash:
-		for i := range d.cash {
-			if d.cash[i].dbID == dbID {
-				d.cash[i].shopLocked = locked
-				return true
-			}
-		}
-	}
-
-	return false
-}
-
 func (d *Player) dropMesos(amount int32) error {
 	if d.mesos < amount {
 		return errors.New("not enough mesos")
@@ -1573,11 +1425,6 @@ func (d *Player) moveItem(start, end, amount int16, invID byte) error {
 		item, err := d.getItem(invID, start)
 		if err != nil {
 			return fmt.Errorf("Item to move doesn't exist")
-		}
-
-		if item.shopLocked {
-			d.Send(packetInventoryNoChange())
-			return nil
 		}
 
 		if isRechargeable(item.ID) {
@@ -1649,11 +1496,6 @@ func (d *Player) moveItem(start, end, amount int16, invID byte) error {
 		return fmt.Errorf("Item to move doesn't exist")
 	}
 
-	if item1.shopLocked {
-		d.Send(packetInventoryNoChange())
-		return nil
-	}
-
 	item2, err := d.getItem(invID, end)
 	if err != nil { // empty slot, simple move
 		item1.slotID = end
@@ -1661,10 +1503,6 @@ func (d *Player) moveItem(start, end, amount int16, invID byte) error {
 		d.updateItem(item1)
 		d.Send(packetInventoryChangeItemSlot(invID, start, end))
 	} else { // destination occupied
-		if item2.shopLocked {
-			d.Send(packetInventoryNoChange())
-			return nil
-		}
 		if (item1.isStackable() && item2.isStackable()) && (item1.ID == item2.ID) {
 			slotMax := getItemSlotMax(item1.ID)
 			if item1.amount == slotMax || item2.amount == slotMax { // swap
@@ -1778,9 +1616,6 @@ func (d *Player) consumeItemsByID(itemID int32, reqCount int32) bool {
 			}
 			it := items[i]
 			if it.ID != itemID || it.amount <= 0 {
-				continue
-			}
-			if it.shopLocked {
 				continue
 			}
 			take := it.amount

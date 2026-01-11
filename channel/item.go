@@ -94,8 +94,6 @@ type Item struct {
 	petData    *pet
 
 	spawnMobs map[int32]int32
-
-	shopLocked bool
 }
 
 const neverExpire int64 = 150842304000000000

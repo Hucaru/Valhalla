@@ -945,6 +945,8 @@ type shopItem struct {
 	slot         byte
 	bundles      int16
 	bundleAmount int16
+	reserved     int16
+	hidden       bool
 }
 
 type shopRoom struct {
@@ -1030,19 +1032,32 @@ func (r *shopRoom) closeShop(reason byte, owner *Player) {
 		plr.Send(packetRoomLeave(byte(i), reason))
 	}
 
-	if owner != nil {
-		for slot, si := range r.items {
-			if si == nil {
+	if owner != nil && len(r.items) > 0 {
+		type key struct {
+			dbID   int64
+			invID  byte
+			slotID int16
+		}
+		seen := make(map[key]struct{}, len(r.items))
+
+		for _, si := range r.items {
+			if si == nil || si.item.dbID == 0 {
 				continue
 			}
+			k := key{dbID: si.item.dbID, invID: si.item.invID, slotID: si.item.slotID}
+			if _, ok := seen[k]; ok {
+				continue
+			}
+			seen[k] = struct{}{}
 
-			owner.setItemLockedByDBID(si.item.invID, si.item.dbID, false)
-			owner.Send(packetInventoryAddItem(si.item, true))
-
-			delete(r.items, slot)
+			if cur, err := owner.getItem(k.invID, k.slotID); err == nil && cur.dbID == k.dbID {
+				owner.Send(packetInventoryAddItem(cur, true))
+			}
 		}
 	}
 
+	r.items = make(map[byte]*shopItem)
+	r.nextSlot = 0
 	r.players = []*Player{}
 }
 
@@ -1056,6 +1071,72 @@ func (r *shopRoom) checkOpen() bool {
 		}
 	}
 	return true
+}
+
+func (r *shopRoom) reservedForDBID(dbID int64) int16 {
+	var total int32
+	for _, si := range r.items {
+		if si == nil {
+			continue
+		}
+		if si.item.dbID == dbID {
+			total += int32(si.reserved)
+		}
+	}
+	if total <= 0 {
+		return 0
+	}
+	if total > int32(math.MaxInt16) {
+		return math.MaxInt16
+	}
+	return int16(total)
+}
+
+func (r *shopRoom) refreshOwnerStackVisual(owner *Player, invID byte, slotID int16, dbID int64) {
+	if owner == nil || dbID == 0 {
+		return
+	}
+
+	cur, err := owner.getItem(invID, slotID)
+	if err != nil || cur.dbID != dbID {
+		return
+	}
+
+	res := r.reservedForDBID(dbID)
+	left := int32(cur.amount) - int32(res)
+
+	if left <= 0 {
+		owner.Send(packetInventoryRemoveItem(cur))
+		for _, si := range r.items {
+			if si != nil && si.item.dbID == dbID {
+				si.hidden = true
+			}
+		}
+		return
+	}
+
+	vis := cur
+	vis.amount = int16(left)
+
+	wasHidden := false
+	for _, si := range r.items {
+		if si != nil && si.item.dbID == dbID && si.hidden {
+			wasHidden = true
+			break
+		}
+	}
+
+	if wasHidden {
+		owner.Send(packetInventoryAddItem(vis, true))
+	} else {
+		owner.Send(packetInventoryModifyItemAmount(vis))
+	}
+
+	for _, si := range r.items {
+		if si != nil && si.item.dbID == dbID {
+			si.hidden = false
+		}
+	}
 }
 
 func (r *shopRoom) normalizeShopSlots() {
@@ -1101,7 +1182,6 @@ func (r *shopRoom) normalizeShopSlots() {
 func (r *shopRoom) addItem(item Item, bundles, bundleAmount int16, price int32, slot byte) bool {
 	owner := r.ownerPlayer()
 	if owner == nil {
-		log.Printf("shop:addItem reject: owner missing shopID=%d ownerID=%d", r.roomID, r.ownerPlayerID)
 		return false
 	}
 
@@ -1109,7 +1189,6 @@ func (r *shopRoom) addItem(item Item, bundles, bundleAmount int16, price int32, 
 	slot = r.nextSlot
 
 	if _, exists := r.items[slot]; exists {
-		log.Printf("shop:addItem reject: slot occupied shopID=%d ownerID=%d slot=%d itemID=%d", r.roomID, owner.ID, slot, item.ID)
 		return false
 	}
 
@@ -1119,9 +1198,6 @@ func (r *shopRoom) addItem(item Item, bundles, bundleAmount int16, price int32, 
 
 	cur, err := owner.getItem(item.invID, item.slotID)
 	if err != nil || cur.dbID != item.dbID || cur.ID != item.ID {
-		return false
-	}
-	if cur.shopLocked {
 		return false
 	}
 
@@ -1135,32 +1211,52 @@ func (r *shopRoom) addItem(item Item, bundles, bundleAmount int16, price int32, 
 		return false
 	}
 
-	if !cur.isRechargeable() && cur.isStackable() && need < cur.amount {
-		split, splitErr := owner.splitStackToNewSlot(cur.invID, cur.slotID, need)
-		if splitErr != nil {
-			return false
-		}
+	if !cur.isRechargeable() && cur.isStackable() {
+		for _, si := range r.items {
+			if si == nil {
+				continue
+			}
+			if si.item.dbID != cur.dbID || si.item.ID != cur.ID {
+				continue
+			}
+			if si.price != price || si.bundleAmount != bundleAmount {
+				continue
+			}
 
-		cur = split
-		if cur.amount != need {
-			return false
+			alreadyReserved := r.reservedForDBID(cur.dbID)
+			available := int32(cur.amount) - int32(alreadyReserved)
+			if int32(need) > available {
+				return false
+			}
+
+			si.reserved += need
+			si.bundles += bundles
+
+			r.refreshOwnerStackVisual(owner, cur.invID, cur.slotID, cur.dbID)
+
+			return true
 		}
 	}
 
-	if !owner.setItemLockedByDBID(cur.invID, cur.dbID, true) {
-		return false
-	}
-	owner.Send(packetInventoryRemoveItem(cur))
-
-	r.items[slot] = &shopItem{
+	si := &shopItem{
 		item:         cur,
 		price:        price,
 		slot:         slot,
 		bundles:      bundles,
 		bundleAmount: bundleAmount,
+		reserved:     need,
+		hidden:       false,
 	}
 
+	totalReserved := r.reservedForDBID(cur.dbID) + need
+	if totalReserved > cur.amount {
+		return false
+	}
+
+	r.items[slot] = si
 	r.nextSlot = slot + 1
+
+	r.refreshOwnerStackVisual(owner, cur.invID, cur.slotID, cur.dbID)
 
 	return true
 }
@@ -1181,7 +1277,11 @@ func (r *shopRoom) buyItem(slot byte, quantity int16, buyerID int32) (byte, bool
 	if totalCost > int64(math.MaxInt32) {
 		return constant.PlayerShopPriceTooHighForTrade, false
 	}
+
 	realAmount := quantity * si.bundleAmount
+	if realAmount <= 0 || realAmount > si.reserved {
+		return constant.PlayerShopNotEnoughInStock, false
+	}
 
 	var buyer *Player
 	var owner *Player
@@ -1197,11 +1297,9 @@ func (r *shopRoom) buyItem(slot byte, quantity int16, buyerID int32) (byte, bool
 	if buyer == nil {
 		return constant.PlayerShopInventoryFull, false
 	}
-
 	if owner == nil {
 		return constant.PlayerShopNotEnoughInStock, false
 	}
-
 	if int64(buyer.mesos) < totalCost {
 		return constant.PlayerShopBuyerNotEnoughMoney, false
 	}
@@ -1211,7 +1309,8 @@ func (r *shopRoom) buyItem(slot byte, quantity int16, buyerID int32) (byte, bool
 		return constant.PlayerShopNotEnoughInStock, false
 	}
 
-	if !cur.shopLocked {
+	totalReserved := r.reservedForDBID(cur.dbID)
+	if totalReserved > cur.amount {
 		return constant.PlayerShopNotEnoughInStock, false
 	}
 
@@ -1220,11 +1319,7 @@ func (r *shopRoom) buyItem(slot byte, quantity int16, buyerID int32) (byte, bool
 			return constant.PlayerShopNotEnoughInStock, false
 		}
 		realAmount = cur.amount
-		if realAmount <= 0 {
-			return constant.PlayerShopNotEnoughInStock, false
-		}
-	} else {
-		if realAmount > cur.amount {
+		if realAmount <= 0 || realAmount != si.reserved {
 			return constant.PlayerShopNotEnoughInStock, false
 		}
 	}
@@ -1251,16 +1346,15 @@ func (r *shopRoom) buyItem(slot byte, quantity int16, buyerID int32) (byte, bool
 		return constant.PlayerShopNotEnoughInStock, false
 	}
 
+	si.reserved -= realAmount
 	si.bundles -= quantity
-	if si.bundles <= 0 {
-		owner.setItemLockedByDBID(si.item.invID, si.item.dbID, false)
+
+	if si.bundles <= 0 || si.reserved <= 0 {
 		delete(r.items, slot)
-		r.normalizeShopSlots()
-	} else {
-		if updated, err := owner.getItem(si.item.invID, si.item.slotID); err == nil && updated.dbID == si.item.dbID {
-			si.item = updated
-		}
 	}
+
+	r.normalizeShopSlots()
+	r.refreshOwnerStackVisual(owner, cur.invID, cur.slotID, cur.dbID)
 
 	return 0, true
 }
@@ -1271,16 +1365,20 @@ func (r *shopRoom) removeItem(slot byte) bool {
 		return false
 	}
 
+	r.normalizeShopSlots()
+
 	si, exists := r.items[slot]
 	if !exists || si == nil {
 		return false
 	}
 
-	owner.setItemLockedByDBID(si.item.invID, si.item.dbID, false)
-	owner.Send(packetInventoryAddItem(si.item, true))
+	dbID := si.item.dbID
+	invID := si.item.invID
+	invSlot := si.item.slotID
 
 	delete(r.items, slot)
 	r.normalizeShopSlots()
+	r.refreshOwnerStackVisual(owner, invID, invSlot, dbID)
 
 	return true
 }
