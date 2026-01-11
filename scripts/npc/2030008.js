@@ -23,14 +23,21 @@ if (plr.level() < minLevel) {
     var sel = npc.selection()
 
     if (sel == 0) {
-        if (npc.sendYesNo("I can take you to the Zakum Party Quest (#m" + mapPartyPQ + "#). Are you ready?")) {
-            if (plr.inParty() && !plr.isPartyLeader()) {
-                npc.sendOk("Only your party leader can request entry for the party.\r\nPlease ask your leader to speak with me.")
-            } else {
-                plr.warp(mapPartyPQ)
-            }
+        // Stage 1: Party Quest
+        if (!plr.inParty()) {
+            npc.sendOk("The Zakum Party Quest requires a party. Please form or join a party before attempting this quest.")
+        } else if (!plr.isPartyLeader()) {
+            npc.sendOk("Only your party leader can request entry for the party.\r\nPlease ask your leader to speak with me.")
         } else {
-            npc.sendOk("Prepare well, and speak to me again when you are ready.")
+            var partySize = plr.partyMembersOnMapCount()
+            if (partySize < 1) {
+                npc.sendOk("You need at least one party member on this map to enter the Party Quest.")
+            } else if (npc.sendYesNo("I can start the Zakum Party Quest for your party. You have " + partySize + " member(s) ready. Are you prepared?")) {
+                // Start the party quest event
+                plr.startPartyQuest("zakum_pq", 1)
+            } else {
+                npc.sendOk("Prepare well, and speak to me again when you are ready.")
+            }
         }
     } else if (sel == 1) {
         if (npc.sendYesNo("I can send you to the Zakum Jump Quest (#m" + mapJumpQuest + "#).\r\nWould you like to go now?")) {
