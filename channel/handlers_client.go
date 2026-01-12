@@ -3357,39 +3357,40 @@ func (server Server) roomWindow(conn mnet.Client, reader mpacket.Reader) {
 			return
 		}
 
-		if game, valid := r.(gameRoomer); valid {
-			game.kickPlayer(plr, 0x0)
+		switch room := r.(type) {
+		case gameRoomer:
+			room.kickPlayer(plr, 0x0)
 
 			if r.closed() {
 				err = pool.removeRoom(r.id())
-
 				if err != nil {
 					log.Println(err)
 				}
 			} else {
 				pool.updateGameBox(r)
 			}
-		} else if trade, valid := r.(*tradeRoom); valid {
-			trade.removePlayer(plr)
-			err = pool.removeRoom(trade.roomID)
 
+		case *tradeRoom:
+			room.removePlayer(plr)
+			err = pool.removeRoom(room.roomID)
 			if err != nil {
 				log.Println(err)
 			}
-		} else if shop, valid := r.(*shopRoom); valid {
-			if plr.ID == shop.ownerID() {
-				shop.closeShop(constant.MiniRoomClosed, plr)
-				if err := pool.removeRoom(shop.roomID); err != nil {
+
+		case *shopRoom:
+			if plr.ID == room.ownerID() {
+				room.closeShop(constant.MiniRoomClosed)
+				if err := pool.removeRoom(room.roomID); err != nil {
 					log.Println(err)
 				}
 				return
 			}
 
-			shop.removePlayer(plr)
+			room.removePlayer(plr)
 
-			if r.closed() {
-				shop.closeShop(constant.MiniRoomClosed, shop.ownerPlayer())
-				if err := pool.removeRoom(shop.roomID); err != nil {
+			if room.closed() {
+				room.closeShop(constant.MiniRoomClosed)
+				if err := pool.removeRoom(room.roomID); err != nil {
 					log.Println(err)
 				}
 			}
@@ -3407,27 +3408,34 @@ func (server Server) roomWindow(conn mnet.Client, reader mpacket.Reader) {
 			return
 		}
 
-		if item.isRechargeable() {
-			amount = item.amount
-			plr.removeItem(item, false)
-		} else {
-			_, err = plr.takeItem(item.ID, invSlot, amount, invType)
-			if err != nil {
-				plr.Send(packetPlayerNoChange())
-				return
-			}
-		}
-
-		newItem := item
-		newItem.amount = amount
-
 		if r, err := pool.getPlayerRoom(plr.ID); err == nil {
 			if tr, ok := r.(*tradeRoom); ok {
-				tr.insertItem(tradeSlot, plr.ID, newItem)
+				if !tr.canInsertItem(plr.ID, tradeSlot) {
+					plr.Send(packetPlayerNoChange())
+					return
+				}
+
+				if item.isRechargeable() {
+					amount = item.amount
+					plr.removeItem(item, false)
+				} else {
+					_, err = plr.takeItem(item.ID, invSlot, amount, invType)
+					if err != nil {
+						plr.Send(packetPlayerNoChange())
+						return
+					}
+				}
+
+				newItem := item
+				newItem.amount = amount
+
+				if !tr.insertItem(tradeSlot, plr.ID, newItem) {
+					_, _ = plr.GiveItem(newItem)
+					plr.Send(packetPlayerNoChange())
+					return
+				}
 			}
 		}
-
-		plr.Send(packetPlayerNoChange())
 
 	case constant.MiniRoomTradePutMesos:
 		amount := reader.ReadInt32()
@@ -3707,7 +3715,7 @@ func (server Server) roomWindow(conn mnet.Client, reader mpacket.Reader) {
 			shop.send(packetRoomShopRefresh(shop))
 
 			if len(shop.items) == 0 {
-				shop.closeShop(constant.MiniRoomClosed, shop.ownerPlayer())
+				shop.closeShop(constant.MiniRoomClosed)
 				if err := pool.removeRoom(shop.id()); err != nil {
 					log.Println(err)
 				}
@@ -3729,7 +3737,7 @@ func (server Server) roomWindow(conn mnet.Client, reader mpacket.Reader) {
 			return
 		}
 
-		if _, exists := shop.items[shopSlot]; exists {
+		if int(shopSlot) >= 0 && int(shopSlot) < len(shop.items) && shop.items[shopSlot] != nil {
 			shop.removeItem(shopSlot)
 			shop.send(packetRoomShopRemoveItem(0, int16(shopSlot)))
 			shop.send(packetRoomShopRefresh(shop))

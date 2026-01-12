@@ -5,7 +5,6 @@ import (
 	"log"
 	"math"
 	"math/rand"
-	"sort"
 	"time"
 
 	"github.com/Hucaru/Valhalla/common/opcode"
@@ -763,21 +762,43 @@ func (r tradeRoom) reject(code byte, name string) {
 	r.send(packetRoomInviteResult(code, name))
 }
 
-func (r *tradeRoom) insertItem(tradeSlot byte, plrID int32, item Item) {
+func (r *tradeRoom) canInsertItem(plrID int32, tradeSlot byte) bool {
+	if tradeSlot < 1 || tradeSlot > 9 {
+		return false
+	}
+	if r.items == nil {
+		return false
+	}
+	if _, ok := r.items[plrID]; !ok || r.items[plrID] == nil {
+		return false
+	}
+	if _, exists := r.items[plrID][tradeSlot]; exists {
+		return false
+	}
+	return true
+}
+
+func (r *tradeRoom) insertItem(tradeSlot byte, plrID int32, item Item) bool {
 	if tradeSlot < 1 || tradeSlot > 9 {
 		log.Printf("trade: invalid slot %d from player %d\n", tradeSlot, plrID)
-		return
+		return false
+	}
+
+	if r.items == nil || r.items[plrID] == nil {
+		log.Printf("trade: missing items map for player %d\n", plrID)
+		return false
 	}
 
 	if _, exists := r.items[plrID][tradeSlot]; exists {
 		log.Printf("trade: slot %d already occupied for player %d\n", tradeSlot, plrID)
-		return
+		return false
 	}
 
 	r.items[plrID][tradeSlot] = item
 	isUser0 := r.players[0].ID == plrID
 	r.players[0].Send(packetRoomTradePutItem(tradeSlot, !isUser0, item))
 	r.players[1].Send(packetRoomTradePutItem(tradeSlot, isUser0, item))
+	return true
 }
 
 func (r *tradeRoom) updateMesos(amount, plrID int32) {
@@ -954,7 +975,7 @@ type shopRoom struct {
 	name     string
 	private  bool
 	open     bool
-	items    map[byte]*shopItem
+	items    []*shopItem
 	nextSlot byte
 	mesos    int32
 }
@@ -965,7 +986,7 @@ func newShopRoom(id int32, name string, private bool) roomer {
 		room:     r,
 		name:     name,
 		private:  private,
-		items:    make(map[byte]*shopItem),
+		items:    make([]*shopItem, 0),
 		nextSlot: 0,
 		mesos:    0,
 	}
@@ -1024,7 +1045,7 @@ func (r *shopRoom) ownerPlayer() *Player {
 	return nil
 }
 
-func (r *shopRoom) closeShop(reason byte, owner *Player) {
+func (r *shopRoom) closeShop(reason byte) {
 	for i, plr := range r.players {
 		if plr == nil {
 			continue
@@ -1032,32 +1053,33 @@ func (r *shopRoom) closeShop(reason byte, owner *Player) {
 		plr.Send(packetRoomLeave(byte(i), reason))
 	}
 
+	owner := r.ownerPlayer()
+
 	if owner != nil && len(r.items) > 0 {
 		type key struct {
 			dbID   int64
 			invID  byte
 			slotID int16
 		}
-		seen := make(map[key]struct{}, len(r.items))
+		seen := make(map[int64]struct{}, len(r.items))
 
 		for _, si := range r.items {
 			if si == nil || si.item.dbID == 0 {
 				continue
 			}
-			k := key{dbID: si.item.dbID, invID: si.item.invID, slotID: si.item.slotID}
-			if _, ok := seen[k]; ok {
+			id := si.item.dbID
+			if _, ok := seen[id]; ok {
 				continue
 			}
-			seen[k] = struct{}{}
+			seen[id] = struct{}{}
 
-			if cur, err := owner.getItem(k.invID, k.slotID); err == nil && cur.dbID == k.dbID {
+			if cur, err := owner.getItem(si.item.invID, si.item.slotID); err == nil && cur.dbID == si.item.dbID {
 				owner.Send(packetInventoryAddItem(cur, true))
 			}
 		}
 	}
 
-	r.items = make(map[byte]*shopItem)
-	r.nextSlot = 0
+	r.items = make([]*shopItem, 0)
 	r.players = []*Player{}
 }
 
@@ -1065,7 +1087,7 @@ func (r *shopRoom) checkOpen() bool {
 	for _, plr := range r.players {
 		if plr.ID == r.ownerPlayerID {
 			if plr.Conn == nil {
-				r.closeShop(constant.MiniRoomClosed, nil)
+				r.closeShop(constant.MiniRoomClosed)
 				return false
 			}
 		}
@@ -1139,44 +1161,16 @@ func (r *shopRoom) refreshOwnerStackVisual(owner *Player, invID byte, slotID int
 	}
 }
 
-func (r *shopRoom) normalizeShopSlots() {
+func (r *shopRoom) syncShopItemSlots() {
 	if r == nil || len(r.items) == 0 {
-		r.nextSlot = 0
 		return
 	}
-
-	oldSlots := make([]byte, 0, len(r.items))
-	for s := range r.items {
-		oldSlots = append(oldSlots, s)
-	}
-	sort.Slice(oldSlots, func(i, j int) bool { return oldSlots[i] < oldSlots[j] })
-
-	already := true
-	for i, s := range oldSlots {
-		want := byte(i)
-		if s != want {
-			already = false
-			break
-		}
-	}
-	if already {
-		r.nextSlot = byte(len(oldSlots))
-		return
-	}
-
-	newItems := make(map[byte]*shopItem, len(r.items))
-	for i, oldSlot := range oldSlots {
-		si := r.items[oldSlot]
+	for i, si := range r.items {
 		if si == nil {
 			continue
 		}
-		newSlot := byte(i)
-		si.slot = newSlot
-		newItems[newSlot] = si
+		si.slot = byte(i)
 	}
-
-	r.items = newItems
-	r.nextSlot = byte(len(newItems))
 }
 
 func (r *shopRoom) addItem(item Item, bundles, bundleAmount int16, price int32, slot byte) bool {
@@ -1185,12 +1179,7 @@ func (r *shopRoom) addItem(item Item, bundles, bundleAmount int16, price int32, 
 		return false
 	}
 
-	r.normalizeShopSlots()
-	slot = r.nextSlot
-
-	if _, exists := r.items[slot]; exists {
-		return false
-	}
+	slot = byte(len(r.items))
 
 	if bundles <= 0 || bundleAmount <= 0 {
 		return false
@@ -1233,7 +1222,6 @@ func (r *shopRoom) addItem(item Item, bundles, bundleAmount int16, price int32, 
 			si.bundles += bundles
 
 			r.refreshOwnerStackVisual(owner, cur.invID, cur.slotID, cur.dbID)
-
 			return true
 		}
 	}
@@ -1253,19 +1241,20 @@ func (r *shopRoom) addItem(item Item, bundles, bundleAmount int16, price int32, 
 		return false
 	}
 
-	r.items[slot] = si
-	r.nextSlot = slot + 1
+	r.items = append(r.items, si)
+	r.syncShopItemSlots()
 
 	r.refreshOwnerStackVisual(owner, cur.invID, cur.slotID, cur.dbID)
-
 	return true
 }
 
 func (r *shopRoom) buyItem(slot byte, quantity int16, buyerID int32) (byte, bool) {
-	r.normalizeShopSlots()
+	if int(slot) < 0 || int(slot) >= len(r.items) {
+		return constant.PlayerShopNotEnoughInStock, false
+	}
 
-	si, exists := r.items[slot]
-	if !exists || si == nil {
+	si := r.items[slot]
+	if si == nil {
 		return constant.PlayerShopNotEnoughInStock, false
 	}
 
@@ -1350,12 +1339,12 @@ func (r *shopRoom) buyItem(slot byte, quantity int16, buyerID int32) (byte, bool
 	si.bundles -= quantity
 
 	if si.bundles <= 0 || si.reserved <= 0 {
-		delete(r.items, slot)
+		i := int(slot)
+		r.items = append(r.items[:i], r.items[i+1:]...)
+		r.syncShopItemSlots()
 	}
 
-	r.normalizeShopSlots()
 	r.refreshOwnerStackVisual(owner, cur.invID, cur.slotID, cur.dbID)
-
 	return 0, true
 }
 
@@ -1365,10 +1354,12 @@ func (r *shopRoom) removeItem(slot byte) bool {
 		return false
 	}
 
-	r.normalizeShopSlots()
+	if int(slot) < 0 || int(slot) >= len(r.items) {
+		return false
+	}
 
-	si, exists := r.items[slot]
-	if !exists || si == nil {
+	si := r.items[slot]
+	if si == nil {
 		return false
 	}
 
@@ -1376,10 +1367,11 @@ func (r *shopRoom) removeItem(slot byte) bool {
 	invID := si.item.invID
 	invSlot := si.item.slotID
 
-	delete(r.items, slot)
-	r.normalizeShopSlots()
-	r.refreshOwnerStackVisual(owner, invID, invSlot, dbID)
+	i := int(slot)
+	r.items = append(r.items[:i], r.items[i+1:]...)
+	r.syncShopItemSlots()
 
+	r.refreshOwnerStackVisual(owner, invID, invSlot, dbID)
 	return true
 }
 
@@ -1402,6 +1394,7 @@ func (r *shopRoom) displayBytes() []byte {
 
 	return p
 }
+
 func packetRoomShowWindow(roomType, boardType, maxPlayers, roomSlot byte, roomTitle string, players []*Player) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelRoom)
 	p.WriteByte(constant.RoomPacketShowWindow)
@@ -1721,16 +1714,9 @@ func packetRoomShopRefresh(shop *shopRoom) mpacket.Packet {
 	p.WriteByte(constant.RoomShopRefresh)
 	p.WriteByte(byte(len(shop.items)))
 
-	shop.normalizeShopSlots()
+	shop.syncShopItemSlots()
 
-	slots := make([]byte, 0, len(shop.items))
-	for slot := range shop.items {
-		slots = append(slots, slot)
-	}
-	sort.Slice(slots, func(i, j int) bool { return slots[i] < slots[j] })
-
-	for _, slot := range slots {
-		shopItem := shop.items[slot]
+	for _, shopItem := range shop.items {
 		p.WriteInt16(shopItem.bundles)
 		p.WriteInt16(shopItem.bundleAmount)
 		p.WriteInt32(shopItem.price)
