@@ -48,10 +48,11 @@ var movementType = struct {
 	normalMovement3:  17,
 }
 
-func parseMovement(reader mpacket.Reader) (movement, movementFrag) {
+func parseMovement(reader mpacket.Reader) (movement, movementFrag, bool) {
 	// http://mapleref.wikia.com/wiki/Movement
 
 	mData := movement{}
+	valid := true
 
 	mData.origX = reader.ReadInt16()
 	mData.origY = reader.ReadInt16()
@@ -102,6 +103,7 @@ func parseMovement(reader mpacket.Reader) (movement, movementFrag) {
 
 		default:
 			fmt.Println("unknown movement fragment type:", frag.mType)
+			valid = false
 			frag.stance = reader.ReadByte()
 			frag.duration = reader.ReadInt16()
 		}
@@ -121,7 +123,7 @@ func parseMovement(reader mpacket.Reader) (movement, movementFrag) {
 		}
 	}
 
-	return mData, final
+	return mData, final, valid
 }
 
 func generateMovementBytes(moveData movement) mpacket.Packet {

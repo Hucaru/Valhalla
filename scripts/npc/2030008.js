@@ -1,7 +1,7 @@
 // Adobis - Door to Zakum
 
 var minLevel = 50
-var mapPartyPQ = 280010000
+var pqMaps = [280010000, 280010010, 280010011, 280010020, 280010030, 280010031, 280010040, 280010041, 280010050, 280010060, 280010070, 280010071, 280010080, 280010081, 280010090, 280010091, 280010100, 280010101, 280010110, 280010120, 280010130, 280010140, 280010150, 280011000, 280011001, 280011002, 280011003, 280011004, 280011005, 280011006]
 var mapJumpQuest = 280020000
 var itemFireOre = 4031061
 var itemBreathOfLava = 4031062
@@ -52,8 +52,19 @@ if (plr.level() < minLevel) {
         } else {
             var partySize = plr.partyMembersOnMapCount()
             if (npc.sendYesNo("I can start the Zakum Party Quest for your party. You have " + partySize + " member(s) ready. Are you prepared?")) {
-                // Start the party quest event
-                plr.startPartyQuest("zakum_pq", 1)
+                for (let instance = 0; instance < 1; instance++) {
+                    var count = 0;
+                    for(let i = 0; i < pqMaps.length; i++) {
+                        var m = map.getMap(pqMaps[i], instance)
+                        count += m.playerCount()
+                    }
+
+                    if (count == 0) {
+                        plr.startPartyQuest("zakum_pq", instance)
+                    } else {
+                        npc.sendOk("A party is already doing the quest, please come back another time")
+                    }
+                }
             } else {
                 npc.sendOk("Prepare well, and speak to me again when you are ready.")
             }

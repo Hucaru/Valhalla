@@ -396,7 +396,11 @@ func (server Server) playerMovement(conn mnet.Client, reader mpacket.Reader) {
 		return
 	}
 
-	moveData, finalData := parseMovement(reader)
+	moveData, finalData, valid := parseMovement(reader)
+
+	if !valid {
+		log.Println("unknown playerMovement data")
+	}
 
 	if !moveData.validateChar(plr) {
 		return
@@ -2233,7 +2237,10 @@ func (server Server) mobControl(conn mnet.Client, reader mpacket.Reader) {
 		return
 	}
 
-	moveData, finalData := parseMovement(reader)
+	moveData, finalData, valid := parseMovement(reader)
+	if !valid {
+		log.Println("unknown mobControl data")
+	}
 
 	moveBytes := generateMovementBytes(moveData)
 
@@ -4058,7 +4065,7 @@ func (server *Server) playerSpecialSkill(conn mnet.Client, reader mpacket.Reader
 		if err != nil {
 			break
 		}
-		
+
 		idx := int(skillLevel) - 1
 		if idx < 0 || idx >= len(skillData) {
 			break
@@ -4340,7 +4347,11 @@ func (server Server) playerSummonMove(conn mnet.Client, reader mpacket.Reader) {
 		return
 	}
 
-	moveData, finalData := parseMovement(reader)
+	moveData, finalData, valid := parseMovement(reader)
+	if !valid {
+		log.Println("unknown playerSummonMove data")
+	}
+
 	moveBytes := generateMovementBytes(moveData)
 
 	summ.Pos = pos{x: finalData.x, y: finalData.y}
@@ -4911,7 +4922,10 @@ func (server *Server) playerPetMove(conn mnet.Client, reader mpacket.Reader) {
 		return
 	}
 
-	moveData, finalData := parseMovement(reader)
+	moveData, finalData, valid := parseMovement(reader)
+	if !valid {
+		log.Println("unknown playerPetMove data")
+	}
 	moveBytes := generateMovementBytes(moveData)
 
 	plr.pet.updateMovement(finalData)
