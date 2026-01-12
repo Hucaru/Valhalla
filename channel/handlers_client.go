@@ -2238,14 +2238,14 @@ func (server Server) mobControl(conn mnet.Client, reader mpacket.Reader) {
 	}
 
 	moveData, finalData, valid := parseMovement(reader)
-	if !valid {
-		log.Println("unknown mobControl data")
-	}
 
 	moveBytes := generateMovementBytes(moveData)
 
 	inst.lifePool.mobAcknowledge(mobSpawnID, plr, moveID, skillPossible, action, skillData, moveData, finalData, moveBytes)
-
+	if !valid {
+		log.Println("unknown mobControl data")
+		inst.sendExcept(packetPlayerNoChange(), conn)
+	}
 }
 
 func (server Server) mobDamagePlayer(conn mnet.Client, reader mpacket.Reader, mobAttack int8) {
@@ -4348,9 +4348,6 @@ func (server Server) playerSummonMove(conn mnet.Client, reader mpacket.Reader) {
 	}
 
 	moveData, finalData, valid := parseMovement(reader)
-	if !valid {
-		log.Println("unknown playerSummonMove data")
-	}
 
 	moveBytes := generateMovementBytes(moveData)
 
@@ -4368,6 +4365,10 @@ func (server Server) playerSummonMove(conn mnet.Client, reader mpacket.Reader) {
 	}
 
 	inst.sendExcept(packetSummonMove(plr.ID, summonID, moveBytes), conn)
+	if !valid {
+		log.Println("unknown playerSummonMove data")
+		inst.sendExcept(packetPlayerNoChange(), conn)
+	}
 }
 
 func (server *Server) playerSummonDamage(conn mnet.Client, reader mpacket.Reader) {
@@ -4923,9 +4924,7 @@ func (server *Server) playerPetMove(conn mnet.Client, reader mpacket.Reader) {
 	}
 
 	moveData, finalData, valid := parseMovement(reader)
-	if !valid {
-		log.Println("unknown playerPetMove data")
-	}
+
 	moveBytes := generateMovementBytes(moveData)
 
 	plr.pet.updateMovement(finalData)
@@ -4943,6 +4942,10 @@ func (server *Server) playerPetMove(conn mnet.Client, reader mpacket.Reader) {
 	}
 
 	inst.movePlayerPet(plr.ID, moveBytes, plr)
+	if !valid {
+		log.Println("unknown playerPetMove data")
+		inst.sendExcept(packetPlayerNoChange(), conn)
+	}
 }
 
 func (server *Server) playerPetAction(conn mnet.Client, reader mpacket.Reader) {

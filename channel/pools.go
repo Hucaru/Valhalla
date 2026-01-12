@@ -254,6 +254,7 @@ func (pool *lifePool) mobAcknowledge(poolID int32, plr *Player, moveID int16, sk
 
 			pool.mobs[i].acknowledgeController(moveID, finalData, skillPossible, skillID, skillLevel)
 			pool.instance.sendExcept(packetMobMove(poolID, skillPossible, action, skillData, moveBytes), v.controller.Conn)
+
 		}
 	}
 }
