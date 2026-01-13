@@ -3679,7 +3679,7 @@ func (server Server) roomWindow(conn mnet.Client, reader mpacket.Reader) {
 			return
 		}
 
-		if shop.addItem(item, bundles, bundleAmount, price, shop.nextSlot) {
+		if shop.addItem(item, bundles, bundleAmount, price) {
 			shop.send(packetRoomShopRefresh(shop))
 		}
 
@@ -3737,8 +3737,7 @@ func (server Server) roomWindow(conn mnet.Client, reader mpacket.Reader) {
 			return
 		}
 
-		if int(shopSlot) >= 0 && int(shopSlot) < len(shop.items) && shop.items[shopSlot] != nil {
-			shop.removeItem(shopSlot)
+		if remove := shop.removeItem(shopSlot); remove {
 			shop.send(packetRoomShopRemoveItem(0, int16(shopSlot)))
 			shop.send(packetRoomShopRefresh(shop))
 		}
