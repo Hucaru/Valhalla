@@ -788,8 +788,9 @@ func (pool *roomPool) nextID() (int32, error) {
 
 func (pool *roomPool) playerShowRooms(plr *Player) {
 	for _, r := range pool.rooms {
-		if game, valid := r.(gameRoomer); valid {
-			plr.Send(packetMapShowGameBox(game.displayBytes()))
+		if b, ok := r.(boxDisplayer); ok {
+			plr.Send(packetMapShowGameBox(b.displayBytes()))
+			return
 		}
 	}
 }
@@ -835,7 +836,7 @@ func (pool *roomPool) removeRoom(id int32) error {
 		}
 	}
 
-	if _, valid := pool.rooms[id].(gameRoomer); valid {
+	if _, ok := pool.rooms[id].(boxDisplayer); ok {
 		pool.instance.send(packetMapRemoveGameBox(pool.rooms[id].ownerID()))
 	}
 
@@ -863,8 +864,9 @@ func (pool roomPool) getPlayerRoom(id int32) (roomer, error) {
 }
 
 func (pool roomPool) updateGameBox(r roomer) {
-	if game, valid := r.(gameRoomer); valid {
-		pool.instance.send(packetMapShowGameBox(game.displayBytes()))
+	if b, ok := r.(boxDisplayer); ok {
+		pool.instance.send(packetMapShowGameBox(b.displayBytes()))
+		return
 	}
 }
 
@@ -880,6 +882,14 @@ func (pool *roomPool) removePlayer(plr *Player) {
 		if r.closed() {
 			_ = pool.removeRoom(v.id())
 		}
+	case *shopRoom:
+		v.removePlayer(plr)
+		if r.closed() {
+			_ = pool.removeRoom(v.id())
+		} else {
+			pool.updateGameBox(r)
+		}
+
 	case gameRoomer:
 		v.kickPlayer(plr, 0x0)
 		if r.closed() {

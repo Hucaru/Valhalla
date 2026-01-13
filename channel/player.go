@@ -1179,14 +1179,14 @@ func (d *Player) takeItem(id int32, slot int16, amount int16, invID byte) (Item,
 	if item.amount == 0 && !item.isRechargeable() {
 		d.removeItem(item, false)
 	} else {
-		d.updateItemStack(item)
+		d.updateItemStack(item, false)
 	}
 
 	return item, nil
 
 }
 
-func (d *Player) TakeItemForStorage(id int32, slot int16, amount int16, invID byte) (Item, error) {
+func (d *Player) TakeItemSilent(id int32, slot int16, amount int16, invID byte) (Item, error) {
 	item, err := d.getItem(invID, slot)
 	if err != nil {
 		return item, fmt.Errorf("item not found at inv=%d slot=%d", invID, slot)
@@ -1207,20 +1207,23 @@ func (d *Player) TakeItemForStorage(id int32, slot int16, amount int16, invID by
 	}
 
 	item.amount -= amount
-	if item.amount == 0 && !item.isRechargeable() {
+	if item.amount == 0 || item.isRechargeable() {
 		d.removeItem(item, true)
 	} else {
-		d.updateItemStack(item)
+		d.updateItemStack(item, true)
 	}
 
 	return item, nil
 
 }
 
-func (d Player) updateItemStack(item Item) {
+func (d Player) updateItemStack(item Item, silent bool) {
 	item.save(d.ID)
 	d.updateItem(item)
-	d.Send(packetInventoryModifyItemAmount(item))
+
+	if !silent {
+		d.Send(packetInventoryModifyItemAmount(item))
+	}
 }
 
 func (d *Player) updateItem(new Item) {

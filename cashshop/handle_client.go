@@ -473,7 +473,7 @@ func (server *Server) handleCashShopOperation(conn mnet.Client, reader mpacket.R
 			return
 		}
 
-		takenItem, takeErr := plr.TakeItemForStorage(item.ID, itemSlot, 1, invType)
+		takenItem, takeErr := plr.TakeItemSilent(item.ID, itemSlot, 1, invType)
 		if takeErr != nil {
 			plr.Send(packetCashShopError(opcode.SendCashShopMoveStoLFailed, constant.CashShopErrorUnknown))
 			return
