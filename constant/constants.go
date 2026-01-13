@@ -85,20 +85,20 @@ const (
 	SuperGmJobID = 510
 
 	// Weapon type constants (itemID / 10000)
-	WeaponType1HSword   = 130
-	WeaponType1HAxe     = 131
-	WeaponType1HBW      = 132
-	WeaponTypeDagger    = 133
-	WeaponTypeWand      = 137
-	WeaponTypeStaff     = 138
-	WeaponType2HSword   = 140
-	WeaponType2HAxe     = 141
-	WeaponType2HBW      = 142
-	WeaponTypeSpear     = 143
-	WeaponTypePolearm   = 144
-	WeaponTypeBow       = 145
-	WeaponTypeCrossbow  = 146
-	WeaponTypeClaw      = 147
+	WeaponType1HSword  = 130
+	WeaponType1HAxe    = 131
+	WeaponType1HBW     = 132
+	WeaponTypeDagger   = 133
+	WeaponTypeWand     = 137
+	WeaponTypeStaff    = 138
+	WeaponType2HSword  = 140
+	WeaponType2HAxe    = 141
+	WeaponType2HBW     = 142
+	WeaponTypeSpear    = 143
+	WeaponTypePolearm  = 144
+	WeaponTypeBow      = 145
+	WeaponTypeCrossbow = 146
+	WeaponTypeClaw     = 147
 
 	// Equipment slot constants
 	WeaponSlot = -11
@@ -330,6 +330,7 @@ var ExpTable = [...]int32{15, 34, 57, 92, 135, 372, 560, 840, 1242, 1716, // Beg
 
 const (
 	RoomMaxPlayers = 2
+	ShopMaxPlayers = 4
 
 	OmokBoardSize = 15
 
@@ -367,6 +368,11 @@ const (
 	RoomPacketInviteResult     = 0x03
 	RoomPacketShowAccept       = 0x0F
 	RoomPacketMemoryStart      = 0x0C
+	RoomPacketEndList          = 0xFF
+
+	RoomShopItemListUnknown = 0x10
+	RoomShopRefresh         = 0x15
+	RoomShopMoveItemToInv   = 0x17
 
 	RoomRequestTie            byte = 42
 	RoomRequestTieResult      byte = 43

@@ -67,7 +67,7 @@ func (server *Server) handleNewChannelOK(conn mnet.Server, reader mpacket.Reader
 	server.rates.mesos = reader.ReadFloat32()
 
 	log.Printf("Registered as channel %d on world %s with rates: Exp - x%.2f, Drop - x%.2f, Mesos - x%.2f",
-		server.id, server.worldName, server.rates.exp, server.rates.drop, server.rates.mesos)
+		server.id+1, server.worldName, server.rates.exp, server.rates.drop, server.rates.mesos)
 
 	server.players.broadcast(packetMessageNotice("Re-connected to world server as channel " + strconv.Itoa(int(server.id+1))))
 
