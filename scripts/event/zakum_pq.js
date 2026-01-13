@@ -34,15 +34,15 @@ function afterPortal(plr, dst) {
 
 function timeout(plr) {
     // Clean up items on timeout
-    plr.removeItemsByID(itemKeys, plr.itemCount(itemKeys));
-    plr.removeItemsByID(itemDocs, plr.itemCount(itemDocs));
+    plr.removeItemsByIDSilent(itemKeys, plr.itemCount(itemKeys));
+    plr.removeItemsByIDSilent(itemDocs, plr.itemCount(itemDocs));
     plr.warp(exitMapID);
 }
 
 function playerLeaveEvent(plr) {
     // Clean up items when player leaves
-    plr.removeItemsByID(itemKeys, plr.itemCount(itemKeys));
-    plr.removeItemsByID(itemDocs, plr.itemCount(itemDocs));
+    plr.removeItemsByIDSilent(itemKeys, plr.itemCount(itemKeys));
+    plr.removeItemsByIDSilent(itemDocs, plr.itemCount(itemDocs));
 
     ctrl.removePlayer(plr);
     plr.warp(exitMapID);
@@ -52,8 +52,8 @@ function playerLeaveEvent(plr) {
         var players = ctrl.players();
 
         for (let i = 0; i < players.length; i++) {
-            players[i].removeItemsByID(itemKeys, players[i].itemCount(itemKeys));
-            players[i].removeItemsByID(itemDocs, players[i].itemCount(itemDocs));
+            players[i].removeItemsByIDSilent(itemKeys, players[i].itemCount(itemKeys));
+            players[i].removeItemsByIDSilent(itemDocs, players[i].itemCount(itemDocs));
             players[i].warp(exitMapID);
         }
 

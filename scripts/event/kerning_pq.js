@@ -48,8 +48,8 @@ function timeout(plr) {
 }
 
 function playerLeaveEvent(plr) {
-    plr.removeItemsByID(coupon, plr.itemCount(coupon));
-    plr.removeItemsByID(pass, plr.itemCount(pass));
+    plr.removeItemsByIDSilent(coupon, plr.itemCount(coupon));
+    plr.removeItemsByIDSilent(pass, plr.itemCount(pass));
 
     ctrl.removePlayer(plr);
     plr.warp(exitMapID);

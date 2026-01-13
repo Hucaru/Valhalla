@@ -4622,7 +4622,7 @@ func (server *Server) playerQuestOperation(conn mnet.Client, reader mpacket.Read
 				log.Printf("[QuestPkt] lostItem give failed: err=%v", err)
 			}
 		} else if count < 0 {
-			if !plr.removeItemsByID(int32(questItem), int32(-count)) {
+			if !plr.removeItemsByID(int32(questItem), int32(-count), false) {
 				log.Printf("[QuestPkt] lostItem remove failed: Item=%d need=%d", questItem, -count)
 			}
 		}

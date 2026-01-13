@@ -411,7 +411,11 @@ func (ctrl *scriptPlayerWrapper) TakeItem(id int32, slot int16, amount int16, in
 }
 
 func (ctrl *scriptPlayerWrapper) RemoveItemsByID(id int32, count int32) bool {
-	return ctrl.plr.removeItemsByID(id, count)
+	return ctrl.plr.removeItemsByID(id, count, false)
+}
+
+func (ctrl *scriptPlayerWrapper) RemoveItemsByIDSilent(id int32, count int32) bool {
+	return ctrl.plr.removeItemsByID(id, count, true)
 }
 
 func (ctrl *scriptPlayerWrapper) ItemCount(id int32) int32 {
@@ -554,7 +558,7 @@ func (ctrl *scriptPlayerWrapper) Name() string {
 }
 
 func (ctrl *scriptPlayerWrapper) InventoryExchange(itemSource int32, srcCount int32, itemExchangeFor int32, count int16) bool {
-	if !ctrl.plr.removeItemsByID(itemSource, srcCount) {
+	if !ctrl.plr.removeItemsByID(itemSource, srcCount, false) {
 		return false
 	}
 
