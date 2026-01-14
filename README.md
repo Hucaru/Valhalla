@@ -109,7 +109,7 @@ Channel server:
 - [x] Guild expel
 - [x] Guild member online notice
 - [x] Kerning PQ
-- [ ] Ludi PQ
+- [x] Ludi PQ
 - [x] Balrog boat invasion
 - [x] Deleted character removes from guild
 - [x] Deleted character removes from party

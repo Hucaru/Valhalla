@@ -1,63 +1,59 @@
-// Remove strict ordering and cm.dispose(), use eim straight
-var puzzle = ["30*10+98", "3*8+610", "69+420", "400+140-72", "50*10+80-4", "5*60+5*5", "900/2+3", "20*20+15", "20*30+15", "9*9+100-43"];
-var answer = ["001000011", "001101000", "000100011", "000101010", "000011100", "011010000", "001110000", "100110000", "100011000", "101000010"];
+// Stage 8 NPC - LudiPQ (Box Combination Puzzle)
+// Players must stand on 5 correct boxes out of 9 total boxes
 
-var eim = plr.getEventInstance();
-if (!eim) {
-    npc.sendOk("You are not in an event instance.");
-}
+var props = map.properties();
 
-// Determine which route
-var stageStatus = eim.getProperty("stage5");
-var isLeader = (plr.partyLeaderId() == plr.id());
-var problemActive = (eim.getProperty("stage5a") !== null);
-
-// Branching logic, stateless
-if (!isLeader) {
-    // follower path
-    npc.sendNext("In the fifth stage, you will find a number of platforms. Of these platforms, #b3 are connected to the portal that leads to the next stage. 3 members of your party must stand in the center of these 3 platforms#k. \r\nRemember, exactly 3 members must be on a platform. No more, no less. While they are on the platform, the party leader must #bdouble-click on me to check whether the members have chosen the right platform#k. Good luck!");
-}
-
-// Leader flow
-if (stageStatus === null || !problemActive) {
-    // First time, create problem
-    npc.sendNext("In the fifth stage, you will find a number of platforms. Of these platforms, #b3 are connected to the portal that leads to the next stage. 3 members of your party must stand in the center of these 3 platforms#k. \r\nRemember, exactly 3 members must be on a platform. No more, no less. While they are on the platform, the party leader must #bdouble-click on me to check whether the members have chosen the right platform#k. Good luck!");
-    npc.sendBackNext("The #rthree numbers in the answer to my question are the key to opening the portal to the next stage. \r\n#r" + puzzle[num] + " = ?#k \r\nPlease find the correct answer.");    
-
-    // set vars (only runs on first click)
-    eim.setProperty("stage5", "0");
-    var num = Math.floor(Math.random() * 10);
-    eim.setProperty("stage5a", num.toString());
-    plr.getMap().startMapEffect("" + puzzle[num] + " = ?", 5120018);
-
-}
-
-// Platform check if stage5 == 0
-if (stageStatus === "0") {
-    var count = 0;
-    var x = "";
-    for (var i = 0; i < 9; i++) {
-        var n = plr.getMap().getNumPlayersItemsInArea(i);
-        if (n > 0) count++;
-        x += n;
+if (!plr.isPartyLeader()) {
+    npc.sendOk("Here is information about the 8th stage. Here you will find many platforms to climb. #b5#k of them will be connected to the portal that leads to the next stage. To pass, place #b5 of your party members on the correct platform#k.\r\nA word of warning: You will need to stand firmly in the center of the platform for your answer to count as correct. Also remember that only 5 members can stay on the platform. When this happens, the party leader must #bclick me twice to know if the answer is correct or not#k. Good luck!");
+} else {
+    var totalAreas = 9; // 9 box positions
+    var requiredPlayers = 5; // Need 5 players on correct boxes
+    
+    // Get or initialize the answer
+    var answer = props.ans;
+    if (!answer) {
+        // Generate random answer: 5 correct positions (1) and 4 incorrect (0)
+        var pattern = "111110000";
+        var arr = pattern.split('');
+        // Shuffle
+        for (var i = arr.length - 1; i > 0; i--) {
+            var j = Math.floor(Math.random() * (i + 1));
+            var temp = arr[i];
+            arr[i] = arr[j];
+            arr[j] = temp;
+        }
+        answer = arr.join('');
+        props.ans = answer;
     }
-    if (count !== 3) {
-        npc.sendNext("You haven't found the 3 correct platforms yet. Do you remember the question? I'll tell you again. \r\n#r" + puzzle[parseInt(eim.getProperty("stage5a"))] + " = ?#k \r\nRemember that only 3 party members should be on a platform, and they need to be standing in the center of the platform in order to be considered correct. Good luck!");
-
+    
+    // Check current player positions
+    var currentPattern = "";
+    var totalPlayers = 0;
+    for (var i = 0; i < totalAreas; i++) {
+        var count = map.playersInArea(i);
+        if (count > 0) {
+            currentPattern += "1";
+            totalPlayers += count;
+        } else {
+            currentPattern += "0";
+        }
     }
-
-    if (x === answer[parseInt(eim.getProperty("stage5a"))]) {
-        eim.setProperty("stage5", "1");
-        plr.getMap().broadcastEnvironmentChange("gate", 2);
-        plr.getMap().broadcastEnvironmentChange("quest/party/clear", 3);
-        plr.getMap().broadcastEnvironmentChange("Party1/Clear", 4);
+    
+    // Validate the attempt
+    if (totalPlayers < requiredPlayers) {
+        npc.sendOk("Looks like you still haven't found the " + requiredPlayers + " correct platforms. You need to have " + requiredPlayers + " members of your party on the platforms, standing in the center. Currently only " + totalPlayers + " players are positioned. Keep trying!");
+    } else if (totalPlayers > requiredPlayers) {
+        npc.sendOk("Too many players on the platforms! You need exactly " + requiredPlayers + " members, but there are " + totalPlayers + " players positioned. Please adjust and try again!");
+    } else if (currentPattern != answer) {
+        map.showEffect("quest/party/wrong");
+        map.playSound("Party1/Failed");
+        npc.sendOk("That's not the correct combination! Try again. Remember, you need exactly " + requiredPlayers + " members standing on the correct platforms in the center.");
     } else {
-        plr.getMap().broadcastEnvironmentChange("quest/party/wrong_kor", 3);
-        plr.getMap().broadcastEnvironmentChange("Party1/Failed", 4);
+        // Correct combination!
+        props.clear = true;
+        map.showEffect("quest/party/clear");
+        map.playSound("Party1/Clear");
+        map.portalEffect("gate");
+        npc.sendOk("Perfect! You found the correct combination! The portal to the next stage is now open!");
     }
-
-}
-
-if (stageStatus === "1") {
-    npc.sendNext("Congratulations on clearing the quests for this stage. Please use the portal you see over there and move on to the next stage.");
 }
