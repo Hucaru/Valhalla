@@ -2310,7 +2310,7 @@ func (d *Player) countItem(itemID int32) int32 {
 }
 
 // removeItemsByID removes up to reqCount across USE/SETUP/ETC. Returns true if fully removed.
-func (d *Player) removeItemsByID(itemID int32, reqCount int32) bool {
+func (d *Player) removeItemsByID(itemID int32, reqCount int32, silent bool) bool {
 	if reqCount <= 0 {
 		return true
 	}
@@ -2329,8 +2329,14 @@ func (d *Player) removeItemsByID(itemID int32, reqCount int32) bool {
 			if int32(take) > remaining {
 				take = int16(remaining)
 			}
-			if _, err := d.takeItem(itemID, it.slotID, take, invID); err == nil {
-				remaining -= int32(take)
+			if silent {
+				if _, err := d.TakeItemSilent(itemID, it.slotID, take, invID); err == nil {
+					remaining -= int32(take)
+				}
+			} else {
+				if _, err := d.takeItem(itemID, it.slotID, take, invID); err == nil {
+					remaining -= int32(take)
+				}
 			}
 		}
 	}
@@ -2409,7 +2415,7 @@ func (d *Player) applyQuestAct(act nx.ActBlock, npcID int32, questID int16) erro
 		}
 
 		if ai.Count < 0 {
-			removed := d.removeItemsByID(ai.ID, -ai.Count)
+			removed := d.removeItemsByID(ai.ID, -ai.Count, false)
 			if !removed {
 				d.Send(packetQuestActionResult(constant.QuestActionFailedRetrieveEquippedItem, questID, npcID, nil))
 				return fmt.Errorf("failed to remove required quest items ID=%d count=%d", ai.ID, -ai.Count)

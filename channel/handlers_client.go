@@ -396,7 +396,11 @@ func (server Server) playerMovement(conn mnet.Client, reader mpacket.Reader) {
 		return
 	}
 
-	moveData, finalData := parseMovement(reader)
+	moveData, finalData, valid := parseMovement(reader)
+
+	if !valid {
+		log.Println("unknown playerMovement data")
+	}
 
 	if !moveData.validateChar(plr) {
 		return
@@ -2233,12 +2237,15 @@ func (server Server) mobControl(conn mnet.Client, reader mpacket.Reader) {
 		return
 	}
 
-	moveData, finalData := parseMovement(reader)
+	moveData, finalData, valid := parseMovement(reader)
 
 	moveBytes := generateMovementBytes(moveData)
 
 	inst.lifePool.mobAcknowledge(mobSpawnID, plr, moveID, skillPossible, action, skillData, moveData, finalData, moveBytes)
-
+	if !valid {
+		log.Println("unknown mobControl data")
+		inst.sendExcept(packetPlayerNoChange(), conn)
+	}
 }
 
 func (server Server) mobDamagePlayer(conn mnet.Client, reader mpacket.Reader, mobAttack int8) {
@@ -4481,7 +4488,8 @@ func (server Server) playerSummonMove(conn mnet.Client, reader mpacket.Reader) {
 		return
 	}
 
-	moveData, finalData := parseMovement(reader)
+	moveData, finalData, valid := parseMovement(reader)
+
 	moveBytes := generateMovementBytes(moveData)
 
 	summ.Pos = pos{x: finalData.x, y: finalData.y}
@@ -4498,6 +4506,10 @@ func (server Server) playerSummonMove(conn mnet.Client, reader mpacket.Reader) {
 	}
 
 	inst.sendExcept(packetSummonMove(plr.ID, summonID, moveBytes), conn)
+	if !valid {
+		log.Println("unknown playerSummonMove data")
+		inst.sendExcept(packetPlayerNoChange(), conn)
+	}
 }
 
 func (server *Server) playerSummonDamage(conn mnet.Client, reader mpacket.Reader) {
@@ -4610,7 +4622,7 @@ func (server *Server) playerQuestOperation(conn mnet.Client, reader mpacket.Read
 				log.Printf("[QuestPkt] lostItem give failed: err=%v", err)
 			}
 		} else if count < 0 {
-			if !plr.removeItemsByID(int32(questItem), int32(-count)) {
+			if !plr.removeItemsByID(int32(questItem), int32(-count), false) {
 				log.Printf("[QuestPkt] lostItem remove failed: Item=%d need=%d", questItem, -count)
 			}
 		}
@@ -5052,7 +5064,8 @@ func (server *Server) playerPetMove(conn mnet.Client, reader mpacket.Reader) {
 		return
 	}
 
-	moveData, finalData := parseMovement(reader)
+	moveData, finalData, valid := parseMovement(reader)
+
 	moveBytes := generateMovementBytes(moveData)
 
 	plr.pet.updateMovement(finalData)
@@ -5070,6 +5083,10 @@ func (server *Server) playerPetMove(conn mnet.Client, reader mpacket.Reader) {
 	}
 
 	inst.movePlayerPet(plr.ID, moveBytes, plr)
+	if !valid {
+		log.Println("unknown playerPetMove data")
+		inst.sendExcept(packetPlayerNoChange(), conn)
+	}
 }
 
 func (server *Server) playerPetAction(conn mnet.Client, reader mpacket.Reader) {

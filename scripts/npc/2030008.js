@@ -1,7 +1,7 @@
 // Adobis - Door to Zakum
 
 var minLevel = 50
-var mapPartyPQ = 280010000
+var pqMaps = [280010000, 280010010, 280010011, 280010020, 280010030, 280010031, 280010040, 280010041, 280010050, 280010060, 280010070, 280010071, 280010080, 280010081, 280010090, 280010091, 280010100, 280010101, 280010110, 280010120, 280010130, 280010140, 280010150, 280011000, 280011001, 280011002, 280011003, 280011004, 280011005, 280011006]
 var mapJumpQuest = 280020000
 var itemFireOre = 4031061
 var itemBreathOfLava = 4031062
@@ -10,27 +10,64 @@ var itemEyeOfFire = 4001017
 var toothRequired = 30
 var eyeReward = 5
 
+// Quest IDs for tracking stage completion
+var questStage1 = 7000  // Stage 1: Party Quest
+var questStage2 = 7001  // Stage 2: Jump Quest
+var questStage3 = 7002  // Stage 3: Item Exchange
+var questComplete = "end"  // Quest data value for completed stages
+
 if (plr.level() < minLevel) {
     npc.sendOk("You are not yet ready to face Zakum. Train a bit more and return when you are at least level " + minLevel + ".")
 } else {
+    // Check quest progress (questData returns "" if quest doesn't exist)
+    var stage1Data = plr.questData(questStage1)
+    var stage2Data = plr.questData(questStage2)
+    var stage3Data = plr.questData(questStage3)
+    
+    var stage1Complete = (stage1Data === questComplete)
+    var stage2Complete = (stage2Data === questComplete)
+    var stage3Complete = (stage3Data === questComplete)
+
+    var statusText = "\r\n\r\n#eQuest Progress:#n\r\n"
+    statusText += "Stage 1 (Party Quest): " + (stage1Complete ? "#g[COMPLETE]#k" : "#r[INCOMPLETE]#k") + "\r\n"
+    statusText += "Stage 2 (Jump Quest): " + (stage2Complete ? "#g[COMPLETE]#k" : "#r[INCOMPLETE]#k") + "\r\n"
+    statusText += "Stage 3 (Item Exchange): " + (stage3Complete ? "#g[COMPLETE]#k" : "#r[INCOMPLETE]#k") + "\r\n"
+
     var menuText =
         "The Door to Zakum lies ahead. How may I assist you?\r\n" +
         "#L0#Enter the Zakum Party Quest.#l\r\n" +
         "#L1#Enter the Zakum Jump Quest.#l\r\n" +
-        "#L2#Exchange quest items for #t" + itemEyeOfFire + "#.#l"
+        "#L2#Exchange quest items for #t" + itemEyeOfFire + "#.#l" +
+        statusText
 
     npc.sendSelection(menuText)
     var sel = npc.selection()
 
     if (sel == 0) {
-        if (npc.sendYesNo("I can take you to the Zakum Party Quest (#m" + mapPartyPQ + "#). Are you ready?")) {
-            if (plr.inParty() && !plr.isPartyLeader()) {
-                npc.sendOk("Only your party leader can request entry for the party.\r\nPlease ask your leader to speak with me.")
-            } else {
-                plr.warp(mapPartyPQ)
-            }
+        // Stage 1: Party Quest
+        if (!plr.inParty()) {
+            npc.sendOk("The Zakum Party Quest requires a party. Please form or join a party before attempting this quest.")
+        } else if (!plr.isPartyLeader()) {
+            npc.sendOk("Only your party leader can request entry for the party.\r\nPlease ask your leader to speak with me.")
         } else {
-            npc.sendOk("Prepare well, and speak to me again when you are ready.")
+            var partySize = plr.partyMembersOnMapCount()
+            if (npc.sendYesNo("I can start the Zakum Party Quest for your party. You have " + partySize + " member(s) ready. Are you prepared?")) {
+                for (let instance = 0; instance < 1; instance++) {
+                    var count = 0;
+                    for(let i = 0; i < pqMaps.length; i++) {
+                        var m = map.getMap(pqMaps[i], instance)
+                        count += m.playerCount()
+                    }
+
+                    if (count == 0) {
+                        plr.startPartyQuest("zakum_pq", instance)
+                    } else {
+                        npc.sendOk("A party is already doing the quest, please come back another time")
+                    }
+                }
+            } else {
+                npc.sendOk("Prepare well, and speak to me again when you are ready.")
+            }
         }
     } else if (sel == 1) {
         if (npc.sendYesNo("I can send you to the Zakum Jump Quest (#m" + mapJumpQuest + "#).\r\nWould you like to go now?")) {
@@ -75,7 +112,9 @@ if (plr.level() < minLevel) {
                     plr.removeItemsByID(itemEyeOfFire, eyeReward)
                     npc.sendOk("An error occurred while taking the required items.\r\nPlease ensure the items are tradable and try again.")
                 } else {
-                    npc.sendOk("Here are your (" + eyeReward + ") #t" + itemEyeOfFire + "#.\r\nGood luck challenging Zakum.")
+                    // Mark Stage 3 as completed
+                    plr.setQuestData(questStage3, questComplete)
+                    npc.sendOk("Here are your (" + eyeReward + ") #t" + itemEyeOfFire + "#.\r\nYou have completed all three stages! Good luck challenging Zakum.")
                 }
             }
         } else {
