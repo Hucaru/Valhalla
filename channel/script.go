@@ -219,6 +219,28 @@ func (ctrl *scriptPlayerWrapper) Warp(id int32) {
 	}
 }
 
+func (ctrl *scriptPlayerWrapper) WarpToPortalName(id int32, name string) {
+	if field, ok := ctrl.server.fields[id]; ok {
+		inst, err := field.getInstance(ctrl.plr.inst.id)
+
+		if err != nil {
+			inst, err = field.getInstance(0)
+
+			if err != nil {
+				return
+			}
+		}
+
+		portal, err := inst.getPortalFromName(name)
+
+		if err != nil {
+			return
+		}
+
+		ctrl.server.warpPlayer(ctrl.plr, field, portal, true)
+	}
+}
+
 func (ctrl *scriptPlayerWrapper) SendMessage(msg string) {
 	ctrl.plr.Send(packetMessageRedText(msg))
 }
