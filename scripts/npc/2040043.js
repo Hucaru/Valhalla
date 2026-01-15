@@ -54,6 +54,7 @@ if (!plr.isPartyLeader()) {
         map.showEffect("quest/party/clear");
         map.playSound("Party1/Clear");
         map.portalEffect("gate");
+        plr.partyGiveExp(23040);
         npc.sendOk("Perfect! You found the correct combination! The portal to the next stage is now open!");
     }
 }

@@ -1,7 +1,7 @@
 // Entry NPC for Ludibrium PQ (party2_enter)
 // NPC ID: 2040034
 
-var maps = [922010100, 922010200, 922010300, 922010400, 922010500, 922010600, 922010700, 922010800, 922010900];
+var maps = [922010100, 922010200, 922010201, 922010300, 922010400, 922010401, 922010402, 922010403, 922010404, 922010405, 922010500, 922010501, 922010502, 922010503, 922010504, 922010505, 922010506, 922010600, 922010700, 922010800, 922010900, 922011000, 922011100];
 
 if (!plr.isPartyLeader()) {
     npc.sendOk("From this point on, this place is full of dangerous obstacles and monsters. For this reason, I cannot let you go any further. However, if you're interested in saving us and bringing peace back to Ludibrium, that's another story. If you want to defeat a powerful creature that dwells on the summit, please gather your party members. It won't be easy, but... I think you can do it.");
