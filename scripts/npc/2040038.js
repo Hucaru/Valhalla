@@ -11,6 +11,7 @@ if (!plr.isPartyLeader()) {
         map.showEffect("quest/party/clear");
         map.playSound("Party1/Clear");
         map.portalEffect("gate");
+        map.portalEnabled(true, "next00")
         plr.partyGiveExp(13440);
         npc.sendOk("The portal to the next stage is now open!");
     }

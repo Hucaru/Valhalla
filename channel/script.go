@@ -350,6 +350,32 @@ func (ctrl *scriptPlayerWrapper) PartyGiveExp(val int32) {
 	}
 }
 
+func (ctrl *scriptPlayerWrapper) PartyWarp(dst int32) {
+	if !ctrl.InParty() {
+		return
+	}
+
+	field := ctrl.server.fields[dst]
+	dstInst, err := field.getInstance(ctrl.plr.inst.id)
+	if err != nil {
+		dstInst, err = field.getInstance(0)
+		if err != nil {
+			return
+		}
+	}
+
+	dstPortal, err := dstInst.getRandomSpawnPortal()
+	if err != nil {
+		return
+	}
+
+	for _, plr := range ctrl.plr.party.players {
+		if plr != nil {
+			ctrl.server.warpPlayer(plr, field, dstPortal, false)
+		}
+	}
+}
+
 func (ctrl *scriptPlayerWrapper) DisbandGuild() {
 	if ctrl.plr.guild == nil {
 		return
@@ -681,6 +707,14 @@ func (ctrl *scriptMapWrapper) PortalEffect(path string) {
 	ctrl.inst.send(packetPortalEffectt(2, path))
 }
 
+func (ctrl *scriptMapWrapper) PortalEnabled(enable bool, name string) {
+	ctrl.inst.setPortalEnabled(name, enable)
+}
+
+func (ctrl *scriptMapWrapper) IsPortalEnabled(name string) bool {
+	return ctrl.inst.getPortalEnabled(name)
+}
+
 func (ctrl *scriptMapWrapper) Properties() map[string]interface{} {
 	return ctrl.inst.properties
 }
@@ -713,6 +747,13 @@ func (ctrl *scriptMapWrapper) RemoveDrops() {
 	ctrl.inst.dropPool.clearDrops()
 }
 
+func (ctrl *scriptMapWrapper) Reset() {
+	ctrl.inst.lifePool.eraseMobs()
+	ctrl.inst.lifePool.attemptMobSpawn(true)
+	ctrl.inst.dropPool.eraseDrops()
+	ctrl.inst.reactorPool.reset(false)
+}
+
 func (ctrl *scriptMapWrapper) GetMap(id int32, instID int) scriptMapWrapper {
 	if field, ok := ctrl.server.fields[id]; ok {
 		inst, err := field.getInstance(instID)
@@ -732,6 +773,13 @@ func (ctrl *scriptMapWrapper) GetMap(id int32, instID int) scriptMapWrapper {
 	}
 
 	return scriptMapWrapper{}
+}
+
+func (m *scriptMapWrapper) GetMapID() int32 {
+	if m == nil || m.inst == nil {
+		return 0
+	}
+	return m.inst.fieldID
 }
 
 type npcChatController struct {

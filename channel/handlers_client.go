@@ -1042,6 +1042,11 @@ func (server *Server) playerUsePortal(conn mnet.Client, reader mpacket.Reader) {
 			}
 		}
 
+		if !dstInst.getPortalEnabled(dstPortal.name) {
+			plr.Send(packetPlayerNoChange())
+			return
+		}
+
 		if err := server.warpPlayer(plr, dstFld, dstPortal, true); err != nil {
 			return
 		}
@@ -1256,6 +1261,13 @@ func (server Server) warpPlayer(plr *Player, dstField *field, dstPortal portal, 
 
 	if err = dstInst.addPlayer(plr); err != nil {
 		return err
+	}
+
+	if plr.event != nil && plr.event.onMapChangeCallback != nil {
+		plr.event.onMapChangeCallback(
+			scriptPlayerWrapper{plr: plr, server: &server},
+			scriptMapWrapper{inst: dstInst, server: &server},
+		)
 	}
 
 	if keptSummon != nil && plr.shouldKeepSummonOnTransfer(keptSummon) {

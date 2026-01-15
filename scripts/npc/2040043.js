@@ -45,15 +45,16 @@ if (!plr.isPartyLeader()) {
     } else if (totalPlayers > requiredPlayers) {
         npc.sendOk("Too many players on the platforms! You need exactly " + requiredPlayers + " members, but there are " + totalPlayers + " players positioned. Please adjust and try again!");
     } else if (currentPattern != answer) {
-        map.showEffect("quest/party/wrong");
+        map.showEffect("quest/party/wrong_kor");
         map.playSound("Party1/Failed");
-        npc.sendOk("That's not the correct combination! Try again. Remember, you need exactly " + requiredPlayers + " members standing on the correct platforms in the center.");
+        npc.sendOk("That's not the correct combination! Try again");
     } else {
         // Correct combination!
         props.clear = true;
         map.showEffect("quest/party/clear");
         map.playSound("Party1/Clear");
         map.portalEffect("gate");
+        map.portalEnabled(true, "next00")
         plr.partyGiveExp(23040);
         npc.sendOk("Perfect! You found the correct combination! The portal to the next stage is now open!");
     }

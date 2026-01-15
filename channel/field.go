@@ -524,6 +524,7 @@ type portal struct {
 	destFieldID int32
 	destName    string
 	temporary   bool
+	enabled     bool
 }
 
 func createPortalFromData(p nx.Portal) portal {
@@ -532,7 +533,9 @@ func createPortalFromData(p nx.Portal) portal {
 		name:        p.Pn,
 		destFieldID: p.Tm,
 		destName:    p.Tn,
-		temporary:   false}
+		temporary:   false,
+		enabled:     true,
+	}
 }
 
 func (p *portal) resetTownPortal() {
@@ -540,6 +543,7 @@ func (p *portal) resetTownPortal() {
 	p.destName = ""
 	p.name = "tp"
 	p.temporary = false
+	p.enabled = true
 }
 
 type fieldInstance struct {
@@ -918,6 +922,23 @@ func (inst *fieldInstance) getNextPortalID() byte {
 	}
 
 	return 255
+}
+
+func (inst *fieldInstance) setPortalEnabled(name string, enabled bool) {
+	for _, p := range inst.portals {
+		if p.name == name {
+			p.enabled = enabled
+		}
+	}
+}
+
+func (inst *fieldInstance) getPortalEnabled(name string) bool {
+	for _, p := range inst.portals {
+		if p.name == name {
+			return p.enabled
+		}
+	}
+	return true
 }
 
 func (inst *fieldInstance) createNewPortal(pos pos, name string, destFieldID int32, destName string, temp bool) int {
