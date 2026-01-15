@@ -1,9 +1,19 @@
-// 紫氣球 – Warp only after stage9 is set
-var inst = instanceProperties();
+// Stage 9 NPC - LudiPQ (Boss Stage)
+var key = 4001023;
+var props = map.properties();
 
-if (inst.stage9 === null) {
-    npc.sendNext("Now that you've come this far, it's time to defeat the one responsible for this mess, #b#o9300012##k. I suggest you be careful, though, as he is not in a very good mood. If you and your party members defeat him, the Dimensional Schism will close forever. I'm counting on you!");
+if (!plr.isPartyLeader()) {
+    npc.sendOk("Here is the information about the 9th stage. Now is your chance to finally get your hands on the real culprit. Go right and you'll see a monster. Defeat it to find a monstrous #b#o9300012##k appearing out of nowhere. Your task is to defeat him, collect the #b#t4001023##k he has and bring it to me.");
+} else if (plr.itemCount(key) >= 1) {
+    if (npc.sendYesNo("Incredible! You defeated Alishar and obtained the #t" + key + "#! Would you like to proceed to the bonus stage?")) {
+        plr.removeItemsByID(key, 1);
+        props.clear = true;
+        map.showEffect("quest/party/clear");
+        map.playSound("Party1/Clear");
+        map.portalEffect("gate");
+        plr.partyGiveExp(27200);
+        plr.partyWarp(922011000);
+    }
 } else {
-    npc.sendNext("You've defeated #b#o9300012##k! Magnificent! Thanks to you, the Dimensional Schism has been safely closed. I will now help you leave this place.");
-    plr.warp(922011100);
+    npc.sendOk("Defeat Alishar and bring me the #b#t" + key + "##k to proceed!");
 }

@@ -1536,7 +1536,20 @@ func (pool *reactorPool) processStateSideEffects(r *fieldReactor, plr *Player) {
 				continue
 			}
 			count := getInt(e, "2", 1)
-			spawnPos := pool.instance.calculateFinalDropPos(r.pos)
+			calcPos := r.pos
+			// LPQ
+			if mobID == 9300012 && pool.instance.fieldID == 922010900 {
+				calcPos = pos{
+					x: 941,
+					y: 184,
+				}
+			} else if mobID == 9300010 && pool.instance.fieldID == 922010700 {
+				calcPos = pos{
+					x: 1,
+					y: -211,
+				}
+			}
+			spawnPos := pool.instance.calculateFinalDropPos(calcPos)
 			for i := 0; i < count; i++ {
 				pool.instance.lifePool.spawnMobFromID(int32(mobID), spawnPos, false, true, true, constant.MobSummonTypeInstant, 0)
 

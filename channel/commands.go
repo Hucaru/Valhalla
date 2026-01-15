@@ -1679,6 +1679,47 @@ func (server *Server) gmCommand(conn mnet.Client, msg string) {
 		for i := range player.inst.properties {
 			delete(player.inst.properties, i)
 		}
+	case "properties":
+		player, err := server.players.GetFromConn(conn)
+
+		if err != nil {
+			conn.Send(packetMessageRedText(err.Error()))
+			return
+		}
+
+		for i, v := range player.inst.properties {
+			conn.Send(packetMessageRedText(fmt.Sprintf("prop: %s , value: %v", i, v)))
+		}
+
+	case "enablePortal":
+		player, err := server.players.GetFromConn(conn)
+		if err != nil {
+			conn.Send(packetMessageRedText(err.Error()))
+			return
+		}
+
+		portalName := ""
+		enabled := ""
+
+		if len(command) > 1 {
+			portalName = command[1]
+			enabled = command[2]
+		}
+
+		port, err := player.inst.getPortalFromName(portalName)
+		if err != nil {
+			conn.Send(packetMessageRedText(err.Error()))
+			return
+		}
+
+		if enabled == "true" {
+			port.enabled = true
+		} else {
+			port.enabled = false
+		}
+
+		conn.Send(packetMessageRedText(fmt.Sprintf("portal %s has been set to %v", port.name, port.enabled)))
+
 	default:
 		conn.Send(packetMessageRedText("Unknown gm command " + command[0]))
 	}

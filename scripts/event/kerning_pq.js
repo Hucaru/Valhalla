@@ -8,7 +8,7 @@ function start() {
 
     for (let i = 0; i < maps.length; i++) {
         var field = ctrl.getMap(maps[i]);
-        field.removeDrops();
+        field.reset();
         field.clearProperties();
     }
 
