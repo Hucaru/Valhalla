@@ -113,38 +113,42 @@ func (e *event) start() {
 		timeout := time.NewTimer(e.duration)
 		defer timeout.Stop()
 
-		select {
-		case <-timeout.C:
-			e.server.dispatch <- func() {
-				for _, id := range e.playerIDs {
-					if plr, err := e.server.players.GetFromID(id); err == nil {
-						plr.event = nil
-						e.timeoutCallback(scriptPlayerWrapper{plr: plr, server: e.server})
+		for {
+			select {
+			case <-timeout.C:
+				e.server.dispatch <- func() {
+					for _, id := range e.playerIDs {
+						if plr, err := e.server.players.GetFromID(id); err == nil {
+							plr.event = nil
+							e.timeoutCallback(scriptPlayerWrapper{plr: plr, server: e.server})
+						}
+					}
+
+					delete(e.server.events, e.id)
+				}
+				return
+
+			case <-e.timerReset:
+				if !timeout.Stop() {
+					select {
+					case <-timeout.C:
+					default:
 					}
 				}
+				timeout.Reset(e.duration)
 
-				delete(e.server.events, e.id)
-			}
-		case <-e.timerReset:
-			if !timeout.Stop() {
-				select {
-				case <-timeout.C:
-				default:
-				}
-			}
-			timeout.Reset(e.duration)
-
-		case <-e.finished:
-			e.server.dispatch <- func() {
-				for _, id := range e.playerIDs {
-					if plr, err := e.server.players.GetFromID(id); err == nil {
-						plr.event = nil
+			case <-e.finished:
+				e.server.dispatch <- func() {
+					for _, id := range e.playerIDs {
+						if plr, err := e.server.players.GetFromID(id); err == nil {
+							plr.event = nil
+						}
 					}
-				}
 
-				delete(e.server.events, e.id)
+					delete(e.server.events, e.id)
+				}
+				return
 			}
-			return
 		}
 	}()
 }
@@ -214,4 +218,37 @@ func (e *event) GetMap(id int32) scriptMapWrapper {
 	}
 
 	return scriptMapWrapper{}
+}
+
+func (e *event) WarpPlayers(dst int32) {
+	field := e.server.fields[dst]
+	dstInst, err := field.getInstance(e.instanceID)
+	if err != nil {
+		dstInst, err = field.getInstance(0)
+		if err != nil {
+			return
+		}
+	}
+
+	dstPortal, err := dstInst.getRandomSpawnPortal()
+	if err != nil {
+		return
+	}
+
+	for _, id := range e.playerIDs {
+		if plr, err := e.server.players.GetFromID(id); err != nil {
+			e.server.warpPlayer(plr, field, dstPortal, false)
+		}
+	}
+}
+
+func (e *event) IsParticipantsOnMap(mapID int32) bool {
+	for _, id := range e.playerIDs {
+		if plr, err := e.server.players.GetFromID(id); err != nil {
+			if plr.mapID != mapID {
+				return false
+			}
+		}
+	}
+	return true
 }

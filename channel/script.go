@@ -338,6 +338,20 @@ func (ctrl *scriptPlayerWrapper) PartyMembersOnMap() []scriptPlayerWrapper {
 	return members
 }
 
+func (ctrl *scriptPlayerWrapper) EventMembersOnMap(id int32) bool {
+	if ctrl.plr.event == nil {
+		return false
+	}
+
+	return ctrl.plr.event.IsParticipantsOnMap(id)
+}
+
+func (ctrl *scriptPlayerWrapper) WarpEventMembers(id int32) {
+	if ctrl.plr.event != nil {
+		ctrl.plr.event.WarpPlayers(id)
+	}
+}
+
 func (ctrl *scriptPlayerWrapper) PartyGiveExp(val int32) {
 	if !ctrl.InParty() {
 		return
@@ -346,32 +360,6 @@ func (ctrl *scriptPlayerWrapper) PartyGiveExp(val int32) {
 	for _, plr := range ctrl.plr.party.players {
 		if plr != nil {
 			plr.giveEXP(val, false, false)
-		}
-	}
-}
-
-func (ctrl *scriptPlayerWrapper) PartyWarp(dst int32) {
-	if !ctrl.InParty() {
-		return
-	}
-
-	field := ctrl.server.fields[dst]
-	dstInst, err := field.getInstance(ctrl.plr.inst.id)
-	if err != nil {
-		dstInst, err = field.getInstance(0)
-		if err != nil {
-			return
-		}
-	}
-
-	dstPortal, err := dstInst.getRandomSpawnPortal()
-	if err != nil {
-		return
-	}
-
-	for _, plr := range ctrl.plr.party.players {
-		if plr != nil {
-			ctrl.server.warpPlayer(plr, field, dstPortal, false)
 		}
 	}
 }
