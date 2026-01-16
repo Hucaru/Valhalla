@@ -307,6 +307,20 @@ func (ctrl *scriptPlayerWrapper) IsPartyLeader() bool {
 	return false
 }
 
+func (ctrl *scriptPlayerWrapper) IsPartyOnMap() bool {
+	if !ctrl.InParty() {
+		return true
+	}
+
+	for _, v := range ctrl.plr.party.players {
+		if v.mapID != ctrl.MapID() {
+			return false
+		}
+	}
+
+	return true
+}
+
 func (ctrl *scriptPlayerWrapper) PartyMembersOnMapCount() int {
 	if !ctrl.InParty() {
 		return 0
@@ -350,7 +364,7 @@ func (ctrl *scriptPlayerWrapper) PartyGiveExp(val int32) {
 	}
 }
 
-func (ctrl *scriptPlayerWrapper) PartyWarp(src, dst int32) {
+func (ctrl *scriptPlayerWrapper) PartyWarp(dst int32) {
 	if !ctrl.InParty() {
 		return
 	}
@@ -371,9 +385,7 @@ func (ctrl *scriptPlayerWrapper) PartyWarp(src, dst int32) {
 
 	for _, plr := range ctrl.plr.party.players {
 		if plr != nil {
-			if plr.mapID == src {
-				ctrl.server.warpPlayer(plr, field, dstPortal, false)
-			}
+			ctrl.server.warpPlayer(plr, field, dstPortal, false)
 		}
 	}
 }
