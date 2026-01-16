@@ -219,3 +219,36 @@ func (e *event) GetMap(id int32) scriptMapWrapper {
 
 	return scriptMapWrapper{}
 }
+
+func (e *event) WarpPlayers(dst int32) {
+	field := e.server.fields[dst]
+	dstInst, err := field.getInstance(e.instanceID)
+	if err != nil {
+		dstInst, err = field.getInstance(0)
+		if err != nil {
+			return
+		}
+	}
+
+	dstPortal, err := dstInst.getRandomSpawnPortal()
+	if err != nil {
+		return
+	}
+
+	for _, id := range e.playerIDs {
+		if plr, err := e.server.players.GetFromID(id); err != nil {
+			e.server.warpPlayer(plr, field, dstPortal, false)
+		}
+	}
+}
+
+func (e *event) IsParticipantsOnMap(mapID int32) bool {
+	for _, id := range e.playerIDs {
+		if plr, err := e.server.players.GetFromID(id); err != nil {
+			if plr.mapID != mapID {
+				return false
+			}
+		}
+	}
+	return true
+}

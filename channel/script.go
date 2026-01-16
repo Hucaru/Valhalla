@@ -307,20 +307,6 @@ func (ctrl *scriptPlayerWrapper) IsPartyLeader() bool {
 	return false
 }
 
-func (ctrl *scriptPlayerWrapper) IsEventParticipantsOnMap() bool {
-	if ctrl.plr.event == nil {
-		return false
-	}
-
-	for _, v := range ctrl.plr.party.players {
-		if v.mapID != ctrl.MapID() && v.event != nil {
-			return false
-		}
-	}
-
-	return true
-}
-
 func (ctrl *scriptPlayerWrapper) PartyMembersOnMapCount() int {
 	if !ctrl.InParty() {
 		return 0
@@ -360,32 +346,6 @@ func (ctrl *scriptPlayerWrapper) PartyGiveExp(val int32) {
 	for _, plr := range ctrl.plr.party.players {
 		if plr != nil {
 			plr.giveEXP(val, false, false)
-		}
-	}
-}
-
-func (ctrl *scriptPlayerWrapper) EventWarp(dst int32) {
-	if !ctrl.InParty() {
-		return
-	}
-
-	field := ctrl.server.fields[dst]
-	dstInst, err := field.getInstance(ctrl.plr.inst.id)
-	if err != nil {
-		dstInst, err = field.getInstance(0)
-		if err != nil {
-			return
-		}
-	}
-
-	dstPortal, err := dstInst.getRandomSpawnPortal()
-	if err != nil {
-		return
-	}
-
-	for _, plr := range ctrl.plr.party.players {
-		if plr != nil && plr.event != nil {
-			ctrl.server.warpPlayer(plr, field, dstPortal, false)
 		}
 	}
 }
