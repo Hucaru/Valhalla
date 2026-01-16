@@ -1,5 +1,4 @@
 // Bonus Exit NPC - LudiPQ
-
 var pass = 4001022;
 var key = 4001023;
 

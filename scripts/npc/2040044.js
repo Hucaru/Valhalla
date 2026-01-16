@@ -12,7 +12,7 @@ if (!plr.isPartyLeader()) {
         map.playSound("Party1/Clear");
         map.portalEffect("gate");
         plr.partyGiveExp(27200);
-        plr.partyWarp(922011000);
+        plr.partyWarp(922010900, 922011000);
     }
 } else {
     npc.sendOk("Defeat Alishar and bring me the #b#t" + key + "##k to proceed!");

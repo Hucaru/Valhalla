@@ -1,6 +1,7 @@
 var maps = [922010100, 922010200, 922010201, 922010300, 922010400, 922010401, 922010402, 922010403, 922010404, 922010405, 922010500, 922010501, 922010502, 922010503, 922010504, 922010505, 922010506, 922010600, 922010700, 922010800, 922010900, 922011000, 922011100];
 var primaryMaps = [922010100, 922010200, 922010300, 922010400, 922010500, 922010600, 922010700, 922010800, 922010900];
-var exitMapID = 221024500; // Exit map
+var exitMapID = 922010000; // Exit map
+var bonusExitMapID = 922011100; // Bonus Exit map
 var pass = 4001022; // Pass of Dimension
 var key = 4001023; // Key of Dimension
 
@@ -88,7 +89,7 @@ function timeout(plr) {
             players[i].removeItemsByIDSilent(pass, players[i].itemCount(pass));
             players[i].removeItemsByIDSilent(key, players[i].itemCount(key));
             ctrl.removePlayer(players[i]);
-            players[i].warp(exitMapID);
+            players[i].warp(bonusExitMapID);
         }
 
         ctrl.finished();

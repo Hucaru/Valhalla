@@ -350,7 +350,7 @@ func (ctrl *scriptPlayerWrapper) PartyGiveExp(val int32) {
 	}
 }
 
-func (ctrl *scriptPlayerWrapper) PartyWarp(dst int32) {
+func (ctrl *scriptPlayerWrapper) PartyWarp(src, dst int32) {
 	if !ctrl.InParty() {
 		return
 	}
@@ -371,7 +371,9 @@ func (ctrl *scriptPlayerWrapper) PartyWarp(dst int32) {
 
 	for _, plr := range ctrl.plr.party.players {
 		if plr != nil {
-			ctrl.server.warpPlayer(plr, field, dstPortal, false)
+			if plr.mapID == src {
+				ctrl.server.warpPlayer(plr, field, dstPortal, false)
+			}
 		}
 	}
 }
