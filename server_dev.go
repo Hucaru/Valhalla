@@ -13,13 +13,13 @@ import (
 )
 
 type devServer struct {
-	configFile   string
-	wg           *sync.WaitGroup
-	ctx          context.Context
-	cancel       context.CancelFunc
-	loginServer  *loginServer
-	worldServer  *worldServer
-	channelServer *channelServer
+	configFile     string
+	wg             *sync.WaitGroup
+	ctx            context.Context
+	cancel         context.CancelFunc
+	loginServer    *loginServer
+	worldServer    *worldServer
+	channelServers []*channelServer
 	cashShopServer *cashShopServer
 }
 
@@ -86,7 +86,7 @@ func (ds *devServer) run() {
 	// Give world server time to connect to login
 	time.Sleep(2 * time.Second)
 
-	// Start channel server
+	// Start channel 1 server
 	ds.wg.Add(1)
 	go func() {
 		defer ds.wg.Done()
@@ -95,8 +95,24 @@ func (ds *devServer) run() {
 				log.Println("Channel server panic:", r)
 			}
 		}()
-		ds.channelServer = newChannelServer(ds.configFile)
-		ds.channelServer.run()
+		cs1 := newChannelServer(ds.configFile)
+		ds.channelServers = append(ds.channelServers, cs1)
+		cs1.run()
+	}()
+
+	// Start channel 2 server
+	ds.wg.Add(1)
+	go func() {
+		defer ds.wg.Done()
+		defer func() {
+			if r := recover(); r != nil {
+				log.Println("Channel server panic:", r)
+			}
+		}()
+		cs2 := newChannelServer(ds.configFile)
+		cs2.config.ListenPort = "8686"
+		ds.channelServers = append(ds.channelServers, cs2)
+		cs2.run()
 	}()
 
 	// Give channel server time to connect to world
@@ -128,7 +144,7 @@ func (ds *devServer) run() {
 
 func (ds *devServer) shutdown() {
 	log.Println("Shutting down all servers...")
-	
+
 	// Trigger shutdown on all servers
 	// Note: Each server has its own signal handler that will also trigger
 	// on SIGINT/SIGTERM, so they will shutdown gracefully on their own.
@@ -136,8 +152,10 @@ func (ds *devServer) shutdown() {
 	if ds.cashShopServer != nil {
 		ds.cashShopServer.shutdown()
 	}
-	if ds.channelServer != nil {
-		ds.channelServer.shutdown()
+	for _, cs := range ds.channelServers {
+		if cs != nil {
+			cs.shutdown()
+		}
 	}
 	if ds.worldServer != nil {
 		ds.worldServer.shutdown()
@@ -145,9 +163,9 @@ func (ds *devServer) shutdown() {
 	if ds.loginServer != nil {
 		ds.loginServer.shutdown()
 	}
-	
+
 	// Stop the metrics server
 	common.StopMetrics()
-	
+
 	ds.cancel()
 }
