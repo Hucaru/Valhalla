@@ -313,7 +313,7 @@ func (ctrl *scriptPlayerWrapper) IsPartyOnMap() bool {
 	}
 
 	for _, v := range ctrl.plr.party.players {
-		if v.mapID != ctrl.MapID() {
+		if v.mapID != ctrl.MapID() && v.event != nil {
 			return false
 		}
 	}
@@ -384,7 +384,7 @@ func (ctrl *scriptPlayerWrapper) PartyWarp(dst int32) {
 	}
 
 	for _, plr := range ctrl.plr.party.players {
-		if plr != nil {
+		if plr != nil && plr.event != nil {
 			ctrl.server.warpPlayer(plr, field, dstPortal, false)
 		}
 	}
