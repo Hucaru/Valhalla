@@ -307,9 +307,9 @@ func (ctrl *scriptPlayerWrapper) IsPartyLeader() bool {
 	return false
 }
 
-func (ctrl *scriptPlayerWrapper) IsPartyOnMap() bool {
-	if !ctrl.InParty() {
-		return true
+func (ctrl *scriptPlayerWrapper) IsEventParticipantsOnMap() bool {
+	if ctrl.plr.event == nil {
+		return false
 	}
 
 	for _, v := range ctrl.plr.party.players {
@@ -364,7 +364,7 @@ func (ctrl *scriptPlayerWrapper) PartyGiveExp(val int32) {
 	}
 }
 
-func (ctrl *scriptPlayerWrapper) PartyWarp(dst int32) {
+func (ctrl *scriptPlayerWrapper) EventWarp(dst int32) {
 	if !ctrl.InParty() {
 		return
 	}
