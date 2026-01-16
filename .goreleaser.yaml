@@ -90,13 +90,40 @@ release:
     - NPC scripts (scripts/)
     - LICENSE and README
     
-    ### How to use
+    ### Quick Start (Dev Mode - All-in-One)
+    
+    Dev mode allows you to run all servers (login, world, channel, cashshop) in a single process!
+    
     1. Download the appropriate archive for your platform
     2. Extract the archive
-    3. Configure your server using the config files
-    4. Run the Valhalla binary with appropriate flags (see README.md)
-    
-    Example:
+    3. Set up your MySQL database (see README.md)
+    4. Run in dev mode:
     ```bash
-    ./Valhalla -type login -config config_login.toml
+    ./Valhalla -type dev -config config_dev.toml
     ```
+    
+    Dev mode features:
+    - ✅ All servers in one process
+    - ✅ Auto-register enabled (no need to create accounts)
+    - ✅ 2x EXP/Drop/Mesos rates for faster testing
+    - ✅ Perfect for solo play and testing
+    
+    ### Production Deployment
+    
+    For production environments, run each server type separately:
+    
+    ```bash
+    # Login Server
+    ./Valhalla -type login -config config_login.toml
+    
+    # World Server
+    ./Valhalla -type world -config config_world.toml
+    
+    # Channel Server(s)
+    ./Valhalla -type channel -config config_channel_1.toml
+    
+    # CashShop Server
+    ./Valhalla -type cashshop -config config_cashshop.toml
+    ```
+    
+    For more details, see README.md

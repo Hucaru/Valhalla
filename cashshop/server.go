@@ -103,16 +103,34 @@ func (server *Server) ClientDisconnected(conn mnet.Client) {
 }
 
 // CheckpointAll now uses the saver to flush debounced/coalesced deltas for every player.
-func (server *Server) CheckpointAll() {
+func (server *Server) CheckpointAll(ctx context.Context) {
 	if server.dispatch == nil {
 		return
 	}
+
 	done := make(chan struct{})
-	server.dispatch <- func() {
+
+	select {
+	case <-ctx.Done():
+		log.Println("CheckpointAll: cancelled before scheduling flush:", ctx.Err())
+		return
+
+	case server.dispatch <- func() {
 		server.players.Flush()
 		close(done)
+	}:
 	}
-	<-done
+
+	select {
+	case <-ctx.Done():
+		log.Println("CheckpointAll: cancelled while waiting for flush:", ctx.Err())
+		return
+	case <-time.After(10 * time.Second):
+		log.Println("CheckpointAll: timed out waiting for dispatcher flush (dispatcher may be stopped)")
+		return
+	case <-done:
+		return
+	}
 }
 
 // startAutosave periodically flushes deltas via the saver.
@@ -130,16 +148,24 @@ func (server *Server) StartAutosave(ctx context.Context) {
 		default:
 		}
 		time.AfterFunc(interval, func() {
-			server.dispatch <- func() {
+			select {
+			case <-ctx.Done():
+				return
+			case server.dispatch <- func() {
 				server.players.Flush()
 				scheduleNext()
+			}:
 			}
 		})
 	}
 
-	server.dispatch <- func() {
+	select {
+	case <-ctx.Done():
+		return
+	case server.dispatch <- func() {
 		server.players.Flush()
 		scheduleNext()
+	}:
 	}
 }
 

@@ -148,10 +148,35 @@ Valhalla supports multiple deployment methods. Choose the one that best fits you
 
 ### Quick Links by Deployment Method
 
+- 🚀 **[Dev Mode](#dev-mode)** - Run all servers in one process (easiest for solo play and testing)
 - 🖥️ **[Local Setup](docs/Local.md)** - Run directly on your machine (best for quick testing)
 - 🐳 **[Docker Setup](docs/Docker.md)** - Run using Docker Compose (recommended for most users)
 - ☸️ **[Kubernetes Setup](docs/Kubernetes.md)** - Deploy to a Kubernetes cluster (for production)
 - 🔨 **[Building from Source](docs/Building.md)** - Build for development work
+
+### Dev Mode
+
+Dev mode is the simplest way to run Valhalla for solo play or testing. It starts all four server types (login, world, channel, and cashshop) in a single process, eliminating the need to manage multiple processes.
+
+**Quick Start:**
+
+```bash
+# Using the provided dev config
+./Valhalla -type dev -config config_dev.toml
+
+# Or build from source
+go build
+./Valhalla -type dev -config config_dev.toml
+```
+
+The dev mode:
+- ✅ Runs all servers (login, world, channel, cashshop) in one process
+- ✅ Uses localhost networking for inter-server communication
+- ✅ Has auto-register enabled by default for easy testing
+- ✅ Configured with 2x EXP/Drop/Mesos rates for faster testing
+- ✅ Ideal for solo play and development
+
+**Note:** Dev mode still requires a MySQL database. For production deployments, use separate processes for better reliability and scalability.
 
 ### Configuration
 
@@ -159,10 +184,13 @@ Valhalla supports multiple deployment methods. Choose the one that best fits you
 
 All server types support both TOML configuration files and environment variables. See the Configuration Guide for details on:
 - Command line flags (`-type`, `-config`, `-metrics-port`)
+  - Server types: `login`, `world`, `channel`, `cashshop`, or `dev` (all-in-one)
 - Database settings
 - Server-specific options (login, world, channel, cashshop)
 - Network configuration
 - Performance tuning
+
+For dev mode, use `config_dev.toml` which includes all necessary server configurations in a single file.
 
 ## Advanced Topics
 
