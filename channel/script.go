@@ -338,6 +338,20 @@ func (ctrl *scriptPlayerWrapper) PartyMembersOnMap() []scriptPlayerWrapper {
 	return members
 }
 
+func (ctrl *scriptPlayerWrapper) EventMembersOnMap(id int32) bool {
+	if ctrl.plr.event == nil {
+		return false
+	}
+
+	return ctrl.plr.event.IsParticipantsOnMap(id)
+}
+
+func (ctrl *scriptPlayerWrapper) WarpEventMembers(id int32) {
+	if ctrl.plr.event != nil {
+		ctrl.plr.event.WarpPlayers(id)
+	}
+}
+
 func (ctrl *scriptPlayerWrapper) PartyGiveExp(val int32) {
 	if !ctrl.InParty() {
 		return
