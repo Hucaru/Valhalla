@@ -259,7 +259,7 @@ type omokRoom struct {
 	p2Plays int
 }
 
-func newOmokRoom(id int32, name, password string, boardType byte) roomer {
+func newOmokRoom(id int32, name, password string, boardType byte) *omokRoom {
 	r := room{roomID: id, roomType: constant.MiniRoomTypeOmok}
 	g := gameRoom{room: r, name: name, password: password, boardType: boardType, ownerStart: false}
 	return &omokRoom{gameRoom: g}
@@ -484,7 +484,7 @@ type memoryRoom struct {
 	matches       [2]int
 }
 
-func newMemoryRoom(id int32, name, password string, boardType byte) roomer {
+func newMemoryRoom(id int32, name, password string, boardType byte) *memoryRoom {
 	r := room{roomID: id, roomType: constant.MiniRoomTypeMatchCards}
 	g := gameRoom{room: r, name: name, password: password, boardType: boardType, ownerStart: false}
 	return &memoryRoom{gameRoom: g}

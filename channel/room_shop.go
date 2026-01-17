@@ -27,7 +27,7 @@ type shopRoom struct {
 	mesos   int32
 }
 
-func newShopRoom(id int32, name string, private bool) roomer {
+func newShopRoom(id int32, name string, private bool) *shopRoom {
 	r := room{roomID: id, roomType: constant.MiniRoomTypePlayerShop}
 	return &shopRoom{
 		room:    r,

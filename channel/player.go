@@ -1690,8 +1690,7 @@ func (d *Player) consumeItemsByID(itemID int32, reqCount int32) bool {
 
 func (d Player) admin() bool { return d.Conn.GetAdminLevel() > 0 }
 
-func (d Player) displayBytes() []byte {
-	pkt := mpacket.NewPacket()
+func (d Player) encodeDisplayBytes(pkt *mpacket.Packet) {
 	pkt.WriteByte(d.gender)
 	pkt.WriteByte(d.skin)
 	pkt.WriteInt32(d.face)
@@ -1722,8 +1721,6 @@ func (d Player) displayBytes() []byte {
 	pkt.WriteByte(0xFF)
 	pkt.WriteInt32(cashWeapon)
 	pkt.WriteInt32(0) // Pet acc
-
-	return pkt
 }
 
 // Logout flushes coalesced state and does a full checkpoint save.
@@ -3265,7 +3262,7 @@ func packetInventoryChangeEquip(chr Player) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelPlayerChangeAvatar)
 	p.WriteInt32(chr.ID)
 	p.WriteByte(1)
-	p.WriteBytes(chr.displayBytes())
+	chr.encodeDisplayBytes(&p)
 	p.WriteInt32(0)
 	p.WriteInt32(0)
 	p.WriteInt32(chr.chairID)

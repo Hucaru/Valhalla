@@ -3225,11 +3225,7 @@ func (server Server) roomWindow(conn mnet.Client, reader mpacket.Reader) {
 
 			boardType := reader.ReadByte()
 
-			r, valid := newOmokRoom(inst.nextID(), name, password, boardType).(roomer)
-
-			if !valid {
-				return
-			}
+			r := newOmokRoom(inst.nextID(), name, password, boardType)
 
 			if r.addPlayer(plr) {
 				err = pool.addRoom(r)
@@ -3248,11 +3244,7 @@ func (server Server) roomWindow(conn mnet.Client, reader mpacket.Reader) {
 
 			boardType := reader.ReadByte()
 
-			r, valid := newMemoryRoom(inst.nextID(), name, password, boardType).(roomer)
-
-			if !valid {
-				return
-			}
+			r := newMemoryRoom(inst.nextID(), name, password, boardType)
 
 			if r.addPlayer(plr) {
 				err = pool.addRoom(r)
@@ -3262,11 +3254,7 @@ func (server Server) roomWindow(conn mnet.Client, reader mpacket.Reader) {
 				}
 			}
 		case constant.MiniRoomTypeTrade:
-			r, valid := newTradeRoom(inst.nextID()).(roomer)
-
-			if !valid {
-				return
-			}
+			r := newTradeRoom(inst.nextID())
 
 			if r.addPlayer(plr) {
 				err = pool.addRoom(r)
@@ -3281,11 +3269,7 @@ func (server Server) roomWindow(conn mnet.Client, reader mpacket.Reader) {
 			_ = reader.ReadInt16() // type of shop?
 			objID := reader.ReadInt32()
 
-			r, valid := newShopRoom(objID, title, isPrivate).(roomer)
-
-			if !valid {
-				return
-			}
+			r := newShopRoom(objID, title, isPrivate)
 
 			if r.addPlayer(plr) {
 				err = pool.addRoom(r)
