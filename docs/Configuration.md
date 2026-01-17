@@ -35,11 +35,12 @@ VALHALLA_LOGIN_CLIENTLISTENADDRESS=0.0.0.0
 
 All server executables accept the following flags:
 
-| Flag | Required | Description | Example |
-|------|----------|-------------|---------|
-| `-type` | Yes | Server type to start | `-type login`, `-type world`, `-type channel`, `-type cashshop` |
-| `-config` | No | Path to TOML config file | `-config config_login.toml` |
-| `-metrics-port` | No | Port for Prometheus metrics | `-metrics-port 9000` (default) |
+| Flag            | Required | Description                                 | Example                                                         |
+|-----------------|----------|---------------------------------------------|-----------------------------------------------------------------|
+| `-type`         | Yes | Server type to start                        | `-type login`, `-type world`, `-type channel`, `-type cashshop` |
+| `-config`       | No | Path to TOML config file                    | `-config config_login.toml`                                     |
+| `-metrics-port` | No | Port for Prometheus metrics                 | `-metrics-port 9000` (default)                                  |
+| `-channels`     | No | Amount of Channels when running in dev mode | `-channels 2` (default)                                         |
 
 ### Example Commands
 

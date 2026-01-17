@@ -33,6 +33,7 @@ type channelServer struct {
 	cancel        context.CancelFunc
 	listener      net.Listener
 	dispatchReady chan struct{}
+	ready         chan struct{}
 }
 
 func newChannelServer(configFile string) *channelServer {
@@ -48,6 +49,7 @@ func newChannelServer(configFile string) *channelServer {
 		ctx:           ctx,
 		cancel:        cancel,
 		dispatchReady: make(chan struct{}),
+		ready:         make(chan struct{}),
 	}
 }
 
@@ -178,6 +180,7 @@ func (cs *channelServer) acceptNewConnections() {
 	}
 	cs.listener = l
 	log.Println("Client listener ready:", cs.config.ListenAddress+":"+cs.config.ListenPort)
+	close(cs.ready)
 	defer func() { _ = l.Close() }()
 
 	for {
@@ -273,4 +276,8 @@ func (cs *channelServer) processEvent() {
 			}()
 		}
 	}
+}
+
+func (cs *channelServer) Ready() <-chan struct{} {
+	return cs.ready
 }

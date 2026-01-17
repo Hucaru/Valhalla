@@ -99,7 +99,7 @@ release:
     3. Set up your MySQL database (see README.md)
     4. Run in dev mode:
     ```bash
-    ./Valhalla -type dev -config config_dev.toml
+    ./Valhalla -type dev -config config_dev.toml -channels 4
     ```
     
     Dev mode features:

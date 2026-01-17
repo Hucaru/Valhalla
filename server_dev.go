@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"strconv"
 	"sync"
 	"syscall"
 	"time"
@@ -86,37 +87,37 @@ func (ds *devServer) run() {
 	// Give world server time to connect to login
 	time.Sleep(2 * time.Second)
 
-	// Start channel 1 server
-	ds.wg.Add(1)
-	go func() {
-		defer ds.wg.Done()
-		defer func() {
-			if r := recover(); r != nil {
-				log.Println("Channel server panic:", r)
-			}
-		}()
-		cs1 := newChannelServer(ds.configFile)
-		ds.channelServers = append(ds.channelServers, cs1)
-		cs1.run()
-	}()
+	ds.channelServers = make([]*channelServer, *channelPtr)
 
-	// Start channel 2 server
-	ds.wg.Add(1)
-	go func() {
-		defer ds.wg.Done()
-		defer func() {
-			if r := recover(); r != nil {
-				log.Println("Channel server panic:", r)
-			}
-		}()
-		cs2 := newChannelServer(ds.configFile)
-		cs2.config.ListenPort = "8686"
-		ds.channelServers = append(ds.channelServers, cs2)
-		cs2.run()
-	}()
+	for i := 0; i < *channelPtr; i++ {
+		ch := i
 
-	// Give channel server time to connect to world
-	time.Sleep(2 * time.Second)
+		cs := newChannelServer(ds.configFile)
+		cs.config.ListenPort = strconv.Itoa(8685 + ch)
+		ds.channelServers[ch] = cs
+
+		ds.wg.Add(1)
+		go func(s *channelServer) {
+			defer ds.wg.Done()
+			defer func() {
+				if r := recover(); r != nil {
+					log.Println("Channel server panic:", r)
+				}
+			}()
+			s.run()
+		}(cs)
+
+		select {
+		case <-cs.Ready():
+			log.Printf("Channel %d is ready (port %s)\n", ch, cs.config.ListenPort)
+		case <-time.After(30 * time.Second):
+			log.Printf("Timed out waiting for channel %d to become ready\n", ch)
+			ds.shutdown()
+			return
+		case <-ds.ctx.Done():
+			return
+		}
+	}
 
 	// Start cashshop server
 	ds.wg.Add(1)

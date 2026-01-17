@@ -8,11 +8,13 @@ import (
 )
 
 var typePtr, configPtr, metricPtr *string
+var channelPtr *int
 
 func init() {
 	typePtr = flag.String("type", "", "Denotes what type of server to start: login, world, channel, cashshop, dev")
 	configPtr = flag.String("config", "", "config toml file")
 	metricPtr = flag.String("metrics-port", "9000", "Port to serve metrics on")
+	channelPtr = flag.Int("channels", 2, "Defines number of channels to start (only for dev server type)")
 	flag.Parse()
 }
 
