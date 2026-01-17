@@ -1,0 +1,54 @@
+# Dev Mode Configuration
+# This configuration file contains settings for all server types
+# allowing you to run login, world, channel, and cashshop servers in a single process
+
+[database]
+address = "127.0.0.1"
+port = "3306"
+user = "root"
+password = "password"
+database = "maplestory"
+
+[login]
+clientListenAddress = "0.0.0.0"
+clientListenPort = "8484"
+serverListenAddress = "127.0.0.1"
+serverListenPort = "8485"
+withPin = false
+autoRegister = true
+packetQueueSize = 512
+latency = 0
+jitter = 0
+
+[world]
+message = "Welcome to Dev Mode"
+ribbon = 2
+expRate = 2.0
+dropRate = 2.0
+mesosRate = 2.0
+loginAddress = "127.0.0.1"
+loginPort = "8485"
+listenAddress = "127.0.0.1"
+listenPort = "8584"
+packetQueueSize = 512
+
+[channel]
+worldAddress = "127.0.0.1"
+worldPort = "8584"
+listenAddress = "0.0.0.0"
+listenPort = "8685"
+clientConnectionAddress = "127.0.0.1"
+packetQueueSize = 512
+maxPop = 250
+latency = 0
+jitter = 0
+
+[cashshop]
+worldAddress = "127.0.0.1"
+worldPort = "8584"
+listenAddress = "0.0.0.0"
+listenPort = "8786"
+clientConnectionAddress = "127.0.0.1"
+packetQueueSize = 512
+latency = 0
+jitter = 0

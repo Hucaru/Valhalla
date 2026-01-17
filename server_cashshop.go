@@ -91,7 +91,7 @@ func (cs *cashShopServer) run() {
 }
 
 func (cs *cashShopServer) shutdown() {
-	cs.gameState.CheckpointAll()
+	cs.gameState.CheckpointAll(cs.ctx)
 
 	cs.cancel()
 	if cs.listener != nil {
