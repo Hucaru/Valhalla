@@ -520,6 +520,58 @@ func (d *Player) getRechargeBonus() int16 {
 	return 0
 }
 
+func (d *Player) getCriticalSkillAndRate() (int32, int) {
+	var weaponID int32 = 0
+	for _, item := range d.equip {
+		if item.slotID == constant.WeaponSlot {
+			weaponID = item.ID
+			break
+		}
+	}
+
+	if weaponID == 0 {
+		return 0, 0
+	}
+
+	weaponType := weaponID / 10000
+
+	if weaponType == constant.WeaponTypeBow || weaponType == constant.WeaponTypeCrossbow {
+		if ps, ok := d.skills[int32(skill.CriticalShot)]; ok {
+			critRate := constant.CriticalBaseRate + (int(ps.Level) * constant.CriticalRatePerLevel)
+			if critRate > constant.CriticalRateMax {
+				critRate = constant.CriticalRateMax
+			}
+			return int32(skill.CriticalShot), critRate
+		}
+	}
+
+	if weaponType == constant.WeaponTypeClaw {
+		if ps, ok := d.skills[int32(skill.CriticalThrow)]; ok {
+			critRate := constant.CriticalBaseRate + (int(ps.Level) * constant.CriticalRatePerLevel)
+			if critRate > constant.CriticalRateMax {
+				critRate = constant.CriticalRateMax
+			}
+			return int32(skill.CriticalThrow), critRate
+		}
+	}
+
+	return 0, 0
+}
+
+func (d *Player) rollCritical(attackType int) bool {
+	if attackType != attackRanged {
+		return false
+	}
+
+	skillID, critRate := d.getCriticalSkillAndRate()
+	if skillID == 0 || critRate == 0 {
+		return false
+	}
+
+	roll := d.randIntn(100)
+	return roll < critRate
+}
+
 // Send the Data a packet
 func (d *Player) Send(packet mpacket.Packet) {
 	if d == nil || d.Conn == nil {
@@ -3657,6 +3709,18 @@ func packetPlayerChairUpdate() mpacket.Packet {
 	return p
 }
 
+// writeAttackDamages writes damage values to packet
+func writeAttackDamages(p *mpacket.Packet, info attackInfo) {
+	for idx, dmg := range info.damages {
+		if idx < len(info.isCritical) && info.isCritical[idx] {
+			crit := int32(uint32(dmg) | 0x80000000)
+			p.WriteInt32(crit)
+		} else {
+			p.WriteInt32(dmg)
+		}
+	}
+}
+
 func packetSkillMelee(char Player, ad attackData) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelPlayerUseMeleeSkill)
 	p.WriteInt32(char.ID)
@@ -3688,9 +3752,7 @@ func packetSkillMelee(char Player, ad attackData) mpacket.Packet {
 			p.WriteByte(byte(len(info.damages)))
 		}
 
-		for _, dmg := range info.damages {
-			p.WriteInt32(dmg)
-		}
+		writeAttackDamages(&p, info)
 	}
 
 	return p
@@ -3727,9 +3789,7 @@ func packetSkillRanged(char Player, ad attackData) mpacket.Packet {
 			p.WriteByte(byte(len(info.damages)))
 		}
 
-		for _, dmg := range info.damages {
-			p.WriteInt32(dmg)
-		}
+		writeAttackDamages(&p, info)
 	}
 
 	return p
@@ -3766,9 +3826,7 @@ func packetSkillMagic(char Player, ad attackData) mpacket.Packet {
 			p.WriteByte(byte(len(info.damages)))
 		}
 
-		for _, dmg := range info.damages {
-			p.WriteInt32(dmg)
-		}
+		writeAttackDamages(&p, info)
 	}
 
 	return p

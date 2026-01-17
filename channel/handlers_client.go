@@ -2607,6 +2607,7 @@ type attackInfo struct {
 	hitCount                                               byte
 	damages                                                []int32
 	mesoDropIDs                                            []int32
+	isCritical                                             []bool
 }
 
 type attackData struct {
@@ -2731,8 +2732,13 @@ func getAttackInfo(reader mpacket.Reader, player Player, attackType int) (attack
 			}
 
 			ai.damages = make([]int32, ai.hitCount)
+			ai.isCritical = make([]bool, ai.hitCount)
 			for j := byte(0); j < ai.hitCount; j++ {
 				dmg := reader.ReadInt32()
+
+				isCrit := player.rollCritical(attackType)
+				ai.isCritical[j] = isCrit
+
 				data.totalDamage += dmg
 				ai.damages[j] = dmg
 			}
@@ -2786,9 +2792,12 @@ func getAttackInfo(reader mpacket.Reader, player Player, attackType int) (attack
 		int32(rest[delayIdx+4])<<16 |
 		int32(rest[delayIdx+5])<<24
 
+	isCrit := false
+
 	data.attackInfo = []attackInfo{{
-		spawnID: spawnID,
-		damages: []int32{dmg},
+		spawnID:    spawnID,
+		damages:    []int32{dmg},
+		isCritical: []bool{isCrit},
 	}}
 	data.targets = 1
 	data.totalDamage = dmg
@@ -4564,7 +4573,16 @@ func (server *Server) playerSummonAttack(conn mnet.Client, reader mpacket.Reader
 		if at.spawnID <= 0 || len(at.damages) == 0 {
 			continue
 		}
-		mobDamages[at.spawnID] = append(mobDamages[at.spawnID], at.damages...)
+
+		criticalDamages := make([]int32, len(at.damages))
+		for idx, dmg := range at.damages {
+			if idx < len(at.isCritical) && at.isCritical[idx] {
+				criticalDamages[idx] = int32(uint32(dmg) | 0x80000000)
+			} else {
+				criticalDamages[idx] = dmg
+			}
+		}
+		mobDamages[at.spawnID] = append(mobDamages[at.spawnID], criticalDamages...)
 	}
 	if len(mobDamages) == 0 {
 		return
