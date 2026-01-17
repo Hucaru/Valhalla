@@ -599,3 +599,9 @@ const (
 	PortalDeath  int32 = 0
 	PortalNormal int32 = -1
 )
+
+const (
+	CriticalBaseRate     = 15
+	CriticalRatePerLevel = 2
+	CriticalRateMax      = 100
+)
