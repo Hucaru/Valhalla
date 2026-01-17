@@ -46,6 +46,17 @@ Choose the deployment method that fits your needs:
   - Cross-compilation
   - Debugging and profiling
 
+### Administration
+
+- **[Admin Commands](Admin-Commands.md)** - Complete GM command reference
+  - Server management commands
+  - Player management and modification
+  - Map and instance control
+  - Monster spawning and combat
+  - Item creation and economy
+  - Quest and skill management
+  - Debugging and testing tools
+
 ## 🗺️ Quick Navigation
 
 | I want to... | Read this guide |
@@ -54,6 +65,7 @@ Choose the deployment method that fits your needs:
 | Run a production server | [Installation](Installation.md) → [Kubernetes](Kubernetes.md) |
 | Develop and contribute to Valhalla | [Building](Building.md) → [Configuration](Configuration.md) |
 | Configure server settings | [Configuration](Configuration.md) |
+| Use GM/admin commands | [Admin Commands](Admin-Commands.md) |
 | Scale to more channels | [Docker](Docker.md#adding-more-channels) or [Kubernetes](Kubernetes.md#scaling-channels) |
 | Troubleshoot issues | See troubleshooting sections in each guide |
 
@@ -88,7 +100,8 @@ docs/
 ├── Docker.md          # Docker Compose deployment
 ├── Kubernetes.md      # Kubernetes deployment
 ├── Configuration.md   # Configuration reference
-└── Building.md        # Building from source
+├── Building.md        # Building from source
+└── Admin-Commands.md  # GM/Admin commands reference
 ```
 
 ## 🤝 Contributing
