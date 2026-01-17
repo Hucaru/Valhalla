@@ -123,10 +123,7 @@ func packetRoomShowWindow(roomType, boardType, maxPlayers, roomSlot byte, roomTi
 
 	for i, v := range players {
 		p.WriteByte(byte(i))
-		p.Append(v.displayBytes())
-		if roomType != constant.MiniRoomTypeTrade && roomType != constant.MiniRoomTypePlayerShop {
-			p.WriteInt32(0) // games only - memory card game seed? board settings?
-		}
+		v.encodeDisplayBytes(&p)
 		p.WriteString(v.Name)
 	}
 
@@ -164,7 +161,7 @@ func packetRoomJoin(roomType, roomSlot byte, plr *Player) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelRoom)
 	p.WriteByte(constant.RoomPacketJoin)
 	p.WriteByte(roomSlot)
-	p.Append(plr.displayBytes())
+	plr.encodeDisplayBytes(&p)
 	p.WriteString(plr.Name)
 
 	if roomType == constant.MiniRoomTypeTrade || roomType == constant.MiniRoomTypePlayerShop {

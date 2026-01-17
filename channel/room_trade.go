@@ -18,7 +18,7 @@ type tradeRoom struct {
 	finalized bool
 }
 
-func newTradeRoom(id int32) roomer {
+func newTradeRoom(id int32) *tradeRoom {
 	r := room{roomID: id, roomType: constant.MiniRoomTypeTrade}
 	return &tradeRoom{room: r, mesos: make(map[int32]int32), items: make(map[int32]map[byte]Item), confirmed: make(map[int32]bool), finalized: false}
 }

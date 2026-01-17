@@ -1082,7 +1082,7 @@ func packetMapPlayerEnter(plr *Player) mpacket.Packet {
 		p.WriteInt32(0)
 	}
 
-	p.WriteBytes(plr.displayBytes())
+	plr.encodeDisplayBytes(&p)
 
 	p.WriteInt32(0) // Active Item ID
 	p.WriteInt32(0) // Choco count(what is choco lol)
