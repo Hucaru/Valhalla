@@ -215,6 +215,15 @@ type Player struct {
 	sp    int16
 	exp   int32
 	fame  int16
+	
+	// Cached total stats including equipment bonuses (updated when equipment changes)
+	totalStr      int16
+	totalDex      int16
+	totalInt      int16
+	totalLuk      int16
+	totalWatk     int16
+	totalMatk     int16
+	totalAccuracy int16
 
 	Name      string
 	gender    byte
@@ -1578,6 +1587,8 @@ func (d *Player) moveItem(start, end, amount int16, invID byte) error {
 
 	if start < 0 || end < 0 {
 		d.inst.send(packetInventoryChangeEquip(*d))
+		// Recalculate stats when equipment changes
+		d.RecalculateTotalStats()
 	}
 
 	return nil
@@ -2072,6 +2083,9 @@ func LoadPlayerFromID(id int32, conn mnet.Client) Player {
 	c.pos.y = nxMap.Portals[c.mapPos].Y
 
 	c.equip, c.use, c.setUp, c.etc, c.cash = loadInventoryFromDb(c.ID)
+	
+	// Calculate total stats including equipment bonuses
+	c.RecalculateTotalStats()
 
 	c.buddyList = getBuddyList(c.ID, c.buddyListSize)
 
@@ -3837,6 +3851,33 @@ func packetSkillStop(plrID, skillID int32) mpacket.Packet {
 	p.WriteInt32(plrID)
 	p.WriteInt32(skillID)
 	return p
+}
+
+// RecalculateTotalStats recalculates cached total stats from base stats and equipment
+func (plr *Player) RecalculateTotalStats() {
+	// Start with base stats
+	plr.totalStr = plr.str
+	plr.totalDex = plr.dex
+	plr.totalInt = plr.intt
+	plr.totalLuk = plr.luk
+	plr.totalWatk = 0
+	plr.totalMatk = 0
+	plr.totalAccuracy = 0
+	
+	// Add bonuses from all equipped items
+	for _, item := range plr.equip {
+		plr.totalStr += item.str
+		plr.totalDex += item.dex
+		plr.totalInt += item.intt
+		plr.totalLuk += item.luk
+		plr.totalWatk += item.watk
+		plr.totalMatk += item.matk
+		plr.totalAccuracy += item.accuracy
+	}
+	
+	// Add base stat contributions to attack
+	plr.totalWatk += plr.str / 10
+	plr.totalMatk += plr.intt / 10
 }
 
 func packetPlayerHpChange(plrID, hp, maxHp int32) mpacket.Packet {
