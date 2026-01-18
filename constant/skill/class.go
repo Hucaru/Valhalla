@@ -164,6 +164,7 @@ type ranger struct {
 	MortalBlow Skill
 	Puppet     Skill
 	SilverHawk Skill
+	Inferno    Skill
 }
 
 type crossbowman struct {
@@ -172,6 +173,7 @@ type crossbowman struct {
 	CrossbowBooster Skill
 	CrossbowMastery Skill
 	SoulArrow       Skill
+	IronArrow       Skill
 }
 
 type sniper struct {
@@ -411,9 +413,11 @@ const (
 	MortalBlow Skill = 3110001
 	Puppet     Skill = 3111002
 	SilverHawk Skill = 3111005
+	Inferno    Skill = 3111004
 
 	//Crossbowman Skills - 320
 	CBPowerKnockback Skill = 3201003
+	IronArrow        Skill = 3201005
 	CrossbowBooster  Skill = 3201002
 	CrossbowMastery  Skill = 3200000
 	CBSoulArrow      Skill = 3201004
@@ -673,6 +677,7 @@ func init() {
 		MortalBlow: MortalBlow,
 		Puppet:     Puppet,
 		SilverHawk: SilverHawk,
+		Inferno:    Inferno,
 	}
 
 	Crossbowman = crossbowman{
@@ -681,6 +686,7 @@ func init() {
 		CrossbowBooster: CrossbowBooster,
 		CrossbowMastery: CrossbowMastery,
 		SoulArrow:       CBSoulArrow,
+		IronArrow:       IronArrow,
 	}
 
 	Sniper = sniper{
