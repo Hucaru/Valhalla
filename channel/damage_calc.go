@@ -190,35 +190,32 @@ func (calc *DamageCalculator) CalculateHit(
 	}
 
 	minDmg, maxDmg := calc.CalculateBaseDamageRange(mob, hitIdx)
-	isCompleteFormula := calc.isCompleteFormula()
-	if !isCompleteFormula {
-		minDmg, maxDmg = calc.ApplySkillModifiers(minDmg, maxDmg, ampData, mob)
-	}
 
-	if !isCompleteFormula {
-		defReduction := calc.CalculateDefenseReduction(mob, roller)
-		minDmg -= defReduction
-		maxDmg -= defReduction
-	}
+	redMin, redMax := calc.CalculateDefenseReductionBounds(mob)
+	minDmg -= redMax
+	maxDmg -= redMin
 
+	baseMinInt := math.Floor(minDmg)
+	baseMaxInt := math.Floor(maxDmg)
 	baseDmg := (minDmg + maxDmg) / 2.0
 
 	multiplier := 1.0
-	if !isCompleteFormula && calc.skill != nil && calc.skill.Damage > 0 {
+	if calc.skill != nil && calc.skill.Damage > 0 {
 		multiplier = float64(calc.skill.Damage) / 100.0
 	}
 
+	minDmg *= multiplier
+	maxDmg *= multiplier
+	baseDmg *= multiplier
+
 	result.IsCrit = calc.CheckCritical(roller)
-	critMultiplier := 1.0
 	if result.IsCrit && calc.critSkill != nil {
 		critBonus := float64(calc.critSkill.Damage-100) / 100.0
-		critMultiplier = 1.0 + critBonus
-	}
 
-	totalMultiplier := multiplier * critMultiplier
-	minDmg *= totalMultiplier
-	maxDmg *= totalMultiplier
-	baseDmg *= totalMultiplier
+		minDmg += critBonus * baseMinInt
+		maxDmg += critBonus * baseMaxInt
+		baseDmg += critBonus * math.Floor((baseMinInt+baseMaxInt)/2.0)
+	}
 
 	afterMod := calc.GetAfterModifier(targetIdx, baseDmg)
 	minDmg *= afterMod
@@ -332,7 +329,7 @@ func (calc *DamageCalculator) CalculateBaseDamageRange(mob *monster, hitIdx int)
 	str := float64(calc.GetTotalStr())
 	dex := float64(calc.GetTotalDex())
 	luk := float64(calc.GetTotalLuk())
-	watk := float64(calc.watk)
+	watk := float64(calc.GetTotalWatk())
 
 	if calc.attackType == attackMagic {
 		return calc.CalculateMagicDamageRange()
@@ -469,7 +466,7 @@ func (calc *DamageCalculator) CalculateBaseDamageRange(mob *monster, hitIdx int)
 }
 
 func (calc *DamageCalculator) CalculateMagicDamageRange() (float64, float64) {
-	totalMAD := float64(math.Min(999, float64(calc.player.intt)))
+	totalMAD := float64(calc.GetTotalMatk())
 	intl := float64(calc.player.intt)
 	luk := float64(calc.player.luk)
 
@@ -506,10 +503,10 @@ func (calc *DamageCalculator) ApplySkillModifiers(minDmg, maxDmg float64, ampDat
 	return minDmg, maxDmg
 }
 
-func (calc *DamageCalculator) CalculateDefenseReduction(mob *monster, roller *Roller) float64 {
+func (calc *DamageCalculator) CalculateDefenseReductionBounds(mob *monster) (float64, float64) {
 	if skill.Skill(calc.skillID) == skill.Sacrifice ||
 		skill.Skill(calc.skillID) == skill.Assaulter {
-		return 0
+		return 0, 0
 	}
 
 	var mobDef float64
@@ -518,15 +515,10 @@ func (calc *DamageCalculator) CalculateDefenseReduction(mob *monster, roller *Ro
 	} else {
 		mobDef = float64(mob.pdDamage)
 	}
-	mobDef = math.Min(999, mobDef)
 
 	redMin := mobDef * 0.5
 	redMax := mobDef * 0.6
-
-	roll := roller.Roll(constant.DamageStatModifier)
-	reduction := redMin + (redMax-redMin)*roll
-
-	return reduction
+	return redMin, redMax
 }
 
 func (calc *DamageCalculator) CheckCritical(roller *Roller) bool {
@@ -582,32 +574,9 @@ func (calc *DamageCalculator) GetIsMiss(roller *Roller, targetAccuracy float64, 
 
 	minTACC := targetAccuracy * minModifier
 	randTACC := minTACC + (targetAccuracy*maxModifier-minTACC)*roll
-	mobAvoid := math.Min(999, float64(mob.eva))
+	mobAvoid := float64(mob.eva)
 
 	return randTACC < mobAvoid
-}
-
-func (calc *DamageCalculator) isCompleteFormula() bool {
-	switch skill.Skill(calc.skillID) {
-	case skill.LuckySeven:
-		return true
-	case skill.DragonRoar:
-		return true
-	case skill.PowerKnockback, skill.CBPowerKnockback:
-		return true
-	}
-
-	if calc.weaponType == constant.WeaponTypeClaw2 &&
-		(calc.attackAction == constant.AttackActionProne ||
-			(calc.attackAction >= constant.AttackActionSwing1H1 && calc.attackAction <= constant.AttackActionSwing2H7)) {
-		return true
-	}
-
-	if calc.weaponType == constant.WeaponTypeNone {
-		return true
-	}
-
-	return false
 }
 
 func (calc *DamageCalculator) GetElementAmplification() *ElementAmpData {
