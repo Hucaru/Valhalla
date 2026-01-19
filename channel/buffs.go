@@ -180,9 +180,7 @@ func NewCharacterBuffs(p *Player) {
 }
 
 type statBonuses struct {
-	str, dex, intt, luk int16
-	watk, matk          int16
-	accuracy            int16
+	watk, matk, accuracy int16
 }
 
 func (cb *CharacterBuffs) getStatBonuses() statBonuses {
@@ -191,18 +189,7 @@ func (cb *CharacterBuffs) getStatBonuses() statBonuses {
 		return out
 	}
 
-	hasBit := func(mask []byte, bit int) bool {
-		if bit < 0 || bit >= 64 {
-			return false
-		}
-		byteIdx := bit / 8
-		if byteIdx < 0 || byteIdx >= len(mask) {
-			return false
-		}
-		return (mask[byteIdx] & (1 << uint(bit%8))) != 0
-	}
-
-	for src, mask := range cb.itemMasks {
+	for src, _ := range cb.itemMasks {
 		if src >= 0 {
 			continue
 		}
@@ -212,13 +199,13 @@ func (cb *CharacterBuffs) getStatBonuses() statBonuses {
 			continue
 		}
 
-		if hasBit(mask, BuffWeaponAttack) {
+		if meta.PAD != 0 {
 			out.watk += meta.PAD
 		}
-		if hasBit(mask, BuffMagicAttack) {
+		if meta.MAD != 0 {
 			out.matk += meta.MAD
 		}
-		if hasBit(mask, BuffAccuracy) {
+		if meta.ACC != 0 {
 			out.accuracy += meta.ACC
 		}
 	}

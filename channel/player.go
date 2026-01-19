@@ -3882,11 +3882,6 @@ func (plr *Player) RecalculateTotalStats() {
 	if plr.buffs != nil {
 		statBonus := plr.buffs.getStatBonuses()
 
-		plr.totalStr += statBonus.str
-		plr.totalDex += statBonus.dex
-		plr.totalInt += statBonus.intt
-		plr.totalLuk += statBonus.luk
-
 		plr.totalWatk += statBonus.watk
 		plr.totalMatk += statBonus.matk
 		plr.totalAccuracy += statBonus.accuracy
