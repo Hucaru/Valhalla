@@ -3,7 +3,9 @@ package login
 import (
 	"crypto/sha512"
 	"encoding/hex"
+	"fmt"
 	"log"
+	"net"
 	"strings"
 
 	"github.com/Hucaru/Valhalla/common"
@@ -47,6 +49,37 @@ func (server *Server) HandleClientPacket(conn mnet.Client, reader mpacket.Reader
 func (server *Server) handleLoginRequest(conn mnet.Client, reader mpacket.Reader) {
 	username := reader.ReadString(reader.ReadInt16())
 	password := reader.ReadString(reader.ReadInt16())
+
+	// Try to read HWID (6 bytes after password) - simplified
+	hwid := ""
+	if reader.ReadInt16() >= 6 { // Check remaining bytes
+		hwidBytes := make([]byte, 6)
+		for i := 0; i < 6; i++ {
+			hwidBytes[i] = reader.ReadByte()
+		}
+		hwid = fmt.Sprintf("%02X%02X%02X%02X%02X%02X", hwidBytes[0], hwidBytes[1], hwidBytes[2], hwidBytes[3], hwidBytes[4], hwidBytes[5])
+	}
+
+	ip := ""
+	if host, _, err := net.SplitHostPort(conn.String()); err == nil {
+		ip = host
+	} else {
+		ip = conn.String()
+	}
+
+	if server.ac != nil {
+		banned, _, err := server.ac.IsBanned(0, ip, hwid)
+		if err != nil {
+			return
+		}
+		if banned {
+			err := conn.Close()
+			if err != nil {
+				return
+			}
+		}
+	}
+
 	// hash the password
 	hasher := sha512.New()
 	hasher.Write([]byte(password))
@@ -68,11 +101,11 @@ func (server *Server) handleLoginRequest(conn mnet.Client, reader mpacket.Reader
 
 	if err != nil {
 		if server.autoRegister {
-			res, insertErr := common.DB.Exec("INSERT INTO accounts (username, password, pin, isLogedIn, adminLevel, isBanned, gender, dob, eula, nx, maplepoints) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+			res, insertErr := common.DB.Exec("INSERT INTO accounts (username, password, pin, isLogedIn, adminLevel, isBanned, gender, dob, eula, nx, maplepoints, hwid) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
 				username, hashedPassword, constant.AutoRegisterDefaultPIN, constant.AutoRegisterDefaultIsLoggedIn,
 				constant.AutoRegisterDefaultAdminLevel, constant.AutoRegisterDefaultIsBanned, constant.AutoRegisterDefaultGender,
 				constant.AutoRegisterDefaultDOB, constant.AutoRegisterDefaultEULA, constant.AutoRegisterDefaultNX,
-				constant.AutoRegisterDefaultMaplePoints)
+				constant.AutoRegisterDefaultMaplePoints, hwid)
 
 			if insertErr != nil {
 				log.Println("Failed to create new account", err)
@@ -92,6 +125,26 @@ func (server *Server) handleLoginRequest(conn mnet.Client, reader mpacket.Reader
 			result = constant.LoginResultNotRegistered
 		}
 	} else if hashedPassword != databasePassword {
+		if server.ac != nil {
+			ipKey := fmt.Sprintf("ip:%s", ip)
+			userKey := fmt.Sprintf("user:%s", username)
+			hwidKey := fmt.Sprintf("hwid:%s", hwid)
+
+			exceeded := server.ac.TrackFailedAuth(ipKey) || server.ac.TrackFailedAuth(userKey)
+			if hwid != "" {
+				exceeded = exceeded || server.ac.TrackFailedAuth(hwidKey)
+			}
+
+			if exceeded {
+				if ip != "" {
+					_ = server.ac.IssueIPBan(ip, 1, "Excessive failed login attempts")
+				}
+				if hwid != "" {
+					_ = server.ac.IssueHWIDBan(hwid, 1, "Excessive failed login attempts")
+				}
+			}
+		}
+
 		result = constant.LoginResultInvalidPassword
 	} else if isLogedIn {
 		result = constant.LoginResultAlreadyOnline
@@ -99,6 +152,22 @@ func (server *Server) handleLoginRequest(conn mnet.Client, reader mpacket.Reader
 		result = constant.LoginResultBanned
 	} else if eula == 0 {
 		result = constant.LoginResultEULA
+	} else {
+		// Check for bans
+		if server.ac != nil {
+			ip := ""
+			if host, _, err := net.SplitHostPort(conn.String()); err == nil {
+				ip = host
+			} else {
+				ip = conn.String()
+			}
+
+			banned, reason, _ := server.ac.IsBanned(accountID, ip, hwid)
+			if banned {
+				result = constant.LoginResultBanned
+				log.Printf("Blocked login for %s: %s", username, reason)
+			}
+		}
 	}
 
 	// Banned = 2, Deleted or Blocked = 3, Invalid Password = 4, Not Registered = 5, Sys Error = 6,
@@ -110,6 +179,24 @@ func (server *Server) handleLoginRequest(conn mnet.Client, reader mpacket.Reader
 		conn.SetGender(gender)
 		conn.SetAdminLevel(adminLevel)
 		conn.SetAccountID(accountID)
+
+		// Update HWID and clear failed attempts on successful login
+		if hwid != "" {
+			common.DB.Exec("UPDATE accounts SET hwid = ? WHERE accountID = ?", hwid, accountID)
+		}
+		if server.ac != nil {
+			ip := ""
+			if host, _, err := net.SplitHostPort(conn.String()); err == nil {
+				ip = host
+			} else {
+				ip = conn.String()
+			}
+			server.ac.ClearAuth(
+				fmt.Sprintf("user:%s", username),
+				fmt.Sprintf("ip:%s", ip),
+				fmt.Sprintf("hwid:%s", hwid),
+			)
+		}
 	} else if result == constant.LoginResultEULA {
 		conn.SetAccountID(accountID)
 	}

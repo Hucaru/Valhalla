@@ -1720,6 +1720,72 @@ func (server *Server) gmCommand(conn mnet.Client, msg string) {
 
 		conn.Send(packetMessageRedText(fmt.Sprintf("portal %s has been set to %v", port.name, port.enabled)))
 
+	case "ban":
+		if len(command) < 2 {
+			conn.Send(packetMessageRedText("/ban <player> [hours|perm] [reason]"))
+			return
+		}
+		targetName := command[1]
+		target, err := server.players.GetFromName(targetName)
+		if err != nil {
+			conn.Send(packetMessageRedText("Player not found"))
+			return
+		}
+
+		hours := 168 // default 7 days
+		reason := "Banned by GM"
+		if len(command) >= 3 {
+			if command[2] == "perm" {
+				hours = 0
+			} else if h, err := strconv.Atoi(command[2]); err == nil {
+				hours = h
+			}
+		}
+		if len(command) >= 4 {
+			reason = strings.Join(command[3:], " ")
+		}
+
+		if server.ac != nil {
+			server.ac.IssueBan(target.Conn.GetAccountID(), hours, reason, "", "")
+			conn.Send(packetMessageRedText(fmt.Sprintf("Banned %s for %d hours", targetName, hours)))
+		}
+
+	case "unban":
+		if len(command) < 2 {
+			conn.Send(packetMessageRedText("/unban <accountID>"))
+			return
+		}
+		accountID, err := strconv.Atoi(command[1])
+		if err != nil {
+			conn.Send(packetMessageRedText("Invalid account ID"))
+			return
+		}
+		if server.ac != nil {
+			server.ac.Unban(int32(accountID))
+			conn.Send(packetMessageRedText(fmt.Sprintf("Unbanned account %d", accountID)))
+		}
+
+	case "banhistory":
+		if len(command) < 2 {
+			conn.Send(packetMessageRedText("/banhistory <accountID>"))
+			return
+		}
+		accountID, err := strconv.Atoi(command[1])
+		if err != nil {
+			conn.Send(packetMessageRedText("Invalid account ID"))
+			return
+		}
+		if server.ac != nil {
+			history, _ := server.ac.GetBanHistory(int32(accountID), 10)
+			if len(history) == 0 {
+				conn.Send(packetMessageRedText("No ban history"))
+			} else {
+				for _, entry := range history {
+					conn.Send(packetMessageRedText(entry))
+				}
+			}
+		}
+
 	default:
 		conn.Send(packetMessageRedText("Unknown gm command " + command[0]))
 	}
