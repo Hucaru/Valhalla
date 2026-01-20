@@ -2467,6 +2467,10 @@ func (server Server) playerMeleeSkill(conn mnet.Client, reader mpacket.Reader) {
 		return
 	}
 
+	calc := NewDamageCalculator(plr, &data, attackMelee)
+	results := calc.ValidateAttack()
+	validateAndApplyCriticals(plr, &data, results)
+
 	inst.sendExcept(packetSkillMelee(*plr, data), conn)
 
 	if data.isMesoExplosion {
@@ -2474,6 +2478,28 @@ func (server Server) playerMeleeSkill(conn mnet.Client, reader mpacket.Reader) {
 	} else {
 		for _, attack := range data.attackInfo {
 			inst.lifePool.mobDamaged(attack.spawnID, plr, attack.damages...)
+		}
+	}
+}
+
+func validateAndApplyCriticals(plr *Player, data *attackData, results [][]CalcHitResult) {
+	for targetIdx, targetResults := range results {
+		if targetIdx >= len(data.attackInfo) {
+			continue
+		}
+		for hitIdx, result := range targetResults {
+			if hitIdx >= len(data.attackInfo[targetIdx].damages) {
+				continue
+			}
+
+			data.attackInfo[targetIdx].isCritical[hitIdx] = result.IsCrit
+			if !result.IsValid {
+				maxAllowed := int32(result.MaxDamage * (1.0 + constant.DamageVarianceTolerance))
+				data.attackInfo[targetIdx].damages[hitIdx] = maxAllowed
+
+				log.Printf("Capped excessive damage from player %s (ID: %d): client=%d -> capped=%d, max=%.0f, skill=%d",
+					plr.Name, plr.ID, result.ClientDamage, maxAllowed, result.MaxDamage, data.skillID)
+			}
 		}
 	}
 }
@@ -2510,6 +2536,10 @@ func (server Server) playerRangedSkill(conn mnet.Client, reader mpacket.Reader) 
 		// Send packet to stop?
 		return
 	}
+
+	calc := NewDamageCalculator(plr, &data, attackRanged)
+	results := calc.ValidateAttack()
+	validateAndApplyCriticals(plr, &data, results)
 
 	// if Player in party extract
 
@@ -2560,6 +2590,10 @@ func (server Server) playerMagicSkill(conn mnet.Client, reader mpacket.Reader) {
 			inst.mistPool.createMist(plr.ID, data.skillID, data.skillLevel, plr.pos, duration, true, magicAttack)
 		}
 	}
+	
+	calc := NewDamageCalculator(plr, &data, attackMagic)
+	results := calc.ValidateAttack()
+	validateAndApplyCriticals(plr, &data, results)
 
 	inst.sendExcept(packetSkillMagic(*plr, data), conn)
 
