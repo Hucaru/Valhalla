@@ -67,19 +67,6 @@ func (server *Server) handleLoginRequest(conn mnet.Client, reader mpacket.Reader
 		ip = conn.String()
 	}
 
-	if server.ac != nil {
-		banned, _, err := server.ac.IsBanned(0, ip, hwid)
-		if err != nil {
-			return
-		}
-		if banned {
-			err := conn.Close()
-			if err != nil {
-				return
-			}
-		}
-	}
-
 	// hash the password
 	hasher := sha512.New()
 	hasher.Write([]byte(password))
@@ -98,6 +85,17 @@ func (server *Server) handleLoginRequest(conn mnet.Client, reader mpacket.Reader
 		Scan(&accountID, &user, &databasePassword, &gender, &isLogedIn, &isBanned, &adminLevel, &eula)
 
 	result := constant.LoginResultSuccess
+
+	if server.ac != nil {
+		banned, _, err := server.ac.IsBanned(0, ip, hwid)
+		if err != nil {
+			return
+		}
+		if banned {
+			conn.Send(packetLoginResponse(constant.LoginResultBanned, 0, 0, false, "", 0))
+			return
+		}
+	}
 
 	if err != nil {
 		if server.autoRegister {
