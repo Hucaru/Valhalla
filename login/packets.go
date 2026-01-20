@@ -4,6 +4,7 @@ import (
 	"strconv"
 
 	"github.com/Hucaru/Valhalla/common/opcode"
+	"github.com/Hucaru/Valhalla/constant"
 	"github.com/Hucaru/Valhalla/internal"
 	"github.com/Hucaru/Valhalla/mpacket"
 )
@@ -28,6 +29,17 @@ func packetLoginResponse(result byte, userID int32, gender byte, isAdmin bool, u
 	pac.WriteInt64(0)
 	pac.WriteInt64(0)
 	pac.WriteInt64(0)
+
+	return pac
+}
+
+func packetLoginBanned(endTime int64, reason byte) mpacket.Packet {
+	pac := mpacket.CreateWithOpcode(opcode.SendLoginResponse)
+	pac.WriteByte(constant.LoginResultBanned)
+	pac.WriteByte(0x00)
+	pac.WriteInt32(15)
+	pac.WriteByte(reason)
+	pac.WriteInt64(endTime)
 
 	return pac
 }

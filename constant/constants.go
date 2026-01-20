@@ -463,6 +463,19 @@ const (
 	LoginResultEULA              byte = 0x17
 )
 
+const (
+	BanReasonUnknown = iota
+	BanReasonHacking
+	BanReasonBotting
+	BanReasonIllicitAdvertising
+	BanReasonHarassment
+	BanReasonProfaneLanguage
+	BanReasonScamming
+	BanReasonMisconduct
+	BanReasonRWT
+	BanReasonIllegalFunding
+)
+
 // Auto-registration default values
 const (
 	AutoRegisterDefaultGender      byte   = 0

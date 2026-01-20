@@ -3,6 +3,7 @@ package anticheat
 import (
 	"database/sql"
 	"fmt"
+	"log"
 	"time"
 )
 
@@ -195,21 +196,47 @@ func (ac *AntiCheat) IssueHWIDBan(hwid string, hours int, reason string) error {
 	return err
 }
 
-func (ac *AntiCheat) IsBanned(accountID int32, ip, hwid string) (bool, string, error) {
+func (ac *AntiCheat) IsBanned(accountID int32, ip, hwid string) (bool, string, int64, error) {
 	var reason string
+	var banEndRaw []byte
+
 	err := ac.db.QueryRow(`
-SELECT reason FROM bans 
-WHERE (accountID = ? OR ip = ? OR (hwid = ? AND hwid != '')) 
+SELECT reason, banEnd FROM bans
+WHERE (accountID = ? OR ip = ? OR (hwid = ? AND hwid != ''))
 AND (banEnd IS NULL OR banEnd > NOW())
-LIMIT 1`, accountID, ip, hwid).Scan(&reason)
+ORDER BY createdAt DESC
+LIMIT 1`, accountID, ip, hwid).Scan(&reason, &banEndRaw)
 
 	if err == sql.ErrNoRows {
-		return false, "", nil
+		return false, "", 0, nil
 	}
+
 	if err != nil {
-		return false, "", err
+		log.Println(err)
+		return false, "", 0, err
 	}
-	return true, reason, nil
+
+	if banEndRaw == nil {
+		return true, reason, 0, nil
+	}
+
+	s := string(banEndRaw)
+	layouts := []string{
+		"2006-01-02 15:04:05",
+		"2006-01-02 15:04:05.999999",
+		"2006-01-02 15:04:05.999999999",
+	}
+
+	var parsed time.Time
+	var parseErr error
+	for _, layout := range layouts {
+		parsed, parseErr = time.ParseInLocation(layout, s, time.Local)
+		if parseErr == nil {
+			return true, reason, parsed.UnixMilli()*10000 + 116444592000000000, nil
+		}
+	}
+
+	return true, reason, 0, fmt.Errorf("failed to parse banEnd %q: %w", s, parseErr)
 }
 
 // Unban removes all bans for an account

@@ -87,12 +87,12 @@ func (server *Server) handleLoginRequest(conn mnet.Client, reader mpacket.Reader
 	result := constant.LoginResultSuccess
 
 	if server.ac != nil {
-		banned, _, err := server.ac.IsBanned(0, ip, hwid)
+		banned, _, endEpoch, err := server.ac.IsBanned(0, ip, hwid)
 		if err != nil {
 			return
 		}
 		if banned {
-			conn.Send(packetLoginResponse(constant.LoginResultBanned, 0, 0, false, "", 0))
+			conn.Send(packetLoginBanned(endEpoch, constant.BanReasonHacking))
 			return
 		}
 	}
@@ -150,24 +150,7 @@ func (server *Server) handleLoginRequest(conn mnet.Client, reader mpacket.Reader
 		result = constant.LoginResultBanned
 	} else if eula == 0 {
 		result = constant.LoginResultEULA
-	} else {
-		// Check for bans
-		if server.ac != nil {
-			ip := ""
-			if host, _, err := net.SplitHostPort(conn.String()); err == nil {
-				ip = host
-			} else {
-				ip = conn.String()
-			}
-
-			banned, reason, _ := server.ac.IsBanned(accountID, ip, hwid)
-			if banned {
-				result = constant.LoginResultBanned
-				log.Printf("Blocked login for %s: %s", username, reason)
-			}
-		}
 	}
-
 	// Banned = 2, Deleted or Blocked = 3, Invalid Password = 4, Not Registered = 5, Sys Error = 6,
 	// Already online = 7, System error = 9, Too many requests = 10, Older than 20 = 11, valid login = 12, Master cannot login on this IP = 13,
 	// wrong gateway korean text = 14, still processing request korean text = 15, verify email = 16, gateway english text = 17,
