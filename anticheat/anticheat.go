@@ -12,7 +12,7 @@ type AntiCheat struct {
 	failedAuth map[string][]time.Time
 	db         *sql.DB
 	dispatch   chan func()
-	onBan      func(accountID int32, reason string)
+	onBan      func(accountID int32)
 }
 
 func New(db *sql.DB, dispatch chan func()) *AntiCheat {
@@ -24,7 +24,7 @@ func New(db *sql.DB, dispatch chan func()) *AntiCheat {
 	}
 }
 
-func (ac *AntiCheat) SetOnBan(fn func(accountID int32, reason string)) {
+func (ac *AntiCheat) SetOnBan(fn func(accountID int32)) {
 	ac.onBan = fn
 }
 
@@ -136,7 +136,7 @@ func (ac *AntiCheat) ClearAuth(identifiers ...string) {
 
 // IssueBan creates a temporary ban (hours=0 means permanent)
 func (ac *AntiCheat) IssueBan(accountID int32, hours int, reason string, ip, hwid string) error {
-	var banEnd interface{}
+	var banEnd time.Time
 	if hours > 0 {
 		banEnd = time.Now().Add(time.Duration(hours) * time.Hour)
 	}
@@ -152,7 +152,7 @@ func (ac *AntiCheat) IssueBan(accountID int32, hours int, reason string, ip, hwi
 	if ac.onBan != nil {
 		ac.post(func() {
 			if ac.onBan != nil {
-				ac.onBan(accountID, reason)
+				ac.onBan(accountID)
 			}
 		})
 	}
@@ -172,7 +172,7 @@ func (ac *AntiCheat) IssueBan(accountID int32, hours int, reason string, ip, hwi
 
 // IssueIPBan creates a temporary ban (hours=0 means permanent) for an IP.
 func (ac *AntiCheat) IssueIPBan(ip string, hours int, reason string) error {
-	var banEnd interface{}
+	var banEnd time.Time
 	if hours > 0 {
 		banEnd = time.Now().Add(time.Duration(hours) * time.Hour)
 	}
@@ -185,7 +185,7 @@ func (ac *AntiCheat) IssueIPBan(ip string, hours int, reason string) error {
 
 // IssueHWIDBan creates a temporary ban (hours=0 means permanent) for an HWID.
 func (ac *AntiCheat) IssueHWIDBan(hwid string, hours int, reason string) error {
-	var banEnd interface{}
+	var banEnd time.Time
 	if hours > 0 {
 		banEnd = time.Now().Add(time.Duration(hours) * time.Hour)
 	}
@@ -239,10 +239,29 @@ LIMIT 1`, accountID, ip, hwid).Scan(&reason, &banEndRaw)
 	return true, reason, 0, fmt.Errorf("failed to parse banEnd %q: %w", s, parseErr)
 }
 
-// Unban removes all bans for an account
-func (ac *AntiCheat) Unban(accountID int32) error {
-	_, err := ac.db.Exec(`DELETE FROM bans WHERE accountID = ?`, accountID)
+func (ac *AntiCheat) accountIDByPlayerName(name string) (int32, error) {
+	var accountID int32
+	err := ac.db.QueryRow(
+		`SELECT accountID FROM characters WHERE name = ? LIMIT 1`,
+		name,
+	).Scan(&accountID)
 	if err != nil {
+		if err == sql.ErrNoRows {
+			return 0, fmt.Errorf("player %q not found", name)
+		}
+		return 0, err
+	}
+	return accountID, nil
+}
+
+// Unban removes all bans for an account (resolved by player name)
+func (ac *AntiCheat) Unban(name string) error {
+	accountID, err := ac.accountIDByPlayerName(name)
+	if err != nil {
+		return err
+	}
+
+	if _, err := ac.db.Exec(`DELETE FROM bans WHERE accountID = ?`, accountID); err != nil {
 		return err
 	}
 
@@ -250,12 +269,18 @@ func (ac *AntiCheat) Unban(accountID int32) error {
 	return err
 }
 
-// GetBanHistory returns recent ban records
-func (ac *AntiCheat) GetBanHistory(accountID int32, limit int) ([]string, error) {
+// GetBanHistory returns recent ban records (resolved by player name)
+func (ac *AntiCheat) GetBanHistory(name string, limit int) ([]string, error) {
+	accountID, err := ac.accountIDByPlayerName(name)
+	if err != nil {
+		return nil, err
+	}
+
 	rows, err := ac.db.Query(`
-SELECT reason, banEnd, createdAt FROM bans 
-WHERE accountID = ? 
-ORDER BY createdAt DESC LIMIT ?`, accountID, limit)
+SELECT reason, banEnd, createdAt FROM bans
+WHERE accountID = ?
+ORDER BY createdAt DESC
+LIMIT ?`, accountID, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -277,7 +302,7 @@ ORDER BY createdAt DESC LIMIT ?`, accountID, limit)
 		history = append(history, fmt.Sprintf("%s: %s (until %s)",
 			createdAt.Format("2006-01-02 15:04"), reason, durStr))
 	}
-	return history, nil
+	return history, rows.Err()
 }
 
 // Internal: track temp ban count for escalation
@@ -295,7 +320,7 @@ func (ac *AntiCheat) incrementTempBans(accountID int32) (int, error) {
 }
 
 // Detection helpers - track violations and auto-ban on threshold
-func (ac *AntiCheat) CheckDamage(accountID int32, damage, maxDamage int32) {
+func (ac *AntiCheat) LogDamageViolation(accountID int32, damage, maxDamage int32) {
 	if damage > maxDamage*2 {
 		if ac.Track(accountID, "damage", 5, 5*time.Minute) {
 			ac.IssueBan(accountID, 168, fmt.Sprintf("Excessive damage: %d > %d", damage, maxDamage), "", "")
@@ -303,31 +328,32 @@ func (ac *AntiCheat) CheckDamage(accountID int32, damage, maxDamage int32) {
 	}
 }
 
-func (ac *AntiCheat) CheckAttackSpeed(accountID int32) bool {
+func (ac *AntiCheat) LogAttackSpeedViolation(accountID int32) bool {
 	return ac.Track(accountID, "attack_speed", 120, 1*time.Minute)
 }
 
-func (ac *AntiCheat) CheckMovement(accountID int32, distance int16) {
+func (ac *AntiCheat) LogMovementViolation(accountID int32, distance int16, moveType byte) {
 	if distance > 1000 {
+		log.Println("Teleport hack detected - movement type:", moveType, fmt.Sprintf("Suspicious movement: %.0f pixels", distance), "accountID:", accountID)
 		if ac.Track(accountID, "teleport", 3, 5*time.Minute) {
 			ac.IssueBan(accountID, 168, fmt.Sprintf("Teleport hack: %d pixels", distance), "", "")
 		}
 	}
 }
 
-func (ac *AntiCheat) CheckInvalidItem(accountID int32) {
+func (ac *AntiCheat) LogInvalidItemViolation(accountID int32) {
 	if ac.Track(accountID, "invalid_item", 5, 5*time.Minute) {
 		ac.IssueBan(accountID, 168, "Using items not in inventory", "", "")
 	}
 }
 
-func (ac *AntiCheat) CheckInvalidTrade(accountID int32, reason string) {
+func (ac *AntiCheat) LogInvalidTradeViolation(accountID int32, reason string) {
 	if ac.Track(accountID, "invalid_trade", 5, 5*time.Minute) {
 		ac.IssueBan(accountID, 168, "Invalid trade: "+reason, "", "")
 	}
 }
 
-func (ac *AntiCheat) CheckSkillAbuse(accountID int32, skillID int32) {
+func (ac *AntiCheat) LogSkillAbuseViolation(accountID int32, skillID int32) {
 	if ac.Track(accountID, "skill_abuse", 5, 5*time.Minute) {
 		ac.IssueBan(accountID, 168, fmt.Sprintf("Skill abuse: ID %d", skillID), "", "")
 	}

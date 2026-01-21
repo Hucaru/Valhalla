@@ -50,15 +50,10 @@ func (server *Server) handleLoginRequest(conn mnet.Client, reader mpacket.Reader
 	username := reader.ReadString(reader.ReadInt16())
 	password := reader.ReadString(reader.ReadInt16())
 
-	// Try to read HWID (6 bytes after password) - simplified
-	hwid := ""
-	if reader.ReadInt16() >= 6 { // Check remaining bytes
-		hwidBytes := make([]byte, 6)
-		for i := 0; i < 6; i++ {
-			hwidBytes[i] = reader.ReadByte()
-		}
-		hwid = fmt.Sprintf("%02X%02X%02X%02X%02X%02X", hwidBytes[0], hwidBytes[1], hwidBytes[2], hwidBytes[3], hwidBytes[4], hwidBytes[5])
-	}
+	// Try to read HWID
+	reader.Skip(6)
+	hwidBytes := reader.ReadBytes(4)
+	hwid := strings.ToUpper(hex.EncodeToString(hwidBytes))
 
 	ip := ""
 	if host, _, err := net.SplitHostPort(conn.String()); err == nil {
@@ -87,7 +82,7 @@ func (server *Server) handleLoginRequest(conn mnet.Client, reader mpacket.Reader
 	result := constant.LoginResultSuccess
 
 	if server.ac != nil {
-		banned, _, endEpoch, err := server.ac.IsBanned(0, ip, hwid)
+		banned, _, endEpoch, err := server.ac.IsBanned(accountID, ip, hwid)
 		if err != nil {
 			return
 		}
@@ -128,18 +123,9 @@ func (server *Server) handleLoginRequest(conn mnet.Client, reader mpacket.Reader
 			userKey := fmt.Sprintf("user:%s", username)
 			hwidKey := fmt.Sprintf("hwid:%s", hwid)
 
-			exceeded := server.ac.TrackFailedAuth(ipKey) || server.ac.TrackFailedAuth(userKey)
-			if hwid != "" {
-				exceeded = exceeded || server.ac.TrackFailedAuth(hwidKey)
-			}
-
+			exceeded := server.ac.TrackFailedAuth(ipKey) || server.ac.TrackFailedAuth(hwidKey) || server.ac.TrackFailedAuth(userKey)
 			if exceeded {
-				if ip != "" {
-					_ = server.ac.IssueIPBan(ip, 1, "Excessive failed login attempts")
-				}
-				if hwid != "" {
-					_ = server.ac.IssueHWIDBan(hwid, 1, "Excessive failed login attempts")
-				}
+				_ = server.ac.IssueBan(accountID, 1, "Excessive failed login attempts", ip, hwid)
 			}
 		}
 

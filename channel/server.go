@@ -164,8 +164,8 @@ func (server *Server) Initialise(work chan func(), dbuser, dbpassword, dbaddress
 	// Initialize anti-cheat
 	server.ac = anticheat.New(common.DB, server.dispatch)
 	server.ac.StartCleanup()
-	server.ac.SetOnBan(func(accountID int32, reason string) {
-		server.KickAccount(accountID, "Banned: "+reason)
+	server.ac.SetOnBan(func(accountID int32) {
+		server.KickAccount(accountID)
 	})
 	log.Println("Anti-cheat initialized")
 
@@ -205,7 +205,7 @@ func (server *Server) SendLostWorldConnectionMessage() {
 	server.players.broadcast(packetMessageNotice("Cannot connect to world server, any action from the point until the countdown disappears won't be processed"))
 }
 
-func (server *Server) KickAccount(accountID int32, message string) {
+func (server *Server) KickAccount(accountID int32) {
 	if server == nil {
 		return
 	}
@@ -217,9 +217,6 @@ func (server *Server) KickAccount(accountID int32, message string) {
 			}
 			if plr.Conn.GetAccountID() != accountID {
 				return
-			}
-			if message != "" {
-				plr.Send(packetMessageNotice(message))
 			}
 			plr.Kick()
 		})

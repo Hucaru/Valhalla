@@ -27,63 +27,61 @@ type CalcHitResult struct {
 	IsValid      bool
 }
 
-type DamageRngBuffer struct {
-	raw [constant.DamageRngBufferSize]uint32
-}
+type DamageRngBuffer [constant.DamageRngBufferSize]uint32
 
 func NewDamageRngBuffer(rng *rand.Rand) *DamageRngBuffer {
 	b := &DamageRngBuffer{}
 	if rng == nil {
 		mid := uint32(^uint32(0) / 2)
 		for i := 0; i < constant.DamageRngBufferSize; i++ {
-			b.raw[i] = mid
+			(*b)[i] = mid
 		}
 		return b
 	}
 
 	for i := 0; i < constant.DamageRngBufferSize; i++ {
-		b.raw[i] = rng.Uint32()
+		(*b)[i] = rng.Uint32()
 	}
 	return b
 }
 
 func (b *DamageRngBuffer) GetAllRaw() [constant.DamageRngBufferSize]uint32 {
-	return b.raw
+	return *b
 }
 
 func (b *DamageRngBuffer) GetRaw(index int) uint32 {
 	if index < 0 {
 		index = -index
 	}
-	return b.raw[index%constant.DamageRngBufferSize]
+	return (*b)[index%constant.DamageRngBufferSize]
 }
 
 func (b *DamageRngBuffer) AccuracyRaw(hitIndex int, stepsPerHit int) uint32 {
 	if stepsPerHit <= 0 {
 		stepsPerHit = 3
 	}
-	return b.raw[(hitIndex*stepsPerHit)%constant.DamageRngBufferSize]
+	return (*b)[(hitIndex*stepsPerHit)%constant.DamageRngBufferSize]
 }
 
 func (b *DamageRngBuffer) DamageRaw(hitIndex int, stepsPerHit int) uint32 {
 	if stepsPerHit <= 0 {
 		stepsPerHit = 3
 	}
-	return b.raw[(hitIndex*stepsPerHit+1)%constant.DamageRngBufferSize]
+	return (*b)[(hitIndex*stepsPerHit+1)%constant.DamageRngBufferSize]
 }
 
 func (b *DamageRngBuffer) DefenseRaw(hitIndex int, stepsPerHit int) uint32 {
 	if stepsPerHit <= 0 {
 		stepsPerHit = 3
 	}
-	return b.raw[(hitIndex*stepsPerHit+2)%constant.DamageRngBufferSize]
+	return (*b)[(hitIndex*stepsPerHit+2)%constant.DamageRngBufferSize]
 }
 
 func (b *DamageRngBuffer) CriticalRaw(hitIndex int, stepsPerHit int) uint32 {
 	if stepsPerHit <= 0 {
 		stepsPerHit = 4
 	}
-	return b.raw[(hitIndex*stepsPerHit+3)%constant.DamageRngBufferSize]
+	return (*b)[(hitIndex*stepsPerHit+3)%constant.DamageRngBufferSize]
 }
 
 func NormalizeDamageRng(raw uint32) float64 {

@@ -1752,31 +1752,31 @@ func (server *Server) gmCommand(conn mnet.Client, msg string) {
 
 	case "unban":
 		if len(command) < 2 {
-			conn.Send(packetMessageRedText("/unban <accountID>"))
+			conn.Send(packetMessageRedText("/unban <player>"))
 			return
 		}
-		accountID, err := strconv.Atoi(command[1])
-		if err != nil {
-			conn.Send(packetMessageRedText("Invalid account ID"))
+		name := command[1]
+		if name == "" {
+			conn.Send(packetMessageRedText("player name was not provided"))
 			return
 		}
 		if server.ac != nil {
-			server.ac.Unban(int32(accountID))
-			conn.Send(packetMessageRedText(fmt.Sprintf("Unbanned account %d", accountID)))
+			server.ac.Unban(name)
+			conn.Send(packetMessageRedText(fmt.Sprintf("Unbanned player %s", name)))
 		}
 
 	case "banhistory":
 		if len(command) < 2 {
-			conn.Send(packetMessageRedText("/banhistory <accountID>"))
+			conn.Send(packetMessageRedText("/banhistory <player>"))
 			return
 		}
-		accountID, err := strconv.Atoi(command[1])
-		if err != nil {
-			conn.Send(packetMessageRedText("Invalid account ID"))
+		name := command[1]
+		if name == "" {
+			conn.Send(packetMessageRedText("player name was not provided"))
 			return
 		}
 		if server.ac != nil {
-			history, _ := server.ac.GetBanHistory(int32(accountID), 10)
+			history, _ := server.ac.GetBanHistory(name, 10)
 			if len(history) == 0 {
 				conn.Send(packetMessageRedText("No ban history"))
 			} else {
