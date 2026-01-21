@@ -1755,7 +1755,6 @@ func (d *Player) Kick() {
 		return
 	}
 
-	d.Send(packetChangeChannel([]byte{127, 0, 0, 1}, 0))
 	_ = d.Conn.Close()
 }
 
