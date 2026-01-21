@@ -74,11 +74,12 @@ func (server *Server) handleLoginRequest(conn mnet.Client, reader mpacket.Reader
 	var isLogedIn bool
 	var isBanned int
 	var isLocked int
+	var lastHwid string
 	var adminLevel int
 	var eula byte
 
-	err := common.DB.QueryRow("SELECT accountID, username, password, gender, isLogedIn, isBanned, isLocked, adminLevel, eula FROM accounts WHERE username=?", username).
-		Scan(&accountID, &user, &databasePassword, &gender, &isLogedIn, &isBanned, &isLocked, &adminLevel, &eula)
+	err := common.DB.QueryRow("SELECT accountID, username, password, gender, isLogedIn, isBanned, isLocked, hwid, adminLevel, eula FROM accounts WHERE username=?", username).
+		Scan(&accountID, &user, &databasePassword, &gender, &isLogedIn, &isBanned, &isLocked, &lastHwid, &adminLevel, &eula)
 
 	result := constant.LoginResultSuccess
 
@@ -127,7 +128,7 @@ func (server *Server) handleLoginRequest(conn mnet.Client, reader mpacket.Reader
 			hwidKey := fmt.Sprintf("hwid:%s", hwid)
 
 			exceeded := server.ac.TrackFailedAuth(ipKey) || server.ac.TrackFailedAuth(hwidKey) || server.ac.TrackFailedAuth(userKey)
-			if exceeded {
+			if exceeded && strings.Compare(hwid, lastHwid) != 0 {
 				// Lock Account
 				err := server.ac.LockAccount(accountID)
 				if err != nil {
