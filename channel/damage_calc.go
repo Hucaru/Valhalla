@@ -4,7 +4,6 @@ import (
 	"log"
 	"math"
 	"math/rand"
-	"time"
 
 	"github.com/Hucaru/Valhalla/constant"
 	"github.com/Hucaru/Valhalla/constant/skill"
@@ -28,36 +27,67 @@ type CalcHitResult struct {
 	IsValid      bool
 }
 
-type Roller struct {
-	rollIndex int
-	rolls     []uint32
+type DamageRngBuffer struct {
+	raw [constant.DamageRngBufferSize]uint32
 }
 
-func NewRoller(randomizer *rand.Rand, numRolls int) *Roller {
-	if randomizer == nil {
-		randomizer = rand.New(rand.NewSource(time.Now().UTC().UnixNano()))
+func NewDamageRngBuffer(rng *rand.Rand) *DamageRngBuffer {
+	b := &DamageRngBuffer{}
+	if rng == nil {
+		mid := uint32(^uint32(0) / 2)
+		for i := 0; i < constant.DamageRngBufferSize; i++ {
+			b.raw[i] = mid
+		}
+		return b
 	}
 
-	rolls := make([]uint32, numRolls)
-	for i := 0; i < numRolls; i++ {
-		rolls[i] = randomizer.Uint32()
+	for i := 0; i < constant.DamageRngBufferSize; i++ {
+		b.raw[i] = rng.Uint32()
 	}
-	return &Roller{
-		rollIndex: 0,
-		rolls:     rolls,
-	}
+	return b
 }
 
-func (r *Roller) Roll(modifier float64) float64 {
-	if r == nil || len(r.rolls) == 0 {
-		return 0.5 // Return middle of the typical 0-1 range
-	}
+func (b *DamageRngBuffer) GetAllRaw() [constant.DamageRngBufferSize]uint32 {
+	return b.raw
+}
 
-	idx := r.rollIndex % len(r.rolls)
-	r.rollIndex++
-	roll := r.rolls[idx]
-	rollValue := float64(roll%10000000) * modifier
-	return rollValue
+func (b *DamageRngBuffer) GetRaw(index int) uint32 {
+	if index < 0 {
+		index = -index
+	}
+	return b.raw[index%constant.DamageRngBufferSize]
+}
+
+func (b *DamageRngBuffer) AccuracyRaw(hitIndex int, stepsPerHit int) uint32 {
+	if stepsPerHit <= 0 {
+		stepsPerHit = 3
+	}
+	return b.raw[(hitIndex*stepsPerHit)%constant.DamageRngBufferSize]
+}
+
+func (b *DamageRngBuffer) DamageRaw(hitIndex int, stepsPerHit int) uint32 {
+	if stepsPerHit <= 0 {
+		stepsPerHit = 3
+	}
+	return b.raw[(hitIndex*stepsPerHit+1)%constant.DamageRngBufferSize]
+}
+
+func (b *DamageRngBuffer) DefenseRaw(hitIndex int, stepsPerHit int) uint32 {
+	if stepsPerHit <= 0 {
+		stepsPerHit = 3
+	}
+	return b.raw[(hitIndex*stepsPerHit+2)%constant.DamageRngBufferSize]
+}
+
+func (b *DamageRngBuffer) CriticalRaw(hitIndex int, stepsPerHit int) uint32 {
+	if stepsPerHit <= 0 {
+		stepsPerHit = 4
+	}
+	return b.raw[(hitIndex*stepsPerHit+3)%constant.DamageRngBufferSize]
+}
+
+func NormalizeDamageRng(raw uint32) float64 {
+	return float64(raw%constant.DamageRngModulo) * constant.DamageRngNormalize
 }
 
 type ElementAmpData struct {
@@ -136,7 +166,8 @@ func (calc *DamageCalculator) ValidateAttack() [][]CalcHitResult {
 			continue
 		}
 
-		roller := NewRoller(calc.player.rng, constant.DamageRollsPerTarget)
+		rngBuf := NewDamageRngBuffer(calc.player.rng)
+
 		ampData := calc.GetElementAmplification()
 		targetAccuracy := calc.GetTargetAccuracy(&mob)
 
@@ -145,7 +176,7 @@ func (calc *DamageCalculator) ValidateAttack() [][]CalcHitResult {
 			results[targetIdx][hitIdx] = calc.CalculateHit(
 				&mob,
 				info,
-				roller,
+				rngBuf,
 				ampData,
 				targetAccuracy,
 				hitIdx,
@@ -160,7 +191,7 @@ func (calc *DamageCalculator) ValidateAttack() [][]CalcHitResult {
 func (calc *DamageCalculator) CalculateHit(
 	mob *monster,
 	info *attackInfo,
-	roller *Roller,
+	rngBuf *DamageRngBuffer,
 	ampData *ElementAmpData,
 	targetAccuracy float64,
 	hitIdx int,
@@ -171,7 +202,7 @@ func (calc *DamageCalculator) CalculateHit(
 		IsValid:      false,
 	}
 
-	if calc.handleSpecialSkillDamage(&result, mob, roller) {
+	if calc.handleSpecialSkillDamage(&result, mob, rngBuf, hitIdx) {
 		return result
 	}
 	if calc.attackType == attackMagic && mob.invincible {
@@ -181,7 +212,7 @@ func (calc *DamageCalculator) CalculateHit(
 		return result
 	}
 
-	if calc.GetIsMiss(roller, targetAccuracy, mob) {
+	if calc.GetIsMiss(rngBuf, targetAccuracy, mob, hitIdx) {
 		result.IsMiss = true
 		result.MinDamage = 0
 		result.MaxDamage = 0
@@ -190,44 +221,59 @@ func (calc *DamageCalculator) CalculateHit(
 	}
 
 	minDmg, maxDmg := calc.CalculateBaseDamageRange(mob, hitIdx)
+	minDmg, maxDmg = calc.ApplySkillModifiers(minDmg, maxDmg, ampData, mob)
 
 	redMin, redMax := calc.CalculateDefenseReductionBounds(mob)
-	minDmg -= redMax
-	maxDmg -= redMin
+	defRoll := 0.5
+	if rngBuf != nil {
+		defRoll = NormalizeDamageRng(rngBuf.DefenseRaw(hitIdx, 3))
+	}
+	defReduction := redMin + (redMax-redMin)*defRoll
 
-	baseMinInt := math.Floor(minDmg)
-	baseMaxInt := math.Floor(maxDmg)
-	baseDmg := (minDmg + maxDmg) / 2.0
+	minDmg -= defReduction
+	maxDmg -= defReduction
+
+	if minDmg < 0 {
+		minDmg = 0
+	}
+	if maxDmg < 0 {
+		maxDmg = 0
+	}
+	if maxDmg < minDmg {
+		maxDmg = minDmg
+	}
 
 	multiplier := 1.0
 	if calc.skill != nil && calc.skill.Damage > 0 {
 		multiplier = float64(calc.skill.Damage) / 100.0
 	}
-
 	minDmg *= multiplier
 	maxDmg *= multiplier
-	baseDmg *= multiplier
 
-	result.IsCrit = calc.CheckCritical(roller)
+	result.IsCrit = calc.CheckCritical(rngBuf, hitIdx)
 	if result.IsCrit && calc.critSkill != nil {
 		critBonus := float64(calc.critSkill.Damage-100) / 100.0
-
-		minDmg += critBonus * baseMinInt
-		maxDmg += critBonus * baseMaxInt
-		baseDmg += critBonus * math.Floor((baseMinInt+baseMaxInt)/2.0)
+		minDmg += critBonus * math.Floor(minDmg)
+		maxDmg += critBonus * math.Floor(maxDmg)
 	}
 
-	afterMod := calc.GetAfterModifier(targetIdx, baseDmg)
+	afterMod := calc.GetAfterModifier(targetIdx, (minDmg+maxDmg)/2.0)
 	minDmg *= afterMod
 	maxDmg *= afterMod
-	baseDmg *= afterMod
+
+	dmgRoll := 0.5
+	if rngBuf != nil {
+		dmgRoll = NormalizeDamageRng(rngBuf.DamageRaw(hitIdx, 3))
+	}
+	expected := minDmg + (maxDmg-minDmg)*dmgRoll
 
 	minDmg = math.Floor(minDmg)
 	maxDmg = math.Floor(maxDmg)
+	expected = math.Floor(expected)
 
 	result.MinDamage = minDmg
 	result.MaxDamage = maxDmg
-	result.ExpectedDmg = baseDmg
+	result.ExpectedDmg = expected
 
 	tolerance := constant.DamageVarianceTolerance
 	toleranceMax := maxDmg * (1.0 + tolerance)
@@ -236,14 +282,20 @@ func (calc *DamageCalculator) CalculateHit(
 	result.IsValid = (clientDmgFloat <= toleranceMax)
 
 	if !result.IsValid {
-		log.Printf("Suspicious high damage from player %s (ID: %d): client=%d, max expected=%.0f (with tolerance), skill=%d",
-			calc.player.Name, calc.player.ID, result.ClientDamage, toleranceMax, calc.skillID)
+		log.Printf(
+			"Suspicious high damage from player %s (ID: %d): client=%d, max expected=%.0f (with tolerance), skill=%d",
+			calc.player.Name,
+			calc.player.ID,
+			result.ClientDamage,
+			toleranceMax,
+			calc.skillID,
+		)
 	}
 
 	return result
 }
 
-func (calc *DamageCalculator) handleSpecialSkillDamage(result *CalcHitResult, mob *monster, roller *Roller) bool {
+func (calc *DamageCalculator) handleSpecialSkillDamage(result *CalcHitResult, mob *monster, rngBuf *DamageRngBuffer, hitIdx int) bool {
 	str := float64(calc.player.str)
 	dex := float64(calc.player.dex)
 	luk := float64(calc.player.luk)
@@ -255,9 +307,13 @@ func (calc *DamageCalculator) handleSpecialSkillDamage(result *CalcHitResult, mo
 			result.MaxDamage = 10.0 * mesoCount
 			result.ExpectedDmg = 10.0 * mesoCount
 
-			if roller != nil && calc.skill.Prop > 0 {
-				roll := roller.Roll(constant.DamagePropModifier)
-				if roll < float64(calc.skill.Prop) {
+			if rngBuf != nil && calc.skill.Prop > 0 {
+				roll := NormalizeDamageRng(rngBuf.DamageRaw(hitIdx, 3))
+				prop := float64(calc.skill.Prop) / 100.0
+				if calc.skill.Prop > 100 {
+					prop = float64(calc.skill.Prop) / 1000.0
+				}
+				if roll < prop {
 					result.IsCrit = true
 					bonusDmg := float64(100 + calc.skill.X)
 					result.MinDamage *= bonusDmg * 0.01
@@ -521,7 +577,7 @@ func (calc *DamageCalculator) CalculateDefenseReductionBounds(mob *monster) (flo
 	return redMin, redMax
 }
 
-func (calc *DamageCalculator) CheckCritical(roller *Roller) bool {
+func (calc *DamageCalculator) CheckCritical(rngBuf *DamageRngBuffer, hitIdx int) bool {
 	if !calc.isRanged || calc.critSkill == nil {
 		return false
 	}
@@ -530,8 +586,14 @@ func (calc *DamageCalculator) CheckCritical(roller *Roller) bool {
 		return false
 	}
 
-	roll := roller.Roll(constant.DamagePropModifier)
-	return roll < float64(calc.critSkill.Prop)
+	roll := NormalizeDamageRng(rngBuf.CriticalRaw(hitIdx, 4))
+
+	prop := float64(calc.critSkill.Prop) / 100.0
+	if calc.critSkill.Prop > 100 {
+		prop = float64(calc.critSkill.Prop) / 1000.0
+	}
+
+	return roll < prop
 }
 
 func (calc *DamageCalculator) GetAfterModifier(targetIdx int, baseDmg float64) float64 {
@@ -560,8 +622,8 @@ func (calc *DamageCalculator) GetAfterModifier(targetIdx int, baseDmg float64) f
 	return 1.0
 }
 
-func (calc *DamageCalculator) GetIsMiss(roller *Roller, targetAccuracy float64, mob *monster) bool {
-	roll := roller.Roll(constant.DamageStatModifier)
+func (calc *DamageCalculator) GetIsMiss(rngBuf *DamageRngBuffer, targetAccuracy float64, mob *monster, hitIdx int) bool {
+	roll := NormalizeDamageRng(rngBuf.AccuracyRaw(hitIdx, 3))
 
 	var minModifier, maxModifier float64
 	if calc.attackType == attackMagic {

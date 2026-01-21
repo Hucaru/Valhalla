@@ -57,9 +57,9 @@ const (
 
 	DamageVarianceTolerance = 0.15 // 15% tolerance
 
-	// Roller modifiers for RNG
-	DamageStatModifier = 0.000000100000010000001
-	DamagePropModifier = 0.0000100000010000001
+	DamageRngBufferSize = 7
+	DamageRngModulo     = 10000000
+	DamageRngNormalize  = 1e-7
 )
 
 type WeaponType int
