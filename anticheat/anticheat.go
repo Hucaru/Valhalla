@@ -334,7 +334,7 @@ func (ac *AntiCheat) LogAttackSpeedViolation(accountID int32) bool {
 
 func (ac *AntiCheat) LogMovementViolation(accountID int32, distance int16, moveType byte) {
 	if distance > 1000 {
-		log.Println("Teleport hack detected - movement type:", moveType, fmt.Sprintf("Suspicious movement: %.0f pixels", distance), "accountID:", accountID)
+		log.Println("Teleport hack detected - movement type:", moveType, fmt.Sprintf("Suspicious movement: %d pixels", distance), "accountID:", accountID)
 		if ac.Track(accountID, "teleport", 3, 5*time.Minute) {
 			ac.IssueBan(accountID, 168, fmt.Sprintf("Teleport hack: %d pixels", distance), "", "")
 		}
