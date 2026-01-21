@@ -406,7 +406,7 @@ func (server Server) playerMovement(conn mnet.Client, reader mpacket.Reader) {
 		return
 	}
 
-	if server.ac != nil && len(moveData.frags) > 0 {
+	if server.ac != nil && len(moveData.frags) > 0 && finalData.mType != movementType.normalMovement {
 		firstFrag := moveData.frags[0]
 		lastFrag := moveData.frags[len(moveData.frags)-1]
 
@@ -416,7 +416,7 @@ func (server Server) playerMovement(conn mnet.Client, reader mpacket.Reader) {
 
 		if distance > 1000 {
 			reason := fmt.Sprintf("Suspicious movement: %.0f pixels", distance)
-			log.Println("Teleport hack detected:", reason, "accountID:", plr.accountID)
+			log.Println("Teleport hack detected - movement type:", finalData.mType, reason, "accountID:", plr.accountID)
 			if server.ac != nil {
 				server.ac.CheckMovement(plr.accountID, int16(distance))
 			}
