@@ -14,6 +14,7 @@ CREATE TABLE `accounts` (
   `isLogedIn` tinyint(4) NOT NULL DEFAULT '0',
   `adminLevel` tinyint(4) NOT NULL DEFAULT '0',
   `isBanned` int(11) NOT NULL DEFAULT '0',
+  `isLocked` int(11) NOT NULL DEFAULT '0',
   `gender` tinyint(4) NOT NULL DEFAULT '0',
   `dob` int(11) NOT NULL,
   `eula` tinyint(4) NOT NULL,

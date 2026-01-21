@@ -73,11 +73,12 @@ func (server *Server) handleLoginRequest(conn mnet.Client, reader mpacket.Reader
 	var gender byte
 	var isLogedIn bool
 	var isBanned int
+	var isLocked int
 	var adminLevel int
 	var eula byte
 
-	err := common.DB.QueryRow("SELECT accountID, username, password, gender, isLogedIn, isBanned, adminLevel, eula FROM accounts WHERE username=?", username).
-		Scan(&accountID, &user, &databasePassword, &gender, &isLogedIn, &isBanned, &adminLevel, &eula)
+	err := common.DB.QueryRow("SELECT accountID, username, password, gender, isLogedIn, isBanned, isLocked, adminLevel, eula FROM accounts WHERE username=?", username).
+		Scan(&accountID, &user, &databasePassword, &gender, &isLogedIn, &isBanned, &isLocked, &adminLevel, &eula)
 
 	result := constant.LoginResultSuccess
 
@@ -117,6 +118,8 @@ func (server *Server) handleLoginRequest(conn mnet.Client, reader mpacket.Reader
 		} else {
 			result = constant.LoginResultNotRegistered
 		}
+	} else if isLocked > 0 {
+		result = constant.LoginResultDeletedOrBlocked
 	} else if hashedPassword != databasePassword {
 		if server.ac != nil {
 			ipKey := fmt.Sprintf("ip:%s", ip)
@@ -125,7 +128,16 @@ func (server *Server) handleLoginRequest(conn mnet.Client, reader mpacket.Reader
 
 			exceeded := server.ac.TrackFailedAuth(ipKey) || server.ac.TrackFailedAuth(hwidKey) || server.ac.TrackFailedAuth(userKey)
 			if exceeded {
-				_ = server.ac.IssueBan(accountID, 1, "Excessive failed login attempts", ip, hwid)
+				// Lock Account
+				err := server.ac.LockAccount(accountID)
+				if err != nil {
+					log.Println(err)
+				}
+				// Ban IP & HWID globally
+				err = server.ac.IssueBan(0, 24, "Excessive failed login attempts", ip, hwid)
+				if err != nil {
+					log.Println(err)
+				}
 			}
 		}
 

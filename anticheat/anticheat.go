@@ -141,58 +141,45 @@ func (ac *AntiCheat) IssueBan(accountID int32, hours int, reason string, ip, hwi
 		banEnd = time.Now().Add(time.Duration(hours) * time.Hour)
 	}
 
+	var accountParam any
+	if accountID == 0 {
+		accountParam = nil
+	} else {
+		accountParam = accountID
+	}
+
 	_, err := ac.db.Exec(`INSERT INTO bans (accountID, reason, banEnd, ip, hwid) VALUES (?, ?, ?, ?, ?)`,
-		accountID, reason, banEnd, ip, hwid)
+		accountParam, reason, banEnd, ip, hwid)
 	if err != nil {
 		return err
 	}
 
-	_, err = ac.db.Exec(`UPDATE accounts SET isBanned = 1 WHERE accountID = ?`, accountID)
+	if accountID > 0 {
+		_, err = ac.db.Exec(`UPDATE accounts SET isBanned = 1 WHERE accountID = ?`, accountID)
 
-	if ac.onBan != nil {
-		ac.post(func() {
-			if ac.onBan != nil {
-				ac.onBan(accountID)
-			}
-		})
-	}
+		if ac.onBan != nil {
+			ac.post(func() {
+				if ac.onBan != nil {
+					ac.onBan(accountID)
+				}
+			})
+		}
 
-	if hours > 0 {
-		count, _ := ac.incrementTempBans(accountID)
-		if count >= 3 {
-			err := ac.IssueBan(accountID, 0, "Escalated: 3+ temporary bans", ip, hwid)
-			if err != nil {
-				return err
+		if hours > 0 {
+			count, _ := ac.incrementTempBans(accountID)
+			if count >= 3 {
+				err := ac.IssueBan(accountID, 0, "Escalated: 3+ temporary bans", ip, hwid)
+				if err != nil {
+					return err
+				}
 			}
 		}
 	}
-
 	return err
 }
 
-// IssueIPBan creates a temporary ban (hours=0 means permanent) for an IP.
-func (ac *AntiCheat) IssueIPBan(ip string, hours int, reason string) error {
-	var banEnd time.Time
-	if hours > 0 {
-		banEnd = time.Now().Add(time.Duration(hours) * time.Hour)
-	}
-
-	// accountID is intentionally NULL for IP-only bans
-	_, err := ac.db.Exec(`INSERT INTO bans (accountID, reason, banEnd, ip, hwid) VALUES (?, ?, ?, ?, ?)`,
-		nil, reason, banEnd, ip, "")
-	return err
-}
-
-// IssueHWIDBan creates a temporary ban (hours=0 means permanent) for an HWID.
-func (ac *AntiCheat) IssueHWIDBan(hwid string, hours int, reason string) error {
-	var banEnd time.Time
-	if hours > 0 {
-		banEnd = time.Now().Add(time.Duration(hours) * time.Hour)
-	}
-
-	// accountID is intentionally NULL for HWID-only bans
-	_, err := ac.db.Exec(`INSERT INTO bans (accountID, reason, banEnd, ip, hwid) VALUES (?, ?, ?, ?, ?)`,
-		nil, reason, banEnd, "", hwid)
+func (ac *AntiCheat) LockAccount(accountID int32) error {
+	_, err := ac.db.Exec(`UPDATE accounts SET isLocked = 1 WHERE accountID = ?`, accountID)
 	return err
 }
 

@@ -26,4 +26,5 @@ CREATE TABLE IF NOT EXISTS `ban_escalation` (
 
 -- Add HWID to accounts table (after maplepoints)
 ALTER TABLE `accounts` ADD COLUMN `hwid` VARCHAR(20) DEFAULT NULL AFTER `maplepoints`;
+ALTER TABLE `accounts` ADD COLUMN `isLocked`  int(11) NOT NULL DEFAULT '0' AFTER `isBanned`;
 ALTER TABLE `accounts` ADD INDEX `idx_hwid` (`hwid`);
