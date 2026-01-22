@@ -493,13 +493,15 @@ func (server *Server) handleDeleteCharacter(conn mnet.Client, reader mpacket.Rea
 
 	if charCount != 1 {
 		if server.ac != nil {
-			err = server.ac.IssueBan(0, 24, "Excessive failed login attempts", conn.String(), conn.GetHWID())
+			err = server.ac.IssueBan(0, 24, "Attempted to delete character not associated with account", conn.String(), conn.GetHWID())
 			if err != nil {
 				log.Println(err)
 			}
 		}
-		hacking = true
-		conn.Send(packetLoginDeleteCharacter(charID, deleted, hacking))
+		err := conn.Close()
+		if err != nil {
+			log.Println(err)
+		}
 		return
 	}
 
@@ -532,7 +534,7 @@ func (server *Server) handleSelectCharacter(conn mnet.Client, reader mpacket.Rea
 	if err != nil {
 		log.Println(err)
 		if server.ac != nil {
-			err = server.ac.IssueBan(0, 24, "Excessive failed login attempts", conn.String(), conn.GetHWID())
+			err = server.ac.IssueBan(0, 24, "Attempted to select character not associated with account", conn.String(), conn.GetHWID())
 			if err != nil {
 				log.Println(err)
 			}
