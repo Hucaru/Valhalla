@@ -1,0 +1,347 @@
+package anticheat
+
+import (
+	"database/sql"
+	"fmt"
+	"log"
+	"time"
+)
+
+type AntiCheat struct {
+	violations map[string][]time.Time
+	failedAuth map[string][]time.Time
+	db         *sql.DB
+	dispatch   chan func()
+	onBan      func(accountID int32)
+}
+
+func New(db *sql.DB, dispatch chan func()) *AntiCheat {
+	return &AntiCheat{
+		violations: make(map[string][]time.Time),
+		failedAuth: make(map[string][]time.Time),
+		db:         db,
+		dispatch:   dispatch,
+	}
+}
+
+func (ac *AntiCheat) SetOnBan(fn func(accountID int32)) {
+	ac.onBan = fn
+}
+
+// post dispatches function to server's main loop
+func (ac *AntiCheat) post(fn func()) {
+	if ac.dispatch != nil {
+		select {
+		case ac.dispatch <- fn:
+			return
+		default:
+			fn()
+			return
+		}
+	}
+	fn()
+}
+
+// StartCleanup starts periodic cleanup of old violations/auth entries
+func (ac *AntiCheat) StartCleanup() {
+	ticker := time.NewTicker(5 * time.Minute)
+	go func() {
+		for range ticker.C {
+			ac.post(func() {
+				cutoff := time.Now().Add(-1 * time.Hour)
+
+				for k, timestamps := range ac.violations {
+					var keep []time.Time
+					for _, t := range timestamps {
+						if t.After(cutoff) {
+							keep = append(keep, t)
+						}
+					}
+					if len(keep) > 0 {
+						ac.violations[k] = keep
+					} else {
+						delete(ac.violations, k)
+					}
+				}
+
+				for k, timestamps := range ac.failedAuth {
+					var keep []time.Time
+					for _, t := range timestamps {
+						if t.After(cutoff) {
+							keep = append(keep, t)
+						}
+					}
+					if len(keep) > 0 {
+						ac.failedAuth[k] = keep
+					} else {
+						delete(ac.failedAuth, k)
+					}
+				}
+			})
+		}
+	}()
+}
+
+// Track a violation - returns true if threshold exceeded and player should be banned
+func (ac *AntiCheat) Track(accountID int32, violationType string, threshold int, window time.Duration) bool {
+	key := fmt.Sprintf("%d:%s", accountID, violationType)
+	exceeded := false
+
+	ac.post(func() {
+		now := time.Now()
+		cutoff := now.Add(-window)
+
+		timestamps := []time.Time{now}
+		for _, t := range ac.violations[key] {
+			if t.After(cutoff) {
+				timestamps = append(timestamps, t)
+			}
+		}
+		ac.violations[key] = timestamps
+		exceeded = len(timestamps) >= threshold
+	})
+
+	return exceeded
+}
+
+// Track failed auth attempt - returns true if should ban
+func (ac *AntiCheat) TrackFailedAuth(identifier string) bool {
+	shouldBan := false
+
+	ac.post(func() {
+		now := time.Now()
+		cutoff := now.Add(-30 * time.Minute)
+
+		timestamps := []time.Time{now}
+		for _, t := range ac.failedAuth[identifier] {
+			if t.After(cutoff) {
+				timestamps = append(timestamps, t)
+			}
+		}
+		ac.failedAuth[identifier] = timestamps
+		shouldBan = len(timestamps) >= 10
+	})
+
+	return shouldBan
+}
+
+// Clear auth attempts on successful login
+func (ac *AntiCheat) ClearAuth(identifiers ...string) {
+	ac.post(func() {
+		for _, id := range identifiers {
+			delete(ac.failedAuth, id)
+		}
+	})
+}
+
+// IssueBan creates a temporary ban (hours=0 means permanent)
+func (ac *AntiCheat) IssueBan(accountID int32, hours int, reason string, ip, hwid string) error {
+	var banEnd time.Time
+	if hours > 0 {
+		banEnd = time.Now().Add(time.Duration(hours) * time.Hour)
+	}
+
+	var accountParam any
+	if accountID == 0 {
+		accountParam = nil
+	} else {
+		accountParam = accountID
+	}
+
+	_, err := ac.db.Exec(`INSERT INTO bans (accountID, reason, banEnd, ip, hwid) VALUES (?, ?, ?, ?, ?)`,
+		accountParam, reason, banEnd, ip, hwid)
+	if err != nil {
+		return err
+	}
+
+	if accountID > 0 {
+		_, err = ac.db.Exec(`UPDATE accounts SET isBanned = 1 WHERE accountID = ?`, accountID)
+
+		if ac.onBan != nil {
+			ac.post(func() {
+				if ac.onBan != nil {
+					ac.onBan(accountID)
+				}
+			})
+		}
+
+		if hours > 0 {
+			count, _ := ac.incrementTempBans(accountID)
+			if count >= 3 {
+				err := ac.IssueBan(accountID, 0, "Escalated: 3+ temporary bans", ip, hwid)
+				if err != nil {
+					return err
+				}
+			}
+		}
+	}
+	return err
+}
+
+func (ac *AntiCheat) LockAccount(accountID int32) error {
+	_, err := ac.db.Exec(`UPDATE accounts SET isLocked = 1 WHERE accountID = ?`, accountID)
+	return err
+}
+
+func (ac *AntiCheat) IsBanned(accountID int32, ip, hwid string) (bool, string, int64, error) {
+	var reason string
+	var banEndRaw []byte
+
+	err := ac.db.QueryRow(`
+SELECT reason, banEnd FROM bans
+WHERE (accountID = ? OR ip = ? OR (hwid = ? AND hwid != ''))
+AND (banEnd IS NULL OR banEnd > NOW())
+ORDER BY createdAt DESC
+LIMIT 1`, accountID, ip, hwid).Scan(&reason, &banEndRaw)
+
+	if err == sql.ErrNoRows {
+		return false, "", 0, nil
+	}
+
+	if err != nil {
+		log.Println(err)
+		return false, "", 0, err
+	}
+
+	if banEndRaw == nil {
+		return true, reason, 0, nil
+	}
+
+	s := string(banEndRaw)
+	layouts := []string{
+		"2006-01-02 15:04:05",
+		"2006-01-02 15:04:05.999999",
+		"2006-01-02 15:04:05.999999999",
+	}
+
+	var parsed time.Time
+	var parseErr error
+	for _, layout := range layouts {
+		parsed, parseErr = time.ParseInLocation(layout, s, time.Local)
+		if parseErr == nil {
+			return true, reason, parsed.UnixMilli()*10000 + 116444592000000000, nil
+		}
+	}
+
+	return true, reason, 0, fmt.Errorf("failed to parse banEnd %q: %w", s, parseErr)
+}
+
+func (ac *AntiCheat) accountIDByPlayerName(name string) (int32, error) {
+	var accountID int32
+	err := ac.db.QueryRow(
+		`SELECT accountID FROM characters WHERE name = ? LIMIT 1`,
+		name,
+	).Scan(&accountID)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return 0, fmt.Errorf("player %q not found", name)
+		}
+		return 0, err
+	}
+	return accountID, nil
+}
+
+// Unban removes all bans for an account (resolved by player name)
+func (ac *AntiCheat) Unban(name string) error {
+	accountID, err := ac.accountIDByPlayerName(name)
+	if err != nil {
+		return err
+	}
+
+	if _, err := ac.db.Exec(`DELETE FROM bans WHERE accountID = ?`, accountID); err != nil {
+		return err
+	}
+
+	_, err = ac.db.Exec(`UPDATE accounts SET isBanned = 0 WHERE accountID = ?`, accountID)
+	return err
+}
+
+// GetBanHistory returns recent ban records (resolved by player name)
+func (ac *AntiCheat) GetBanHistory(name string, limit int) ([]string, error) {
+	accountID, err := ac.accountIDByPlayerName(name)
+	if err != nil {
+		return nil, err
+	}
+
+	rows, err := ac.db.Query(`
+SELECT reason, banEnd, createdAt FROM bans
+WHERE accountID = ?
+ORDER BY createdAt DESC
+LIMIT ?`, accountID, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var history []string
+	for rows.Next() {
+		var reason string
+		var banEnd sql.NullTime
+		var createdAt time.Time
+		if err := rows.Scan(&reason, &banEnd, &createdAt); err != nil {
+			continue
+		}
+
+		durStr := "permanent"
+		if banEnd.Valid {
+			durStr = banEnd.Time.Format("2006-01-02 15:04")
+		}
+		history = append(history, fmt.Sprintf("%s: %s (until %s)",
+			createdAt.Format("2006-01-02 15:04"), reason, durStr))
+	}
+	return history, rows.Err()
+}
+
+// Internal: track temp ban count for escalation
+func (ac *AntiCheat) incrementTempBans(accountID int32) (int, error) {
+	_, err := ac.db.Exec(`
+		INSERT INTO ban_escalation (accountID, count) VALUES (?, 1)
+		ON DUPLICATE KEY UPDATE count = count + 1`, accountID)
+	if err != nil {
+		return 0, err
+	}
+
+	var count int
+	err = ac.db.QueryRow(`SELECT count FROM ban_escalation WHERE accountID = ?`, accountID).Scan(&count)
+	return count, err
+}
+
+// Detection helpers - track violations and auto-ban on threshold
+func (ac *AntiCheat) LogDamageViolation(accountID int32, damage, maxDamage int32) {
+	if damage > maxDamage*2 {
+		if ac.Track(accountID, "damage", 5, 5*time.Minute) {
+			ac.IssueBan(accountID, 168, fmt.Sprintf("Excessive damage: %d > %d", damage, maxDamage), "", "")
+		}
+	}
+}
+
+func (ac *AntiCheat) LogAttackSpeedViolation(accountID int32) bool {
+	return ac.Track(accountID, "attack_speed", 120, 1*time.Minute)
+}
+
+func (ac *AntiCheat) LogMovementViolation(accountID int32, distance int16, moveType byte) {
+	if distance > 1000 {
+		log.Println("Teleport hack detected - movement type:", moveType, fmt.Sprintf("Suspicious movement: %d pixels", distance), "accountID:", accountID)
+		if ac.Track(accountID, "teleport", 3, 5*time.Minute) {
+			ac.IssueBan(accountID, 168, fmt.Sprintf("Teleport hack: %d pixels", distance), "", "")
+		}
+	}
+}
+
+func (ac *AntiCheat) LogInvalidItemViolation(accountID int32) {
+	if ac.Track(accountID, "invalid_item", 5, 5*time.Minute) {
+		ac.IssueBan(accountID, 168, "Using items not in inventory", "", "")
+	}
+}
+
+func (ac *AntiCheat) LogInvalidTradeViolation(accountID int32, reason string) {
+	if ac.Track(accountID, "invalid_trade", 5, 5*time.Minute) {
+		ac.IssueBan(accountID, 168, "Invalid trade: "+reason, "", "")
+	}
+}
+
+func (ac *AntiCheat) LogSkillAbuseViolation(accountID int32, skillID int32) {
+	if ac.Track(accountID, "skill_abuse", 5, 5*time.Minute) {
+		ac.IssueBan(accountID, 168, fmt.Sprintf("Skill abuse: ID %d", skillID), "", "")
+	}
+}

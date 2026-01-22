@@ -23,6 +23,8 @@ type Client interface {
 	SetChannelID(byte)
 	GetAdminLevel() int
 	SetAdminLevel(int)
+	GetHWID() string
+	SetHWID(string)
 	GetCashShopStorage() interface{}
 	SetCashShopStorage(interface{})
 }
@@ -36,6 +38,7 @@ type client struct {
 	worldID    byte
 	channelID  byte
 	adminLevel int
+	hwid       string
 	csStorage  interface{}
 }
 
@@ -123,6 +126,14 @@ func (c *client) GetAdminLevel() int {
 
 func (c *client) SetAdminLevel(level int) {
 	c.adminLevel = level
+}
+
+func (c *client) GetHWID() string {
+	return c.hwid
+}
+
+func (c *client) SetHWID(hwid string) {
+	c.hwid = hwid
 }
 
 func (c *client) GetCashShopStorage() interface{} {

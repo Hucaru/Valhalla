@@ -3,6 +3,7 @@ package login
 import (
 	"log"
 
+	"github.com/Hucaru/Valhalla/anticheat"
 	"github.com/Hucaru/Valhalla/common"
 	"github.com/Hucaru/Valhalla/internal"
 	"github.com/Hucaru/Valhalla/mnet"
@@ -10,11 +11,12 @@ import (
 
 // Server state
 type Server struct {
-	migrating    map[mnet.Client]bool
+	migrating map[mnet.Client]bool
 	// db        *sql.DB
 	worlds       []internal.World
 	withPin      bool
 	autoRegister bool
+	ac           *anticheat.AntiCheat
 }
 
 // Initialise the server
@@ -34,6 +36,11 @@ func (server *Server) Initialise(dbuser, dbpassword, dbaddress, dbport, dbdataba
 	server.CleanupDB()
 
 	log.Println("Cleaned up the database")
+
+	// Initialize anti-cheat
+	server.ac = anticheat.New(common.DB, nil)
+	server.ac.StartCleanup()
+	log.Println("Anti-cheat initialized")
 }
 
 // CleanupDB sets all accounts isLogedIn to 0

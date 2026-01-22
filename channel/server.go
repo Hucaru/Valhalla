@@ -10,6 +10,7 @@ import (
 	_ "github.com/go-sql-driver/mysql" // don't need full import
 	"github.com/prometheus/client_golang/prometheus"
 
+	"github.com/Hucaru/Valhalla/anticheat"
 	"github.com/Hucaru/Valhalla/common"
 	"github.com/Hucaru/Valhalla/common/opcode"
 	"github.com/Hucaru/Valhalla/internal"
@@ -46,6 +47,7 @@ type Server struct {
 	guilds           map[int32]*guild
 	events           map[int32]*event
 	rates            rates
+	ac               *anticheat.AntiCheat
 }
 
 // Initialise the server
@@ -159,6 +161,14 @@ func (server *Server) Initialise(work chan func(), dbuser, dbpassword, dbaddress
 	server.guilds = make(map[int32]*guild)
 	server.events = make(map[int32]*event)
 
+	// Initialize anti-cheat
+	server.ac = anticheat.New(common.DB, server.dispatch)
+	server.ac.StartCleanup()
+	server.ac.SetOnBan(func(accountID int32) {
+		server.KickAccount(accountID)
+	})
+	log.Println("Anti-cheat initialized")
+
 	go scheduleBoats(server)
 }
 
@@ -193,6 +203,36 @@ func (server *Server) SendCountdownToPlayers(t int32) {
 // SendLostWorldConnectionMessage - Send message to players alerting them of whatever they do it won't be saved
 func (server *Server) SendLostWorldConnectionMessage() {
 	server.players.broadcast(packetMessageNotice("Cannot connect to world server, any action from the point until the countdown disappears won't be processed"))
+}
+
+func (server *Server) KickAccount(accountID int32) {
+	if server == nil {
+		return
+	}
+
+	do := func() {
+		server.players.observe(func(plr *Player) {
+			if plr == nil || plr.Conn == nil {
+				return
+			}
+			if plr.Conn.GetAccountID() != accountID {
+				return
+			}
+			plr.Kick()
+		})
+	}
+
+	if server.dispatch != nil {
+		select {
+		case server.dispatch <- do:
+			return
+		default:
+			do()
+			return
+		}
+	}
+
+	do()
 }
 
 // RegisterWithWorld server

@@ -550,9 +550,12 @@ func (v Item) bytes(shortSlot, storage bool) []byte {
 	p.WriteInt32(v.ID)
 
 	p.WriteBool(v.cash)
-	if v.cash {
+	if v.cash && !v.pet {
 		// Write the unique cash ID (not the SN) for cash shop tracking
 		p.WriteUint64(uint64(v.cashID))
+	} else if v.cash && v.pet {
+		// Pets use the SN for identification
+		p.WriteUint64(uint64(v.cashSN))
 	}
 
 	p.WriteInt64(v.expireTime)

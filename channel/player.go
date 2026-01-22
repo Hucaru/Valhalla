@@ -1750,6 +1750,14 @@ func (d Player) Logout() {
 
 }
 
+func (d *Player) Kick() {
+	if d == nil || d.Conn == nil {
+		return
+	}
+
+	_ = d.Conn.Close()
+}
+
 // Save data - this needs to be split to occur at relevant points in time
 func (d Player) save() error {
 	query := `UPDATE characters set skin=?, hair=?, face=?, level=?,

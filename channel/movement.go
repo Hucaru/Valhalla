@@ -185,8 +185,34 @@ func generateMovementBytes(moveData movement) mpacket.Packet {
 }
 
 func (data movement) validateChar(player *Player) bool {
-	// run through the movement data and make sure characters are not moving too fast (going to have to take into account gear and buffs "-_- )
-
+	// Check for suspicious movement (teleport hacks)
+	if len(data.frags) > 0 {
+		lastFrag := data.frags[len(data.frags)-1]
+		if lastFrag.posSet {
+			dx := lastFrag.x - data.origX
+			dy := lastFrag.y - data.origY
+			if dx < 0 {
+				dx = -dx
+			}
+			if dy < 0 {
+				dy = -dy
+			}
+			distance := dx
+			if dy > distance {
+				distance = dy
+			}
+			
+			// Suspicious immediate movement over 1000 pixels
+			if distance > 1000 {
+				for _, frag := range data.frags {
+					if frag.mType == movementType.immediate && frag.mType != movementType.teleport {
+						return false // Invalid immediate movement
+					}
+				}
+			}
+		}
+	}
+	
 	return true
 }
 

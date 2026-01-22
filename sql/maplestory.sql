@@ -14,12 +14,41 @@ CREATE TABLE `accounts` (
   `isLogedIn` tinyint(4) NOT NULL DEFAULT '0',
   `adminLevel` tinyint(4) NOT NULL DEFAULT '0',
   `isBanned` int(11) NOT NULL DEFAULT '0',
+  `isLocked` int(11) NOT NULL DEFAULT '0',
   `gender` tinyint(4) NOT NULL DEFAULT '0',
   `dob` int(11) NOT NULL,
   `eula` tinyint(4) NOT NULL,
   `nx` int(11) unsigned NOT NULL DEFAULT '0',
   `maplepoints` int(11) unsigned NOT NULL DEFAULT '0',
-  PRIMARY KEY (`accountID`)
+  `hwid` varchar(20) DEFAULT NULL,
+  PRIMARY KEY (`accountID`),
+  KEY `idx_hwid` (`hwid`)
+) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+
+
+DROP TABLE IF EXISTS `bans`;
+CREATE TABLE `bans` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `accountID` int(10) unsigned NULL,
+  `reason` text NOT NULL,
+  `banEnd` timestamp NULL DEFAULT NULL COMMENT 'NULL = permanent',
+  `ip` varchar(45) DEFAULT NULL,
+  `hwid` varchar(20) DEFAULT NULL,
+  `createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_account` (`accountID`,`banEnd`),
+  KEY `idx_ip` (`ip`,`banEnd`),
+  KEY `idx_hwid` (`hwid`,`banEnd`),
+  CONSTRAINT `bans_fk_account` FOREIGN KEY (`accountID`) REFERENCES `accounts` (`accountID`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+
+
+DROP TABLE IF EXISTS `ban_escalation`;
+CREATE TABLE `ban_escalation` (
+  `accountID` int(10) unsigned NOT NULL,
+  `count` int(11) NOT NULL DEFAULT '0',
+  PRIMARY KEY (`accountID`),
+  CONSTRAINT `ban_escalation_fk_account` FOREIGN KEY (`accountID`) REFERENCES `accounts` (`accountID`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 
 

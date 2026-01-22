@@ -3,6 +3,7 @@ package mnet
 import (
 	"math/rand"
 	"net"
+	"sync"
 	"time"
 
 	"github.com/Hucaru/Valhalla/mnet/crypt"
@@ -14,6 +15,7 @@ type MConn interface {
 	String() string
 	Send(mpacket.Packet)
 	Cleanup()
+	Close() error
 }
 
 func clientReader(conn net.Conn, eRecv chan *Event, mapleVersion int16, headerSize int, cryptRecv *crypt.Maple) {
@@ -77,6 +79,8 @@ type baseConn struct {
 	eRecv  chan *Event
 	reader func()
 	closed bool
+
+	closeOnce sync.Once
 
 	cryptSend *crypt.Maple
 	cryptRecv *crypt.Maple
@@ -144,6 +148,18 @@ func (bc *baseConn) String() string {
 }
 
 func (bc *baseConn) Cleanup() {
-	bc.closed = true
-	close(bc.eSend)
+	bc.closeOnce.Do(func() {
+		bc.closed = true
+		if bc.eSend != nil {
+			close(bc.eSend)
+		}
+	})
+}
+
+func (bc *baseConn) Close() error {
+	bc.Cleanup()
+	if bc.Conn != nil {
+		return bc.Conn.Close()
+	}
+	return nil
 }
