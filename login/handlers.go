@@ -134,11 +134,6 @@ func (server *Server) handleLoginRequest(conn mnet.Client, reader mpacket.Reader
 				if err != nil {
 					log.Println(err)
 				}
-				// Ban IP & HWID globally
-				err = server.ac.IssueBan(0, 24, "Excessive failed login attempts", ip, hwid)
-				if err != nil {
-					log.Println(err)
-				}
 			}
 		}
 
@@ -159,6 +154,7 @@ func (server *Server) handleLoginRequest(conn mnet.Client, reader mpacket.Reader
 		conn.SetGender(gender)
 		conn.SetAdminLevel(adminLevel)
 		conn.SetAccountID(accountID)
+		conn.SetHWID(hwid)
 
 		// Update HWID and clear failed attempts on successful login
 		if hwid != "" {
@@ -333,7 +329,8 @@ func (server *Server) handleNameCheck(conn mnet.Client, reader mpacket.Reader) {
 		Scan(&nameFound)
 
 	if err != nil {
-		panic(err)
+		log.Println(err)
+		return
 	}
 
 	conn.Send(packetLoginNameCheck(newCharName, nameFound))
@@ -362,7 +359,8 @@ func (server *Server) handleNewCharacter(conn mnet.Client, reader mpacket.Reader
 	err := common.DB.QueryRow("SELECT count(*) FROM characters where name=? and worldID=?", name, conn.GetWorldID()).Scan(&counter)
 
 	if err != nil {
-		panic(err)
+		log.Println(err)
+		return
 	}
 
 	allowedEyes := []int32{20000, 20001, 20002, 21000, 21001, 21002, 20100, 20401, 20402, 21700, 21201, 21002}
@@ -479,7 +477,8 @@ func (server *Server) handleDeleteCharacter(conn mnet.Client, reader mpacket.Rea
 	err = common.DB.QueryRow("SELECT count(*) FROM characters where accountID=? AND id=?", conn.GetAccountID(), charID).Scan(&charCount)
 
 	if err != nil {
-		panic(err)
+		log.Println(err)
+		return
 	}
 
 	hacking := false
@@ -516,9 +515,15 @@ func (server *Server) handleSelectCharacter(conn mnet.Client, reader mpacket.Rea
 	var charCount int
 
 	err := common.DB.QueryRow("SELECT count(*) FROM characters where accountID=? AND id=?", conn.GetAccountID(), charID).Scan(&charCount)
-
 	if err != nil {
-		panic(err)
+		log.Println(err)
+		if server.ac != nil {
+			err = server.ac.IssueBan(0, 24, "Excessive failed login attempts", conn.String(), conn.GetHWID())
+			if err != nil {
+				log.Println(err)
+			}
+		}
+		return
 	}
 
 	if charCount == 1 {
@@ -526,7 +531,8 @@ func (server *Server) handleSelectCharacter(conn mnet.Client, reader mpacket.Rea
 		_, err := common.DB.Exec("UPDATE characters SET migrationID=? WHERE id=?", conn.GetChannelID(), charID)
 
 		if err != nil {
-			panic(err)
+			log.Println(err)
+			return
 		}
 
 		server.migrating[conn] = true
@@ -539,7 +545,8 @@ func (server *Server) addCharacterItem(characterID int64, itemID int32, slot int
 	_, err := common.DB.Exec("INSERT INTO items (characterID, itemID, slotNumber, creatorName) VALUES (?, ?, ?, ?)", characterID, itemID, slot, creatorName)
 
 	if err != nil {
-		panic(err)
+		log.Println(err)
+		return
 	}
 }
 
