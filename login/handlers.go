@@ -2,7 +2,9 @@ package login
 
 import (
 	"crypto/sha512"
+	"database/sql"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"log"
 	"net"
@@ -74,7 +76,7 @@ func (server *Server) handleLoginRequest(conn mnet.Client, reader mpacket.Reader
 	var isLogedIn bool
 	var isBanned int
 	var isLocked int
-	var lastHwid string
+	var lastHwid sql.NullString
 	var adminLevel int
 	var eula byte
 
@@ -82,6 +84,11 @@ func (server *Server) handleLoginRequest(conn mnet.Client, reader mpacket.Reader
 		Scan(&accountID, &user, &databasePassword, &gender, &isLogedIn, &isBanned, &isLocked, &lastHwid, &adminLevel, &eula)
 
 	result := constant.LoginResultSuccess
+
+	lastHwidStr := ""
+	if lastHwid.Valid {
+		lastHwidStr = lastHwid.String
+	}
 
 	if server.ac != nil {
 		banned, _, endEpoch, err := server.ac.IsBanned(accountID, ip, hwid)
@@ -95,6 +102,7 @@ func (server *Server) handleLoginRequest(conn mnet.Client, reader mpacket.Reader
 	}
 
 	if err != nil {
+		log.Println(err)
 		if server.autoRegister {
 			res, insertErr := common.DB.Exec("INSERT INTO accounts (username, password, pin, isLogedIn, adminLevel, isBanned, gender, dob, eula, nx, maplepoints, hwid) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
 				username, hashedPassword, constant.AutoRegisterDefaultPIN, constant.AutoRegisterDefaultIsLoggedIn,
@@ -128,7 +136,7 @@ func (server *Server) handleLoginRequest(conn mnet.Client, reader mpacket.Reader
 			hwidKey := fmt.Sprintf("hwid:%s", hwid)
 
 			exceeded := server.ac.TrackFailedAuth(ipKey) || server.ac.TrackFailedAuth(hwidKey) || server.ac.TrackFailedAuth(userKey)
-			if exceeded && strings.Compare(hwid, lastHwid) != 0 {
+			if exceeded && strings.Compare(hwid, lastHwidStr) != 0 {
 				// Lock Account
 				err := server.ac.LockAccount(accountID)
 				if err != nil {
@@ -325,11 +333,12 @@ func (server *Server) handleNameCheck(conn mnet.Client, reader mpacket.Reader) {
 	newCharName := reader.ReadString(reader.ReadInt16())
 
 	var nameFound int
-	err := common.DB.QueryRow("SELECT count(*) name FROM characters WHERE BINARY name=?", newCharName).
+	err := common.DB.QueryRow("SELECT count(*) name FROM characters WHERE name=?", newCharName).
 		Scan(&nameFound)
-
-	if err != nil {
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		log.Println(err)
+		// Default to name found just in-case
+		conn.Send(packetLoginNameCheck(newCharName, 1))
 		return
 	}
 
@@ -357,8 +366,7 @@ func (server *Server) handleNewCharacter(conn mnet.Client, reader mpacket.Reader
 	var counter int
 
 	err := common.DB.QueryRow("SELECT count(*) FROM characters where name=? and worldID=?", name, conn.GetWorldID()).Scan(&counter)
-
-	if err != nil {
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		log.Println(err)
 		return
 	}
@@ -475,7 +483,6 @@ func (server *Server) handleDeleteCharacter(conn mnet.Client, reader mpacket.Rea
 
 	err := common.DB.QueryRow("SELECT dob FROM accounts where accountID=?", conn.GetAccountID()).Scan(&storedDob)
 	err = common.DB.QueryRow("SELECT count(*) FROM characters where accountID=? AND id=?", conn.GetAccountID(), charID).Scan(&charCount)
-
 	if err != nil {
 		log.Println(err)
 		return
@@ -485,8 +492,15 @@ func (server *Server) handleDeleteCharacter(conn mnet.Client, reader mpacket.Rea
 	deleted := false
 
 	if charCount != 1 {
-		log.Println(conn.GetAccountID(), "attempted to delete a character they do not own:", charID)
+		if server.ac != nil {
+			err = server.ac.IssueBan(0, 24, "Excessive failed login attempts", conn.String(), conn.GetHWID())
+			if err != nil {
+				log.Println(err)
+			}
+		}
 		hacking = true
+		conn.Send(packetLoginDeleteCharacter(charID, deleted, hacking))
+		return
 	}
 
 	if dob == storedDob {
