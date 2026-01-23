@@ -167,46 +167,48 @@ func (r *tradeRoom) completeTrade() {
 		}
 	}()
 
-	for _, it := range changes[0].itemsToGive {
-		err, gi := p1.GiveItem(it)
-		if err != nil {
-			log.Printf("Trade error: failed to give item %v to %s: %v", it.ID, p1.Name, err)
-			r.closeWithReason(constant.MiniRoomTradeInventoryFull, true)
-			return
+	for _, change := range changes {
+		for _, item := range change.itemsToGive {
+			err, insertedItem := change.plr.GiveItem(item)
+			if err != nil {
+				log.Printf("Trade error: failed to give item %v to %s: %v", item.ID, change.plr.Name, err)
+				r.closeWithReason(constant.MiniRoomTradeInventoryFull, true)
+				return
+			}
+
+			undo = append(undo, func() {
+				if _, err := p1.takeItem(insertedItem.ID, insertedItem.slotID, insertedItem.amount, insertedItem.invID); err != nil {
+					log.Printf("Trade rollback warning: failed to remove item %v from %s: %v", insertedItem.ID, p1.Name, err)
+				}
+			})
+		}
+	}
+
+	applyMesosTax := func(mesos int32) int32 {
+		remainingMesos := 1.0
+
+		if mesos < 50000 {
+			remainingMesos = 1
+		} else if mesos < 100000 {
+			remainingMesos = 0.995
+		} else if mesos < 1000000 {
+			remainingMesos = 0.99
+		} else if mesos < 5000000 {
+			remainingMesos = 0.98
+		} else if mesos < 10000000 {
+			remainingMesos = 0.97
+		} else {
+			remainingMesos = 0.96
 		}
 
-		undo = append(undo, func() {
-			if _, err := p1.takeItem(gi.ID, gi.slotID, gi.amount, gi.invID); err != nil {
-				log.Printf("Trade rollback warning: failed to remove item %v from %s: %v", gi.ID, p1.Name, err)
-			}
-		})
+		return int32(float64(mesos) * remainingMesos)
 	}
 
-	for _, it := range changes[1].itemsToGive {
-		err, gi := p2.GiveItem(it)
-		if err != nil {
-			log.Printf("Trade error: failed to give item %v to %s: %v", it.ID, p2.Name, err)
-			r.closeWithReason(constant.MiniRoomTradeInventoryFull, true)
-			return
+	for _, change := range changes {
+		if change.mesosChange > 0 {
+			mesosChange := applyMesosTax(change.mesosChange)
+			change.plr.giveMesos(mesosChange)
 		}
-
-		undo = append(undo, func() {
-			if _, err := p2.takeItem(gi.ID, gi.slotID, gi.amount, gi.invID); err != nil {
-				log.Printf("Trade rollback warning: failed to remove item %v from %s: %v", gi.ID, p2.Name, err)
-			}
-		})
-	}
-
-	if changes[0].mesosChange > 0 {
-		mc := changes[0].mesosChange
-		p1.giveMesos(mc)
-		undo = append(undo, func() { p1.giveMesos(-mc) })
-	}
-
-	if changes[1].mesosChange > 0 {
-		mc := changes[1].mesosChange
-		p2.giveMesos(mc)
-		undo = append(undo, func() { p2.giveMesos(-mc) })
 	}
 
 	r.finalized = true
