@@ -155,22 +155,15 @@ func (r *tradeRoom) completeTrade() {
 	}
 
 	var undo []func()
-	defer func() {
-		if r.finalized {
-			return
-		}
-		for i := len(undo) - 1; i >= 0; i-- {
-			func(fn func()) {
-				defer func() { _ = recover() }()
-				fn()
-			}(undo[i])
-		}
-	}()
 
 	for _, change := range changes {
 		for _, item := range change.itemsToGive {
 			err, insertedItem := change.plr.GiveItem(item)
 			if err != nil {
+				for _, fn := range undo {
+					fn()
+				}
+
 				log.Printf("Trade error: failed to give item %v to %s: %v", item.ID, change.plr.Name, err)
 				r.closeWithReason(constant.MiniRoomTradeInventoryFull, true)
 				return
