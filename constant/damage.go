@@ -60,6 +60,15 @@ const (
 	DamageRngBufferSize = 7
 	DamageRngModulo     = 10000000
 	DamageRngNormalize  = 1e-7
+
+	// Meso Explosion formula constants
+	MesoExplosionMaxDamage              = 999999999 // Max damage cap to prevent false bans
+	MesoExplosionLowMesoThreshold       = 1000.0
+	MesoExplosionLowMesoMultiplier      = 0.82
+	MesoExplosionLowMesoOffset          = 28.0
+	MesoExplosionLowMesoDivisor         = 5300.0
+	MesoExplosionHighMesoDivisorOffset  = 5250.0
+	MesoExplosionDamageVarianceTolerance = 1.5
 )
 
 type WeaponType int

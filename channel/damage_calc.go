@@ -200,7 +200,7 @@ func (calc *DamageCalculator) CalculateHit(
 		IsValid:      false,
 	}
 
-	if calc.handleSpecialSkillDamage(&result, mob, rngBuf, hitIdx) {
+	if calc.handleSpecialSkillDamage(&result, mob, info, rngBuf, hitIdx) {
 		return result
 	}
 	if calc.attackType == attackMagic && mob.invincible {
@@ -293,10 +293,72 @@ func (calc *DamageCalculator) CalculateHit(
 	return result
 }
 
-func (calc *DamageCalculator) handleSpecialSkillDamage(result *CalcHitResult, mob *monster, rngBuf *DamageRngBuffer, hitIdx int) bool {
+func (calc *DamageCalculator) handleSpecialSkillDamage(result *CalcHitResult, mob *monster, info *attackInfo, rngBuf *DamageRngBuffer, hitIdx int) bool {
 	str := float64(calc.player.str)
 	dex := float64(calc.player.dex)
 	luk := float64(calc.player.luk)
+
+	if skill.Skill(calc.skillID) == skill.MesoExplosion {
+		// Calculate Meso Explosion damage based on actual meso drop amounts
+		if calc.skill == nil {
+			result.MinDamage = 0
+			result.MaxDamage = 0
+			result.ExpectedDmg = 0
+			result.IsValid = (result.ClientDamage == 0)
+			return true
+		}
+		
+		// Get total mesos from the drops
+		totalMesos := int32(0)
+		if calc.player.inst != nil && len(info.mesoDropIDs) > 0 {
+			for _, dropID := range info.mesoDropIDs {
+				if drop, ok := calc.player.inst.dropPool.drops[dropID]; ok && drop.mesos > 0 {
+					// Check for integer overflow before adding
+					if totalMesos > math.MaxInt32-drop.mesos {
+						totalMesos = math.MaxInt32
+						break
+					}
+					totalMesos += drop.mesos
+				}
+			}
+		}
+		
+		// If no mesos found, damage should be 0
+		if totalMesos == 0 {
+			result.MinDamage = 0
+			result.MaxDamage = 0
+			result.ExpectedDmg = 0
+			result.IsValid = (result.ClientDamage == 0)
+			return true
+		}
+		
+		// Calculate damage using the correct formula
+		xValue := float64(calc.skill.X)
+		mesos := float64(totalMesos)
+		var ratio float64
+		
+		if mesos <= constant.MesoExplosionLowMesoThreshold {
+			ratio = (mesos*constant.MesoExplosionLowMesoMultiplier + constant.MesoExplosionLowMesoOffset) / constant.MesoExplosionLowMesoDivisor
+		} else {
+			ratio = mesos / (mesos + constant.MesoExplosionHighMesoDivisorOffset)
+		}
+		
+		// MIN: (50 * xValue) * 0.5 * ratio
+		// MAX: (50 * xValue) * ratio
+		minDamage := (50.0 * xValue) * 0.5 * ratio
+		maxDamage := (50.0 * xValue) * ratio
+		
+		result.MinDamage = minDamage
+		result.MaxDamage = maxDamage
+		result.ExpectedDmg = (minDamage + maxDamage) / 2.0
+		
+		// Validate with tolerance
+		clientDmg := float64(result.ClientDamage)
+		toleranceMax := maxDamage * constant.MesoExplosionDamageVarianceTolerance
+		result.IsValid = (clientDmg >= 0 && clientDmg <= toleranceMax)
+		
+		return true
+	}
 
 	if skill.Skill(calc.skillID) == skill.ShadowMeso {
 		if calc.skill != nil {

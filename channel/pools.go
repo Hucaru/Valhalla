@@ -328,6 +328,42 @@ func (pool *lifePool) mobDamaged(poolID int32, damager *Player, dmg ...int32) {
 				pool.mobs[i].setController(damager, true)
 				pool.activeMobCtrl[damager] = true
 				pool.mobs[i].giveDamage(damager, dmg...)
+				
+				// Pickpocket: Check if damager has Pickpocket buff active and roll for meso drop
+				if pickpocketLevel, hasPickpocket := damager.buffs.activeSkillLevels[int32(skill.Pickpocket)]; hasPickpocket && pickpocketLevel > 0 {
+					// Get skill data once outside the damage loop
+					skillData, err := nx.GetPlayerSkill(int32(skill.Pickpocket))
+					if err == nil && int(pickpocketLevel) <= len(skillData) {
+						skillInfo := skillData[pickpocketLevel-1]
+						// X value is the proc chance percentage
+						procChance := float64(skillInfo.X) / 100.0
+						// Y value is the meso percentage per damage
+						mesoPercentage := float64(skillInfo.Y) / 100.0
+						
+						// Roll for each hit to proc Pickpocket
+						for _, damage := range dmg {
+							if damage <= 0 {
+								continue
+							}
+							
+							// Roll for proc chance
+							if pool.rNumber.Float64() < procChance {
+								// Calculate meso amount based on damage dealt
+								mesoAmount := int32(float64(damage) * mesoPercentage)
+								if mesoAmount < 1 {
+									mesoAmount = 1
+								}
+								// Cap at reasonable amount
+								if mesoAmount > 1000 {
+									mesoAmount = 1000
+								}
+								
+								// Drop mesos at mob position (owner-only)
+								pool.dropPool.createDrop(dropSpawnNormal, dropTimeoutNonOwner, mesoAmount, pool.mobs[i].pos, true, damager.ID, 0)
+							}
+						}
+					}
+				}
 			} else {
 				pool.mobs[i].giveDamage(nil, dmg...)
 			}
