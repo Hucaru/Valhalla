@@ -2640,28 +2640,11 @@ func (server *Server) handleMesoExplosion(plr *Player, inst *fieldInstance, data
 	removedSet := make(map[int32]struct{}, 16)
 	removed := 0
 
-	// Get skill level for X value (multiplier)
-	skillLevel := data.skillLevel
-	var xValue float64 = 1000.0 // Default X value
-	if skillData, err := nx.GetPlayerSkill(int32(skill.MesoExplosion)); err == nil && skillLevel > 0 && int(skillLevel) <= len(skillData) {
-		xValue = float64(skillData[skillLevel-1].X)
-	}
-
-	for attackIdx, at := range data.attackInfo {
+	for _, at := range data.attackInfo {
 		found := false
-		totalMesos := int32(0)
-		
-		// Collect meso amounts and remove drops
 		for _, did := range at.mesoDropIDs {
 			if drop, ok := inst.dropPool.drops[did]; ok && drop.mesos > 0 {
 				if _, seen := removedSet[did]; !seen {
-					// Check for integer overflow before adding
-					if totalMesos > math.MaxInt32-drop.mesos {
-						// Cap at max value to prevent overflow
-						totalMesos = math.MaxInt32
-					} else {
-						totalMesos += drop.mesos
-					}
 					inst.dropPool.removeDrop(4, did)
 					removedSet[did] = struct{}{}
 					removed++
@@ -2670,41 +2653,8 @@ func (server *Server) handleMesoExplosion(plr *Player, inst *fieldInstance, data
 			}
 		}
 
-		// Calculate damage per meso drop using the correct formula
-		if at.spawnID != 0 && found && totalMesos > 0 {
-			mesos := float64(totalMesos)
-			var ratio float64
-			
-			// Apply the correct Meso Explosion formula
-			if mesos <= constant.MesoExplosionLowMesoThreshold {
-				ratio = (mesos*constant.MesoExplosionLowMesoMultiplier + constant.MesoExplosionLowMesoOffset) / constant.MesoExplosionLowMesoDivisor
-			} else {
-				ratio = mesos / (mesos + constant.MesoExplosionHighMesoDivisorOffset)
-			}
-			
-			// MIN: (50 * xValue) * 0.5 * ratio
-			// MAX: (50 * xValue) * ratio
-			// Use MAX for damage calculation
-			maxDamage := (50.0 * xValue) * ratio
-			
-			recalculatedDamages := make([]int32, len(at.damages))
-			
-			for hitIdx := range at.damages {
-				// Use client damage if within reasonable range, otherwise use calculated
-				clientDmg := float64(at.damages[hitIdx])
-				
-				// Allow some variance in client damage
-				if clientDmg > 0 && clientDmg <= maxDamage*constant.MesoExplosionDamageVarianceTolerance {
-					recalculatedDamages[hitIdx] = at.damages[hitIdx]
-				} else {
-					recalculatedDamages[hitIdx] = int32(maxDamage)
-				}
-			}
-			
-			inst.lifePool.mobDamaged(at.spawnID, plr, recalculatedDamages...)
-			
-			// Update the original attack data to reflect recalculated damages
-			data.attackInfo[attackIdx].damages = recalculatedDamages
+		if at.spawnID != 0 && len(at.damages) > 0 && found {
+			inst.lifePool.mobDamaged(at.spawnID, plr, at.damages...)
 		}
 	}
 }
