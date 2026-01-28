@@ -200,7 +200,7 @@ func (calc *DamageCalculator) CalculateHit(
 		IsValid:      false,
 	}
 
-	if calc.handleSpecialSkillDamage(&result, mob, rngBuf, hitIdx) {
+	if calc.handleSpecialSkillDamage(&result, mob, info, rngBuf, hitIdx) {
 		return result
 	}
 	if calc.attackType == attackMagic && mob.invincible {
@@ -293,77 +293,12 @@ func (calc *DamageCalculator) CalculateHit(
 	return result
 }
 
-func (calc *DamageCalculator) handleSpecialSkillDamage(result *CalcHitResult, mob *monster, rngBuf *DamageRngBuffer, hitIdx int) bool {
+func (calc *DamageCalculator) handleSpecialSkillDamage(result *CalcHitResult, mob *monster, info *attackInfo, rngBuf *DamageRngBuffer, hitIdx int) bool {
 	str := float64(calc.player.str)
 	dex := float64(calc.player.dex)
 	luk := float64(calc.player.luk)
 
-	if skill.Skill(calc.skillID) == skill.ShadowMeso {
-		if calc.skill != nil {
-			mesoCount := float64(calc.skill.X)
-			result.MinDamage = 10.0 * mesoCount
-			result.MaxDamage = 10.0 * mesoCount
-			result.ExpectedDmg = 10.0 * mesoCount
-
-			if rngBuf != nil && calc.skill.Prop > 0 {
-				roll := NormalizeDamageRng(rngBuf.DamageRaw(hitIdx, 3))
-				prop := float64(calc.skill.Prop) / 100.0
-				if calc.skill.Prop > 100 {
-					prop = float64(calc.skill.Prop) / 1000.0
-				}
-				if roll < prop {
-					result.IsCrit = true
-					bonusDmg := float64(100 + calc.skill.X)
-					result.MinDamage *= bonusDmg * 0.01
-					result.MaxDamage *= bonusDmg * 0.01
-					result.ExpectedDmg *= bonusDmg * 0.01
-				}
-			}
-
-			result.IsValid = float64(result.ClientDamage) <= result.MaxDamage*(1.0+constant.DamageVarianceTolerance)
-			return true
-		}
-	}
-
-	if skill.Skill(calc.skillID) == skill.ShadowWeb {
-		if calc.skill != nil && calc.skillLevel > 0 {
-			divisor := 50.0 - float64(calc.skillLevel)
-			if divisor <= 0 {
-				divisor = 1.0
-			}
-			dmg := float64(mob.maxHP) / divisor
-			result.MinDamage = dmg
-			result.MaxDamage = dmg
-			result.ExpectedDmg = dmg
-			result.IsValid = float64(result.ClientDamage) <= result.MaxDamage*(1.0+constant.DamageVarianceTolerance)
-			return true
-		}
-	}
-
-	if skill.Skill(calc.skillID) == skill.Drain {
-		basicAttack := float64(calc.watk)
-		result.MinDamage = (8.0*(str+luk) + dex*2.0) / 100.0 * basicAttack
-		result.MaxDamage = (18.5*(str+luk) + dex*2.0) / 100.0 * basicAttack
-		result.ExpectedDmg = (result.MinDamage + result.MaxDamage) / 2.0
-		result.IsValid = float64(result.ClientDamage) <= result.MaxDamage*(1.0+constant.DamageVarianceTolerance)
-		return true
-	}
-
-	if skill.Skill(calc.skillID) == skill.PoisonMyst {
-		if calc.skillLevel > 0 {
-			divisor := 70.0 - float64(calc.skillLevel)
-			if divisor <= 0 {
-				divisor = 1.0
-			}
-			dmg := float64(mob.maxHP) / divisor
-			result.MinDamage = dmg
-			result.MaxDamage = dmg
-			result.ExpectedDmg = dmg
-			result.IsValid = float64(result.ClientDamage) <= result.MaxDamage*(1.0+constant.DamageVarianceTolerance)
-			return true
-		}
-	}
-
+	// Summons are keyed off attack type, not skill id.
 	if calc.attackType == attackSummon {
 		attackRate := float64(100)
 		if calc.skill != nil {
@@ -372,6 +307,137 @@ func (calc *DamageCalculator) handleSpecialSkillDamage(result *CalcHitResult, mo
 		result.MinDamage = (dex*2.5*0.7 + str) * attackRate / 100.0
 		result.MaxDamage = (dex*2.5 + str) * attackRate / 100.0
 		result.ExpectedDmg = (result.MinDamage + result.MaxDamage) / 2.0
+		result.IsValid = float64(result.ClientDamage) <= result.MaxDamage*(1.0+constant.DamageVarianceTolerance)
+		return true
+	}
+
+	switch skill.Skill(calc.skillID) {
+	case skill.MesoExplosion:
+		// Calculate Meso Explosion damage based on actual meso drop amounts
+		if calc.skill == nil {
+			result.MinDamage = 0
+			result.MaxDamage = 0
+			result.ExpectedDmg = 0
+			result.IsValid = (result.ClientDamage == 0)
+			return true
+		}
+
+		// Get total mesos from the drops
+		totalMesos := int32(0)
+		if calc.player.inst != nil && len(info.mesoDropIDs) > 0 {
+			for _, dropID := range info.mesoDropIDs {
+				if drop, ok := calc.player.inst.dropPool.drops[dropID]; ok && drop.mesos > 0 {
+					// Check for integer overflow before adding
+					if totalMesos > math.MaxInt32-drop.mesos {
+						totalMesos = math.MaxInt32
+						break
+					}
+					totalMesos += drop.mesos
+				}
+			}
+		}
+
+		// If no mesos found, damage should be 0
+		if totalMesos == 0 {
+			result.MinDamage = 0
+			result.MaxDamage = 0
+			result.ExpectedDmg = 0
+			result.IsValid = (result.ClientDamage == 0)
+			return true
+		}
+
+		// Calculate damage using the correct formula
+		xValue := float64(calc.skill.X)
+		mesos := float64(totalMesos)
+		var ratio float64
+
+		if mesos <= constant.MesoExplosionLowMesoThreshold {
+			ratio = (mesos*constant.MesoExplosionLowMesoMultiplier + constant.MesoExplosionLowMesoOffset) / constant.MesoExplosionLowMesoDivisor
+		} else {
+			ratio = mesos / (mesos + constant.MesoExplosionHighMesoDivisorOffset)
+		}
+
+		// MIN: (50 * xValue) * 0.5 * ratio
+		// MAX: (50 * xValue) * ratio
+		minDamage := (50.0 * xValue) * 0.5 * ratio
+		maxDamage := (50.0 * xValue) * ratio
+
+		result.MinDamage = minDamage
+		result.MaxDamage = maxDamage
+		result.ExpectedDmg = (minDamage + maxDamage) / 2.0
+
+		// Validate with tolerance
+		clientDmg := float64(result.ClientDamage)
+		toleranceMax := maxDamage * constant.MesoExplosionDamageVarianceTolerance
+		result.IsValid = (clientDmg >= 0 && clientDmg <= toleranceMax)
+
+		return true
+
+	case skill.ShadowMeso:
+		if calc.skill == nil {
+			return true
+		}
+
+		mesoCount := float64(calc.skill.X)
+		result.MinDamage = 10.0 * mesoCount
+		result.MaxDamage = 10.0 * mesoCount
+		result.ExpectedDmg = 10.0 * mesoCount
+
+		if rngBuf != nil && calc.skill.Prop > 0 {
+			roll := NormalizeDamageRng(rngBuf.DamageRaw(hitIdx, 3))
+			prop := float64(calc.skill.Prop) / 100.0
+			if calc.skill.Prop > 100 {
+				prop = float64(calc.skill.Prop) / 1000.0
+			}
+			if roll < prop {
+				result.IsCrit = true
+				bonusDmg := float64(100 + calc.skill.X)
+				result.MinDamage *= bonusDmg * 0.01
+				result.MaxDamage *= bonusDmg * 0.01
+				result.ExpectedDmg *= bonusDmg * 0.01
+			}
+		}
+
+		result.IsValid = float64(result.ClientDamage) <= result.MaxDamage*(1.0+constant.DamageVarianceTolerance)
+		return true
+
+	case skill.ShadowWeb:
+		if calc.skill == nil || calc.skillLevel <= 0 {
+			return true
+		}
+
+		divisor := 50.0 - float64(calc.skillLevel)
+		if divisor <= 0 {
+			divisor = 1.0
+		}
+		dmg := float64(mob.maxHP) / divisor
+		result.MinDamage = dmg
+		result.MaxDamage = dmg
+		result.ExpectedDmg = dmg
+		result.IsValid = float64(result.ClientDamage) <= result.MaxDamage*(1.0+constant.DamageVarianceTolerance)
+		return true
+
+	case skill.Drain:
+		basicAttack := float64(calc.watk)
+		result.MinDamage = (8.0*(str+luk) + dex*2.0) / 100.0 * basicAttack
+		result.MaxDamage = (18.5*(str+luk) + dex*2.0) / 100.0 * basicAttack
+		result.ExpectedDmg = (result.MinDamage + result.MaxDamage) / 2.0
+		result.IsValid = float64(result.ClientDamage) <= result.MaxDamage*(1.0+constant.DamageVarianceTolerance)
+		return true
+
+	case skill.PoisonMyst:
+		if calc.skillLevel <= 0 {
+			return true
+		}
+
+		divisor := 70.0 - float64(calc.skillLevel)
+		if divisor <= 0 {
+			divisor = 1.0
+		}
+		dmg := float64(mob.maxHP) / divisor
+		result.MinDamage = dmg
+		result.MaxDamage = dmg
+		result.ExpectedDmg = dmg
 		result.IsValid = float64(result.ClientDamage) <= result.MaxDamage*(1.0+constant.DamageVarianceTolerance)
 		return true
 	}
