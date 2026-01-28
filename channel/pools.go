@@ -351,8 +351,7 @@ func (pool *lifePool) mobDamaged(poolID int32, damager *Player, dmg ...int32) {
 								mesoAmount = 5000
 							}
 
-							dropPos := pool.instance.calculateFinalDropPos(v.pos)
-							pool.dropPool.createDrop(dropSpawnNormal, dropTimeoutNonOwner, mesoAmount, dropPos, true, damager.ID, 0)
+							pool.dropPool.createDrop(dropSpawnNormal, dropTimeoutNonOwner, mesoAmount, v.pos, true, damager.ID, 0)
 						}
 					}
 				}
