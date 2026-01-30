@@ -45,6 +45,7 @@ const (
 	SendChannelTimer                   byte = 0x46
 	SendChannelMovingObj               byte = 0x47
 	SendChannelBoat                    byte = 0x48
+	SendChannelPlayerPartyHP           byte = 0x49
 	SendChannelCharacterEnterField     byte = 0x4E
 	SendChannelCharacterLeaveField     byte = 0x4F
 	SendChannelAllChatMsg              byte = 0x51

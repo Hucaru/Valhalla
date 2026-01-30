@@ -1071,10 +1071,12 @@ func (pool *dropPool) createDrop(spawnType byte, dropType byte, mesos int32, dro
 
 				d := drop
 				time.AfterFunc(5*time.Second, func() {
-					if _, ok := pool.drops[d.ID]; !ok {
-						return
+					pool.instance.dispatch <- func() {
+						if _, ok := pool.drops[d.ID]; !ok {
+							return
+						}
+						pool.instance.reactorPool.tryTriggerByDrop(d)
 					}
-					pool.instance.reactorPool.tryTriggerByDrop(d)
 				})
 			}
 		}

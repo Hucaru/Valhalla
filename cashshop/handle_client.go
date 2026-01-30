@@ -337,7 +337,7 @@ func (server *Server) handleCashShopOperation(conn mnet.Client, reader mpacket.R
 		}
 
 		for _, it := range itemsToGive {
-			if err, _ := plr.GiveItem(it); err != nil {
+			if _, err := plr.GiveItem(it); err != nil {
 				plr.Send(packetCashShopUpdateAmounts(plrNX, plrMaplePoints))
 				return
 			}
@@ -429,7 +429,7 @@ func (server *Server) handleCashShopOperation(conn mnet.Client, reader mpacket.R
 		}
 
 		item := *removedItem
-		err, givenItem := plr.GiveItem(item)
+		givenItem, err := plr.GiveItem(item)
 		if err != nil {
 			if _, restored := storage.addItem(item, item.GetCashSN()); !restored {
 				log.Println("CRITICAL: Restore to storage failed. Item may be lost. player:", plr.ID, "accountID:", conn.GetAccountID(), "itemID:", item.ID)
@@ -481,7 +481,7 @@ func (server *Server) handleCashShopOperation(conn mnet.Client, reader mpacket.R
 
 		slotIdx, added := storage.addItemWithCashID(takenItem, takenItem.GetCashSN(), takenItem.GetCashID())
 		if !added {
-			if err, _ := plr.GiveItem(takenItem); err != nil {
+			if _, err := plr.GiveItem(takenItem); err != nil {
 				log.Println("CRITICAL: Failed to return item to player after add failure:", err)
 			}
 			plr.Send(packetCashShopError(opcode.SendCashShopMoveStoLFailed, constant.CashShopErrorExceededNumberOfCashItems))

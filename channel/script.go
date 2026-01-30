@@ -260,7 +260,7 @@ func (ctrl *scriptPlayerWrapper) GiveItem(id int32, amount int16) bool {
 		return false
 	}
 
-	if err, _ = ctrl.plr.GiveItem(item); err != nil {
+	if _, err = ctrl.plr.GiveItem(item); err != nil {
 		return false
 	}
 
@@ -602,7 +602,7 @@ func (ctrl *scriptPlayerWrapper) InventoryExchange(itemSource int32, srcCount in
 	if err != nil {
 		return false
 	}
-	if err, _ = ctrl.plr.GiveItem(item); err != nil {
+	if _, err = ctrl.plr.GiveItem(item); err != nil {
 		return false
 	}
 	return true
