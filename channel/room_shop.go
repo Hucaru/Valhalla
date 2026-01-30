@@ -338,10 +338,6 @@ func (r *shopRoom) buyItem(slot byte, quantity int16, buyerID int32) (byte, bool
 	purchased.dbID = 0
 	purchased.slotID = 0
 
-	// if !buyer.canReceiveItems([]Item{purchased}) {
-	// 	return constant.PlayerShopInventoryFull, false
-	// }
-
 	if _, err := buyer.GiveItem(purchased); err != nil {
 		return constant.PlayerShopInventoryFull, false
 	}
