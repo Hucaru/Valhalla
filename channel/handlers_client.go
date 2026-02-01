@@ -1807,7 +1807,7 @@ func (server Server) playerPickupItem(conn mnet.Client, reader mpacket.Reader) {
 		amount := int32(plr.inst.dropPool.rates.mesos * float32(drop.mesos))
 		plr.giveMesos(amount)
 	} else {
-		err, _ = plr.GiveItem(drop.item)
+		_, err = plr.GiveItem(drop.item)
 		if err != nil {
 			plr.Send(packetInventoryFull())
 			plr.Send(packetInventoryDontTake())
@@ -3128,7 +3128,7 @@ func (server *Server) npcShop(conn mnet.Client, reader mpacket.Reader) {
 			plr.Send(packetNpcShopResult(shopBuyUnknown))
 			return
 		}
-		if err, _ := plr.GiveItem(newItem); err != nil {
+		if _, err := plr.GiveItem(newItem); err != nil {
 			plr.Send(packetNpcShopResult(shopBuyUnknown))
 			return
 		}
@@ -4836,7 +4836,7 @@ func (server *Server) playerUseStorage(conn mnet.Client, reader mpacket.Reader) 
 		out.dbID = 0
 		out.slotID = 0
 
-		if err, _ := plr.GiveItem(out); err != nil {
+		if _, err := plr.GiveItem(out); err != nil {
 			plr.Send(packetNpcStorageResult(storageInvFullOrNot))
 			return
 		}
@@ -5245,7 +5245,7 @@ func (server *Server) playerPetLoot(conn mnet.Client, reader mpacket.Reader) {
 		amount := int32(plr.inst.dropPool.rates.mesos * float32(drop.mesos))
 		plr.giveMesos(amount)
 	} else {
-		err, _ = plr.GiveItem(drop.item)
+		_, err = plr.GiveItem(drop.item)
 		if err != nil {
 			plr.Send(packetInventoryFull())
 			plr.Send(packetInventoryDontTake())

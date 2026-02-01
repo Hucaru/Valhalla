@@ -548,7 +548,7 @@ func (cb *CharacterBuffs) AddItemBuff(meta nx.Item, sourceID int32) {
 	copy(m, maskBytes)
 	cb.itemMasks[sourceID] = m
 
-	cb.plr.RecalculateTotalStats()
+	cb.plr.recalculateTotalStats()
 
 	// Track authoritative expiry, schedule using Dispatch
 	if durationSec > 0 {
@@ -607,7 +607,7 @@ func (cb *CharacterBuffs) cureDebuffs(meta nx.Item) {
 		}
 	}
 
-	cb.plr.RecalculateTotalStats()
+	cb.plr.recalculateTotalStats()
 }
 
 func (cb *CharacterBuffs) cureAllDebuffs() {
@@ -644,7 +644,7 @@ func (cb *CharacterBuffs) cureAllDebuffs() {
 		}
 	}
 
-	cb.plr.RecalculateTotalStats()
+	cb.plr.recalculateTotalStats()
 }
 
 func (cb *CharacterBuffs) AddItemBuffFromCC(itemID int32, expiresAtMs int64) {
@@ -706,7 +706,7 @@ func (cb *CharacterBuffs) AddItemBuffFromCC(itemID int32, expiresAtMs int64) {
 	copy(m, maskBytes)
 	cb.itemMasks[sourceID] = m
 
-	cb.plr.RecalculateTotalStats()
+	cb.plr.recalculateTotalStats()
 
 	if expiresAtMs > 0 {
 		cb.expireAt[sourceID] = expiresAtMs
@@ -840,7 +840,7 @@ func (cb *CharacterBuffs) AddMobDebuff(skillID, level byte, durationSec int16) {
 		cb.activeSkillLevels[rValue] = level
 	}
 
-	cb.plr.RecalculateTotalStats()
+	cb.plr.recalculateTotalStats()
 }
 
 func (cb *CharacterBuffs) AddBuffFromCC(charId, skillID int32, expiresAtMs int64, level byte, foreign bool, delay int16) {
@@ -904,7 +904,7 @@ func (cb *CharacterBuffs) AddBuffFromCC(charId, skillID int32, expiresAtMs int64
 
 	}
 
-	cb.plr.RecalculateTotalStats()
+	cb.plr.recalculateTotalStats()
 }
 
 func (cb *CharacterBuffs) buildForeignBuffMaskAndValues(skillID int32, level byte, skillBits []int) ([]byte, []byte) {
@@ -1033,7 +1033,7 @@ func (cb *CharacterBuffs) AuditAndExpireStaleBuffs() {
 		cb.expireBuffNow(src)
 	}
 
-	cb.plr.RecalculateTotalStats()
+	cb.plr.recalculateTotalStats()
 }
 
 // Snapshot/Restore across CC/Login
