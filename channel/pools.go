@@ -692,7 +692,7 @@ func (pool *lifePool) attemptMobSpawn(poolReset bool) {
 
 	currentTime := time.Now()
 
-	if poolReset || currentTime.Sub(pool.lastMobSpawnTime).Milliseconds() >= 7000 {
+	if poolReset || currentTime.Sub(pool.lastMobSpawnTime).Milliseconds() >= 7560 {
 		mobCapacity := pool.mobCapMin
 
 		if len(pool.activeMobCtrl) > (mobCapacity / 2) {
