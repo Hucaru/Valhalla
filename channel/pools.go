@@ -327,6 +327,7 @@ func (pool *lifePool) mobDamaged(poolID int32, damager *Player, dmg ...int32) {
 				pool.mobs[i].removeController()
 				pool.mobs[i].setController(damager, true)
 				pool.activeMobCtrl[damager] = true
+				pool.mobs[i].giveDamage(damager, dmg...)
 
 				// Pickpocket: Check if damager has Pickpocket buff active and roll for meso drop
 				if pickpocketLevel, hasPickpocket := damager.buffs.activeSkillLevels[int32(skill.Pickpocket)]; hasPickpocket && pickpocketLevel > 0 {
@@ -355,7 +356,6 @@ func (pool *lifePool) mobDamaged(poolID int32, damager *Player, dmg ...int32) {
 						}
 					}
 				}
-				pool.mobs[i].giveDamage(damager, dmg...)
 			} else {
 				pool.mobs[i].giveDamage(nil, dmg...)
 			}
@@ -692,7 +692,7 @@ func (pool *lifePool) attemptMobSpawn(poolReset bool) {
 
 	currentTime := time.Now()
 
-	if poolReset || currentTime.Sub(pool.lastMobSpawnTime).Milliseconds() >= 7000 {
+	if poolReset || currentTime.Sub(pool.lastMobSpawnTime).Milliseconds() >= 7560 {
 		mobCapacity := pool.mobCapMin
 
 		if len(pool.activeMobCtrl) > (mobCapacity / 2) {
@@ -1099,10 +1099,12 @@ func (pool *dropPool) createDrop(spawnType byte, dropType byte, mesos int32, dro
 
 				d := drop
 				time.AfterFunc(5*time.Second, func() {
-					if _, ok := pool.drops[d.ID]; !ok {
-						return
+					pool.instance.dispatch <- func() {
+						if _, ok := pool.drops[d.ID]; !ok {
+							return
+						}
+						pool.instance.reactorPool.tryTriggerByDrop(d)
 					}
-					pool.instance.reactorPool.tryTriggerByDrop(d)
 				})
 			}
 		}

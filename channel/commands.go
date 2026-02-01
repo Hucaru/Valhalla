@@ -867,7 +867,7 @@ func (server *Server) gmCommand(conn mnet.Client, msg string) {
 		}
 
 		item.creatorName = player.Name
-		err, _ = player.GiveItem(item)
+		_, err = player.GiveItem(item)
 
 		if err != nil {
 			conn.Send(packetMessageRedText(err.Error()))
@@ -1057,7 +1057,7 @@ func (server *Server) gmCommand(conn mnet.Client, msg string) {
 			}
 
 			item.creatorName = player.Name
-			err, _ = player.GiveItem(item)
+			_, err = player.GiveItem(item)
 
 			if err != nil {
 				conn.Send(packetMessageRedText(err.Error()))
@@ -1075,7 +1075,7 @@ func (server *Server) gmCommand(conn mnet.Client, msg string) {
 			}
 
 			item.creatorName = player.Name
-			err, _ = player.GiveItem(item)
+			_, err = player.GiveItem(item)
 
 			if err != nil {
 				conn.Send(packetMessageRedText(err.Error()))
