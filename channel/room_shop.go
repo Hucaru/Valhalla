@@ -338,22 +338,16 @@ func (r *shopRoom) buyItem(slot byte, quantity int16, buyerID int32) (byte, bool
 	purchased.dbID = 0
 	purchased.slotID = 0
 
-	if !buyer.canReceiveItems([]Item{purchased}) {
-		return constant.PlayerShopInventoryFull, false
-	}
-
-	buyer.takeMesos(int32(totalCost))
-	owner.giveMesos(int32(totalCost))
-
-	if err, _ := buyer.GiveItem(purchased); err != nil {
-		owner.takeMesos(int32(totalCost))
-		buyer.giveMesos(int32(totalCost))
+	if _, err := buyer.GiveItem(purchased); err != nil {
 		return constant.PlayerShopInventoryFull, false
 	}
 
 	if _, err := owner.TakeItemSilent(cur.ID, cur.slotID, realAmount, cur.invID); err != nil {
 		return constant.PlayerShopNotEnoughInStock, false
 	}
+
+	buyer.takeMesos(int32(totalCost))
+	owner.giveMesos(int32(totalCost))
 
 	si.reserved -= realAmount
 	si.bundles -= quantity

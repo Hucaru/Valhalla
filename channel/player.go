@@ -1054,6 +1054,15 @@ func (d *Player) addStackableItemToInventory(newItem Item, items *[]Item, slotSi
 	// We can't modify newItem.amount directly as it affects the item being saved
 	remaining := newItem.amount
 
+	type operation struct {
+		base    Item
+		slot    int
+		amount  int16
+		newItem bool
+	}
+
+	insertions := []operation{}
+
 	for remaining > 0 {
 		// First, try to find an existing stack to merge with
 		var index int = -1
@@ -1069,15 +1078,19 @@ func (d *Player) addStackableItemToInventory(newItem Item, items *[]Item, slotSi
 			canAdd := slotMax - (*items)[index].amount
 			if remaining <= canAdd {
 				// Full merge - all remaining items fit in this stack
-				(*items)[index].amount += remaining
-				(*items)[index].save(d.ID)
-				d.Send(packetInventoryAddItem((*items)[index], true))
+				insertions = append(insertions, operation{
+					slot:    index,
+					amount:  (*items)[index].amount + remaining,
+					newItem: false,
+				})
 				remaining = 0
 			} else {
 				// Partial merge - fill this stack to max and continue
-				(*items)[index].amount = slotMax
-				(*items)[index].save(d.ID)
-				d.Send(packetInventoryAddItem((*items)[index], true))
+				insertions = append(insertions, operation{
+					slot:    index,
+					amount:  slotMax,
+					newItem: false,
+				})
 				remaining -= canAdd
 
 				// Create new slot for the remainder
@@ -1092,9 +1105,11 @@ func (d *Player) addStackableItemToInventory(newItem Item, items *[]Item, slotSi
 				newSlotItem := newItem
 				newSlotItem.amount = newSlotAmount
 				newSlotItem.slotID = slotID
-				newSlotItem.save(d.ID)
-				*items = append(*items, newSlotItem)
 				d.Send(packetInventoryAddItem(newSlotItem, true))
+				insertions = append(insertions, operation{
+					base:    newSlotItem,
+					newItem: true,
+				})
 				remaining -= newSlotAmount
 			}
 		} else {
@@ -1110,10 +1125,23 @@ func (d *Player) addStackableItemToInventory(newItem Item, items *[]Item, slotSi
 			newSlotItem := newItem
 			newSlotItem.amount = newSlotAmount
 			newSlotItem.slotID = slotID
-			newSlotItem.save(d.ID)
-			*items = append(*items, newSlotItem)
-			d.Send(packetInventoryAddItem(newSlotItem, true))
+			insertions = append(insertions, operation{
+				base:    newSlotItem,
+				newItem: true,
+			})
 			remaining -= newSlotAmount
+		}
+	}
+
+	for _, op := range insertions {
+		if op.newItem {
+			*items = append(*items, op.base)
+			op.base.save(d.ID)
+			d.Send(packetInventoryAddItem(op.base, true))
+		} else {
+			(*items)[op.slot].amount = op.amount
+			(*items)[op.slot].save(d.ID)
+			d.Send(packetInventoryAddItem((*items)[op.slot], true))
 		}
 	}
 
@@ -1121,7 +1149,7 @@ func (d *Player) addStackableItemToInventory(newItem Item, items *[]Item, slotSi
 }
 
 // GiveItem grants the given item to a player and returns the item
-func (d *Player) GiveItem(newItem Item) (error, Item) { // TODO: Refactor
+func (d *Player) GiveItem(newItem Item) (Item, error) { // TODO: Refactor
 	isRechargeable := func(itemID int32) bool {
 		base := itemID / 10000
 		return base == 207
@@ -1156,7 +1184,7 @@ func (d *Player) GiveItem(newItem Item) (error, Item) { // TODO: Refactor
 	case constant.InventoryEquip: // Equip
 		slotID, err := findFirstEmptySlot(d.equip, d.equipSlotSize)
 		if err != nil {
-			return err, Item{}
+			return Item{}, err
 		}
 		newItem.slotID = slotID
 		newItem.amount = 1
@@ -1168,24 +1196,24 @@ func (d *Player) GiveItem(newItem Item) (error, Item) { // TODO: Refactor
 		if isRechargeable(newItem.ID) {
 			slotID, err := findFirstEmptySlot(d.use, d.useSlotSize)
 			if err != nil {
-				return err, Item{}
+				return Item{}, err
 			}
 			newItem.slotID = slotID
 			newItem.save(d.ID)
 			d.use = append(d.use, newItem)
 			d.Send(packetInventoryAddItem(newItem, true))
-			return nil, newItem
+			return newItem, err
 		}
 
 		// Non-rechargeable stackable items
 		if err := d.addStackableItemToInventory(newItem, &d.use, d.useSlotSize, findFirstEmptySlot); err != nil {
-			return err, Item{}
+			return Item{}, err
 		}
 
 	case constant.InventorySetup: // Set-up
 		slotID, err := findFirstEmptySlot(d.setUp, d.setupSlotSize)
 		if err != nil {
-			return err, Item{}
+			return Item{}, err
 		}
 		newItem.slotID = slotID
 		newItem.save(d.ID)
@@ -1194,13 +1222,13 @@ func (d *Player) GiveItem(newItem Item) (error, Item) { // TODO: Refactor
 
 	case constant.InventoryEtc: // Etc
 		if err := d.addStackableItemToInventory(newItem, &d.etc, d.etcSlotSize, findFirstEmptySlot); err != nil {
-			return err, Item{}
+			return Item{}, err
 		}
 
 	case constant.InventoryCash: // Cash
 		slotID, err := findFirstEmptySlot(d.cash, d.cashSlotSize)
 		if err != nil {
-			return err, Item{}
+			return Item{}, err
 		}
 		newItem.slotID = slotID
 		newItem.save(d.ID)
@@ -1208,10 +1236,62 @@ func (d *Player) GiveItem(newItem Item) (error, Item) { // TODO: Refactor
 		d.Send(packetInventoryAddItem(newItem, true))
 
 	default:
-		return fmt.Errorf("Unknown inventory ID: %d", newItem.invID), Item{}
+		return Item{}, fmt.Errorf("Unknown inventory ID: %d", newItem.invID)
 	}
 
-	return nil, newItem
+	return newItem, nil
+}
+
+func (p *Player) CanReceiveItems(items []Item) bool {
+	invCounts := map[byte]int{}
+	for _, item := range items {
+		invType := byte(item.ID / 1000000)
+		invCounts[invType]++
+	}
+
+	for invType, needed := range invCounts {
+		var cur, max byte
+		switch invType {
+		case constant.InventoryEquip:
+			cur = byte(len(p.equip))
+			max = p.equipSlotSize
+		case constant.InventoryUse:
+			cur = byte(len(p.use))
+			max = p.useSlotSize
+		case constant.InventorySetup:
+			cur = byte(len(p.setUp))
+			max = p.setupSlotSize
+		case constant.InventoryEtc:
+			cur = byte(len(p.etc))
+			max = p.etcSlotSize
+		case constant.InventoryCash:
+			cur = byte(len(p.cash))
+			max = p.cashSlotSize
+		default:
+			continue
+		}
+		if cur+byte(needed) > max {
+			return false
+		}
+	}
+	return true
+}
+
+func (d *Player) GetSlotSize(invID byte) int16 {
+	switch invID {
+	case constant.InventoryEquip:
+		return int16(d.equipSlotSize)
+	case constant.InventoryUse:
+		return int16(d.useSlotSize)
+	case constant.InventorySetup:
+		return int16(d.setupSlotSize)
+	case constant.InventoryEtc:
+		return int16(d.etcSlotSize)
+	case constant.InventoryCash:
+		return int16(d.cashSlotSize)
+	}
+
+	return constant.InventoryBaseSlotSize
 }
 
 // TakeItem removes an item from the player's inventory
@@ -1587,7 +1667,7 @@ func (d *Player) moveItem(start, end, amount int16, invID byte) error {
 	if start < 0 || end < 0 {
 		d.inst.send(packetInventoryChangeEquip(*d))
 		// Recalculate stats when equipment changes
-		d.RecalculateTotalStats()
+		d.recalculateTotalStats()
 	}
 
 	return nil
@@ -2031,6 +2111,42 @@ func (d *Player) findEquipBySlot(slot int16) *Item {
 	return nil
 }
 
+func (plr *Player) recalculateTotalStats() {
+	// Start with base stats
+	plr.totalStr = plr.str
+	plr.totalDex = plr.dex
+	plr.totalInt = plr.intt
+	plr.totalLuk = plr.luk
+	plr.totalWatk = 0
+	plr.totalMatk = 0
+	plr.totalAccuracy = 0
+
+	// Add bonuses from all equipped items
+	for _, item := range plr.equip {
+		if item.slotID < 0 {
+			plr.totalStr += item.str
+			plr.totalDex += item.dex
+			plr.totalInt += item.intt
+			plr.totalLuk += item.luk
+			plr.totalWatk += item.watk
+			plr.totalMatk += item.matk
+			plr.totalAccuracy += item.accuracy
+		}
+	}
+
+	// Add base stat contributions to attack
+	plr.totalWatk += plr.str / 10
+	plr.totalMatk += plr.intt / 10
+
+	if plr.buffs != nil {
+		statBonus := plr.buffs.getStatBonuses()
+
+		plr.totalWatk += statBonus.watk
+		plr.totalMatk += statBonus.matk
+		plr.totalAccuracy += statBonus.accuracy
+	}
+}
+
 func LoadPlayerFromID(id int32, conn mnet.Client) Player {
 	c := Player{}
 	filter := "ID,accountID,worldID,Name,gender,skin,hair,face,level,job,str,dex,intt," +
@@ -2092,7 +2208,7 @@ func LoadPlayerFromID(id int32, conn mnet.Client) Player {
 	c.equip, c.use, c.setUp, c.etc, c.cash = loadInventoryFromDb(c.ID)
 
 	// Calculate total stats including equipment bonuses
-	c.RecalculateTotalStats()
+	c.recalculateTotalStats()
 
 	c.buddyList = getBuddyList(c.ID, c.buddyListSize)
 
@@ -2476,7 +2592,7 @@ func (d *Player) applyQuestAct(act nx.ActBlock, npcID int32, questID int16) erro
 
 			// Guaranteed reward (no weight specified).
 			if it, err := CreateItemFromID(ai.ID, int16(ai.Count)); err == nil {
-				if giveErr, _ := d.GiveItem(it); giveErr != nil {
+				if _, giveErr := d.GiveItem(it); giveErr != nil {
 					d.Send(packetQuestActionResult(constant.QuestActionInventoryFull, questID, npcID, nil))
 					return giveErr
 				}
@@ -2515,7 +2631,7 @@ func (d *Player) applyQuestAct(act nx.ActBlock, npcID int32, questID int16) erro
 		// Give the selected item
 		if selectedItem != nil {
 			if it, err := CreateItemFromID(selectedItem.ID, int16(selectedItem.Count)); err == nil {
-				if giveErr, _ := d.GiveItem(it); giveErr != nil {
+				if _, giveErr := d.GiveItem(it); giveErr != nil {
 					d.Send(packetQuestActionResult(constant.QuestActionInventoryFull, questID, npcID, nil))
 					return giveErr
 				}
@@ -3618,63 +3734,6 @@ func (plr *Player) WriteCharacterInfoPacket(p *mpacket.Packet) {
 	}
 }
 
-func (p *Player) canReceiveItems(items []Item) bool {
-	invCounts := map[byte]int{}
-	for _, item := range items {
-		invType := byte(item.ID / 1000000)
-		invCounts[invType]++
-	}
-
-	for invType, needed := range invCounts {
-		var cur, max byte
-		switch invType {
-		case constant.InventoryEquip:
-			cur = byte(len(p.equip))
-			max = p.equipSlotSize
-		case constant.InventoryUse:
-			cur = byte(len(p.use))
-			max = p.useSlotSize
-		case constant.InventorySetup:
-			cur = byte(len(p.setUp))
-			max = p.setupSlotSize
-		case constant.InventoryEtc:
-			cur = byte(len(p.etc))
-			max = p.etcSlotSize
-		case constant.InventoryCash:
-			cur = byte(len(p.cash))
-			max = p.cashSlotSize
-		default:
-			continue
-		}
-		if cur+byte(needed) > max {
-			return false
-		}
-	}
-	return true
-}
-
-// CanReceiveItems reports whether the player has enough free slots for all given items.
-func (p *Player) CanReceiveItems(items []Item) bool {
-	return p.canReceiveItems(items)
-}
-
-func (d *Player) GetSlotSize(invID byte) int16 {
-	switch invID {
-	case constant.InventoryEquip:
-		return int16(d.equipSlotSize)
-	case constant.InventoryUse:
-		return int16(d.useSlotSize)
-	case constant.InventorySetup:
-		return int16(d.setupSlotSize)
-	case constant.InventoryEtc:
-		return int16(d.etcSlotSize)
-	case constant.InventoryCash:
-		return int16(d.cashSlotSize)
-	}
-
-	return constant.InventoryBaseSlotSize
-}
-
 func packetPlayerPetUpdate(sn int32) mpacket.Packet {
 	p := mpacket.CreateWithOpcode(opcode.SendChannelStatChange)
 	p.WriteBool(false)
@@ -3860,44 +3919,8 @@ func packetSkillStop(plrID, skillID int32) mpacket.Packet {
 	return p
 }
 
-func (plr *Player) RecalculateTotalStats() {
-	// Start with base stats
-	plr.totalStr = plr.str
-	plr.totalDex = plr.dex
-	plr.totalInt = plr.intt
-	plr.totalLuk = plr.luk
-	plr.totalWatk = 0
-	plr.totalMatk = 0
-	plr.totalAccuracy = 0
-
-	// Add bonuses from all equipped items
-	for _, item := range plr.equip {
-		if item.slotID < 0 {
-			plr.totalStr += item.str
-			plr.totalDex += item.dex
-			plr.totalInt += item.intt
-			plr.totalLuk += item.luk
-			plr.totalWatk += item.watk
-			plr.totalMatk += item.matk
-			plr.totalAccuracy += item.accuracy
-		}
-	}
-
-	// Add base stat contributions to attack
-	plr.totalWatk += plr.str / 10
-	plr.totalMatk += plr.intt / 10
-
-	if plr.buffs != nil {
-		statBonus := plr.buffs.getStatBonuses()
-
-		plr.totalWatk += statBonus.watk
-		plr.totalMatk += statBonus.matk
-		plr.totalAccuracy += statBonus.accuracy
-	}
-}
-
 func packetPlayerHpChange(plrID, hp, maxHp int32) mpacket.Packet {
-	p := mpacket.CreateWithOpcode(opcode.RecvChannelPlayerPickup)
+	p := mpacket.CreateWithOpcode(opcode.SendChannelPlayerPartyHP)
 	p.WriteInt32(plrID)
 	p.WriteInt32(hp)
 	p.WriteInt32(maxHp)

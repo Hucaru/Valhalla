@@ -149,16 +149,11 @@ func (r *tradeRoom) completeTrade() {
 		return
 	}
 
-	if !p1.canReceiveItems(changes[0].itemsToGive) || !p2.canReceiveItems(changes[1].itemsToGive) {
-		r.closeWithReason(constant.MiniRoomTradeInventoryFull, true)
-		return
-	}
-
 	var undo []func()
 
 	for _, change := range changes {
 		for _, item := range change.itemsToGive {
-			err, insertedItem := change.plr.GiveItem(item)
+			insertedItem, err := change.plr.GiveItem(item)
 			if err != nil {
 				for _, fn := range undo {
 					fn()
@@ -234,7 +229,7 @@ func (r *tradeRoom) rollback() {
 		}
 		if bag, ok := r.items[player.ID]; ok {
 			for slot, item := range bag {
-				if err, _ := player.GiveItem(item); err != nil {
+				if _, err := player.GiveItem(item); err != nil {
 					log.Println("tradeRoom rollback failed:", err)
 				}
 				delete(bag, slot)
