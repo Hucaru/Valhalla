@@ -65,9 +65,16 @@ func (server *Server) handleNewChannelOK(conn mnet.Server, reader mpacket.Reader
 	server.rates.exp = reader.ReadFloat32()
 	server.rates.drop = reader.ReadFloat32()
 	server.rates.mesos = reader.ReadFloat32()
+	server.autoBan = reader.ReadBool()
 
-	log.Printf("Registered as channel %d on world %s with rates: Exp - x%.2f, Drop - x%.2f, Mesos - x%.2f",
-		server.id+1, server.worldName, server.rates.exp, server.rates.drop, server.rates.mesos)
+	if server.ac != nil {
+		server.ac.SetEnabled(server.autoBan)
+	} else {
+		log.Println("Warning: anti-cheat not initialized when processing ChannelOk")
+	}
+
+	log.Printf("Registered as channel %d on world %s with rates: Exp - x%.2f, Drop - x%.2f, Mesos - x%.2f, AutoBan - %v",
+		server.id+1, server.worldName, server.rates.exp, server.rates.drop, server.rates.mesos, server.autoBan)
 
 	server.players.broadcast(packetMessageNotice("Re-connected to world server as channel " + strconv.Itoa(int(server.id+1))))
 

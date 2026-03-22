@@ -49,6 +49,7 @@ func newWorldServer(configFile string) *worldServer {
 	ws.state.Info.Rates = ws.state.Info.DefaultRates
 	ws.state.Info.Ribbon = config.Ribbon
 	ws.state.Info.Message = config.Message
+	ws.state.Info.AutoBan = config.AutoBan
 
 	return &ws
 }

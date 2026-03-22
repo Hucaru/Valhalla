@@ -22,6 +22,7 @@ type World struct {
 	CashShop      CashShop
 	Rates         Rates
 	DefaultRates  Rates
+	AutoBan       bool
 }
 
 func (w *World) GenerateInfoPacket() mpacket.Packet {
