@@ -47,6 +47,7 @@ type Server struct {
 	guilds           map[int32]*guild
 	events           map[int32]*event
 	rates            rates
+	autoBan          bool
 	ac               *anticheat.AntiCheat
 }
 

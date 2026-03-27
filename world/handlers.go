@@ -88,6 +88,7 @@ func (server *Server) handleNewChannel(conn mnet.Server, reader mpacket.Reader) 
 		p.WriteFloat32(server.Info.Rates.Exp)
 		p.WriteFloat32(server.Info.Rates.Drop)
 		p.WriteFloat32(server.Info.Rates.Mesos)
+		p.WriteBool(server.Info.AutoBan)
 
 		conn.Send(p)
 		server.login.Send(server.Info.GenerateInfoPacket())

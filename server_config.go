@@ -35,6 +35,7 @@ type worldConfig struct {
 	ExpRate         float32		`mapstructure:"expRate"`
 	DropRate        float32		`mapstructure:"dropRate"`
 	MesosRate       float32		`mapstructure:"mesosRate"`
+	AutoBan         bool		`mapstructure:"autoBan"`
 	LoginAddress    string		`mapstructure:"loginAddress"`
 	LoginPort       string		`mapstructure:"loginPort"`
 	ListenAddress   string		`mapstructure:"listenAddress"`
@@ -93,6 +94,8 @@ func LoadConfig(fname string) *fullConfig {
 	v.SetEnvPrefix("VALHALLA")
 	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 	v.AutomaticEnv()
+
+	v.SetDefault("world.autoBan", true)
 
 	bindEnvs(v, reflect.TypeOf(fullConfig{}), nil, "VALHALLA")
 
