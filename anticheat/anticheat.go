@@ -23,7 +23,6 @@ func New(db *sql.DB, dispatch chan func()) *AntiCheat {
 		db:         db,
 		dispatch:   dispatch,
 	}
-	ac.enabled = true
 	return ac
 }
 
