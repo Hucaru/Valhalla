@@ -11,6 +11,7 @@ ribbon = 2
 expRate = 1.0
 dropRate = 1.0
 mesosRate = 1.0
+autoBan = false
 loginAddress = "login_server"
 loginPort = "8485"
 listenAddress = "0.0.0.0"

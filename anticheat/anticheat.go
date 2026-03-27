@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
-	"sync/atomic"
 	"time"
 )
 
@@ -14,7 +13,7 @@ type AntiCheat struct {
 	db         *sql.DB
 	dispatch   chan func()
 	onBan      func(accountID int32)
-	enabled    atomic.Bool
+	enabled    bool
 }
 
 func New(db *sql.DB, dispatch chan func()) *AntiCheat {
@@ -24,14 +23,14 @@ func New(db *sql.DB, dispatch chan func()) *AntiCheat {
 		db:         db,
 		dispatch:   dispatch,
 	}
-	ac.enabled.Store(true)
+	ac.enabled = true
 	return ac
 }
 
 // SetEnabled enables or disables automatic banning. When disabled, violation
 // tracking calls are no-ops and no bans are issued automatically.
 func (ac *AntiCheat) SetEnabled(enabled bool) {
-	ac.enabled.Store(enabled)
+	ac.enabled = true
 }
 
 func (ac *AntiCheat) SetOnBan(fn func(accountID int32)) {
@@ -318,7 +317,7 @@ func (ac *AntiCheat) incrementTempBans(accountID int32) (int, error) {
 
 // Detection helpers - track violations and auto-ban on threshold
 func (ac *AntiCheat) LogDamageViolation(accountID int32, damage, maxDamage int32) {
-	if !ac.enabled.Load() {
+	if !ac.enabled {
 		return
 	}
 	if damage > maxDamage*2 {
@@ -329,14 +328,14 @@ func (ac *AntiCheat) LogDamageViolation(accountID int32, damage, maxDamage int32
 }
 
 func (ac *AntiCheat) LogAttackSpeedViolation(accountID int32) bool {
-	if !ac.enabled.Load() {
+	if !ac.enabled {
 		return false
 	}
 	return ac.Track(accountID, "attack_speed", 120, 1*time.Minute)
 }
 
 func (ac *AntiCheat) LogMovementViolation(accountID int32, distance int16, moveType byte) {
-	if !ac.enabled.Load() {
+	if !ac.enabled {
 		return
 	}
 	if distance > 1000 {
@@ -348,7 +347,7 @@ func (ac *AntiCheat) LogMovementViolation(accountID int32, distance int16, moveT
 }
 
 func (ac *AntiCheat) LogInvalidItemViolation(accountID int32) {
-	if !ac.enabled.Load() {
+	if !ac.enabled {
 		return
 	}
 	if ac.Track(accountID, "invalid_item", 5, 5*time.Minute) {
@@ -357,7 +356,7 @@ func (ac *AntiCheat) LogInvalidItemViolation(accountID int32) {
 }
 
 func (ac *AntiCheat) LogInvalidTradeViolation(accountID int32, reason string) {
-	if !ac.enabled.Load() {
+	if !ac.enabled {
 		return
 	}
 	if ac.Track(accountID, "invalid_trade", 5, 5*time.Minute) {
@@ -366,7 +365,7 @@ func (ac *AntiCheat) LogInvalidTradeViolation(accountID int32, reason string) {
 }
 
 func (ac *AntiCheat) LogSkillAbuseViolation(accountID int32, skillID int32) {
-	if !ac.enabled.Load() {
+	if !ac.enabled {
 		return
 	}
 	if ac.Track(accountID, "skill_abuse", 5, 5*time.Minute) {

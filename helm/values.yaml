@@ -27,6 +27,7 @@ mysql:
   port: 3306
   user: root
 world:
+  autoBan: false
   dropRate: 1.1
   expRate: 1.1
   jitter: 0

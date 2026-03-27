@@ -44,6 +44,7 @@ data:
     expRate = {{ .Values.world.expRate }}
     dropRate = {{ .Values.world.dropRate }}
     mesosRate = {{ .Values.world.mesosRate }}
+    autoBan = {{ .Values.world.autoBan }}
     loginAddress = "login-server.{{ .Release.Namespace }}.svc.{{ .Values.clusterDomain }}"
     loginPort = "8485"
     listenAddress = "0.0.0.0"
