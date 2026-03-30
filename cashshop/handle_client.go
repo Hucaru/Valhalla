@@ -173,12 +173,12 @@ func (server *Server) handleCashShopOperation(conn mnet.Client, reader mpacket.R
 		commodity, ok := nx.GetCommodity(sn)
 		if !ok || commodity.ItemID == 0 {
 			// Unknown SN
-			plr.Send(packetCashShopUpdateAmounts(plrNX, plrMaplePoints))
+			plr.Send(packetCashShopError(opcode.SendCashShopBuyFailed, constant.CashShopErrorOutOfStock))
 			return
 		}
 
 		if commodity.OnSale == 0 || commodity.Price <= 0 {
-			plr.Send(packetCashShopUpdateAmounts(plrNX, plrMaplePoints))
+			plr.Send(packetCashShopError(opcode.SendCashShopBuyFailed, constant.CashShopErrorOutOfStock))
 			return
 		}
 
@@ -202,13 +202,13 @@ func (server *Server) handleCashShopOperation(conn mnet.Client, reader mpacket.R
 				return
 			}
 		default:
-			plr.Send(packetCashShopUpdateAmounts(plrNX, plrMaplePoints))
+			plr.Send(packetCashShopError(opcode.SendCashShopBuyFailed, constant.CashShopErrorUnknown))
 			return
 		}
 
 		newItem, e := channel.CreateItemFromID(commodity.ItemID, count)
 		if e != nil {
-			plr.Send(packetCashShopUpdateAmounts(plrNX, plrMaplePoints))
+			plr.Send(packetCashShopError(opcode.SendCashShopBuyFailed, constant.CashShopErrorUnknown))
 			return
 		}
 
@@ -244,6 +244,7 @@ func (server *Server) handleCashShopOperation(conn mnet.Client, reader mpacket.R
 			plr.SetMaplePoints(plrMaplePoints)
 		default:
 			log.Println("Unknown currency type: ", currencySel)
+			plr.Send(packetCashShopError(opcode.SendCashShopBuyFailed, constant.CashShopErrorUnknown))
 			return
 		}
 
@@ -261,7 +262,7 @@ func (server *Server) handleCashShopOperation(conn mnet.Client, reader mpacket.R
 
 		commodity, ok := nx.GetCommodity(pkgSN)
 		if !ok || commodity.Price <= 0 {
-			plr.Send(packetCashShopUpdateAmounts(plrNX, plrMaplePoints))
+			plr.Send(packetCashShopError(opcode.SendCashShopBuyFailed, constant.CashShopErrorOutOfStock))
 			return
 		}
 
@@ -277,7 +278,7 @@ func (server *Server) handleCashShopOperation(conn mnet.Client, reader mpacket.R
 			}
 		}
 		if !ok || len(pkgItems) == 0 {
-			plr.Send(packetCashShopUpdateAmounts(plrNX, plrMaplePoints))
+			plr.Send(packetCashShopError(opcode.SendCashShopBuyFailed, constant.CashShopErrorOutOfStock))
 			return
 		}
 
@@ -294,7 +295,7 @@ func (server *Server) handleCashShopOperation(conn mnet.Client, reader mpacket.R
 				return
 			}
 		default:
-			plr.Send(packetCashShopUpdateAmounts(plrNX, plrMaplePoints))
+			plr.Send(packetCashShopError(opcode.SendCashShopBuyFailed, constant.CashShopErrorUnknown))
 			return
 		}
 
@@ -319,13 +320,13 @@ func (server *Server) handleCashShopOperation(conn mnet.Client, reader mpacket.R
 			}
 
 			if itemID == 0 {
-				plr.Send(packetCashShopUpdateAmounts(plrNX, plrMaplePoints))
+				plr.Send(packetCashShopError(opcode.SendCashShopBuyFailed, constant.CashShopErrorOutOfStock))
 				return
 			}
 
 			newItem, e := channel.CreateItemFromID(itemID, count)
 			if e != nil {
-				plr.Send(packetCashShopUpdateAmounts(plrNX, plrMaplePoints))
+				plr.Send(packetCashShopError(opcode.SendCashShopBuyFailed, constant.CashShopErrorUnknown))
 				return
 			}
 			itemsToGive = append(itemsToGive, newItem)
@@ -338,7 +339,7 @@ func (server *Server) handleCashShopOperation(conn mnet.Client, reader mpacket.R
 
 		for _, it := range itemsToGive {
 			if _, err := plr.GiveItem(it); err != nil {
-				plr.Send(packetCashShopUpdateAmounts(plrNX, plrMaplePoints))
+				plr.Send(packetCashShopError(opcode.SendCashShopBuyFailed, constant.CashShopErrorCheckFullInventory))
 				return
 			}
 		}
@@ -387,6 +388,7 @@ func (server *Server) handleCashShopOperation(conn mnet.Client, reader mpacket.R
 			plr.SetMaplePoints(plrMaplePoints)
 		default:
 			log.Println("Unknown currency type: ", currencySel)
+			plr.Send(packetCashShopError(opcode.SendCashShopIncSlotCountFailed, constant.CashShopErrorUnknown))
 			return
 		}
 
