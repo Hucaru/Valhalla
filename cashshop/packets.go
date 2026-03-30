@@ -45,7 +45,8 @@ func packetCashShopUpdateAmounts(nxCredit, maplePoints int32) mpacket.Packet {
 }
 
 func packetCashShopIncreaseInv(invID byte, slots int16) mpacket.Packet {
-	p := mpacket.CreateWithOpcode(opcode.SendCashShopIncSlotCountDone)
+	p := mpacket.CreateWithOpcode(opcode.SendChannelCSAction)
+	p.WriteByte(opcode.SendCashShopIncSlotCountDone)
 	p.WriteByte(invID)
 	p.WriteInt16(slots)
 	return p
