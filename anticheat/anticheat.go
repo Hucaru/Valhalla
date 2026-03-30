@@ -23,14 +23,13 @@ func New(db *sql.DB, dispatch chan func()) *AntiCheat {
 		db:         db,
 		dispatch:   dispatch,
 	}
-	ac.enabled = true
 	return ac
 }
 
 // SetEnabled enables or disables automatic banning. When disabled, violation
 // tracking calls are no-ops and no bans are issued automatically.
 func (ac *AntiCheat) SetEnabled(enabled bool) {
-	ac.enabled = true
+	ac.enabled = enabled
 }
 
 func (ac *AntiCheat) SetOnBan(fn func(accountID int32)) {
