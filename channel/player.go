@@ -625,10 +625,8 @@ func (d *Player) levelUp() {
 	d.setMaxHP(newMaxHP)
 	d.setMaxMP(newMaxMP)
 
-	newHP := int16(math.Min(float64(newMaxHP), float64(d.hp+hpGain)))
-	newMP := int16(math.Min(float64(newMaxMP), float64(d.mp+mpGain)))
-	d.setHP(newHP)
-	d.setMP(newMP)
+	d.setHP(newMaxHP)
+	d.setMP(newMaxMP)
 
 	d.giveLevel(1)
 }
